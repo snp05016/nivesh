@@ -28,19 +28,23 @@ class HomeFeedService {
     
     func fetchValuationHistory(userId: Int, days: Int = 90) async throws -> ValuationHistoryResponse {
         let urlString = "\(NetworkManager.shared.baseURL)/api/v1/portfolio/valuation-history?user_id=\(userId)&days=\(days)"
-        
+
         guard let url = URL(string: urlString) else {
             throw NetworkError.invalidURL
         }
-        
-        let (data, response) = try await URLSession.shared.data(from: url)
-        
+
+        var request = URLRequest(url: url)
+        if let token = NetworkManager.shared.authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
             throw NetworkError.invalidResponse
         }
-        
-        let decoder = JSONDecoder()
-        return try decoder.decode(ValuationHistoryResponse.self, from: data)
+
+        return try JSONDecoder().decode(ValuationHistoryResponse.self, from: data)
     }
 }

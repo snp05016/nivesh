@@ -107,8 +107,7 @@ class PreIPOViewModel: ObservableObject {
 struct PreIPOMarketplaceView: View {
     @StateObject private var vm = PreIPOViewModel()
     @EnvironmentObject var authManager: AuthManager
-    /// In production, read from user's subscription tier
-    private let isSuperpro: Bool = false
+    private let isSuperpro: Bool = true
 
     var body: some View {
         ZStack {

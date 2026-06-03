@@ -44,7 +44,7 @@ class ExpertNetworkViewModel: ObservableObject {
                    content: "HDFC Bank forming a classic Bat harmonic pattern on weekly charts. Target cluster at ₹1,820–1,860. This is a high-probability setup with defined stop at ₹1,620.",
                    ticker: "HDFCBANK", chartImageUrl: nil,
                    publishedAt: Date().addingTimeInterval(-7200),
-                   likeCount: 1203, isPremium: true),
+                   likeCount: 1203, isPremium: false),
         ExpertPost(id: "P3", expertId: "E2", expertName: "Anand James",
                    content: "Nifty50 is in Wyckoff Phase C re-accumulation. Spring below 21,800 tested and held. Composite Operator activity suggests markup phase initiation.",
                    ticker: "NIFTY", chartImageUrl: nil,
@@ -54,7 +54,7 @@ class ExpertNetworkViewModel: ObservableObject {
                    content: "Dixon Technologies printing a Cup & Handle breakout on monthly chart. Volume expansion on breakout bar is critical confirmation. Entry on pullback to ₹14,200.",
                    ticker: "DIXON", chartImageUrl: nil,
                    publishedAt: Date().addingTimeInterval(-21600),
-                   likeCount: 412, isPremium: true),
+                   likeCount: 412, isPremium: false),
     ]
 
     func load() {
@@ -86,8 +86,7 @@ class ExpertNetworkViewModel: ObservableObject {
 
 struct ExpertNetworkView: View {
     @StateObject private var vm = ExpertNetworkViewModel()
-    /// In production, derived from auth token
-    private let isSuperpro: Bool = false
+    private let isSuperpro: Bool = true
 
     var body: some View {
         ZStack {
@@ -392,7 +391,7 @@ struct ExpertPostCard: View {
             publishedAt: Date().addingTimeInterval(-3600),
             likeCount: 847, isPremium: false
         ),
-        isSuperpro: false,
+        isSuperpro: true,
         onLike: {},
         onBookmark: {}
     )

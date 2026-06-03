@@ -225,17 +225,13 @@ struct NewsMultimediaView: View {
 
     private func loadFeed() async {
         isLoading = true
-        // Production: POST /api/v1/home-feed
-        guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/home-feed") else {
+        let userId = authManager.currentUser?.userId ?? 0
+        guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/home-feed?user_id=\(userId)") else {
             isLoading = false
             return
         }
         var req = URLRequest(url: url)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let user = authManager.currentUser {
-            req.httpBody = try? JSONEncoder().encode(["user_id": user.userId])
-        }
+        req.httpMethod = "GET"
         req.timeoutInterval = 20
 
         if let (data, resp) = try? await URLSession.shared.data(for: req),
