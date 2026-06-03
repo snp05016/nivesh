@@ -1,7 +1,7 @@
 # Nivesh (निवेश) — Definitive App Context
 
 > Authority: This is the definitive project context document.
-> Last updated: June 3, 2026. Reflects current implementation.
+> Last updated: June 3, 2026. Reflects current implemented state.
 
 ---
 
@@ -9,23 +9,21 @@
 
 **Nivesh** is a personal Indian stock market analysis iOS app for a small family group (3 users). It wraps a multi-agent AI pipeline in a premium SwiftUI interface styled like an Indian Rupee banknote. Tap any NSE/BSE stock → wait 30–90s → receive structured AI investment analysis.
 
-**Current status:** Fully functional, running locally. iOS app on physical iPhone connects to FastAPI backend on Mac over home WiFi (`192.168.1.97:8000`). Not deployed anywhere. Personal use only.
-
 ---
 
 ## The Stack
 
 | Layer | Technology |
 |---|---|
-| iOS frontend | SwiftUI (iOS 16+), Swift Charts, no third-party dependencies |
-| Backend API | FastAPI (Python), uvicorn, local only |
+| iOS frontend | SwiftUI (iOS 16+), Swift Charts, zero dependencies |
+| Backend API | FastAPI (Python), uvicorn, subprocess isolation |
 | AI pipeline | TradingAgents (LangGraph multi-agent) |
 | AI models | Claude 3.5 Haiku (agents) + Claude 3.5 Sonnet (reformatter) |
 | Live market data | yfinance (Yahoo Finance) with NSE-session fallbacks |
 | News sources | Yahoo Finance News (enriched), Moneycontrol, Economic Times |
-| Advisor Intelligence | Claude 3.5 Haiku (YouTube transcript extraction) + rapidfuzz (Hinglish matching) |
+| Advisor Intelligence | Claude 3.5 Haiku (YouTube extraction) + rapidfuzz (Hinglish matching) |
 | Database | SQLite via SQLAlchemy ORM |
-| Charts (iOS) | Swift Charts (native, iOS 16+) |
+| Deterministic Engine| Factor Engine (Technical pre-compute), Piotroski (Fundamental) |
 
 ---
 
@@ -34,25 +32,31 @@
 The Nivesh AI pipeline is a sophisticated multi-stage orchestration engine designed for high-fidelity financial reasoning. It is isolated in a Python subprocess for resource management and uses a 3-layer caching strategy.
 
 ### Step 1: The Smart Cache Gatekeeper (Haiku 3.5)
-Before executing the expensive multi-agent graph, the system performs a **Differential News Check**:
-- **Input**: Last analysis date + Top 5 recent news headlines for the ticker.
-- **Logic**: Haiku determines if a "major fundamental shift, severe shock, or significant trend-changing event" has occurred.
-- **Outcome**: If "NO", the system skips the AI run, clones the previous report, updates the current price via yfinance, and returns immediately (**SMART CACHE HIT**).
+Before executing the expensive graph, the system performs a **Differential News Check**:
+- **Logic**: Haiku determines if a "major fundamental shift, severe shock, or significant trend-changing event" has occurred since the last analysis.
+- **Outcome**: If "NO", the system skips the AI run, clones the previous report, and updates the price only (**SMART CACHE HIT**).
 
-### Step 2: Multi-Agent Orchestration (LangGraph)
+### Step 2: Deterministic Pre-Computation (The Factor Engine)
+To ensure the AI doesn't "hallucinate" technical levels, the **Factor Engine** runs first:
+- **Technicals**: Calculates RSI-14, MACD, SMA 50/200, OBV, and Bollinger Bands using mathematical libraries (`ta`/`numpy`).
+- **Fundamentals**: `piotroski.py` computes the 9-point health score (0-9).
+- **Result**: These numbers are passed into the AI as "ground truth" prose.
+
+### Step 3: Multi-Agent Orchestration (LangGraph)
 If a cache miss occurs, the system initializes an `OptimizedTradingAgentsGraph`.
 
 #### A. Parallel Analyst Layer
-Three specialized agents run in parallel to gather raw intelligence:
-1.  **Market Analyst**: Computes Technicals (SMA 50/200, RSI-14, MACD, Volume) and identifies chart patterns.
-2.  **News Analyst**: Scans for corporate announcements. Specifically hard-coded to hunt for **Audit Resignations**, **CFO/MD Exits**, and **SEBI Actions** (marked with ⚠ GOVERNANCE flags).
-3.  **Fundamentals Analyst**: Fetches P/L, Balance Sheet, Cash Flow, and **Promoter Pledging** data.
+Four specialized agents run in parallel to gather raw intelligence:
+1.  **Market Analyst**: Interprets Factor Engine data into behavioral trends.
+2.  **News Analyst**: Scans for corporate announcements and **Red Flags** (Audit Resignations, CFO exits).
+3.  **Fundamentals Analyst**: Checks Promoter Pledging (>30% = Bearish) and DII/FII flows.
+4.  **Social Analyst**: Measures retail euphoria as a contrarian risk signal.
 
 #### B. The Dialectical Debate
 To prevent AI "echo chambers," the system enters a debate phase:
 - **Bull Researcher**: Makes the strongest possible case for capital appreciation.
 - **Bear Researcher**: Actively tries to invalidate the Bull case, focusing on structural risks.
-- **Iteration**: They challenge each other for 1 round (or more) to refine the "edges" of the investment thesis.
+- **Iteration**: They challenge each other for 1+ rounds to refine the "edges" of the investment thesis.
 
 #### C. Synthesis & Proposal
 - **Research Manager**: Reads the entire debate and writes a balanced summary of disagreements.
@@ -65,11 +69,9 @@ The Trader's proposal is reviewed by a 3-agent Risk Committee in a circular loop
 3.  **Neutral Analyst**: Bridges the gap.
 They debate the proposal until the judge determines the risk is fully explored, before passing it to the **Portfolio Manager** for the final "raw" verdict.
 
-### Step 3: Deterministic Reformatting & Indian Market Weighting (Sonnet 3.5)
-The raw multi-agent output is passed to Claude 3.5 Sonnet for final structuring. This phase uses a **Dual-Breakpoint Prompt Caching** strategy:
-
-1.  **Breakpoint 1 (The Blueprint)**: Caches the `INDIAN_MARKET_SYSTEM_PROMPT` (Static Layer).
-2.  **Breakpoint 2 (Ticker History)**: Fetches and caches the last 15 analyses for that specific ticker, sorted by key for stable hash IDs (Volatile Context Layer).
+### Step 4: Deterministic Reformatting & Indian Market Weighting (Sonnet 3.5)
+Final structuring using **Dual-Breakpoint Prompt Caching**:
+- **Applied Heuristics**: "Minskyan Tension Gauge" (fragile rallies) and "Behavioral Translation" (e.g., RSI < 30 is "Retail capitulation").
 
 ---
 
@@ -101,13 +103,13 @@ A background CRON job runs the `advisor_harvester.py` to ingest expert sentiment
 | Tab | View | Description |
 |---|---|---|
 | **Home** | `HomeScreen` | Morning Brief (Priority Items), Indices strip, Sector Pulse heatmap. |
-| **Directory** | `SearchScreen` | Bilingual search (खोज) with screener presets (Hidden Gems, Momentum). |
+| **Directory** | `SearchScreen` | Bilingual search (खोज) with screener presets. |
 | **Assets** | `PortfolioScreen` | Rupee-styled hero card, 10-segment risk meter, Red Flags system. |
 | **Alerts** | `AlertsScreen` | Manage price targets. Triggered alerts show on Home. |
 | **Archives** | `HistoryScreen` | Cached analysis reports with Signal Change diffs. |
 | **Compare** | `CompareScreen` | Side-by-side stock comparison (Price, P/E, Signal). |
-| **Registry** | `SettingsScreen` | User verification, App preferences, APNs registration. |
-| **Journal** | `TradeJournalScreen`| Log entry reasons, moods (FOMO/Contrarian), and outcomes. |
+| **Registry** | `SettingsScreen` | User preferences, App styles, Server configuration. |
+| **Journal** | `TradeJournalScreen`| Log entry reasons, moods (FOMO/Confidence), and outcomes. |
 
 ---
 
