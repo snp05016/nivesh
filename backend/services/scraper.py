@@ -289,6 +289,10 @@ def fetch_momentum() -> dict:
                 ma50      = sum(closes[-50:]) / 50
                 prev_ma20 = sum(closes[-21:-1]) / 20
                 prev_ma50 = sum(closes[-51:-1]) / 50
+
+                if math.isnan(ma20) or math.isnan(ma50) or math.isnan(prev_ma20) or math.isnan(prev_ma50):
+                    break
+
                 entry = {
                     "ticker":      sym.replace(".NS", "").replace(".BO", ""),
                     "last_price":  round(float(closes[-1]), 2),

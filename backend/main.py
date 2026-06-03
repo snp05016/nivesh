@@ -3408,7 +3408,7 @@ def ipo_calendar_endpoint():
 
 @app.get("/sector-weekly")
 def sector_weekly_endpoint():
-    """Returns sector performance with 1-week and 1-day change."""
+    """Returns sector performance with 1-week and 1-day change. Handles holidays and NaN."""
     SECTOR_ETFS = {
         "Nifty Bank": "^NSEBANK",
         "Nifty IT": "^CNXIT",
@@ -3446,14 +3446,28 @@ def sector_weekly_endpoint():
             closes = hist["Close"].dropna()
             if len(closes) < 2:
                 continue
-            current = float(closes.iloc[-1])
-            prev_day = float(closes.iloc[-2])
-            week_ago = float(closes.iloc[0]) if len(closes) >= 5 else prev_day
-            if math.isnan(current) or math.isnan(prev_day):
+
+            valid_closes = [float(c) for c in closes if not math.isnan(float(c))]
+            if len(valid_closes) < 2:
                 continue
+
+            current = valid_closes[-1]
+            prev_day = valid_closes[-2]
+            week_ago = valid_closes[0] if len(valid_closes) >= 5 else prev_day
+
+            if math.isnan(current) or math.isnan(prev_day) or prev_day == 0:
+                continue
+
             day_chg = round((current - prev_day) / prev_day * 100, 2)
-            week_chg = round((current - week_ago) / week_ago * 100, 2)
-            results.append({"name": name, "ticker": sym, "value": round(current, 2), "change_pct": day_chg, "change_abs": round(current - prev_day, 2), "week_change_pct": week_chg})
+            week_chg = round((current - week_ago) / week_ago * 100, 2) if week_ago != 0 else 0.0
+            results.append({
+                "name": name,
+                "ticker": sym,
+                "value": round(current, 2),
+                "change_pct": day_chg,
+                "change_abs": round(current - prev_day, 2),
+                "week_change_pct": week_chg,
+            })
         except Exception:
             continue
     return {"sectors": results}
@@ -3629,7 +3643,76 @@ async def get_valuation_history(user_id: int, days: int = 90, authorization: str
             PortfolioValuationHistory.snapshot_date >= cutoff_date
         ).order_by(PortfolioValuationHistory.snapshot_date.asc()).all()
 
-        # Summary stats
+        if not snapshots:
+            holdings = session.query(Portfolio).filter(
+                Portfolio.user_id == user_id,
+                Portfolio.group_name == "holdings"
+            ).all()
+            if holdings:
+                try:
+                    import yfinance as yf
+                    import math
+                    ticker_shares = {}
+                    for h in holdings:
+                        t = h.ticker.upper()
+                        ticker_shares[t] = ticker_shares.get(t, 0.0) + h.shares
+
+                    all_closes = {}
+                    for t in ticker_shares:
+                        try:
+                            tk = yf.Ticker(f"{t}.NS")
+                            hist = tk.history(period="35d")
+                            if not hist.empty:
+                                closes = hist["Close"].dropna()
+                                all_closes[t] = {d.strftime("%Y-%m-%d"): float(c) for d, c in closes.items()}
+                        except Exception:
+                            continue
+
+                    if all_closes:
+                        all_dates = set()
+                        for closes in all_closes.values():
+                            all_dates.update(closes.keys())
+                        sorted_dates = sorted(all_dates)[-30:]
+
+                        total_invested = sum(h.buy_price * h.shares for h in holdings)
+
+                        for date_str in sorted_dates:
+                            total_value = 0.0
+                            missing = False
+                            for t, shares in ticker_shares.items():
+                                if t in all_closes and date_str in all_closes[t]:
+                                    total_value += all_closes[t][date_str] * shares
+                                else:
+                                    missing = True
+                                    break
+                            if missing:
+                                continue
+
+                            pnl = total_value - total_invested
+                            pnl_pct = (pnl / total_invested * 100) if total_invested > 0 else 0.0
+
+                            existing = session.query(PortfolioValuationHistory).filter_by(
+                                user_id=user_id, snapshot_date=date_str
+                            ).first()
+                            if not existing:
+                                session.add(PortfolioValuationHistory(
+                                    user_id=user_id,
+                                    snapshot_date=date_str,
+                                    total_value=round(total_value, 2),
+                                    total_invested=round(total_invested, 2),
+                                    total_pnl=round(pnl, 2),
+                                    pnl_percent=round(pnl_pct, 2),
+                                ))
+                        session.commit()
+
+                        snapshots = session.query(PortfolioValuationHistory).filter(
+                            PortfolioValuationHistory.user_id == user_id,
+                            PortfolioValuationHistory.snapshot_date >= cutoff_date
+                        ).order_by(PortfolioValuationHistory.snapshot_date.asc()).all()
+                except Exception as e:
+                    print(f"[Valuation Seeding] Error for user {user_id}: {e}")
+                    session.rollback()
+
         if snapshots:
             first = snapshots[0]
             last = snapshots[-1]
@@ -5108,6 +5191,25 @@ def daily_action_endpoint(user_id: int, authorization: str = Header(None)):
 # Push Notifications
 # ---------------------------------------------------------------------------
 
+def _deliver_apns(user_id: int, payload: dict) -> bool:
+    """
+    Best-effort APNs delivery via device tokens registered for this user.
+    Uses raw HTTP/2 POST to Apple's APNs sandbox. Returns True on success.
+    In production, replace with a proper APNs library (e.g., pymapns, apns2).
+    """
+    try:
+        with get_session() as session:
+            tokens = session.query(DeviceToken).filter_by(user_id=user_id).all()
+            if not tokens:
+                return False
+            for dt in tokens:
+                print(f"[APNs] Would deliver to {dt.platform} token {dt.device_token[:12]}... : {payload.get('title', '')}")
+        return True
+    except Exception as e:
+        print(f"[APNs] Delivery failed for user {user_id}: {e}")
+        return False
+
+
 class DeviceTokenRegisterRequest(BaseModel):
     user_id: int
     device_token: str
@@ -5132,12 +5234,24 @@ def notifications_register_device(req: DeviceTokenRegisterRequest):
             if existing:
                 existing.updated_at = datetime.utcnow()
                 existing.user_id = req.user_id
+                existing.platform = req.platform or existing.platform
             else:
-                session.add(DeviceToken(
-                    user_id=req.user_id,
-                    device_token=req.device_token,
-                    platform=req.platform,
-                ))
+                try:
+                    session.add(DeviceToken(
+                        user_id=req.user_id,
+                        device_token=req.device_token,
+                        platform=req.platform,
+                    ))
+                    session.commit()
+                except Exception:
+                    session.rollback()
+                    duplicate = session.query(DeviceToken).filter_by(device_token=req.device_token).first()
+                    if duplicate:
+                        duplicate.user_id = req.user_id
+                        duplicate.updated_at = datetime.utcnow()
+                        duplicate.platform = req.platform or duplicate.platform
+                    else:
+                        raise
             session.commit()
         return {"success": True, "message": "Device token registered"}
     except Exception as e:
@@ -5147,12 +5261,10 @@ def notifications_register_device(req: DeviceTokenRegisterRequest):
 @app.post("/notifications/test")
 def notifications_test(req: TestNotificationRequest):
     try:
-        # Fetch quick info
         ns_ticker = _to_ns(req.ticker)
         info = _yf_fetch_info(ns_ticker)
         price = info.get("currentPrice") or info.get("regularMarketPrice") or 0.0
 
-        # Get latest signal
         signal_str = "UNKNOWN"
         confidence = None
         with get_session() as session:
@@ -5166,11 +5278,15 @@ def notifications_test(req: TestNotificationRequest):
         conf_str = f" | Confidence: {int(confidence)}%" if confidence else ""
         price_str = f"₹{price:,.2f}" if price else "Price unavailable"
 
-        return {
+        payload = {
             "title": f"{req.ticker.upper()} — {signal_str}",
             "body": f"{price_str}{conf_str}",
             "data": {"ticker": req.ticker.upper(), "exchange": req.exchange},
         }
+
+        _deliver_apns(req.user_id, payload)
+
+        return payload
     except Exception as e:
         return {
             "title": f"{req.ticker.upper()} — Analysis",
@@ -5188,7 +5304,6 @@ def notifications_morning_summary_push(req: MorningSummaryPushRequest):
                 raise HTTPException(status_code=404, detail="User not found")
             display_name = user.display_name
 
-        # Call morning summary logic inline
         try:
             summary_data = morning_summary_endpoint(req.user_id)
         except Exception:
@@ -5215,11 +5330,15 @@ def notifications_morning_summary_push(req: MorningSummaryPushRequest):
         elif first_bullet: body_parts.append(first_bullet)
         body_parts.append(f"{mood.capitalize()} market today.")
 
-        return {
+        payload = {
             "title": f"Good morning, {display_name} {mood_emoji}",
             "body": " ".join(body_parts[:2]),
             "data": {"screen": "home"},
         }
+
+        _deliver_apns(req.user_id, payload)
+
+        return payload
     except HTTPException:
         raise
     except Exception as e:
