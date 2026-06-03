@@ -1,0 +1,61 @@
+# Environment & secrets
+.env
+.env.*
+!.env.example
+!.env.enterprise.example
+secrets.json
+credentials.json
+serviceAccountKey.json
+*.p12
+*.pfx
+*.keystore
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.mypy_cache/
+.pytest_cache/
+.cache/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+.opencode/node_modules/
+
+# iOS
+ios/DerivedData/
+ios/StockApp/stockme/stockme.xcodeproj/project.xcworkspace/xcuserdata/
+ios/StockApp/stockme/stockme.xcodeproj/xcuserdata/
+*.ipa
+*.dSYM.zip
+*.dSYM
+.build/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Logs
+backend/logs/
+*.log
+token_log.jsonl
+
+# Generated / tool output
+graphify-out/
+.opencode/
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.egg-info/
+dist/
+build/

@@ -1,0 +1,747 @@
+import Foundation
+import Combine
+import UserNotifications
+
+enum NetworkError: Error, LocalizedError {
+    case invalidURL
+    case invalidResponse
+    case serverError(Int, String?)
+    case decodingError(String)
+    case connectionFailed
+    case unauthorized
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL:        return "Invalid server URL."
+        case .invalidResponse:   return "Server did not respond correctly. Please try again."
+        case .serverError(let code, let msg): return msg ?? "Server error (code \(code)). Please try again."
+        case .decodingError:     return "Could not read server response. Please try again."
+        case .connectionFailed:  return "Could not connect to server. Make sure the app is running on your computer."
+        case .unauthorized:      return "Wrong username or password."
+        }
+    }
+}
+
+private struct AnalyzeRequest: Encodable {
+    let ticker: String
+    let exchange: String
+    let userId: Int?
+    let useMock: Bool
+    let deepScan: Bool
+    enum CodingKeys: String, CodingKey {
+        case ticker, exchange
+        case userId = "user_id"
+        case useMock = "use_mock"
+        case deepScan = "deep_scan"
+    }
+}
+
+private struct LoginRequest: Encodable {
+    let username: String
+    let password: String
+}
+
+@MainActor
+class NetworkManager: ObservableObject {
+    static let shared = NetworkManager()
+
+    static let serverURLKey = "serverBaseURL"
+    /// Home WiFi default. After DigitalOcean deploy, update via Settings tab —
+    /// no rebuild needed (stored in UserDefaults).
+    static let defaultURL   = "http://165.22.221.18"
+
+    var baseURL: String {
+        // Priority: UserDefaults override (set in Settings screen) → compile-time default.
+        // To point at DigitalOcean: open Settings tab → Server URL → enter droplet IP.
+        UserDefaults.standard.string(forKey: Self.serverURLKey) ?? Self.defaultURL
+    }
+
+    func updateBaseURL(_ url: String) {
+        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        UserDefaults.standard.set(trimmed, forKey: Self.serverURLKey)
+    }
+
+    var authToken: String? = nil
+
+    private let session: URLSession
+
+    private init() {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 1200 // 20 minutes
+        config.timeoutIntervalForResource = 1200 // 20 minutes
+        self.session = URLSession(configuration: config)
+    }
+
+    private var currentUserId: Int? {
+        guard let data = UserDefaults.standard.data(forKey: "nivesh_user_v1"),
+              let user = try? JSONDecoder().decode(LoggedInUser.self, from: data) else { return nil }
+        return user.userId
+    }
+
+    private func dataWithRetry(for request: URLRequest, retries: Int = 1) async throws -> (Data, URLResponse) {
+        do {
+            return try await session.data(for: request)
+        } catch {
+            if (error as NSError).code == -999 && retries > 0 {
+                // If it was just a tab-switch cancellation, we still want to finish if possible, 
+                // but usually the caller handles the retry logic via .onAppear
+                throw error
+            }
+            throw error
+        }
+    }
+
+    // MARK: - Auth
+
+    func login(username: String, password: String) async throws -> LoggedInUser {
+        guard let url = URL(string: "\(baseURL)/login") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(LoginRequest(username: username, password: password))
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        if http.statusCode == 401 { throw NetworkError.unauthorized }
+        guard (200...299).contains(http.statusCode) else {
+            throw NetworkError.serverError(http.statusCode, String(data: data, encoding: .utf8))
+        }
+        return try JSONDecoder().decode(LoggedInUser.self, from: data)
+    }
+    
+    private struct RegisterRequest: Encodable {
+        let username: String
+        let password: String
+        let display_name: String
+    }
+
+    func register(username: String, password: String, displayName: String) async throws -> LoggedInUser {
+        guard let url = URL(string: "\(baseURL)/register") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(RegisterRequest(username: username, password: password, display_name: displayName))
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        if http.statusCode == 400 { throw NetworkError.serverError(400, "Username already exists") }
+        guard (200...299).contains(http.statusCode) else {
+            throw NetworkError.serverError(http.statusCode, String(data: data, encoding: .utf8))
+        }
+        return try JSONDecoder().decode(LoggedInUser.self, from: data)
+    }
+
+    // MARK: - Analyze
+
+    func analyze(ticker: String, exchange: String = "NSE", userId: Int? = nil, useMock: Bool = false, deepScan: Bool = false) async throws -> StockAnalysis {
+        guard let url = URL(string: "\(baseURL)/analyze") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.httpBody = try JSONEncoder().encode(AnalyzeRequest(ticker: ticker, exchange: exchange, userId: userId, useMock: useMock, deepScan: deepScan))
+
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw NetworkError.connectionFailed
+        }
+
+        guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(http.statusCode) else {
+            throw NetworkError.serverError(http.statusCode, String(data: data, encoding: .utf8))
+        }
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return try decoder.decode(StockAnalysis.self, from: data)
+        } catch {
+            throw NetworkError.decodingError(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Portfolio
+
+    private struct PortfolioResponse: Decodable {
+        let holdings: [HoldingDTO]
+    }
+    
+    private struct HoldingDTO: Decodable {
+        let ticker: String
+        let company_name: String
+        let shares: Double
+        let buy_price: Double
+        let current_price: Double
+        let day_change_pct: Double?
+        let notes: String?
+        let purchase_date: String?
+        let target_price: Double?
+    }
+
+    func getPortfolio(userId: Int) async throws -> [PortfolioHolding] {
+        guard let url = URL(string: "\(baseURL)/portfolio/\(userId)") else { throw NetworkError.invalidURL }
+        var req = URLRequest(url: url)
+        if let token = authToken { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        let (data, response) = try await dataWithRetry(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        
+        do {
+            let resp = try JSONDecoder().decode(PortfolioResponse.self, from: data)
+            return resp.holdings.map { dto in
+                let stock = Stock(
+                    ticker: dto.ticker,
+                    companyName: dto.company_name,
+                    exchange: "NSE",
+                    currentPrice: dto.current_price,
+                    changePercent: dto.day_change_pct ?? 0.0,
+                    signal: nil
+                )
+                return PortfolioHolding(
+                    stock: stock,
+                    shares: dto.shares,
+                    buyPrice: dto.buy_price,
+                    purchaseDate: dto.purchase_date,
+                    notes: dto.notes,
+                    targetPrice: dto.target_price
+                )
+            }
+        } catch {
+            print("Decoding error in getPortfolio: \(error)")
+            throw NetworkError.decodingError(error.localizedDescription)
+        }
+    }
+
+    
+    func addHolding(userId: Int, ticker: String, companyName: String, shares: Double, buyPrice: Double, purchaseDate: Date, notes: String, targetPrice: Double) async throws {
+        struct Req: Encodable {
+            let user_id: Int; let ticker: String; let company_name: String; let shares: Double; let buy_price: Double
+            let purchase_date: String; let notes: String; let target_price: Double
+        }
+        guard let url = URL(string: "\(baseURL)/portfolio") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd-MMM-yyyy"
+        
+        let body = Req(
+            user_id: userId, ticker: ticker, company_name: companyName, shares: shares, buy_price: buyPrice,
+            purchase_date: formatter.string(from: purchaseDate), notes: notes, target_price: targetPrice
+        )
+        
+        request.httpBody = try JSONEncoder().encode(body)
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+    }
+
+    func saveNote(userId: Int, ticker: String, note: String) async throws {
+        struct Req: Encodable { let user_id: Int; let ticker: String; let note: String }
+        guard let url = URL(string: "\(baseURL)/portfolio/note") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, note: note))
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+    }
+
+    // MARK: - Morning Summary
+
+    func getMorningSummary(userId: Int) async throws -> MorningSummaryResponse {
+        guard let url = URL(string: "\(baseURL)/morning-summary/\(userId)") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 30
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        return try JSONDecoder().decode(MorningSummaryResponse.self, from: data)
+    }
+
+    // MARK: - Market Indices
+
+    func getMarketIndices() async throws -> MarketIndicesResponse {
+        guard let url = URL(string: "\(baseURL)/market-indices") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 10
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        return try JSONDecoder().decode(MarketIndicesResponse.self, from: data)
+    }
+
+    // MARK: - Watchlist
+
+    func addToWatchlist(userId: Int, ticker: String, exchange: String, companyName: String) async throws -> Bool {
+        struct Req: Encodable { let user_id: Int; let ticker: String; let exchange: String; let company_name: String }
+        struct Resp: Decodable { let already_exists: Bool?; let success: Bool? }
+        guard let url = URL(string: "\(baseURL)/watchlist/add") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, exchange: exchange, company_name: companyName))
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        let resp = try JSONDecoder().decode(Resp.self, from: data)
+        return resp.success == true
+    }
+
+    func removeFromWatchlist(userId: Int, ticker: String) async throws {
+        struct Req: Encodable { let user_id: Int; let ticker: String }
+        guard let url = URL(string: "\(baseURL)/watchlist/remove") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker))
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+    }
+
+    func getWatchlist(userId: Int) async throws -> [WatchlistItem] {
+        guard let url = URL(string: "\(baseURL)/watchlist/\(userId)") else { throw NetworkError.invalidURL }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 15
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        struct Resp: Decodable { let watchlist: [WatchlistItem] }
+        let decoded = try JSONDecoder().decode(Resp.self, from: data)
+        return decoded.watchlist
+    }
+
+    // MARK: - Portfolio Management
+
+    func removeHolding(userId: Int, ticker: String) async throws {
+        struct Req: Encodable { let user_id: Int; let ticker: String }
+        guard let url = URL(string: "\(baseURL)/portfolio/remove") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker))
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+    }
+
+    func updateHolding(userId: Int, ticker: String, shares: Double, buyPrice: Double) async throws {
+        struct Req: Encodable { let user_id: Int; let ticker: String; let shares: Double; let buy_price: Double }
+        guard let url = URL(string: "\(baseURL)/portfolio/update") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, shares: shares, buy_price: buyPrice))
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+    }
+
+    // MARK: - Price Alerts
+
+    func addAlert(userId: Int, ticker: String, targetPrice: Double, direction: String, companyName: String) async throws -> Int {
+        struct Req: Encodable { let user_id: Int; let ticker: String; let target_price: Double; let direction: String; let company_name: String }
+        struct Resp: Decodable { let alert_id: Int }
+        guard let url = URL(string: "\(baseURL)/alerts/add") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, target_price: targetPrice, direction: direction, company_name: companyName))
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        return (try? JSONDecoder().decode(Resp.self, from: data))?.alert_id ?? 0
+    }
+
+    func getAlerts(userId: Int) async throws -> [PriceAlert] {
+        guard let url = URL(string: "\(baseURL)/alerts/\(userId)") else { throw NetworkError.invalidURL }
+        let (data, response) = try await session.data(from: url)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        return (try? JSONDecoder().decode(AlertsResponse.self, from: data))?.alerts ?? []
+    }
+
+    func removeAlert(userId: Int, alertId: Int) async throws {
+        struct Req: Encodable { let user_id: Int; let alert_id: Int }
+        guard let url = URL(string: "\(baseURL)/alerts/remove") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(user_id: userId, alert_id: alertId))
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+    }
+
+    func checkAlerts(userId: Int) async throws -> [TriggeredAlert] {
+        guard let url = URL(string: "\(baseURL)/alerts/check/\(userId)") else { throw NetworkError.invalidURL }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 20
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        return (try? JSONDecoder().decode(AlertCheckResponse.self, from: data))?.newlyTriggered ?? []
+    }
+
+    // MARK: - Sector Performance
+
+    func getSectorPerformance() async throws -> [SectorPerformance] {
+        guard let url = URL(string: "\(baseURL)/sector-performance") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        struct Resp: Decodable { let sectors: [SectorPerformance] }
+        return (try? JSONDecoder().decode(Resp.self, from: data))?.sectors ?? []
+    }
+
+    // MARK: - Excel Export
+
+    func exportPortfolioExcel(userId: Int) async throws -> Data {
+        guard let url = URL(string: "\(baseURL)/portfolio/export/excel/\(userId)") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 30
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500, "Export failed")
+        }
+        return data
+    }
+
+    // MARK: - Nifty History
+
+    func getNiftyHistory(days: Int = 365) async -> [NiftyPricePoint] {
+        guard let url = URL(string: "\(baseURL)/nifty-history?days=\(days)") else { return [] }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        guard let (data, resp) = try? await session.data(for: request),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+        struct Resp: Decodable { let prices: [NiftyPricePoint] }
+        return (try? JSONDecoder().decode(Resp.self, from: data))?.prices ?? []
+    }
+
+    // MARK: - Quarterly Financials
+
+    func getQuarterlyFinancialsResponse(ticker: String, exchange: String = "NSE") async -> QuarterlyFinancialsResponse? {
+        guard let url = URL(string: "\(baseURL)/quarterly-financials?ticker=\(ticker)&exchange=\(exchange)") else { return nil }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        guard let (data, resp) = try? await session.data(for: request),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+        if let result = try? JSONDecoder().decode(QuarterlyFinancialsResponse.self, from: data) { return result }
+        // Fallback: backend might return old format without promoter_history
+        struct OldResp: Decodable { let quarters: [QuarterlyFinancial] }
+        if let old = try? JSONDecoder().decode(OldResp.self, from: data) {
+            return QuarterlyFinancialsResponse(quarters: old.quarters, promoterHistory: [])
+        }
+        return nil
+    }
+
+    func getQuarterlyFinancials(ticker: String, exchange: String = "NSE") async -> [QuarterlyFinancial] {
+        await getQuarterlyFinancialsResponse(ticker: ticker, exchange: exchange)?.quarters ?? []
+    }
+
+    // MARK: - Earnings Calendar
+
+    func getEarningsCalendar() async -> [EarningsEvent] {
+        guard let url = URL(string: "\(baseURL)/earnings-calendar") else { return [] }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 30
+        guard let (data, resp) = try? await session.data(for: request),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+        struct Resp: Decodable { let events: [EarningsEvent] }
+        return (try? JSONDecoder().decode(Resp.self, from: data))?.events ?? []
+    }
+
+    // MARK: - Macro Strip
+
+    func getMacroStrip() async -> MacroStrip? {
+        guard let url = URL(string: "\(baseURL)/macro-strip") else { return nil }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 8
+        guard let (data, resp) = try? await session.data(for: request),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+        return try? JSONDecoder().decode(MacroStrip.self, from: data)
+    }
+
+    // MARK: - Analyst Ratings
+
+    func getAnalystRatings(ticker: String, exchange: String = "NSE") async -> AnalystRatingsResponse? {
+        guard let url = URL(string: "\(baseURL)/analyst-ratings?ticker=\(ticker)&exchange=\(exchange)") else { return nil }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 12
+        guard let (data, resp) = try? await session.data(for: request),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+        return try? JSONDecoder().decode(AnalystRatingsResponse.self, from: data)
+    }
+
+    // MARK: - Signal Warnings
+
+    func getSignalWarnings(userId: Int) async -> [SignalWarning] {
+        guard let url = URL(string: "\(baseURL)/portfolio/signal-warnings?user_id=\(userId)") else { return [] }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 10
+        guard let (data, resp) = try? await session.data(for: request),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+        return (try? JSONDecoder().decode(SignalWarningsResponse.self, from: data))?.warnings ?? []
+    }
+
+    // MARK: - Health
+
+    func checkHealth() async throws -> Bool {
+        guard let url = URL(string: "\(baseURL)/health") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 5
+        let (_, response) = try await session.data(for: request)
+        return (response as? HTTPURLResponse)?.statusCode == 200
+    }
+
+    // MARK: - Quick Info
+
+    func quickInfo(ticker: String, exchange: String = "NSE") async -> QuickInfo? {
+        guard let url = URL(string: "\(baseURL)/quick-info?ticker=\(ticker)&exchange=\(exchange)") else { return nil }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 10
+        guard let (data, resp) = try? await session.data(for: request),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+        return try? JSONDecoder().decode(QuickInfo.self, from: data)
+    }
+
+    // MARK: - Search
+
+    func searchStocks(q: String) async -> [StockEntry] {
+        guard !q.isEmpty,
+              let encoded = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "\(baseURL)/search?q=\(encoded)&limit=25") else { return [] }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 5
+        guard let (data, resp) = try? await session.data(for: request),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+        struct SearchResult: Decodable {
+            let ticker: String
+            let company_name: String
+            let sector: String
+            let exchange: String
+        }
+        guard let results = try? JSONDecoder().decode([SearchResult].self, from: data) else { return [] }
+        return results.map { StockEntry(ticker: $0.ticker, companyName: $0.company_name, exchange: $0.exchange, sector: $0.sector) }
+    }
+
+    // MARK: - Risk Analysis
+
+    func fetchRiskAnalysis(userId: Int) async throws -> RiskAnalysis {
+        guard let url = URL(string: "\(baseURL)/portfolio/risk-analysis/\(userId)") else { throw NetworkError.invalidURL }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 30
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        do { return try JSONDecoder().decode(RiskAnalysis.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    func fetchRedFlags(userId: Int) async throws -> RedFlagsResponse {
+        guard let url = URL(string: "\(baseURL)/portfolio/red-flags/\(userId)") else { throw NetworkError.invalidURL }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 30
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        do { return try JSONDecoder().decode(RedFlagsResponse.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    func fetchMacroImpact(userId: Int) async throws -> MacroImpactResponse {
+        guard let url = URL(string: "\(baseURL)/macro-impact/\(userId)") else { throw NetworkError.invalidURL }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 30
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        do { return try JSONDecoder().decode(MacroImpactResponse.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    func fetchDailyAction(userId: Int) async -> DailyActionResponse? {
+        guard let url = URL(string: "\(baseURL)/daily-action/\(userId)") else { return nil }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 15
+        guard let (data, resp) = try? await session.data(for: req),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+        return try? JSONDecoder().decode(DailyActionResponse.self, from: data)
+    }
+
+    // MARK: - Push Notifications
+
+    func registerDeviceToken(token: String) async throws {
+        guard let userId = currentUserId else { return }
+        struct Req: Encodable { let user_id: Int; let device_token: String; let platform: String }
+        guard let url = URL(string: "\(baseURL)/notifications/register-device") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(user_id: userId, device_token: token, platform: "ios"))
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+    }
+
+    struct NotificationPayload: Decodable {
+        let title: String
+        let body: String
+        let data: [String: String]?
+    }
+
+    func sendTestNotification(ticker: String, exchange: String) async throws -> NotificationPayload {
+        guard let userId = currentUserId else { throw NetworkError.invalidURL }
+        struct Req: Encodable { let user_id: Int; let ticker: String; let exchange: String }
+        guard let url = URL(string: "\(baseURL)/notifications/test") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, exchange: exchange))
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        return try JSONDecoder().decode(NotificationPayload.self, from: data)
+    }
+
+    func sendMorningSummaryNotification() async throws -> NotificationPayload {
+        guard let userId = currentUserId else { throw NetworkError.invalidURL }
+        struct Req: Encodable { let user_id: Int }
+        guard let url = URL(string: "\(baseURL)/notifications/morning-summary-push") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(user_id: userId))
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        return try JSONDecoder().decode(NotificationPayload.self, from: data)
+    }
+
+    struct HarvestYouTubeResponse: Decodable {
+        let channel_harvest: HarvestResult
+        let portfolio_harvest: HarvestResult
+    }
+
+    struct HarvestResult: Decodable {
+        let channels_processed: Int?
+        let total_channels: Int?
+        let videos_added: Int?
+        let tickers_processed: Int?
+        let by_ticker: [String: Int]?
+    }
+
+    func triggerYouTubeHarvest() async throws -> HarvestYouTubeResponse {
+        guard let url = URL(string: "\(baseURL)/api/v1/admin/harvest-youtube") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        if let token = authToken { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        return try JSONDecoder().decode(HarvestYouTubeResponse.self, from: data)
+    }
+
+    func scheduleLocalNotification(title: String, body: String, userInfo: [String: Any]) {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized else { return }
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.sound = .default
+            content.userInfo = userInfo
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+            UNUserNotificationCenter.current().add(request)
+        }
+    }
+
+    func fetchTimeframeConflicts(userId: Int) async throws -> TimeframeConflictsResponse {
+        guard let url = URL(string: "\(baseURL)/portfolio/timeframe-conflicts/\(userId)") else { throw NetworkError.invalidURL }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 15
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        do { return try JSONDecoder().decode(TimeframeConflictsResponse.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    func fetchScreener(preset: String) async throws -> [ScreenerResult] {
+        guard let url = URL(string: "\(baseURL)/screener?preset=\(preset)") else { throw NetworkError.invalidURL }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 20
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        do { return try JSONDecoder().decode([ScreenerResult].self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    // MARK: - Trade Journal
+
+    func fetchTradeJournal(userId: Int) async throws -> [TradeJournalEntry] {
+        guard let url = URL(string: "\(baseURL)/trade-journal/\(userId)") else { throw NetworkError.invalidURL }
+        let (data, response) = try await session.data(from: url)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        do {
+            let resp = try JSONDecoder().decode(TradeJournalResponse.self, from: data)
+            return resp.entries
+        } catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    func addTradeJournalEntry(userId: Int, ticker: String, companyName: String?, action: String, price: Double, reason: String, mood: String?) async throws -> TradeJournalEntry {
+        struct Req: Encodable {
+            let user_id: Int; let ticker: String; let company_name: String?
+            let action: String; let price_at_time: Double; let reason_text: String; let mood: String?
+        }
+        guard let url = URL(string: "\(baseURL)/trade-journal") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, company_name: companyName, action: action, price_at_time: price, reason_text: reason, mood: mood))
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        // The POST returns {success, entry_id, ticker, action} — fetch the full entry after
+        // Construct a minimal entry from the response
+        struct AddResp: Decodable { let entry_id: Int; let ticker: String; let action: String }
+        let resp = try JSONDecoder().decode(AddResp.self, from: data)
+        return TradeJournalEntry(id: resp.entry_id, ticker: resp.ticker, companyName: companyName, action: resp.action, priceAtTime: price, reasonText: reason, outcomeText: nil, mood: mood, createdAt: nil)
+    }
+
+    func updateTradeJournalOutcome(entryId: Int, userId: Int, outcomeText: String, mood: String?) async throws {
+        struct Req: Encodable { let outcome_text: String; let mood: String? }
+        guard let url = URL(string: "\(baseURL)/trade-journal/\(entryId)?user_id=\(userId)") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(outcome_text: outcomeText, mood: mood))
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+    }
+
+    func deleteTradeJournalEntry(entryId: Int, userId: Int) async throws {
+        guard let url = URL(string: "\(baseURL)/trade-journal/\(entryId)?user_id=\(userId)") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+    }
+
+    func fetchTradeJournalStats(userId: Int) async throws -> TradeJournalStatsResponse {
+        guard let url = URL(string: "\(baseURL)/trade-journal/\(userId)/stats") else { throw NetworkError.invalidURL }
+        let (data, response) = try await session.data(from: url)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        do { return try JSONDecoder().decode(TradeJournalStatsResponse.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    // MARK: - Advisor Intelligence
+
+    func fetchAdvisoryConsensus(userId: Int) async throws -> AdvisoryConsensusResponse {
+        guard let url = URL(string: "\(baseURL)/api/v1/portfolio/advisor-consensus?user_id=\(userId)&days=7") else { throw NetworkError.invalidURL }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 30
+        let (data, response) = try await dataWithRetry(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        do { return try JSONDecoder().decode(AdvisoryConsensusResponse.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+}

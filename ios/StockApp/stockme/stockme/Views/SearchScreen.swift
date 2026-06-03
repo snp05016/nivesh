@@ -1,0 +1,458 @@
+import SwiftUI
+
+private let screenerPresets: [(label: String, preset: String)] = [
+    ("Quality Value",       "quality_value"),
+    ("Promoter Conviction", "promoter_conviction"),
+    ("FII Accumulation",    "fii_accumulation"),
+    ("Turnaround",          "turnaround"),
+    ("52W Low Bullish",     "52w_low_bullish"),
+]
+
+struct SearchScreen: View {
+    @EnvironmentObject var authManager: AuthManager
+    @State private var searchText = ""
+    @State private var searchResults: [StockEntry] = []
+    @State private var trendingStocks: [Stock] = []
+    @State private var trendingLoaded = false
+    @State private var isSearching = false
+    @State private var searchTask: Task<Void, Never>? = nil
+    @State private var searchResultsTotalCount: Int = 0
+    @FocusState private var isSearchFocused: Bool
+
+    // Discover / Screener
+    @State private var activePreset: String? = nil
+    @State private var screenerResults: [ScreenerResult] = []
+    @State private var screenerLoading = false
+
+    // Fallback trending if no movers data available
+    private let fallbackTrending = [
+        Stock(ticker: "RELIANCE", companyName: "Reliance Industries", exchange: "NSE", currentPrice: 0, changePercent: 0, signal: nil),
+        Stock(ticker: "TCS", companyName: "Tata Consultancy", exchange: "NSE", currentPrice: 0, changePercent: 0, signal: nil),
+        Stock(ticker: "HDFCBANK", companyName: "HDFC Bank", exchange: "NSE", currentPrice: 0, changePercent: 0, signal: nil),
+        Stock(ticker: "INFY", companyName: "Infosys Ltd", exchange: "NSE", currentPrice: 0, changePercent: 0, signal: nil),
+        Stock(ticker: "ICICIBANK", companyName: "ICICI Bank Ltd", exchange: "NSE", currentPrice: 0, changePercent: 0, signal: nil),
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                DenominationBackground(denomination: .twoHundred)
+
+                VStack(spacing: 0) {
+                    // Bilingual header
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("खोजें")
+                            .font(Theme.hindiFont(size: 11))
+                            .foregroundColor(Theme.inkSecondary)
+                        Text("SEARCH DIRECTORY")
+                            .font(Theme.engravedSerif(size: 28, weight: .bold))
+                            .foregroundColor(Theme.inkPrimary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, Theme.screenPadding)
+                    .padding(.top, 12)
+                    .padding(.bottom, 16)
+
+                    // Search field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("खोज / SEARCH DIRECTORY")
+                            .font(Theme.officialStampFont(size: 8))
+                            .foregroundColor(Theme.inkSecondary)
+
+                        HStack {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(Theme.inkSecondary)
+                            TextField("Enter ticker or company name...", text: $searchText)
+                                .focused($isSearchFocused)
+                                .foregroundColor(Theme.inkPrimary)
+                                .tint(Theme.securityGold)
+                                .font(Theme.serialNumberFont(size: 14))
+                                .autocapitalization(.allCharacters)
+                                .disableAutocorrection(true)
+                                .toolbar {
+                                    ToolbarItemGroup(placement: .keyboard) {
+                                        Spacer()
+                                        Button(action: { hideKeyboard() }) {
+                                            Image(systemName: "keyboard.chevron.compact.down")
+                                                .foregroundColor(Theme.securityGold)
+                                        }
+                                    }
+                                }
+                            if isSearching {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                    .tint(Theme.securityGold)
+                            } else if !searchText.isEmpty {
+                                Button(action: {
+                                    searchText = ""
+                                    hideKeyboard()
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(Theme.inkSecondary)
+                                }
+                            }
+                        }
+                        .padding(16)
+                        .background(Theme.canvasDeep)
+                        .overlay(
+                            Rectangle()
+                                .stroke(Theme.inkSecondary.opacity(0.3), lineWidth: 1)
+                        )
+                    }
+                    .padding(.horizontal, Theme.screenPadding)
+                    .padding(.bottom, 20)
+
+                    // Discover screener pills — only when not searching
+                    if searchText.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("DISCOVER / खोजें")
+                                .font(Theme.officialStampFont(size: 8))
+                                .foregroundColor(Theme.inkSecondary)
+                                .padding(.horizontal, Theme.screenPadding)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(screenerPresets, id: \.preset) { item in
+                                        Button {
+                                            HapticManager.selection()
+                                            if activePreset == item.preset {
+                                                activePreset = nil
+                                                screenerResults = []
+                                            } else {
+                                                activePreset = item.preset
+                                                Task { await runScreener(preset: item.preset) }
+                                            }
+                                        } label: {
+                                            Text(item.label)
+                                                .font(Theme.officialStampFont(size: 9))
+                                                .foregroundColor(activePreset == item.preset ? Theme.canvasDeep : Theme.securityGold)
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 7)
+                                                .background(
+                                                    activePreset == item.preset
+                                                        ? Theme.securityGold
+                                                        : Theme.canvasDeep
+                                                )
+                                                .overlay(
+                                                    Rectangle().stroke(Theme.securityGold.opacity(0.5), lineWidth: 0.5)
+                                                )
+                                        }
+                                        .buttonStyle(.plain)
+                                        .ekPressHaptic()
+                                    }
+                                }
+                                .padding(.horizontal, Theme.screenPadding)
+                            }
+                        }
+                        .padding(.bottom, 4)
+                    }
+
+                    // Results section
+                    VStack(alignment: .leading, spacing: 16) {
+                        SectionHeader(
+                            title: {
+                                if !searchText.isEmpty { return "Search Results" }
+                                if activePreset != nil { return activePreset!.replacingOccurrences(of: "_", with: " ").uppercased() }
+                                return "Trending Stocks"
+                            }(),
+                            hindiTitle: {
+                                if !searchText.isEmpty { return "खोज परिणाम" }
+                                if activePreset != nil { return "स्क्रीनर" }
+                                return "चर्चित शेयर"
+                            }()
+                        )
+
+                        ScrollView {
+                            LazyVStack(spacing: 12) {
+                                if !searchText.isEmpty {
+                                    // search mode handled below
+                                } else if screenerLoading {
+                                    HStack {
+                                        Spacer()
+                                        ProgressView().tint(Theme.securityGold)
+                                        Spacer()
+                                    }
+                                    .padding(.top, 40)
+                                } else if activePreset != nil && screenerResults.isEmpty {
+                                    VStack(spacing: 12) {
+                                        BanknoteSignalBadge(text: "NO RESULTS", color: Theme.inkSecondary, rotation: -3)
+                                        Text("No stocks matched this screen")
+                                            .font(.subheadline)
+                                            .foregroundColor(Theme.inkSecondary)
+                                    }
+                                    .padding(.top, 40)
+                                } else if activePreset != nil {
+                                    ForEach(screenerResults) { result in
+                                        NavigationLink(value: result.ticker) {
+                                            ScreenerResultRow(result: result)
+                                        }
+                                        .ekPressHaptic()
+                                    }
+                                } else if searchText.isEmpty {
+                                    ForEach(trendingStocks) { stock in
+                                        NavigationLink(value: stock.ticker) {
+                                            StockRow(stock: stock)
+                                        }
+                                        .ekPressHaptic()
+                                    }
+                                }
+
+                                if !searchText.isEmpty {
+                                    if searchResults.isEmpty && !isSearching {
+                                        VStack(spacing: 16) {
+                                            BanknoteSignalBadge(text: "NOT FOUND", color: Theme.bearRed, rotation: -4)
+                                            Text("No entries matching '\(searchText)'")
+                                                .font(.subheadline)
+                                                .foregroundColor(Theme.inkSecondary)
+                                            // Still allow direct navigation — user may know the exact ticker
+                                            let ticker = searchText.uppercased().trimmingCharacters(in: .whitespaces)
+                                            NavigationLink(value: ticker) {
+                                                Text("Analyse \(ticker) anyway →")
+                                                    .font(.caption)
+                                                    .foregroundColor(Theme.securityGold)
+                                            }
+                                            .ekPressHaptic()
+                                        }
+                                        .padding(.top, 60)
+                                    } else {
+                                        ForEach(searchResults) { entry in
+                                            NavigationLink(value: entry.ticker) {
+                                                StockEntryRow(entry: entry)
+                                            }
+                                            .ekPressHaptic()
+                                        }
+                                        if isSearching {
+                                            VStack(spacing: 12) {
+                                                ForEach(0..<3, id: \.self) { _ in
+                                                    SearchSkeletonRow()
+                                                }
+                                            }
+                                        }
+                                        if searchResultsTotalCount > 20 {
+                                            Text("Showing top 20 results. Type more to narrow down.")
+                                                .font(Theme.serialNumberFont(size: 10))
+                                                .foregroundColor(Theme.inkTertiary)
+                                                .padding(.top, 4)
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, Theme.screenPadding)
+                            .padding(.bottom, 100)
+                        }
+                        .simultaneousGesture(
+                            DragGesture().onChanged { _ in hideKeyboard() }
+                        )
+                    }
+                }
+            }
+            .onAppear {
+                guard !trendingLoaded else { return }
+                trendingLoaded = true
+                Task { await loadTrending() }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    isSearchFocused = true
+                }
+            }
+            .onChange(of: searchText) { _, new in
+                // Cancel any in-flight search
+                searchTask?.cancel()
+                guard !new.isEmpty else {
+                    searchResults = []
+                    searchResultsTotalCount = 0
+                    isSearching = false
+                    return
+                }
+                HapticManager.selection()
+                // Local instant preview while waiting for backend
+                let localHit = StockDatabase.search(new)
+                let cappedLocal = Array(localHit.prefix(20))
+                searchResults = cappedLocal
+                searchResultsTotalCount = localHit.count
+
+                // Debounce 350ms then hit backend
+                searchTask = Task {
+                    isSearching = true
+                    try? await Task.sleep(nanoseconds: 350_000_000)
+                    guard !Task.isCancelled else { return }
+                    let backendResults = await NetworkManager.shared.searchStocks(q: new)
+                    guard !Task.isCancelled else { return }
+                    if backendResults.isEmpty {
+                        // Backend unavailable — keep local results
+                        isSearching = false
+                        return
+                    }
+                    // Merge: backend is authoritative; add any extra not in backend
+                    let backendTickers = Set(backendResults.map { $0.ticker })
+                    let localExtra = localHit.filter { !backendTickers.contains($0.ticker) }
+                    let merged = backendResults + localExtra
+                    let capped = Array(merged.prefix(20))
+                    let totalCount = merged.count
+                    searchResults = capped
+                    searchResultsTotalCount = totalCount
+                    isSearching = false
+                }
+            }
+            .navigationDestination(for: String.self) { ticker in
+                AnalysisScreen(ticker: ticker)
+            }
+        }
+    }
+
+    // MARK: - Screener
+
+    private func runScreener(preset: String) async {
+        screenerLoading = true
+        screenerResults = []
+        screenerResults = (try? await NetworkManager.shared.fetchScreener(preset: preset)) ?? []
+        screenerLoading = false
+    }
+
+    // MARK: - Trending loader
+
+    private func loadTrending() async {
+        var tickers: [String] = []
+        if let user = authManager.currentUser,
+           let brief = try? await NetworkManager.shared.getMorningSummary(userId: user.userId),
+           !brief.movers.isEmpty {
+            tickers = Array(brief.movers.prefix(5))
+        } else {
+            tickers = fallbackTrending.map { $0.ticker }
+        }
+
+        // Populate with zero prices while fetching — instant display
+        trendingStocks = tickers.map { ticker in
+            let entry = StockDatabase.all.first { $0.ticker == ticker }
+            return Stock(ticker: ticker, companyName: entry?.companyName ?? ticker,
+                         exchange: "NSE", currentPrice: 0, changePercent: 0, signal: nil)
+        }
+
+        // Fetch prices in parallel
+        await withTaskGroup(of: (Int, QuickInfo?).self) { group in
+            for (i, ticker) in tickers.enumerated() {
+                group.addTask {
+                    let info = await NetworkManager.shared.quickInfo(ticker: ticker)
+                    return (i, info)
+                }
+            }
+            for await (i, info) in group {
+                guard let info, i < trendingStocks.count else { continue }
+                trendingStocks[i] = Stock(
+                    ticker: info.ticker,
+                    companyName: trendingStocks[i].companyName,
+                    exchange: "NSE",
+                    currentPrice: info.price,
+                    changePercent: info.changePercent,
+                    signal: info.signal
+                )
+            }
+        }
+    }
+}
+
+private struct ScreenerResultRow: View {
+    let result: ScreenerResult
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Rectangle()
+                .fill(Theme.securityGold.opacity(0.4))
+                .frame(width: 1)
+                .padding(.vertical, 12)
+
+            HStack(spacing: 16) {
+                StockIcon(ticker: result.ticker, signal: nil)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text((result.companyName ?? result.ticker).uppercased())
+                        .font(Theme.engravedSerif(size: 15, weight: .bold))
+                        .foregroundColor(Theme.inkPrimary)
+                    if let reason = result.reason {
+                        Text(reason)
+                            .font(Theme.serialNumberFont(size: 10))
+                            .foregroundColor(Theme.inkSecondary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer()
+                if let conf = result.confidencePct {
+                    Text("\(conf)%")
+                        .font(Theme.officialStampFont(size: 9))
+                        .foregroundColor(Theme.securityGold)
+                }
+                Image(systemName: "arrow.right")
+                    .foregroundColor(Theme.inkSecondary.opacity(0.3))
+                    .font(.system(size: 13, weight: .bold))
+            }
+            .padding(.vertical, 14)
+            .padding(.leading, 12)
+            .padding(.trailing, 16)
+        }
+        .banknoteCard()
+    }
+}
+
+private struct StockEntryRow: View {
+    let entry: StockEntry
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Rectangle()
+                .fill(Theme.inkSecondary.opacity(0.3))
+                .frame(width: 1)
+                .padding(.vertical, 12)
+
+            HStack(spacing: 16) {
+                StockIcon(ticker: entry.ticker, signal: nil)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(entry.companyName.uppercased())
+                        .font(Theme.engravedSerif(size: 16, weight: .bold))
+                        .foregroundColor(Theme.inkPrimary)
+                    Text("\(entry.ticker) • \(entry.sector)")
+                        .font(Theme.serialNumberFont(size: 10))
+                        .foregroundColor(Theme.inkSecondary)
+                }
+                Spacer()
+                Image(systemName: "arrow.right")
+                    .foregroundColor(Theme.inkSecondary.opacity(0.3))
+                    .font(.system(size: 14, weight: .bold))
+            }
+            .padding(.vertical, 14)
+            .padding(.leading, 12)
+            .padding(.trailing, 16)
+        }
+        .banknoteCard()
+    }
+}
+
+private struct SearchSkeletonRow: View {
+    var body: some View {
+        HStack(spacing: 0) {
+            Rectangle()
+                .fill(Theme.inkSecondary.opacity(0.15))
+                .frame(width: 1)
+                .padding(.vertical, 12)
+
+            HStack(spacing: 16) {
+                Circle()
+                    .fill(Theme.inkTertiary.opacity(0.15))
+                    .frame(width: 40, height: 40)
+                VStack(alignment: .leading, spacing: 6) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Theme.inkTertiary.opacity(0.15))
+                        .frame(width: 140, height: 12)
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Theme.inkTertiary.opacity(0.1))
+                        .frame(width: 80, height: 9)
+                }
+                Spacer()
+            }
+            .padding(.vertical, 14)
+            .padding(.leading, 12)
+            .padding(.trailing, 16)
+        }
+        .banknoteCard()
+        .shimmerPlaceholder(isLoading: true)
+    }
+}

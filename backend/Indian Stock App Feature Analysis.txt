@@ -1,0 +1,229 @@
+﻿Architectural Blueprint and Feature Discovery for AI-Powered Indian Equity Analysis Platform
+Executive Summary
+The elite tier of Indian financial technology applications is currently defined by a dichotomy between overwhelming quantitative data density and oversimplified qualitative checklists, leaving a structural void for veteran, sentiment-conscious retail investors. By synthesizing the corporate governance forensic capabilities of platforms like Trendlyne with the macro-narrative delivery of Moneycontrol and the educational clarity of Zerodha, a next-generation application can be engineered to bridge this gap. This blueprint outlines the exact user experience, multi-agent artificial intelligence architecture, and native SwiftUI implementation strategies required to construct an iOS application ('Nivesh') that delivers localized, high-signal, mathematically pristine market analysis in a highly scannable format.
+Quadrant Breakdowns
+1. Corporate Governance & Sentiment Scoring
+Best-in-Class Implementations The Indian equity market requires rigorous corporate governance tracking, a dimension where Trendlyne and Tickertape exhibit the most robust implementations. Trendlyne excels in forensic data aggregation, specifically in tracking historical promoter holdings, insider trading disclosures mandated under SEBI SAST (Substantial Acquisition of Shares and Takeovers) regulations, and institutional flows across trailing quarters.1 Trendlyne's architecture captures nuanced transactions, such as the President of India's disposal of 25.09 Crore equity shares in NBCC at an average price of ₹1, or the massive off-market disposal of 103.93 Crore equity shares in REC Ltd.1 Trendlyne’s 'Discover' tool allows users to actively search through scanned corporate announcements, PDFs, and earnings call transcripts for critical management changes.6 This includes tracking the resignation of statutory auditors across companies like Brightcom Group and Cyient DLM, or the resignation of Chief Financial Officers and Managing Directors, which are critical leading indicators of corporate health.7
+Tickertape complements this by synthesizing governance data into a highly scannable "Red Flags" module and a comprehensive "Scorecard".10 The Red Flags section is systematically divided into five separate metrics to give investors clear visibility into potential risks: promoter pledged holding, inclusion in the Additional Surveillance Measure (ASM) list, Graded Surveillance Measure (GSM) list, probability of default, and the circulation of unsolicited SMS tips.10 The identification of unsolicited SMS tips is particularly critical in the Indian context. SEBI actively publishes watchlists of securities where unsolicited investment tips are circulated via WhatsApp and SMS to artificially inflate prices before dumping them—a manipulation tactic seen in cases like Timbor Home Ltd, which resulted in significant SEBI fines.13 Brokerages like HDFC Securities and Kotak Neo actively block trading or withhold sales proceeds for stocks on these SMS watchlists.13
+Furthermore, both platforms meticulously track shareholding patterns. Trendlyne provides historical quarter-over-quarter breakdowns of Promoter, FII, DII, and Mutual Fund holdings, highlighting changes in pledged and locked shares.3 For example, tracing a decrease in FII holdings from 43.87% to 34.48% in ICICI Bank, or identifying high FII concentration in entities like 360ONE (63.33%).4 In the context of IPOs, draft red herring prospectuses (DRHPs) for companies like CSM Technologies, Shreni Shares, and Bonfiglioli Transmissions heavily disclose promoter selling shareholder details and weighted average costs of acquisition, data points that are critical for establishing initial governance baselines before a stock even lists.19
+The Psychology For an investor with a decade of experience in the Indian equities market, corporate governance is the ultimate arbiter of long-term capital allocation. The Indian market is uniquely sensitive to management integrity, carrying residual trauma from historical corporate governance failures such as the Satyam scandal, Zee Group, Yes Bank, and DHFL, which fundamentally altered how retail investors view promoter share pledging.22 When a promoter pledges equity as collateral for loans, it often signals hidden financial distress; if the stock price falls and the promoter cannot maintain the margin, banks may invoke the pledge, triggering a bulk open-market sale and a subsequent devastating price crash.12 Veteran investors therefore view a rising percentage of pledged shares not merely as a metric, but as an existential threat to their capital.22
+Veteran investors also demand absolute transparency regarding insider trading and auditor resignations. An auditor's sudden departure is widely interpreted by Dalal Street as a leading indicator of accounting irregularities or impending financial restatements. By presenting this data clearly and instantly, the platform directly addresses the investor's core philosophy: capital preservation through the avoidance of systemic management risks. Furthermore, presenting data exclusively in familiar Indian localized formats (Lakhs and Crores) rather than Western formats (Millions and Billions) eliminates cognitive friction, allowing the veteran investor to instantly contextualize the magnitude of institutional buys or promoter disposals without mental arithmetic.
+Actionable Blueprint for 'Nivesh'
+To replicate and significantly enhance these governance forensics within the 'Nivesh' iOS application, the architecture requires a robust backend ingestion layer paired with an intelligent multi-agent AI pipeline, culminating in a pristine native SwiftUI interface.
+* Data Ingestion Layer (FastAPI): The backend must establish persistent connections to the BSE and NSE for real-time corporate filings. While NSE provides native RSS feeds for corporate announcements 24, the BSE historically lacks unified RSS feeds for results and announcements, necessitating highly optimized web scraping or API polling mechanisms to capture BSE PDF uploads instantly.26 Historical shareholding patterns and basic pricing data can be ingested via standard endpoints like yfinance by appending .NS (for NSE) or .BO (for BSE) suffixes to ticker symbols (e.g., RELIANCE.NS).28
+* Multi-Agent AI Pipeline:
+   * Document Parser Agent: This agent continuously monitors the ingestion layer for incoming PDF announcements. Upon detection of a new filing, it utilizes Optical Character Recognition (OCR) and text extraction to parse the unstructured document.30
+   * Sentiment & Entity Extraction Agent: This agent processes the extracted text, classifying events (e.g., "Auditor Resignation", "SAST Disclosure") and extracting quantitative values (e.g., ₹500 Crores disposed).30
+   * Semantic Caching: To manage LLM inference costs and reduce latency for thousands of users querying similar corporate events, the pipeline must implement a semantic caching layer utilizing vector databases like Redis Stack or Qdrant.31 Standard caching relies on exact SHA-256 hash matches, which fail for natural language.33 Semantic caching embeds incoming queries and runs a vector similarity search; if a new prompt is semantically similar to a cached one (clearing a confidence threshold of 0.75), the existing JSON response is served in under 20ms, bypassing the LLM entirely and drastically lowering operational costs.31
+* iOS SwiftUI Implementation: The frontend must consume a structured JSON payload generated by the LLM and render it using a strictly scannable UI.
+   * Implement a Red Flags dashboard utilizing native SwiftUI VStack components containing concise bullet points.
+   * Use highly explicit semantic color coding: Deep crimson for critical alerts (e.g., "⚠️ Statutory Auditor Resigned: 12-May-2026") and neutral grays for standard SAST disclosures.
+   * Shareholding patterns over trailing quarters must be visualized using native Swift Charts, specifically utilizing BarMark for quarter-over-quarter FII/DII flow comparisons.34
+Shareholding Category
+	Q1 FY26 (%)
+	Q4 FY26 (%)
+	Trend
+	Promoter Holding
+	46.30%
+	46.30%
+	Neutral
+	Promoter Pledged
+	77.19%
+	75.26%
+	Improving
+	FII/FPI
+	3.40%
+	3.40%
+	Neutral
+	Retail/Public
+	13.11%
+	15.04%
+	Diluting
+	Table 1: Example schema for Shareholding Pattern visualization in Nivesh, adapted from typical GMR Power & Urban Infra disclosures.18
+2. Macro-to-Micro Narrative Mapping
+Best-in-Class Implementations Moneycontrol serves as the industry standard for mapping macroeconomic developments directly to the Indian stock market. The platform rigorously tracks net purchases and sales by Foreign Institutional Investors (FIIs) and Domestic Institutional Investors (DIIs) on a daily basis, presenting this flow data in absolute Crores to highlight sudden liquidity shifts.37 Moneycontrol excels at contextualizing global macro factors—such as fluctuations in Brent Crude oil, USD/INR exchange rates, and Reserve Bank of India (RBI) Monetary Policy Committee (MPC) repo rate decisions—against specific sectoral impacts.39 For example, analytical coverage frequently maps how a dovish RBI rate cut directly impacts Nifty's trajectory or how global IT service expansions impact the Nifty IT index.38
+Tickertape approaches the market narrative through its proprietary "Market Mood Index" (MMI).41 The MMI acts as a real-time sentiment indicator, aggregating various volatility, advance-decline ratios, and momentum metrics to categorize the broader Indian market into four distinct psychological zones.41
+
+
+MMI Score Range
+	Sentiment Zone
+	Actionable Interpretation
+	< 30
+	Extreme Fear
+	Markets are oversold; optimal time to open fresh, long-term positions.41
+	30 - 50
+	Fear
+	Investors are cautious; observe trajectory before deploying heavy capital.41
+	50 - 70
+	Greed
+	Market is entering overbought territory; hold existing positions.43
+	> 70
+	Extreme Greed
+	Markets are extremely overbought; avoid fresh positions, consider profit booking.41
+	Table 2: Breakdown of the Market Mood Index (MMI) zones and their standard interpretations.41
+The Psychology Ultra-long-term value investors recognize that the Indian equity market is heavily influenced by domestic liquidity (DII flows via mutual fund SIPs) and foreign capital allocation (FII flows).45 Empirical studies on market volatility calculate the Coefficient of Variation (CV) for FIIs and DIIs, revealing that DIIs often act as market stabilizers.46 When trading-oriented FIIs sell off heavily, DIIs step in to absorb the liquidity, preventing drastic falls in the BSE Sensex.46 Understanding this tug-of-war is vital for the veteran investor.
+While quantitative fundamentals (P/E ratios, discounted cash flows) form the foundation of an investment thesis, macro-driven narratives dictate the entry point. A veteran investor inherently follows Warren Buffett's maxim—"Be fearful when others are greedy, and greedy when others are fearful"—making tools like the Market Mood Index highly validating.41 Furthermore, Indian investors are acutely aware of the nation's reliance on imported crude oil and the subsequent impact on the current account deficit and inflation. When the RBI alters the repo rate, or when the USD/INR exchange rate experiences volatility, it directly impacts capital-heavy or export-driven sectors (e.g., IT services, Pharmaceuticals, Banking). Providing a unified interface that explicitly maps a global macro event to a micro impact prevents the user from having to mentally bridge the gap across multiple news platforms.
+Actionable Blueprint for 'Nivesh'
+To build a highly cohesive macro-to-micro narrative engine, 'Nivesh' must utilize LLMs to synthesize disparate macroeconomic data streams into brief, scannable insights without overwhelming the user with academic economic theory.
+* Data Ingestion Layer: The application will pull daily FII/DII flow data (in Crores), RBI repo rate announcements, and real-time commodity/currency pairings (USD/INR, Crude Oil) via API integrations and scraping.30
+* Multi-Agent AI Pipeline:
+   * Macro Contextualization Agent: This agent continuously processes global macro variables (CPI/WPI inflation readings, GDP growth projections, currency dynamics) and contextualizes the target stock within India's broader economic environment.30
+   * News Sentiment Agent: This agent ingests curated news articles, management commentary, and sector-level updates, classifying the sentiment at the article level and aggregating it into a composite score.30 It explicitly flags material events such as earnings surprises or regulatory shifts.30
+   * Structured JSON Synthesis: The LLM orchestrator takes the outputs from both agents and synthesizes a highly structured JSON response formatted specifically for the UI. Instead of outputting a dense paragraph, the LLM is prompted to output a maximum of three concise bullet points.
+* iOS SwiftUI Implementation:
+   * The stock overview screen must feature a dedicated "Macro Impact" card. When viewing a stock like Reliance Industries, the UI will parse the JSON to display concise bullet points:
+      * Crude Oil (Macro): Down 2% overnight.
+      * Impact (Micro): Positive for downstream refining margins.
+   * Integrate a localized version of a Market Mood gauge using SwiftUI's declarative drawing paths to create a speedometer-style semi-circle chart, utilizing a gradient from deep red (Extreme Fear) to bright green (Extreme Greed).34
+   * To maintain extreme mathematical accuracy, all FII/DII daily flow tables must be rendered using SwiftUI Grid or Table components, displaying exact figures formatted strictly as ₹X,XXX Cr.37
+Date
+	FII/FPI Net Purchase/Sale
+	DII Net Purchase/Sale
+	Institutional Bias
+	12 May 2026
+	-₹1,959.39 Cr
+	+₹7,990.32 Cr
+	Domestic Accumulation
+	11 May 2026
+	-₹8,437.56 Cr
+	+₹5,939.65 Cr
+	Foreign Flight
+	08 May 2026
+	-₹4,110.60 Cr
+	+₹6,748.13 Cr
+	Domestic Accumulation
+	Table 3: Example presentation of FII/DII flow data required in 'Nivesh' to satisfy the veteran user's need for exact mathematical accuracy.37
+3. High-Clarity Native Charting & Financial Literacy
+Best-in-Class Implementations Zerodha's Varsity platform and its integration into the Kite trading terminal represent the gold standard for financial literacy in the Indian market. Varsity breaks down highly complex technical analysis indicators (e.g., Moving Averages, Relative Strength Index (RSI), Volume Profiles) into universally digestible, plain-English educational modules.47 Zerodha's architecture pairs this educational foundation with Level 3 market depth (displaying up to 20 bid and ask price levels) and advanced dual-charting integrations supporting both ChartIQ and TradingView libraries with over 100 technical indicators.48
+Tickertape and Trendlyne utilize proprietary scoring methodologies to distill complex fundamental and technical data into instantly scannable metrics. Tickertape’s Scorecard mathematically evaluates a stock's Performance, Valuation, Growth, and Profitability on a 0-10 scale.10 It pairs this with an "Entry Point" assessment that advises whether the stock is trading below its intrinsic value based on both fundamentals and technicals.10 Trendlyne employs a robust DVM (Durability, Valuation, Momentum) scoring matrix.52 This system categorizes stocks into "Good," "Neutral," or "Bad" zones. A high Durability score (>55) indicates consistent cash flows and low debt; a high Valuation score (>50) indicates competitive pricing at current P/E and P/BV; and a high Momentum score (>59) indicates bullish technicals derived from over 30 indicators.52
+The Psychology
+The target persona is a veteran investor who fundamentally despises overwhelming, dense data walls and opaque financial jargon. While they respect the mathematical precision of technical indicators, they may lack formal training as a chartered market technician. They do not want to see a raw RSI value of "78" or a MACD histogram floating without context; they want to know what that data implies regarding recent market behavior.
+By providing a "Glossary Overlay" or a plain-English translation layer directly alongside advanced technical charts, the application empowers the user. This design choice eliminates the cognitive dissonance of switching between a complex trading terminal and a separate educational wiki (like Varsity). It respects the user's intelligence by offering mathematically rigorous data while simultaneously lowering the barrier to comprehension through elegant, contextual translations. The veteran investor appreciates a system that says, "Here is the exact numerical value, and here is what it means in plain English," prioritizing clarity over overwhelming complexity.
+Actionable Blueprint for 'Nivesh'
+The charting engine must prioritize native rendering for processing speed, battery efficiency, and seamless interactivity, while utilizing LLMs to dynamically translate technicals into actionable English.
+* Data Ingestion Layer: Historical Open-High-Low-Close-Volume (OHLCV) data will be fetched using yfinance utilizing the strict .NS or .BO suffix protocols (e.g., RELIANCE.NS, TCS.NS) to ensure precise market alignment.28
+* Multi-Agent AI Pipeline:
+   * Technical Translation Agent: The system will programmatically calculate standard indicators (RSI-14, 52-week moving averages, MACD, Bollinger Bands) on the backend using standard Python data science libraries like pandas-ta. These mathematically pristine outputs are then fed to the LLM agent, which is instructed via strict system prompts to generate a single, plain-English summary sentence.
+   * Instead of returning "RSI: 25", the agent returns structured JSON:
+{"indicator": "RSI-14", "value": 25, "translation": "The stock has seen heavy selling pressure recently and is currently in mathematically oversold territory."}.
+   * iOS SwiftUI Implementation:
+   * Forego heavy, third-party web-based charting libraries (like TradingView or ChartIQ) in favor of Apple's native Swift Charts framework (available iOS 16+).34 Swift Charts utilizes declarative syntax to construct highly interactive, mathematically precise charts with minimal performance overhead.34
+   * Utilize BarMark for rendering trading volume and LineMark for price action.35 Implement an interactive ChartOverlay modifier. When the user long-presses and drags across the volume profile, a localized tooltip will appear showing the exact price point formatted in ₹.
+   * Below the chart, place a "Plain English Context" card. This card consumes the translated JSON from the AI pipeline, displaying the technical translations in short, scannable bullet points.
+   * Integrate a "Glossary Overlay" architecture using SwiftUI .sheet or .popover modifiers. If a user taps on a metric like "PB Ratio" or "P/CFO" 10, a highly legible, professionally formatted half-sheet emerges to explain the specific metric's calculation and its historical relevance to long-term holding strategies.
+4. Advisory, Alerts, & Portability
+Best-in-Class Implementations Moneycontrol's "Before the Bell" daily brief is a staple advisory format in the Indian market, offering a high-signal summary of overnight global market movements, crucial corporate actions, and the expected Nifty/Sensex trajectory before the 9:15 AM IST opening bell.39 It curates data from US and Asian markets, directly mapping it to domestic expectations.39
+For alert architecture, Zerodha's Kite platform provides a highly mechanical and reliable "Good Till Triggered" (GTT) order and alert system.50 This allows users to set custom price conditions that remain active indefinitely until breached, a feature heavily utilized by paper traders and long-term investors alike to navigate the extreme opening volatilities often seen between 9:15 AM and 9:45 AM IST.50
+Regarding portability and reporting, Zerodha's "Console" backend sets the absolute standard for portfolio reporting.57 It allows users to seamlessly download their Tradebook, Holdings, and comprehensive Tax Profit & Loss (P&L) statements in universally portable formats like XLSX, CSV, and PDF.57 These reports cleanly break down realized and unrealized gains across specified date ranges (e.g., Q1 to Q4 of FY 2025-26).57
+The Psychology A veteran retail investor operates on strict routines and demands absolute control over their data. The pre-market window (8:00 AM to 9:15 AM) is a sacred period for synthesizing information; therefore, a morning summary must be completely devoid of noise, strictly highlighting macro events that directly impact their specific portfolio holdings.39 They do not want to hunt for information; they want high-signal advisory delivered passively.
+Furthermore, the veteran investor views portfolio portability as a non-negotiable trust metric. An application that attempts to lock in user data is inherently suspicious. Allowing the user to easily export their portfolio performance, dividend yields, and complex capital gains tax liabilities into an Excel or PDF document empowers them to conduct independent audits or share data with their Chartered Accountant (CA) effortlessly for tax harvesting.58 Custom price alerts (GTT style) cater to the ultra-long-term holding philosophy by allowing the investor to completely ignore daily market volatility, secure in the knowledge that they will only be notified when a stock reaches a deeply researched, multi-year accumulation threshold.56
+Actionable Blueprint for 'Nivesh'
+The advisory and portability infrastructure must prioritize localized, on-device processing and personalized AI generation, minimizing cloud telemetry to protect user privacy.
+   * Data Ingestion & Multi-Agent AI Pipeline:
+   * Morning Briefing Agent: At 8:00 AM IST daily, a scheduled CRON job triggers the Morning Briefing Agent. This LLM agent ingests overnight data from US markets, SGX Nifty futures, and overnight regulatory announcements.39 It cross-references this global data against the user's specific local watchlist. The agent outputs a structured JSON document containing three brief bullet points categorized as "Global Cues," "Domestic Macros," and "Portfolio Impact."
+   * iOS SwiftUI Implementation:
+   * The Morning Summary: Render the Morning Briefing JSON on the app's home screen using a clean, newspaper-style typographical hierarchy. Utilize Apple's native AVSpeechSynthesizer framework to offer an optional text-to-speech audio readout for users commuting before the market opens, providing an automated market briefing.62
+   * Custom Price Alerts: Implement a GTT-style alert UI where users can set strict "Above/Below" thresholds. Use Apple's native UserNotifications framework to ensure high-priority local push notifications fire instantly when a price condition is met via the backend WebSocket stream, without relying on delayed email servers.62
+   * Portfolio Reporting (Export Architecture): 'Nivesh' must avoid cloud-based generation for sensitive portfolio data to ensure absolute privacy.62 Utilize Apple's native CoreGraphics and PDFKit frameworks to dynamically draw and generate professional, tabular PDF reports entirely on the user's local device.62 The UI will provide a one-tap "Export to CA" button that instantly generates an XLSX or PDF formatted with standard Indian financial years (e.g., FY 2025-26) and monetary values strictly rendered in Lakhs and Crores.57
+Feature Matrix Table
+The following table categorizes the competitive landscape, isolating standout features and mapping their precise UI presentation paradigms against their relevance to the veteran demographic.
+
+
+Application
+	Standout Feature
+	UI Presentation Paradigm
+	Relevance to Long-Term Value Investors
+	Trendlyne
+	Corporate Governance & Document Discover Tool 7
+	Tabular data grids, explicit chronological event tracking, PDF search highlights
+	Essential for avoiding management traps (e.g., identifying sudden auditor or CFO resignations) before the stock price crashes.
+	Tickertape
+	Red Flags & DVM Scorecard 10
+	Expanding bulleted lists with numeric scores (0-10) and prominent warning icons
+	Automates the elimination of fundamentally flawed stocks heavily diluted by promoter pledges or plagued by unsolicited SMS tips.
+	Moneycontrol
+	FII/DII Flows & Macro Summaries 37
+	Daily brief text summaries ("Before the Bell") and net buy/sell tables in Crores
+	Crucial for understanding domestic liquidity vs. foreign capital flight, allowing investors to time market entries alongside institutional money.
+	Zerodha (Varsity)
+	Financial Literacy & Plain English TA 47
+	Educational wiki integrated natively with dual-charting (ChartIQ/TradingView)
+	Translates mathematical noise into actionable context, ensuring the investor actually understands the "why" behind the momentum indicator.
+	Zerodha (Console)
+	Tax P&L & Portfolio Portability 58
+	Clean spreadsheet export UI (CSV, XLSX, PDF) mapped exactly to Indian Financial Years
+	Builds absolute trust by ensuring the investor controls their data for tax harvesting and seamless auditing by a Chartered Accountant.
+	High-Value Friction Points to Avoid
+To ensure 'Nivesh' strictly aligns with the behavioral psychology of the ultra-long-term, sentiment-conscious retail investor, the application architecture must aggressively avoid the following pervasive industry anti-patterns:
+1. Hyperactive Day-Trading Noise and F&O Gamification
+Mainstream applications increasingly prioritize gamified interfaces that relentlessly push Futures and Options (F&O) trading, intraday margin leverages, and flashing red/green tick-by-tick price tickers to drive brokerage volume. For a veteran with a 10-year holding horizon, sub-second volatility is entirely irrelevant and psychologically fatiguing. 'Nivesh' must explicitly reject gamification. The UI should default to daily or weekly closing prices, presenting data in static, high-resolution snapshots rather than aggressively animating numbers. The platform must never cross-sell speculative derivative products or margin loans, ensuring the environment remains an oasis of calm, long-term calculation.
+2. Opaque Metrics and Hidden Disclaimers
+Many platforms present proprietary aggregate scores (e.g., "Quality Score: 78") or complex technical metrics without immediate transparency regarding how the calculation was derived. Furthermore, critical risk disclosures are often buried at the bottom of long scrolling pages. 'Nivesh' must eradicate "black box" metrics. If the AI agent assigns a negative sentiment score based on a news article or an auditor resignation, the UI must explicitly provide a one-sentence, plain-English translation explaining exactly why the score was given. Disclaimers regarding data latency or LLM generation must be presented cleanly upfront, utilizing the aforementioned Glossary Overlays, rather than obscured in microscopic legal text.
+3. Western Numerical Formatting vs. Indian Localization
+A subtle but catastrophic UX failure in many global-first API wrappers and LLM outputs is the presentation of Indian financial data using Western formats (Millions and Billions). An experienced Indian investor parses the economy strictly in Lakhs (1,00,000) and Crores (1,00,00,000). Forcing an Indian retail investor to mentally convert "₹1.5 Billion" to "₹150 Crores" introduces severe cognitive friction and degrades trust in the platform's mathematical accuracy. 'Nivesh' must hardcode a localization layer ensuring that every single API payload, LLM text summary, and Swift Chart y-axis is rigorously formatted into the Indian numbering system using the ₹ symbol.
+4. Intrusive Advertisements and Cluttered Real Estate
+Legacy financial applications often monetize through intrusive banner ads, sponsored broker links, and "promoted" mutual funds interspersed directly within actual stock analysis data. This visually fragments the user experience, induces decision fatigue, and raises serious questions about editorial objectivity. 'Nivesh' must adopt a strict, premium, ad-free aesthetic. The iOS design language should leverage extensive whitespace, utilizing Apple's native typography (San Francisco font stack) and semantic colors to create a clear hierarchy of information. Data walls must be broken down into scannable, compartmentalized SwiftUI cards, ensuring the veteran investor only sees the exact mathematical metrics and narrative bullet points they actively request.
+Works cited
+   1. Insider Trading & SAST disclosures for NBCC - Trendlyne.com, accessed June 2, 2026, https://trendlyne.com/equity/insider-trading-sast/all/NBCC/916/nbcc-india-ltd/
+   2. Insider Trading & SAST disclosures for Power Finance - Trendlyne.com, accessed June 2, 2026, https://trendlyne.com/equity/insider-trading-sast/all/PFC/1026/power-finance-corporation-ltd/
+   3. Billionbrains Garage Ventures (GROWW) Live Share Price Today on NSE/BSE, Stock Analysis and Price Estimates - Trendlyne.com, accessed June 2, 2026, https://trendlyne.com/equity/3313690/GROWW/billionbrains-garage-ventures-ltd/
+   4. FII, MF, DII, Promoter shareholding increases, decreases and pledged - Trendlyne.com, accessed June 2, 2026, https://trendlyne.com/stock-screeners/shareholding-change/
+   5. Insider Trading & SAST disclosures for REC - Trendlyne.com, accessed June 2, 2026, https://trendlyne.com/equity/insider-trading-sast/all/RECLTD/1119/rec-ltd/
+   6. Trendlyne Discover: Search Inside All Filings, accessed June 2, 2026, https://trendlyne.com/discover/?start_date=2023-11-06&end_date=2023-11-13&post_category=all&search_phrase=%22resignation%20of%20statutory%20auditor%22
+   7. Trendlyne Discover: Search Inside All Filings, accessed June 2, 2026, https://trendlyne.com/discover/?start_date=2026-05-23&end_date=2026-05-24&post_category=all&search_phrase=%22Resignation%20of%20Director%22%20OR%20%22Resignation%20of%20Chief%20Financial%20Officer%22%20OR%20%22Resignation%20of%20Managing%20Director%22%20OR%20%22Resignation%20of%20Chief%20Executive%20Officer%22
+   8. Trendlyne Discover: Search Inside All Filings, accessed June 2, 2026, https://trendlyne.com/discover/?start_date=2024-06-01&end_date=2024-06-08&post_category=all&search_phrase=%22resignation%20of%20statutory%20auditor%22
+   9. Trendlyne Discover: Search Inside All Filings, accessed June 2, 2026, https://trendlyne.com/discover/?start_date=2023-05-09&end_date=2023-05-16&post_category=all&search_phrase=Resignation
+   10. Introducing Scorecard! Stock Analysis Got Quicker and Better With Quantitative Insights, accessed June 2, 2026, https://www.tickertape.in/blog/introducing-scorecard-stock-analysis-got-quicker-and-better-with-quantitative-insights/
+   11. What are the different Investment Checklist? - Tickertape, accessed June 2, 2026, https://help.tickertape.in/support/solutions/articles/82000156324-what-are-the-different-investment-checklist-
+   12. Mutual funds red flags - Tickertape, accessed June 2, 2026, https://help.tickertape.in/support/solutions/articles/82000220745-mutual-funds-red-flags
+   13. Scrip list in unsolicited SMS's - Nuvama Wealth, accessed June 2, 2026, https://www.nuvamawealth.com/cas/html/New_Unsolicited-Messages-Mail.html
+   14. Members - BSE (formerly Bombay Stock Exchange), accessed June 2, 2026, https://www.bseindia.com/members
+   15. Don't fall for unsolicited investment tips - Angel One, accessed June 2, 2026, https://www.angelone.in/knowledge-center/share-market/unsolicited-investment-tips
+   16. RISK POLICIES - HDFC Securities, accessed June 2, 2026, https://www.hdfcsec.com/risk-policies-hdfc-securities
+   17. When and why is a stock under surveillance for Information List (Unsolicited SMS)?, accessed June 2, 2026, https://www.kotakneo.com/support/when-and-why-is-a-stock-under-surveillance-for-information-list-unsolicited-sms/
+   18. GMR Power & Urban Infra Latest Shareholding Pattern - Promoter, FII, DII, Mutual Fund holding - Trendlyne.com, accessed June 2, 2026, https://trendlyne.com/equity/share-holding/854535/GMRP&UI/latest/gmr-power-and-urban-infra-ltd/
+   19. (Please scan this QR Code to view this DRHP) DRAFT RED HERRING PROSPECTUS Dated, accessed June 2, 2026, https://images.moneycontrol.com/news_html_files/pdffiles/Sep2025/csm-technologies.pdf
+   20. draft red herring prospectus, accessed June 2, 2026, https://images.moneycontrol.com/news_html_files/pdffiles/Mar2026/shreni-shares.pdf
+   21. BONFIGLIOLI TRANSMISSIONS LIMITED CORPORATE IDENTITY NUMBER: U29309TN1998PLC040717, accessed June 2, 2026, https://images.moneycontrol.com/news_html_files/pdffiles/Feb2026/bonfiglioli-transmissions.pdf
+   22. Is Promoter Pledging a Sin? | Kotak Neo, accessed June 2, 2026, https://www.kotakneo.com/investing-guide/articles/is-promoter-pledging-a-sin/
+   23. An Emperical Study on Promoters Shares Pledging and its Effect on Stock Returns, accessed June 2, 2026, https://bbrc.in/wp-content/uploads/2021/05/BBRC_Vol_14_No_05_Special-Issue_02.pdf
+   24. Corporate Filings Announcement - Equity, SME, Debt, MF - NSE India, accessed June 2, 2026, https://www.nseindia.com/companies-listing/corporate-filings-announcements?tabIndex=equity
+   25. Corporate Filings Announcement - Equity, SME, Debt, MF - NSE India, accessed June 2, 2026, https://www.nseindia.com/companies-listing/corporate-filings-announcements?symbol=BSE&tabIndex=equi%E2%80%A6
+   26. International Investors - BSE, accessed June 2, 2026, https://www.bseindia.com/investors
+   27. SEBI discovered that BSE was sending company exchange filings with price-sensitive information to its paid subscribers before it was releasing them to the general public. Here's a fun read about the specifics : r/IndiaInvestments - Reddit, accessed June 2, 2026, https://www.reddit.com/r/IndiaInvestments/comments/1mw49jg/sebi_discovered_that_bse_was_sending_company/
+   28. GitHub - Ishan2608/OHLC-Extractor: This project fetches OHLC data for k past years during the user define interval for the list of stocks provided and creates a directory of excel and CSV files for the fetched data. Investors can use this program to fetch and save historical data in custom time intervals and custom OHLC periods as per their needs., accessed June 2, 2026, https://github.com/Ishan2608/Stock-OHLC-Reporter
+   29. niftystocks - PyPI, accessed June 2, 2026, https://pypi.org/project/niftystocks/
+   30. A Real Time AI System For Stock Analysis And Investment Support - Science Excel, accessed June 2, 2026, https://www.sciencexcel.com/articles/y5EcTlath8SFm6n8MLEQtethne06e7crHXjKoGcM.pdf
+   31. Prompt Bloat: Causes, Costs & Fixes for LLM Apps - Redis, accessed June 2, 2026, https://redis.io/blog/prompt-bloat-llm-apps/
+   32. AI Gateway Series #4 — Semantic Caching & Performance - Truefoundry, accessed June 2, 2026, https://www.truefoundry.com/caching
+   33. Speed, Context, and Savings: Mastering Caching in the Capella AI Model Service, accessed June 2, 2026, https://www.couchbase.com/blog/speed-context-and-savings-mastering-caching-in-the-capella-ai-model-service/
+   34. SwiftUI Charts: A Comprehensive Guide | by Gaurav Harkhani - Medium, accessed June 2, 2026, https://medium.com/@gauravharkhani01/swiftui-charts-a-comprehensive-guide-95e1862d0c20
+   35. SwiftUI 4.0: New and updated APIs with code examples - Codemagic Blog, accessed June 2, 2026, https://blog.codemagic.io/wwdc-2022-new-swiftui/
+   36. GMR Power & Urban Infra Shareholding Pattern for ... - Trendlyne.com, accessed June 2, 2026, https://trendlyne.com/equity/share-holding/854535/GMRP&UI/30-06-2025/gmr-power-and-urban-infra-ltd/
+   37. FII Outflows vs DII Support: The Anatomy Of India's May 2026 Market Moves - Grip Invest, accessed June 2, 2026, https://www.gripinvest.in/blog/fii-investment-in-india
+   38. Nifty IT Index Jumps Over 3%, Breaks Out of Inverted H&S - Bajaj Broking, accessed June 2, 2026, https://www.bajajbroking.in/share-market-news/nifty-it-index-jumps-over-3percentage-breaks-out-of-inverted-h-s
+   39. December 2025 - AdWealth, accessed June 2, 2026, https://adwealthgroup.com/2025/12/
+   40. Contents - Theoretical and Applied Economics, accessed June 2, 2026, https://www.ebsco.ectap.ro/Theoretical_&_Applied_Economics_2021_Spring.pdf
+   41. Market Mood Index (MMI) India: Live Fear & Greed Index - Tickertape, accessed June 2, 2026, https://www.tickertape.in/market-mood-index
+   42. Market mood index and stock market. Evidence from National Stock Exchange - Theoretical and Applied Economics, accessed June 2, 2026, https://store.ectap.ro/articole/1655.pdf
+   43. Market Mood Index (MMI): What is It & How to Use? - Blog by Tickertape, accessed June 2, 2026, https://www.tickertape.in/blog/how-mmi-can-help-in-timing-your-investments-better/
+   44. What is the Market Mood Index? - Tickertape, accessed June 2, 2026, https://help.tickertape.in/support/solutions/articles/82000143126-what-is-the-market-mood-index-
+   45. One Pitch - Yes Bank, accessed June 2, 2026, https://www.yes.bank.in/sites/web/content/published/api/v1.1/assets/CONTA3587154237D4243B8C045D94049AB65/native/ybl_one_pitch_august_2023.pdf?download=false
+   46. How has the correlation between FII and DII resulted in a positive trend in Indian stock markets in spite of lower, accessed June 2, 2026, https://mpra.ub.uni-muenchen.de/113989/1/MPRA_paper_113989.pdf
+   47. All About Technical Analysis of Stocks - Zerodha, accessed June 2, 2026, https://zerodha.com/varsity/module/technical-analysis/
+   48. Technical Analysis - AWS, accessed June 2, 2026, https://zerodha-common.s3.ap-south-1.amazonaws.com/Varsity/Modules/Module%202_Technical%20Analysis.pdf
+   49. Technical Analysis - Part 1 - Zerodha, accessed June 2, 2026, https://zerodha.com/varsity/wp-content/uploads/2015/05/module2-1.pdf
+   50. Zerodha Kite Product Teardown Analysis | PDF | Day Trading | Stocks - Scribd, accessed June 2, 2026, https://www.scribd.com/document/893765553/Prod-Teardown-Zerodha-Kite
+   51. Now compare different stocks, effortlessly | by Sagar Bhardwaj ..., accessed June 2, 2026, https://medium.com/design-bootcamp/now-compare-different-stocks-effortlessly-903da61fbdb4
+   52. Durability, Valuation, Momentum (DVM) - Trendlyne Scores, accessed June 2, 2026, https://trendlyne.com/score-details/
+   53. Trendlyne.com, accessed June 2, 2026, https://trendlyne.com/
+   54. DVM Stock Screeners with high dvm score filters - Trendlyne.com, accessed June 2, 2026, https://trendlyne.com/stock-screeners/by-type/?tag=DVM_all
+   55. Charts | Apple Developer Documentation, accessed June 2, 2026, https://developer.apple.com/design/human-interface-guidelines/charts
+   56. Best Paper Trading App in India 2025: Top 10 Platforms for Virtual Trading, accessed June 2, 2026, https://www.asianetnews.com/finance/best-paper-trading-app/
+   57. How to download tax P&L statement from different brokers? | EZTax, accessed June 2, 2026, https://eztax.in/how-to-download-tax-profit-loss-statement-from-brokers
+   58. How to convert Console reports to PDFs? - Support Zerodha, accessed June 2, 2026, https://support.zerodha.com/category/console/reports/other-queries/articles/how-to-download-trade-and-funds-reports-in-pdf
+   59. How to download reports to file your taxes? - YouTube, accessed June 2, 2026, https://www.youtube.com/watch?v=uRUhjqXWH7s
+   60. How to view or download the profit and loss report? - Support Zerodha, accessed June 2, 2026, https://support.zerodha.com/category/console/reports/profit-and-loss-report/articles/where-can-i-get-my-profit-and-loss-reports-from
+   61. Zerodha Console & Family Portfolio View - Support for adding custom columns to the view, accessed June 2, 2026, https://tradingqna.com/t/zerodha-console-family-portfolio-view-support-for-adding-custom-columns-to-the-view/149900
+   62. GitHub - bytePatrol/Market_Companion: Your personal market intelligence dashboard for macOS. Real-time quotes, interactive charts, smart alerts, trade journaling, portfolio risk analytics, and automated market briefings, accessed June 2, 2026, https://github.com/bytePatrol/Market_Companion
+   63. How to Identify Undervalued Stocks in India? - Blog by Tickertape, accessed June 2, 2026, https://www.tickertape.in/blog/how-to-identify-undervalued-stocks-in-india/

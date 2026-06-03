@@ -1,0 +1,677 @@
+"""
+Nivesh Advisor Intelligence — Nightly Harvest Engine
+Called exclusively by the CRON scheduler. Never imported by request-handling code.
+"""
+
+import json
+import logging
+import os
+import re
+import sys
+import traceback
+from datetime import datetime, timedelta
+from pathlib import Path
+
+import anthropic
+
+# ---------------------------------------------------------------------------
+# Logging — handlers configured by the caller (CRON)
+# ---------------------------------------------------------------------------
+
+logger = logging.getLogger("advisor_harvester")
+
+# ---------------------------------------------------------------------------
+# Ensure logs/ directory exists
+# ---------------------------------------------------------------------------
+
+_LOGS_DIR = Path(__file__).parent.parent / "logs"
+_LOGS_DIR.mkdir(parents=True, exist_ok=True)
+
+# ---------------------------------------------------------------------------
+# Environment
+# ---------------------------------------------------------------------------
+
+_ENV_PATH = Path(__file__).parent.parent / ".env"
+
+def _load_env() -> None:
+    """Load KEY=VALUE pairs from .env into os.environ (if not already set)."""
+    if not _ENV_PATH.exists():
+        return
+    with open(_ENV_PATH) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip()
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+YOUTUBE_API_KEY: str = os.environ.get("YOUTUBE_API_KEY", "").strip()
+
+# ---------------------------------------------------------------------------
+# Advisor registry
+# ---------------------------------------------------------------------------
+
+ADVISOR_REGISTRY = [
+    {"name": "SOIC", "channel_id": "UCDXBf-BGJZxGQEjbJFZlfLg", "youtube_handle": "@soicfinance"},
+    {"name": "Basant Maheshwari", "channel_id": "UC5iGxRs3oVxE_yMxFJgcR0A", "youtube_handle": "@basantmaheshwari"},
+    {"name": "Shankar Sharma", "channel_id": "UCW6f5RnBqJjT6PnFvYuSqkA", "youtube_handle": "@shankarsharma"},
+    {"name": "Neeraj Marathe", "channel_id": "UCH1q_xJFB5KPJ_d3IQHY9NA", "youtube_handle": "@neerajmarathe"},
+    {"name": "Valuepickr", "channel_id": "UCm7mXqe96V8pVBe5YMNsVaA", "youtube_handle": "@valuepickr"},
+]
+
+# ---------------------------------------------------------------------------
+# Claude Haiku extraction prompt
+# ---------------------------------------------------------------------------
+
+HAIKU_SYSTEM = """You are a financial transcript analyst. Extract structured investment stance data from Indian financial advisor commentary. Output ONLY valid JSON. No preamble. No explanation."""
+
+HAIKU_USER_TEMPLATE = """
+Transcript snippet from {advisor_name} discussing {ticker}:
+---
+{snippet}
+---
+Extract and return this exact JSON structure:
+{{
+  "stance": "BULLISH" | "NEUTRAL" | "BEARISH",
+  "confidence": "HIGH" | "MEDIUM" | "LOW",
+  "catalyst_summary": "<single bullet, max 120 chars, MUST include at least one number>"
+}}
+Rules:
+- stance must be exactly: BULLISH, NEUTRAL, or BEARISH
+- If hedging/undecided: NEUTRAL
+- catalyst_summary must have a numeric anchor (₹ amounts in Lakhs/Crores, percentages, multiples)
+"""
+
+# ---------------------------------------------------------------------------
+# Duration helpers
+# ---------------------------------------------------------------------------
+
+def _parse_iso8601_duration(duration_str: str) -> int:
+    """
+    Parse ISO 8601 duration string (e.g. PT4M30S) → seconds (int).
+    Falls back to 0 if unparseable.
+    """
+    if not duration_str:
+        return 0
+    # Try isodate if available
+    try:
+        import isodate  # type: ignore
+        td = isodate.parse_duration(duration_str)
+        return int(td.total_seconds())
+    except ImportError:
+        pass
+    # Manual regex fallback
+    pattern = r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?'
+    m = re.match(pattern, duration_str)
+    if not m:
+        return 0
+    hours = int(m.group(1) or 0)
+    minutes = int(m.group(2) or 0)
+    seconds = int(m.group(3) or 0)
+    return hours * 3600 + minutes * 60 + seconds
+
+
+# ---------------------------------------------------------------------------
+# YouTube video list fetchers
+# ---------------------------------------------------------------------------
+
+async def _fetch_videos_youtube_api(channel_id: str, lookback_hours: int) -> list[dict]:
+    """
+    Fetch recent videos via YouTube Data API v3.
+    Returns list of dicts: {video_id, title, published_at, duration_seconds, view_count, url}
+    """
+    import httpx
+
+    published_after = (datetime.utcnow() - timedelta(hours=lookback_hours)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+
+    search_url = "https://www.googleapis.com/youtube/v3/search"
+    search_params = {
+        "channelId": channel_id,
+        "type": "video",
+        "order": "date",
+        "publishedAfter": published_after,
+        "maxResults": 10,
+        "key": YOUTUBE_API_KEY,
+        "part": "snippet",
+    }
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(search_url, params=search_params)
+
+    if resp.status_code in (429, 403):
+        raise RuntimeError(
+            f"YouTube API quota/auth error: HTTP {resp.status_code} — {resp.text[:200]}"
+        )
+    resp.raise_for_status()
+
+    search_data = resp.json()
+    items = search_data.get("items", [])
+    if not items:
+        return []
+
+    video_ids = [item["id"]["videoId"] for item in items if item.get("id", {}).get("videoId")]
+    if not video_ids:
+        return []
+
+    # Fetch durations and view counts
+    details_url = "https://www.googleapis.com/youtube/v3/videos"
+    details_params = {
+        "part": "statistics,contentDetails",
+        "id": ",".join(video_ids),
+        "key": YOUTUBE_API_KEY,
+    }
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        dresp = await client.get(details_url, params=details_params)
+
+    if dresp.status_code in (429, 403):
+        raise RuntimeError(
+            f"YouTube API quota/auth error (details): HTTP {dresp.status_code}"
+        )
+    dresp.raise_for_status()
+
+    details_data = dresp.json()
+    details_by_id: dict[str, dict] = {}
+    for d in details_data.get("items", []):
+        vid = d["id"]
+        duration_str = d.get("contentDetails", {}).get("duration", "")
+        view_count = int(d.get("statistics", {}).get("viewCount", 0))
+        details_by_id[vid] = {
+            "duration_seconds": _parse_iso8601_duration(duration_str),
+            "view_count": view_count,
+        }
+
+    videos = []
+    for item in items:
+        vid_id = item.get("id", {}).get("videoId")
+        if not vid_id:
+            continue
+        snippet = item.get("snippet", {})
+        title = snippet.get("title", "")
+        published_str = snippet.get("publishedAt", "")
+        try:
+            published_at = datetime.strptime(published_str, "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            published_at = datetime.utcnow()
+
+        extra = details_by_id.get(vid_id, {"duration_seconds": 0, "view_count": 0})
+        videos.append({
+            "video_id": vid_id,
+            "title": title,
+            "published_at": published_at,
+            "duration_seconds": extra["duration_seconds"],
+            "view_count": extra["view_count"],
+            "url": f"https://www.youtube.com/watch?v={vid_id}",
+        })
+
+    return videos
+
+
+def _fetch_videos_ytdlp(channel_id: str, lookback_hours: int) -> list[dict]:
+    """
+    Fetch recent videos via yt-dlp (no API key needed).
+    Returns list of dicts: {video_id, title, published_at, duration_seconds, view_count, url}
+    """
+    import yt_dlp  # type: ignore
+
+    channel_url = f"https://www.youtube.com/channel/{channel_id}/videos"
+    ydl_opts = {
+        "quiet": True,
+        "extract_flat": True,
+        "playlistend": 10,
+    }
+
+    cutoff = datetime.utcnow() - timedelta(hours=lookback_hours)
+
+    videos = []
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        try:
+            info = ydl.extract_info(channel_url, download=False)
+        except Exception as exc:
+            logger.warning("yt-dlp extraction failed for channel %s: %s", channel_id, exc)
+            return []
+
+    entries = info.get("entries", []) if info else []
+    for entry in entries:
+        if not entry:
+            continue
+        vid_id = entry.get("id") or entry.get("url", "").split("v=")[-1]
+        if not vid_id:
+            continue
+
+        title = entry.get("title", "")
+        duration_seconds = int(entry.get("duration") or 0)
+        view_count = int(entry.get("view_count") or 0)
+
+        # yt-dlp flat extract gives upload_date as YYYYMMDD string
+        upload_date_str = entry.get("upload_date", "")
+        if upload_date_str:
+            try:
+                published_at = datetime.strptime(upload_date_str, "%Y%m%d")
+            except ValueError:
+                published_at = datetime.utcnow()
+        else:
+            # Timestamp field
+            ts = entry.get("timestamp")
+            published_at = datetime.utcfromtimestamp(ts) if ts else datetime.utcnow()
+
+        if published_at < cutoff:
+            continue
+
+        videos.append({
+            "video_id": vid_id,
+            "title": title,
+            "published_at": published_at,
+            "duration_seconds": duration_seconds,
+            "view_count": view_count,
+            "url": f"https://www.youtube.com/watch?v={vid_id}",
+        })
+
+    return videos
+
+
+# ---------------------------------------------------------------------------
+# DB helpers
+# ---------------------------------------------------------------------------
+
+def _video_already_processed(video_id: str) -> bool:
+    """Return True if this video_id has any row in advisor_insights."""
+    from database import AdvisorInsight, get_session
+
+    with get_session() as session:
+        exists = (
+            session.query(AdvisorInsight.id)
+            .filter(AdvisorInsight.video_id == video_id)
+            .first()
+        )
+        return exists is not None
+
+
+def _insert_insight(
+    *,
+    ticker: str,
+    advisor_name: str,
+    channel_id: str,
+    video_id: str,
+    video_title: str,
+    video_url: str,
+    published_at: datetime,
+    transcript_source: str,
+    stance: str,
+    confidence: str,
+    catalyst_summary: str,
+    raw_snippet: str,
+    view_count: int,
+) -> bool:
+    """
+    Insert a row into advisor_insights, silently skipping on UniqueConstraint.
+    Returns True if a new row was inserted.
+    """
+    from database import AdvisorInsight, get_session
+    from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
+    with get_session() as session:
+        stmt = (
+            sqlite_insert(AdvisorInsight)
+            .values(
+                ticker=ticker,
+                advisor_name=advisor_name,
+                channel_id=channel_id,
+                video_id=video_id,
+                video_title=video_title,
+                video_url=video_url,
+                published_at=published_at,
+                transcript_source=transcript_source,
+                stance=stance,
+                confidence=confidence,
+                catalyst_summary=catalyst_summary,
+                raw_snippet=raw_snippet,
+                view_count=view_count,
+                created_at=datetime.utcnow(),
+            )
+            .prefix_with("OR IGNORE")
+        )
+        result = session.execute(stmt)
+        session.commit()
+        return result.rowcount > 0
+
+
+# ---------------------------------------------------------------------------
+# Claude Haiku extraction
+# ---------------------------------------------------------------------------
+
+def _extract_stance_with_haiku(advisor_name: str, ticker: str, snippet: str) -> dict | None:
+    """
+    Call Claude Haiku to extract stance JSON from a transcript snippet.
+    Returns parsed dict or None on failure.
+    """
+    client = anthropic.Anthropic()  # uses ANTHROPIC_API_KEY from env
+
+    user_content = HAIKU_USER_TEMPLATE.format(
+        advisor_name=advisor_name,
+        ticker=ticker,
+        snippet=snippet[:3000],  # guard against oversized snippets
+    )
+
+    try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=200,
+            system=HAIKU_SYSTEM,
+            messages=[{"role": "user", "content": user_content}],
+        )
+    except Exception as exc:
+        logger.warning("Haiku API call failed for %s/%s: %s", advisor_name, ticker, exc)
+        return None
+
+    raw_text = response.content[0].text.strip() if response.content else ""
+
+    # Strip markdown code fences if present
+    if raw_text.startswith("```"):
+        raw_text = re.sub(r"^```[a-zA-Z]*\n?", "", raw_text)
+        raw_text = re.sub(r"\n?```$", "", raw_text).strip()
+
+    try:
+        data = json.loads(raw_text)
+    except json.JSONDecodeError as exc:
+        logger.warning(
+            "Malformed Haiku JSON for %s/%s — %s — raw: %s",
+            advisor_name,
+            ticker,
+            exc,
+            raw_text[:200],
+        )
+        return None
+
+    # Validate required fields
+    stance = str(data.get("stance", "")).upper()
+    confidence = str(data.get("confidence", "")).upper()
+    catalyst_summary = str(data.get("catalyst_summary", ""))
+
+    if stance not in ("BULLISH", "NEUTRAL", "BEARISH"):
+        logger.warning(
+            "Unexpected stance value '%s' for %s/%s — defaulting to NEUTRAL",
+            stance,
+            advisor_name,
+            ticker,
+        )
+        stance = "NEUTRAL"
+
+    if confidence not in ("HIGH", "MEDIUM", "LOW"):
+        logger.warning(
+            "Unexpected confidence value '%s' for %s/%s — defaulting to LOW",
+            confidence,
+            advisor_name,
+            ticker,
+        )
+        confidence = "LOW"
+
+    return {
+        "stance": stance,
+        "confidence": confidence,
+        "catalyst_summary": catalyst_summary[:120],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Core harvest logic
+# ---------------------------------------------------------------------------
+
+async def harvest_single_advisor(advisor: dict, lookback_hours: int = 24) -> int:
+    """
+    Harvest one advisor's recent videos.
+
+    1. Fetch video list (YouTube API if key present, else yt-dlp).
+    2. Skip videos < 4 minutes or already in DB.
+    3. For each remaining video: get transcript, find tickers, call Haiku, insert rows.
+
+    Returns count of rows inserted.
+    """
+    from services.transcript_engine import get_transcript
+    from services.ticker_matcher import find_tickers
+
+    advisor_name = advisor["name"]
+    channel_id = advisor["channel_id"]
+    inserted_total = 0
+
+    logger.info("Harvesting advisor: %s (channel %s)", advisor_name, channel_id)
+
+    # --- Fetch video list ---
+    videos: list[dict] = []
+    if YOUTUBE_API_KEY:
+        try:
+            videos = await _fetch_videos_youtube_api(channel_id, lookback_hours)
+            logger.info(
+                "%s: YouTube API returned %d videos", advisor_name, len(videos)
+            )
+        except RuntimeError as exc:
+            # Quota / auth error — abort this advisor
+            logger.error(
+                "YouTube API quota/auth error for %s — aborting: %s",
+                advisor_name,
+                exc,
+            )
+            return 0
+        except Exception as exc:
+            logger.warning(
+                "YouTube API fetch failed for %s, trying yt-dlp fallback: %s",
+                advisor_name,
+                exc,
+            )
+            videos = _fetch_videos_ytdlp(channel_id, lookback_hours)
+    else:
+        videos = _fetch_videos_ytdlp(channel_id, lookback_hours)
+        logger.info(
+            "%s: yt-dlp returned %d videos (no API key)", advisor_name, len(videos)
+        )
+
+    for video in videos:
+        vid_id: str = video["video_id"]
+        title: str = video["title"]
+        duration: int = video["duration_seconds"]
+        published_at: datetime = video["published_at"]
+        view_count: int = video["view_count"]
+        url: str = video["url"]
+
+        # Skip short videos (< 4 minutes = 240 seconds)
+        if duration > 0 and duration < 240:
+            logger.debug(
+                "Skipping %s (%s) — too short: %ds", vid_id, title, duration
+            )
+            continue
+
+        # Skip already-processed videos
+        if _video_already_processed(vid_id):
+            logger.debug("Skipping %s — already in DB", vid_id)
+            continue
+
+        # Fetch transcript
+        try:
+            transcript = await get_transcript(vid_id, float(duration))
+        except Exception as exc:
+            logger.warning(
+                "Transcript fetch failed for %s (%s): %s", vid_id, title, exc
+            )
+            continue
+
+        if not transcript or not transcript.get("full_text"):
+            logger.warning("Empty transcript for %s (%s) — skipping", vid_id, title)
+            continue
+
+        transcript_source: str = transcript.get("source", "unknown")
+
+        # Find ticker mentions
+        try:
+            ticker_matches: list[dict] = find_tickers(transcript)
+        except Exception as exc:
+            logger.warning(
+                "Ticker matching failed for %s (%s): %s", vid_id, title, exc
+            )
+            continue
+
+        if not ticker_matches:
+            logger.debug("No tickers found in %s (%s)", vid_id, title)
+            continue
+
+        logger.info(
+            "%s | %s — found %d ticker(s): %s",
+            advisor_name,
+            title[:60],
+            len(ticker_matches),
+            [m.get("ticker") for m in ticker_matches],
+        )
+
+        for match in ticker_matches:
+            ticker: str = match.get("ticker", "")
+            snippet: str = match.get("snippet", transcript["full_text"][:1500])
+
+            if not ticker:
+                continue
+
+            # Call Claude Haiku
+            extracted = _extract_stance_with_haiku(advisor_name, ticker, snippet)
+            if extracted is None:
+                continue
+
+            inserted = _insert_insight(
+                ticker=ticker,
+                advisor_name=advisor_name,
+                channel_id=channel_id,
+                video_id=vid_id,
+                video_title=title,
+                video_url=url,
+                published_at=published_at,
+                transcript_source=transcript_source,
+                stance=extracted["stance"],
+                confidence=extracted["confidence"],
+                catalyst_summary=extracted["catalyst_summary"],
+                raw_snippet=snippet[:2000],
+                view_count=view_count,
+            )
+
+            if inserted:
+                inserted_total += 1
+                logger.info(
+                    "Inserted: %s | %s | %s | %s",
+                    advisor_name,
+                    ticker,
+                    extracted["stance"],
+                    extracted["confidence"],
+                )
+            else:
+                logger.debug(
+                    "Duplicate skipped: %s / %s in %s", ticker, vid_id, advisor_name
+                )
+
+    logger.info(
+        "Finished %s — inserted %d row(s)", advisor_name, inserted_total
+    )
+    return inserted_total
+
+
+async def harvest_all_advisors(lookback_hours: int = 24) -> None:
+    """
+    Harvest all advisors sequentially. Called by CRON.
+    Wraps the entire run in try/except and logs traceback on failure.
+    """
+    _load_env()
+    global YOUTUBE_API_KEY
+    YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY", "").strip()
+    log_file = _LOGS_DIR / "advisor_harvester.log"
+    # Add a file handler for this run if not already attached
+    if not any(isinstance(h, logging.FileHandler) for h in logger.handlers):
+        fh = logging.FileHandler(log_file)
+        fh.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s %(name)s — %(message)s")
+        )
+        logger.addHandler(fh)
+
+    logger.info(
+        "=== harvest_all_advisors START | lookback=%dh | advisors=%d ===",
+        lookback_hours,
+        len(ADVISOR_REGISTRY),
+    )
+
+    total_inserted = 0
+    try:
+        for advisor in ADVISOR_REGISTRY:
+            try:
+                count = await harvest_single_advisor(advisor, lookback_hours)
+                total_inserted += count
+            except Exception:
+                logger.error(
+                    "Unhandled error harvesting advisor %s:\n%s",
+                    advisor.get("name"),
+                    traceback.format_exc(),
+                )
+    except Exception:
+        logger.error(
+            "Fatal error in harvest_all_advisors:\n%s", traceback.format_exc()
+        )
+
+    logger.info(
+        "=== harvest_all_advisors END | total_inserted=%d ===", total_inserted
+    )
+
+
+def evaluate_analysis_outcomes(db) -> int:
+    """
+    Nightly: compute outcome_delta for analyses older than 7 days that haven't been evaluated.
+    Runs in the existing nightly CRON slot. Max 50 per night to avoid yfinance rate limits.
+    """
+    from database import AnalysisHistory
+    import json
+    import gzip
+    from datetime import datetime, timedelta
+
+    cutoff = datetime.utcnow() - timedelta(days=7)
+    pending = (
+        db.query(AnalysisHistory)
+        .filter(AnalysisHistory.outcome_delta_pct == None)  # noqa: E711
+        .filter(AnalysisHistory.created_at < cutoff)
+        .limit(50)
+        .all()
+    )
+
+    evaluated = 0
+    for analysis in pending:
+        try:
+            import yfinance as yf
+            raw = analysis.full_json
+            if isinstance(raw, (bytes, memoryview)):
+                report = json.loads(gzip.decompress(bytes(raw)))
+            else:
+                report = json.loads(raw)
+
+            prev_price = report.get("current_price") or report.get("price")
+            signal     = report.get("signal", "")
+            ticker     = analysis.ticker
+
+            if not prev_price or not ticker:
+                continue
+
+            hist = yf.download(f"{ticker}.NS", period="2d", auto_adjust=True, progress=False)
+            if hist is None or len(hist) == 0:
+                continue
+
+            current   = float(hist["Close"].iloc[-1])
+            delta     = ((current - float(prev_price)) / float(prev_price)) * 100
+            analysis.outcome_delta_pct  = round(delta, 2)
+            analysis.outcome_checked_at = datetime.utcnow()
+            analysis.was_correct = (
+                (signal in ("BUY", "BULLISH") and delta > 0) or
+                (signal in ("SELL", "BEARISH") and delta < 0)
+            )
+            db.commit()
+            evaluated += 1
+        except Exception as e:
+            db.rollback()
+            logger.warning(f"[outcome_eval] {getattr(analysis, 'ticker', '?')}: {e}")
+
+    logger.info(f"[outcome_eval] Evaluated {evaluated} analysis outcomes")
+    return evaluated

@@ -1,0 +1,39 @@
+<svg width="100%" viewBox="0 0 680 380" role="img" xmlns="http://www.w3.org/2000/svg" style="">
+<title style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Nivesh iOS app icon with correct theme</title>
+<desc style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Square iOS app icon using Rupee note palette: aged charcoal background, dull gold N letterform with rising chart line and saffron dot, Devanagari text below</desc>
+<defs>
+  <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" style="stop-color:#C8A84A"/>
+    <stop offset="100%" style="stop-color:#B8973A"/>
+  </linearGradient>
+  <linearGradient id="chartfill" x1="0%" y1="0%" x2="0%" y2="100%">
+    <stop offset="0%" style="stop-color:#B8973A;stop-opacity:0.28"/>
+    <stop offset="100%" style="stop-color:#B8973A;stop-opacity:0"/>
+  </linearGradient>
+  <clipPath id="iconclip">
+    <rect x="230" y="60" width="220" height="220" rx="46"/>
+  </clipPath>
+<mask id="imagine-text-gaps-y5kyhw" maskUnits="userSpaceOnUse"><rect x="0" y="0" width="680" height="380" fill="white"/><rect x="292.3515625" y="117.5" width="95.296875" height="122.5" fill="black" rx="2"/><rect x="295.7109375" y="121" width="88.578125" height="113" fill="black" rx="2"/><rect x="315" y="222" width="50" height="22" fill="black" rx="2"/><rect x="252.5" y="302" width="175" height="17.6015625" fill="black" rx="2"/></mask></defs>
+
+<rect x="230" y="60" width="220" height="220" rx="46" fill="#1C1A14" style="fill:rgb(28, 26, 20);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<rect x="230" y="60" width="220" height="220" rx="46" fill="none" stroke="#C8A84A" stroke-width="1.5" opacity="0.5" style="fill:none;stroke:rgb(200, 168, 74);color:rgb(0, 0, 0);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<rect x="234" y="64" width="212" height="212" rx="43" fill="none" stroke="#C8A84A" stroke-width="0.5" opacity="0.25" style="fill:none;stroke:rgb(200, 168, 74);color:rgb(0, 0, 0);stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.25;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<g clip-path="url(#iconclip)" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+  <polyline points="248,252 278,222 308,230 333,198 358,176 388,148 430,116" fill="none" stroke="#C8A84A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.18" mask="url(#imagine-text-gaps-y5kyhw)" style="fill:none;stroke:rgb(200, 168, 74);color:rgb(0, 0, 0);stroke-width:2.5px;stroke-linecap:round;stroke-linejoin:round;opacity:0.18;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <polygon points="248,270 278,222 308,230 333,198 358,176 388,148 430,116 430,270" fill="url(#chartfill)" style="stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+</g>
+
+<text x="340" y="215" font-family="Georgia, serif" font-size="104" font-weight="700" fill="#C8A84A" text-anchor="middle" opacity="0.06" style="fill:rgb(200, 168, 74);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.06;font-family:Georgia, serif;font-size:104px;font-weight:700;text-anchor:middle;dominant-baseline:auto">N</text>
+
+<text x="340" y="211" font-family="Georgia, serif" font-size="96" font-weight="700" fill="url(#gold)" text-anchor="middle" style="stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Georgia, serif;font-size:96px;font-weight:700;text-anchor:middle;dominant-baseline:auto">N</text>
+
+<polyline points="248,252 278,222 308,230 333,198 358,176 388,148 430,116" fill="none" stroke="url(#gold)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" mask="url(#imagine-text-gaps-y5kyhw)" style="fill:none;color:rgb(0, 0, 0);stroke-width:3px;stroke-linecap:round;stroke-linejoin:round;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<circle cx="430" cy="116" r="6" fill="#C8A84A" style="fill:rgb(200, 168, 74);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<circle cx="430" cy="116" r="10.5" fill="none" stroke="#C8A84A" stroke-width="1.2" opacity="0.35" style="fill:none;stroke:rgb(200, 168, 74);color:rgb(0, 0, 0);stroke-width:1.2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.35;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<text x="340" y="241" font-family="Georgia, serif" font-size="18" font-style="italic" fill="#C8A84A" text-anchor="middle" letter-spacing="2" opacity="0.75" style="fill:rgb(200, 168, 74);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.75;font-family:Georgia, serif;font-size:18px;font-weight:400;font-style:italic;text-anchor:middle;dominant-baseline:auto">निवेश</text>
+
+<text x="340" y="315" font-family="Georgia, serif" font-size="12" fill="#5C5C52" text-anchor="middle" letter-spacing="2" style="fill:rgb(92, 92, 82);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Georgia, serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:auto">1024 × 1024 · App Icon</text>
+</svg>

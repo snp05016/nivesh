@@ -1,0 +1,31 @@
+# Secrets
+.env
+
+# Virtual environments
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# macOS
+.DS_Store
+
+# Database files — never commit live data
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# Logs / token tracking (contains costs)
+*.log
+token_log.jsonl
+
+# Tradingagents core (installed separately)
+tradingagents-core/
+
+# Misc
+~/.tradingagents/

@@ -1,0 +1,221 @@
+﻿The Behavioral Architecture of the Indian Market Microstructure and AI Prompt Engineering Guidelines
+1. Behavioral Insights Summary: The Anatomy of Dalal Street and User Psychology
+The Indian capital market possesses a unique microstructural and psychological architecture that distinguishes it fundamentally from Western institutionalized markets. For a veteran retail investor—defined within this structural analysis as an individual who has successfully navigated the extreme volatility of Dalal Street for over a decade—price discovery is not merely a mathematical function of discounted cash flows. Rather, it is a highly intricate psychological processing of institutional trust, liquidity flows, systemic narratives, and macroeconomic volatility. To architect a functional system prompt for a FastAPI AI stock analysis system, one must first decode the precise cognitive demands, biases, and historical traumas that govern this specific investor demographic.
+The Promoter Trust Premium: Governance as an Emotional Anchor
+In the context of the Indian market, the corporate promoter is not viewed simply as a majority shareholder or a chief executive. The promoter serves as the ultimate psychological anchor for the retail investor. Veteran investors on Dalal Street apply a substantial "Promoter Trust Premium" or a corresponding "Governance Discount" to equity valuations, driven by a historical landscape where corporate governance failures, obfuscated balance sheets, and unauthorized siphoning of funds have frequently decimated retail wealth. This dynamic renders the mathematical evaluation of Indian equities secondary to the behavioral evaluation of the entities managing them.
+A critical, quantifiable variable in this trust equation is the phenomenon of promoter share pledging. Share pledging by promoters is a mechanism where their shareholding in the company is offered to financial institutions as collateral to avail of debt.1 While this provides promoters with rapid access to capital, the Indian market heavily penalizes excessive, opaque, or sudden pledging, viewing it as a leading indicator of severe corporate governance issues, stretched personal finances, or impending corporate distress.1 Under stringent regulations enforced by the Securities and Exchange Board of India (SEBI), the creation, invocation, or release of a pledge by promoters is treated as a transaction under the Prohibition of Insider Trading Regulations, and companies must record and report these encumbrances in real-time within two working days.1 SEBI's regulatory framework further mandates the segregation of encumbrances, introducing strict definitions for terms like "non-disposal undertakings" and "liens" to prevent misreporting and protect retail investors.1
+For the experienced investor, a high or escalating pledge percentage acts as a severe emotional red flag and a fatal structural risk. It indicates elevated leverage that might lead to forced liquidation and drastic alterations in the company's shareholding structure if margin requirements are unmet due to downward pressure on stock prices.2 During weak market conditions, falling share prices can trigger a vicious cycle: the price drop forces lenders to invoke the pledge and sell shares in the open market, which exacerbates the stock decline, thereby triggering further margin calls and destroying retail capital.1 Consequently, an artificial intelligence analysis system must not treat promoter pledging merely as a footnote on a balance sheet. It must process and present it as a definitive measure of corporate character, where low pledging and steady ownership signal financial discipline, transparency, and strategic accountability, providing a vital emotional security blanket for the long-term investor.3
+The Structural Transformation of Capital Ownership: FII Divestment Versus DII Absorption
+The psychological landscape of the Indian equity market has been radically and permanently transformed by a structural shift in capital ownership over the past decade. Historically, Foreign Institutional Investors (FIIs) and Foreign Portfolio Investors (FPIs) dictated the velocity and directional trend of the BSE SENSEX and NSE Nifty indices. A withdrawal of foreign capital invariably resulted in severe domestic market drawdowns. However, extensive transaction data reveals a profound structural decoupling in the modern era. Since 2021, FIIs have systematically and persistently divested from Indian equities, recording cumulative net outflows exceeding ₹8.68 lakh crore (US$ 95.36 billion), with specific net outflows of approximately ₹2.78 lakh crore in 2022, ₹3.04 lakh crore in 2024, and ₹3.06 lakh crore in 2025.5 By January 2026, total FII net outflows reached a staggering ₹10.38 lakh crore.5
+This massive foreign capital flight, which historically would have triggered a severe market crash, was almost entirely absorbed by Domestic Institutional Investors (DIIs). Driven largely by mutual funds financed through Systematic Investment Plans (SIPs) from retail households, DIIs made net purchases of over ₹19.37 lakh crore (US$ 212.67 billion) during the same 2021–January 2026 period.5 Domestic institutions exceeded FII selling by a ratio of nearly 1.9:1, actively absorbing foreign exits and maintaining elevated index levels.5 The DII share of total gross institutional purchases increased from roughly 39% in 2017 to more than 54.8% by January 2026, demonstrating a newly entrenched structural reliance of the Indian equity market on domestic liquidity.5
+Statistical analysis utilizing Pearson and Spearman correlations confirms this structural substitution. DII flows are strongly, positively, and significantly correlated with SENSEX levels (r = 0.686, p < 0.001), whereas FII flows exhibit a significant negative correlation (r = -0.365, p < 0.001).5 Furthermore, Granger causality tests suggest that domestic institutions exhibit market-responsive rather than market-driving behavior, acting as a stabilizing counterforce to global macroeconomic shocks.6
+Market Flow Metric (2021 - Jan 2026)
+	Capital Volume
+	Behavioral Impact on SENSEX / Market Psychology
+	FII Net Outflows
+	₹10.38 Lakh Crore
+	Historically panic-inducing; currently acts as a regulator of over-valuation, dictating short-term trend volatility.
+	DII Net Purchases
+	₹19.37 Lakh Crore
+	Functions as a psychological floor; insulates the market from global shocks via systematic, automated buying.
+	DII Purchase Share (2017)
+	39.0%
+	Reflected a market highly vulnerable to foreign capital flight and US Treasury yield fluctuations.
+	DII Purchase Share (2026)
+	54.8%
+	Represents structural domestic dominance, embedding a "New Normal" narrative of guaranteed liquidity.
+	The psychological impact of this FII versus DII tug-of-war on the veteran investor is deeply complex. On one level, the continuous influx of automated SIPs—with monthly contributions crossing ₹25,000 crore across over 90 million active accounts—provides a comforting, stabilizing confidence.5 DIIs move steadily, reacting differently to global cues than FIIs, which helps prevent corrections from cascading into market crashes.7 However, this dynamic also generates profound systemic anxiety for the experienced market survivor. Drawing upon Hyman Minsky's Financial Instability Hypothesis, prolonged periods of sentiment-driven domestic absorption of FII exits, particularly in the absence of corresponding fundamental earnings growth, represent an emerging source of systemic vulnerability.5 The continuous DII capital influx artificially suppresses market-wide volatility, creating a Minskyan Paradox where the very stability of the market breeds fragility.5 When massive domestic inflows consistently chase large-cap indices, price discovery in mid- and small-cap segments severely deteriorates, generating valuation dispersion and suppressing the corrective market signals normally provided by FII selling.5 Thus, an AI analysis must visually and narratively juxtapose FII selling against DII buying not just as a liquidity metric, but as a critical tension gauge for systemic, Minskyan risk.
+Narrative-Driven Herd Behavior, Sector Rotations, and Contrarian Sentiment
+The modern Indian retail market is extraordinarily susceptible to narrative-driven herding, frequently fueled by central government policy announcements, nationalistic economic agendas, and amplified by financial media cycles. Government initiatives such as "Make in India" and the Production-Linked Incentive (PLI) schemes have transitioned from policy slogans into multi-trillion rupee manufacturing realities, fundamentally altering the financial architecture of sectors like defense, aerospace, and infrastructure.10 State-run entities like Bharat Electronics Limited (BEL), alongside private sector players such as Data Patterns and ZEN Technologies, have transformed into high-margin, cash-rich powerhouses with vast order books and immense capital reserves.10
+This policy-driven fundamental shift, however, rapidly translates into explosive retail euphoria on Dalal Street. As younger demographics enter the market earlier—with the share of 25-year-olds using investment accounts surging from 6% in 2015 to 37% in 2024—the velocity of retail herding has intensified.13 The veteran investor has learned through painful experience to be highly skeptical of these narrative extremes. They recognize that while infrastructure, technology integration, and manufacturing themes offer genuine long-term compounding, the short-term price action is frequently distorted by retail hype, aggressive distributor networks, and algorithmic momentum.5
+A decade of market survival dictates adherence to strict contrarian sentiment rules. Extreme retail euphoria must be interpreted by the AI not as a confirmation of value, but as a cautionary psychological signal of a cycle top. The experienced investor understands the behavioral traps of narrow framing (making decisions without considering all implications) and anchoring (relating to familiar experiences even when inappropriate), which have historically led average equity investors to underperform benchmark indices for 15 consecutive years.15 Therefore, an AI system must systematically strip away the "Make in India" narrative gloss and force a harsh reconciliation between current market capitalization and actual, localized execution bottlenecks, such as receivable delays from government contracts or the impact of global IT spending uncertainties.11
+Decoding the Veteran Retail Investor: Fluff Skepticism and Cognitive Fatigue
+An individual who has survived ten years of Indian market volatility possesses a specific, highly defensive cognitive architecture. They have witnessed periods of severe wealth destruction and recognize that standard retail behaviors—such as loss aversion, mental accounting, and reactive media responses—lead to consistent capital erosion.15 Consequently, their primary psychological defense mechanism is a total rejection of ambiguity.
+Experienced investors suffer from severe cognitive fatigue when exposed to standard financial journalism, sell-side research reports, or generic algorithmic outputs. They harbor zero tolerance for corporate boilerplate, public relations-driven earnings summaries, or defensive analytical hedging. Linguistic triggers that rely on ambiguous qualifiers—such as "management is cautiously optimistic," "the company is navigating macroeconomic headwinds," or "unlocking synergistic value"—instantly destroy the credibility of the analysis. For the veteran, these phrases are not just useless; they are active obfuscations designed to mask operational weakness. They require an AI system to deliver absolute, data-anchored, and probabilistic conviction.
+Furthermore, a seasoned trader does not need an AI to simply state the "what." They have real-time dashboards, broker terminals, and screeners providing raw data feeds. Stating that "the P/E ratio is 45" or "the company reported strong volume growth" is a waste of their cognitive bandwidth. They require the AI to provide immediate, plain-English contextualization of the "why" and its direct threat to capital preservation. If a valuation metric has expanded, the AI must immediately adjudicate whether this expansion is driven by a genuine, structural shift in operating margins or merely narrative-driven domestic liquidity chasing a low-float stock.
+Risk-First Bias and Temporal Horizon Mapping
+Decades of unexpected market shocks—from regulatory crackdowns to global pandemics and sudden changes in US Federal Reserve policy—have hardwired a "Risk-First Bias" into the veteran investor. Even when an investor is highly bullish on a secular growth story, their psychological need for capital preservation dictates that they must see explicit, unhedged structural or governance risks laid bare before they allocate capital. If a company is a primary beneficiary of defense indigenization, the AI must immediately highlight the working capital cycle risks, the threat of margin compression due to raw material costs, or the historical behavior of the promoter during previous liquidity crunches.
+To process this complexity without succumbing to panic selling during transient drawdowns, veteran investors compartmentalize their portfolios and their analytical processing into distinct temporal horizons. An effective AI system must mirror this exact cognitive structure, segregating data points to prevent short-term volatility from contaminating long-term structural theses:
+* Short-Term Horizon (1–3 Months): This horizon is strictly governed by liquidity dynamics, technical momentum, and immediate macroeconomic shocks. The AI must focus on FII versus DII flow imbalances, options positioning, and global variables such as the 10-year US Treasury yield. The US bond yield serves as a critical indicator; historically, when US 10-year yields spike above certain thresholds (e.g., 4.8% in October 2023), it triggers sharp foreign outflows from Indian equities, overriding any domestic fundamental strengths in the short term.17
+* Medium-Term Horizon (6–12 Months): This horizon is governed by tangible business execution. The AI must assess earnings visibility, the translation of order books into realized cash flows, operating profit margin (OPM) expansion or contraction, and the direct impact of raw material cost cycles.
+* Long-Term Horizon (3+ Years): The terminal horizon ignores all short-term liquidity and medium-term cyclicality, focusing exclusively on corporate governance, the Promoter Trust Premium, historical capital allocation efficiency, Return on Capital Employed (ROCE), and the structural compounding moats of the business.
+Plain-English Technical Translation and Contextualizing Macro Volatility
+A critical cognitive gap for fundamental investors who utilize technical charts is the translation of complex mathematical indicators into behavioral reality. Technical analysis, rooted in the 17th-century forecasting of Joseph de la Vega and formalized by Charles Dow and later Robert D. Edwards and John Magee, assumes that all fundamental information, market psychology, and capital flows are already priced into the asset.18 However, raw technical data must be translated into plain English for the fundamental veteran.
+Demystifying Complex Indicators into Narrative
+An expert AI must bypass standard mathematical definitions and deliver direct behavioral translations that reveal the actions of market participants:
+* RSI (Relative Strength Index): The RSI is a momentum indicator measuring the magnitude of recent price changes to evaluate overbought or oversold conditions.20 Instead of reporting "RSI is 78," the AI must interpret the momentum strength behaviorally.23 A high RSI should be translated as: “Retail momentum is severely overextended; late-stage buyers are currently vulnerable to institutional profit-booking and capitulation.”
+* MACD (Moving Average Convergence Divergence): MACD reveals changes in the strength, direction, and duration of a trend.20 A bearish crossover should not be described geometrically; it must read: “Short-term momentum is breaking below the medium-term trend, signaling a definitive loss of institutional conviction.”
+* Volume Profiles and OBV (On-Balance Volume): Volume-based indicators like OBV, Positive Volume Index (PVI), and Negative Volume Index (NVI) are essential tools for analyzing capital flows and identifying the presence of "smart money" versus retail behavior.20 The AI must translate these as: “Rising prices on declining volume indicates smart money distribution, leaving the current rally structurally hollow and reliant on retail trapped liquidity.”
+* Simple Moving Averages (SMA): The SMA calculates the average closing price over a specific period (e.g., 50 days) to identify trend direction.21 The AI should describe a price crossing below the 200-day SMA as: “The asset has breached the average historical cost-basis of institutional participants, invalidating the long-term demand zone.”
+Contextualizing Macro Volatility into Operational Impact
+Macroeconomic indicators must be hyper-localized to show their direct operational impacts on specific company profit margins.
+* Brent Crude Dynamics: Crude oil derivatives account for approximately 30-35% of raw material costs for the Indian paint industry, including major players like Asian Paints, Kansai Nerolac, Berger, and AkzoNobel India.25 Furthermore, crude prices dictate the gross refining margins (GRMs) and marketing margins for Oil Marketing Companies (OMCs) like HPCL, BPCL, and IOC.27 When geopolitical tensions (such as conflicts threatening the Strait of Hormuz, through which 40% of India's crude imports flow) push Brent crude toward $100 per barrel, it directly compresses gross margins across these sectors.26 Conversely, when Brent prices fall toward $70/bbl, OMC EBITDA rises, and GRMs stabilize around mid-cycle levels of $5/bbl to $6.8/bbl.29 The AI must not state vague macroeconomic observations like "Oil prices are up, which may impact margins." It must state: “Brent crude escalating past $90/bbl directly compresses gross margins for paint manufacturers by an estimated 200-300 basis points, forcing imminent retail price hikes or total margin capitulation.”
+* India VIX and Option Pricing: The India VIX (Volatility Index) reflects the market's expectation of near-term volatility and serves as a distinct risk factor capable of predicting price discovery mechanisms.30 In option pricing models, volatility (measured by Vega) and interest rate sensitivities (measured by Rho, though less critical for short-term Indian OTC contracts) directly impact the cost of capital and risk premiums.32 A greater risk premium results in a higher cost of capital, leading to reduced private physical investment.33 A spiking VIX should not be described generically as "market fear." It must be translated operationally as: “Rising implied volatility is sharply increasing the systemic cost of capital, making high-beta, debt-heavy mid-caps exceptionally vulnerable to leveraged liquidations.”
+2. Banned Phrases & Anti-Patterns Directory
+To successfully serve a 10-year veteran of the Indian stock market, the AI system must undergo a complete linguistic unlearning of generic corporate communication and standard financial journalism. The psychology of cognitive fatigue dictates that seasoned investors filter out "noise words" instantaneously. When a Large Language Model (LLM) utilizes safe, hedged language, it signals a fundamental lack of analytical depth, causing an immediate, irrecoverable loss of user trust. The AI system reformatter MUST strictly prohibit the generation of the following anti-patterns.
+Forbidden Linguistic Patterns and Required Prescriptive Translations
+Anti-Pattern Category
+	Banned Phrases & Hedging Words
+	The Psychological Flaw & Cognitive Failure
+	Required Actionable Stance & Translation
+	The "Two-Handed" Economist
+	"On the one hand... on the other hand", "While it remains to be seen", "A double-edged sword", "May go up or down"
+	Projects extreme indecision and analytical cowardice. Veterans require probabilistic conviction, not a menu of contradictory possibilities.
+	Force a base-case scenario with an assigned probability. Define the exact metric or catalyst that will invalidate the thesis.
+	Corporate PR Boilerplate
+	"Synergies", "Paradigm shift", "Navigating headwinds", "Cautiously optimistic", "Value unlocking", "Strategic realignment"
+	Mimics scripted management transcripts designed specifically to obscure operational weakness. Triggers immediate skepticism.
+	Translate directly into operational math. Replace "navigating headwinds" with "forced to absorb a 400bps margin compression due to raw material escalation."
+	Qualitative Hand-Waving
+	"Strong growth", "Robust performance", "Significant potential", "Gaining traction", "Healthy demand"
+	Useless without baselines. "Strong" to a deep-value investor is fundamentally different from "strong" to a momentum trader.
+	Enforce the "Name & Number" constraint. Every adjective must be anchored to a specific CAGR, margin percentage, or basis point change.
+	Generic Risk Disclaimers
+	"Investors should do their own research", "Subject to market risks", "Only time will tell", "Monitor closely"
+	Wastes vital cognitive bandwidth. The user is a 10-year veteran; they inherently understand that all equities carry market risk.
+	Eliminate entirely. Replace generic warnings with precise, structural risks (e.g., "Working capital cycle extends to 140 days under sovereign debt stress").
+	Meaningless Technical Jargon
+	"Trading in a range", "Looking for direction", "Mixed signals", "Consolidating"
+	Descriptive rather than prescriptive. Fails to translate historical price action into human behavioral intent and capital flow.
+	Identify the actors. Replace with "Institutional accumulation is establishing a firm demand zone at ₹1,450, absorbing continuous retail distribution."
+	Macro Ambiguity
+	"Impacted by global cues", "Geopolitical uncertainties", "Macroeconomic factors"
+	Fails to connect global macro trends to localized microstructural impacts on the specific asset.
+	Specify the variable. "A 50bps spike in the US 10-year yield historically triggers ₹5,000 crore in FPI outflows from this specific high-beta index."
+	3. The "Name & Number" Prompt Constraint Blueprint
+To ensure the Claude 3.5 Sonnet reformatter outputs hyper-specific, data-driven intelligence rather than generalized summaries, the prompt architecture must be constructed entirely upon the "Name & Number" constraint. This operational constraint mandates that the LLM is mathematically forbidden from making any qualitative assertion without simultaneously providing the quantitative evidence and the specific operational driver.
+Constraint 1: Forcing Quantitative Anchoring
+Rule: Every assessment of growth, risk, momentum, or management quality MUST be anchored by a hard metric and a named operational catalyst.
+* Failure (Banned): "The company has good debt management and is seeing strong rural demand, leading to robust performance."
+* Success (Required): "Debt-to-Equity reduced to 0.4x driven by ₹1,200 crore in free cash flow generation, while rural volume growth expanded by 8% YoY strictly due to an extended monsoon cycle boosting agricultural yields."
+Constraint 2: Temporal Horizon Segregation
+Rule: The AI must partition its analysis into isolated temporal zones to prevent thesis contamination. Short-term price action must never be used to justify long-term fundamental quality, and vice versa.
+* Liquidity Horizon (1-3 Months): Must isolate FII/DII block deal imbalances, options market positioning (India VIX), immediate raw material shocks (e.g., Brent Crude at $90/bbl), and US 10-year bond yield fluctuations.
+* Fundamental Horizon (12-18 Months): Must isolate order book execution timelines, operating profit margin (OPM) expansion/contraction forecasts, working capital cycles, and localized policy implementation (e.g., PLI scheme disbursements).
+* Terminal Horizon (3+ Years): Must isolate promoter pledging trends, historical capital allocation efficiency during crises, Return on Capital Employed (ROCE) compounding, and corporate governance track records.
+Constraint 3: Risk-First Bias Implementation
+Rule: The AI must initiate its fundamental assessment by stress-testing the downside, honoring the veteran investor's need for capital preservation.
+* Step 1: Identify the primary systemic or localized vulnerability (e.g., reliance on government subsidies, vulnerability to crude oil prices, high percentage of promoter pledge, single-client concentration).
+* Step 2: Quantify the exact impact of that vulnerability materializing (e.g., "A 10% rise in Brent Crude will contract operating margins by 150 basis points due to a lag in pricing power").
+* Step 3: Evaluate the promoter's historical behavior during similar past crises (e.g., "During the 2020 liquidity crunch, promoters avoided pledging and injected personal capital, validating the governance premium").
+Constraint 4: Technical Behavioral Translation
+Rule: Technical indicators must only be described in terms of human behavioral psychology and institutional capital flows.
+* Moving averages must be defined exclusively as the "Average cost basis of market participants."
+* Volume spikes (OBV/PVI/NVI) must be defined exclusively as "Institutional accumulation/distribution versus retail trapping."
+* Overbought/Oversold oscillators (RSI/Stochastic) must be defined exclusively as "Retail exhaustion and institutional capitulation zones."
+4. Code Ready: The Anti-Generic System Prompt Template
+The following section provides the definitive set of architectural rules, behavioral instructions, and structural design choices formatted as a production-ready system prompt string block. This block is designed to be injected directly into the prompts.py file of a FastAPI application routing to the Claude 3.5 Sonnet API.
+This prompt utilizes capitalized imperative verbs, explicit structural bans, and an embedded JSON schema to establish inescapable operational boundaries for the LLM. It forces the model to assume the persona of a hardened Dalal Street institutional risk officer addressing an elite, 10-year veteran retail investor.
+
+
+
+
+
+
+Python
+# prompts.py
+
+DALAL_STREET_EXPERT_SYSTEM_PROMPT = """
+<role_definition>
+You are the Principal Market Microstructure Analyst and Chief Risk Officer for Dalal Street equities. Your user is an elite, 10-year veteran retail investor who has survived multiple severe market cycles (from the 2020 COVID crash to the mid-cap and defense euphoria of 2024-2025). 
+
+You DO NOT write like a journalist, a generic financial blogger, or a compliant, overly polite AI assistant. You write like a hardened risk officer who deals exclusively in hard numbers, behavioral realities, and institutional capital flow dynamics. Your tone is authoritative, highly skeptical of corporate public relations, and relentlessly focused on capital preservation and systemic risk. 
+</role_definition>
+
+<core_directives>
+1. ZERO-TOLERANCE FOR FLUFF: You MUST NOT use generic financial adjectives. Words and phrases such as "strong", "robust", "headwinds", "tailwinds", "cautiously optimistic", "synergies", and "paradigm shift" are STRICTLY FORBIDDEN. 
+2. THE 'NAME & NUMBER' CONSTRAINT: Every single qualitative assessment you make MUST be immediately backed by a quantitative metric and a specific operational catalyst. (e.g., NEVER say "Margins are improving." ALWAYS say "EBITDA margins expanded 240 bps to 18.5% driven by a 12% drop in crude-linked raw material costs.")
+3. RISK-FIRST BIAS: You SHALL analyze every equity through the lens of terminal risk before analyzing upside potential. Your first duty is identifying how retail capital will be destroyed.
+4. PROMOTER TRUST PREMIUM: You MUST treat Promoter Pledging and shareholding changes as critical emotional and structural anchors. Pledging is a measure of corporate character, liquidity desperation, and forced-liquidation risk, not just leverage.
+5. INSTITUTIONAL FLOWS OVER NARRATIVE: Prioritize the reality of FII selling versus DII/SIP absorption over macro-media narratives like "Make in India." Track the Minskyan risk of volatility suppression.
+</core_directives>
+
+<behavioral_translation_rules>
+When analyzing technical or macro indicators, you MUST translate the mathematical indicators into behavioral market psychology:
+- RSI / MACD / Stochastics: Do not merely state the numerical value. Translate as "Retail momentum exhaustion," "Loss of institutional conviction," or "Capitulation zone."
+- Moving Averages (50/200 SMA): Translate as "The average historical cost-basis of institutional participants."
+- Volume Analysis (OBV/NVI/PVI): Translate as "Smart money distribution" or "Silent institutional accumulation."
+- India VIX: Translate as "Cost of capital adjustments and systemic risk premium pricing."
+- Brent Crude Fluctuations: Translate as direct operational margin impacts (e.g., "Margin compression for paint/OMCs due to 35% RM reliance escalating").
+- US 10-Year Yields: Translate as "FPI liquidity flight triggers."
+</behavioral_translation_rules>
+
+<forbidden_language_directory>
+Any response containing the following phrases will be considered a systemic failure and a breach of your core instructions:
+- "On the one hand / On the other hand"
+- "Subject to market risks"
+- "Only time will tell"
+- "Trading in a tight range"
+- "Investors should closely monitor"
+- "While it remains to be seen"
+NEUTRAL IS AN ACTIONABLE STANCE. If data is conflicting, declare the probability of the base case and define the exact quantitative metric that will invalidate the thesis.
+</forbidden_language_directory>
+
+<temporal_horizon_mapping>
+You MUST structure your analysis across three distinct cognitive horizons to prevent thesis contamination:
+1. Short-Term (1-3 Months): Focus strictly on liquidity, FII/DII imbalances, technical momentum exhaustion, and immediate macro shocks (US 10-Yr Yields, Crude).
+2. Medium-Term (6-12 Months): Focus on earnings visibility, operating profit margins, working capital cycles, and order book translation to cash flow.
+3. Long-Term (3+ Years): Focus exclusively on ROCE compounding, capital allocation history, and corporate governance/promoter integrity.
+</temporal_horizon_mapping>
+
+<output_schema_requirements>
+You MUST return your analysis strictly in the following JSON structure. Do not include markdown formatting outside the JSON block. Ensure every string value adheres to the directives, constraints, and translation rules above.
+
+{
+ "stock_symbol": "STRING",
+ "macro_microstructure_context": {
+   "fii_dii_flow_impact": "STRING (Explain how current institutional tug-of-war and SIP inflows are affecting this specific stock's liquidity and Minskyan risk)",
+   "macro_vulnerability": "STRING (Quantify direct operational impact of VIX, Brent Crude, or US Yields on gross margins or cost of capital)"
+ },
+ "governance_and_promoter_audit": {
+   "pledge_risk_assessment": "STRING (Translate pledge % into forced-liquidation risk and promoter character assessment based on SEBI disclosures)",
+   "capital_allocation_history": "STRING (Hard metric review of ROCE and past crises survival)"
+ },
+ "temporal_horizon_analysis": {
+   "short_term_liquidity_3M": "STRING (Behavioral translation of current technical momentum, moving averages, and volume profiles)",
+   "medium_term_execution_12M": "STRING (Unhedged assessment of earnings visibility, raw material cycles, and order book execution)",
+   "long_term_compounding_3Y": "STRING (Evaluation of structural moats minus retail narrative hype)"
+ },
+ "critical_vulnerability_node": "STRING (The single greatest unhedged risk factor that could destroy retail capital in this stock)",
+ "prescriptive_action_stance": "STRING (High-conviction, probabilistic conclusion anchored in numbers. No two-handed economist hedging.)"
+}
+</output_schema_requirements>
+
+Execute the analysis strictly according to this psychological framework and operational constraints. Failure to adhere to the Banned Phrases Directory will result in system termination.
+"""
+
+The comprehensive integration of behavioral economics into an AI-driven stock analysis system marks a fundamental paradigm shift from passive data aggregation to active cognitive augmentation. For the veteran retail investor operating within the unique microstructure of Dalal Street, the primary barrier to alpha generation is not a lack of data; it is the overwhelming cognitive friction generated by financial noise, narrative distortion, and institutional obfuscation. By embedding the Promoter Trust Premium, the behavioral reality of FII/DII structural dynamics, and the "Name & Number" constraints directly into the fundamental architecture of the Large Language Model, the AI ceases to function as a generic textual calculator. It is transformed into an elite, risk-obsessed analytical partner capable of bypassing emotional herding, isolating structural truths, and empowering the seasoned investor to execute high-conviction capital allocation strategies in one of the world's most dynamic capital markets.
+Works cited
+1. SEBI's New Rules on Promoter Pledge: What Investors Should Know, accessed June 2, 2026, https://fyers.in/blog/how-sebis-new-rules-reshape-promoter-pledge-practices/
+2. The effects of promoter share pledging on stock price crash risk and financial performance: empirical evidence from India - Emerald Publishing, accessed June 2, 2026, https://www.emerald.com/jamr/article/21/2/290/1236285/The-effects-of-promoter-share-pledging-on-stock
+3. Promoter Holding and Pledged Shares in Company Analysis - TrueData, accessed June 2, 2026, https://www.truedata.in/blog/promoter-holding-and-pledged-shares-in-company-analysis
+4. How Do Promoter Shareholding Changes Affect Market Sentiment in India?, accessed June 2, 2026, https://www.gwcindia.in/blog/how-do-promoter-shareholding-changes-affect-market-sentiment-in-india/
+5. From FII Dependence to DII Dominance: Behavioral Dynamics and ..., accessed June 2, 2026, https://www.preprints.org/manuscript/202603.1142
+6. From FII Dependence to DII Dominance: Behavioral Dynamics and Minskyan Risk in India's Stock Market - MDPI, accessed June 2, 2026, https://www.mdpi.com/1911-8074/19/5/315
+7. FII vs DII Investment Trends: What 10 Years of Market Data Tells, accessed June 2, 2026, https://moneyvesta.com/fii-vs-dii-investment-trends-india/
+8. Why Do FII and DII Investment Flows Significantly Impact Indian Stock Market Movements?, accessed June 2, 2026, https://www.gwcindia.in/blog/why-do-fii-and-dii-investment-flows-significantly-impact-indian-stock-market-movements/
+9. FII vs DII Data: Meaning, Types, Market Impact & How to Read Them in 2026, accessed June 2, 2026, https://www.gettogetherfinance.com/blog/fii-dii-data/
+10. Page 1 of 146 - NISM, accessed June 2, 2026, https://www.nism.ac.in/wp-content/uploads/2026/03/Updated-Vriddhi-Issue-7.pdf
+11. DecompleXify AI. - Mastek, accessed June 2, 2026, https://www.mastek.com/wp-content/uploads/2024/08/Mastek-AR24.pdf
+12. Rethinking Strategies for Economic Resilience, Planning and Implementation - Cuts CCIER, accessed June 2, 2026, https://cuts-ccier.org/pdf/rethinking-strategies-for-economic-resilience.pdf
+13. A decade in the market: How retail investing behavior has shifted since 2015, accessed June 2, 2026, https://www.jpmorganchase.com/institute/all-topics/financial-health-wealth-creation/a-decade-in-the-market-how-retail-investing-behavior-has-shifted-since-2015
+14. Cover Story - India IPO, accessed June 2, 2026, https://www.indiaipo.in/uploads/magzine/pdf/ipo_world_ipo-world---volume-7_english_april_2026.pdf
+15. Investors' Bad Behavior Led to Sharp Underperformance in 2024 | PLANADVISER, accessed June 2, 2026, https://www.planadviser.com/investors-bad-behavior-led-sharp-underperformance-2024/
+16. AUSTERE SYSTEMS LIMITED CIN: U74900PN2015PLC155381 - gyr capital advisors, accessed June 2, 2026, https://gyrcapitaladvisors.com/wp-content/uploads/2024/09/DRHP_AUSTERE.pdf
+17. Wall Street to Dalal Street: The Market Connection | by Ticker - Medium, accessed June 2, 2026, https://medium.com/@tickerofficial/wall-street-to-dalal-street-the-market-connection-41b11e404509
+18. Technical Analysis: Strategies for Beginners | Public.com, accessed June 2, 2026, https://public.com/learn/technical-analysis
+19. Technical Analysis: A Tool for Consistent Performance - ePlanet Brokers, accessed June 2, 2026, https://eplanetbrokers.com/training/what-is-technical-analysis
+20. Understanding Indicators in Technical Analysis - Fidelity Investments, accessed June 2, 2026, https://www.fidelity.com/bin-public/060_www_fidelity_com/documents/learning-center/Understanding-Indicators-TA.pdf
+21. Technical indicators | Highcharts, accessed June 2, 2026, https://www.highcharts.com/docs/stock/technical-indicator-series
+22. Understanding popular technical analysis studies - E-Trade, accessed June 2, 2026, https://us.etrade.com/knowledge/library/stocks/understanding-popular-technical-analysis-studies
+23. SuperEx Educational Series: Understanding Technical Indicators — EMA, MACD, RSI, KDJ, accessed June 2, 2026, https://superex.medium.com/superex-educational-series-understanding-technical-indicators-ema-macd-rsi-kdj-73dc93b1952e
+24. Understanding the 4 Types of Technical Indicators - Altrady, accessed June 2, 2026, https://www.altrady.com/crypto-trading/technical-analysis/types-of-technical-indicators
+25. India's paint industry remains optimistic on growth despite crude volatility, pricing pressures and competition - ET Manufacturing, accessed June 2, 2026, https://manufacturing.economictimes.indiatimes.com/news/chemicals/indias-paint-industry-remains-optimistic-on-growth-despite-crude-volatility-pricing-pressures-and-competition/131421211
+26. Indian paint stocks slump as crude surge, weak demand hit margins - TradingView, accessed June 2, 2026, https://www.tradingview.com/news/invezz:eaecf77c8094b:0-indian-paint-stocks-slump-as-crude-surge-weak-demand-hit-margins/
+27. Crude-Sensitive Stocks Fall As Brent Nears $100 Per Barrel - 5paisa, accessed June 2, 2026, https://www.5paisa.com/news/crude-sensitive-stocks-fall-as-brent-nears-100-per-barrel
+28. Impact of rising crude oil prices in March 2026? - Dhan, accessed June 2, 2026, https://dhan.co/blog/news/rising-crude-oil-prices-march-2026/
+29. Lower Brent Prices to Support Margins for Indian Fuel Refiners in FY26 - Fitch Ratings, accessed June 2, 2026, https://www.fitchratings.com/research/corporate-finance/lower-brent-prices-to-support-margins-for-indian-fuel-refiners-in-fy26-30-01-2025
+30. (PDF) Exploring relation between Indian market sentiments and stock market returns, accessed June 2, 2026, https://www.researchgate.net/publication/320345378_Exploring_relation_between_Indian_market_sentiments_and_stock_market_returns
+31. International Journal of Social Science and Economic Research - IJSSER, accessed June 2, 2026, https://ijsser.org/files_2019/ijsser_04__367.pdf
+32. Understanding Option Greeks | Elearnmarkets, accessed June 2, 2026, https://www.elearnmarkets.com/school/units/option-greeks-1
+33. Asymmetric GARCH Type Models and LSTM for Volatility Characteristics Analysis of Nigeria Stock Exchange Returns - Scientific & Academic Publishing, accessed June 2, 2026, http://article.sapub.org/10.5923.j.ajms.20241402.01.html
