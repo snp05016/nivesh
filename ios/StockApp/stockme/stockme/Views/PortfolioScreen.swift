@@ -161,6 +161,7 @@ struct PortfolioScreen: View {
                             HStack(spacing: 0) {
                                 TabNoteButton(title: "Holdings", isSelected: selectedTab == 0) { selectedTab = 0 }
                                 TabNoteButton(title: "Watchlist", isSelected: selectedTab == 1) { selectedTab = 1 }
+                                TabNoteButton(title: "Journal", isSelected: selectedTab == 2) { selectedTab = 2 }
                             }
                             .banknoteCard()
                             .padding(.horizontal, Theme.screenPadding)
@@ -190,8 +191,13 @@ struct PortfolioScreen: View {
                                     }
                                 }
                                 .padding(.horizontal, Theme.screenPadding)
-                            } else {
+                            } else if selectedTab == 1 {
                                 watchlistTabContent
+                            } else if selectedTab == 2 {
+                                if let user = authManager.currentUser {
+                                    TradeJournalScreen(userId: user.userId)
+                                        .padding(.horizontal, Theme.screenPadding)
+                                }
                             }
 
                             Spacer(minLength: 100)

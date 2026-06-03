@@ -1067,3 +1067,213 @@ struct AdvisorInsightRow: Codable, Identifiable {
         case transcriptSource = "transcript_source"
     }
 }
+
+// MARK: - Earnings Dashboard Models (Sections 1–5)
+
+struct EarningsResult: Codable, Identifiable {
+    var id: String { ticker + quarter }
+    let ticker: String
+    let companyName: String
+    let quarter: String          // e.g. "Q4FY26"
+    let resultDate: String       // "yyyy-MM-dd"
+    let marketCap: String        // "large_cap" | "mid_cap" | "small_cap" | "nifty50"
+    let revenue: Double          // in Crores
+    let revenuePrev: Double      // same period last year
+    let netProfit: Double        // in Crores
+    let netProfitPrev: Double
+    let grossProfit: Double?
+    let grossProfitPrev: Double?
+    let eps: Double?
+    let epsPrev: Double?
+    let ltp: Double
+    let changePercent: Double
+    let isConsolidated: Bool
+    let reportedAt: String?      // ISO timestamp
+
+    enum CodingKeys: String, CodingKey {
+        case ticker, quarter, revenue, ltp
+        case companyName = "company_name"
+        case resultDate = "result_date"
+        case marketCap = "market_cap"
+        case revenuePrev = "revenue_prev"
+        case netProfit = "net_profit"
+        case netProfitPrev = "net_profit_prev"
+        case grossProfit = "gross_profit"
+        case grossProfitPrev = "gross_profit_prev"
+        case eps, epsPrev = "eps_prev"
+        case changePercent = "change_percent"
+        case isConsolidated = "is_consolidated"
+        case reportedAt = "reported_at"
+    }
+
+    var revenueGrowthPct: Double {
+        guard revenuePrev > 0 else { return 0 }
+        return ((revenue - revenuePrev) / revenuePrev) * 100
+    }
+    var netProfitGrowthPct: Double {
+        guard netProfitPrev != 0 else { return 0 }
+        return ((netProfit - netProfitPrev) / abs(netProfitPrev)) * 100
+    }
+    var netProfitMarginPct: Double {
+        guard revenue > 0 else { return 0 }
+        return (netProfit / revenue) * 100
+    }
+    var parsedResultDate: Date {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
+        return f.date(from: resultDate) ?? Date()
+    }
+    var parsedReportedAt: Date? {
+        guard let s = reportedAt else { return nil }
+        let f = ISO8601DateFormatter()
+        return f.date(from: s)
+    }
+}
+
+struct EarningsProgressResponse: Codable {
+    let reported: Int
+    let total: Int
+    let yoyRevenueGrowthPct: Double?
+    let yoyNetProfitGrowthPct: Double?
+    let fetchedAt: String
+    enum CodingKeys: String, CodingKey {
+        case reported, total
+        case yoyRevenueGrowthPct = "yoy_revenue_growth_pct"
+        case yoyNetProfitGrowthPct = "yoy_net_profit_growth_pct"
+        case fetchedAt = "fetched_at"
+    }
+}
+
+struct EarningsCalendarDayResponse: Codable {
+    let date: String
+    let results: [EarningsResult]
+    let count: Int
+}
+
+struct EarningsFeedResponse: Codable {
+    let results: [EarningsResult]
+    let fetchedAt: String
+    enum CodingKeys: String, CodingKey {
+        case results
+        case fetchedAt = "fetched_at"
+    }
+}
+
+struct EarningsEstimate: Codable, Identifiable {
+    var id: String { ticker }
+    let ticker: String
+    let companyName: String
+    let revenueEstimate: Double?
+    let revenueActual: Double?
+    let netProfitEstimate: Double?
+    let netProfitActual: Double?
+    let epsEstimate: Double?
+    let epsActual: Double?
+    enum CodingKeys: String, CodingKey {
+        case ticker
+        case companyName = "company_name"
+        case revenueEstimate = "revenue_estimate"
+        case revenueActual = "revenue_actual"
+        case netProfitEstimate = "net_profit_estimate"
+        case netProfitActual = "net_profit_actual"
+        case epsEstimate = "eps_estimate"
+        case epsActual = "eps_actual"
+    }
+    var revenueSurprisePct: Double? {
+        guard let est = revenueEstimate, let act = revenueActual, est != 0 else { return nil }
+        return ((act - est) / abs(est)) * 100
+    }
+    var netProfitSurprisePct: Double? {
+        guard let est = netProfitEstimate, let act = netProfitActual, est != 0 else { return nil }
+        return ((act - est) / abs(est)) * 100
+    }
+}
+
+// MARK: - Pre-IPO / Unlisted Shares Models (Section 6)
+
+struct UnlistedCompany: Identifiable {
+    let id: String
+    let name: String
+    let sector: String
+    let ltp: Double
+    let prevLtp: Double
+    let description: String
+    let keyMetrics: [String: String]
+    var isBookmarked: Bool = false
+
+    var changeAbs: Double { ltp - prevLtp }
+    var changePct: Double { prevLtp > 0 ? ((ltp - prevLtp) / prevLtp) * 100 : 0 }
+}
+
+struct OTCAdvisory: Identifiable {
+    let id: String
+    let companyName: String
+    let entryPrice: Double
+    let targetPrice: Double
+    let stopLoss: Double
+    let rationale: String
+    let isPremium: Bool
+}
+
+// MARK: - Expert Network Models (Section 7)
+
+struct MarketExpert: Identifiable {
+    let id: String
+    let name: String
+    let sebiRegId: String?
+    let yearsExperience: Int
+    let strategy: String          // e.g. "Harmonic Trading Strategy"
+    let focusTags: [String]       // e.g. ["Charts", "Currency", "Gold"]
+    let postCount: Int
+    let isVerified: Bool
+    let bio: String
+}
+
+struct ExpertPost: Identifiable {
+    let id: String
+    let expertId: String
+    let expertName: String
+    let content: String           // unhedged plain-english analysis
+    let ticker: String?
+    let chartImageUrl: String?
+    let publishedAt: Date
+    let likeCount: Int
+    let isPremium: Bool
+    var isLiked: Bool = false
+    var isBookmarked: Bool = false
+}
+
+// MARK: - Screener Bookmark
+
+struct ScreenerBookmark: Codable, Identifiable {
+    var id: String { presetKey }
+    let presetKey: String
+    let displayName: String
+    let savedAt: String
+}
+
+// MARK: - Post-Result Price Action (Section 5)
+
+struct PostResultMover: Codable, Identifiable {
+    var id: String { ticker }
+    let ticker: String
+    let companyName: String
+    let resultDate: String
+    let ltp: Double
+    let changePercent: Double
+    let volume: Int?
+    enum CodingKeys: String, CodingKey {
+        case ticker, ltp, volume
+        case companyName = "company_name"
+        case resultDate = "result_date"
+        case changePercent = "change_percent"
+    }
+}
+
+struct PostResultMoversResponse: Codable {
+    let movers: [PostResultMover]
+    let fetchedAt: String
+    enum CodingKeys: String, CodingKey {
+        case movers
+        case fetchedAt = "fetched_at"
+    }
+}

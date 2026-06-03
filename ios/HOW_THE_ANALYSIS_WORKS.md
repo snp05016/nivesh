@@ -77,7 +77,18 @@ They go back and forth to stress-test the investment idea.
 
 ---
 
-### Step 4 — The Portfolio Manager Makes the Final Call
+### Step 4 — The Risk Jury Reviews the Idea
+
+The proposed plan is then reviewed by a team of three risk analysts:
+- **Aggressive Analyst** looks for high-alpha (high growth) opportunities.
+- **Conservative Analyst** focuses on capital preservation (not losing money).
+- **Neutral Analyst** bridges the gap.
+
+They iterate on the idea until they are sure the risks are fully understood.
+
+---
+
+### Step 5 — The Portfolio Manager Makes the Final Call
 
 A senior AI reads everything — all the research, the debate, and the risk discussions — and gives you the final verdict. This is then formatted into the structured screen you see in the app.
 
@@ -90,36 +101,22 @@ The app uses **Claude 3.5 Sonnet** to apply strict **Indian Market Weighting**:
 
 ---
 
-## Superpowers — High-End Analysis
-
-The app now includes "Superpowers" to help you manage your portfolio more safely:
+## High-End Features
 
 ### 1. Risk Analysis Engine
 In your Assets tab, you'll see a **Portfolio Risk Card** with a 10-segment meter.
 - **Low Risk (1-4 segments):** Your portfolio is stable.
 - **Medium Risk (5-6 segments):** Balanced.
 - **High Risk (7-10 segments):** You might be over-exposed to volatile stocks.
-- **Correlation Warnings:** The app tells you if you own two stocks that move too similarly (e.g., owning too many banks), which increases your risk.
 
 ### 2. Red Flags System
 This monitors your portfolio for **Governance Risks**. It uses color-coded flags:
 - 🔴 **CRITICAL:** Auditor resignations, SEBI probes, or sudden CFO exits.
 - 🟡 **WARNING:** Promoter pledging increasing or suspicious signal flips.
-- 🔵 **WATCH:** Low AI confidence or minor data discrepancies.
+- 🔵 **WATCH:** Low AI confidence.
 
-### 3. Timing Insights
-On the Home screen, a **Timeframe Conflicts** banner will appear if a stock's short-term price movement doesn't match its long-term potential. This is how the app identifies **"BUY THE DIP"** opportunities.
-
-### 4. Trade Journal
-You can now log your trade decisions in the **Trade Journal** tab. It's designed to help you track your "psychology" — whether you bought because of **FOMO**, a **Contrarian** view, or high **Confidence**. Stamping these entries helps you learn from your mistakes over time.
-
----
-
-## What the AI Cannot Do
-
-- **It cannot predict the future.** It gives a probability-weighted opinion.
-- **It is not a SEBI-registered advisor.** Use this as one input, not the only one.
-- **Promoter data can lag.** While the AI tries its best, some financial data might be a few days behind.
+### 3. Trade Journal
+You can now log your trade decisions in the **Trade Journal** tab. It's designed to help you track your "psychology" — whether you bought because of **FOMO**, a **Contrarian** view, or high **Confidence**.
 
 ---
 

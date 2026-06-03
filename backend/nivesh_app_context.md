@@ -52,18 +52,18 @@ Three specialized agents run in parallel to gather raw intelligence:
 To prevent AI "echo chambers," the system enters a debate phase:
 - **Bull Researcher**: Makes the strongest possible case for capital appreciation.
 - **Bear Researcher**: Actively tries to invalidate the Bull case, focusing on structural risks.
-- **Iteration**: They challenge each other for 1 round to refine the "edges" of the investment thesis.
+- **Iteration**: They challenge each other for 1 round (or more) to refine the "edges" of the investment thesis.
 
 #### C. Synthesis & Proposal
 - **Research Manager**: Reads the entire debate and writes a balanced summary of disagreements.
 - **Trader**: Proposes a concrete Buy/Sell/Hold transaction with 3-month, 12-month, and 36-month target prices.
 
-#### D. The Risk Jury
-The Trader's proposal is reviewed by a 3-agent Risk Committee:
+#### D. The Risk Jury (Iterative Loop)
+The Trader's proposal is reviewed by a 3-agent Risk Committee in a circular loop:
 1.  **Aggressive Analyst**: Looks for high-alpha opportunities.
 2.  **Conservative Analyst**: Focuses on capital preservation.
 3.  **Neutral Analyst**: Bridges the gap.
-They debate the Trader's proposal for 1 round before passing it to the **Portfolio Manager** for the final "raw" verdict.
+They debate the proposal until the judge determines the risk is fully explored, before passing it to the **Portfolio Manager** for the final "raw" verdict.
 
 ### Step 3: Deterministic Reformatting & Indian Market Weighting (Sonnet 3.5)
 The raw multi-agent output is passed to Claude 3.5 Sonnet for final structuring. This phase uses a **Dual-Breakpoint Prompt Caching** strategy:
@@ -71,11 +71,16 @@ The raw multi-agent output is passed to Claude 3.5 Sonnet for final structuring.
 1.  **Breakpoint 1 (The Blueprint)**: Caches the `INDIAN_MARKET_SYSTEM_PROMPT` (Static Layer).
 2.  **Breakpoint 2 (Ticker History)**: Fetches and caches the last 15 analyses for that specific ticker, sorted by key for stable hash IDs (Volatile Context Layer).
 
-#### Applied Heuristics:
-- **Minskyan Tension Gauge**: Flags "hollow rallies" where DII (Domestic Institutional) buying is the sole support against large FII (Foreign Institutional) outflows.
-- **Promoter Stress Protocol**: Any promoter pledging > 30% is automatically elevated to a high-priority Bear Case point.
-- **Behavioral Translation**: Technical indicators are translated into human behavior (e.g., RSI < 30 is "Retail capitulation; institutional accumulation zone").
-- **Indian Market Sentiment**: Social buzz is treated as a **contrarian risk signal**. High retail euphoria reduces confidence scores.
+---
+
+## Advisor Intelligence — YouTube Harvest Engine
+
+A background CRON job runs the `advisor_harvester.py` to ingest expert sentiment.
+
+1.  **Transcript Extraction**: Fetches transcripts via YouTube API or local **Whisper large-v3** fallback (if captions are disabled).
+2.  **Fuzzy Ticker Matching**: Uses `rapidfuzz` to identify stocks mentioned in **Hinglish** commentary (e.g., "HDFC wala bank").
+3.  **Stance Extraction**: Haiku extracts the advisor's stance (BULLISH/BEARISH/NEUTRAL) and catalyst summaries.
+4.  **Consensus API**: The `/api/v1/portfolio/advisor-consensus` endpoint aggregates this data into "Sector Signals" and "Trending Tickers".
 
 ---
 
@@ -91,54 +96,24 @@ The raw multi-agent output is passed to Claude 3.5 Sonnet for final structuring.
 
 ---
 
-## Advisor Intelligence — YouTube Harvest Engine
-
-A background CRON job runs the `advisor_harvester.py` to ingest expert sentiment.
-
-1.  **Transcript Extraction**: Fetches transcripts from leading Indian financial YouTube channels (SOIC, Basant Maheshwari, etc.) using the YouTube API.
-2.  **Fuzzy Ticker Matching**: Uses `rapidfuzz` to identify stocks mentioned in **Hinglish** commentary.
-3.  **Stance Extraction**: Haiku extracts the advisor's stance (BULLISH/BEARISH/NEUTRAL) and catalyst summaries.
-4.  **Consensus API**: The `/api/v1/portfolio/advisor-consensus` endpoint aggregates this data into "Sector Signals" and "Trending Tickers".
-
----
-
-## The 3 Users
-
-| Username | Display Name |
-|---|---|
-| `saumya` | Saumya |
-| `nirav` | Nirav |
-| `ankur` | Ankur |
-
-All passwords `123`. Session stored in iOS `UserDefaults`.
-
----
-
-## Backend — All Endpoints (`backend/main.py`)
-
-Base URL: `http://192.168.1.97:8000`
-
-| Endpoint | Method | Description |
-|---|---|---|
-| `/login` | POST | Auth. Returns `{user_id, username, display_name}`. |
-| `/quick-info` | GET | Live price, 52w range, PE vs 3Y Avg, ASM/GSM status, Enriched News. |
-| `/analyze` | POST | Full AI analysis (Deep Research) with Signal Change detection. |
-| `/analyze/batch`| POST | Submit multiple tickers for Batch processing. |
-| `/portfolio/{u}` | GET | Holdings with live prices, P&L, and warning chips. |
-| `/morning-summary/{u}`| GET | AI daily brief with **Priority Items** (Alerts > Signal Flips). |
-| `/trade-journal` | POST/GET | Manage trade logs: action, price, reason, mood, outcome. |
-
----
-
 ## iOS App — 8 Tabs
 
-### Home
-- **Morning Brief Card**: Upgraded with **Priority Items** (Alerts > Signal changes).
-- **Indices & Sector Pulse**: Live market status with history-based reliability fallbacks.
+| Tab | View | Description |
+|---|---|---|
+| **Home** | `HomeScreen` | Morning Brief (Priority Items), Indices strip, Sector Pulse heatmap. |
+| **Directory** | `SearchScreen` | Bilingual search (खोज) with screener presets (Hidden Gems, Momentum). |
+| **Assets** | `PortfolioScreen` | Rupee-styled hero card, 10-segment risk meter, Red Flags system. |
+| **Alerts** | `AlertsScreen` | Manage price targets. Triggered alerts show on Home. |
+| **Archives** | `HistoryScreen` | Cached analysis reports with Signal Change diffs. |
+| **Compare** | `CompareScreen` | Side-by-side stock comparison (Price, P/E, Signal). |
+| **Registry** | `SettingsScreen` | User verification, App preferences, APNs registration. |
+| **Journal** | `TradeJournalScreen`| Log entry reasons, moods (FOMO/Contrarian), and outcomes. |
 
-### Assets (Portfolio)
-- **Portfolio Hero**: Rupee-styled ₹2000 card showing total valuation and daily P&L.
-- **Risk & Red Flags**: 10-segment risk meter and ASM/GSM surveillance chips.
+---
 
-### Journal
-- **Trade Ledger**: Log entry reasons, moods (FOMO/Contrarian), and outcomes.
+## Reliability Features
+
+- **yfinance Retry Logic**: 3-attempt retry with backoff.
+- **NSE Session Bootstrap**: Direct NSE API access for ASM/GSM lists.
+- **History Fallbacks**: Indices/Sectors use history data if `info` fails.
+- **BSE Fallback**: Automatic failover to BSE (`.BO`) for missing financial data.

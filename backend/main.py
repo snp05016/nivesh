@@ -49,7 +49,7 @@ if FPDF2_AVAILABLE:
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 from prompts import INDIAN_MARKET_SYSTEM_PROMPT, NEWS_ANALYST_PERSONA
-from database import init_db, get_session, save_analysis, get_recent_analyses, get_user_by_credentials, Portfolio, User, AnalysisHistory, SignalEvent, get_analysis_for_date, get_all_ticker_history, PriceTarget, TradeJournal, DeviceToken, AdvisorInsight, NewsArticle, YouTubeVideo, PortfolioValuationHistory, PKScreenerSignal, create_access_token, verify_access_token, is_admin, promote_initial_admins
+from database import init_db, get_session, save_analysis, get_recent_analyses, get_user_by_credentials, Portfolio, User, AnalysisHistory, SignalEvent, get_analysis_for_date, get_all_ticker_history, PriceTarget, TradeJournal, DeviceToken, AdvisorInsight, NewsArticle, YouTubeVideo, PortfolioValuationHistory, PKScreenerSignal, MacroEvent, NetWorthLedger, create_access_token, verify_access_token, is_admin, promote_initial_admins
 
 # Import specific agent factories and states from core
 from tradingagents.agents import create_bull_researcher, create_bear_researcher, create_research_manager, create_trader, create_aggressive_debator, create_neutral_debator, create_conservative_debator, create_portfolio_manager, create_msg_delete
@@ -64,6 +64,126 @@ load_dotenv()
 # Model Identifiers
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
 SONNET_MODEL = "claude-sonnet-4-6"
+DEEPSEEK_MODEL = "deepseek-v4-flash"  # Tier 1 — bulk agent tasks
+
+# ---------------------------------------------------------------------------
+# DeepSeek OpenAI-compatible client helper
+# Endpoint: https://api.deepseek.com/v1  —  uses DEEPSEEK_API_KEY
+# All calls include exponential backoff (max 3 retries, base 2 s, timeout 60 s)
+# ---------------------------------------------------------------------------
+import openai as _openai_lib
+
+def _get_deepseek_client() -> "_openai_lib.OpenAI":
+    """Return a lazily-constructed DeepSeek OpenAI-compatible client."""
+    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+    return _openai_lib.OpenAI(
+        api_key=api_key,
+        base_url="https://api.deepseek.com/v1",
+        timeout=60.0,
+    )
+
+
+def _deepseek_chat(
+    messages: list[dict],
+    *,
+    max_tokens: int = 512,
+    temperature: float = 0.3,
+) -> str:
+    """
+    Call DeepSeek V4 Flash via OpenAI-compatible API.
+    V4 Flash is a thinking model — reasoning_content consumes max_tokens before
+    content is generated.  We inflate the requested max_tokens to leave room for
+    internal reasoning, then return content (or reasoning_content as fallback).
+    Retries up to 3 times with exponential backoff (2 s, 4 s, 8 s).
+    """
+    import time as _t
+    client = _get_deepseek_client()
+    last_exc: Exception | None = None
+    # Thinking models burn tokens on reasoning before producing output.
+    # Allocate 5× the requested output tokens so reasoning doesn't starve content.
+    effective_max = max(max_tokens * 5, 512)
+    for attempt in range(3):
+        try:
+            response = client.chat.completions.create(
+                model=DEEPSEEK_MODEL,
+                messages=messages,
+                max_tokens=effective_max,
+                temperature=temperature,
+            )
+            choice = response.choices[0]
+            content = choice.message.content or ""
+            # If content is empty (all tokens went to reasoning), fall back to
+            # reasoning_content so callers still get useful output.
+            if not content.strip():
+                reasoning = getattr(choice.message, "reasoning_content", None) or ""
+                if reasoning.strip():
+                    content = reasoning
+            return content
+        except Exception as exc:
+            last_exc = exc
+            print(f"[DeepSeek] Attempt {attempt + 1}/3 failed: {exc}")
+            if attempt < 2:
+                _t.sleep(2.0 * (2 ** attempt))
+    raise RuntimeError(f"DeepSeek call failed after 3 retries: {last_exc}") from last_exc
+
+# ---------------------------------------------------------------------------
+# Indian Numbering System — format_indian_currency
+# All monetary outputs MUST use Lakhs/Crores. Never Millions/Billions.
+# ---------------------------------------------------------------------------
+
+def format_indian_currency(value: float | int | None, *, symbol: str = "₹") -> str:
+    """
+    Format a numeric INR value using the Indian numbering system.
+
+    Rules:
+      - value < 0: prefix a minus sign, then format the absolute value
+      - 0 ≤ |value| < 1,00,000   → "₹X" (plain, with Indian commas)
+      - 1,00,000 ≤ |value| < 1,00,00,000 (< 1 Cr) → "₹X.XX Lakhs"
+      - |value| ≥ 1,00,00,000   → "₹X.XX Crores"
+
+    Examples:
+      format_indian_currency(0)           → "₹0"
+      format_indian_currency(75000)       → "₹75,000"
+      format_indian_currency(150000)      → "₹1.50 Lakhs"
+      format_indian_currency(12500000)    → "₹1.25 Crores"
+      format_indian_currency(-3750000)    → "-₹37.50 Lakhs"
+      format_indian_currency(1e10)        → "₹1,000.00 Crores"
+    """
+    if value is None:
+        return f"{symbol}0"
+
+    value = float(value)
+    negative = value < 0
+    abs_val = abs(value)
+
+    LAKH = 1_00_000       # 1,00,000
+    CRORE = 1_00_00_000   # 1,00,00,000
+
+    if abs_val >= CRORE:
+        formatted = f"{symbol}{abs_val / CRORE:,.2f} Crores"
+    elif abs_val >= LAKH:
+        formatted = f"{symbol}{abs_val / LAKH:,.2f} Lakhs"
+    else:
+        # Indian comma style for numbers below 1 Lakh:
+        # thousands separator only (no sub-lakh grouping difference at this scale)
+        formatted = f"{symbol}{abs_val:,.0f}"
+
+    return f"-{formatted}" if negative else formatted
+
+
+def _ban_western_scale(text: str) -> str:
+    """
+    Guard: raise ValueError if 'Million' or 'Billion' appears in output text.
+    Use in test harness or as a post-processing assertion.
+    """
+    import re
+    if re.search(r"\b(million|billion|trillion)\b", text, re.IGNORECASE):
+        raise ValueError(
+            "Western scale (Million/Billion/Trillion) detected in output — "
+            "use Lakhs/Crores instead."
+        )
+    return text
+
 
 # ---------------------------------------------------------------------------
 # Constants: Prompt Caching Blocks
@@ -124,16 +244,15 @@ _token_stats: dict = {
     "recent": deque(maxlen=20),
 }
 
-def _dash_start_job(job_id: str, ticker: str, exchange: str, user_id, mock: bool) -> None:
+def _dash_start_job(job_id: str, ticker: str, exchange: str, user_id) -> None:
     with _dash_lock:
         _active_analyses[job_id] = {
             "job_id": job_id,
             "ticker": ticker.upper(),
             "exchange": exchange,
             "user_id": user_id,
-            "mock": mock,
             "start_ts": datetime.now().isoformat(),
-            "stage": "MOCK mode" if mock else "AI agents initializing...",
+            "stage": "AI agents initializing...",
         }
 
 def _dash_end_job(job_id: str, result: dict | None = None, error: str | None = None, killed: bool = False) -> None:
@@ -262,6 +381,15 @@ def require_admin(authorization: str = Header(None)) -> int:
         raise HTTPException(status_code=403, detail="Admin access required")
     return user_id
 
+# ---------------------------------------------------------------------------
+# Custom exception classes — Financial Error Boundaries
+# ---------------------------------------------------------------------------
+
+class DataHarvestingError(Exception):
+    """Raised when a market data scraping / harvest pipeline fails."""
+    pass
+
+
 app = FastAPI(title="Indian Stock Market Analysis API")
 
 # ---------------------------------------------------------------------------
@@ -315,6 +443,21 @@ class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(_SecurityHeadersMiddleware)
 
 # ---------------------------------------------------------------------------
+# Financial Error Boundary Handlers
+# DataHarvestingError → 503, generic Exception → 500
+# ---------------------------------------------------------------------------
+from fastapi import Request as _FRequest
+from fastapi.responses import JSONResponse as _JSONResponse
+
+@app.exception_handler(DataHarvestingError)
+async def _data_harvesting_error_handler(_req: _FRequest, exc: DataHarvestingError):
+    return _JSONResponse(
+        status_code=503,
+        content={"detail": f"Data harvesting service unavailable: {exc}"},
+    )
+
+
+# ---------------------------------------------------------------------------
 # Advisor harvest scheduler (APScheduler — 1:30 AM IST daily)
 # ---------------------------------------------------------------------------
 _advisor_scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
@@ -326,6 +469,7 @@ async def _start_advisor_scheduler():
     from services.youtube_harvester import harvest_youtube_metadata, harvest_portfolio_videos
     from services.portfolio_snapshot import snapshot_all_users
     from services.pkscreener_runner import run_nightly_screen
+    from services.filings_extractor import harvest_filings
 
     def _run_evaluate_analysis_outcomes():
         db = get_session()
@@ -341,9 +485,10 @@ async def _start_advisor_scheduler():
     _advisor_scheduler.add_job(snapshot_all_users, "cron", hour=11, minute=0)      # 4:30 PM IST (11:00 UTC)
     _advisor_scheduler.add_job(run_nightly_screen, "cron", hour=11, minute=15)     # 4:45 PM IST (11:15 UTC)
     _advisor_scheduler.add_job(_run_evaluate_analysis_outcomes, "cron", hour=2, minute=0)  # 2:00 AM IST
+    _advisor_scheduler.add_job(harvest_filings, "interval", minutes=15)            # corporate filings every 15 min
     _advisor_scheduler.start()
     promote_initial_admins()
-    logging.info("All schedulers started (advisor 1:30, news 12:30, youtube-channel 1:00, youtube-portfolio 1:15, snapshot 4:30, pkscreener 4:45, outcome-eval 2:00 AM IST)")
+    logging.info("All schedulers started (advisor 1:30, news 12:30, youtube-channel 1:00, youtube-portfolio 1:15, snapshot 4:30, pkscreener 4:45, outcome-eval 2:00 AM IST, filings 15min)")
 
 @app.on_event("shutdown")
 async def _stop_advisor_scheduler():
@@ -898,9 +1043,11 @@ class OptimizedTradingAgentsGraph(TradingAgentsGraph):
 
 def build_ta_config() -> dict:
     config = DEFAULT_CONFIG.copy()
-    config["llm_provider"] = "anthropic"
-    config["deep_think_llm"] = HAIKU_MODEL
-    config["quick_think_llm"] = HAIKU_MODEL
+    # Tier 1 (bulk agent nodes): DeepSeek V4 Flash via OpenAI-compatible API
+    # Tier 2 (Research Manager, Portfolio Manager): Claude Haiku 4.5
+    config["llm_provider"] = "deepseek"          # quick_think nodes → DeepSeek
+    config["deep_think_llm"] = HAIKU_MODEL        # Research Manager + Portfolio Manager → Haiku
+    config["quick_think_llm"] = DEEPSEEK_MODEL    # Market/News/Fundamentals/Bull/Bear/Trader/Debaters → DeepSeek
     config["max_debate_rounds"] = 1
     config["max_risk_discuss_rounds"] = 1
     config["max_tokens"] = 2000
@@ -1034,68 +1181,12 @@ def _normalize_signal(result: dict) -> dict:
     return result
 
 
-def analyze(ticker: str, exchange: str, user_id: int | None = None, use_mock: bool = False, deep_scan: bool = False) -> dict:
+def analyze(ticker: str, exchange: str, user_id: int | None = None, deep_scan: bool = False) -> dict:
     exchange = exchange.upper()
     if exchange not in EXCHANGE_SUFFIX:
         raise ValueError(f"Unsupported exchange: {exchange}. Use NSE or BSE.")
     full_ticker = _resolve_ticker(ticker, exchange)
     analysis_date = date.today().strftime("%Y-%m-%d")
-
-    if use_mock:
-        print(f"\n[MOCK MODE] Returning mock AI data for {full_ticker} to save credits.")
-        import time
-        time.sleep(2) # Simulate slight delay for UI testing
-        ns_ticker = _to_ns(ticker)
-        curr_p, _ = _yf_price(ns_ticker)
-        
-        # Fetch REAL news to inject into MOCK report
-        real_news = []
-        try:
-            t = yf.Ticker(ns_ticker)
-            if t.news:
-                for n in t.news[:5]:
-                    real_news.append({
-                        "title": n.get("title", ""),
-                        "publisher": n.get("publisher", ""),
-                        "link": n.get("link", ""),
-                        "publish_time": n.get("providerPublishTime", 0)
-                    })
-        except Exception as e:
-            print(f"Mock news fetch failed: {e}")
-
-        return {
-            "ticker": ticker.upper(),
-            "company_name": full_ticker,
-            "exchange": exchange,
-            "analysis_date": analysis_date,
-            "signal": "HOLD",
-            "confidence_pct": 50,
-            "current_price_inr": curr_p or 0.0,
-            "target_prices": {"short_term_3m": 0, "medium_term_12m": 0, "long_term_36m": 0},
-            "upside_downside_pct": {"short_term": 0.0, "medium_term": 0.0, "long_term": 0.0},
-            "bull_case": ["[MOCK] Strong domestic demand expected to support volumes.", "[MOCK] Margin expansion possible if raw material costs stabilize."],
-            "bear_case": ["[MOCK] High valuation multiples leave little room for error.", "[MOCK] Increased competition may pressure market share."],
-            "key_risks": ["[MOCK] Regulatory changes could impact operations.", "[MOCK] Macroeconomic slowdown affecting consumer spending."],
-            "key_factors": {
-                "management_quality": "[MOCK] Management has a solid track record of execution.",
-                "geopolitical_context": "[MOCK] Domestic focus insulates somewhat from global shocks.",
-                "promoter_fii_dii_activity": "[MOCK] Institutional holding remains stable.",
-                "turnaround_story": "[MOCK] Core business is steady, not a turnaround play.",
-                "fundamentals_summary": "[MOCK] Revenue growth is moderating but cash flows are robust.",
-                "global_macro_impact": "[MOCK] Sensitive to interest rate cycles.",
-                "news_sentiment": "[MOCK] Recent news is mostly neutral."
-            },
-            "fundamentals_snapshot": {
-                "pe_ratio": 20.5, "debt_to_equity": 0.5,
-                "promoter_holding_pct": 50.0, "fii_holding_pct": 20.0, "dii_holding_pct": 15.0
-            },
-            "what_to_watch": ["[MOCK] Watch upcoming quarterly earnings for margin trends.", "[MOCK] Monitor market share data releases."],
-            "disclaimer": "[MOCK DATA] This is a mock report generated in Development Mode to save API credits. The live prices and news below are real, but this analysis text is a placeholder.",
-            "recent_news": real_news,
-            "_cache_type": "MOCK",
-            "deep_scan_used": False,
-            "pkscreener_signals": None,
-        }
 
     with get_session() as session:
         # 1. Query Cache: Check global history for today
@@ -1150,26 +1241,21 @@ def analyze(ticker: str, exchange: str, user_id: int | None = None, use_mock: bo
                     print(f"[AI] Thinking: Fast-checking recent news to see if full analysis is needed...")
                     news_text = "\n".join([f"- {n.get('title', '')}" for n in recent_news])
                     
-                    api_key = os.getenv("ANTHROPIC_API_KEY")
-                    if api_key:
-                        client = anthropic.Anthropic(api_key=api_key)
-                        prompt = f"Stock: {full_ticker}\nLast analysis date: {last_date_str}\nRecent News Headlines:\n{news_text}\n\nBased ONLY on these headlines, has there been a major fundamental shift, severe shock, or significant trend-changing event for this company since {last_date_str}? Answer strictly with a single word: 'YES' or 'NO'."
-                        
-                        import time
-                        for attempt in range(3):
-                            try:
-                                resp = client.messages.create(
-                                    model=HAIKU_MODEL,
-                                    max_tokens=10,
-                                    messages=[{"role": "user", "content": prompt}]
-                                )
-                                break
-                            except Exception as e:
-                                print(f"[Anthropic] Smart cache attempt {attempt+1} failed: {e}")
-                                if attempt == 2: raise
-                                time.sleep(1.0 * (2 ** attempt))
-                        _log_token_usage("smart_cache", resp.usage)
-                        answer = resp.content[0].text.strip().upper()
+                    # Smart cache gate → DeepSeek V4 Flash (Tier 1 bulk task)
+                    if os.getenv("DEEPSEEK_API_KEY"):
+                        prompt = (
+                            f"Stock: {full_ticker}\nLast analysis date: {last_date_str}\n"
+                            f"Recent News Headlines:\n{news_text}\n\n"
+                            "Based ONLY on these headlines, has there been a major fundamental "
+                            f"shift, severe shock, or significant trend-changing event for this "
+                            f"company since {last_date_str}? Answer strictly with a single word: 'YES' or 'NO'."
+                        )
+                        answer = _deepseek_chat(
+                            [{"role": "user", "content": prompt}],
+                            max_tokens=10,
+                            temperature=0,
+                        ).strip().upper()
+                        _log_token_usage("smart_cache", None)
                         
                         if "NO" in answer:
                             print(f"[SMART CACHE] No major news changes for {full_ticker} since {last_date_str}. Reusing previous report to save credits.")
@@ -1355,7 +1441,6 @@ class AnalyzeRequest(BaseModel):
     ticker: str
     exchange: str = "NSE"
     user_id: Optional[int] = None
-    use_mock: bool = False
     deep_scan: bool = False
 
     @validator("ticker")
@@ -1780,9 +1865,9 @@ def quarterly_financials_endpoint(ticker: str, exchange: str = "NSE"):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def _run_analysis_worker(queue, ticker, exchange, user_id, use_mock, deep_scan=False):
+def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False):
     try:
-        result = analyze(ticker, exchange, user_id, use_mock, deep_scan=deep_scan)
+        result = analyze(ticker, exchange, user_id, deep_scan=deep_scan)
         queue.put({"status": "ok", "result": result})
     except Exception as e:
         queue.put({"status": "error", "error": str(e)})
@@ -1799,12 +1884,12 @@ async def analyze_endpoint(req: AnalyzeRequest, request: Request):
         _running_analyses.add(user_id)
     try:
         job_id = str(uuid.uuid4())[:12]
-        _dash_start_job(job_id, req.ticker, req.exchange, req.user_id, req.use_mock)
+        _dash_start_job(job_id, req.ticker, req.exchange, req.user_id)
 
         queue = multiprocessing.Queue()
         p = multiprocessing.Process(
             target=_run_analysis_worker,
-            args=(queue, req.ticker, req.exchange, req.user_id, req.use_mock, req.deep_scan)
+            args=(queue, req.ticker, req.exchange, req.user_id, req.deep_scan)
         )
         p.start()
 
@@ -3569,12 +3654,12 @@ async def get_home_feed(user_id: int, ticker: str = None):
         portfolio_videos = session.query(YouTubeVideo).filter(
             YouTubeVideo.matched_ticker.in_(holding_tickers_set),
             YouTubeVideo.published_at >= cutoff_7d,
-        ).order_by(YouTubeVideo.published_at.desc()).limit(8).all()
+        ).order_by(YouTubeVideo.published_at.desc()).limit(15).all()
 
         portfolio_vid_ids = {v.video_id for v in portfolio_videos}
 
         # Tier 2: fill remaining slots with general SEBI channel videos (no duplicates)
-        remaining = 8 - len(portfolio_videos)
+        remaining = 15 - len(portfolio_videos)
         general_videos = []
         if remaining > 0:
             general_videos = session.query(YouTubeVideo).filter(
@@ -4044,9 +4129,8 @@ def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)
         summary = "No significant red flags detected across the portfolio."
         if flags:
             try:
-                api_key = os.getenv("ANTHROPIC_API_KEY")
-                if api_key and api_key != "placeholder":
-                    client = anthropic.Anthropic(api_key=api_key)
+                # Red flags summary → DeepSeek V4 Flash (Tier 1 bulk task)
+                if os.getenv("DEEPSEEK_API_KEY"):
                     flags_text = "\n".join(
                         f"- [{f['severity']}] {f['ticker']}: {f['detail']}" for f in flags
                     )
@@ -4055,20 +4139,11 @@ def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)
                         "Write exactly 3 sentences summarizing the biggest risks. "
                         "Be specific about tickers and risk types. Plain English."
                     )
-                    import time as _tt
-                    for attempt in range(3):
-                        try:
-                            resp = client.messages.create(
-                                model=HAIKU_MODEL, max_tokens=200,
-                                messages=[{"role": "user", "content": prompt}]
-                            )
-                            break
-                        except Exception as e:
-                            print(f"[RED-FLAGS] Haiku attempt {attempt+1} failed: {e}")
-                            if attempt == 2: raise
-                            _tt.sleep(1.0 * (2 ** attempt))
-                    _log_token_usage("red_flags_summary", resp.usage)
-                    summary = resp.content[0].text.strip()
+                    summary = _deepseek_chat(
+                        [{"role": "user", "content": prompt}],
+                        max_tokens=200,
+                    ).strip()
+                    _log_token_usage("red_flags_summary", None)
             except Exception as e:
                 print(f"[RED-FLAGS] Summary call failed: {e}")
 
@@ -4138,26 +4213,17 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
             '[{"ticker": "TICKER", "impact_statement": "...", "direction": "positive|negative|neutral"}]'
         )
 
+        # Macro impact → DeepSeek V4 Flash (Tier 1 bulk task)
         impacts = []
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if api_key and api_key != "placeholder":
+        if os.getenv("DEEPSEEK_API_KEY"):
             try:
-                client = anthropic.Anthropic(api_key=api_key)
-                import time as _tt
-                for attempt in range(3):
-                    try:
-                        resp = client.messages.create(
-                            model=HAIKU_MODEL, max_tokens=1500,
-                            messages=[{"role": "user", "content": prompt}],
-                            temperature=0,
-                        )
-                        break
-                    except Exception as e:
-                        print(f"[MACRO-IMPACT] Attempt {attempt+1} failed: {e}")
-                        if attempt == 2: raise
-                        _tt.sleep(1.0 * (2 ** attempt))
-                _log_token_usage("macro_impact", resp.usage)
-                raw = _extract_json_from_text(resp.content[0].text)
+                raw_text = _deepseek_chat(
+                    [{"role": "user", "content": prompt}],
+                    max_tokens=1500,
+                    temperature=0,
+                )
+                _log_token_usage("macro_impact", None)
+                raw = _extract_json_from_text(raw_text)
                 parsed = json.loads(raw)
                 for item in parsed:
                     if item.get("direction") not in ("positive", "negative", "neutral"):
@@ -4167,7 +4233,7 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
                 print(f"[MACRO-IMPACT] AI call failed: {e}")
                 impacts = [{"ticker": t, "impact_statement": "Macro assessment unavailable.", "direction": "neutral"} for t, _ in holdings_data]
         else:
-            impacts = [{"ticker": t, "impact_statement": "API key not configured.", "direction": "neutral"} for t, _ in holdings_data]
+            impacts = [{"ticker": t, "impact_statement": "DeepSeek API key not configured.", "direction": "neutral"} for t, _ in holdings_data]
 
         result = {
             "user_id": user_id,
@@ -4478,35 +4544,24 @@ def trade_journal_stats_endpoint(user_id: int):
             if act in action_breakdown:
                 action_breakdown[act] += 1
 
-        # AI pattern detection — one Haiku call
+        # Trade journal pattern detection → DeepSeek V4 Flash (Tier 1 bulk task)
         patterns = []
         try:
             all_reasons = " | ".join(e["reason_text"] for e in entries_data if e["reason_text"])
-            if all_reasons:
-                api_key = os.getenv("ANTHROPIC_API_KEY")
-                if api_key and api_key != "placeholder":
-                    client = anthropic.Anthropic(api_key=api_key)
-                    prompt = (
-                        f'Find 2 patterns in these trade journal reasons: {all_reasons[:2000]}. '
-                        'Return JSON: [{"pattern": str}]'
-                    )
-                    import time as _tt
-                    for attempt in range(3):
-                        try:
-                            resp = client.messages.create(
-                                model=HAIKU_MODEL, max_tokens=150,
-                                messages=[{"role": "user", "content": prompt}],
-                            )
-                            break
-                        except Exception as _pe:
-                            if attempt == 2:
-                                raise
-                            _tt.sleep(1.0 * (2 ** attempt))
-                    _log_token_usage("trade_journal_stats", resp.usage)
-                    raw = _extract_json_from_text(resp.content[0].text)
-                    patterns = json.loads(raw)
-                    if not isinstance(patterns, list):
-                        patterns = []
+            if all_reasons and os.getenv("DEEPSEEK_API_KEY"):
+                prompt = (
+                    f'Find 2 patterns in these trade journal reasons: {all_reasons[:2000]}. '
+                    'Return JSON: [{"pattern": str}]'
+                )
+                raw_text = _deepseek_chat(
+                    [{"role": "user", "content": prompt}],
+                    max_tokens=150,
+                )
+                _log_token_usage("trade_journal_stats", None)
+                raw = _extract_json_from_text(raw_text)
+                patterns = json.loads(raw)
+                if not isinstance(patterns, list):
+                    patterns = []
         except Exception as _pe:
             print(f"[TJ-STATS] Pattern AI call failed: {_pe}")
             patterns = []
@@ -5143,10 +5198,9 @@ def daily_action_endpoint(user_id: int, authorization: str = Header(None)):
         elif warnings or conflicts:
             urgency = "medium"
 
-        # Haiku call
+        # Daily action → DeepSeek V4 Flash (Tier 1 bulk task)
         action = "Review your portfolio — no urgent signals detected today."
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if api_key and api_key != "placeholder":
+        if os.getenv("DEEPSEEK_API_KEY"):
             try:
                 context_parts = []
                 if triggered:
@@ -5164,22 +5218,14 @@ def daily_action_endpoint(user_id: int, authorization: str = Header(None)):
                     "In exactly one sentence of max 20 words, what is the single most important "
                     "thing this investor should do today? Be specific — name the ticker."
                 )
-                client = anthropic.Anthropic(api_key=api_key)
-                import time as _tt
-                for attempt in range(3):
-                    try:
-                        resp = client.messages.create(
-                            model=HAIKU_MODEL, max_tokens=60, temperature=0,
-                            messages=[{"role": "user", "content": prompt}]
-                        )
-                        break
-                    except Exception as e:
-                        if attempt == 2: raise
-                        _tt.sleep(1.0 * (2 ** attempt))
-                _log_token_usage("daily_action", resp.usage)
-                action = resp.content[0].text.strip().rstrip(".")
+                action = _deepseek_chat(
+                    [{"role": "user", "content": prompt}],
+                    max_tokens=256,
+                    temperature=0,
+                ).strip().rstrip(".")
+                _log_token_usage("daily_action", None)
             except Exception as e:
-                print(f"[DAILY-ACTION] Haiku failed: {e}")
+                print(f"[DAILY-ACTION] DeepSeek failed: {e}")
 
         return {"action": action, "urgency": urgency}
 
@@ -5427,6 +5473,31 @@ def health_endpoint():
 
 
 # ---------------------------------------------------------------------------
+# Liveness probe — Section 16
+# Zero-latency, dependency-free. Used by Docker HEALTHCHECK and k8s liveness.
+# Confirms DB is reachable; does NOT call yfinance or any external service.
+# ---------------------------------------------------------------------------
+
+@app.get("/health/live")
+async def liveness_probe():
+    """
+    Lightweight liveness probe for container orchestration.
+    Returns 200 {"status": "alive"} if the DB connection is healthy.
+    Returns 503 if the DB is unreachable.
+    """
+    try:
+        with get_session() as _session:
+            from sqlalchemy import text as _text
+            _session.execute(_text("SELECT 1"))
+        return {"status": "alive", "db": True, "ts": datetime.utcnow().isoformat()}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Database connection failed: {exc}",
+        )
+
+
+# ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------
 
@@ -5477,7 +5548,6 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
     .cache{background:rgba(88,166,255,.15);color:#58a6ff}
     .smart{background:rgba(188,140,255,.15);color:#bc8cff}
     .full{background:rgba(63,185,80,.12);color:#3fb950}
-    .mock{background:rgba(139,148,158,.15);color:#8b949e}
     .err{background:rgba(248,81,73,.15);color:#f85149}
     .ok{background:rgba(63,185,80,.1);color:#3fb950}
     .mGET{background:rgba(88,166,255,.1);color:#58a6ff}
@@ -5634,7 +5704,7 @@ function ts(iso){if(!iso)return'-';return new Date(iso).toLocaleTimeString('en-I
 function dts(iso){if(!iso)return'-';const d=new Date(iso);return d.toLocaleDateString('en-IN')+' '+d.toLocaleTimeString('en-IN',{hour12:false})}
 function ela(iso){if(!iso)return'';const s=Math.floor((Date.now()-new Date(iso))/1000);if(s<60)return s+'s';if(s<3600)return Math.floor(s/60)+'m '+s%60+'s';return Math.floor(s/3600)+'h'}
 function sig(s){if(!s)return'-';const u=s.toUpperCase();if(u.includes('BULL'))return`<span class="badge bull">${s}</span>`;if(u.includes('BEAR'))return`<span class="badge bear">${s}</span>`;return`<span class="badge hold">${s}</span>`}
-function ctype(t){if(!t)return'-';const u=(t||'').toUpperCase();if(u==='CACHE HIT')return`<span class="badge cache">CACHE HIT</span>`;if(u==='SMART CACHE')return`<span class="badge smart">SMART CACHE</span>`;if(u==='FULL AI')return`<span class="badge full">FULL AI</span>`;if(u==='MOCK')return`<span class="badge mock">MOCK</span>`;return`<span class="badge cache">${t}</span>`}
+function ctype(t){if(!t)return'-';const u=(t||'').toUpperCase();if(u==='CACHE HIT')return`<span class="badge cache">CACHE HIT</span>`;if(u==='SMART CACHE')return`<span class="badge smart">SMART CACHE</span>`;if(u==='FULL AI')return`<span class="badge full">FULL AI</span>`;return`<span class="badge cache">${t}</span>`}
 function stbadge(s){if(!s)return'-';const l=s.toLowerCase();if(l==='completed')return`<span class="badge ok">&#x2713; done</span>`;if(l==='error')return`<span class="badge err">&#x2717; error</span>`;if(l==='disconnected')return`<span class="badge err">&#x2717; killed</span>`;return`<span class="badge hold">${s}</span>`}
 function mbadge(m){return`<span class="badge m${m}">${m}</span>`}
 function hbadge(c){if(!c)return'-';const cls=c<300?'ok':c<400?'cache':'err';return`<span class="badge ${cls}">${c}</span>`}
@@ -5703,7 +5773,7 @@ async function refresh(){
         <div style="display:flex;justify-content:space-between">
           <span class="a-ticker">${a.ticker}</span><span class="ts">${ts(a.start_ts)}</span>
         </div>
-        <div class="a-meta">${a.exchange||'NSE'} &bull; User ${a.user_id||'N/A'} &bull; ${a.mock?'<span class="badge mock">MOCK</span>':'<span class="badge full">LIVE AI</span>'} &bull; running ${ela(a.start_ts)}</div>
+        <div class="a-meta">${a.exchange||'NSE'} &bull; User ${a.user_id||'N/A'} &bull; <span class="badge full">LIVE AI</span> &bull; running ${ela(a.start_ts)}</div>
         <div class="a-stage"><span class="s-dot"></span>${a.stage||'Processing...'}</div>
       </div>`).join('');
 
@@ -5981,6 +6051,8 @@ from services.scraper import (
     fetch_momentum,
     fetch_macro_alternatives,
     fetch_institutional_flow,
+    fetch_earnings_sync_ratio,
+    fetch_yoy_aggregate_indicators,
 )
 
 @app.get("/api/v1/market/pulse")
@@ -6014,6 +6086,78 @@ def market_institutional_flow_endpoint():
         return fetch_institutional_flow()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Institutional flow unavailable: {e}")
+
+
+# ── Pydantic response schemas (must precede endpoints that reference them) ────
+from pydantic import BaseModel as _BaseModel
+from typing import List as _List, Optional as _Optional
+
+class EarningsSyncRatioResponse(_BaseModel):
+    declared_count: int
+    total_expected: int
+    sync_ratio_pct: float
+    fetched_at: str
+    source: str
+
+class YoYAggregateResponse(_BaseModel):
+    revenue_yoy_pct: float
+    net_profit_yoy_pct: float
+    companies_reported: int
+    fetched_at: str
+    source: str
+
+
+@app.get("/api/v1/earnings/sync-ratio", response_model=EarningsSyncRatioResponse)
+async def earnings_sync_ratio_endpoint():
+    """
+    Real-time tracking metric: total companies that have declared quarterly
+    results vs total statutory listed exchange obligations (e.g. 4432/5042).
+    Backed by 15-min in-memory TTL cache.
+    """
+    try:
+        raw = await asyncio.get_event_loop().run_in_executor(
+            None, fetch_earnings_sync_ratio
+        )
+    except DataHarvestingError:
+        raise
+    except Exception as exc:
+        raise DataHarvestingError(str(exc)) from exc
+
+    declared = raw.get("declared_count", 0)
+    total = raw.get("total_expected", 5042)
+    ratio = round((declared / total) * 100, 1) if total > 0 else 0.0
+
+    return EarningsSyncRatioResponse(
+        declared_count=declared,
+        total_expected=total,
+        sync_ratio_pct=ratio,
+        fetched_at=raw.get("fetched_at", ""),
+        source=raw.get("source", "unknown"),
+    )
+
+@app.get("/api/v1/earnings/yoy-aggregate", response_model=YoYAggregateResponse)
+async def yoy_aggregate_endpoint():
+    """
+    Composite market health: aggregate YoY Revenue and Net Profit
+    expansion/contraction metrics across NSE-listed companies.
+    Backed by 15-min in-memory TTL cache.
+    """
+    try:
+        raw = await asyncio.get_event_loop().run_in_executor(
+            None, fetch_yoy_aggregate_indicators
+        )
+    except DataHarvestingError:
+        raise
+    except Exception as exc:
+        raise DataHarvestingError(str(exc)) from exc
+
+    return YoYAggregateResponse(
+        revenue_yoy_pct=raw.get("revenue_yoy_pct", 0.0),
+        net_profit_yoy_pct=raw.get("net_profit_yoy_pct", 0.0),
+        companies_reported=raw.get("companies_reported", 0),
+        fetched_at=raw.get("fetched_at", ""),
+        source=raw.get("source", "unknown"),
+    )
 
 # ---------------------------------------------------------------------------
 # Unified dashboard endpoint — returns all 4 market intelligence feeds in one
@@ -6060,3 +6204,220 @@ def market_dashboard_endpoint():
             }
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Dashboard fetch failed: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Section 12: FastAPI Routing Layer — new unified endpoints
+# All routes: async def, Pydantic schemas, DB dependency injection
+# ---------------------------------------------------------------------------
+
+from fastapi import Depends as _Depends
+
+
+# ── Pydantic response schemas ────────────────────────────────────────────────
+
+class IndexSnapshot(_BaseModel):
+    name: str
+    value: _Optional[float]
+    change_pct: _Optional[float]
+    change_abs: _Optional[float]
+
+class BreadthData(_BaseModel):
+    advances: _Optional[int]
+    declines: _Optional[int]
+    unchanged: _Optional[int]
+    ad_ratio: _Optional[float]
+
+class MomentumSignal(_BaseModel):
+    ticker: str
+    signal: str          # "GOLDEN_CROSS" | "DEATH_CROSS"
+    dma_50: _Optional[float]
+    dma_200: _Optional[float]
+    score: _Optional[float]
+
+class DashboardPulseResponse(_BaseModel):
+    indices: _List[IndexSnapshot]
+    breadth: _Optional[BreadthData]
+    momentum_signals: _List[MomentumSignal]
+    fetched_at: str
+
+class MutualFundEntry(_BaseModel):
+    fund_name: str
+    amc: _Optional[str]
+    return_1y_pct: _Optional[float]
+    return_3y_pct: _Optional[float]
+    aum_crores: _Optional[float]
+    category: _Optional[str]
+
+class InstitutionalLeaderboardResponse(_BaseModel):
+    top_funds: _List[MutualFundEntry]
+    fetched_at: str
+
+class NetWorthSnapshotResponse(_BaseModel):
+    user_id: int
+    snapshot_date: str
+    total_value_formatted: str          # e.g. "₹12.50 Crores"
+    daily_delta_formatted: _Optional[str]
+    daily_delta_pct: _Optional[float]
+    peak_value_formatted: _Optional[str]
+    top_gainer_ticker: _Optional[str]
+    top_gainer_pct: _Optional[float]
+    top_loser_ticker: _Optional[str]
+    top_loser_pct: _Optional[float]
+
+
+# ── DB session dependency (thread-safe SQLAlchemy) ───────────────────────────
+
+def _get_db():
+    """Yield a SQLAlchemy session; rolls back on error, always closes."""
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        yield db
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+# ── /api/v1/market/dashboard-pulse ───────────────────────────────────────────
+
+@app.get("/api/v1/market/dashboard-pulse", response_model=DashboardPulseResponse)
+async def dashboard_pulse_endpoint():
+    """
+    Unified async endpoint: indices, breadth ratio, momentum signals.
+    Backed by 15-min in-memory TTL cache in scraper.py.
+    Raises 503 on DataHarvestingError, 500 on unexpected errors.
+    """
+    try:
+        pulse = await asyncio.get_event_loop().run_in_executor(None, fetch_market_pulse)
+        momentum_raw = await asyncio.get_event_loop().run_in_executor(None, fetch_momentum)
+    except DataHarvestingError:
+        raise
+    except Exception as exc:
+        raise DataHarvestingError(str(exc)) from exc
+
+    # Map raw pulse → Pydantic schemas
+    raw_indices = pulse.get("indices", [])
+    indices = [
+        IndexSnapshot(
+            name=idx.get("name", ""),
+            value=idx.get("value"),
+            change_pct=idx.get("change_pct"),
+            change_abs=idx.get("change_abs"),
+        )
+        for idx in raw_indices
+    ]
+
+    raw_breadth = pulse.get("breadth") or {}
+    breadth = BreadthData(
+        advances=raw_breadth.get("advances"),
+        declines=raw_breadth.get("declines"),
+        unchanged=raw_breadth.get("unchanged"),
+        ad_ratio=raw_breadth.get("ad_ratio"),
+    ) if raw_breadth else None
+
+    raw_signals = momentum_raw.get("crossovers", []) if isinstance(momentum_raw, dict) else []
+    signals = [
+        MomentumSignal(
+            ticker=s.get("ticker", ""),
+            signal=s.get("signal", ""),
+            dma_50=s.get("dma_50"),
+            dma_200=s.get("dma_200"),
+            score=s.get("score"),
+        )
+        for s in raw_signals
+    ]
+
+    return DashboardPulseResponse(
+        indices=indices,
+        breadth=breadth,
+        momentum_signals=signals,
+        fetched_at=_dt.utcnow().isoformat(),
+    )
+
+
+# ── /api/v1/market/institutional-leaderboard ─────────────────────────────────
+
+@app.get("/api/v1/market/institutional-leaderboard", response_model=InstitutionalLeaderboardResponse)
+async def institutional_leaderboard_endpoint():
+    """
+    Top-performing mutual funds sorted by 1-year return.
+    Proxies DII floor support intelligence. 15-min TTL cache.
+    Raises 503 on DataHarvestingError.
+    """
+    try:
+        raw = await asyncio.get_event_loop().run_in_executor(None, fetch_institutional_flow)
+    except DataHarvestingError:
+        raise
+    except Exception as exc:
+        raise DataHarvestingError(str(exc)) from exc
+
+    raw_funds = raw.get("top_funds", []) if isinstance(raw, dict) else []
+    funds = [
+        MutualFundEntry(
+            fund_name=f.get("fund_name", f.get("name", "")),
+            amc=f.get("amc"),
+            return_1y_pct=f.get("return_1y_pct", f.get("1y_return")),
+            return_3y_pct=f.get("return_3y_pct", f.get("3y_return")),
+            aum_crores=f.get("aum_crores"),
+            category=f.get("category"),
+        )
+        for f in raw_funds
+    ]
+    # Sort by 1-year return descending (highest alpha first)
+    funds.sort(key=lambda f: f.return_1y_pct or 0.0, reverse=True)
+
+    return InstitutionalLeaderboardResponse(
+        top_funds=funds,
+        fetched_at=_dt.utcnow().isoformat(),
+    )
+
+
+# ── /api/v1/market/net-worth-ledger/{user_id} ────────────────────────────────
+
+@app.get("/api/v1/market/net-worth-ledger/{user_id}", response_model=NetWorthSnapshotResponse)
+async def net_worth_ledger_endpoint(
+    user_id: int,
+    authorization: str = Header(None),
+    db=_Depends(_get_db),
+):
+    """
+    Return the latest net-worth snapshot for a user.
+    All monetary values use Indian Lakhs/Crores formatting.
+    Requires valid JWT. Returns 404 if no snapshot exists yet.
+    """
+    # Auth guard
+    authed_user_id = require_auth(authorization)
+    if authed_user_id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    row = (
+        db.query(NetWorthLedger)
+        .filter(NetWorthLedger.user_id == user_id)
+        .order_by(NetWorthLedger.snapshot_date.desc())
+        .first()
+    )
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No net-worth snapshot found. Add portfolio holdings to generate one.",
+        )
+
+    return NetWorthSnapshotResponse(
+        user_id=user_id,
+        snapshot_date=row.snapshot_date,
+        total_value_formatted=format_indian_currency(row.total_value_inr),
+        daily_delta_formatted=(
+            format_indian_currency(row.daily_delta_inr) if row.daily_delta_inr is not None else None
+        ),
+        daily_delta_pct=row.daily_delta_pct,
+        peak_value_formatted=(
+            format_indian_currency(row.peak_value_inr) if row.peak_value_inr is not None else None
+        ),
+        top_gainer_ticker=row.top_gainer_ticker,
+        top_gainer_pct=row.top_gainer_pct,
+        top_loser_ticker=row.top_loser_ticker,
+        top_loser_pct=row.top_loser_pct,
+    )

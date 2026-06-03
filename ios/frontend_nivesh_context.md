@@ -1,7 +1,7 @@
 # Nivesh (निवेश) — Frontend Context
 
 > Paste this into Claude to get frontend context before brainstorming next steps.
-> Last updated: June 3, 2026. Reflects current shipped state.
+> Last updated: June 3, 2026. Reflects current implemented state.
 
 ---
 
@@ -13,55 +13,52 @@
 
 ## Design System (Banknote Aesthetic)
 
-- **Guilloché Patterns**: Animated dividers and background borders.
-- **Security Thread**: Gold vertical strip with micro-text.
+- **Guilloché Patterns**: Animated dividers and background borders (`GuillocheDivider`).
+- **Security Thread**: Gold vertical strip with micro-text (`SecurityThread`).
 - **Ashoka Stamp**: Lion capital stamp integrated into Home.
 - **RBI Seal**: Circular watermark on all cards.
 - **Paper Texture**: 500-grain canvas noise overlay.
-- **Verified Badge**: Visual indicator for verified users/data.
-- **News Reader View**: Editorial layout with large hero images and serif typography.
+- **Verified Badge**: Blue checkmark for users/data.
+- **Rupee Rustle**: Audio feedback for UI interactions (`AppSoundManager`).
 
 ---
 
-## iOS App — 8 Tabs
+## Key Features
 
-| Tab | View | Description |
-|---|---|---|
-| **Home** | `HomeScreen` | Morning Brief (Priority Items), Indices strip, Sector Pulse heatmap. |
-| **Directory** | `SearchScreen` | Bilingual search (खोज) with screener presets (Hidden Gems, Momentum). |
-| **Assets** | `PortfolioScreen` | Rupee-styled hero card, 10-segment risk meter, Red Flags system. |
-| **Alerts** | `AlertsScreen` | Manage price targets. Triggered alerts show on Home. |
-| **Archives** | `HistoryScreen` | Cached analysis reports with Signal Change diffs. |
-| **Compare** | `CompareScreen` | Side-by-side stock comparison (Price, P/E, Signal). |
-| **Registry** | `SettingsScreen` | User verification, App preferences, APNs registration. |
-| **Journal** | `TradeJournalScreen`| Log entry reasons, moods (FOMO/Contrarian), and outcomes. |
+### 1. 8-Tab Navigation
+- **Home**: Morning Brief (Priority Items), Indices strip, Sector Pulse heatmap.
+- **Directory**: Advanced search with screener presets (Hidden Gems, Momentum).
+- **Assets**: Rupee-styled hero card, 10-segment risk meter, Red Flags system.
+- **Alerts**: Manage price targets with foreground trigger checks.
+- **Archives**: Locally cached analysis reports with Signal Change diffs.
+- **Compare**: Side-by-side comparison of two stocks.
+- **Registry**: App preferences, Dark mode, APNs registration.
+- **Journal**: Log trade reasons, moods (FOMO/Contrarian), and outcomes.
 
----
-
-## Analysis Screen — Tabbed Layout
-
-- **Overview**: Shows **Signal Change Flags**, **Confidence Rationale**, and **Price Projections**.
-- **Analysis**: **Broker Consensus Strip**, Macro strip (Brent, VIX), and **Macro Impact Banner**.
-- **Fundaments**: **Insider Trend Bars**, Quarterly Financials, and Valuation Badge (vs 3Y Avg).
-- **Charts**: 11 charts including **Stock vs Nifty** (relative benchmark).
-- **News**: Cards with images/summaries; opens **News Reader View**.
-
----
-
-## Specialized Features
-
-1.  **Advisor Matrix**: Integration of expert sentiment from the "Advisor Intelligence" pipeline.
-2.  **Risk & Surveillance**: Visual ASM/GSM status chips and color-coded Red Flags (CRITICAL/WARNING/WATCH).
-3.  **Tutorial & Onboarding**: `TutorialOverlayView` and `LaunchSequenceView` for new users.
-4.  **Haptics & Animations**: Centralized `HapticManager` with `EKPressStyle` spring animations.
-5.  **Signal Flip Detection**: Visual indicators when a stock's outlook changes (BULLISH → NEUTRAL).
-6.  **Hardened Market Data**: Reliable Home Screen indices/sectors via history fallbacks (no "N/A" states).
+### 2. Deep Analysis (5-Tab Deep Dive)
+- **Overview**: Signal Change Flags, Confidence Rationale, and Worry Level.
+- **Analysis**: Broker Ratings Strip, Macro strip, and Macro Impact Banner.
+- **Fundaments**: Insider Trend Bars, Quarterly Financials, and Valuation Badge.
+- **Charts**: 11 native **Swift Charts** (SMA, RSI, Volume, Stock vs Nifty).
+- **News**: High-fidelity cards with images and summaries.
 
 ---
 
 ## Technical Architecture
 
 - **State Management**: `@MainActor` ViewModels with `async/await`.
-- **Navigation**: `TabView` with index-based step tracking for tutorials.
-- **Networking**: `NetworkManager.shared` with custom model decoding.
+- **Haptics**: Centralized `HapticManager` with `EKPressStyle` spring animations.
+- **Networking**: `NetworkManager.shared` with custom model decoding and server URL management.
 - **Persistence**: `UserDefaults` for auth and `@AppStorage` for UI state.
+
+---
+
+## What Works
+
+- **2FA Login**: Integrated authentication.
+- **Portfolio Risk & Red Flags**: Comprehensive risk monitoring.
+- **Trade Journaling**: Full lifecycle trade logging and stats.
+- **Signal Flip Detection**: Visual indicators when outlook changes.
+- **Advisor Matrix**: Integration of expert sentiment from YouTube harvest.
+- **Hardened Market Data**: History fallbacks for indices/sectors.
+- **Tutorial & Onboarding**: Animated overlays for new users.

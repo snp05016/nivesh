@@ -177,7 +177,7 @@ def _upsert_video(db, video_dict: dict) -> bool:
 # CHANNEL HARVEST — Latest videos from each SEBI-registered channel
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _fetch_channel_via_api(channel: dict, max_videos: int = 6) -> list[dict]:
+def _fetch_channel_via_api(channel: dict, max_videos: int = 10) -> list[dict]:
     """Fetch latest videos from a channel using YouTube Data API v3."""
     if not YOUTUBE_API_AVAILABLE:
         return []
@@ -247,7 +247,7 @@ def _fetch_channel_via_api(channel: dict, max_videos: int = 6) -> list[dict]:
         return []
 
 
-def _fetch_channel_via_ytdlp(channel: dict, max_videos: int = 6) -> list[dict]:
+def _fetch_channel_via_ytdlp(channel: dict, max_videos: int = 10) -> list[dict]:
     """Fetch latest videos from a channel using yt-dlp (fallback)."""
     opts = {
         "quiet": True,
@@ -293,9 +293,9 @@ async def harvest_youtube_metadata() -> dict:
 
     try:
         for channel in CHANNEL_REGISTRY:
-            videos = _fetch_channel_via_api(channel, max_videos=6)
+            videos = _fetch_channel_via_api(channel, max_videos=10)
             if not videos:
-                videos = _fetch_channel_via_ytdlp(channel, max_videos=6)
+                videos = _fetch_channel_via_ytdlp(channel, max_videos=10)
 
             if not videos:
                 logger.warning(f"[Harvest] No videos returned for {channel['name']}")

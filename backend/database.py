@@ -298,6 +298,59 @@ class PKScreenerSignal(Base):
     )
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE: macro_events
+# Stores calendar events: RBI policy, earnings, economic releases, etc.
+# ─────────────────────────────────────────────────────────────────────────────
+class MacroEvent(Base):
+    __tablename__ = "macro_events"
+
+    id              = Column(Integer, primary_key=True, index=True)
+    title           = Column(String(300), nullable=False)
+    event_date      = Column(String(20), nullable=False)           # "2026-06-04"
+    event_time      = Column(String(10), nullable=True)            # "14:30" IST
+    impact          = Column(String(10), nullable=False, default="MEDIUM")  # HIGH / MEDIUM / LOW
+    consensus       = Column(String(100), nullable=True)           # e.g. "6.25%"
+    actual          = Column(String(100), nullable=True)           # e.g. "6.50%" — filled post-release
+    prior           = Column(String(100), nullable=True)           # previous reading
+    category        = Column(String(50), nullable=True)            # MONETARY / FISCAL / EARNINGS / GLOBAL
+    source          = Column(String(100), nullable=True)           # "RBI" / "SEBI" / "NSE"
+    created_at      = Column(DateTime, default=datetime.utcnow)
+    updated_at      = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_macro_events_date", "event_date"),
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE: net_worth_ledger
+# Tracks daily family net-worth snapshots per user.
+# ─────────────────────────────────────────────────────────────────────────────
+class NetWorthLedger(Base):
+    __tablename__ = "net_worth_ledger"
+
+    id                   = Column(Integer, primary_key=True, index=True)
+    user_id              = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    snapshot_date        = Column(String(20), nullable=False)      # "2026-06-04"
+    total_value_inr      = Column(Float, nullable=False)           # absolute INR value
+    daily_delta_inr      = Column(Float, nullable=True)            # change since previous day (INR)
+    daily_delta_pct      = Column(Float, nullable=True)            # % change since previous day
+    peak_value_inr       = Column(Float, nullable=True)            # all-time high
+    top_gainer_ticker    = Column(String(30), nullable=True)       # best single-day performer
+    top_gainer_pct       = Column(Float, nullable=True)            # its % gain
+    top_loser_ticker     = Column(String(30), nullable=True)       # worst single-day performer
+    top_loser_pct        = Column(Float, nullable=True)            # its % loss
+    portfolio_json       = Column(Text, nullable=True)             # full breakdown JSON
+    created_at           = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", foreign_keys=[user_id])
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "snapshot_date", name="uq_networth_user_date"),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Password hashing
 # ---------------------------------------------------------------------------

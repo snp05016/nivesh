@@ -1,76 +1,61 @@
 # Nivesh (निवेश) — Backend Context
 
 > Paste this into Claude to get backend context before brainstorming next steps.
-> Last updated: June 3, 2026. Reflects current shipped state.
+> Last updated: June 3, 2026. Reflects current implemented state.
 
 ---
 
 ## What Is This
 
-**Nivesh Backend** is a FastAPI-based server orchestrating a multi-agent AI pipeline for Indian stock market analysis. It connects to yfinance for data and Anthropic's Claude models for analysis, implementing advanced prompt caching and a nightly "Advisor Harvest" engine.
+**Nivesh Backend** is a FastAPI-based server orchestrating a multi-agent AI pipeline for Indian stock market analysis. It connects to yfinance for data and Anthropic's Claude models for analysis, implementing advanced prompt caching.
 
 ---
 
 ## The Intelligence — Multi-Layer AI Pipeline
 
 ### 1. 8-Step Core Pipeline
-1.  **Expert Research (Parallel)**: Market Analyst (Technical), News Analyst (Red Flags), Fundamentals Analyst (Promoter stress/Pledging).
-2.  **The Debate**: Bull Researcher vs. Bear Researcher back-and-forth.
-3.  **Synthesis**: Research Manager summary + Trader transaction proposal (Buy/Hold/Sell).
-4.  **Risk Review**: 3 Risk Analysts (Aggressive, Neutral, Conservative) debate the proposal.
-5.  **Final Verdict**: Portfolio Manager raw decision.
+1.  **Expert Research (Parallel)**:
+    *   **Market Analyst**: Price trends, moving averages (50/200), RSI, Volume, MACD.
+    *   **News Analyst**: Scans for **Red Flags** (Auditor resignations, CFO/MD exits, SEBI investigations).
+    *   **Fundamentals Analyst**: P/L, Balance Sheet, Cash Flow, and **Promoter stress** (Pledging > 30%).
+2.  **The Debate**: `Bull Researcher` vs. `Bear Researcher` (1 round of dialectical challenge).
+3.  **Synthesis**: `Research Manager` summary + `Trader` transaction proposal (Buy/Hold/Sell).
+4.  **Risk Review (Iterative)**: 3 Risk Analysts (`Aggressive` -> `Conservative` -> `Neutral`) debate the proposal in a circular loop.
+5.  **Final Verdict**: `Portfolio Manager` raw decision.
 6.  **Reformatting (Sonnet 3.5)**: Applies **Indian Market Weighting** (Management, Institutions, Sentiment, Macro, Policy, Turnaround).
 
 ### 2. Advisor Intelligence Pipeline (Nightly)
-- **Harvester**: Extracts transcripts from leading Indian financial YouTube channels (SOIC, Basant Maheshwari, Valuepickr, etc.).
-- **Ticker Matcher**: Uses `rapidfuzz` to identify tickers in Hinglish commentary (e.g., "HDFC wala bank").
+- **Harvester**: Extracts transcripts from YouTube (SOIC, Basant Maheshwari, Shankar Sharma, etc.) via **YouTube API** or **Whisper large-v3**.
+- **Ticker Matcher**: Uses `rapidfuzz` (fuzz.token_set_ratio) to identify tickers in Hinglish commentary.
 - **Haiku Extractor**: Structures stances and catalysts with numeric anchors.
-- **Aggregator**: `/api/v1/portfolio/advisor-consensus` provides trending signals across the "Expert Matrix".
+- **Aggregator**: `/api/v1/portfolio/advisor-consensus` provides trending signals.
 
 ---
 
 ## Performance & Optimization
 
 - **Prefix-Aligned Context Stratification**: Anthropic Prompt Caching on analysts (Haiku) and reformatter (Sonnet).
-- **Smart Cache**: Haiku-based news check to skip redundant $0.15+ analyses if no major fundamental shifts occurred since the last report.
+- **Smart Cache**: Haiku-based news check to skip redundant analyses.
 - **Quick-Info TTL Cache**: 5-minute in-memory cache for `/quick-info`.
-- **Message Batches**: Support for `/analyze/batch` via Anthropic's Batch API for nightly processing.
+- **Process Isolation**: AI analyses run in `multiprocessing.Process`.
 
 ---
 
 ## Database Schema (SQLite)
 
-- `users`: Auth with session management.
-- `portfolio`: Holdings/Watchlist with `purchase_date`, `notes`, and `target_price`.
+- `users`: Includes SHA-256 hashed passwords.
+- `portfolio`: Stores holdings/watchlist with `purchase_date`, `notes`, and `target_price`.
 - `analysis_history`: Stores structured JSON reports. (Sonnet pulls last 15 for context).
-- `advisor_insights`: Stance/Catalyst data harvested from expert transcripts.
 - `signal_events`: Tracks signal flips (e.g., BULLISH → NEUTRAL).
-- `price_targets`: Tracks price alerts (Above/Below) and triggered status.
-- `trade_journal`: Logs psychology, entry reasons, and outcomes.
-
----
-
-## Key Endpoints (`main.py`)
-
-| Endpoint | Method | Description |
-|---|---|---|
-| `/analyze` | POST | 8-step agentic analysis with flip detection and smart caching. |
-| `/analyze/batch`| POST | Nightly batch analysis for portfolios. |
-| `/portfolio/advisor-consensus`| GET | Trending tickers and sector signals across experts. |
-| `/portfolio/risk-analysis` | GET | Portfolio Beta, risk score (1-10), and correlation warnings. |
-| `/morning-summary` | GET | Prioritised action list: Alerts > Flips > Earnings. |
-| `/macro-strip` | GET | Live Brent Crude, India VIX, USD/INR, and RBI rates. |
-| `/earnings-calendar`| GET | Upcoming earnings for held stocks. |
-| `/quick-info` | GET | Enriched news with images and ASM/GSM surveillance status. |
-| `/market-indices` | GET | Live Nifty/Sensex with history-based fallback for reliability. |
-| `/portfolio/export/excel` | GET | Returns .xlsx binary of portfolio and history. |
-| `/portfolio/export/pdf` | GET | Returns PDF report of holdings. |
+- `price_targets`: Tracks price alerts.
+- `trade_journal`: Logs mood, entry reason, and outcomes.
+- `advisor_insights`: Stance data from YouTube experts.
 
 ---
 
 ## Reliability Features
 
 - **yfinance Retry**: 3-attempt retry with backoff.
-- **NSE Session Bootstrap**: Direct NSE API access for ASM/GSM surveillance lists.
-- **History Fallbacks**: Indices/Sectors use history data if `info` fails.
-- **BSE Fallback**: Automatic failover to BSE (`.BO`) for missing financial data.
+- **NSE Session Bootstrap**: Direct NSE API access for surveillance lists.
+- **History Fallbacks**: Indices/Sectors use history if `info` fails.
+- **BSE Fallback**: Automatic failover to BSE (`.BO`).

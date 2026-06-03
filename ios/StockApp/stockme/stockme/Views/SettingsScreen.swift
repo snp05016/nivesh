@@ -8,7 +8,6 @@ struct SettingsScreen: View {
     @AppStorage("useBiometrics") private var useBiometrics = false
     @AppStorage("darkMode") private var darkMode = false
     @AppStorage("pushNotifications") private var pushNotifications = true
-    @AppStorage("useMockAI") private var useMockAI = false
     @AppStorage("defaultDeepScan") private var defaultDeepScan = false
     @AppStorage("dataRefreshRate") private var dataRefreshRate = "Real-time"
     @AppStorage("currencyDisplay") private var currencyDisplay = "Lakhs/Crores"
@@ -81,7 +80,6 @@ struct SettingsScreen: View {
                             SettingsNoteGroup(title: "App Preferences", hindi: "ऐप प्राथमिकताएं") {
                                 ToggleNoteRow(icon: "moon.fill", color: .indigo, title: "Dark Inks", isOn: $darkMode)
                                 ToggleNoteRow(icon: "faceid", color: Theme.bullGreen, title: "Security Threads (Face ID)", isOn: $useBiometrics)
-                                ToggleNoteRow(icon: "ladybug.fill", color: Theme.bearRed, title: "Dev Mode (Mock AI)", isOn: $useMockAI)
                                 ToggleNoteRow(icon: "waveform.badge.magnifyingglass", color: Theme.securityGold, title: "Deep Scan by Default", isOn: $defaultDeepScan)
                             }
 

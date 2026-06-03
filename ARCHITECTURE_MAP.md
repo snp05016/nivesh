@@ -10,7 +10,7 @@
 
 Nivesh is designed as a **Premium AI-First Wealth Intelligence System**. It is built on three architectural pillars:
 1.  **Banknote Aesthetic (iOS):** A bespoke design system that uses native SwiftUI primitives to mimic the security features, colors, and textures of Indian currency.
-2.  **Dialectical AI Pipeline (LangGraph):** A multi-agent graph that moves from raw research (Parallel Analysts) to adversarial synthesis (Bull/Bear Debate) to risk validation (The Jury) and final verdict.
+2.  **Dialectical AI Pipeline (LangGraph):** A multi-agent graph that moves from raw research (Parallel Analysts) to adversarial synthesis (Bull/Bear Debate) to iterative risk validation (The Jury) and final verdict.
 3.  **Prefix-Aligned Context Stratification:** A custom prompt caching strategy that minimizes latency and costs by separating static persona layers from volatile ticker-specific history.
 
 ---
@@ -28,15 +28,21 @@ The backend is a high-performance FastAPI service that manages all data harvesti
     *   **`User`**: Tracks hashed passwords and relationships to all other data.
     *   **`Portfolio`**: Stores holdings and watchlists. Note the `group_name` differentiator.
     *   **`AnalysisHistory`**: Stores the massive `full_json` reports returned by the AI.
-    *   **`AdvisorInsight`**: Stores extracted stances from YouTube experts (SOIC, Basant Maheshwari, etc.).
+    *   **`AdvisorInsight`**: Stores extracted stances from YouTube experts.
     *   **`NewsArticle`**: Stores scraped news with FinBERT sentiment scores and `is_red_flag` detection.
-*   **`prompts.py`:** The "Brain" of the reformatting stage.
+*   **`prompts.py`**: The "Brain" of the reformatting stage.
     *   **`INDIAN_MARKET_SYSTEM_PROMPT`**: 400+ lines of instructions enforcing "Hardened Risk Officer" persona, "Behavioral Translation" (e.g., RSI < 30 is "Retail Capitulation"), and the "Minskyan Tension Gauge" for FII/DII flows.
 
-### Services Layer (`/backend/services`)
+### Advisor Intelligence Services (`/backend/services`)
 *   **`advisor_harvester.py`**: A nightly CRON service. Fetches transcripts via YouTube API, passes them to Claude Haiku to extract structured `stance`, `confidence`, and `catalyst`.
-*   **`ticker_matcher.py`**: Uses `rapidfuzz` (Fuzzy Token Set Ratio) to match spoken names in transcripts (e.g., "Tata Motors", "HDFC wala bank") to official NSE symbols.
-*   **`scraper.py`**: Custom scrapers for Moneycontrol and Economic Times RSS feeds.
+*   **`ticker_matcher.py`**: The "Hinglish" matching engine.
+    *   **Mechanism**: Uses `rapidfuzz` (fuzz.token_set_ratio) with a sliding-window (size=6, step=3) to identify tickers in transcripts.
+    *   **Alias Table**: Maps spoken nicknames (e.g., "HDFC wala bank" -> `HDFCBANK`, "Sujalon" -> `SUZLON`) to official symbols.
+    *   **Snippet Extraction**: Automatically grabs ±60 seconds of text around a match for context.
+*   **`transcript_engine.py`**: The two-layer transcription strategy.
+    *   **Layer 1 (YouTube API)**: Free, zero compute.
+    *   **Layer 2 (Whisper Fallback)**: Uses `faster-whisper` (large-v3) running on CPU (int8) if captions are disabled.
+    *   **Quality Gate**: Implements a "Devanagari Ratio" check; if >15% of the text is raw Hindi script, it fails the gate (as the pipeline expects Hinglish/English).
 
 ---
 
@@ -46,9 +52,9 @@ The AI uses a fork of the **TradingAgents** framework, heavily customized for In
 
 ### The LangGraph Flow (`trading_graph.py`)
 1.  **Parallel Analysts**: Market, News (Red Flags), and Fundamentals nodes execute concurrently.
-2.  **The Debate Loop**: `Bull Researcher` and `Bear Researcher` engage in a 1-round dialectical challenge to refine the thesis.
+2.  **The Debate Loop**: `Bull Researcher` and `Bear Researcher` engage in a dialectical challenge. The number of rounds is controlled by `should_continue_debate`.
 3.  **Synthesis**: `Research Manager` summarizes the debate; `Trader` node proposes target prices.
-4.  **The Risk Jury**: A 3-node committee (`Aggressive`, `Neutral`, `Conservative` Analysts) reviews the proposal.
+4.  **The Risk Jury (Iterative)**: A 3-node committee (`Aggressive` -> `Conservative` -> `Neutral`) reviews the proposal in a circular loop until `should_continue_risk_analysis` returns False.
 5.  **Final Verdict**: `Portfolio Manager` delivers the final recommendation.
 6.  **Deterministic Reformatting**: Claude 3.5 Sonnet applies the Indian Market Weighting and structures the JSON.
 
@@ -59,22 +65,26 @@ The AI uses a fork of the **TradingAgents** framework, heavily customized for In
 The frontend is a pure SwiftUI app (iOS 16+) with zero external dependencies.
 
 ### Core Architecture
-*   **`stockmeApp.swift`**: Initializes `AuthManager`, `NetworkManager`, and `TutorialManager`.
+*   **`stockmeApp.swift`**: Initializes `AuthManager`, `NetworkManager`, `TutorialManager`, and `AppSoundManager`.
 *   **`ContentView.swift`**: The 8-tab central hub. Manages the `TabView` and tutorial step overlays.
 *   **`NetworkManager.swift`**: High-fidelity API wrapper. Contains custom DTOs for `StockAnalysis` and `MorningSummary`.
-*   **`Models.swift`**: The Swift schema. Mirrors the backend JSON structure exactly. Defines the `Signal` enum with associated colors.
-*   **`StockDatabase.swift`**: A static repository of 400+ NSE stocks used for local search.
+*   **`Models.swift`**: The Swift schema. Mirrors the backend JSON structure exactly. Defines the `Signal` enum with associated colors and labels.
+*   **`StockDatabase.swift`**: A static repository of 400+ NSE stocks used for local search and autocompletion.
 
-### High-Fidelity Design System
+### Premium Design System (`/Components` & `/Utilities`)
 *   **`BanknoteDesignSystem.swift`**: Core Theme definition (Emerald, Ruby, Gold, Canvas).
 *   **`DenominationBackground.swift`**: Implements `RBISealBackground`, `SecurityThread`, and `PaperTexture` noise overlays.
 *   **`LaunchSequenceView.swift`**: Animated startup sequence simulating a banknote unfolding.
 *   **`GuillocheDivider.swift`**: Custom animated wave dividers.
+*   **`Theme.swift`**: Detailed adaptive color palette and typography tokens for the Indian Rupee aesthetic.
+*   **`IndianFormatter.swift`**: Specialized logic for Lakh/Crore formatting and Rupee-denominated valuation displays.
+*   **`HapticManager.swift`**: Centralized engine for `EKPressStyle` spring interactions and feedback.
+*   **`NewsCardView.swift`**: High-fidelity cards for Yahoo Finance news integration.
+*   **`YouTubeCardView.swift`**: Specialized components for rendering Advisor Intelligence insights with view counts and advisor stances.
 
-### Views Layer
-*   **`HomeScreen.swift`**: Features the "Morning Brief" (Alerts > Signal Flips) and "Sector Pulse" heatmap.
-*   **`AnalysisScreen.swift`**: 5-tab deep-dive using **Swift Charts** for 11 native chart types.
-*   **`TradeJournalScreen.swift`**: Ledger for logging entry reasons and moods.
+### Specialized Services
+*   **`AppSoundManager.swift`**: Manages the "Rupee Rustle" and UI feedback sounds.
+*   **`ValuationCalendarService.swift`**: Manages the earnings and IPO calendar data formatting.
 
 ---
 

@@ -576,8 +576,26 @@ struct HomeScreen: View {
                             Group {
                                 if let user = authManager.currentUser {
                                     HStack {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text("भारतीय वित्तीय विश्लेषण")
+                                                .font(Theme.hindiFont(size: 11))
+                                                .foregroundColor(Theme.inkSecondary)
+                                            Text("RESERVE BANK OF INTELLIGENCE")
+                                                .font(Theme.officialStampFont(size: 9))
+                                                .foregroundColor(Theme.inkPrimary)
+                                        }
                                         Spacer()
-                                        AppHeader(name: user.displayName, initials: String(user.displayName.prefix(1)))
+                                        NavigationLink(destination: SettingsScreen()) {
+                                            ZStack {
+                                                Circle()
+                                                    .fill(Theme.securityGold.opacity(0.15))
+                                                    .frame(width: 40, height: 40)
+                                                Text(String(user.displayName.prefix(1)).uppercased())
+                                                    .font(.system(size: 16, weight: .bold))
+                                                    .foregroundColor(Theme.securityGold)
+                                            }
+                                            .overlay(Circle().stroke(Theme.securityGold.opacity(0.4), lineWidth: 1))
+                                        }
                                     }
                                     .padding(.horizontal, Theme.screenPadding)
                                     .padding(.top, 12)
@@ -793,6 +811,11 @@ struct HomeScreen: View {
 
                             // ── Section 6c: YOUTUBE FEED ─────────────────────────
                             if let feed = feedVM.feed, !feed.youtubeVideos.isEmpty {
+                                let videos = Array(feed.youtubeVideos.prefix(15))
+                                let row1 = Array(videos.prefix(5))
+                                let row2 = Array(videos.dropFirst(5).prefix(5))
+                                let row3 = Array(videos.dropFirst(10).prefix(5))
+
                                 VStack(alignment: .leading, spacing: 0) {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("विशेषज्ञ विश्लेषण")
@@ -810,12 +833,44 @@ struct HomeScreen: View {
                                         .padding(.horizontal, Theme.screenPadding)
                                         .padding(.bottom, 12)
 
-                                    VStack(spacing: 10) {
-                                        ForEach(feed.youtubeVideos.prefix(5)) { video in
-                                            YouTubeCardView(video: video) { ticker in
-                                                navigationPath.append(ticker)
+                                    VStack(spacing: 12) {
+                                        if !row1.isEmpty {
+                                            ScrollView(.horizontal, showsIndicators: false) {
+                                                HStack(spacing: 10) {
+                                                    ForEach(row1) { video in
+                                                        YouTubeCompactCard(video: video) { ticker in
+                                                            navigationPath.append(ticker)
+                                                        }
+                                                    }
+                                                }
+                                                .padding(.horizontal, Theme.screenPadding)
                                             }
-                                            .padding(.horizontal, Theme.screenPadding)
+                                        }
+
+                                        if !row2.isEmpty {
+                                            ScrollView(.horizontal, showsIndicators: false) {
+                                                HStack(spacing: 10) {
+                                                    ForEach(row2) { video in
+                                                        YouTubeCompactCard(video: video) { ticker in
+                                                            navigationPath.append(ticker)
+                                                        }
+                                                    }
+                                                }
+                                                .padding(.horizontal, Theme.screenPadding)
+                                            }
+                                        }
+
+                                        if !row3.isEmpty {
+                                            ScrollView(.horizontal, showsIndicators: false) {
+                                                HStack(spacing: 10) {
+                                                    ForEach(row3) { video in
+                                                        YouTubeCompactCard(video: video) { ticker in
+                                                            navigationPath.append(ticker)
+                                                        }
+                                                    }
+                                                }
+                                                .padding(.horizontal, Theme.screenPadding)
+                                            }
                                         }
                                     }
                                 }
@@ -1663,6 +1718,253 @@ private struct MacroDashCard: View {
                 .stroke(Theme.borderFine, lineWidth: 0.5)
         )
     }
+}
+
+// MARK: - 14.4 Market Mood Gauge (Advance/Decline semi-circle dial)
+
+struct MarketMoodGauge: View {
+    /// advances / (advances + declines), range 0…1
+    let ratio: Double
+
+    private var moodLabel: String {
+        switch ratio {
+        case 0..<0.35: return "EXTREME FEAR"
+        case 0.35..<0.45: return "FEAR"
+        case 0.45..<0.55: return "NEUTRAL"
+        case 0.55..<0.65: return "GREED"
+        default: return "EXTREME GREED"
+        }
+    }
+
+    private var needleColor: Color {
+        switch ratio {
+        case 0..<0.45: return Theme.bearRed
+        case 0.45..<0.55: return Theme.holdAmber
+        default: return Theme.bullGreen
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Text("MARKET MOOD GAUGE")
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .tracking(2)
+                .foregroundColor(Theme.inkSecondary)
+
+            ZStack {
+                // Background arc (full 180°)
+                ArcShape(startAngle: .degrees(180), endAngle: .degrees(360), clockwise: false)
+                    .stroke(Theme.inkTertiary.opacity(0.15), style: StrokeStyle(lineWidth: 16, lineCap: .round))
+
+                // Colored fill arc based on ratio
+                ArcShape(startAngle: .degrees(180), endAngle: .degrees(180 + ratio * 180), clockwise: false)
+                    .stroke(
+                        LinearGradient(colors: [Theme.bearRed, Theme.holdAmber, Theme.bullGreen],
+                                       startPoint: .leading, endPoint: .trailing),
+                        style: StrokeStyle(lineWidth: 16, lineCap: .round)
+                    )
+
+                // Needle
+                GeometryReader { geo in
+                    let cx = geo.size.width / 2
+                    let cy = geo.size.height
+                    let r = min(cx, cy) - 18
+                    let angle = Double.pi + ratio * Double.pi
+                    let nx = cx + CGFloat(cos(angle)) * r
+                    let ny = cy + CGFloat(sin(angle)) * r
+                    Path { p in
+                        p.move(to: CGPoint(x: cx, y: cy))
+                        p.addLine(to: CGPoint(x: nx, y: ny))
+                    }
+                    .stroke(Theme.inkPrimary, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    // Center dot
+                    Circle()
+                        .fill(Theme.inkPrimary)
+                        .frame(width: 8, height: 8)
+                        .position(x: cx, y: cy)
+                }
+            }
+            .frame(height: 80)
+            .clipped()
+
+            VStack(spacing: 4) {
+                Text(moodLabel)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(needleColor)
+                Text(String(format: "A/D Ratio: %.2f", ratio))
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(Theme.inkTertiary)
+            }
+        }
+        .padding(14)
+        .banknoteCard()
+    }
+}
+
+private struct ArcShape: Shape {
+    var startAngle: Angle
+    var endAngle: Angle
+    var clockwise: Bool
+
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let cx = rect.midX
+        let cy = rect.maxY
+        let r = min(rect.width / 2, rect.height) - 8
+        p.addArc(center: CGPoint(x: cx, y: cy),
+                 radius: r,
+                 startAngle: startAngle,
+                 endAngle: endAngle,
+                 clockwise: clockwise)
+        return p
+    }
+}
+
+// MARK: - 14.4 IndexCardView (snapping horizontal index chip)
+
+struct IndexCardView: View {
+    let index: LiveMarketIndex
+
+    private var valueStr: String {
+        index.ticker == "USDINR=X"
+            ? String(format: "%.2f", index.value)
+            : IndianFormatter.price(index.value)
+    }
+    private var isPositive: Bool { index.changePct >= 0 }
+    private var changeStr: String {
+        (isPositive ? "+" : "") + String(format: "%.2f%%", index.changePct)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(index.name)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(Theme.inkSecondary)
+                .lineLimit(1)
+
+            Text(valueStr)
+                .font(.system(size: 18, weight: .bold, design: .monospaced))
+                .foregroundColor(Theme.inkPrimary)
+                .monospacedDigit()
+
+            HStack(spacing: 4) {
+                Image(systemName: isPositive ? "arrow.up.right" : "arrow.down.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(isPositive ? Theme.bullGreen : Theme.bearRed)
+                Text(changeStr)
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundColor(isPositive ? Theme.bullGreen : Theme.bearRed)
+            }
+        }
+        .padding(14)
+        .frame(width: 140)
+        .banknoteCard()
+    }
+}
+
+// MARK: - 14.4 MomentumRowView (backed by Swift Charts sparkline)
+
+struct MomentumRowView: View {
+    let ticker: MomentumTicker
+    let isBullish: Bool
+
+    private var signalColor: Color { isBullish ? Theme.bullGreen : Theme.bearRed }
+    private var crossoverLabel: String {
+        switch ticker.crossover {
+        case "golden_cross": return "Golden Cross"
+        case "death_cross": return "Death Cross"
+        default: return isBullish ? "Above MA50" : "Below MA50"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 6) {
+                    Text(ticker.ticker)
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .foregroundColor(Theme.inkPrimary)
+                    Text(crossoverLabel.uppercased())
+                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .tracking(0.8)
+                        .foregroundColor(signalColor)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(signalColor.opacity(0.10))
+                        .cornerRadius(3)
+                }
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("LTP").font(.system(size: 8)).foregroundColor(Theme.inkTertiary)
+                        Text(IndianFormatter.price(ticker.lastPrice))
+                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .foregroundColor(Theme.inkPrimary)
+                    }
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("SINCE").font(.system(size: 8)).foregroundColor(Theme.inkTertiary)
+                        Text(ticker.trendDate)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(Theme.inkSecondary)
+                    }
+                }
+            }
+            Spacer()
+            // Native Swift Charts trend sparkline
+            if !ticker.sparkline.isEmpty {
+                SparklineView(values: ticker.sparkline, color: signalColor)
+                    .frame(width: 56, height: 32)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+}
+
+// MARK: - 14.7 Anti-Patterns Validator (passive checks, no UI)
+
+/// Validates that a Double value from the server does not represent a
+/// Western million/billion scale (>= 1_000_000 raw without crore conversion).
+/// Returns a safe IndianFormatter string, never raw Western numbers.
+func safeIndianCurrency(_ raw: Double) -> String {
+    // Block any value that looks like it was passed as raw millions/billions
+    // (i.e. > 100 crore threshold without going through formatLakhsCrores)
+    return IndianFormatter.formatLakhsCrores(raw)
+}
+
+// MARK: - Section 15: SwiftUI Preview Environment
+
+#Preview("HomeScreen") {
+    HomeScreen()
+        .environmentObject(AuthManager())
+        .environmentObject(LocalReportManager())
+}
+
+#Preview("IndexCardView") {
+    IndexCardView(index: LiveMarketIndex(
+        name: "NIFTY 50", ticker: "^NSEI",
+        value: 22_547.85, changePct: 0.43, changeAbs: 96.5
+    ))
+    .padding()
+    .background(Theme.canvas)
+}
+
+#Preview("MarketMoodGauge") {
+    MarketMoodGauge(ratio: 0.62)
+        .padding()
+        .background(Theme.canvas)
+}
+
+#Preview("MomentumRowView") {
+    MomentumRowView(
+        ticker: MomentumTicker(
+            ticker: "RELIANCE", lastPrice: 2847.5, ma20: 2780.0,
+            ma50: 2650.0, sparkline: [2600, 2640, 2680, 2720, 2780, 2820, 2847],
+            trendDate: "12 May 2026", crossover: "golden_cross"
+        ),
+        isBullish: true
+    )
+    .padding()
+    .background(Theme.canvas)
 }
 
 // MARK: - Institutional Flow Dashboard Card

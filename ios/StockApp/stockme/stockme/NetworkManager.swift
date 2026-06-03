@@ -732,6 +732,60 @@ class NetworkManager: ObservableObject {
         catch { throw NetworkError.decodingError(error.localizedDescription) }
     }
 
+    // MARK: - Earnings Dashboard (Sections 1–5)
+
+    func fetchEarningsProgress() async -> EarningsProgressResponse? {
+        guard let url = URL(string: "\(baseURL)/api/v1/earnings/progress") else { return nil }
+        var req = URLRequest(url: url); req.timeoutInterval = 15
+        guard let (data, resp) = try? await session.data(for: req),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+        return try? JSONDecoder().decode(EarningsProgressResponse.self, from: data)
+    }
+
+    func fetchEarningsFeed(marketCap: String = "all", sort: String = "latest") async -> [EarningsResult] {
+        guard let url = URL(string: "\(baseURL)/api/v1/earnings/feed?market_cap=\(marketCap)&sort=\(sort)") else { return [] }
+        var req = URLRequest(url: url); req.timeoutInterval = 20
+        guard let (data, resp) = try? await session.data(for: req),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+        return (try? JSONDecoder().decode(EarningsFeedResponse.self, from: data))?.results ?? []
+    }
+
+    func fetchEarningsCalendarDay(date: String) async -> [EarningsResult] {
+        guard let url = URL(string: "\(baseURL)/api/v1/earnings/calendar?date=\(date)") else { return [] }
+        var req = URLRequest(url: url); req.timeoutInterval = 15
+        guard let (data, resp) = try? await session.data(for: req),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+        struct Resp: Decodable { let results: [EarningsResult] }
+        return (try? JSONDecoder().decode(Resp.self, from: data))?.results ?? []
+    }
+
+    func fetchEarningsEstimates(ticker: String) async -> EarningsEstimate? {
+        guard let url = URL(string: "\(baseURL)/api/v1/earnings/estimates?ticker=\(ticker)") else { return nil }
+        var req = URLRequest(url: url); req.timeoutInterval = 15
+        guard let (data, resp) = try? await session.data(for: req),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+        return try? JSONDecoder().decode(EarningsEstimate.self, from: data)
+    }
+
+    func fetchPostResultMovers() async -> [PostResultMover] {
+        guard let url = URL(string: "\(baseURL)/api/v1/earnings/post-result-movers") else { return [] }
+        var req = URLRequest(url: url); req.timeoutInterval = 15
+        guard let (data, resp) = try? await session.data(for: req),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+        return (try? JSONDecoder().decode(PostResultMoversResponse.self, from: data))?.movers ?? []
+    }
+
+    func setEarningsAlert(userId: Int, ticker: String, date: String) async throws {
+        struct Req: Encodable { let user_id: Int; let ticker: String; let earnings_date: String }
+        guard let url = URL(string: "\(baseURL)/api/v1/earnings/alerts") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, earnings_date: date))
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+    }
+
     // MARK: - Advisor Intelligence
 
     func fetchAdvisoryConsensus(userId: Int) async throws -> AdvisoryConsensusResponse {

@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import anthropic
+import openai as _openai_lib
 
 # ---------------------------------------------------------------------------
 # Logging — handlers configured by the caller (CRON)
@@ -63,8 +64,10 @@ ADVISOR_REGISTRY = [
 ]
 
 # ---------------------------------------------------------------------------
-# Claude Haiku extraction prompt
+# DeepSeek V4 Flash stance extraction (Tier 1 — migrated from Claude Haiku)
 # ---------------------------------------------------------------------------
+
+_DEEPSEEK_MODEL = "deepseek-v4-flash"
 
 HAIKU_SYSTEM = """You are a financial transcript analyst. Extract structured investment stance data from Indian financial advisor commentary. Output ONLY valid JSON. No preamble. No explanation."""
 
@@ -84,6 +87,51 @@ Rules:
 - If hedging/undecided: NEUTRAL
 - catalyst_summary must have a numeric anchor (₹ amounts in Lakhs/Crores, percentages, multiples)
 """
+
+
+def _get_deepseek_client() -> "_openai_lib.OpenAI":
+    """Lazy DeepSeek OpenAI-compatible client using DEEPSEEK_API_KEY."""
+    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+    return _openai_lib.OpenAI(
+        api_key=api_key,
+        base_url="https://api.deepseek.com/v1",
+        timeout=60.0,
+    )
+
+
+def _deepseek_chat(messages: list, *, max_tokens: int = 256, temperature: float = 0.2) -> str:
+    """
+    Call DeepSeek V4 Flash with exponential backoff (max 3 retries, base 2 s).
+    V4 Flash is a thinking model — reasoning_content consumes max_tokens before
+    content is generated.  We inflate the requested max_tokens to leave room for
+    internal reasoning, then return content (or reasoning_content as fallback).
+    Returns assistant message text.
+    """
+    import time as _t
+    client = _get_deepseek_client()
+    last_exc = None
+    effective_max = max(max_tokens * 5, 512)
+    for attempt in range(3):
+        try:
+            resp = client.chat.completions.create(
+                model=_DEEPSEEK_MODEL,
+                messages=messages,
+                max_tokens=effective_max,
+                temperature=temperature,
+            )
+            choice = resp.choices[0]
+            content = choice.message.content or ""
+            if not content.strip():
+                reasoning = getattr(choice.message, "reasoning_content", None) or ""
+                if reasoning.strip():
+                    content = reasoning
+            return content
+        except Exception as exc:
+            last_exc = exc
+            logger.warning("DeepSeek attempt %d/3 failed: %s", attempt + 1, exc)
+            if attempt < 2:
+                _t.sleep(2.0 * (2 ** attempt))
+    raise RuntimeError(f"DeepSeek call failed after 3 retries: {last_exc}") from last_exc
 
 # ---------------------------------------------------------------------------
 # Duration helpers
@@ -347,29 +395,26 @@ def _insert_insight(
 
 def _extract_stance_with_haiku(advisor_name: str, ticker: str, snippet: str) -> dict | None:
     """
-    Call Claude Haiku to extract stance JSON from a transcript snippet.
+    Extract stance JSON from a transcript snippet via DeepSeek V4 Flash (Tier 1).
+    Formerly used Claude Haiku; migrated to DeepSeek per model routing spec.
     Returns parsed dict or None on failure.
     """
-    client = anthropic.Anthropic()  # uses ANTHROPIC_API_KEY from env
-
     user_content = HAIKU_USER_TEMPLATE.format(
         advisor_name=advisor_name,
         ticker=ticker,
         snippet=snippet[:3000],  # guard against oversized snippets
     )
 
-    try:
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=200,
-            system=HAIKU_SYSTEM,
-            messages=[{"role": "user", "content": user_content}],
-        )
-    except Exception as exc:
-        logger.warning("Haiku API call failed for %s/%s: %s", advisor_name, ticker, exc)
-        return None
+    messages = [
+        {"role": "system", "content": HAIKU_SYSTEM},
+        {"role": "user", "content": user_content},
+    ]
 
-    raw_text = response.content[0].text.strip() if response.content else ""
+    try:
+        raw_text = _deepseek_chat(messages, max_tokens=200, temperature=0.1)
+    except Exception as exc:
+        logger.warning("DeepSeek stance call failed for %s/%s: %s", advisor_name, ticker, exc)
+        return None
 
     # Strip markdown code fences if present
     if raw_text.startswith("```"):
