@@ -36,5 +36,19 @@
 - [x] Indian numbering already in place (₹ formatting in notification payloads)
 - [x] Python syntax check: main.py, database.py, scraper.py — all compile clean
 - [x] iOS build: ** BUILD SUCCEEDED **
-- [ ] Deploy to server
-- [ ] Git commit
+- [x] Deploy to server: main.py + scraper.py copied, service restarted
+- [x] Server verified: ping OK, valuation seeding works (22 data points, +12.99%)
+- [x] Git commit: 75e0762 — feat: APNs notification plumbing, valuation seeding, weekly heatmap fallbacks
+
+---
+
+## Verification Results
+
+### Valuation Seeding Test (nirav, user_id=2)
+- 22 snapshots seeded on first request
+- Period: 2026-05-04 to 2026-06-03
+- Starting value: ₹77,84,957
+- Ending value: ₹87,96,166
+- Return: +12.99% (+₹10,11,209)
+- Peak: ₹89,52,061
+- Trough: ₹77,01,674

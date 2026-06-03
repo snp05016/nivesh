@@ -1,7 +1,7 @@
 # Nivesh (निवेश) — Full App Context
 
 > Paste this into Claude to get full context before brainstorming next steps.
-> Last updated: June 3, 2026. Reflects current shipped state.
+> Last updated: June 3, 2026. Reflects current implementation.
 
 ---
 
@@ -85,34 +85,8 @@ A background CRON job runs the `advisor_harvester.py` to ingest expert sentiment
 
 1.  **Transcript Extraction**: Fetches transcripts for specific financial channels (SOIC, Basant Maheshwari, etc.) using the YouTube API.
 2.  **Fuzzy Ticker Matching**: Uses `rapidfuzz` to identify stocks mentioned in **Hinglish** commentary.
-    - *Example*: "HDFC wala bank" is matched to `HDFCBANK`.
-    - *Mapping*: Uses a manual alias table for common spoken nicknames.
 3.  **Stance Extraction**: Haiku extracts the advisor's stance (BULLISH/BEARISH/NEUTRAL) and catalyst summaries.
-4.  **Consensus API**: The `/api/v1/portfolio/advisor-consensus` endpoint aggregates this data into "Sector Signals" and "Trending Tickers" based on mention volume and view counts.
-
----
-
-## Performance & Optimization Summary
-
-| Optimization | Method | Impact |
-|---|---|---|
-| **Prompt Caching** | Dual-Breakpoint (Static + History) | 90% reduction in Sonnet input costs |
-| **Smart Cache** | Haiku Headline Check | Skips $0.15 analysis for non-events |
-| **Process Isolation** | `multiprocessing.Process` | Protects main API from crashes/memory leaks |
-| **TTL Cache** | 5-minute In-Memory | Reduces yfinance rate-limit risks |
-| **Batching** | Anthropic Batch API | 50% cost reduction for nightly portfolio runs |
-
----
-
-## The 3 Users
-
-| Username | Display Name |
-|---|---|
-| `saumya` | Saumya |
-| `nirav` | Nirav |
-| `ankur` | Ankur |
-
-All passwords `123`. Session stored in iOS `UserDefaults`.
+4.  **Consensus API**: The `/api/v1/portfolio/advisor-consensus` endpoint aggregates this data into "Sector Signals" and "Trending Tickers".
 
 ---
 
@@ -130,3 +104,14 @@ All passwords `123`. Session stored in iOS `UserDefaults`.
 - **Trade Ledger**: Log entry reasons, moods (FOMO/Contrarian), and outcomes.
 
 *(Additional Tabs: Directory, Alerts, Archives, Compare, Registry)*
+
+---
+
+## Design System (Banknote Aesthetic)
+
+- **Guilloché Patterns**: Animated dividers and background borders.
+- **Security Thread**: Gold vertical strip with micro-text.
+- **Ashoka Stamp**: Lion capital stamp integrated into Home.
+- **RBI Seal**: Circular watermark on all cards.
+- **Paper Texture**: 500-grain canvas noise overlay.
+- **Verified Badge**: Blue checkmark for verified users/data.
