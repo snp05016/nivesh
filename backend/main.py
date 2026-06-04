@@ -88,6 +88,7 @@ def _deepseek_chat(
     *,
     max_tokens: int = 512,
     temperature: float = 0.3,
+    log_endpoint: str | None = None,
 ) -> str:
     """
     Call DeepSeek V4 Flash via OpenAI-compatible API.
@@ -110,6 +111,10 @@ def _deepseek_chat(
                 max_tokens=effective_max,
                 temperature=temperature,
             )
+            
+            if log_endpoint and hasattr(response, "usage"):
+                _log_token_usage(log_endpoint, response.usage)
+
             choice = response.choices[0]
             content = choice.message.content or ""
             # If content is empty (all tokens went to reasoning), fall back to
@@ -291,10 +296,17 @@ def _dash_log_request(method: str, path: str, params: dict, status: int, duratio
 
 
 def _log_token_usage(endpoint: str, usage) -> None:
-    inp  = getattr(usage, "input_tokens", 0)
-    out  = getattr(usage, "output_tokens", 0)
-    cr   = getattr(usage, "cache_read_input_tokens", 0)
-    cw   = getattr(usage, "cache_creation_input_tokens", 0)
+    # Handle both Anthropic (input_tokens) and OpenAI (prompt_tokens)
+    inp = getattr(usage, "input_tokens", 0)
+    if inp == 0:
+        inp = getattr(usage, "prompt_tokens", 0)
+        
+    out = getattr(usage, "output_tokens", 0)
+    if out == 0:
+        out = getattr(usage, "completion_tokens", 0)
+        
+    cr = getattr(usage, "cache_read_input_tokens", 0)
+    cw = getattr(usage, "cache_creation_input_tokens", 0)
     try:
         entry = {
             "ts": datetime.now().isoformat(),
@@ -1045,9 +1057,11 @@ def build_ta_config() -> dict:
     config = DEFAULT_CONFIG.copy()
     # Tier 1 (bulk agent nodes): DeepSeek V4 Flash via OpenAI-compatible API
     # Tier 2 (Research Manager, Portfolio Manager): Claude Haiku 4.5
-    config["llm_provider"] = "deepseek"          # quick_think nodes → DeepSeek
-    config["deep_think_llm"] = HAIKU_MODEL        # Research Manager + Portfolio Manager → Haiku
-    config["quick_think_llm"] = DEEPSEEK_MODEL    # Market/News/Fundamentals/Bull/Bear/Trader/Debaters → DeepSeek
+    config["llm_provider"] = "deepseek"           # global fallback
+    config["deep_think_llm"] = HAIKU_MODEL        # Research Manager + Portfolio Manager
+    config["deep_think_provider"] = "anthropic"   # Force Anthropic for Haiku
+    config["quick_think_llm"] = DEEPSEEK_MODEL    # Market/News/Fundamentals/Bull/Bear/Trader/Debaters
+    config["quick_think_provider"] = "deepseek"  # Force DeepSeek for V4 Flash
     config["max_debate_rounds"] = 1
     config["max_risk_discuss_rounds"] = 1
     config["max_tokens"] = 2000
@@ -1254,8 +1268,8 @@ def analyze(ticker: str, exchange: str, user_id: int | None = None, deep_scan: b
                             [{"role": "user", "content": prompt}],
                             max_tokens=10,
                             temperature=0,
+                            log_endpoint="smart_cache",
                         ).strip().upper()
-                        _log_token_usage("smart_cache", None)
                         
                         if "NO" in answer:
                             print(f"[SMART CACHE] No major news changes for {full_ticker} since {last_date_str}. Reusing previous report to save credits.")
@@ -4179,8 +4193,8 @@ def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)
                     summary = _deepseek_chat(
                         [{"role": "user", "content": prompt}],
                         max_tokens=200,
+                        log_endpoint="red_flags_summary",
                     ).strip()
-                    _log_token_usage("red_flags_summary", None)
             except Exception as e:
                 print(f"[RED-FLAGS] Summary call failed: {e}")
 
@@ -4258,8 +4272,8 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
                     [{"role": "user", "content": prompt}],
                     max_tokens=1500,
                     temperature=0,
+                    log_endpoint="macro_impact",
                 )
-                _log_token_usage("macro_impact", None)
                 raw = _extract_json_from_text(raw_text)
                 parsed = json.loads(raw)
                 for item in parsed:
@@ -4593,8 +4607,8 @@ def trade_journal_stats_endpoint(user_id: int):
                 raw_text = _deepseek_chat(
                     [{"role": "user", "content": prompt}],
                     max_tokens=150,
+                    log_endpoint="trade_journal_stats",
                 )
-                _log_token_usage("trade_journal_stats", None)
                 raw = _extract_json_from_text(raw_text)
                 patterns = json.loads(raw)
                 if not isinstance(patterns, list):
@@ -5271,8 +5285,8 @@ def daily_action_endpoint(user_id: int, authorization: str = Header(None)):
                     [{"role": "user", "content": prompt}],
                     max_tokens=256,
                     temperature=0,
+                    log_endpoint="daily_action",
                 ).strip().rstrip(".")
-                _log_token_usage("daily_action", None)
             except Exception as e:
                 print(f"[DAILY-ACTION] DeepSeek failed: {e}")
 
@@ -6787,6 +6801,15 @@ async def net_worth_ledger_endpoint(
 # iOS EarningsDashboardView tabs: Progress | Calendar | Feed | Screeners | Variance | Post-Result
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _safe_float(v, default: float = 0.0) -> float:
+    """Return float, replacing NaN/Inf with default."""
+    import math
+    try:
+        f = float(v)
+        return default if (math.isnan(f) or math.isinf(f)) else f
+    except Exception:
+        return default
+
 def _earnings_result_from_row(r, now_iso: str) -> dict:
     """Build an EarningsResult dict from an AnalysisHistory row."""
     try:
@@ -6794,8 +6817,9 @@ def _earnings_result_from_row(r, now_iso: str) -> dict:
     except Exception:
         fj = {}
     fs = fj.get("fundamentals_snapshot", {})
-    revenue = float(fs.get("revenue_crores") or fs.get("revenue") or 0)
-    net_profit = float(fs.get("net_profit_crores") or fs.get("net_profit") or 0)
+    revenue = _safe_float(fs.get("revenue_crores") or fs.get("revenue"))
+    net_profit = _safe_float(fs.get("net_profit_crores") or fs.get("net_profit"))
+    eps_val = fs.get("eps")
     return {
         "ticker": r.ticker,
         "company_name": fj.get("company_name") or r.ticker,
@@ -6808,7 +6832,7 @@ def _earnings_result_from_row(r, now_iso: str) -> dict:
         "net_profit_prev": round(net_profit * 0.80, 2),
         "gross_profit": None,
         "gross_profit_prev": None,
-        "eps": fs.get("eps"),
+        "eps": _safe_float(eps_val) if eps_val is not None else None,
         "eps_prev": None,
         "ltp": 0.0,
         "change_percent": 0.0,
@@ -6981,3 +7005,84 @@ async def post_result_movers_endpoint():
 @app.get("/api/v1/earnings/alerts")
 async def earnings_alerts_endpoint():
     return {"alerts": [], "fetched_at": datetime.utcnow().isoformat()}
+
+
+# ── Expert Network  /api/v1/experts + /api/v1/expert-posts ───────────────────
+
+@app.get("/api/v1/experts")
+def get_experts():
+    now_iso = datetime.utcnow().isoformat()
+    try:
+        with get_session() as session:
+            rows = session.query(AdvisorInsight).order_by(
+                AdvisorInsight.published_at.desc()
+            ).limit(500).all()
+
+        advisor_map: dict = {}
+        for r in rows:
+            name = r.advisor_name
+            if name not in advisor_map:
+                advisor_map[name] = {"channel_id": r.channel_id, "post_count": 0,
+                                     "tickers": set(), "stances": [], "latest_at": r.published_at}
+            d = advisor_map[name]
+            d["post_count"] += 1
+            d["tickers"].add(r.ticker)
+            d["stances"].append(r.stance)
+            if r.published_at > d["latest_at"]:
+                d["latest_at"] = r.published_at
+
+        experts = []
+        for name, d in advisor_map.items():
+            sc = {s: d["stances"].count(s) for s in set(d["stances"])}
+            dominant = max(sc, key=sc.get) if sc else "Neutral"
+            focus = list(d["tickers"])[:4]
+            experts.append({
+                "id": d["channel_id"] or name.replace(" ", "_"),
+                "name": name,
+                "sebi_reg_id": None,
+                "years_experience": 0,
+                "strategy": f"{dominant.title()} Analyst",
+                "focus_tags": focus,
+                "post_count": d["post_count"],
+                "is_verified": True,
+                "bio": f"Financial analyst covering {', '.join(focus[:3])}. "
+                       f"{d['post_count']} tracked calls in Nivesh.",
+            })
+        experts.sort(key=lambda e: e["post_count"], reverse=True)
+        return {"experts": experts[:20], "fetched_at": now_iso}
+    except Exception as e:
+        print(f"[EXPERTS] {e}")
+        return {"experts": [], "fetched_at": now_iso}
+
+
+@app.get("/api/v1/expert-posts")
+def get_expert_posts(limit: int = 30):
+    now_iso = datetime.utcnow().isoformat()
+    try:
+        with get_session() as session:
+            rows = session.query(AdvisorInsight).order_by(
+                AdvisorInsight.published_at.desc()
+            ).limit(limit).all()
+
+        posts = []
+        for r in rows:
+            content = f"{r.ticker}: [{r.stance.upper()}] {r.catalyst_summary}" if r.ticker else f"[{r.stance.upper()}] {r.catalyst_summary}"
+            posts.append({
+                "id": f"{r.video_id}_{r.ticker}",
+                "expert_id": r.channel_id or r.advisor_name.replace(" ", "_"),
+                "expert_name": r.advisor_name,
+                "content": content,
+                "ticker": r.ticker or None,
+                "chart_image_url": None,
+                "published_at": r.published_at.isoformat() + "Z",
+                "like_count": r.view_count or 0,
+                "is_premium": False,
+                "video_url": r.video_url,
+                "video_title": r.video_title,
+                "confidence": r.confidence,
+                "stance": r.stance,
+            })
+        return {"posts": posts, "fetched_at": now_iso}
+    except Exception as e:
+        print(f"[EXPERT-POSTS] {e}")
+        return {"posts": [], "fetched_at": now_iso}

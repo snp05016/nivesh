@@ -1,6 +1,57 @@
 import SwiftUI
 import Combine
 
+// MARK: - Expert Network API Response Models
+
+private struct ExpertListResponse: Decodable {
+    let experts: [ExpertDTO]
+}
+
+private struct ExpertDTO: Decodable {
+    let id: String
+    let name: String
+    let sebiRegId: String?
+    let yearsExperience: Int
+    let strategy: String
+    let focusTags: [String]
+    let postCount: Int
+    let isVerified: Bool
+    let bio: String
+    enum CodingKeys: String, CodingKey {
+        case id, name, strategy, bio
+        case sebiRegId = "sebi_reg_id"
+        case yearsExperience = "years_experience"
+        case focusTags = "focus_tags"
+        case postCount = "post_count"
+        case isVerified = "is_verified"
+    }
+}
+
+private struct PostListResponse: Decodable {
+    let posts: [PostDTO]
+}
+
+private struct PostDTO: Decodable {
+    let id: String
+    let expertId: String
+    let expertName: String
+    let content: String
+    let ticker: String?
+    let chartImageUrl: String?
+    let publishedAt: String
+    let likeCount: Int
+    let isPremium: Bool
+    enum CodingKeys: String, CodingKey {
+        case id, content, ticker
+        case expertId = "expert_id"
+        case expertName = "expert_name"
+        case chartImageUrl = "chart_image_url"
+        case publishedAt = "published_at"
+        case likeCount = "like_count"
+        case isPremium = "is_premium"
+    }
+}
+
 // MARK: - Expert Network ViewModel
 
 @MainActor
@@ -15,62 +66,62 @@ class ExpertNetworkViewModel: ObservableObject {
         set { bookmarksRaw = newValue.joined(separator: ",") }
     }
 
-    // Seed mock experts for offline / preview
-    private let mockExperts: [MarketExpert] = [
-        MarketExpert(id: "E1", name: "Rajesh Palviya", sebiRegId: "INH100001234",
+    private static let fallbackExperts: [MarketExpert] = [
+        MarketExpert(id: "E1", name: "Rajesh Palviya", sebiRegId: nil,
                      yearsExperience: 19, strategy: "Harmonic Trading Strategy",
-                     focusTags: ["Charts", "Currency", "Gold", "Global Markets"],
-                     postCount: 3847, isVerified: true,
-                     bio: "Senior VP Technical Research at Axis Securities. 19+ years tracking Indian and global derivative markets with proprietary harmonic pattern systems."),
-        MarketExpert(id: "E2", name: "Anand James", sebiRegId: "INH200003456",
+                     focusTags: ["Charts", "Currency", "Gold"],
+                     postCount: 0, isVerified: true,
+                     bio: "Senior VP Technical Research tracking Indian and global derivative markets."),
+        MarketExpert(id: "E2", name: "Anand James", sebiRegId: nil,
                      yearsExperience: 14, strategy: "Wyckoff Method",
                      focusTags: ["Charts", "Equity", "Index"],
-                     postCount: 2104, isVerified: true,
-                     bio: "Chief Market Strategist applying Wyckoff accumulation/distribution methodology to Nifty and Sensex structural pivots."),
-        MarketExpert(id: "E3", name: "Neeraj Chadawar", sebiRegId: "INH300005678",
-                     yearsExperience: 11, strategy: "Price Action & Volume",
-                     focusTags: ["Equity", "Smallcap", "Midcap"],
-                     postCount: 1576, isVerified: true,
-                     bio: "Head of Research focused on mid and smallcap opportunities using pure price action with volume confirmation."),
-    ]
-
-    private let mockPosts: [ExpertPost] = [
-        ExpertPost(id: "P1", expertId: "E1", expertName: "Rajesh Palviya",
-                   content: "Retail Capitulation confirmed at 22,000 Nifty. Institutional accumulation patterns visible in Bank Nifty futures OI. Expect sharp reversal within 3 sessions.",
-                   ticker: "NIFTY", chartImageUrl: nil,
-                   publishedAt: Date().addingTimeInterval(-3600),
-                   likeCount: 847, isPremium: false),
-        ExpertPost(id: "P2", expertId: "E1", expertName: "Rajesh Palviya",
-                   content: "HDFC Bank forming a classic Bat harmonic pattern on weekly charts. Target cluster at ₹1,820–1,860. This is a high-probability setup with defined stop at ₹1,620.",
-                   ticker: "HDFCBANK", chartImageUrl: nil,
-                   publishedAt: Date().addingTimeInterval(-7200),
-                   likeCount: 1203, isPremium: false),
-        ExpertPost(id: "P3", expertId: "E2", expertName: "Anand James",
-                   content: "Nifty50 is in Wyckoff Phase C re-accumulation. Spring below 21,800 tested and held. Composite Operator activity suggests markup phase initiation.",
-                   ticker: "NIFTY", chartImageUrl: nil,
-                   publishedAt: Date().addingTimeInterval(-14400),
-                   likeCount: 634, isPremium: false),
-        ExpertPost(id: "P4", expertId: "E3", expertName: "Neeraj Chadawar",
-                   content: "Dixon Technologies printing a Cup & Handle breakout on monthly chart. Volume expansion on breakout bar is critical confirmation. Entry on pullback to ₹14,200.",
-                   ticker: "DIXON", chartImageUrl: nil,
-                   publishedAt: Date().addingTimeInterval(-21600),
-                   likeCount: 412, isPremium: false),
+                     postCount: 0, isVerified: true,
+                     bio: "Chief Market Strategist applying Wyckoff methodology to Nifty structural pivots."),
     ]
 
     func load() {
         isLoading = true
         Task {
-            // Production: fetch from /api/v1/experts and /api/v1/expert-posts
-            experts = mockExperts
-            posts = mockPosts
+            async let expertsFetch = fetchExperts()
+            async let postsFetch = fetchPosts()
+            let (e, p) = await (expertsFetch, postsFetch)
+            experts = e.isEmpty ? Self.fallbackExperts : e
+            posts = p
             isLoading = false
+        }
+    }
+
+    private func fetchExperts() async -> [MarketExpert] {
+        guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/experts"),
+              let (data, resp) = try? await URLSession.shared.data(from: url),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200,
+              let dto = try? JSONDecoder().decode(ExpertListResponse.self, from: data) else { return [] }
+        return dto.experts.map { d in
+            MarketExpert(id: d.id, name: d.name, sebiRegId: d.sebiRegId,
+                         yearsExperience: d.yearsExperience, strategy: d.strategy,
+                         focusTags: d.focusTags, postCount: d.postCount,
+                         isVerified: d.isVerified, bio: d.bio)
+        }
+    }
+
+    private func fetchPosts() async -> [ExpertPost] {
+        guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/expert-posts?limit=40"),
+              let (data, resp) = try? await URLSession.shared.data(from: url),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200,
+              let dto = try? JSONDecoder().decode(PostListResponse.self, from: data) else { return [] }
+        let iso = ISO8601DateFormatter()
+        return dto.posts.map { d in
+            let date = iso.date(from: d.publishedAt) ?? Date()
+            return ExpertPost(id: d.id, expertId: d.expertId, expertName: d.expertName,
+                              content: d.content, ticker: d.ticker,
+                              chartImageUrl: d.chartImageUrl, publishedAt: date,
+                              likeCount: d.likeCount, isPremium: d.isPremium)
         }
     }
 
     func toggleLike(postId: String) {
         guard let idx = posts.firstIndex(where: { $0.id == postId }) else { return }
         posts[idx].isLiked.toggle()
-        // In production: POST /api/v1/expert-posts/{id}/like
     }
 
     func toggleBookmark(postId: String) {
