@@ -449,3 +449,142 @@ class NetWorthSnapshotResponse(_BaseModel):
 class DataHarvestingError(Exception):
     """Raised when a market data scraping / harvest pipeline fails."""
     pass
+
+# ---------------------------------------------------------------------------
+# NSE Session & ASM/GSM Helper
+# ---------------------------------------------------------------------------
+import random
+import math
+
+
+def _nse_session():
+    """Bootstrap a session with NSE cookies."""
+    import requests
+    s = requests.Session()
+    s.headers.update({
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Referer": "https://www.nseindia.com/",
+    })
+    try:
+        s.get("https://www.nseindia.com", timeout=8)
+    except: pass
+    return s
+
+
+_asm_gsm_cache = {"data": {}, "ts": 0}
+_ASM_GSM_CACHE_TTL = 21600  # 6 hours
+
+
+def _get_asm_gsm_lists():
+    """Fetch and cache ASM/GSM lists from NSE."""
+    global _asm_gsm_cache
+    now = time.time()
+    if _asm_gsm_cache["ts"] > 0 and (now - _asm_gsm_cache["ts"]) < _ASM_GSM_CACHE_TTL:
+        return _asm_gsm_cache["data"]
+
+    print("[NSE] Refreshing ASM/GSM lists...")
+    data = {"ASM": set(), "GSM": set()}
+    try:
+        session = _nse_session()
+        resp = session.get("https://www.nseindia.com/api/surveillance-asm-list?index=longTerm", timeout=10)
+        if resp.status_code == 200:
+            for item in resp.json().get("data", []):
+                sym = item.get("symbol")
+                if sym: data["ASM"].add(sym.upper())
+        
+        resp = session.get("https://www.nseindia.com/api/surveillance-asm-list?index=shortTerm", timeout=10)
+        if resp.status_code == 200:
+            for item in resp.json().get("data", []):
+                sym = item.get("symbol")
+                if sym: data["ASM"].add(sym.upper())
+
+        resp = session.get("https://www.nseindia.com/api/surveillance-gsm-list", timeout=10)
+        if resp.status_code == 200:
+            for item in resp.json().get("data", []):
+                sym = item.get("symbol")
+                if sym: data["GSM"].add(sym.upper())
+
+        _asm_gsm_cache = {"data": data, "ts": now}
+        return data
+    except Exception as e:
+        print(f"[NSE] ASM/GSM fetch failed: {e}")
+        return data
+
+
+# ---------------------------------------------------------------------------
+# Market Indices Helper
+# ---------------------------------------------------------------------------
+
+_INDICES_TICKERS = [
+    ("^NSEI",      "Nifty 50"),
+    ("^BSESN",     "Sensex"),
+    ("^NSEBANK",   "Nifty Bank"),
+    ("^CNXIT",     "Nifty IT"),
+    ("^CNXMIDCAP", "Nifty Midcap 100"),
+    ("USDINR=X",   "USD/INR"),
+]
+
+_indices_cache: dict = {"data": None, "ts": 0}
+_INDICES_CACHE_TTL = 300  # 5 minutes
+
+
+def _get_indices_data() -> dict:
+    """Fetch and cache market indices data. Used by both /market-indices and /morning-summary."""
+    now = time.time()
+    if _indices_cache["data"] is not None and (now - _indices_cache["ts"]) < _INDICES_CACHE_TTL:
+        return _indices_cache["data"]
+
+    result = []
+    for ticker, name in _INDICES_TICKERS:
+        try:
+            current = None
+            prev_close = None
+            for attempt in range(3):
+                try:
+                    t = yf.Ticker(ticker)
+                    info = t.fast_info
+                    current = getattr(info, "last_price", None)
+                    prev_close = getattr(info, "previous_close", None)
+                    
+                    if current is None or prev_close is None or math.isnan(current):
+                        full_info = t.info
+                        current = full_info.get("currentPrice") or full_info.get("regularMarketPrice")
+                        prev_close = full_info.get("previousClose") or full_info.get("regularMarketPreviousClose")
+                    
+                    if current is None or math.isnan(current):
+                        hist = t.history(period="5d")
+                        if not hist.empty and len(hist) >= 2:
+                            current = float(hist["Close"].iloc[-1])
+                            prev_close = float(hist["Close"].iloc[-2])
+                    
+                    if current is not None and not math.isnan(current):
+                        break
+                except Exception as e:
+                    print(f"[YF] Indices attempt {attempt+1} failed for {ticker}: {e}")
+                    if attempt < 2:
+                        time.sleep((1.0 * (2 ** attempt)) + (random.random() * 0.2))
+            
+            if current is None or math.isnan(current):
+                continue
+            
+            change_abs = round(current - (prev_close or 0), 4)
+            change_pct = round((change_abs / prev_close) * 100, 4) if prev_close else 0.0
+            result.append({
+                "name": name,
+                "ticker": ticker,
+                "value": round(float(current), 4),
+                "change_pct": change_pct,
+                "change_abs": change_abs,
+            })
+        except Exception as e:
+            print(f"[indices] Skipping {ticker}: {e}")
+            continue
+
+    payload = {
+        "indices": result,
+        "fetched_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
+    }
+    _indices_cache["data"] = payload
+    _indices_cache["ts"] = now
+    return payload

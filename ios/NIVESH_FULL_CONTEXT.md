@@ -22,8 +22,9 @@
 | Live market data | yfinance (Yahoo Finance) with NSE-session fallbacks |
 | News sources | Yahoo Finance News (enriched), Moneycontrol, Economic Times |
 | Advisor Intelligence | Claude 3.5 Haiku (YouTube extraction) + rapidfuzz (Hinglish matching) |
-| Database | SQLite via SQLAlchemy ORM |
-| Deterministic Engine| Factor Engine (Technical pre-compute), Piotroski (Fundamental) |
+| Deterministic Engine| Factor Engine (Technical), Options Scraper (Derivatives), Piotroski (Fundamental) |
+| Feedback Loop | Epistemic Feedback Injector (Price Delta tracking) |
+| NLP Engine | singleton FinBERT (yiyanghkust/finbert-tone) |
 
 ---
 
@@ -31,45 +32,34 @@
 
 The Nivesh AI pipeline is a sophisticated multi-stage orchestration engine designed for high-fidelity financial reasoning, built on a **LangGraph** foundation.
 
-### Step 1: The Smart Cache Gatekeeper (Haiku 3.5)
-Before executing the expensive graph, the system performs a **Differential News Check**:
-- **Logic**: Haiku determines if a "major fundamental shift" or "significant trend-changing event" has occurred since the last analysis.
-- **Outcome**: If "NO", the system skips the AI run, clones the previous report, and updates the price only (**SMART CACHE HIT**).
+### Step 1: Epistemic Feedback Injection
+Before any compute starts, the `feedback_injector` identifies the last report for this ticker. It computes the **Price Delta** since that report and injects a "Performance Review" block into the AI's HumanMessage. This prevents the model from repeating past thesis errors.
 
-### Step 2: Deterministic Pre-Computation (The Factor Engine)
-To ensure the AI doesn't "hallucinate" technical levels, the **Factor Engine** runs first:
-- **Technicals**: Calculates RSI-14, MACD, SMA 50/200, OBV, and Bollinger Bands using mathematical libraries (`ta`/`numpy`).
-- **Fundamentals**: `piotroski.py` computes the 9-point health score (0-9).
-- **Result**: These numbers are passed into the AI as "ground truth" prose.
+### Step 2: The Smart Cache Gatekeeper (Haiku 3.5)
+Performs a **Differential News Check** to determine if a trend-changing event has occurred.
+- **Outcome**: If "NO", the system skips the AI run, clones the previous report, and updates the price (**SMART CACHE HIT**).
 
-### Step 3: Multi-Agent Orchestration (LangGraph Patterns)
+### Step 3: Deterministic Pre-Computation
+To ensure mathematical accuracy, several engines run before the agents:
+- **Factor Engine**: Mathematical computation of 30+ technical indicators.
+- **Options Scraper**: Computes PCR, Max Pain, and **Institutional OI Skew** from NSE option chains.
+- **Piotroski**: Calculates 9-point fundamental health score.
+- **FinBERT**: Scores top news headlines for institutional sentiment.
+
+### Step 4: Multi-Agent Orchestration (LangGraph Patterns)
 
 #### A. Analyst Team Four-Agent Architecture
-Four specialized agents run in parallel to gather raw intelligence:
-1.  **Market Analyst**: Interprets Factor Engine data into behavioral trends.
-2.  **News Analyst**: Scans for corporate announcements and **Red Flags** (Audit Resignations, CFO exits).
-3.  **Fundamentals Analyst**: Checks Promoter Pledging (>30% = Bearish) and DII/FII flows.
-4.  **Social Analyst**: Measures retail euphoria as a contrarian risk signal.
+Market (Technical), News (Red Flags), Fundamentals (Promoter), and Social (Euphoria) agents run in parallel.
 
 #### B. Bullish vs Bearish Researcher Debate Pattern
-- **Adversarial Loop**: The `Bull Researcher` and `Bear Researcher` engage in a dialectical challenge to stress-test the investment thesis.
-- **Iteration**: They challenge each other for 1+ rounds (managed by `ConditionalLogic`) to refine the "edges" of the thesis.
+Adversarial loop stress-testing the investment thesis before synthesis.
 
 #### C. Risk Management Three-Perspective Analysis
-The proposal is reviewed by a 3-agent committee in a circular loop:
-1.  **Aggressive Analyst**: Looks for high-alpha opportunities.
-2.  **Conservative Analyst**: Focuses on capital preservation.
-3.  **Neutral Analyst**: Bridges the gap.
-They debate the proposal until `ConditionalLogic` determines the risk is fully explored.
-
-### Step 4: Deterministic Reformatting (Sonnet 3.5)
-The raw verdict is structured using a **Dual-Breakpoint Prompt Caching** strategy:
-1.  **Breakpoint 1 (The Blueprint)**: Caches the `INDIAN_MARKET_SYSTEM_PROMPT` (Static Layer).
-2.  **Breakpoint 2 (Ticker History)**: Caches the last 15 analyses for that specific ticker.
+The proposal is reviewed by a 3-agent committee (**Aggressive**, **Conservative**, **Neutral**) in a circular loop managed by `ConditionalLogic` until risks are fully explored.
 
 ---
 
-## iOS App — 8 Tabs (UI Communities)
+## iOS App — 8 Tabs
 
 | Tab | View | Community Focus |
 |---|---|---|
@@ -80,15 +70,14 @@ The raw verdict is structured using a **Dual-Breakpoint Prompt Caching** strateg
 | **Archives** | `HistoryScreen` | Local analysis history cache. |
 | **Compare** | `CompareScreen` | Side-by-side comparison of stocks. |
 | **Registry** | `SettingsScreen` | App styles, User preferences, Server config. |
-| **Journal** | `TradeJournalScreen`| Ledger for trade psychology logging. |
+| **Journal** | `TradeJournalScreen`| Ledger for trade psychology (FOMO/Confidence). |
 
 ---
 
 ## Design System (Banknote Aesthetic)
 
-- **Guilloché Patterns**: Animated dividers and borders (`GuillocheDivider`).
+- **Guilloché Patterns**: Animated wave dividers (`GuillocheDivider`).
 - **Security Thread**: Gold vertical strip with micro-text (`SecurityThread`).
 - **Paper Texture**: 500-grain canvas noise overlay.
 - **Rupee Rustle**: Audio feedback for UI interactions (`AppSoundManager`).
-- **Indian Formatter**: Specialized logic for Lakh/Crore formatting.
 - **Haptics**: Centralized engine for `EKPressStyle` spring interactions (`HapticManager`).

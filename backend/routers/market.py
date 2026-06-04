@@ -21,8 +21,8 @@ from services.scraper import (
     fetch_institutional_flow, fetch_earnings_sync_ratio,
     fetch_yoy_aggregate_indicators,
 )
-from services.options_scraper import get_option_chain_metrics
-from services.nse_data_provider import get_ipo_calendar
+from services.options_scraper import fetch_option_chain, compute_derivatives_metrics
+from services.nse_data_provider import get_price_history, get_fundamentals
 
 router = APIRouter(tags=["Market Data"])
 

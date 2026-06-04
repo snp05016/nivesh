@@ -23,7 +23,9 @@
 | News sources | Yahoo Finance News (enriched), Moneycontrol, Economic Times |
 | Advisor Intelligence | Claude 3.5 Haiku (YouTube extraction) + rapidfuzz (Hinglish matching) |
 | Database | SQLite via SQLAlchemy ORM |
-| Deterministic Engine| Factor Engine (Technical pre-compute), Piotroski (Fundamental) |
+| Deterministic Engine| Factor Engine (Technical), Options Scraper (Derivatives), Piotroski (Fundamental) |
+| Feedback Loop | Epistemic Feedback Injector (Price Delta tracking) |
+| NLP Engine | singleton FinBERT (yiyanghkust/finbert-tone) |
 
 ---
 
@@ -31,40 +33,33 @@
 
 The Nivesh AI pipeline is a sophisticated multi-stage orchestration engine designed for high-fidelity financial reasoning, built on a **LangGraph** foundation.
 
-### Step 1: The Smart Cache Gatekeeper (Haiku 3.5)
-Before executing the expensive graph, the system performs a **Differential News Check**:
-- **Logic**: Haiku determines if a "major fundamental shift" or "significant trend-changing event" has occurred since the last analysis.
-- **Outcome**: If "NO", the system skips the AI run, clones the previous report, and updates the price only (**SMART CACHE HIT**).
+### Step 1: Epistemic Feedback Injection
+The `feedback_injector.py` service computes the price delta since the last analysis for this ticker. It injects a performance summary into theHumanMessage layer to ground the model in its own historical accuracy.
 
-### Step 2: Deterministic Pre-Computation (The Factor Engine)
-To ensure the AI doesn't "hallucinate" technical levels, the **Factor Engine** runs first:
-- **Technicals**: Calculates RSI-14, MACD, SMA 50/200, OBV, and Bollinger Bands using mathematical libraries (`ta`/`numpy`).
-- **Fundamentals**: `piotroski.py` computes the 9-point health score (0-9).
-- **Result**: These numbers are passed into the AI as "ground truth" prose.
+### Step 2: The Smart Cache Gatekeeper (Haiku 3.5)
+Performs a **Differential News Check** vs the last report timestamp.
+- **Outcome**: If "NO significant shift", clones the previous report and updates current price (**SMART CACHE HIT**).
 
-### Step 3: Multi-Agent Orchestration (LangGraph Patterns)
+### Step 3: Deterministic Pre-Computation
+Mathematical engines provide "ground truth" prose to the analysts:
+- **Factor Engine**: 30+ technical indicators (RSI, MACD, OBV).
+- **Options Scraper**: PCR, Max Pain, and **Institutional OI Skew**.
+- **Piotroski**: 9-point fundamental health score.
+- **FinBERT**: Headline sentiment scoring.
+
+### Step 4: Multi-Agent Orchestration (LangGraph Patterns)
 
 #### A. Analyst Team Four-Agent Architecture
-Four specialized agents run in parallel to gather raw intelligence:
-1.  **Market Analyst**: Interprets Factor Engine data into behavioral trends.
-2.  **News Analyst**: Scans for corporate announcements and **Red Flags** (Audit Resignations, CFO exits).
-3.  **Fundamentals Analyst**: Checks Promoter Pledging (>30% = Bearish) and DII/FII flows.
-4.  **Social Analyst**: Measures retail euphoria as a contrarian risk signal.
+Market, News (Red Flags), Fundamentals, and Social agents run in parallel to populate the `AgentState`.
 
 #### B. Bullish vs Bearish Researcher Debate Pattern
-- **Adversarial Loop**: The `Bull Researcher` and `Bear Researcher` engage in a dialectical challenge to stress-test the investment thesis.
-- **Iteration**: They challenge each other for 1+ rounds (managed by `ConditionalLogic`) to refine the "edges" of the thesis.
+Adversarial loop stress-testing the investment thesis. Managed by `ConditionalLogic`.
 
 #### C. Risk Management Three-Perspective Analysis
-The proposal is reviewed by a 3-agent committee in a circular loop:
-1.  **Aggressive Analyst**: Looks for high-alpha opportunities.
-2.  **Conservative Analyst**: Focuses on capital preservation.
-3.  **Neutral Analyst**: Bridges the gap.
-They debate the proposal until `ConditionalLogic` determines the risk is fully explored, before passing it to the **Portfolio Manager** for the final "raw" verdict.
+The proposal is reviewed by **Aggressive**, **Conservative**, and **Neutral** analysts in a circular loop until `ConditionalLogic` determines the risk is fully mapped.
 
-### Step 4: Deterministic Reformatting & Indian Market Weighting (Sonnet 3.5)
-Final structuring using **Dual-Breakpoint Prompt Caching** strategy:
-- **Applied Heuristics**: "Minskyan Tension Gauge" (fragile rallies) and "Behavioral Translation" (e.g., RSI < 30 is "Retail capitulation").
+### Step 5: Deterministic Reformatting (Sonnet 3.5)
+Structures the final JSON using **Dual-Breakpoint Prompt Caching** (Blueprint + History).
 
 ---
 
@@ -74,19 +69,18 @@ Final structuring using **Dual-Breakpoint Prompt Caching** strategy:
 |---|---|---|
 | **Prompt Caching** | Dual-Breakpoint (Static + History) | 90% reduction in Sonnet input costs |
 | **Smart Cache** | Haiku Headline Check | Skips $0.15 analysis for non-events |
-| **Process Isolation** | `multiprocessing.Process` | Protects main API from crashes/memory leaks |
+| **Process Isolation** | `multiprocessing.Process` | Protects main API from heavy compute |
 | **TTL Cache** | 5-minute In-Memory | Reduces yfinance rate-limit risks |
-| **Batching** | Anthropic Batch API | 50% cost reduction for nightly portfolio runs |
 
 ---
 
 ## Core Abstractions & "God Nodes" (Graph Insights)
 
-*   **`CodingKeys`**: The central bridge between Swift data models and backend JSON schemas.
-*   **`get_session()`**: Core dependency for all database-driven state transitions.
-*   **`TradingAgentsGraph`**: Primary entry point for AI orchestration.
-*   **`ConditionalLogic`**: Manages flow transitions within the graph.
-*   **`AgentState`**: Shared memory for agent communication.
+*   **`CodingKeys`**: Structural bridge between Swift data models and backend schemas.
+*   **`get_session()`**: Central hub for database state transitions.
+*   **`TradingAgentsGraph`**: Primary AI orchestration entry point.
+*   **`ConditionalLogic`**: Manages the iterative graph transitions.
+*   **`AgentState`**: Shared memory carry-object for research data.
 
 ---
 
@@ -95,4 +89,4 @@ Final structuring using **Dual-Breakpoint Prompt Caching** strategy:
 - **yfinance Retry Logic**: 3-attempt retry with backoff.
 - **NSE Session Bootstrap**: Direct NSE API access for ASM/GSM lists.
 - **History Fallbacks**: Indices/Sectors use history data if `info` fails.
-- **BSE Fallback**: Automatic failover to BSE (`.BO`) for missing financial data.
+- **BSE Fallback**: Automatic failover to BSE (`.BO`) if NSE financials are missing.

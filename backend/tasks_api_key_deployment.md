@@ -9,4 +9,4 @@
 - [x] Fix JSON truncation in `reformat_with_claude` by increasing `max_tokens` to 4000.
 - [x] Fix `_extract_json_from_text` to robustly handle non-markdown JSON outputs.
 - [x] Commit and deploy final AI formatting fixes to the remote server.
-- [ ] Test deep scan analysis on the live server to verify end-to-end delivery of the final JSON to the app/dashboard.
+- [x] Test deep scan analysis on the live server to verify end-to-end delivery of the final JSON to the app/dashboard.
