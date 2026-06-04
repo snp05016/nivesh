@@ -6,12 +6,17 @@ DROPLET_PATH="/root/nivesh/stocks"
 
 echo "🚀 Deploying Nivesh update..."
 
-# Step 1 — commit and push from Mac
-echo "📦 Committing and pushing to git..."
+# Step 1 — commit and push from Mac (only if there are changes)
+echo "📦 Checking git status..."
 cd ~/Desktop/nivesh/backend
-git add .
-git commit -m "${1:-auto update $(date '+%Y-%m-%d %H:%M')}"
-git push
+if [ -n "$(git status --porcelain)" ]; then
+  echo "📦 Committing and pushing to git..."
+  git add .
+  git commit -m "${1:-auto update $(date '+%Y-%m-%d %H:%M')}"
+  git push
+else
+  echo "✅ Nothing to commit — working tree is clean"
+fi
 
 # Step 2 — pull and restart on droplet
 echo "🔄 Pulling on server and restarting..."
