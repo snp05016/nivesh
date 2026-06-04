@@ -11,12 +11,25 @@ class EarningsDashboardViewModel: ObservableObject {
     @Published var calendarDayResults: [EarningsResult] = []
     @Published var postResultMovers: [PostResultMover] = []
     @Published var estimates: [String: EarningsEstimate] = [:]
-    @Published var selectedMarketCap: String = "all"      // all | nifty50 | large_cap | mid_cap | small_cap
-    @Published var selectedSort: String = "latest"        // latest | best | worst
-    @Published var comparisonMode: String = "yoy"         // yoy | qoq
+    @Published var selectedMarketCap: String = "all"
+    @Published var selectedSort: String = "latest"
+    @Published var comparisonMode: String = "yoy"
     @Published var selectedCalendarDate: Date = Date()
     @Published var bookmarkedScreeners: Set<String> = []
     @Published var isLoading = false
+
+    /// Per-section error diagnostics — shown inline when a section fails
+    @Published var progressError: String? = nil
+    @Published var feedError: String? = nil
+    @Published var calendarError: String? = nil
+    @Published var moversError: String? = nil
+    @Published var alertError: String? = nil
+
+    /// True if ALL sections failed — triggers full-page error canvas
+    var isTotalFailure: Bool {
+        progress == nil && feed.isEmpty && postResultMovers.isEmpty
+            && (progressError != nil || feedError != nil || moversError != nil)
+    }
 
     private var refreshTask: Task<Void, Never>?
 
@@ -24,26 +37,43 @@ class EarningsDashboardViewModel: ObservableObject {
         refreshTask?.cancel()
         refreshTask = Task {
             isLoading = true
-            async let prog = NetworkManager.shared.fetchEarningsProgress()
-            async let feedResults = NetworkManager.shared.fetchEarningsFeed(marketCap: selectedMarketCap, sort: selectedSort)
-            async let movers = NetworkManager.shared.fetchPostResultMovers()
+            progressError = nil; feedError = nil; moversError = nil
 
-            let (p, f, m) = await (prog, feedResults, movers)
-            if !Task.isCancelled {
-                self.progress = p
-                self.feed = f
-                self.postResultMovers = m
-            }
+            // Progress
+            do { self.progress = try await NetworkManager.shared.fetchEarningsProgress() }
+            catch { self.progressError = (error as? NetworkError)?.displayDetail ?? error.localizedDescription }
+
+            // Feed
+            do { self.feed = try await NetworkManager.shared.fetchEarningsFeed(marketCap: selectedMarketCap, sort: selectedSort) }
+            catch { self.feedError = (error as? NetworkError)?.displayDetail ?? error.localizedDescription }
+
+            // Movers
+            do { self.postResultMovers = try await NetworkManager.shared.fetchPostResultMovers() }
+            catch { self.moversError = (error as? NetworkError)?.displayDetail ?? error.localizedDescription }
+
             await loadCalendarDay(date: selectedCalendarDate)
             isLoading = false
         }
     }
 
     func loadCalendarDay(date: Date) async {
+        calendarError = nil
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
         let dateStr = f.string(from: date)
-        let results = await NetworkManager.shared.fetchEarningsCalendarDay(date: dateStr)
-        if !Task.isCancelled { self.calendarDayResults = results }
+        do {
+            self.calendarDayResults = try await NetworkManager.shared.fetchEarningsCalendarDay(date: dateStr)
+        } catch {
+            self.calendarError = (error as? NetworkError)?.displayDetail ?? error.localizedDescription
+        }
+    }
+
+    func setAlert(ticker: String, date: String, userId: Int) async {
+        alertError = nil
+        do {
+            try await NetworkManager.shared.setEarningsAlert(userId: userId, ticker: ticker, date: date)
+        } catch {
+            self.alertError = (error as? NetworkError)?.displayDetail ?? error.localizedDescription
+        }
     }
 
     func selectCalendarDate(_ date: Date) {
@@ -122,6 +152,11 @@ struct EarningsDashboardView: View {
                     Text("\(p.reported)/\(p.total) results declared")
                         .font(.system(size: 12, weight: .regular))
                         .foregroundColor(Theme.inkSecondary)
+                } else if let err = vm.progressError {
+                    Text("⚠ \(err.prefix(60))")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundColor(Theme.bearRed)
+                        .lineLimit(1)
                 }
             }
             Spacer()
@@ -192,14 +227,35 @@ struct EarningsProgressView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                // Full-page error canvas if everything failed
+                if vm.isTotalFailure {
+                    BanknoteErrorCanvas(
+                        title: "Earnings Data Unavailable",
+                        detail: [
+                            vm.progressError.map { "Progress: \($0)" },
+                            vm.feedError.map { "Feed: \($0)" },
+                            vm.moversError.map { "Movers: \($0)" },
+                        ].compactMap { $0 }.joined(separator: "\n\n"),
+                        retryAction: { vm.load() }
+                    )
+                }
+
                 // Live Reporting Sync Ratio
                 if let p = vm.progress {
                     progressCard(p)
+                } else if let err = vm.progressError {
+                    MarketSectionErrorRow(sectionLabel: "LIVE REPORTING SYNC", errorMessage: err)
                 } else {
                     progressCardPlaceholder
                 }
+
                 // YoY Aggregate Indicators
-                aggregateCard
+                if vm.feedError != nil && vm.feed.isEmpty {
+                    MarketSectionErrorRow(sectionLabel: "YoY AGGREGATE INDICATORS", errorMessage: vm.feedError!)
+                } else {
+                    aggregateCard
+                }
+
                 // 1.3 Market Cap Index Aggregator
                 marketCapIndexCard
             }
@@ -596,9 +652,14 @@ struct EarningsCalendarView: View {
             // 1.4 Embedded Alert Trigger
             Button(action: {
                 Task {
-                    try? await NetworkManager.shared.setEarningsAlert(userId: userId, ticker: r.ticker, date: r.resultDate)
-                    alertSetFor = r.ticker
-                    HapticManager.notification(.success)
+                    do {
+                        try await NetworkManager.shared.setEarningsAlert(userId: userId, ticker: r.ticker, date: r.resultDate)
+                        alertSetFor = r.ticker
+                        HapticManager.notification(.success)
+                    } catch {
+                        vm.alertError = (error as? NetworkError)?.displayDetail ?? error.localizedDescription
+                        HapticManager.notification(.error)
+                    }
                 }
             }) {
                 HStack(spacing: 4) {

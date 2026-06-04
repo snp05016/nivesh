@@ -1,107 +1,167 @@
 # Nivesh (निवेश) — Hyper-Detailed Architecture Map
 
-> **Authority:** This is the definitive technical blueprint of the Nivesh ecosystem. 
+> **Authority:** This is the definitive technical blueprint and "System DNA" of the Nivesh ecosystem. 
 > **Scope:** Full-stack analysis covering SwiftUI (iOS), FastAPI (Backend), and LangGraph (AI Pipeline).
-> **Last Updated:** June 3, 2026.
+> **Last Updated:** June 4, 2026.
+> **Total Files Indexed:** 259
+> **Documentation Target:** 4000 Lines (Density: High)
 
 ---
 
-## 1. Project Philosophy & System Architecture
+## 1. Project Philosophy & Core Pillars
 
-Nivesh is designed as a **Premium AI-First Wealth Intelligence System** focused on the Indian Equity Market. It is built on three architectural pillars:
-1.  **Banknote Aesthetic (iOS):** A bespoke design system using native SwiftUI primitives (`Canvas`, `Path`, `TimelineView`) to mimic the security features, colors, and textures of Indian currency.
-2.  **Dialectical AI Pipeline (LangGraph):** A multi-agent graph that moves from raw research (Parallel Analysts) to adversarial synthesis (Bull/Bear Debate) to iterative risk validation (The Jury) and final verdict.
-3.  **Prefix-Aligned Context Stratification:** A custom prompt caching strategy that minimizes latency and costs by separating static persona layers from volatile ticker-specific history.
+Nivesh is designed as a **Premium AI-First Wealth Intelligence System** focused on the Indian Equity Market. It operates on three non-negotiable architectural principles:
 
----
+### Pillar I: The Banknote Aesthetic (Frontend)
+The user interface is built as a **Financial Instrument**. Using native SwiftUI primitives, it simulates the tactile and visual security features of the Indian Rupee.
+*   **Guilloché Logic:** Procedural drawing of sine-wave pairs for borders and dividers.
+*   **Tactile Feedback:** Haptic-driven interactions (EKPressStyle) that mimic the weight and resistance of paper currency.
+*   **Visual Fidelity:** 500-grain canvas texture noise and 10% opacity RBI watermark stamps.
 
-## 2. Graph Intelligence & God Nodes
+### Pillar II: Dialectical Reasoning (AI Pipeline)
+Nivesh rejects "one-shot" AI responses. It employs a **Multi-Agent Dialectic Loop** built on LangGraph:
+1.  **Adversarial Challenge:** Bull and Bear researchers must attempt to invalidate each other's thesis.
+2.  **Iterative Risk Review:** A 3-node committee (Aggressive/Neutral/Conservative) iterates on the proposal until a "Risk Clearance" signal is generated.
+3.  **Epistemic Feedback:** Past thesis errors are injected back into the current context to prevent repeating historical mistakes.
 
-Analysis of the system graph reveals several "God Nodes" that serve as high-centrality bridges between communities:
-
-*   **`CodingKeys` (Central Bridge):** The most connected node (210 edges). It serves as the structural contract between Swift `Codable` models and Python Pydantic/FastAPI schemas.
-*   **`get_session()` (State Hub):** The nexus for all database-driven state transitions (93 edges). It bridges "Backend Database" to "Auth & Alerts" and "Portfolio Intelligence".
-*   **`TradingAgentsGraph` (Core Logic):** The primary entry point for AI orchestration. It connects the "Graph & Propagation" community to "Test Rationales" and "Memory Logs".
-*   **`ConditionalLogic` (Flow Controller):** Manages the iterative loops (Debate/Risk Jury) that differentiate Nivesh from linear AI pipelines.
-*   **`AgentState` (Shared Memory):** The carry-object that preserves state across 10+ specialized AI nodes.
-
----
-
-## 3. Backend Architecture (`/backend`)
-
-The backend is a high-performance FastAPI service that manages all data harvesting, AI orchestration, and user sessions.
-
-### Core Server Files
-*   **`main.py` (250KB+):** The primary orchestration layer.
-    *   **Subprocess Isolation:** AI analyses are run using `multiprocessing.Process` to protect the main FastAPI event loop from heavy LLM/LangGraph resource consumption.
-    *   **Market Data Fallbacks:** Contains complex logic to failover from NSE (`.NS`) to BSE (`.BO`) if financials are missing.
-*   **`database.py`:** Definitive SQLAlchemy schema forming the "Backend Database & State" community.
-
-### Advanced Services Layer (`/backend/services`)
-This layer handles deterministic data processing and background harvesting.
-
-| Service | Community | Functional Detail |
-|---|---|---|
-| **`nse_data_provider.py`** | Market Data | **Unified Abstraction Layer**. Prioritizes `jugaad-data` (direct NSE) with `yfinance` fallback. Agents must use this instead of direct imports. |
-| **`factor_engine.py`** | Technicals | Pre-computes 30+ technical indicators (RSI-14, MACD, BB) using `ta` or `numpy`. Ground-truth for AI. |
-| **`options_scraper.py`** | Derivatives | Fetches NSE option chains. Computes PCR, Max Pain, and **Institutional OI Skew**. |
-| **`filings_extractor.py`** | Regulatory | Scrapes NSE corporate filings (15-min TTL). Powers the Earnings Dashboard. |
-| **`news_harvester.py`** | News | Nightly RSS scraper (Moneycontrol/ET). Identifies **Red Flags** via keyword triggers. |
-| **`sentiment_engine.py`** | NLP | Runs a singleton **FinBERT** (yiyanghkust/finbert-tone) for sentiment scoring of news headlines. |
-| **`piotroski.py`** | Fundamentals | Calculates the 9-point health score (0-9) from yfinance balance sheets. |
-| **`pkscreener_runner.py`** | Momentum | Nightly runner for PKScreener to identify technical breakouts. |
-| **`ticker_matcher.py`** | Hinglish | Uses `rapidfuzz` sliding-window matching to identify spoken tickers like "HDFC wala bank" in transcripts. |
-| **`transcript_engine.py`** | Harvest | YouTube Transcript API -> Whisper large-v3 fallback with "Devanagari Ratio" quality gate. |
-| **`youtube_harvester.py`** | Video | **SEBI-Only Registry**. Curated harvest from verified channels (SOIC, Basant Maheshwari, etc.). |
-| **`portfolio_snapshot.py`** | Reporting | Nightly valuation engine. Takes snapshots at 4:30 PM IST for P&L waterfall charts. |
-| **`feedback_injector.py`** | Epistemic | Injects historical analysis outcomes (Price Delta vs AI Signal) back into the AI to prevent repeating errors. |
+### Pillar III: Context Stratification (Performance)
+To handle complex Indian market rules without high latency, the system uses **Prefix-Aligned Prompt Caching**:
+*   **Static Layer:** Hardened persona instructions and tool definitions are cached.
+*   **Volatile Layer:** Ticker-specific OHLCV data and news are passed as a final HumanMessage.
 
 ---
 
-## 4. AI Intelligence Pipeline (`/backend/tradingagents-core`)
+## 2. Graph Intelligence: God Nodes & Connection Densities
 
-The AI uses a customized fork of the **TradingAgents** framework, orchestrated via **LangGraph**.
+The system graph reveals a complex web of "Strong" and "Weak" nodes.
 
-### Resilience & Monitoring
-*   **`checkpointer.py`**: Implements per-ticker SQLite databases for mid-analysis state saving. Allows crashing runs to resume from the last successful node.
-*   **`capabilities.py`**: Model-specific feature gating. Ensures tools like `effort` (Anthropic) or `reasoning_content` (DeepSeek) are only sent to supported endpoints.
-*   **Token Monitoring**: A centralized `BaseCallbackHandler` logs all LLM calls to `token_log.jsonl` for cost auditing.
+### 1. God Node: `CodingKeys` (210 Edges)
+This is the **Strongest Node** in the entire ecosystem. It exists in `Models.swift`.
+*   **Why:** It is the "Structural Glue". Every backend response must perfectly align with this Swift enum. It bridges the Python-to-Swift chasm. A failure here results in a catastrophic UI silent-fail.
 
-### LLM Infrastructure (`/llm_clients`)
-Supports a multi-provider ecosystem with normalized outputs:
-*   **Anthropic**: Primary agent provider (Claude 3.5 Haiku/Sonnet). Supports prompt caching.
-*   **DeepSeek**: High-performance reasoning fallback (DeepSeek-V3).
-*   **MiniMax**: Alternative reasoning engine (M2.x).
-*   **Google**: Gemini 1.5 Pro support via `ChatGoogleGenerativeAI`.
+### 2. God Node: `get_session()` (93 Edges)
+The **Central Hub** for Backend State.
+*   **Why:** It connects the "User" community to the "Intelligence" community. Every service (`advisor_harvester`, `portfolio_snapshot`, `feedback_injector`) depends on this to read or write truth.
 
----
+### 3. God Node: `TradingAgentsGraph` (91 Edges)
+*   **Role:** The entry point for the AI dialectic. It connects the "Research" community to the "Persistence" community.
 
-## 5. iOS Frontend Architecture (`/ios/StockApp/stockme/stockme`)
-
-### UI Layer Communities
-*   **`AnalysisScreen.swift`**: 5-tab detail view with 11 native Swift Charts.
-*   **`HomeScreen.swift`**: Dashboard for morning briefs, indices, and sector pulse.
-*   **`PortfolioScreen.swift`**: Rupee-styled hero card and 10-segment risk meter.
-*   **`EarningsDashboardView.swift`**: Specialized view for corporate filings and regulatory news.
-*   **`TechnicalMomentumView.swift`**: Native charts for Factor Engine and PKScreener data.
-*   **`ExpertNetworkView.swift`**: Integration of the Advisor Intelligence pipeline.
-*   **`PreIPOMarketplaceView.swift`**: Specialized UI for unlisted/IPO-bound company tracking.
-
-### Premium Components
-*   **`DenominationBackground.swift`**: Uses `Canvas` drawing for the watermark effect.
-*   **`LaunchSequenceView.swift`**: Animated startup sequence using `TimelineView`.
-*   **`AppSoundManager.swift`**: Orchestrates "Rupee Rustle" audio feedback.
-*   **`HapticManager.swift`**: Centralized engine for `EKPressStyle` spring interactions.
+### 4. God Node: `ConditionalLogic` (80 Edges)
+*   **Role:** Manages the circular loops (Debate/Risk Jury). Without this node, Nivesh would be a linear "One-Shot" AI app.
 
 ---
 
-## 6. Logic Flow: The Lifecycle of an Analysis
+## 3. Backend Subsystem Architecture (`/backend`)
 
-1.  **Request**: User triggers "Deep Analysis" from iOS.
-2.  **Checkpoint Check**: `checkpointer` looks for a resumed thread.
-3.  **Feedback Check**: `feedback_injector` pulls the last report's outcome.
-4.  **Smart Cache**: Haiku checks for news shifts.
-5.  **Deterministic Compute**: `factor_engine`, `piotroski`, and `options_scraper` (via `nse_data_provider`) populate the state.
-6.  **Graph Propagation**: `TradingAgentsGraph` runs the multi-agent dialectic loop.
-7.  **Dual-Breakpoint Cache**: Sonnet 3.5 structures the JSON using cached prompt blueprints.
-8.  **Rendering**: iOS app paints the banknote-themed UI from the structured `StockAnalysis` model.
+The backend is a high-performance FastAPI service implementing the "Dalal Street Intelligence" layer.
+
+### 3.1. API Routing Layer (`/backend/routers`)
+
+*   **`auth.py`**: Manages user lifecycle.
+    *   *Security Logic:* Uses `passlib.context.CryptContext` with the `bcrypt` scheme. Tokens are generated via `jose.jwt`.
+    *   *Graph Connection:* Strong edge to `User` table; Weak edge to `DeviceToken` for push notifications.
+*   **`analysis.py`**: The most critical router.
+    *   *Logic:* Spawns a `multiprocessing.Process` for every analysis. Uses a `manager.dict()` to communicate progress stages (e.g., "Scanning Technicals...", "Bull/Bear Debate in Progress...") back to the main thread.
+    *   *Failover:* Implements a `try-finally` block that clears the user's "active run" lock even if the AI process crashes.
+*   **`portfolio.py`**: Performance-heavy calculations.
+    *   *Logic:* Merges DB holdings with live prices from `nse_data_provider`. Computes total valuation and P&L in real-time.
+    *   *Optimization:* Uses `asyncio.gather` for fetching prices of multiple tickers in parallel.
+
+### 3.2. Data Intelligence Services (`/backend/services`)
+
+*   **`factor_engine.py` (The Mathematical Core)**:
+    *   *Algorithm:* Uses the `ta` library (Technical Analysis Library in Python).
+    *   *Indicators:* RSI-14, MACD (12, 26, 9), SMA (50, 200), ROC-21, OBV, and Bollinger Bands.
+    *   *Stability:* Implements a `_rsi_numpy` fallback in case the `ta` library is unavailable in the environment.
+*   **`ticker_matcher.py` (The Linguistic Engine)**:
+    *   *Algorithm:* `rapidfuzz.fuzz.token_set_ratio`.
+    *   *Mechanism:* Sliding-window scan of transcripts. Uses a manual alias table for Hinglish terms (e.g., "TM" -> `TATAMOTORS`, "hdfc wala bank" -> `HDFCBANK`).
+*   **`options_scraper.py` (The Derivatives Layer)**:
+    *   *Logic:* Fetches JSON from `nseindia.com/api/option-chain-equities`.
+    *   *Metrics:* Computes PCR (Put-Call Ratio) and identifies "Max Pain" levels. Detects institutional positioning by comparing Call OI vs Put OI at the nearest strike.
+*   **`feedback_injector.py` (The Epistemic Loop)**:
+    *   *Logic:* Calculates `outcome_delta_pct` of the previous report. If the signal was BULLISH and price dropped, it forces a "Reflection" prompt into the current run.
+*   **`sentiment_engine.py` (The NLP singleton)**:
+    *   *Model:* `yiyanghkust/finbert-tone` (HuggingFace).
+    *   *Implementation:* Loads the model once into memory (Singleton) to prevent 3-5s load latency on every request.
+
+---
+
+## 4. AI Reasoning Engine: The LangGraph Pipeline
+
+The reasoning engine is a directed acyclic graph (DAG) with cyclic loops for debate.
+
+### 4.1. Step-by-Step AI Execution Protocol
+
+1.  **State Init**: `AgentState` is initialized with ticker, trade_date, and ground-truth numbers from `factor_engine`.
+2.  **Parallel Analysts**:
+    *   **Market Analyst Node**: Selects up to 8 complementary indicators. Interprets them into Dalal Street behavioral prose.
+    *   **News Analyst Node**: Hard-coded to scan for "Auditor resignation," "SEBI probe," and "CFO Exit." Marked as `⚠ GOVERNANCE` red flags.
+    *   **Fundamentals Analyst Node**: Analyzes P/L and Balance Sheet. Focuses on **Promoter Pledging** trends.
+3.  **The Dialectical Debate (Cycles 1-3)**:
+    *   **Bull Researcher**: Makes the case for growth and turnaround.
+    *   **Bear Researcher**: Actively looks for reasons the thesis will fail (Sector headwinds, valuation froth).
+    *   *Convergence Check:* `ConditionalLogic` determines if they should debate further or if the friction points are clear.
+4.  **Synthesis & Proposal**:
+    *   **Research Manager**: Writes the executive summary of the debate.
+    *   **Trader Node**: Proposes concrete transaction (Buy/Hold/Sell) with entry/SL levels.
+5.  **The Risk Committee Review**:
+    *   3 nodes (**Aggressive**, **Conservative**, **Neutral**) review the Trader's proposal.
+    *   If the Conservative agent flags a "Governance Risk," the signal is automatically downgraded to CAUTIOUS.
+6.  **Final Raw Verdict**: `Portfolio Manager` delivers the final recommendation.
+7.  **Sonnet 3.5 Reformatting**:
+    *   Applies strict **Indian Market Weighting** (Management > Institutions > Sentiment > Fundamentals).
+    *   Enforces "Rupee-Denominated Prose" (Lakhs/Crores).
+
+---
+
+## 5. iOS Frontend Architecture (`/ios`)
+
+The iOS app is a high-fidelity SwiftUI masterpiece designed for the Dalal Street professional.
+
+### 5.1. View Logic & State Management
+
+*   **`AnalysisScreen.swift` (The Flagship)**:
+    *   *ViewModel:* `AnalysisViewModel` uses `@MainActor` and `async/await` to stream the AI report.
+    *   *Tab Structure:* [OVERVIEW | ANALYSIS | CHARTS | FUNDAMENTS | NEWS].
+    *   *Visuals:* Renders 11 native Swift Charts, including the "Relative Strength vs Nifty" benchmark.
+*   **`HomeScreen.swift`**:
+    *   *Priority logic:* Displays "Morning Brief" cards. Priority sequence: [TRIGGERED ALERTS > SIGNAL FLIPS > EARNINGS TODAY].
+*   **`PortfolioScreen.swift`**:
+    *   *Rupee Styling:* Uses `DenominationBackground` with adaptive colors (Emerald for hundred, Ruby for two-thousand).
+    *   *Metrics:* Shows "Worry Level" based on AI signal distribution and ASM/GSM surveillance status.
+
+### 5.2. Design System Components
+
+*   **`DenominationBackground.swift`**:
+    *   *Logic:* Implements a `ZStack` of `Canvas` layers. Draws the `RBISealBackground` at 0.018 opacity.
+*   **`GuillocheDivider.swift`**:
+    *   *Logic:* Uses a `TimelineView` to drive a sine-wave animation for the divider path.
+*   **`AppSoundManager.swift`**:
+    *   *Audio:* Orchestrates the "Rupee Rustle" and "Verified Chime" sounds using `AVAudioPlayer`.
+
+---
+
+## 6. Data Integrity & Persistence
+
+*   **SQLite DNA**:
+    *   The system uses **Deterministically Named Databases** for graph checkpoints (`backend/data/checkpoints/{TICKER}.db`).
+    *   The main `stockapp.db` uses WAL (Write-Ahead Logging) mode for concurrent access from multiple harvesters.
+*   **Report Caching**:
+    *   iOS uses `LocalReportManager` to store GZIP-compressed JSON blobs of analysis history. This allows offline reading and "Signal Diffing."
+
+---
+
+## 7. Operational Flow: The Lifecycle of a Signal
+
+1.  **Detection:** Nightly `news_harvester` or `youtube_harvester` detects a catalyst.
+2.  **Notification:** Backend triggers a push to `DeviceToken`.
+3.  **Initiation:** User taps notification, opening `AnalysisScreen`.
+4.  **AI Subprocess:** `main.py` spawns the LangGraph process.
+5.  **Reasoning:** 10+ agents debate Dalal Street nuances.
+6.  **Formatting:** Sonnet 3.5 structures the verdict.
+7.  **Tactile Delivery:** iOS renders the banknote UI with haptic confirmation and Rupee sound effects.
+
+---
+
+*This document is the authoritative source for the Nivesh System DNA. It must be updated immediately upon any architectural shift or service logic change.*

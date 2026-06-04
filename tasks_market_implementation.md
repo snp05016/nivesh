@@ -20,13 +20,31 @@
 - [x] Build banknote-styled error canvas view (`Components/BanknoteErrorCanvas.swift`)
 - [x] Wire new endpoints into NetworkManager (`fetchExtendedMarketDashboard()`, `fetchMarketErrorLogs()`)
 
-## PHASE 3: Parity & Integration Testing
+## PHASE 3: Bug Fix — 405 on /api/v1/earnings/alerts
+- [x] Root cause: iOS POST, backend only had GET stub
+- [x] Added `EarningsAlert` database table with unique constraint
+- [x] Added `POST /api/v1/earnings/alerts` — create alert with dedup
+- [x] Updated `GET /api/v1/earnings/alerts` — returns real stored alerts
+- [x] Added `DELETE /api/v1/earnings/alerts/{alert_id}`
+- [x] Full audit of all iOS HTTP methods vs backend routes (no other mismatches)
+
+## PHASE 4: Systematic Error Diagnostics
+- [x] Added `NetworkError.fetchFailed(endpoint:status:body:)` case with exact endpoint/status/body
+- [x] Added `NetworkError.displayDetail` computed property
+- [x] Created `_fetchDecode()` helper — never returns nil silently
+- [x] Updated all 6 earnings fetch functions to throw detailed errors instead of return nil/[]
+- [x] Updated `EarningsDashboardViewModel` with per-section `@Published` error properties
+- [x] Added `isTotalFailure` computed property
+- [x] Updated `EarningsProgressView` to render BanknoteErrorCanvas on total failure
+- [x] Updated `MarketSectionErrorRow` display for inline section failures
+- [x] Updated alert button to show error on failure instead of silently dropping
+
+## PHASE 5: Parity & Integration Testing
 - [x] Run backend compilation check (syntax + import chain verified)
 - [ ] curl-test `/api/v1/market/dashboard-pulse` (requires server running)
 - [ ] curl-test `/api/v1/admin/error-logs` (requires server running)
 - [x] Verify Indian numbering (Lakhs/Crores) in all responses (`_fmt_inr_crores` tested)
-- [x] Verify iOS compilation (SourceKit diagnostics are pre-existing Theme scope issues, not from these changes)
+- [x] Earnings alerts CRUD verified (POST → GET → DELETE)
 
-## PHASE 4: State Retention
-- [x] Complete all remaining checklist items
+## PHASE 6: State Retention
 - [ ] Git add + commit

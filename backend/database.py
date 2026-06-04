@@ -381,6 +381,26 @@ def log_market_error(component: str, error_message: str, context_ticker: str | N
         pass  # telemetry must never cause a cascading failure
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE: earnings_alerts
+# User-requested earnings date reminders. Written via POST, read via GET.
+# ─────────────────────────────────────────────────────────────────────────────
+class EarningsAlert(Base):
+    __tablename__ = "earnings_alerts"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    user_id       = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    ticker        = Column(String(30), nullable=False)
+    earnings_date = Column(String(20), nullable=False)          # "2026-06-15"
+    created_at    = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", foreign_keys=[user_id])
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "ticker", "earnings_date", name="uq_user_ticker_earnings_date"),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Password hashing
 # ---------------------------------------------------------------------------

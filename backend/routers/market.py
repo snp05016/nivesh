@@ -5,7 +5,7 @@ from helpers import (
     EarningsSyncRatioResponse, YoYAggregateResponse,
     InstitutionalLeaderboardResponse, NetWorthSnapshotResponse,
     User, Portfolio, AnalysisHistory, NetWorthLedger,
-    MarketErrorLog, log_market_error,
+    MarketErrorLog, EarningsAlert, log_market_error,
     _check_rate_limit, _get_indices_data, _get_asm_gsm_lists, _nse_session
 )
 
@@ -1367,9 +1367,111 @@ async def post_result_movers_endpoint():
         return {"movers": [], "fetched_at": now_iso}
 
 
+from pydantic import BaseModel as _BaseModelLocal
+
+class EarningsAlertCreateRequest(_BaseModelLocal):
+    user_id: int
+    ticker: str
+    earnings_date: str
+
+
 @router.get("/api/v1/earnings/alerts")
-async def earnings_alerts_endpoint():
-    return {"alerts": [], "fetched_at": datetime.utcnow().isoformat()}
+def earnings_alerts_get_endpoint(user_id: int = 0):
+    """
+    Return all earnings alerts for a given user.
+    Pass ?user_id=<id> to filter. Returns empty list if none.
+    """
+    try:
+        with get_session() as session:
+            if user_id > 0:
+                rows = session.query(EarningsAlert).filter(
+                    EarningsAlert.user_id == user_id
+                ).order_by(EarningsAlert.earnings_date.asc()).all()
+            else:
+                rows = session.query(EarningsAlert).order_by(EarningsAlert.earnings_date.asc()).limit(100).all()
+            return {
+                "alerts": [
+                    {
+                        "id": r.id,
+                        "user_id": r.user_id,
+                        "ticker": r.ticker,
+                        "earnings_date": r.earnings_date,
+                        "created_at": r.created_at.isoformat() if r.created_at else None,
+                    }
+                    for r in rows
+                ],
+                "count": len(rows),
+                "fetched_at": datetime.utcnow().isoformat(),
+            }
+    except Exception as e:
+        log_market_error("earnings_alerts_get", str(e))
+        return {"alerts": [], "count": 0, "error": str(e), "fetched_at": datetime.utcnow().isoformat()}
+
+
+@router.post("/api/v1/earnings/alerts")
+def earnings_alerts_post_endpoint(body: EarningsAlertCreateRequest):
+    """
+    Create an earnings date alert for a user+ticker combination.
+    Deduplicates — if same user/ticker/date already exists, returns 200 with existing.
+    """
+    ticker = body.ticker.upper().strip()
+    try:
+        with get_session() as session:
+            # Dedup check
+            existing = session.query(EarningsAlert).filter(
+                EarningsAlert.user_id == body.user_id,
+                EarningsAlert.ticker == ticker,
+                EarningsAlert.earnings_date == body.earnings_date,
+            ).first()
+            if existing:
+                return {
+                    "id": existing.id,
+                    "user_id": existing.user_id,
+                    "ticker": existing.ticker,
+                    "earnings_date": existing.earnings_date,
+                    "created_at": existing.created_at.isoformat() if existing.created_at else None,
+                    "status": "already_exists",
+                    "fetched_at": datetime.utcnow().isoformat(),
+                }
+
+            entry = EarningsAlert(
+                user_id=body.user_id,
+                ticker=ticker,
+                earnings_date=body.earnings_date,
+            )
+            session.add(entry)
+            session.commit()
+            session.refresh(entry)
+            return {
+                "id": entry.id,
+                "user_id": entry.user_id,
+                "ticker": entry.ticker,
+                "earnings_date": entry.earnings_date,
+                "created_at": entry.created_at.isoformat() if entry.created_at else None,
+                "status": "created",
+                "fetched_at": datetime.utcnow().isoformat(),
+            }
+    except Exception as e:
+        log_market_error("earnings_alerts_post", str(e), context_ticker=ticker)
+        raise HTTPException(status_code=500, detail=f"Failed to create earnings alert: {e}")
+
+
+@router.delete("/api/v1/earnings/alerts/{alert_id}")
+def earnings_alerts_delete_endpoint(alert_id: int):
+    """Delete a specific earnings alert by ID."""
+    try:
+        with get_session() as session:
+            entry = session.query(EarningsAlert).filter(EarningsAlert.id == alert_id).first()
+            if not entry:
+                raise HTTPException(status_code=404, detail="Alert not found")
+            session.delete(entry)
+            session.commit()
+            return {"deleted": True, "alert_id": alert_id, "fetched_at": datetime.utcnow().isoformat()}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_market_error("earnings_alerts_delete", str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to delete alert: {e}")
 
 
 # ---------------------------------------------------------------------------

@@ -10,22 +10,31 @@ enum NetworkError: Error, LocalizedError {
     case connectionFailed
     case unauthorized
     case analysisDiagnostic(AnalysisErrorInfo)
+    /// Detailed fetch failure — endpoint, HTTP status, raw body prefix for diagnostics
+    case fetchFailed(endpoint: String, status: Int, body: String)
 
     var errorDescription: String? {
         switch self {
         case .invalidURL:        return "Invalid server URL."
         case .invalidResponse:   return "Server did not respond correctly. Please try again."
         case .serverError(let code, let msg): return msg ?? "Server error (code \(code)). Please try again."
-        case .decodingError:     return "Could not read server response. Please try again."
+        case .decodingError(let detail): return "JSON parse failed: \(detail)"
         case .connectionFailed:  return "Could not connect to server. Make sure the app is running on your computer."
         case .unauthorized:      return "Wrong username or password."
         case .analysisDiagnostic(let info): return info.displayDetail
+        case .fetchFailed(let endpoint, let status, let body):
+            return "[\(endpoint)] HTTP \(status): \(body.prefix(200))"
         }
     }
 
     var diagnosticInfo: AnalysisErrorInfo? {
         if case .analysisDiagnostic(let info) = self { return info }
         return nil
+    }
+
+    /// User-facing display string — shows exact failure reason
+    var displayDetail: String {
+        errorDescription ?? "Unknown error"
     }
 }
 
@@ -817,56 +826,95 @@ class NetworkManager: ObservableObject {
 
     // MARK: - Earnings Dashboard (Sections 1–5)
 
-    func fetchEarningsProgress() async -> EarningsProgressResponse? {
-        guard let url = URL(string: "\(baseURL)/api/v1/earnings/progress") else { return nil }
-        var req = URLRequest(url: url); req.timeoutInterval = 15
-        guard let (data, resp) = try? await session.data(for: req),
-              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
-        return try? JSONDecoder().decode(EarningsProgressResponse.self, from: data)
+    // MARK: - Diagnostic fetch helper
+
+    /// Shared fetch + decode with detailed error diagnostics.
+    /// Never returns nil/empty silently — errors are thrown with exact endpoint/status/body.
+    private func _fetchDecode<T: Decodable>(
+        _ type: T.Type, endpoint: String, timeout: TimeInterval = 15
+    ) async throws -> T {
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL: \(baseURL)\(endpoint)")
+        }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = timeout
+        let data: Data, response: URLResponse
+        do {
+            (data, response) = try await session.data(for: req)
+        } catch {
+            let body = (error as NSError).localizedDescription
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: -1, body: "Network error: \(body)")
+        }
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not an HTTP response")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(body))
+        }
+        do {
+            return try JSONDecoder().decode(type, from: data)
+        } catch {
+            let rawStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<non-utf8>"
+            let keys = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]).map { Array($0.keys).joined(separator: ", ") } ?? "?"
+            throw NetworkError.decodingError("\(error.localizedDescription) | Raw keys: \(keys) | Body: \(rawStr)")
+        }
     }
 
-    func fetchEarningsFeed(marketCap: String = "all", sort: String = "latest") async -> [EarningsResult] {
-        guard let url = URL(string: "\(baseURL)/api/v1/earnings/feed?market_cap=\(marketCap)&sort=\(sort)") else { return [] }
-        var req = URLRequest(url: url); req.timeoutInterval = 20
-        guard let (data, resp) = try? await session.data(for: req),
-              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
-        return (try? JSONDecoder().decode(EarningsFeedResponse.self, from: data))?.results ?? []
+    // MARK: - Earnings Intelligence
+
+    func fetchEarningsProgress() async throws -> EarningsProgressResponse {
+        return try await _fetchDecode(EarningsProgressResponse.self, endpoint: "/api/v1/earnings/progress")
     }
 
-    func fetchEarningsCalendarDay(date: String) async -> [EarningsResult] {
-        guard let url = URL(string: "\(baseURL)/api/v1/earnings/calendar?date=\(date)") else { return [] }
-        var req = URLRequest(url: url); req.timeoutInterval = 15
-        guard let (data, resp) = try? await session.data(for: req),
-              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+    func fetchEarningsFeed(marketCap: String = "all", sort: String = "latest") async throws -> [EarningsResult] {
+        let resp: EarningsFeedResponse = try await _fetchDecode(
+            EarningsFeedResponse.self,
+            endpoint: "/api/v1/earnings/feed?market_cap=\(marketCap)&sort=\(sort)",
+            timeout: 20
+        )
+        return resp.results
+    }
+
+    func fetchEarningsCalendarDay(date: String) async throws -> [EarningsResult] {
         struct Resp: Decodable { let results: [EarningsResult] }
-        return (try? JSONDecoder().decode(Resp.self, from: data))?.results ?? []
+        let r = try await _fetchDecode(Resp.self, endpoint: "/api/v1/earnings/calendar?date=\(date)")
+        return r.results
     }
 
-    func fetchEarningsEstimates(ticker: String) async -> EarningsEstimate? {
-        guard let url = URL(string: "\(baseURL)/api/v1/earnings/estimates?ticker=\(ticker)") else { return nil }
-        var req = URLRequest(url: url); req.timeoutInterval = 15
-        guard let (data, resp) = try? await session.data(for: req),
-              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
-        return try? JSONDecoder().decode(EarningsEstimate.self, from: data)
+    func fetchEarningsEstimates(ticker: String) async throws -> EarningsEstimate {
+        return try await _fetchDecode(EarningsEstimate.self, endpoint: "/api/v1/earnings/estimates?ticker=\(ticker)")
     }
 
-    func fetchPostResultMovers() async -> [PostResultMover] {
-        guard let url = URL(string: "\(baseURL)/api/v1/earnings/post-result-movers") else { return [] }
-        var req = URLRequest(url: url); req.timeoutInterval = 15
-        guard let (data, resp) = try? await session.data(for: req),
-              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
-        return (try? JSONDecoder().decode(PostResultMoversResponse.self, from: data))?.movers ?? []
+    func fetchPostResultMovers() async throws -> [PostResultMover] {
+        let resp: PostResultMoversResponse = try await _fetchDecode(
+            PostResultMoversResponse.self, endpoint: "/api/v1/earnings/post-result-movers"
+        )
+        return resp.movers
     }
 
     func setEarningsAlert(userId: Int, ticker: String, date: String) async throws {
         struct Req: Encodable { let user_id: Int; let ticker: String; let earnings_date: String }
-        guard let url = URL(string: "\(baseURL)/api/v1/earnings/alerts") else { throw NetworkError.invalidURL }
+        struct Resp: Decodable { let status: String?; let id: Int? }
+        guard let url = URL(string: "\(baseURL)/api/v1/earnings/alerts") else {
+            throw NetworkError.fetchFailed(endpoint: "/api/v1/earnings/alerts", status: 0, body: "Invalid URL")
+        }
         var request = authRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, earnings_date: date))
-        let (_, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: "/api/v1/earnings/alerts", status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: "/api/v1/earnings/alerts", status: http.statusCode, body: String(body))
+        }
+        // Success — log the created alert ID for debugging
+        if let resp = try? JSONDecoder().decode(Resp.self, from: data), let id = resp.id {
+            print("[Nivesh] Earnings alert created: id=\(id), ticker=\(ticker), date=\(date)")
+        }
     }
 
     // MARK: - Advisor Intelligence
