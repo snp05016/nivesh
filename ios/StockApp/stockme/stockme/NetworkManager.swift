@@ -79,6 +79,12 @@ class NetworkManager: ObservableObject {
         return user.userId
     }
 
+    private func authRequest(_ url: URL) -> URLRequest {
+        var req = URLRequest(url: url)
+        if let token = authToken { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        return req
+    }
+
     private func dataWithRetry(for request: URLRequest, retries: Int = 1) async throws -> (Data, URLResponse) {
         do {
             return try await session.data(for: request)
@@ -182,8 +188,7 @@ class NetworkManager: ObservableObject {
 
     func getPortfolio(userId: Int) async throws -> [PortfolioHolding] {
         guard let url = URL(string: "\(baseURL)/portfolio/\(userId)") else { throw NetworkError.invalidURL }
-        var req = URLRequest(url: url)
-        if let token = authToken { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        let req = authRequest(url)
         let (data, response) = try await dataWithRetry(for: req)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw NetworkError.invalidResponse
@@ -222,7 +227,7 @@ class NetworkManager: ObservableObject {
             let purchase_date: String; let notes: String; let target_price: Double
         }
         guard let url = URL(string: "\(baseURL)/portfolio") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
@@ -244,7 +249,7 @@ class NetworkManager: ObservableObject {
     func saveNote(userId: Int, ticker: String, note: String) async throws {
         struct Req: Encodable { let user_id: Int; let ticker: String; let note: String }
         guard let url = URL(string: "\(baseURL)/portfolio/note") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, note: note))
@@ -258,7 +263,7 @@ class NetworkManager: ObservableObject {
 
     func getMorningSummary(userId: Int) async throws -> MorningSummaryResponse {
         guard let url = URL(string: "\(baseURL)/morning-summary/\(userId)") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 30
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
@@ -286,7 +291,7 @@ class NetworkManager: ObservableObject {
         struct Req: Encodable { let user_id: Int; let ticker: String; let exchange: String; let company_name: String }
         struct Resp: Decodable { let already_exists: Bool?; let success: Bool? }
         guard let url = URL(string: "\(baseURL)/watchlist/add") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, exchange: exchange, company_name: companyName))
@@ -299,7 +304,7 @@ class NetworkManager: ObservableObject {
     func removeFromWatchlist(userId: Int, ticker: String) async throws {
         struct Req: Encodable { let user_id: Int; let ticker: String }
         guard let url = URL(string: "\(baseURL)/watchlist/remove") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker))
@@ -309,7 +314,7 @@ class NetworkManager: ObservableObject {
 
     func getWatchlist(userId: Int) async throws -> [WatchlistItem] {
         guard let url = URL(string: "\(baseURL)/watchlist/\(userId)") else { throw NetworkError.invalidURL }
-        var req = URLRequest(url: url)
+        var req = authRequest(url)
         req.timeoutInterval = 15
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
@@ -323,7 +328,7 @@ class NetworkManager: ObservableObject {
     func removeHolding(userId: Int, ticker: String) async throws {
         struct Req: Encodable { let user_id: Int; let ticker: String }
         guard let url = URL(string: "\(baseURL)/portfolio/remove") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker))
@@ -334,7 +339,7 @@ class NetworkManager: ObservableObject {
     func updateHolding(userId: Int, ticker: String, shares: Double, buyPrice: Double) async throws {
         struct Req: Encodable { let user_id: Int; let ticker: String; let shares: Double; let buy_price: Double }
         guard let url = URL(string: "\(baseURL)/portfolio/update") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, shares: shares, buy_price: buyPrice))
@@ -348,7 +353,7 @@ class NetworkManager: ObservableObject {
         struct Req: Encodable { let user_id: Int; let ticker: String; let target_price: Double; let direction: String; let company_name: String }
         struct Resp: Decodable { let alert_id: Int }
         guard let url = URL(string: "\(baseURL)/alerts/add") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, target_price: targetPrice, direction: direction, company_name: companyName))
@@ -359,7 +364,8 @@ class NetworkManager: ObservableObject {
 
     func getAlerts(userId: Int) async throws -> [PriceAlert] {
         guard let url = URL(string: "\(baseURL)/alerts/\(userId)") else { throw NetworkError.invalidURL }
-        let (data, response) = try await session.data(from: url)
+        var request = authRequest(url)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
         return (try? JSONDecoder().decode(AlertsResponse.self, from: data))?.alerts ?? []
     }
@@ -367,7 +373,7 @@ class NetworkManager: ObservableObject {
     func removeAlert(userId: Int, alertId: Int) async throws {
         struct Req: Encodable { let user_id: Int; let alert_id: Int }
         guard let url = URL(string: "\(baseURL)/alerts/remove") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, alert_id: alertId))
@@ -377,7 +383,7 @@ class NetworkManager: ObservableObject {
 
     func checkAlerts(userId: Int) async throws -> [TriggeredAlert] {
         guard let url = URL(string: "\(baseURL)/alerts/check/\(userId)") else { throw NetworkError.invalidURL }
-        var req = URLRequest(url: url)
+        var req = authRequest(url)
         req.timeoutInterval = 20
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
@@ -402,7 +408,7 @@ class NetworkManager: ObservableObject {
 
     func exportPortfolioExcel(userId: Int) async throws -> Data {
         guard let url = URL(string: "\(baseURL)/portfolio/export/excel/\(userId)") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 30
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
@@ -482,7 +488,7 @@ class NetworkManager: ObservableObject {
 
     func getSignalWarnings(userId: Int) async -> [SignalWarning] {
         guard let url = URL(string: "\(baseURL)/portfolio/signal-warnings?user_id=\(userId)") else { return [] }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 10
         guard let (data, resp) = try? await session.data(for: request),
               let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
@@ -534,7 +540,7 @@ class NetworkManager: ObservableObject {
 
     func fetchRiskAnalysis(userId: Int) async throws -> RiskAnalysis {
         guard let url = URL(string: "\(baseURL)/portfolio/risk-analysis/\(userId)") else { throw NetworkError.invalidURL }
-        var req = URLRequest(url: url)
+        var req = authRequest(url)
         req.timeoutInterval = 30
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
@@ -544,7 +550,7 @@ class NetworkManager: ObservableObject {
 
     func fetchRedFlags(userId: Int) async throws -> RedFlagsResponse {
         guard let url = URL(string: "\(baseURL)/portfolio/red-flags/\(userId)") else { throw NetworkError.invalidURL }
-        var req = URLRequest(url: url)
+        var req = authRequest(url)
         req.timeoutInterval = 30
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
@@ -554,7 +560,7 @@ class NetworkManager: ObservableObject {
 
     func fetchMacroImpact(userId: Int) async throws -> MacroImpactResponse {
         guard let url = URL(string: "\(baseURL)/macro-impact/\(userId)") else { throw NetworkError.invalidURL }
-        var req = URLRequest(url: url)
+        var req = authRequest(url)
         req.timeoutInterval = 30
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
@@ -564,7 +570,7 @@ class NetworkManager: ObservableObject {
 
     func fetchDailyAction(userId: Int) async -> DailyActionResponse? {
         guard let url = URL(string: "\(baseURL)/daily-action/\(userId)") else { return nil }
-        var req = URLRequest(url: url)
+        var req = authRequest(url)
         req.timeoutInterval = 15
         guard let (data, resp) = try? await session.data(for: req),
               let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
@@ -577,7 +583,7 @@ class NetworkManager: ObservableObject {
         guard let userId = currentUserId else { return }
         struct Req: Encodable { let user_id: Int; let device_token: String; let platform: String }
         guard let url = URL(string: "\(baseURL)/notifications/register-device") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, device_token: token, platform: "ios"))
@@ -595,7 +601,7 @@ class NetworkManager: ObservableObject {
         guard let userId = currentUserId else { throw NetworkError.invalidURL }
         struct Req: Encodable { let user_id: Int; let ticker: String; let exchange: String }
         guard let url = URL(string: "\(baseURL)/notifications/test") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, exchange: exchange))
@@ -608,7 +614,7 @@ class NetworkManager: ObservableObject {
         guard let userId = currentUserId else { throw NetworkError.invalidURL }
         struct Req: Encodable { let user_id: Int }
         guard let url = URL(string: "\(baseURL)/notifications/morning-summary-push") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId))
@@ -632,9 +638,8 @@ class NetworkManager: ObservableObject {
 
     func triggerYouTubeHarvest() async throws -> HarvestYouTubeResponse {
         guard let url = URL(string: "\(baseURL)/api/v1/admin/harvest-youtube") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "POST"
-        if let token = authToken { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
         return try JSONDecoder().decode(HarvestYouTubeResponse.self, from: data)
@@ -656,7 +661,7 @@ class NetworkManager: ObservableObject {
 
     func fetchTimeframeConflicts(userId: Int) async throws -> TimeframeConflictsResponse {
         guard let url = URL(string: "\(baseURL)/portfolio/timeframe-conflicts/\(userId)") else { throw NetworkError.invalidURL }
-        var req = URLRequest(url: url)
+        var req = authRequest(url)
         req.timeoutInterval = 15
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
@@ -678,7 +683,8 @@ class NetworkManager: ObservableObject {
 
     func fetchTradeJournal(userId: Int) async throws -> [TradeJournalEntry] {
         guard let url = URL(string: "\(baseURL)/trade-journal/\(userId)") else { throw NetworkError.invalidURL }
-        let (data, response) = try await session.data(from: url)
+        var request = authRequest(url)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
         do {
             let resp = try JSONDecoder().decode(TradeJournalResponse.self, from: data)
@@ -692,7 +698,7 @@ class NetworkManager: ObservableObject {
             let action: String; let price_at_time: Double; let reason_text: String; let mood: String?
         }
         guard let url = URL(string: "\(baseURL)/trade-journal") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, company_name: companyName, action: action, price_at_time: price, reason_text: reason, mood: mood))
@@ -708,7 +714,7 @@ class NetworkManager: ObservableObject {
     func updateTradeJournalOutcome(entryId: Int, userId: Int, outcomeText: String, mood: String?) async throws {
         struct Req: Encodable { let outcome_text: String; let mood: String? }
         guard let url = URL(string: "\(baseURL)/trade-journal/\(entryId)?user_id=\(userId)") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(outcome_text: outcomeText, mood: mood))
@@ -718,7 +724,7 @@ class NetworkManager: ObservableObject {
 
     func deleteTradeJournalEntry(entryId: Int, userId: Int) async throws {
         guard let url = URL(string: "\(baseURL)/trade-journal/\(entryId)?user_id=\(userId)") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "DELETE"
         let (_, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
@@ -726,7 +732,8 @@ class NetworkManager: ObservableObject {
 
     func fetchTradeJournalStats(userId: Int) async throws -> TradeJournalStatsResponse {
         guard let url = URL(string: "\(baseURL)/trade-journal/\(userId)/stats") else { throw NetworkError.invalidURL }
-        let (data, response) = try await session.data(from: url)
+        var request = authRequest(url)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
         do { return try JSONDecoder().decode(TradeJournalStatsResponse.self, from: data) }
         catch { throw NetworkError.decodingError(error.localizedDescription) }
@@ -778,7 +785,7 @@ class NetworkManager: ObservableObject {
     func setEarningsAlert(userId: Int, ticker: String, date: String) async throws {
         struct Req: Encodable { let user_id: Int; let ticker: String; let earnings_date: String }
         guard let url = URL(string: "\(baseURL)/api/v1/earnings/alerts") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, earnings_date: date))
@@ -790,7 +797,7 @@ class NetworkManager: ObservableObject {
 
     func fetchAdvisoryConsensus(userId: Int) async throws -> AdvisoryConsensusResponse {
         guard let url = URL(string: "\(baseURL)/api/v1/portfolio/advisor-consensus?user_id=\(userId)&days=7") else { throw NetworkError.invalidURL }
-        var req = URLRequest(url: url)
+        var req = authRequest(url)
         req.timeoutInterval = 30
         let (data, response) = try await dataWithRetry(for: req)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
