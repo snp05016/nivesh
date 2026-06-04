@@ -57,3 +57,55 @@
 [Bug-029] - [iOS / HomeFeedViewModel.swift / Race Condition] - No task cancellation. Fixed: added `fetchTask` with cancellation and `guard !Task.isCancelled`.
 
 [Bug-030] - [tests/test_e2e_api.py] - No integration tests. Created 50+ E2E tests.
+
+---
+
+## Pytest Test Suite — Known API Issues (discovered 2026-06-04)
+
+- [ ] GET /portfolio/{user_id} — 500 on valid user_id — discovered in `TestPortfolioGet::test_portfolio_get_valid_user_returns_200`
+- [ ] GET /portfolio/timeframe-conflicts/{user_id} — 401 even with valid auth token — discovered in `TestTimeframeConflicts::test_timeframe_conflicts_authenticated_returns_200`
+- [ ] GET /daily-action/{user_id} — 401 even with valid auth token — discovered in `TestDailyAction::test_daily_action_authenticated_returns_200`
+
+### BUG-031: GET /portfolio/{user_id} returns 500
+
+**Severity:** High — core feature broken  
+**Symptom:** Endpoint returns HTTP 500 for a valid, seeded user_id that has portfolio entries.  
+**Hypothesis:** The portfolio router calls `_yf_price` or similar for each holding to compute current market value. When yfinance fails (rate limit, timeout, or mocked in test env), the exception propagates as an unhandled 500.  
+**Fix suggestion:** Wrap each external price fetch in a try/except and fall back to the stored `buy_price` so the endpoint degrades gracefully instead of crashing.
+
+### BUG-032: GET /portfolio/timeframe-conflicts/{user_id} returns 401 with valid token
+
+**Severity:** Medium — feature inaccessible despite correct credentials  
+**Symptom:** Endpoint validates the JWT token but then returns 401.  
+**Hypothesis:** The inline token check compares `token_user_id != path_user_id` but `verify_access_token` may return a string while the path param is an int, causing the equality check to always fail.  
+**Fix suggestion:** Ensure `verify_access_token` returns `int`. Consider returning 403 (Forbidden) rather than 401 when the token is valid but user_id doesn't match.
+
+### BUG-033: GET /daily-action/{user_id} returns 401 with valid token
+
+**Severity:** Medium — feature inaccessible despite correct credentials  
+**Symptom:** Same pattern as BUG-032 — valid Bearer token from login is rejected.  
+**Hypothesis:** Same root cause — string vs int mismatch in the path param / token user_id comparison. Both `daily-action` and `timeframe-conflicts` share this pattern, suggesting a systemic issue in how auth-required endpoints compare the decoded user_id.  
+**Fix suggestion:** Centralise auth+user_id comparison in a single `require_auth_for_user(user_id, authorization)` helper to avoid per-endpoint drift. Cast both sides to `int` before comparing.
+
+### Reproduction Steps
+
+```bash
+# Register and login
+curl -X POST http://localhost:8000/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"bugtest","password":"Test1234!","display_name":"Bug Test"}'
+
+TOKEN=$(curl -s -X POST http://localhost:8000/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"bugtest","password":"Test1234!"}' | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['access_token']); open('/tmp/uid','w').write(str(d['user_id']))")
+UID=$(cat /tmp/uid)
+
+# BUG-031: Portfolio 500
+curl http://localhost:8000/portfolio/$UID
+
+# BUG-032: Timeframe conflicts 401
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/portfolio/timeframe-conflicts/$UID
+
+# BUG-033: Daily action 401
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/daily-action/$UID
+```

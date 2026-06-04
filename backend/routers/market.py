@@ -101,11 +101,14 @@ def quarterly_financials_endpoint(ticker: str, exchange: str = "NSE"):
         if fin is not None and not fin.empty:
             rev_row = fin.loc["Total Revenue"] if "Total Revenue" in fin.index else None
             profit_row = fin.loc["Net Income"] if "Net Income" in fin.index else None
+            import math
             for col in list(fin.columns)[:8]:  # last 8 quarters
                 label = col.strftime("Q%q %Y") if hasattr(col, 'strftime') else str(col)[:7]
                 rev = float(rev_row[col]) / 1e7 if rev_row is not None and col in rev_row.index else 0  # in crores
                 profit = float(profit_row[col]) / 1e7 if profit_row is not None and col in profit_row.index else 0
-                result.append({"label": label, "revenue": round(rev, 1), "net_profit": round(profit, 1)})
+                rev = 0.0 if math.isnan(rev) or math.isinf(rev) else round(rev, 1)
+                profit = 0.0 if math.isnan(profit) or math.isinf(profit) else round(profit, 1)
+                result.append({"label": label, "revenue": rev, "net_profit": profit})
         # Fetch promoter holding history from quarterly balance sheet / info
         promoter_history = []
         try:
