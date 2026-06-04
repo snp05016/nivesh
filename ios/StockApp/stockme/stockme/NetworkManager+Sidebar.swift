@@ -125,4 +125,52 @@ extension NetworkManager {
             return nil
         }
     }
+
+    // MARK: - Earnings Calendar & Feed (Extended)
+
+    /// Fetch earnings calendar for a date with 7-day price sparklines per ticker.
+    func fetchEarningsCalendar(date: String, ticker: String? = nil) async -> EarningsCalendarDayResponse? {
+        var path = "/api/v1/earnings/calendar?date=\(date)"
+        if let t = ticker { path += "&ticker=\(t)" }
+        guard let url = URL(string: "\(baseURL)\(path)") else { return nil }
+        var req = URLRequest(url: url); req.timeoutInterval = 25
+        do {
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+            return _diagnosticDecode(EarningsCalendarDayResponse.self, from: data, label: "EarningsCalendar")
+        } catch {
+            os_log(.error, "[Nivesh/Fetch] EarningsCalendar: %{public}@", error.localizedDescription)
+            return nil
+        }
+    }
+
+    /// Fetch ranked earnings feed with Latest/Best/Worst categorization.
+    func fetchRankedEarningsFeed(sort: String = "latest") async -> EarningsFeedResponse? {
+        guard let url = URL(string: "\(baseURL)/api/v1/earnings/feed?sort=\(sort)") else { return nil }
+        var req = URLRequest(url: url); req.timeoutInterval = 20
+        do {
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+            return _diagnosticDecode(EarningsFeedResponse.self, from: data, label: "EarningsFeed")
+        } catch {
+            os_log(.error, "[Nivesh/Fetch] EarningsFeed: %{public}@", error.localizedDescription)
+            return nil
+        }
+    }
+
+    /// Fetch earnings-specific error logs (admin).
+    func fetchEarningsErrorLogs(limit: Int = 50) async -> EarningsErrorLogsResponse? {
+        guard let url = URL(string: "\(baseURL)/api/v1/admin/earnings-errors?limit=\(limit)") else { return nil }
+        var request = URLRequest(url: url)
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        do {
+            let (data, _) = try await URLSession.shared.data(for: request)
+            return _diagnosticDecode(EarningsErrorLogsResponse.self, from: data, label: "EarningsErrorLogs")
+        } catch {
+            os_log(.error, "[Nivesh/Fetch] EarningsErrorLogs: %{public}@", error.localizedDescription)
+            return nil
+        }
+    }
 }

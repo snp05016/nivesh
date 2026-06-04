@@ -21,6 +21,7 @@ from database import (
     SignalEvent, PriceTarget, TradeJournal, DeviceToken, AdvisorInsight,
     NewsArticle, YouTubeVideo, PortfolioValuationHistory, PKScreenerSignal,
     MacroEvent, NetWorthLedger, MarketErrorLog, EarningsAlert, log_market_error,
+    EarningsErrorLog, log_earnings_error,
     create_access_token, verify_access_token,
     is_admin, promote_initial_admins, get_analysis_for_date, get_all_ticker_history,
     save_analysis, get_recent_analyses

@@ -6,6 +6,7 @@ from helpers import (
     InstitutionalLeaderboardResponse, NetWorthSnapshotResponse,
     User, Portfolio, AnalysisHistory, NetWorthLedger,
     MarketErrorLog, EarningsAlert, log_market_error,
+    EarningsErrorLog, log_earnings_error,
     _check_rate_limit, _get_indices_data, _get_asm_gsm_lists, _nse_session
 )
 
@@ -1283,6 +1284,13 @@ async def earnings_progress_endpoint():
 
 @router.get("/api/v1/earnings/feed")
 async def earnings_feed_endpoint(market_cap: str = "all", sort: str = "latest"):
+    """
+    Ranked earnings feed — returns results categorized by sort parameter:
+      - "latest":      most recently reported (default)
+      - "best_performer":   highest positive profit variance
+      - "worst_performer":  highest negative profit variance
+    Each result includes revenue_growth_pct and net_profit_growth_pct for sorting.
+    """
     now_iso = datetime.utcnow().isoformat()
     try:
         with get_session() as session:
@@ -1300,27 +1308,142 @@ async def earnings_feed_endpoint(market_cap: str = "all", sort: str = "latest"):
                 item = _earnings_result_from_row(r, now_iso)
                 if item["revenue"] == 0 and item["net_profit"] == 0:
                     continue
+                # Compute growth metrics for sorting
+                rev_growth = round(((item["revenue"] - item["revenue_prev"]) / max(abs(item["revenue_prev"]), 1)) * 100, 2)
+                profit_growth = round(((item["net_profit"] - item["net_profit_prev"]) / max(abs(item["net_profit_prev"]), 1)) * 100, 2)
+                item["revenue_growth_pct"] = rev_growth
+                item["net_profit_growth_pct"] = profit_growth
                 results.append(item)
-        return {"results": results[:30], "fetched_at": now_iso}
+
+        # Sort by category
+        if sort == "best_performer":
+            results.sort(key=lambda x: x.get("net_profit_growth_pct", 0), reverse=True)
+        elif sort == "worst_performer":
+            results.sort(key=lambda x: x.get("net_profit_growth_pct", 0))
+        # "latest" keeps default order (most recent first)
+
+        return {
+            "sort": sort,
+            "latest": results[:30],                         # always provide latest
+            "best_performers": sorted(results, key=lambda x: x.get("net_profit_growth_pct", 0), reverse=True)[:10],
+            "worst_performers": sorted(results, key=lambda x: x.get("net_profit_growth_pct", 0))[:10],
+            "results": results[:30],                        # backward-compatible
+            "count": len(results[:30]),
+            "fetched_at": now_iso,
+        }
     except Exception as e:
-        print(f"[EARNINGS/FEED] {e}")
-        return {"results": [], "fetched_at": now_iso}
+        log_earnings_error("earnings_feed", str(e))
+        return {"sort": sort, "latest": [], "best_performers": [], "worst_performers": [],
+                "results": [], "count": 0, "error": str(e), "fetched_at": now_iso}
 
 
 @router.get("/api/v1/earnings/calendar")
-async def earnings_calendar_day_endpoint(date: str = None):
+async def earnings_calendar_day_endpoint(date: str = None, ticker: str = None):
+    """
+    Historical earnings calendar — returns results for a date with 7-day
+    price-action sparkline data per ticker. Pass ?ticker=SYM to filter.
+
+    Each result includes:
+      - earnings metadata (ticker, revenue, profit, eps, etc.)
+      - sparkline: list of 7 closing prices preceding the result date
+      - price_change_7d_pct: % change over the 7-day window
+    """
     now_iso = datetime.utcnow().isoformat()
     target_date = date or datetime.utcnow().strftime("%Y-%m-%d")
     try:
         with get_session() as session:
-            rows = session.query(AnalysisHistory).filter(
+            query = session.query(AnalysisHistory).filter(
                 AnalysisHistory.analysis_date == target_date
-            ).all()
-            results = [_earnings_result_from_row(r, now_iso) for r in rows]
-        return {"date": target_date, "results": results, "count": len(results)}
+            )
+            if ticker:
+                query = query.filter(AnalysisHistory.ticker == ticker.upper())
+            rows = query.all()
+
+            results = []
+            for r in rows:
+                item = _earnings_result_from_row(r, now_iso)
+                # Fetch 7-day price history for sparkline
+                sparkline: list[float] = []
+                price_change_7d: float | None = None
+                try:
+                    from services.nse_data_provider import get_price_history
+                    df = get_price_history(r.ticker, period_days=14)  # extra buffer
+                    if df is not None and len(df) >= 2:
+                        closes = df["Close"].dropna().tail(7).tolist()
+                        sparkline = [round(float(c), 2) for c in closes]
+                        if len(sparkline) >= 2:
+                            price_change_7d = round((sparkline[-1] - sparkline[0]) / sparkline[0] * 100, 2)
+                except Exception as price_err:
+                    log_earnings_error("earnings_calendar_price", str(price_err), failed_ticker=r.ticker)
+
+                item["sparkline"] = sparkline
+                item["price_change_7d_pct"] = price_change_7d
+                results.append(item)
+
+        # Also scan upcoming earnings from yfinance for tickers without DB entries
+        if not ticker and len(results) < 5:
+            try:
+                upcoming = _scan_upcoming_earnings(target_date)
+                results.extend(upcoming)
+            except Exception as scan_err:
+                log_earnings_error("earnings_calendar_scan", str(scan_err))
+
+        return {
+            "date": target_date,
+            "results": results,
+            "count": len(results),
+            "fetched_at": now_iso,
+        }
     except Exception as e:
-        print(f"[EARNINGS/CALENDAR] {e}")
-        return {"date": target_date, "results": [], "count": 0}
+        log_earnings_error("earnings_calendar", str(e))
+        return {"date": target_date, "results": [], "count": 0,
+                "error": str(e), "fetched_at": now_iso}
+
+
+def _scan_upcoming_earnings(target_date: str) -> list[dict]:
+    """Scan yfinance for tickers with earnings on or near target_date. Returns up to 10."""
+    import yfinance as yf
+    scan_tickers = ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "SBIN",
+                    "BAJFINANCE", "LT", "AXISBANK", "WIPRO", "SUNPHARMA", "TITAN",
+                    "MARUTI", "KOTAKBANK", "ITC", "HINDUNILVR", "BHARTIARTL"]
+    results = []
+    for ticker in scan_tickers:
+        try:
+            ns = _to_ns(ticker)
+            t = yf.Ticker(ns)
+            cal = t.calendar
+            if isinstance(cal, dict) and "Earnings Date" in cal:
+                dates = cal["Earnings Date"]
+                if isinstance(dates, list):
+                    for d in dates:
+                        try:
+                            ed = d.date() if hasattr(d, "date") else d
+                            if abs((ed - datetime.strptime(target_date, "%Y-%m-%d").date()).days) <= 3:
+                                info = t.info
+                                results.append({
+                                    "ticker": ticker,
+                                    "company_name": info.get("longName") or ticker,
+                                    "quarter": "Upcoming",
+                                    "result_date": ed.strftime("%Y-%m-%d"),
+                                    "market_cap": "large_cap",
+                                    "revenue": 0, "revenue_prev": 0,
+                                    "net_profit": 0, "net_profit_prev": 0,
+                                    "eps": info.get("trailingEps"), "eps_prev": None,
+                                    "ltp": info.get("regularMarketPrice") or 0,
+                                    "change_percent": 0,
+                                    "is_consolidated": True,
+                                    "sparkline": [],
+                                    "price_change_7d_pct": None,
+                                    "reported_at": None,
+                                })
+                                break
+                        except Exception:
+                            pass
+            if len(results) >= 10:
+                break
+        except Exception:
+            continue
+    return results
 
 
 @router.get("/api/v1/earnings/estimates")
@@ -1511,6 +1634,42 @@ def earnings_alerts_delete_endpoint(alert_id: int):
     except Exception as e:
         log_market_error("earnings_alerts_delete", str(e))
         raise HTTPException(status_code=500, detail=f"Failed to delete alert: {e}")
+
+
+# ── /api/v1/admin/earnings-errors ──────────────────────────────────────────────
+
+@router.get("/api/v1/admin/earnings-errors")
+def admin_earnings_errors_endpoint(limit: int = 50, authorization: str = Header(None)):
+    """
+    Admin diagnostic endpoint — returns recent earnings_error_logs entries.
+    Requires admin auth.
+    """
+    from helpers import require_admin
+    require_admin(authorization)
+    try:
+        with get_session() as session:
+            rows = (
+                session.query(EarningsErrorLog)
+                .order_by(EarningsErrorLog.timestamp.desc())
+                .limit(min(limit, 200))
+                .all()
+            )
+            return {
+                "errors": [
+                    {
+                        "id": r.id,
+                        "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+                        "module": r.module,
+                        "error_trace": r.error_trace,
+                        "failed_ticker": r.failed_ticker,
+                    }
+                    for r in rows
+                ],
+                "count": len(rows),
+                "fetched_at": _dt.utcnow().isoformat(),
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Earnings error log query failed: {e}")
 
 
 # ---------------------------------------------------------------------------

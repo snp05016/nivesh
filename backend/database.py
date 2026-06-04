@@ -401,6 +401,36 @@ class EarningsAlert(Base):
     )
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE: earnings_error_logs
+# Telemetry for earnings-specific failures (calendar aggregation, feed scraping).
+# Read by GET /api/v1/admin/earnings-errors for backend dashboard debugging.
+# ─────────────────────────────────────────────────────────────────────────────
+class EarningsErrorLog(Base):
+    __tablename__ = "earnings_error_logs"
+
+    id             = Column(Integer, primary_key=True, index=True)
+    timestamp      = Column(DateTime, default=datetime.utcnow)
+    module         = Column(String(100), nullable=False)   # "filings_extractor", "earnings_calendar", "earnings_feed"
+    error_trace    = Column(Text, nullable=False)            # full traceback / error string
+    failed_ticker  = Column(String(30), nullable=True)       # ticker being processed when error occurred
+
+
+def log_earnings_error(module: str, error_trace: str, failed_ticker: str | None = None) -> None:
+    """Write a diagnostic error row to earnings_error_logs. Non-fatal."""
+    try:
+        with get_session() as session:
+            entry = EarningsErrorLog(
+                module=module,
+                error_trace=str(error_trace)[:2000],
+                failed_ticker=failed_ticker,
+            )
+            session.add(entry)
+            session.commit()
+    except Exception:
+        pass  # telemetry must never cascade
+
+
 # ---------------------------------------------------------------------------
 # Password hashing
 # ---------------------------------------------------------------------------

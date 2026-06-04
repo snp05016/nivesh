@@ -8,7 +8,8 @@ import UserNotifications
 class EarningsDashboardViewModel: ObservableObject {
     @Published var progress: EarningsProgressResponse? = nil
     @Published var feed: [EarningsResult] = []
-    @Published var calendarDayResults: [EarningsResult] = []
+    @Published var calendarDayResults: [EarningsCalendarItem] = []
+    @Published var calendarSparklines: [String: [Double]] = [:]  // ticker → sparkline
     @Published var postResultMovers: [PostResultMover] = []
     @Published var estimates: [String: EarningsEstimate] = [:]
     @Published var selectedMarketCap: String = "all"
@@ -75,7 +76,23 @@ class EarningsDashboardViewModel: ObservableObject {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
         let dateStr = f.string(from: date)
         do {
-            self.calendarDayResults = try await NetworkManager.shared.fetchEarningsCalendarDay(date: dateStr)
+            // Use enhanced endpoint with sparkline price data
+            if let calResp = await NetworkManager.shared.fetchEarningsCalendar(date: dateStr) {
+                self.calendarDayResults = calResp.results
+                // Build sparkline lookup: ticker → sparkline array
+                var sparkMap: [String: [Double]] = [:]
+                for item in calResp.results {
+                    if !item.sparkline.isEmpty {
+                        sparkMap[item.ticker] = item.sparkline
+                    }
+                }
+                self.calendarSparklines = sparkMap
+                if let err = calResp.error {
+                    self.calendarError = err
+                }
+            } else {
+                self.calendarDayResults = []
+            }
         } catch {
             self.calendarError = (error as? NetworkError)?.displayDetail ?? error.localizedDescription
         }
@@ -566,6 +583,34 @@ struct EarningsProgressView: View {
 
 // MARK: - 1.2 Earnings Calendar View
 
+// MARK: - Mini Sparkline (7-day price context)
+
+struct MiniSparkline: View {
+    let data: [Double]
+    let color: Color
+
+    var body: some View {
+        GeometryReader { geo in
+            let minY = data.min() ?? 0
+            let maxY = data.max() ?? 1
+            let range = max(maxY - minY, 0.01)
+            let stepX = geo.size.width / CGFloat(max(data.count - 1, 1))
+
+            Path { path in
+                for (i, val) in data.enumerated() {
+                    let x = CGFloat(i) * stepX
+                    let y = geo.size.height * CGFloat(1 - (val - minY) / range)
+                    if i == 0 { path.move(to: CGPoint(x: x, y: y)) }
+                    else { path.addLine(to: CGPoint(x: x, y: y)) }
+                }
+            }
+            .stroke(color.opacity(0.6), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+        }
+    }
+}
+
+// MARK: - Calendar View
+
 struct EarningsCalendarView: View {
     @ObservedObject var vm: EarningsDashboardViewModel
     @EnvironmentObject var authManager: AuthManager
@@ -629,19 +674,25 @@ struct EarningsCalendarView: View {
     private func calendarDayCell(_ date: Date) -> some View {
         let sel = isSelected(date)
         let isToday = calendar.isDateInToday(date)
-        // Count results scheduled for this day from feed
         let dayStr = apiDate(date)
-        let count = vm.feed.filter { $0.resultDate == dayStr }.count
+        let dayResults = vm.calendarDayResults.filter { $0.resultDate == dayStr }
+        let count = dayResults.count
+        // Extract sparkline from any result that has it
+        let sparkData = dayResults.first(where: { !$0.sparkline.isEmpty })?.sparkline ?? []
 
         return VStack(spacing: 4) {
             Text(monthLabel(date))
                 .font(.system(size: 8, weight: .medium, design: .monospaced))
                 .foregroundColor(sel ? Theme.securityGold : Theme.inkTertiary)
             Text(dayLabel(date))
-                .font(Theme.engravedSerif(size: 18, weight: .bold))
+                .font(Theme.engravedSerif(size: 16, weight: .bold))
                 .foregroundColor(sel ? Theme.inkPrimary : Theme.inkSecondary)
-            // 1.2 Earnings Count Volume Badge
-            if count > 0 {
+
+            // Mini sparkline for dates with price data
+            if !sparkData.isEmpty {
+                MiniSparkline(data: sparkData, color: sel ? Theme.securityGold : Theme.inkTertiary)
+                    .frame(width: 36, height: 16)
+            } else if count > 0 {
                 Text("\(count)")
                     .font(.system(size: 8, weight: .bold))
                     .foregroundColor(sel ? Theme.securityGold : Theme.inkTertiary)
@@ -650,10 +701,10 @@ struct EarningsCalendarView: View {
                     .background(sel ? Theme.securityGold.opacity(0.15) : Theme.inkTertiary.opacity(0.08))
                     .cornerRadius(4)
             } else {
-                Color.clear.frame(height: 14)
+                Color.clear.frame(height: 16)
             }
         }
-        .frame(width: 50)
+        .frame(width: 60)
         .padding(.vertical, 8)
         .background(sel ? Theme.securityGold.opacity(0.08) : Theme.canvasDeep)
         .cornerRadius(8)
@@ -702,7 +753,7 @@ struct EarningsCalendarView: View {
         .banknoteCard()
     }
 
-    private func calendarResultRow(_ r: EarningsResult) -> some View {
+    private func calendarResultRow(_ r: EarningsCalendarItem) -> some View {
         let userId = authManager.currentUser?.userId ?? 0
         return HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
@@ -717,10 +768,22 @@ struct EarningsCalendarView: View {
                         .padding(.vertical, 2)
                         .background(Theme.inkTertiary.opacity(0.08))
                         .cornerRadius(3)
+                    // 7-day price change badge
+                    if let chg = r.priceChange7dPct {
+                        Text(IndianFormatter.delta(chg))
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(chg >= 0 ? Theme.bullGreen : Theme.bearRed)
+                    }
                 }
                 Text(r.companyName)
                     .font(.system(size: 11))
                     .foregroundColor(Theme.inkSecondary)
+                // Sparkline row
+                if !r.sparkline.isEmpty {
+                    MiniSparkline(data: r.sparkline, color: (r.priceChange7dPct ?? 0) >= 0 ? Theme.bullGreen : Theme.bearRed)
+                        .frame(height: 20)
+                        .padding(.top, 2)
+                }
             }
             Spacer()
             // 1.4 Embedded Alert Trigger
@@ -851,6 +914,20 @@ struct EarningsResultCard: View {
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(result.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed)
                 }
+            }
+
+            // Sparkline price context
+            if let spark = result.sparkline, !spark.isEmpty {
+                HStack(spacing: 8) {
+                    MiniSparkline(data: spark, color: result.netProfitGrowthPct >= 0 ? Theme.bullGreen : Theme.bearRed)
+                        .frame(height: 22)
+                    if let chg7d = result.priceChange7dPct {
+                        Text("7d: \(IndianFormatter.delta(chg7d))")
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .foregroundColor(chg7d >= 0 ? Theme.bullGreen : Theme.bearRed)
+                    }
+                }
+                .padding(.vertical, 4)
             }
 
             GuillocheDivider()

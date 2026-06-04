@@ -1171,9 +1171,15 @@ struct EarningsResult: Codable, Identifiable {
     let changePercent: Double
     let isConsolidated: Bool
     let reportedAt: String?      // ISO timestamp
+    // Server-computed growth metrics (provided by ranked feed endpoint)
+    let revenueGrowthPctServer: Double?
+    let netProfitGrowthPctServer: Double?
+    // Calendar sparkline data
+    let sparkline: [Double]?
+    let priceChange7dPct: Double?
 
     enum CodingKeys: String, CodingKey {
-        case ticker, quarter, revenue, ltp
+        case ticker, quarter, revenue, ltp, sparkline
         case companyName = "company_name"
         case resultDate = "result_date"
         case marketCap = "market_cap"
@@ -1186,15 +1192,23 @@ struct EarningsResult: Codable, Identifiable {
         case changePercent = "change_percent"
         case isConsolidated = "is_consolidated"
         case reportedAt = "reported_at"
+        case revenueGrowthPctServer = "revenue_growth_pct"
+        case netProfitGrowthPctServer = "net_profit_growth_pct"
+        case priceChange7dPct = "price_change_7d_pct"
     }
 
+    /// Prefer server-computed growth, fall back to local calculation
     var revenueGrowthPct: Double {
-        guard revenuePrev > 0 else { return 0 }
-        return ((revenue - revenuePrev) / revenuePrev) * 100
+        revenueGrowthPctServer ?? {
+            guard revenuePrev > 0 else { return 0 }
+            return ((revenue - revenuePrev) / revenuePrev) * 100
+        }()
     }
     var netProfitGrowthPct: Double {
-        guard netProfitPrev != 0 else { return 0 }
-        return ((netProfit - netProfitPrev) / abs(netProfitPrev)) * 100
+        netProfitGrowthPctServer ?? {
+            guard netProfitPrev != 0 else { return 0 }
+            return ((netProfit - netProfitPrev) / abs(netProfitPrev)) * 100
+        }()
     }
     var netProfitMarginPct: Double {
         guard revenue > 0 else { return 0 }
@@ -1227,15 +1241,91 @@ struct EarningsProgressResponse: Codable {
 
 struct EarningsCalendarDayResponse: Codable {
     let date: String
-    let results: [EarningsResult]
+    let results: [EarningsCalendarItem]
     let count: Int
+    let fetchedAt: String?
+    let error: String?
+    enum CodingKeys: String, CodingKey {
+        case date, results, count
+        case fetchedAt = "fetched_at"
+        case error
+    }
+}
+
+/// Calendar item with sparkline price history
+struct EarningsCalendarItem: Codable, Identifiable {
+    var id: String { "\(ticker)_\(resultDate)" }
+    let ticker: String
+    let companyName: String
+    let quarter: String
+    let resultDate: String
+    let marketCap: String
+    let revenue: Double
+    let revenuePrev: Double
+    let netProfit: Double
+    let netProfitPrev: Double
+    let eps: Double?
+    let epsPrev: Double?
+    let ltp: Double
+    let changePercent: Double
+    let isConsolidated: Bool
+    let reportedAt: String?
+    let sparkline: [Double]
+    let priceChange7dPct: Double?
+    enum CodingKeys: String, CodingKey {
+        case ticker, quarter, revenue, eps, ltp, sparkline
+        case companyName = "company_name"
+        case resultDate = "result_date"
+        case marketCap = "market_cap"
+        case revenuePrev = "revenue_prev"
+        case netProfit = "net_profit"
+        case netProfitPrev = "net_profit_prev"
+        case epsPrev = "eps_prev"
+        case changePercent = "change_percent"
+        case isConsolidated = "is_consolidated"
+        case reportedAt = "reported_at"
+        case priceChange7dPct = "price_change_7d_pct"
+    }
 }
 
 struct EarningsFeedResponse: Codable {
-    let results: [EarningsResult]
+    let sort: String?
+    let latest: [EarningsResult]
+    let bestPerformers: [EarningsResult]
+    let worstPerformers: [EarningsResult]
+    let results: [EarningsResult]     // backward-compatible
+    let count: Int
+    let fetchedAt: String
+    let error: String?
+    enum CodingKeys: String, CodingKey {
+        case sort, latest, results, count, error
+        case bestPerformers = "best_performers"
+        case worstPerformers = "worst_performers"
+        case fetchedAt = "fetched_at"
+    }
+}
+
+// MARK: - Earnings Error Telemetry
+
+struct EarningsErrorLogEntry: Codable, Identifiable {
+    var id: Int
+    let timestamp: String?
+    let module: String
+    let errorTrace: String
+    let failedTicker: String?
+    enum CodingKeys: String, CodingKey {
+        case id, timestamp, module
+        case errorTrace = "error_trace"
+        case failedTicker = "failed_ticker"
+    }
+}
+
+struct EarningsErrorLogsResponse: Codable {
+    let errors: [EarningsErrorLogEntry]
+    let count: Int
     let fetchedAt: String
     enum CodingKeys: String, CodingKey {
-        case results
+        case errors, count
         case fetchedAt = "fetched_at"
     }
 }
