@@ -13,17 +13,18 @@
 
 ## Design System (Banknote Aesthetic)
 
-- **Guilloché Patterns**: Animated dividers and background borders (`GuillocheDivider`).
+- **Guilloché Patterns**: Animated dividers and borders (`GuillocheDivider`).
 - **Security Thread**: Gold vertical strip with micro-text (`SecurityThread`).
 - **Ashoka Stamp**: Lion capital stamp integrated into Home.
 - **RBI Seal**: Circular watermark on all cards.
 - **Paper Texture**: 500-grain canvas noise overlay.
 - **Verified Badge**: Blue checkmark for users/data.
 - **Rupee Rustle**: Audio feedback for UI interactions (`AppSoundManager`).
+- **Haptics**: Centralized engine for `EKPressStyle` spring interactions (`HapticManager`).
 
 ---
 
-## Key Features
+## Key Features (UI Communities)
 
 ### 1. 8-Tab Navigation
 - **Home**: Morning Brief (Priority Items), Indices strip, Sector Pulse heatmap.
@@ -31,9 +32,9 @@
 - **Assets**: Rupee-styled hero card, 10-segment risk meter, Red Flags system.
 - **Alerts**: Manage price targets with foreground trigger checks.
 - **Archives**: Locally cached analysis reports with Signal Change diffs.
-- **Compare**: Side-by-side comparison of two stocks.
+- **Compare**: Side-by-side comparison of stocks.
 - **Registry**: App preferences, Dark mode, APNs registration.
-- **Journal**: Log trade reasons, moods (FOMO/Contrarian), and outcomes.
+- **Journal**: Log trade reasons, moods (FOMO/Confidence), and outcomes.
 
 ### 2. Deep Analysis (5-Tab Deep Dive)
 - **Overview**: Signal Change Flags, Confidence Rationale, and Worry Level.
@@ -46,19 +47,8 @@
 
 ## Technical Architecture
 
+- **God Node**: `CodingKeys` serves as the structural bridge for all `Codable` models.
 - **State Management**: `@MainActor` ViewModels with `async/await`.
-- **Haptics**: Centralized `HapticManager` with `EKPressStyle` spring animations.
-- **Networking**: `NetworkManager.shared` with custom model decoding and server URL management.
+- **Networking**: `NetworkManager.shared` hub connecting to FastAPI endpoints.
 - **Persistence**: `UserDefaults` for auth and `@AppStorage` for UI state.
-
----
-
-## What Works
-
-- **2FA Login**: Integrated authentication.
-- **Portfolio Risk & Red Flags**: Comprehensive risk monitoring.
-- **Trade Journaling**: Full lifecycle trade logging and stats.
-- **Signal Flip Detection**: Visual indicators when outlook changes.
-- **Advisor Matrix**: Integration of expert sentiment from YouTube harvest.
-- **Hardened Market Data**: History fallbacks for indices/sectors.
-- **Tutorial & Onboarding**: Animated overlays for new users.
+- **Reliability**: History fallbacks for indices/sectors; redundant market data handling.

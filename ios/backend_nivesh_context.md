@@ -15,18 +15,19 @@
 
 ### 1. 8-Step Core Pipeline
 1.  **Expert Research (Parallel)**:
-    *   **Market Analyst**: Price trends, moving averages (50/200), RSI, Volume, MACD.
-    *   **News Analyst**: Scans for **Red Flags** (Auditor resignations, CFO/MD exits, SEBI investigations).
-    *   **Fundamentals Analyst**: P/L, Balance Sheet, Cash Flow, and **Promoter stress** (Pledging > 30%).
-2.  **The Debate**: `Bull Researcher` vs. `Bear Researcher` (1 round of dialectical challenge).
-3.  **Synthesis**: `Research Manager` summary + `Trader` transaction proposal (Buy/Hold/Sell).
-4.  **Risk Review (Iterative)**: 3 Risk Analysts (`Aggressive` -> `Conservative` -> `Neutral`) debate the proposal in a circular loop.
+    *   **Market Analyst**: Interprets `factor_engine` pre-computations.
+    *   **News Analyst**: Scans for **Red Flags** (Auditor resignations, CFO exits, SEBI investigations).
+    *   **Fundamentals Analyst**: P/L, Balance Sheet, and **Promoter stress** (Pledging > 30%).
+    *   **Social Analyst**: Measures retail euphoria (contrarian signal).
+2.  **The Debate**: `Bull Researcher` vs. `Bear Researcher` (Dialectical challenge pattern).
+3.  **Synthesis**: `Research Manager` summary + `Trader` transaction proposal.
+4.  **Risk Review (Iterative)**: 3 Risk Analysts (`Aggressive` -> `Conservative` -> `Neutral`) debate the proposal in a circular loop managed by `ConditionalLogic`.
 5.  **Final Verdict**: `Portfolio Manager` raw decision.
 6.  **Reformatting (Sonnet 3.5)**: Applies **Indian Market Weighting** (Management, Institutions, Sentiment, Macro, Policy, Turnaround).
 
 ### 2. Advisor Intelligence Pipeline (Nightly)
-- **Harvester**: Extracts transcripts from YouTube (SOIC, Basant Maheshwari, Shankar Sharma, etc.) via **YouTube API** or **Whisper large-v3**.
-- **Ticker Matcher**: Uses `rapidfuzz` (fuzz.token_set_ratio) to identify tickers in Hinglish commentary.
+- **Harvester**: Extracts transcripts via **YouTube API** or **Whisper large-v3**.
+- **Ticker Matcher**: Uses `rapidfuzz` to identify tickers in Hinglish commentary.
 - **Haiku Extractor**: Structures stances and catalysts with numeric anchors.
 - **Aggregator**: `/api/v1/portfolio/advisor-consensus` provides trending signals.
 
@@ -34,22 +35,16 @@
 
 ## Performance & Optimization
 
-- **Prefix-Aligned Context Stratification**: Anthropic Prompt Caching on analysts (Haiku) and reformatter (Sonnet).
+- **Prefix-Aligned Context Stratification**: Anthropic Prompt Caching on analysts and reformatter.
 - **Smart Cache**: Haiku-based news check to skip redundant analyses.
-- **Quick-Info TTL Cache**: 5-minute in-memory cache for `/quick-info`.
 - **Process Isolation**: AI analyses run in `multiprocessing.Process`.
+- **God Nodes**: `get_session()` for state, `TradingAgentsGraph` for orchestration.
 
 ---
 
 ## Database Schema (SQLite)
 
-- `users`: Includes SHA-256 hashed passwords.
-- `portfolio`: Stores holdings/watchlist with `purchase_date`, `notes`, and `target_price`.
-- `analysis_history`: Stores structured JSON reports. (Sonnet pulls last 15 for context).
-- `signal_events`: Tracks signal flips (e.g., BULLISH → NEUTRAL).
-- `price_targets`: Tracks price alerts.
-- `trade_journal`: Logs mood, entry reason, and outcomes.
-- `advisor_insights`: Stance data from YouTube experts.
+- `users`, `portfolio`, `analysis_history`, `advisor_insights`, `signal_events`, `trade_journal`.
 
 ---
 

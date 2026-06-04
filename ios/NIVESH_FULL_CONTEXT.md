@@ -9,109 +9,86 @@
 
 **Nivesh** is a personal Indian stock market analysis iOS app for a small family group (3 users). It wraps a multi-agent AI pipeline in a premium SwiftUI interface styled like an Indian Rupee banknote. Tap any NSE/BSE stock → wait 30–90s → receive structured AI investment analysis.
 
-**Current status:** Fully functional, running locally. iOS app on physical iPhone connects to FastAPI backend on Mac over home WiFi (`192.168.1.97:8000`). Not deployed anywhere. Personal use only.
-
 ---
 
 ## The Stack
 
 | Layer | Technology |
 |---|---|
-| iOS frontend | SwiftUI (iOS 16+), Swift Charts, no third-party dependencies |
-| Backend API | FastAPI (Python), uvicorn, local only |
+| iOS frontend | SwiftUI (iOS 16+), Swift Charts, zero dependencies |
+| Backend API | FastAPI (Python), uvicorn, subprocess isolation |
 | AI pipeline | TradingAgents (LangGraph multi-agent) |
 | AI models | Claude 3.5 Haiku (agents) + Claude 3.5 Sonnet (reformatter) |
 | Live market data | yfinance (Yahoo Finance) with NSE-session fallbacks |
 | News sources | Yahoo Finance News (enriched), Moneycontrol, Economic Times |
-| Advisor Intelligence | Claude 3.5 Haiku (YouTube transcript extraction) + rapidfuzz (Hinglish matching) |
+| Advisor Intelligence | Claude 3.5 Haiku (YouTube extraction) + rapidfuzz (Hinglish matching) |
 | Database | SQLite via SQLAlchemy ORM |
-| Charts (iOS) | Swift Charts (native, iOS 16+) |
+| Deterministic Engine| Factor Engine (Technical pre-compute), Piotroski (Fundamental) |
 
 ---
 
 ## Technical Deep Dive: The AI Analysis Engine
 
-The Nivesh AI pipeline is a sophisticated multi-stage orchestration engine designed for high-fidelity financial reasoning. It is isolated in a Python subprocess for resource management and uses a 3-layer caching strategy.
+The Nivesh AI pipeline is a sophisticated multi-stage orchestration engine designed for high-fidelity financial reasoning, built on a **LangGraph** foundation.
 
 ### Step 1: The Smart Cache Gatekeeper (Haiku 3.5)
-Before executing the expensive multi-agent graph, the system performs a **Differential News Check**:
-- **Input**: Last analysis date + Top 5 recent news headlines for the ticker.
-- **Logic**: Haiku determines if a "major fundamental shift, severe shock, or significant trend-changing event" has occurred.
-- **Outcome**: If "NO", the system skips the AI run, clones the previous report, updates the current price via yfinance, and returns immediately (**SMART CACHE HIT**).
+Before executing the expensive graph, the system performs a **Differential News Check**:
+- **Logic**: Haiku determines if a "major fundamental shift" or "significant trend-changing event" has occurred since the last analysis.
+- **Outcome**: If "NO", the system skips the AI run, clones the previous report, and updates the price only (**SMART CACHE HIT**).
 
-### Step 2: Multi-Agent Orchestration (LangGraph)
-If a cache miss occurs, the system initializes an `OptimizedTradingAgentsGraph`.
+### Step 2: Deterministic Pre-Computation (The Factor Engine)
+To ensure the AI doesn't "hallucinate" technical levels, the **Factor Engine** runs first:
+- **Technicals**: Calculates RSI-14, MACD, SMA 50/200, OBV, and Bollinger Bands using mathematical libraries (`ta`/`numpy`).
+- **Fundamentals**: `piotroski.py` computes the 9-point health score (0-9).
+- **Result**: These numbers are passed into the AI as "ground truth" prose.
 
-#### A. Parallel Analyst Layer
-Three specialized agents run in parallel to gather raw intelligence:
-1.  **Market Analyst**: Computes Technicals (SMA 50/200, RSI-14, MACD, Volume) and identifies chart patterns.
-2.  **News Analyst**: Scans for corporate announcements. Specifically hard-coded to hunt for **Audit Resignations**, **CFO/MD Exits**, and **SEBI Actions** (marked with ⚠ GOVERNANCE flags).
-3.  **Fundamentals Analyst**: Fetches P/L, Balance Sheet, Cash Flow, and **Promoter Pledging** data.
+### Step 3: Multi-Agent Orchestration (LangGraph Patterns)
 
-#### B. The Dialectical Debate
-To prevent AI "echo chambers," the system enters a debate phase:
-- **Bull Researcher**: Makes the strongest possible case for capital appreciation.
-- **Bear Researcher**: Actively tries to invalidate the Bull case, focusing on structural risks.
-- **Iteration**: They challenge each other for 1 round (or more) to refine the "edges" of the investment thesis.
+#### A. Analyst Team Four-Agent Architecture
+Four specialized agents run in parallel to gather raw intelligence:
+1.  **Market Analyst**: Interprets Factor Engine data into behavioral trends.
+2.  **News Analyst**: Scans for corporate announcements and **Red Flags** (Audit Resignations, CFO exits).
+3.  **Fundamentals Analyst**: Checks Promoter Pledging (>30% = Bearish) and DII/FII flows.
+4.  **Social Analyst**: Measures retail euphoria as a contrarian risk signal.
 
-#### C. Synthesis & Proposal
-- **Research Manager**: Reads the entire debate and writes a balanced summary of disagreements.
-- **Trader**: Proposes a concrete Buy/Sell/Hold transaction with 3-month, 12-month, and 36-month target prices.
+#### B. Bullish vs Bearish Researcher Debate Pattern
+- **Adversarial Loop**: The `Bull Researcher` and `Bear Researcher` engage in a dialectical challenge to stress-test the investment thesis.
+- **Iteration**: They challenge each other for 1+ rounds (managed by `ConditionalLogic`) to refine the "edges" of the thesis.
 
-#### D. The Risk Jury (Iterative Loop)
-The Trader's proposal is reviewed by a 3-agent Risk Committee in a circular loop:
+#### C. Risk Management Three-Perspective Analysis
+The proposal is reviewed by a 3-agent committee in a circular loop:
 1.  **Aggressive Analyst**: Looks for high-alpha opportunities.
 2.  **Conservative Analyst**: Focuses on capital preservation.
 3.  **Neutral Analyst**: Bridges the gap.
-They debate the proposal until the judge determines the risk is fully explored, before passing it to the **Portfolio Manager** for the final "raw" verdict.
+They debate the proposal until `ConditionalLogic` determines the risk is fully explored.
 
-### Step 3: Deterministic Reformatting & Indian Market Weighting (Sonnet 3.5)
-The raw multi-agent output is passed to Claude 3.5 Sonnet for final structuring. This phase uses a **Dual-Breakpoint Prompt Caching** strategy:
-
+### Step 4: Deterministic Reformatting (Sonnet 3.5)
+The raw verdict is structured using a **Dual-Breakpoint Prompt Caching** strategy:
 1.  **Breakpoint 1 (The Blueprint)**: Caches the `INDIAN_MARKET_SYSTEM_PROMPT` (Static Layer).
-2.  **Breakpoint 2 (Ticker History)**: Fetches and caches the last 15 analyses for that specific ticker, sorted by key for stable hash IDs (Volatile Context Layer).
-
-#### Applied Heuristics:
-- **Minskyan Tension Gauge**: Flags "hollow rallies" where DII (Domestic Institutional) buying is the sole support against large FII (Foreign Institutional) outflows.
-- **Promoter Stress Protocol**: Any promoter pledging > 30% is automatically elevated to a high-priority Bear Case point.
-- **Behavioral Translation**: Technical indicators are translated into human behavior (e.g., RSI < 30 is "Retail capitulation; institutional accumulation zone").
-- **Indian Market Sentiment**: Social buzz is treated as a **contrarian risk signal**. High retail euphoria reduces confidence scores.
+2.  **Breakpoint 2 (Ticker History)**: Caches the last 15 analyses for that specific ticker.
 
 ---
 
-## Advisor Intelligence — YouTube Harvest Engine
+## iOS App — 8 Tabs (UI Communities)
 
-A background CRON job runs the `advisor_harvester.py` to ingest expert sentiment.
-
-1.  **Transcript Extraction**: Fetches transcripts via YouTube API or local **Whisper large-v3** fallback (if captions are disabled).
-2.  **Fuzzy Ticker Matching**: Uses `rapidfuzz` to identify stocks mentioned in **Hinglish** commentary (e.g., "HDFC wala bank").
-3.  **Stance Extraction**: Haiku extracts the advisor's stance (BULLISH/BEARISH/NEUTRAL) and catalyst summaries.
-4.  **Consensus API**: The `/api/v1/portfolio/advisor-consensus` endpoint aggregates this data into "Sector Signals" and "Trending Tickers" based on mention volume and view counts.
-
----
-
-## iOS App — 8 Tabs
-
-### Home
-- **Morning Brief Card**: Upgraded with **Priority Items** (Triggered Alerts > Signal Flips).
-- **Indices & Sector Pulse**: Live market status with history-based reliability fallbacks.
-
-### Assets (Portfolio)
-- **Portfolio Hero**: Rupee-styled ₹2000 card showing total valuation and daily P&L.
-- **Risk & Red Flags**: 10-segment risk meter and ASM/GSM surveillance chips.
-
-### Journal
-- **Trade Ledger**: Log entry reasons, moods (FOMO/Contrarian), and outcomes.
-
-*(Additional Tabs: Directory, Alerts, Archives, Compare, Registry)*
+| Tab | View | Community Focus |
+|---|---|---|
+| **Home** | `HomeScreen` | Morning Brief, Indices strip, Sector Pulse heatmap. |
+| **Directory** | `SearchScreen` | Bilingual search (खोज) with screener presets. |
+| **Assets** | `PortfolioScreen` | Rupee-styled hero card, 10-segment risk meter, Red Flags. |
+| **Alerts** | `AlertsScreen` | Auth & Alerts community focus. |
+| **Archives** | `HistoryScreen` | Local analysis history cache. |
+| **Compare** | `CompareScreen` | Side-by-side comparison of stocks. |
+| **Registry** | `SettingsScreen` | App styles, User preferences, Server config. |
+| **Journal** | `TradeJournalScreen`| Ledger for trade psychology logging. |
 
 ---
 
 ## Design System (Banknote Aesthetic)
 
-- **Guilloché Patterns**: Animated dividers and background borders.
-- **Security Thread**: Gold vertical strip with micro-text.
-- **Ashoka Stamp**: Lion capital stamp integrated into Home.
-- **RBI Seal**: Circular watermark on all cards.
+- **Guilloché Patterns**: Animated dividers and borders (`GuillocheDivider`).
+- **Security Thread**: Gold vertical strip with micro-text (`SecurityThread`).
 - **Paper Texture**: 500-grain canvas noise overlay.
-- **Verified Badge**: Blue checkmark for verified users/data.
+- **Rupee Rustle**: Audio feedback for UI interactions (`AppSoundManager`).
+- **Indian Formatter**: Specialized logic for Lakh/Crore formatting.
+- **Haptics**: Centralized engine for `EKPressStyle` spring interactions (`HapticManager`).
