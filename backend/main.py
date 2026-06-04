@@ -2749,6 +2749,8 @@ def dashboard_data(authorization: str = Header(None)):
 # ---------------------------------------------------------------------------
 
 _sector_cache: dict = {"data": None, "ts": 0.0}
+_morning_cache: dict = {}  # {user_id: {"data": {...}, "ts": float}}
+_asm_gsm_cache: dict = {"data": {}, "ts": 0}
 
 # Upcoming IPOs (manually tracked)
 UPCOMING_IPOS = [
