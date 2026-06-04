@@ -832,10 +832,28 @@ struct EarningsFeedView: View {
                     if vm.isLoading && vm.feed.isEmpty {
                         ForEach(0..<6, id: \.self) { _ in feedCardPlaceholder }
                     } else if vm.filteredFeed.isEmpty {
-                        Text("No results available. Pull to refresh.")
-                            .font(.system(size: 13))
-                            .foregroundColor(Theme.inkTertiary)
-                            .padding(40)
+                        // Show exact reason why feed is empty
+                        VStack(spacing: 12) {
+                            if let err = vm.feedError {
+                                // Fetch error — network/decode failure
+                                BanknoteErrorCanvas(
+                                    title: "Feed Fetch Failed",
+                                    detail: err,
+                                    retryAction: { vm.load() }
+                                )
+                            } else {
+                                // Empty data — no errors, just no data
+                                BanknoteErrorCanvas(
+                                    title: "No Earnings Data",
+                                    detail: "Backend returned empty results.\n\n"
+                                        + "Likely cause: No stock analyses have been run yet. "
+                                        + "The earnings feed reads from the Analysis History database. "
+                                        + "Run an AI analysis on a stock first to populate earnings data.\n\n"
+                                        + "If analyses exist and this persists, check the backend server logs.",
+                                    retryAction: { vm.load() }
+                                )
+                            }
+                        }
                     } else {
                         ForEach(vm.filteredFeed) { result in
                             EarningsResultCard(result: result, comparisonMode: vm.comparisonMode)
