@@ -1354,15 +1354,15 @@ struct EarningsCalendarItem: Codable, Identifiable {
 
 struct EarningsFeedResponse: Codable {
     let sort: String?
-    let latest: [EarningsResult]
-    let bestPerformers: [EarningsResult]
-    let worstPerformers: [EarningsResult]
-    let results: [EarningsResult]     // backward-compatible
-    let count: Int
-    let fetchedAt: String
+    let latest: [EarningsResult]?
+    let bestPerformers: [EarningsResult]?
+    let worstPerformers: [EarningsResult]?
+    let results: [EarningsResult]     // backward-compatible — always present
+    let count: Int?
+    let fetchedAt: String?
     let error: String?
-    let dataSource: String?           // "database" | "yfinance_fallback" | "empty"
-    let diagnostic: String?           // human-readable explanation when data is empty
+    let dataSource: String?           // "database" | "yfinance_fallback" | "empty" (new server only)
+    let diagnostic: String?           // human-readable explanation (new server only)
     enum CodingKeys: String, CodingKey {
         case sort, latest, results, count, error
         case bestPerformers = "best_performers"

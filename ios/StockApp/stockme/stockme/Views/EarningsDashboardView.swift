@@ -63,16 +63,20 @@ class EarningsDashboardViewModel: ObservableObject {
             // Feed — use ranked endpoint for diagnostic info
             if let rankedResp = await NetworkManager.shared.fetchRankedEarningsFeed(sort: selectedSort) {
                 self.feed = rankedResp.results
-                self.feedDataSource = rankedResp.dataSource
+                self.feedDataSource = rankedResp.dataSource ?? "unknown"
                 self.feedDiagnostic = rankedResp.diagnostic
                 if let err = rankedResp.error {
                     self.feedError = err
                 }
-                if rankedResp.dataSource == "empty" || rankedResp.results.isEmpty {
+                if (rankedResp.dataSource ?? "") == "empty" || rankedResp.results.isEmpty {
+                    if rankedResp.diagnostic == nil && rankedResp.error == nil {
+                        // Old server — no diagnostic fields. Explain the situation.
+                        self.feedDiagnostic = "Server returned empty results without diagnostic info. The server may be running an older version without the yfinance fallback. Redeploy the backend to get real earnings data."
+                    }
                     self.feedError = nil  // not a fetch error — just no data
                 }
             } else {
-                self.feedError = "Feed endpoint unreachable. Check: (1) Is the server running? (2) Is the backend URL correct in Settings? (3) Check iOS console for details."
+                self.feedError = "Feed endpoint unreachable or JSON decode failed. Check: (1) Is the server running? (2) Is the backend URL correct in Settings? (3) Check iOS console for details."
             }
 
             // Movers
