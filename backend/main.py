@@ -13,7 +13,7 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 from dotenv import load_dotenv
 env_path = Path(__file__).parent / ".env"
-load_dotenv(dotenv_path=env_path)
+load_dotenv(dotenv_path=env_path, override=True)
 
 # Disk cache — L2 persistent layer (L1 = in-memory _quick_info_cache)
 from services.disk_cache import get as _dcache_get, set as _dcache_set, stats as _dcache_stats
@@ -975,12 +975,19 @@ def _to_ns(ticker: str) -> str:
 
 
 def _extract_json_from_text(text: str) -> str:
-    """Extract JSON from markdown code blocks or return raw text."""
+    """Extract JSON from markdown code blocks, or fallback to curly braces."""
+    text = text.strip()
     if "```json" in text:
         return text.split("```json")[1].split("```")[0].strip()
     elif "```" in text:
         return text.split("```")[1].strip()
-    return text.strip()
+    else:
+        # Fallback: extract substring between first { and last }
+        start = text.find('{')
+        end = text.rfind('}')
+        if start != -1 and end != -1 and end > start:
+            return text[start:end+1].strip()
+    return text
 
 
 # ---------------------------------------------------------------------------
@@ -1134,7 +1141,7 @@ def build_ta_config() -> dict:
     config["quick_think_provider"] = "deepseek"  # Force DeepSeek for V4 Flash
     config["max_debate_rounds"] = 1
     config["max_risk_discuss_rounds"] = 1
-    config["max_tokens"] = 2000
+    config["max_tokens"] = 4000
     return config
 
 
@@ -1204,7 +1211,7 @@ def reformat_with_claude(
         try:
             response = client.messages.create(
                 model=SONNET_MODEL,
-                max_tokens=2000,
+                max_tokens=4000,
                 system=system_array,
                 messages=[{"role": "user", "content": user_message}],
                 temperature=0 # Strict deterministic output
@@ -1223,12 +1230,15 @@ def reformat_with_claude(
         parsed = json.loads(raw_json)
     except json.JSONDecodeError as e:
         print(f"[ERROR] Failed to parse reformatted JSON: {e}")
+        print(f"[ERROR] Anthropic Raw Response: {response.content[0].text}")
+        print(f"[ERROR] Extracted JSON string: {raw_json}")
         # Return a minimal valid structure if parsing fails
         return {
             "signal": "HOLD",
             "confidence_pct": 0,
             "target_prices": {},
-            "key_factors": {"indian_market_sentiment": "Parse error occurred."}
+            "key_factors": {"indian_market_sentiment": "Parse error occurred."},
+            "raw_output": raw_output # include raw output to debug
         }
 
     # Validate indian_market_sentiment is populated
@@ -1952,8 +1962,9 @@ def quarterly_financials_endpoint(ticker: str, exchange: str = "NSE"):
 def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False):
     from dotenv import load_dotenv
     from pathlib import Path
+    import os
     env_path = Path(__file__).parent / ".env"
-    load_dotenv(dotenv_path=env_path)
+    load_dotenv(dotenv_path=env_path, override=True)
     try:
         result = analyze(ticker, exchange, user_id, deep_scan=deep_scan)
         queue.put({"status": "ok", "result": result})
