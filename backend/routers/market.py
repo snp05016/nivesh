@@ -969,6 +969,10 @@ async def dashboard_pulse_endpoint():
 
 # ── Cap Index Aggregator Helper ────────────────────────────────────────────────
 
+# TTL cache — cap weights change slowly, recompute every 6 hours
+_cap_grid_cache: dict = {"data": None, "ts": 0.0}
+_CAP_GRID_TTL = 21600  # 6 hours
+
 # Index constituent tickers by cap bracket — representative sample per index
 _CAP_INDEX_MAP: dict[str, list[str]] = {
     "NIFTY_50": ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "HINDUNILVR",
@@ -987,19 +991,19 @@ _CAP_INDEX_MAP: dict[str, list[str]] = {
 def _build_cap_index_grid() -> list[dict]:
     """
     Build multi-period financial grid sliced by cap weight brackets.
-    Returns list of dicts, each representing a cap bracket with:
-      - cap_bracket: str ("All", "Nifty 50", "Large Cap", "Mid Cap", "Small Cap")
-      - ticker_count: int
-      - avg_market_cap_cr: str (Indian-formatted)
-      - avg_revenue_cr: str
-      - avg_net_profit_cr: str
-      - avg_pe_ratio: float | None
-      - avg_revenue_yoy_pct: float | None
-    Uses yfinance for fundamentals. Errors caught per-ticker, non-fatal.
+    6-hour TTL cache — cap weights don't change intraday.
+
+    Uses parallel ThreadPoolExecutor for yfinance calls (8 workers).
+    Falls back to cached data if yfinance completely fails.
     """
     import math
+    import concurrent.futures
 
-    # Top-level bracket list: "All" aggregates all sub-brackets
+    # Return cached grid if fresh
+    now = time.time()
+    if _cap_grid_cache["data"] is not None and (now - _cap_grid_cache["ts"]) < _CAP_GRID_TTL:
+        return _cap_grid_cache["data"]
+
     brackets: list[dict] = [
         {"cap_bracket": "All",       "source_keys": ["NIFTY_50", "LARGE_CAP", "MID_CAP", "SMALL_CAP"]},
         {"cap_bracket": "Nifty 50",  "source_keys": ["NIFTY_50"]},
@@ -1008,14 +1012,43 @@ def _build_cap_index_grid() -> list[dict]:
         {"cap_bracket": "Small Cap", "source_keys": ["SMALL_CAP"]},
     ]
 
+    # Collect all unique tickers
+    all_tickers: list[str] = []
+    for bracket in brackets:
+        for key in bracket["source_keys"]:
+            for t in _CAP_INDEX_MAP.get(key, []):
+                if t not in all_tickers:
+                    all_tickers.append(t)
+
+    # Fetch all ticker info in parallel (8 workers, single attempt — no retries)
+    ticker_data: dict[str, dict] = {}
+
+    def _fetch_one(ticker: str) -> tuple[str, dict | None]:
+        try:
+            import yfinance as yf
+            ns = _to_ns(ticker)
+            info = yf.Ticker(ns).info
+            return (ticker, info if info and info.get("regularMarketPrice") else None)
+        except Exception:
+            return (ticker, None)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_fetch_one, t): t for t in all_tickers}
+        for fut in concurrent.futures.as_completed(futures, timeout=30):
+            try:
+                ticker, info = fut.result()
+                if info:
+                    ticker_data[ticker] = info
+            except Exception:
+                pass
+
     results: list[dict] = []
     for bracket in brackets:
         tickers: list[str] = []
         for key in bracket["source_keys"]:
-            tickers.extend(_CAP_INDEX_MAP.get(key, []))
-
-        # Deduplicate
-        tickers = list(dict.fromkeys(tickers))
+            for t in _CAP_INDEX_MAP.get(key, []):
+                if t not in tickers:
+                    tickers.append(t)
 
         market_caps: list[float] = []
         revenues: list[float] = []
@@ -1024,19 +1057,17 @@ def _build_cap_index_grid() -> list[dict]:
         rev_yoy_list: list[float] = []
 
         for ticker in tickers:
+            info = ticker_data.get(ticker)
+            if not info:
+                continue
             try:
-                ns = _to_ns(ticker)
-                info = _yf_fetch_info(ns)
-                if not info:
-                    continue
-
                 mc = info.get("marketCap")
                 rev = info.get("totalRevenue")
                 profit = info.get("netIncomeToCommon") or info.get("netIncome")
                 pe = info.get("trailingPE")
-                rev_growth = info.get("revenueGrowth")  # YoY %
+                rev_growth = info.get("revenueGrowth")
                 if rev_growth is not None:
-                    rev_growth = float(rev_growth) * 100  # decimal → percent
+                    rev_growth = float(rev_growth) * 100
 
                 if mc and not math.isnan(float(mc)):
                     market_caps.append(float(mc))
@@ -1067,6 +1098,14 @@ def _build_cap_index_grid() -> list[dict]:
             "avg_pe_ratio": avg_pe,
             "avg_revenue_yoy_pct": avg_rev_yoy,
         })
+
+    # Cache the result
+    if results and any(r["avg_market_cap_cr"] != "₹0" for r in results):
+        _cap_grid_cache["data"] = results
+        _cap_grid_cache["ts"] = now
+    elif _cap_grid_cache["data"] is not None:
+        # yfinance failed completely — return stale cache rather than empty
+        return _cap_grid_cache["data"]
 
     return results
 
