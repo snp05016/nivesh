@@ -18,12 +18,17 @@ class EarningsDashboardViewModel: ObservableObject {
     @Published var bookmarkedScreeners: Set<String> = []
     @Published var isLoading = false
 
+    /// Backend pre-computed aggregates from /api/v1/market/dashboard-pulse
+    @Published var yoyMarketHealth: YoYMarketHealth? = nil
+    @Published var capIndexAggregator: [CapIndexGridEntry] = []
+
     /// Per-section error diagnostics — shown inline when a section fails
     @Published var progressError: String? = nil
     @Published var feedError: String? = nil
     @Published var calendarError: String? = nil
     @Published var moversError: String? = nil
     @Published var alertError: String? = nil
+    @Published var dashboardError: String? = nil
 
     /// True if ALL sections failed — triggers full-page error canvas
     var isTotalFailure: Bool {
@@ -37,7 +42,16 @@ class EarningsDashboardViewModel: ObservableObject {
         refreshTask?.cancel()
         refreshTask = Task {
             isLoading = true
-            progressError = nil; feedError = nil; moversError = nil
+            progressError = nil; feedError = nil; moversError = nil; dashboardError = nil
+
+            // Pre-computed aggregates from dashboard-pulse (yoy_health + cap_grid)
+            do {
+                let dash = try await NetworkManager.shared.fetchExtendedMarketDashboard()
+                self.yoyMarketHealth = dash?.yoyMarketHealth
+                self.capIndexAggregator = dash?.capIndexAggregator ?? []
+            } catch {
+                self.dashboardError = (error as? NetworkError)?.displayDetail ?? error.localizedDescription
+            }
 
             // Progress
             do { self.progress = try await NetworkManager.shared.fetchEarningsProgress() }
@@ -326,19 +340,29 @@ struct EarningsProgressView: View {
                 .tracking(2)
                 .foregroundColor(Theme.inkSecondary)
 
+            // Prefer backend pre-computed data, fall back to local feed aggregation
+            let revGrowth: Double = vm.yoyMarketHealth?.revenueYoYPct ?? vm.aggregateRevGrowth
+            let profitGrowth: Double = vm.yoyMarketHealth?.netProfitYoYPct ?? vm.aggregateProfitGrowth
+            let sourceLabel: String = vm.yoyMarketHealth != nil ? "NSE AGGREGATE" : "FEED ESTIMATE"
+
             HStack(spacing: 0) {
                 aggregateMetric(
                     label: "AVG REVENUE GROWTH",
-                    value: vm.aggregateRevGrowth,
-                    isLoading: vm.feed.isEmpty && vm.isLoading
+                    value: revGrowth,
+                    isLoading: vm.isLoading && vm.yoyMarketHealth == nil && vm.feed.isEmpty
                 )
                 Divider().frame(height: 40).padding(.horizontal, 16)
                 aggregateMetric(
                     label: "AVG NET PROFIT GROWTH",
-                    value: vm.aggregateProfitGrowth,
-                    isLoading: vm.feed.isEmpty && vm.isLoading
+                    value: profitGrowth,
+                    isLoading: vm.isLoading && vm.yoyMarketHealth == nil && vm.feed.isEmpty
                 )
             }
+
+            // Source label
+            Text(sourceLabel)
+                .font(.system(size: 7, weight: .medium, design: .monospaced))
+                .foregroundColor(Theme.inkTertiary.opacity(0.5))
         }
         .padding(16)
         .banknoteCard()
@@ -361,7 +385,7 @@ struct EarningsProgressView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    // 1.3 Market Cap tabs + table
+    // 1.3 Market Cap Index Aggregator — prefers backend grid, falls back to earnings table
     private var marketCapIndexCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("MARKET CAP INDEX AGGREGATOR")
@@ -369,29 +393,79 @@ struct EarningsProgressView: View {
                 .tracking(2)
                 .foregroundColor(Theme.inkSecondary)
 
-            // 1.3 Multi-Tier Index Weight Tabs
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(["all", "nifty50", "large_cap", "mid_cap", "small_cap"], id: \.self) { cap in
-                        Button(action: { vm.selectedMarketCap = cap }) {
-                            Text(capLabel(cap))
-                                .font(.system(size: 10, weight: vm.selectedMarketCap == cap ? .bold : .regular))
-                                .foregroundColor(vm.selectedMarketCap == cap ? Theme.securityGold : Theme.inkSecondary)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(vm.selectedMarketCap == cap ? Theme.securityGold.opacity(0.10) : Theme.canvasDeep)
-                                .cornerRadius(5)
-                                .overlay(RoundedRectangle(cornerRadius: 5).stroke(Theme.borderSage, lineWidth: 0.5))
+            if !vm.capIndexAggregator.isEmpty {
+                // Backend pre-computed grid
+                capGridTable
+            } else if let dashErr = vm.dashboardError, vm.feed.isEmpty {
+                // Backend failed + no feed fallback
+                MarketSectionErrorRow(sectionLabel: "CAP INDEX GRID", errorMessage: dashErr)
+            } else {
+                // Fallback: per-company earnings table
+                // 1.3 Multi-Tier Index Weight Tabs
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(["all", "nifty50", "large_cap", "mid_cap", "small_cap"], id: \.self) { cap in
+                            Button(action: { vm.selectedMarketCap = cap }) {
+                                Text(capLabel(cap))
+                                    .font(.system(size: 10, weight: vm.selectedMarketCap == cap ? .bold : .regular))
+                                    .foregroundColor(vm.selectedMarketCap == cap ? Theme.securityGold : Theme.inkSecondary)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(vm.selectedMarketCap == cap ? Theme.securityGold.opacity(0.10) : Theme.canvasDeep)
+                                    .cornerRadius(5)
+                                    .overlay(RoundedRectangle(cornerRadius: 5).stroke(Theme.borderSage, lineWidth: 0.5))
+                            }
                         }
                     }
                 }
+                earningsTable
             }
-
-            // 1.3 Multi-Period Statement Table
-            earningsTable
         }
         .padding(16)
         .banknoteCard()
+    }
+
+    /// Backend pre-computed cap grid table (from /api/v1/market/dashboard-pulse)
+    private var capGridTable: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack(spacing: 0) {
+                Text("BRACKET").tableHeaderStyle().frame(width: 80, alignment: .leading)
+                Text("MCAP").tableHeaderStyle().frame(maxWidth: .infinity, alignment: .trailing)
+                Text("REVENUE").tableHeaderStyle().frame(maxWidth: .infinity, alignment: .trailing)
+                Text("PROFIT").tableHeaderStyle().frame(maxWidth: .infinity, alignment: .trailing)
+                Text("PE").tableHeaderStyle().frame(width: 36, alignment: .trailing)
+            }
+            .padding(.horizontal, 8).padding(.vertical, 6)
+            .background(Theme.canvasDeep)
+
+            Divider().opacity(0.5)
+
+            ForEach(vm.capIndexAggregator) { row in
+                HStack(spacing: 0) {
+                    Text(row.capBracket.uppercased())
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundColor(row.capBracket == "All" ? Theme.securityGold : Theme.inkPrimary)
+                        .frame(width: 80, alignment: .leading)
+                    Text(row.avgMarketCapCr)
+                        .font(.system(size: 9, design: .monospaced)).foregroundColor(Theme.inkSecondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    Text(row.avgRevenueCr)
+                        .font(.system(size: 9, design: .monospaced)).foregroundColor(Theme.inkSecondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    Text(row.avgNetProfitCr)
+                        .font(.system(size: 9, design: .monospaced)).foregroundColor(Theme.inkSecondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    Text(row.avgPeRatio.map { String(format: "%.1f", $0) } ?? "—")
+                        .font(.system(size: 9, design: .monospaced)).foregroundColor(Theme.inkTertiary)
+                        .frame(width: 36, alignment: .trailing)
+                }
+                .padding(.horizontal, 8).padding(.vertical, 7)
+                Divider().opacity(0.25)
+            }
+        }
+        .cornerRadius(6)
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.borderSage, lineWidth: 0.5))
     }
 
     private func capLabel(_ cap: String) -> String {
