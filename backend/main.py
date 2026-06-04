@@ -1480,14 +1480,6 @@ _SIGNAL_MAP = {
 }
 
 
-def _normalize_signal(result: dict) -> dict:
-    """Normalize legacy signal values to iOS-compatible enum strings."""
-    if "signal" in result:
-        normalized = result["signal"].strip().upper()
-        result["signal"] = _SIGNAL_MAP.get(normalized, normalized)
-    return result
-
-
 def analyze(ticker: str, exchange: str, user_id: int | None = None, deep_scan: bool = False) -> dict:
     exchange = exchange.upper()
     if exchange not in EXCHANGE_SUFFIX:
