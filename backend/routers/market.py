@@ -1282,6 +1282,168 @@ async def earnings_progress_endpoint():
         return {"reported": 0, "total": 50, "yoy_revenue_growth_pct": None, "yoy_net_profit_growth_pct": None, "fetched_at": now_iso}
 
 
+def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple[list[dict], str]:
+    """
+    Build earnings-like results from yfinance quarterly financials when no
+    AnalysisHistory records exist. For each ticker, fetches quarterly financials
+    and computes revenue_growth_pct / net_profit_growth_pct from YoY comparisons
+    (current quarter vs same quarter last year).
+
+    Returns (results: list[dict], diagnostic: str).
+    diagnostic is non-empty only when yfinance also returned no useful data.
+    """
+    import math
+    import time
+    import random
+
+    results: list[dict] = []
+    errors: list[str] = []
+    known_companies: dict[str, str] = {
+        "RELIANCE": "Reliance Industries Ltd",
+        "TCS": "Tata Consultancy Services Ltd",
+        "HDFCBANK": "HDFC Bank Ltd",
+        "INFY": "Infosys Ltd",
+        "ICICIBANK": "ICICI Bank Ltd",
+        "SBIN": "State Bank of India",
+        "BAJFINANCE": "Bajaj Finance Ltd",
+        "LT": "Larsen & Toubro Ltd",
+        "WIPRO": "Wipro Ltd",
+        "SUNPHARMA": "Sun Pharmaceutical Industries Ltd",
+        "TITAN": "Titan Company Ltd",
+        "MARUTI": "Maruti Suzuki India Ltd",
+    }
+
+    for ticker in tickers:
+        try:
+            full_ticker = _to_ns(ticker)
+            t_obj, fin = _get_quarterly_fin(full_ticker)
+
+            if fin is None or fin.empty:
+                errors.append(f"{ticker}: no quarterly financial data from yfinance")
+                continue
+
+            # Extract key rows
+            rev_row = fin.loc["Total Revenue"] if "Total Revenue" in fin.index else None
+            profit_row = fin.loc["Net Income"] if "Net Income" in fin.index else None
+
+            if rev_row is None and profit_row is None:
+                errors.append(f"{ticker}: missing Total Revenue and Net Income rows")
+                continue
+
+            cols = list(fin.columns)
+            if len(cols) == 0:
+                errors.append(f"{ticker}: no quarter columns in financials")
+                continue
+
+            # Most recent quarter
+            latest_col = cols[0]
+            latest_label = latest_col.strftime("Q%qFY%y") if hasattr(latest_col, 'strftime') else str(latest_col)[:7]
+            result_date = latest_col.strftime("%Y-%m-%d") if hasattr(latest_col, 'strftime') else now_iso[:10]
+
+            revenue = float(rev_row[latest_col]) / 1e7 if rev_row is not None and latest_col in rev_row.index else 0.0
+            net_profit = float(profit_row[latest_col]) / 1e7 if profit_row is not None and latest_col in profit_row.index else 0.0
+            revenue = 0.0 if math.isnan(revenue) or math.isinf(revenue) else round(revenue, 2)
+            net_profit = 0.0 if math.isnan(net_profit) or math.isinf(net_profit) else round(net_profit, 2)
+
+            # Same quarter last year (4 quarters back)
+            prev_col = cols[4] if len(cols) > 4 else (cols[-1] if len(cols) > 0 else None)
+            revenue_prev = 0.0
+            net_profit_prev = 0.0
+            if prev_col is not None:
+                rp = float(rev_row[prev_col]) / 1e7 if rev_row is not None and prev_col in rev_row.index else 0.0
+                np = float(profit_row[prev_col]) / 1e7 if profit_row is not None and prev_col in profit_row.index else 0.0
+                revenue_prev = 0.0 if math.isnan(rp) or math.isinf(rp) else round(rp, 2)
+                net_profit_prev = 0.0 if math.isnan(np) or math.isinf(np) else round(np, 2)
+
+            # YoY growth from quarterly comparison
+            revenue_growth_pct = round(((revenue - revenue_prev) / max(abs(revenue_prev), 1)) * 100, 2)
+            net_profit_growth_pct = round(((net_profit - net_profit_prev) / max(abs(net_profit_prev), 1)) * 100, 2)
+
+            # LTP from yfinance info
+            ltp = 0.0
+            company_name = known_companies.get(ticker, ticker)
+            try:
+                info = _yf_fetch_info(full_ticker)
+                if info:
+                    cn = info.get("longName") or info.get("shortName")
+                    if cn:
+                        company_name = cn
+                    lp = info.get("regularMarketPrice") or info.get("currentPrice")
+                    if lp and not math.isnan(float(lp)):
+                        ltp = round(float(lp), 2)
+            except Exception:
+                pass
+
+            # EPS from quarterly data
+            eps = None
+            eps_prev = None
+            try:
+                eps_candidates = ["Diluted EPS", "Basic EPS", "Diluted Earnings Per Share"]
+                eps_row = None
+                for candidate in eps_candidates:
+                    if candidate in fin.index:
+                        eps_row = fin.loc[candidate]
+                        break
+                if eps_row is not None:
+                    if latest_col in eps_row.index:
+                        ev = float(eps_row[latest_col])
+                        if not (math.isnan(ev) or math.isinf(ev)):
+                            eps = round(ev, 2)
+                    if prev_col is not None and prev_col in eps_row.index:
+                        pev = float(eps_row[prev_col])
+                        if not (math.isnan(pev) or math.isinf(pev)):
+                            eps_prev = round(pev, 2)
+            except Exception:
+                pass
+
+            item = {
+                "ticker": ticker,
+                "company_name": company_name,
+                "quarter": latest_label,
+                "result_date": result_date,
+                "market_cap": "large_cap",
+                "revenue": revenue,
+                "revenue_prev": revenue_prev,
+                "net_profit": net_profit,
+                "net_profit_prev": net_profit_prev,
+                "gross_profit": None,
+                "gross_profit_prev": None,
+                "eps": eps,
+                "eps_prev": eps_prev,
+                "ltp": ltp,
+                "change_percent": 0.0,
+                "is_consolidated": True,
+                "reported_at": None,
+                "revenue_growth_pct": revenue_growth_pct,
+                "net_profit_growth_pct": net_profit_growth_pct,
+            }
+            results.append(item)
+
+        except Exception as e:
+            log_earnings_error("earnings_feed_yfinance_fallback", str(e), failed_ticker=ticker)
+            errors.append(f"{ticker}: {str(e)[:120]}")
+            continue
+
+    diagnostic = ""
+    if not results:
+        ticker_list_preview = ", ".join(tickers[:6])
+        if errors:
+            error_list = "; ".join(errors[:3])
+            diagnostic = (
+                f"No analysis records in database and yfinance fallback also returned no data. "
+                f"Tried {len(tickers)} tickers ({ticker_list_preview}...). "
+                f"Errors: {error_list}. Run an analysis first to populate earnings data."
+            )
+        else:
+            diagnostic = (
+                f"No analysis records in database and yfinance fallback also returned no data. "
+                f"Tried {len(tickers)} tickers ({ticker_list_preview}...). "
+                f"Run an analysis first to populate earnings data."
+            )
+
+    return results, diagnostic
+
+
 @router.get("/api/v1/earnings/feed")
 async def earnings_feed_endpoint(market_cap: str = "all", sort: str = "latest"):
     """
@@ -1290,8 +1452,13 @@ async def earnings_feed_endpoint(market_cap: str = "all", sort: str = "latest"):
       - "best_performer":   highest positive profit variance
       - "worst_performer":  highest negative profit variance
     Each result includes revenue_growth_pct and net_profit_growth_pct for sorting.
+    Falls back to yfinance quarterly data when no AnalysisHistory records exist.
+    Adds data_source and diagnostic fields for transparency.
     """
     now_iso = datetime.utcnow().isoformat()
+    data_source = "database"
+    diagnostic = None
+
     try:
         with get_session() as session:
             from datetime import timedelta
@@ -1315,6 +1482,20 @@ async def earnings_feed_endpoint(market_cap: str = "all", sort: str = "latest"):
                 item["net_profit_growth_pct"] = profit_growth
                 results.append(item)
 
+        # Fallback: when no DB results, build sample data from yfinance
+        if not results:
+            fallback_tickers = [
+                "RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK",
+                "SBIN", "BAJFINANCE", "LT", "WIPRO", "SUNPHARMA",
+                "TITAN", "MARUTI"
+            ]
+            results, fb_diagnostic = _build_yfinance_fallback_earnings(fallback_tickers, now_iso)
+            if results:
+                data_source = "yfinance_fallback"
+            else:
+                data_source = "empty"
+                diagnostic = fb_diagnostic
+
         # Sort by category
         if sort == "best_performer":
             results.sort(key=lambda x: x.get("net_profit_growth_pct", 0), reverse=True)
@@ -1322,19 +1503,28 @@ async def earnings_feed_endpoint(market_cap: str = "all", sort: str = "latest"):
             results.sort(key=lambda x: x.get("net_profit_growth_pct", 0))
         # "latest" keeps default order (most recent first)
 
-        return {
+        response: dict = {
             "sort": sort,
-            "latest": results[:30],                         # always provide latest
+            "latest": results[:30],
             "best_performers": sorted(results, key=lambda x: x.get("net_profit_growth_pct", 0), reverse=True)[:10],
             "worst_performers": sorted(results, key=lambda x: x.get("net_profit_growth_pct", 0))[:10],
-            "results": results[:30],                        # backward-compatible
+            "results": results[:30],
             "count": len(results[:30]),
+            "data_source": data_source,
             "fetched_at": now_iso,
         }
+        if diagnostic:
+            response["diagnostic"] = diagnostic
+        return response
+
     except Exception as e:
         log_earnings_error("earnings_feed", str(e))
-        return {"sort": sort, "latest": [], "best_performers": [], "worst_performers": [],
-                "results": [], "count": 0, "error": str(e), "fetched_at": now_iso}
+        return {
+            "sort": sort, "latest": [], "best_performers": [], "worst_performers": [],
+            "results": [], "count": 0, "data_source": "empty", "error": str(e),
+            "diagnostic": f"Earnings feed endpoint failed with error: {str(e)[:200]}. Run an analysis first to populate earnings data.",
+            "fetched_at": now_iso
+        }
 
 
 @router.get("/api/v1/earnings/calendar")

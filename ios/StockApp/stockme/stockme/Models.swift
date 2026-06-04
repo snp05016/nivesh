@@ -1297,11 +1297,15 @@ struct EarningsFeedResponse: Codable {
     let count: Int
     let fetchedAt: String
     let error: String?
+    let dataSource: String?           // "database" | "yfinance_fallback" | "empty"
+    let diagnostic: String?           // human-readable explanation when data is empty
     enum CodingKeys: String, CodingKey {
         case sort, latest, results, count, error
         case bestPerformers = "best_performers"
         case worstPerformers = "worst_performers"
         case fetchedAt = "fetched_at"
+        case dataSource = "data_source"
+        case diagnostic
     }
 }
 

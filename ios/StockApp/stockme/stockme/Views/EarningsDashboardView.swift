@@ -30,6 +30,8 @@ class EarningsDashboardViewModel: ObservableObject {
     @Published var moversError: String? = nil
     @Published var alertError: String? = nil
     @Published var dashboardError: String? = nil
+    @Published var feedDataSource: String? = nil
+    @Published var feedDiagnostic: String? = nil
 
     /// True if ALL sections failed — triggers full-page error canvas
     var isTotalFailure: Bool {
@@ -58,9 +60,20 @@ class EarningsDashboardViewModel: ObservableObject {
             do { self.progress = try await NetworkManager.shared.fetchEarningsProgress() }
             catch { self.progressError = (error as? NetworkError)?.displayDetail ?? error.localizedDescription }
 
-            // Feed
-            do { self.feed = try await NetworkManager.shared.fetchEarningsFeed(marketCap: selectedMarketCap, sort: selectedSort) }
-            catch { self.feedError = (error as? NetworkError)?.displayDetail ?? error.localizedDescription }
+            // Feed — use ranked endpoint for diagnostic info
+            if let rankedResp = await NetworkManager.shared.fetchRankedEarningsFeed(sort: selectedSort) {
+                self.feed = rankedResp.results
+                self.feedDataSource = rankedResp.dataSource
+                self.feedDiagnostic = rankedResp.diagnostic
+                if let err = rankedResp.error {
+                    self.feedError = err
+                }
+                if rankedResp.dataSource == "empty" || rankedResp.results.isEmpty {
+                    self.feedError = nil  // not a fetch error — just no data
+                }
+            } else {
+                self.feedError = "Network or decode failure — check server connection"
+            }
 
             // Movers
             do { self.postResultMovers = try await NetworkManager.shared.fetchPostResultMovers() }
@@ -832,7 +845,7 @@ struct EarningsFeedView: View {
                     if vm.isLoading && vm.feed.isEmpty {
                         ForEach(0..<6, id: \.self) { _ in feedCardPlaceholder }
                     } else if vm.filteredFeed.isEmpty {
-                        // Show exact reason why feed is empty
+                        // Show exact reason — from backend diagnostic or local error
                         VStack(spacing: 12) {
                             if let err = vm.feedError {
                                 // Fetch error — network/decode failure
@@ -841,8 +854,22 @@ struct EarningsFeedView: View {
                                     detail: err,
                                     retryAction: { vm.load() }
                                 )
+                            } else if let diag = vm.feedDiagnostic {
+                                // Backend-provided diagnostic
+                                BanknoteErrorCanvas(
+                                    title: "No Earnings Data",
+                                    detail: diag,
+                                    retryAction: { vm.load() }
+                                )
+                            } else if let src = vm.feedDataSource {
+                                BanknoteErrorCanvas(
+                                    title: "No Earnings Data",
+                                    detail: "Data source: \(src). No results available.\n\n"
+                                        + "The backend has no earnings records. "
+                                        + "Run an AI analysis on a stock to populate data.",
+                                    retryAction: { vm.load() }
+                                )
                             } else {
-                                // Empty data — no errors, just no data
                                 BanknoteErrorCanvas(
                                     title: "No Earnings Data",
                                     detail: "Backend returned empty results.\n\n"
@@ -867,16 +894,30 @@ struct EarningsFeedView: View {
     }
 
     private var sortTabBar: some View {
-        HStack(spacing: 0) {
-            ForEach([("latest", "Latest Results"), ("best", "Best Performer"), ("worst", "Worst Performer")], id: \.0) { key, label in
-                Button(action: { vm.selectedSort = key }) {
-                    Text(label)
-                        .font(.system(size: 11, weight: vm.selectedSort == key ? .bold : .regular))
-                        .foregroundColor(vm.selectedSort == key ? Theme.securityGold : Theme.inkTertiary)
-                        .padding(.vertical, 10)
-                        .frame(maxWidth: .infinity)
-                        .background(vm.selectedSort == key ? Theme.securityGold.opacity(0.08) : Color.clear)
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                ForEach([("latest", "Latest Results"), ("best", "Best Performer"), ("worst", "Worst Performer")], id: \.0) { key, label in
+                    Button(action: { vm.selectedSort = key }) {
+                        Text(label)
+                            .font(.system(size: 11, weight: vm.selectedSort == key ? .bold : .regular))
+                            .foregroundColor(vm.selectedSort == key ? Theme.securityGold : Theme.inkTertiary)
+                            .padding(.vertical, 10)
+                            .frame(maxWidth: .infinity)
+                            .background(vm.selectedSort == key ? Theme.securityGold.opacity(0.08) : Color.clear)
+                    }
                 }
+            }
+            // Data source indicator
+            if let src = vm.feedDataSource {
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(src == "database" ? Theme.bullGreen : src == "yfinance_fallback" ? Theme.holdAmber : Theme.bearRed)
+                        .frame(width: 5, height: 5)
+                    Text("Source: \(src.replacingOccurrences(of: "_", with: " ").uppercased())")
+                        .font(.system(size: 8, weight: .medium, design: .monospaced))
+                        .foregroundColor(Theme.inkTertiary.opacity(0.6))
+                }
+                .padding(.vertical, 3)
             }
         }
         .background(Theme.canvasDeep)
