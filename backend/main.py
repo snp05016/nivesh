@@ -1251,14 +1251,16 @@ def reformat_with_claude(
     exchange: str,
     prior_analyses: list[dict] | None = None,
 ) -> dict:
+    """Reformat raw AI output into structured JSON.
+    Tries Claude Sonnet first, falls back to DeepSeek V4 Flash if Claude fails,
+    then applies _normalize_response to guarantee iOS-safe output.
+    """
     import json
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    client = anthropic.Anthropic(api_key=api_key)
+    import time
 
     # Deterministic serialization for breakpoint 2
     serialized_history = ""
     if prior_analyses:
-        # Take last 15, sort keys for stable cache hash
         history_points = []
         for p in prior_analyses[-15:]:
             history_points.append({
@@ -1269,21 +1271,9 @@ def reformat_with_claude(
             })
         serialized_history = json.dumps(history_points, sort_keys=True)
 
-    # EXECUTION PHASE 2: Dual-Breakpoint Cache Strategy
-    system_array = [
-        {
-            "type": "text",
-            "text": INDIAN_MARKET_SYSTEM_PROMPT,
-            "cache_control": {"type": "ephemeral"} # Breakpoint 1: Static Blueprint
-        }
-    ]
-    
+    system_prompt = INDIAN_MARKET_SYSTEM_PROMPT
     if serialized_history:
-        system_array.append({
-            "type": "text",
-            "text": f"PREVIOUS HISTORICAL ANALYSES (CONTEXT):\n{serialized_history}",
-            "cache_control": {"type": "ephemeral"} # Breakpoint 2: Ticker-specific Archives
-        })
+        system_prompt += f"\n\nPREVIOUS HISTORICAL ANALYSES (CONTEXT):\n{serialized_history}"
 
     user_message = (
         f"Below is the raw trading analysis for {full_ticker} ({exchange}).\n\n"
@@ -1291,49 +1281,187 @@ def reformat_with_claude(
         f"Today's date: {date.today().strftime('%d-%b-%Y')}"
     )
 
-    import time
-    for attempt in range(3):
+    def _validate_parsed(parsed: dict) -> dict | None:
+        """Check parsed JSON has minimum required fields."""
+        if not isinstance(parsed, dict):
+            return None
+        if not parsed.get("signal"):
+            return None
+        kf = parsed.get("key_factors", {})
+        if not kf.get("indian_market_sentiment", "").strip():
+            kf["indian_market_sentiment"] = "Sentiment data not available for this stock."
+            parsed["key_factors"] = kf
+        return parsed
+
+    # ── Phase 1: Claude Sonnet ────────────────────────────────────────────
+    claude_api_key = os.getenv("ANTHROPIC_API_KEY")
+    claude_succeeded = False
+    if claude_api_key:
+        claude_client = anthropic.Anthropic(api_key=claude_api_key)
+        system_array = [
+            {"type": "text", "text": INDIAN_MARKET_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}
+        ]
+        if serialized_history:
+            system_array.append({
+                "type": "text",
+                "text": f"PREVIOUS HISTORICAL ANALYSES (CONTEXT):\n{serialized_history}",
+                "cache_control": {"type": "ephemeral"}
+            })
+
+        for attempt in range(3):
+            try:
+                response = claude_client.messages.create(
+                    model=SONNET_MODEL,
+                    max_tokens=4000,
+                    system=system_array,
+                    messages=[{"role": "user", "content": user_message}],
+                    temperature=0,
+                )
+                _log_token_usage("reformat", response.usage)
+                raw_json = _extract_json_from_text(response.content[0].text)
+                parsed = json.loads(raw_json)
+                validated = _validate_parsed(parsed)
+                if validated is not None:
+                    return validated
+                print(f"[WARN] Claude returned partial JSON, falling through to DeepSeek")
+                break
+            except Exception as e:
+                print(f"[Anthropic] Reformat attempt {attempt+1} failed: {e}")
+                if attempt < 2:
+                    time.sleep(1.0 * (2 ** attempt))
+
+    # ── Phase 2: DeepSeek V4 Flash fallback ──────────────────────────────
+    if os.getenv("DEEPSEEK_API_KEY"):
+        print(f"[DeepSeek] Reformatting {full_ticker} via DeepSeek V4 Flash...")
+        ds_messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ]
         try:
-            response = client.messages.create(
-                model=SONNET_MODEL,
+            ds_raw = _deepseek_chat(
+                ds_messages,
                 max_tokens=4000,
-                system=system_array,
-                messages=[{"role": "user", "content": user_message}],
-                temperature=0 # Strict deterministic output
+                temperature=0,
+                log_endpoint="reformat_deepseek",
             )
-            break
+            raw_json = _extract_json_from_text(ds_raw)
+            parsed = json.loads(raw_json)
+            validated = _validate_parsed(parsed)
+            if validated is not None:
+                return validated
         except Exception as e:
-            print(f"[Anthropic] Reformat attempt {attempt+1} failed: {e}")
-            if attempt == 2: raise
-            time.sleep(1.0 * (2 ** attempt))
-    
-    # Log token usage
-    _log_token_usage("reformat", response.usage)
+            print(f"[DeepSeek] Reformating failed: {e}")
 
-    raw_json = _extract_json_from_text(response.content[0].text)
+    # ── Phase 3: Ultimate fallback ────────────────────────────────────────
+    print(f"[FALLBACK] Returning normalized minimal analysis for {full_ticker}")
+    return _normalize_response({
+        "ticker": full_ticker,
+        "company_name": full_ticker,
+        "exchange": exchange,
+        "analysis_date": date.today().strftime("%Y-%m-%d"),
+        "signal": "HOLD",
+        "confidence_pct": 0,
+        "current_price_inr": 0.0,
+        "target_prices": {},
+        "upside_downside_pct": {},
+        "bull_case": [],
+        "bear_case": [],
+        "key_risks": [],
+        "what_to_watch": [],
+        "key_factors": {},
+        "fundamentals_snapshot": {},
+        "disclaimer": "Analysis failed due to an API error. Please try again later.",
+        "confidence_rationale": "Analysis could not be completed due to an API error.",
+        "raw_output": raw_output,
+    })
+
+
+def _normalize_response(result: dict) -> dict:
+    """Sanitize AI analysis response to ensure all iOS-required fields exist with correct types.
+    Handles null values, missing fields, type mismatches, and float→int coercion.
+    """
+    import math
+
+    # 1. Signal normalization
+    if "signal" in result:
+        normalized = result["signal"].strip().upper()
+        result["signal"] = _SIGNAL_MAP.get(normalized, normalized)
+
+    # 2. confidence_pct — must be int (iOS decodes as Int)
     try:
-        parsed = json.loads(raw_json)
-    except json.JSONDecodeError as e:
-        print(f"[ERROR] Failed to parse reformatted JSON: {e}")
-        print(f"[ERROR] Anthropic Raw Response: {response.content[0].text}")
-        print(f"[ERROR] Extracted JSON string: {raw_json}")
-        # Return a minimal valid structure if parsing fails
-        return {
-            "signal": "HOLD",
-            "confidence_pct": 0,
-            "target_prices": {},
-            "key_factors": {"indian_market_sentiment": "Parse error occurred."},
-            "raw_output": raw_output # include raw output to debug
-        }
+        result["confidence_pct"] = int(float(result.get("confidence_pct", 0)))
+    except (ValueError, TypeError, OverflowError):
+        result["confidence_pct"] = 0
 
-    # Validate indian_market_sentiment is populated
-    kf = parsed.get("key_factors", {})
-    if not kf.get("indian_market_sentiment", "").strip():
-        print("[WARN] indian_market_sentiment empty in reformatted output — filling placeholder")
-        kf["indian_market_sentiment"] = "Sentiment data not available for this stock."
-        parsed["key_factors"] = kf
+    # 3. current_price_inr — must be float
+    try:
+        result["current_price_inr"] = float(result.get("current_price_inr", 0))
+    except (ValueError, TypeError):
+        result["current_price_inr"] = 0.0
 
-    return parsed
+    # 4. target_prices — all three must be non-null float
+    tp = result.get("target_prices")
+    if not isinstance(tp, dict):
+        tp = {}
+        result["target_prices"] = tp
+    for key in ("short_term_3m", "medium_term_12m", "long_term_36m"):
+        val = tp.get(key)
+        try:
+            v = float(val) if val is not None else 0.0
+            tp[key] = 0.0 if math.isnan(v) or math.isinf(v) else v
+        except (ValueError, TypeError):
+            tp[key] = 0.0
+
+    # 5. upside_downside_pct — all three must be non-null float
+    ud = result.get("upside_downside_pct")
+    if not isinstance(ud, dict):
+        ud = {}
+        result["upside_downside_pct"] = ud
+    for key in ("short_term", "medium_term", "long_term"):
+        val = ud.get(key)
+        try:
+            v = float(val) if val is not None else 0.0
+            ud[key] = 0.0 if math.isnan(v) or math.isinf(v) else v
+        except (ValueError, TypeError):
+            ud[key] = 0.0
+
+    # 6. Array fields — must be non-null list
+    for arr_key in ("bull_case", "bear_case", "key_risks", "what_to_watch"):
+        if not isinstance(result.get(arr_key), list):
+            result[arr_key] = []
+
+    # 7. key_factors — all required fields must be non-empty string
+    kf = result.get("key_factors")
+    if not isinstance(kf, dict):
+        kf = {}
+        result["key_factors"] = kf
+    for key in (
+        "management_quality", "geopolitical_context", "promoter_fii_dii_activity",
+        "turnaround_story", "fundamentals_summary", "global_macro_impact",
+        "news_sentiment", "indian_market_sentiment",
+    ):
+        val = kf.get(key)
+        if not isinstance(val, str) or not val.strip():
+            kf[key] = "Data not available"
+
+    # 8. disclaimer — must be non-empty string
+    if not isinstance(result.get("disclaimer"), str) or not result["disclaimer"].strip():
+        result["disclaimer"] = "This is an AI-generated analysis. Do your own research before investing."
+
+    # 9. company_name — must be non-empty string
+    if not isinstance(result.get("company_name"), str) or not result["company_name"].strip():
+        result["company_name"] = str(result.get("ticker", "Unknown"))
+
+    # 10. fundamentals_snapshot — must be dict (iOS decodes as non-optional)
+    if not isinstance(result.get("fundamentals_snapshot"), dict):
+        result["fundamentals_snapshot"] = {}
+
+    # 11. analysis_date — must be string
+    if not isinstance(result.get("analysis_date"), str):
+        from datetime import date
+        result["analysis_date"] = date.today().strftime("%Y-%m-%d")
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -1372,7 +1500,7 @@ def analyze(ticker: str, exchange: str, user_id: int | None = None, deep_scan: b
         cached_today = get_analysis_for_date(session, ticker, analysis_date)
         if cached_today:
             print(f"[CACHE HIT] Returning existing analysis for {full_ticker} on {analysis_date}")
-            cached_today = _normalize_signal(cached_today)
+            cached_today = _normalize_response(cached_today)
             cached_today["_cache_type"] = "CACHE HIT"
             if user_id:
                 user_has_it = session.query(AnalysisHistory).filter_by(user_id=user_id, ticker=ticker.upper(), analysis_date=analysis_date).first()
@@ -1445,7 +1573,7 @@ def analyze(ticker: str, exchange: str, user_id: int | None = None, deep_scan: b
                             if curr_p:
                                 new_analysis["current_price_inr"] = curr_p
 
-                            new_analysis = _normalize_signal(new_analysis)
+                            new_analysis = _normalize_response(new_analysis)
                             new_analysis["_cache_type"] = "SMART CACHE"
                             with get_session() as session:
                                 new_analysis = save_analysis(session, user_id, ticker.upper(), new_analysis, raw_output=new_analysis.get("raw_output"))
@@ -1562,7 +1690,7 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
             print(f"[DEEP-SCAN] FinBERT context build failed: {e}")
 
     result = reformat_with_claude(raw_output, full_ticker, exchange, prior_analyses=prior)
-    result = _normalize_signal(result)
+    result = _normalize_response(result)
     result["_cache_type"] = "FULL AI"
 
     with get_session() as session:
