@@ -167,32 +167,49 @@ struct PortfolioScreen: View {
                             .padding(.horizontal, Theme.screenPadding)
 
                             if selectedTab == 0 {
-                                VStack(spacing: 12) {
-                                    ForEach(viewModel.holdings) { holding in
-                                        NavigationLink(value: HoldingNavValue(ticker: holding.stock.ticker, userNote: holding.notes, purchaseDateStr: holding.purchaseDate, holding: holding)) {
-                                            HoldingNoteRow(holding: holding, signalWarning: signalWarnings[holding.stock.ticker])
-                                        }
-                                        .ekPress()
-                                        .contextMenu {
-                                            Button("Edit Holding") {
-                                                editingHolding = holding
-                                                showEditHoldingSheet = true
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 12) {
+                                        ForEach(viewModel.holdings) { holding in
+                                            NavigationLink(value: HoldingNavValue(ticker: holding.stock.ticker, userNote: holding.notes, purchaseDateStr: holding.purchaseDate, holding: holding)) {
+                                                HoldingNoteRow(holding: holding, signalWarning: signalWarnings[holding.stock.ticker])
+                                                    .frame(width: 300)
                                             }
-                                            Button("Add Note") {
-                                                noteEditingHolding = holding
-                                                noteEditorText = holding.notes ?? ""
-                                                showNoteEditor = true
-                                            }
-                                            Button("Remove from Portfolio", role: .destructive) {
-                                                deletingTicker = holding.stock.ticker
-                                                showDeleteAlert = true
+                                            .ekPress()
+                                            .contextMenu {
+                                                Button("Edit Holding") {
+                                                    editingHolding = holding
+                                                    showEditHoldingSheet = true
+                                                }
+                                                Button("Add Note") {
+                                                    noteEditingHolding = holding
+                                                    noteEditorText = holding.notes ?? ""
+                                                    showNoteEditor = true
+                                                }
+                                                Button("Remove from Portfolio", role: .destructive) {
+                                                    deletingTicker = holding.stock.ticker
+                                                    showDeleteAlert = true
+                                                }
                                             }
                                         }
                                     }
+                                    .padding(.horizontal, Theme.screenPadding)
                                 }
-                                .padding(.horizontal, Theme.screenPadding)
                             } else if selectedTab == 1 {
-                                watchlistTabContent
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 12) {
+                                        ForEach(viewModel.watchlistItems) { item in
+                                            NavigationLink(value: item.ticker) {
+                                                WatchlistRowView(item: item) {
+                                                    guard let user = authManager.currentUser else { return }
+                                                    Task { await viewModel.removeFromWatchlist(ticker: item.ticker, userId: user.userId) }
+                                                }
+                                                .frame(width: 300)
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                    .padding(.horizontal, Theme.screenPadding)
+                                }
                             } else if selectedTab == 2 {
                                 if let user = authManager.currentUser {
                                     TradeJournalScreen(userId: user.userId)

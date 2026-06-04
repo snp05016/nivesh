@@ -25,13 +25,17 @@ struct TradeJournalScreen: View {
             VStack(spacing: 0) {
                 // Header
                 HStack {
-                    Text("TRADE JOURNAL")
-                        .font(.system(.headline, design: .default).weight(.semibold))
-                        .tracking(2)
-                        .foregroundColor(Theme.securityGold)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("व्यापार पत्रिका")
+                            .font(Theme.hindiFont(size: 11))
+                            .foregroundColor(Theme.inkSecondary)
+                        Text("TRADE JOURNAL")
+                            .font(Theme.engravedSerif(size: 24, weight: .bold))
+                            .foregroundColor(Theme.inkPrimary)
+                    }
                     Spacer()
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, Theme.screenPadding)
                 .padding(.top, 16)
                 .padding(.bottom, 12)
 

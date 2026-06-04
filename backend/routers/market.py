@@ -5,6 +5,7 @@ from helpers import (
     EarningsSyncRatioResponse, YoYAggregateResponse,
     InstitutionalLeaderboardResponse, NetWorthSnapshotResponse,
     User, Portfolio, AnalysisHistory, NetWorthLedger,
+    MarketErrorLog, log_market_error,
     _check_rate_limit, _get_indices_data, _get_asm_gsm_lists, _nse_session
 )
 
@@ -23,6 +24,7 @@ from services.scraper import (
 )
 from services.options_scraper import fetch_option_chain, compute_derivatives_metrics
 from services.nse_data_provider import get_price_history, get_fundamentals
+from services.filings_extractor import harvest_filings, get_cached_filings
 
 router = APIRouter(tags=["Market Data"])
 
@@ -836,19 +838,27 @@ def market_dashboard_endpoint():
 @router.get("/api/v1/market/dashboard-pulse")
 async def dashboard_pulse_endpoint():
     """
-    Unified market dashboard — returns iOS MarketDashboardResponse shape:
-    { pulse, momentum: {bullish, bearish}, fetched_at }
+    Unified market dashboard — returns full iOS MarketDashboardResponse shape:
+    { pulse, momentum: {bullish, bearish}, live_reporting_sync,
+      yoy_market_health, cap_index_aggregator, fetched_at }
+
+    All value strings use Indian numbering (Lakhs/Crores).
+    Errors are caught, logged to market_error_logs, and fallback values served.
     """
     now_iso = _dt.utcnow().isoformat()
     pulse_raw: dict = {}
     momentum_raw: dict = {}
+
+    # ── Pulse & Momentum (existing) ──────────────────────────────────────────
     try:
         pulse_raw = await asyncio.get_event_loop().run_in_executor(None, fetch_market_pulse)
     except Exception as exc:
+        log_market_error("market_pulse", str(exc))
         print(f"[DASHBOARD-PULSE] pulse fetch error: {exc}")
     try:
         momentum_raw = await asyncio.get_event_loop().run_in_executor(None, fetch_momentum)
     except Exception as exc:
+        log_market_error("market_momentum", str(exc))
         print(f"[DASHBOARD-PULSE] momentum fetch error: {exc}")
 
     raw_breadth = pulse_raw.get("breadth") or {}
@@ -891,11 +901,227 @@ async def dashboard_pulse_endpoint():
             {"ticker": "HEROMOTOCO", "last_price": 4200.0, "ma20": 4350.0, "ma50": 4500.0, "sparkline": [], "trend_date": now_iso[:10], "crossover": "DEATH_CROSS"},
         ]
 
+    # ── SECTION 1: Live Reporting Sync ───────────────────────────────────────
+    live_sync: dict = {"declared_count": 0, "total_expected": 5042,
+                        "sync_ratio_pct": 0.0, "source": "fallback", "fetched_at": now_iso}
+    try:
+        # Primary: filings_extractor counts from NSE corporate filings
+        filings_data = await asyncio.get_event_loop().run_in_executor(None, harvest_filings)
+        if filings_data:
+            declared = filings_data.get("earnings_filings_count", 0)
+            live_sync = {
+                "declared_count": declared,
+                "total_expected": 5042,
+                "sync_ratio_pct": round((declared / 5042) * 100, 1) if declared > 0 else 0.0,
+                "source": filings_data.get("source", "nse"),
+                "fetched_at": now_iso,
+            }
+    except Exception as exc:
+        log_market_error("filings_extractor", str(exc))
+        # Fallback: scraper's firecrawl-based sync ratio
+        try:
+            sync_raw = await asyncio.get_event_loop().run_in_executor(None, fetch_earnings_sync_ratio)
+            if sync_raw:
+                live_sync = {
+                    "declared_count": sync_raw.get("declared_count", 0),
+                    "total_expected": sync_raw.get("total_expected", 5042),
+                    "sync_ratio_pct": round((sync_raw.get("declared_count", 0) / max(sync_raw.get("total_expected", 5042), 1)) * 100, 1),
+                    "source": sync_raw.get("source", "fallback"),
+                    "fetched_at": now_iso,
+                }
+        except Exception as exc2:
+            log_market_error("earnings_sync_ratio", str(exc2))
+
+    # ── SECTION 2: YoY Market Health ─────────────────────────────────────────
+    yoy_health: dict = {"revenue_yoy_pct": 0.0, "net_profit_yoy_pct": 0.0,
+                         "companies_reported": 0, "source": "fallback", "fetched_at": now_iso}
+    try:
+        yoy_raw = await asyncio.get_event_loop().run_in_executor(None, fetch_yoy_aggregate_indicators)
+        if yoy_raw:
+            yoy_health = {
+                "revenue_yoy_pct": round(float(yoy_raw.get("revenue_yoy_pct", 0.0)), 2),
+                "net_profit_yoy_pct": round(float(yoy_raw.get("net_profit_yoy_pct", 0.0)), 2),
+                "companies_reported": int(yoy_raw.get("companies_reported", 0)),
+                "source": yoy_raw.get("source", "unknown"),
+                "fetched_at": now_iso,
+            }
+    except Exception as exc:
+        log_market_error("yoy_aggregate", str(exc))
+
+    # ── SECTION 3: Cap Index Aggregator ──────────────────────────────────────
+    cap_grid: list[dict] = []
+    try:
+        cap_grid = await asyncio.get_event_loop().run_in_executor(
+            None, _build_cap_index_grid
+        )
+    except Exception as exc:
+        log_market_error("cap_index_aggregator", str(exc))
+
     return {
         "pulse": pulse_section,
         "momentum": {"bullish": bullish, "bearish": bearish, "fetched_at": now_iso},
+        "live_reporting_sync": live_sync,
+        "yoy_market_health": yoy_health,
+        "cap_index_aggregator": cap_grid,
         "fetched_at": now_iso,
     }
+
+
+# ── Cap Index Aggregator Helper ────────────────────────────────────────────────
+
+# Index constituent tickers by cap bracket — representative sample per index
+_CAP_INDEX_MAP: dict[str, list[str]] = {
+    "NIFTY_50": ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "HINDUNILVR",
+                 "ITC", "SBIN", "BHARTIARTL", "KOTAKBANK", "LT", "AXISBANK",
+                 "BAJFINANCE", "ASIANPAINT", "MARUTI", "HCLTECH", "SUNPHARMA",
+                 "TATAMOTORS", "WIPRO", "ULTRACEMCO"],
+    "LARGE_CAP": ["ADANIENT", "ADANIPORTS", "TECHM", "BAJAJFINSV", "INDUSINDBK",
+                   "GRASIM", "CIPLA", "DRREDDY", "EICHERMOT", "APOLLOHOSP"],
+    "MID_CAP": ["COALINDIA", "DIVISLAB", "BRITANNIA", "HEROMOTOCO", "SBILIFE",
+                 "HDFCLIFE", "TATACONSUM", "HINDALCO", "BPCL", "DLF"],
+    "SMALL_CAP": ["TRENT", "POLYCAB", "HAL", "APOLLO", "CDSL", "BSE", "KIMS",
+                   "FORTIS", "MAXHEALTH", "RAINBOW"],
+}
+
+
+def _build_cap_index_grid() -> list[dict]:
+    """
+    Build multi-period financial grid sliced by cap weight brackets.
+    Returns list of dicts, each representing a cap bracket with:
+      - cap_bracket: str ("All", "Nifty 50", "Large Cap", "Mid Cap", "Small Cap")
+      - ticker_count: int
+      - avg_market_cap_cr: str (Indian-formatted)
+      - avg_revenue_cr: str
+      - avg_net_profit_cr: str
+      - avg_pe_ratio: float | None
+      - avg_revenue_yoy_pct: float | None
+    Uses yfinance for fundamentals. Errors caught per-ticker, non-fatal.
+    """
+    import math
+
+    # Top-level bracket list: "All" aggregates all sub-brackets
+    brackets: list[dict] = [
+        {"cap_bracket": "All",       "source_keys": ["NIFTY_50", "LARGE_CAP", "MID_CAP", "SMALL_CAP"]},
+        {"cap_bracket": "Nifty 50",  "source_keys": ["NIFTY_50"]},
+        {"cap_bracket": "Large Cap", "source_keys": ["LARGE_CAP"]},
+        {"cap_bracket": "Mid Cap",   "source_keys": ["MID_CAP"]},
+        {"cap_bracket": "Small Cap", "source_keys": ["SMALL_CAP"]},
+    ]
+
+    results: list[dict] = []
+    for bracket in brackets:
+        tickers: list[str] = []
+        for key in bracket["source_keys"]:
+            tickers.extend(_CAP_INDEX_MAP.get(key, []))
+
+        # Deduplicate
+        tickers = list(dict.fromkeys(tickers))
+
+        market_caps: list[float] = []
+        revenues: list[float] = []
+        profits: list[float] = []
+        pe_ratios: list[float] = []
+        rev_yoy_list: list[float] = []
+
+        for ticker in tickers:
+            try:
+                ns = _to_ns(ticker)
+                info = _yf_fetch_info(ns)
+                if not info:
+                    continue
+
+                mc = info.get("marketCap")
+                rev = info.get("totalRevenue")
+                profit = info.get("netIncomeToCommon") or info.get("netIncome")
+                pe = info.get("trailingPE")
+                rev_growth = info.get("revenueGrowth")  # YoY %
+                if rev_growth is not None:
+                    rev_growth = float(rev_growth) * 100  # decimal → percent
+
+                if mc and not math.isnan(float(mc)):
+                    market_caps.append(float(mc))
+                if rev and not math.isnan(float(rev)):
+                    revenues.append(float(rev))
+                if profit and not math.isnan(float(profit)):
+                    profits.append(float(profit))
+                if pe and not math.isnan(float(pe)) and float(pe) > 0:
+                    pe_ratios.append(float(pe))
+                if rev_growth is not None and not math.isnan(rev_growth):
+                    rev_yoy_list.append(rev_growth)
+            except Exception:
+                continue
+
+        count = len(tickers)
+        avg_mc = sum(market_caps) / len(market_caps) if market_caps else 0.0
+        avg_rev = sum(revenues) / len(revenues) if revenues else 0.0
+        avg_profit = sum(profits) / len(profits) if profits else 0.0
+        avg_pe = round(sum(pe_ratios) / len(pe_ratios), 1) if pe_ratios else None
+        avg_rev_yoy = round(sum(rev_yoy_list) / len(rev_yoy_list), 2) if rev_yoy_list else None
+
+        results.append({
+            "cap_bracket": bracket["cap_bracket"],
+            "ticker_count": count,
+            "avg_market_cap_cr": _fmt_inr_crores(avg_mc),
+            "avg_revenue_cr": _fmt_inr_crores(avg_rev),
+            "avg_net_profit_cr": _fmt_inr_crores(avg_profit),
+            "avg_pe_ratio": avg_pe,
+            "avg_revenue_yoy_pct": avg_rev_yoy,
+        })
+
+    return results
+
+
+def _fmt_inr_crores(value: float) -> str:
+    """Format a raw INR float into Indian Crores string. E.g. 1.25e11 → '₹12,500.00 Cr'"""
+    import math
+    if not value or math.isnan(value) or math.isinf(value):
+        return "₹0"
+    cr = value / 1e7  # 1 Crore = 10^7
+    if cr >= 10000:
+        return f"₹{cr:,.0f} Cr"
+    elif cr >= 100:
+        return f"₹{cr:,.1f} Cr"
+    elif cr >= 1:
+        return f"₹{cr:,.2f} Cr"
+    else:
+        lakhs = value / 1e5
+        return f"₹{lakhs:,.2f} L"
+
+
+# ── /api/v1/admin/error-logs ──────────────────────────────────────────────────
+
+@router.get("/api/v1/admin/error-logs")
+def admin_error_logs_endpoint(limit: int = 50, authorization: str = Header(None)):
+    """
+    Admin diagnostic endpoint — returns recent market_error_logs entries
+    as a clean JSON stream for iOS console debugging. Requires admin auth.
+    """
+    from helpers import require_admin
+    require_admin(authorization)
+    try:
+        with get_session() as session:
+            rows = (
+                session.query(MarketErrorLog)
+                .order_by(MarketErrorLog.timestamp.desc())
+                .limit(min(limit, 200))
+                .all()
+            )
+            return {
+                "errors": [
+                    {
+                        "id": r.id,
+                        "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+                        "component": r.component,
+                        "error_message": r.error_message,
+                        "context_ticker": r.context_ticker,
+                    }
+                    for r in rows
+                ],
+                "count": len(rows),
+                "fetched_at": _dt.utcnow().isoformat(),
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error log query failed: {e}")
 
 
 # ── /api/v1/market/institutional-leaderboard ─────────────────────────────────

@@ -22,7 +22,7 @@ Analysis of the system graph reveals several "God Nodes" that serve as high-cent
 *   **`CodingKeys` (Central Bridge):** The most connected node (210 edges). It serves as the structural contract between Swift `Codable` models and Python Pydantic/FastAPI schemas.
 *   **`get_session()` (State Hub):** The nexus for all database-driven state transitions (93 edges). It bridges "Backend Database" to "Auth & Alerts" and "Portfolio Intelligence".
 *   **`TradingAgentsGraph` (Core Logic):** The primary entry point for AI orchestration. It connects the "Graph & Propagation" community to "Test Rationales" and "Memory Logs".
-*   **`ConditionalLogic` (Flow Controller):** Manages the iterative loops (Debate cycles, Risk jury loops) within the graph.
+*   **`ConditionalLogic` (Flow Controller):** Manages the iterative loops (Debate/Risk Jury) that differentiate Nivesh from linear AI pipelines.
 *   **`AgentState` (Shared Memory):** The carry-object that preserves state across 10+ specialized AI nodes.
 
 ---
@@ -37,7 +37,7 @@ The backend is a high-performance FastAPI service that manages all data harvesti
     *   **Market Data Fallbacks:** Contains complex logic to failover from NSE (`.NS`) to BSE (`.BO`) if financials are missing.
 *   **`database.py`:** Definitive SQLAlchemy schema forming the "Backend Database & State" community.
 
-### Data & Intelligence Services Layer (`/backend/services`)
+### Advanced Services Layer (`/backend/services`)
 This layer handles deterministic data processing and background harvesting.
 
 | Service | Community | Functional Detail |
@@ -49,9 +49,10 @@ This layer handles deterministic data processing and background harvesting.
 | **`news_harvester.py`** | News | Nightly RSS scraper (Moneycontrol/ET). Identifies **Red Flags** via keyword triggers. |
 | **`sentiment_engine.py`** | NLP | Runs a singleton **FinBERT** (yiyanghkust/finbert-tone) for sentiment scoring of news headlines. |
 | **`piotroski.py`** | Fundamentals | Calculates the 9-point health score (0-9) from yfinance balance sheets. |
+| **`pkscreener_runner.py`** | Momentum | Nightly runner for PKScreener to identify technical breakouts. |
 | **`ticker_matcher.py`** | Hinglish | Uses `rapidfuzz` sliding-window matching to identify spoken tickers like "HDFC wala bank" in transcripts. |
 | **`transcript_engine.py`** | Harvest | YouTube Transcript API -> Whisper large-v3 fallback with "Devanagari Ratio" quality gate. |
-| **`youtube_harvester.py`** | Video | **SEBI-Only Registry**. Curated harvest from 6+ verified channels (SOIC, Basant Maheshwari, etc.) using INH registration numbers. |
+| **`youtube_harvester.py`** | Video | **SEBI-Only Registry**. Curated harvest from verified channels (SOIC, Basant Maheshwari, etc.). |
 | **`portfolio_snapshot.py`** | Reporting | Nightly valuation engine. Takes snapshots at 4:30 PM IST for P&L waterfall charts. |
 | **`feedback_injector.py`** | Epistemic | Injects historical analysis outcomes (Price Delta vs AI Signal) back into the AI to prevent repeating errors. |
 
@@ -66,26 +67,31 @@ The AI uses a customized fork of the **TradingAgents** framework, orchestrated v
 *   **`capabilities.py`**: Model-specific feature gating. Ensures tools like `effort` (Anthropic) or `reasoning_content` (DeepSeek) are only sent to supported endpoints.
 *   **Token Monitoring**: A centralized `BaseCallbackHandler` logs all LLM calls to `token_log.jsonl` for cost auditing.
 
-### Architectural Patterns (Hyperedges)
-1.  **Analyst Team Four-Agent Architecture**: Market, News (Red Flags), Fundamentals, and Social (Euphoria) nodes.
-2.  **Bullish vs Bearish Researcher Debate Pattern**: Adversarial stress-test loop before synthesis.
-3.  **Risk Management Three-Perspective Analysis**: **Aggressive**, **Conservative**, and **Neutral** analysts review the proposal iteratively until `ConditionalLogic` exits.
+### LLM Infrastructure (`/llm_clients`)
+Supports a multi-provider ecosystem with normalized outputs:
+*   **Anthropic**: Primary agent provider (Claude 3.5 Haiku/Sonnet). Supports prompt caching.
+*   **DeepSeek**: High-performance reasoning fallback (DeepSeek-V3).
+*   **MiniMax**: Alternative reasoning engine (M2.x).
+*   **Google**: Gemini 1.5 Pro support via `ChatGoogleGenerativeAI`.
 
 ---
 
 ## 5. iOS Frontend Architecture (`/ios/StockApp/stockme/stockme`)
 
 ### UI Layer Communities
-*   **iOS Analysis Screen**: 5-tab detail view with 11 native Swift Charts.
-*   **iOS Home Screen**: Dashboard for morning briefs (Priority Items) and sector pulse.
-*   **iOS Portfolio Screen**: Rupee-styled hero card and 10-segment risk meter.
-*   **iOS Network Layer**: `NetworkManager.shared` hub connecting Swift `Codable` models to FastAPI.
+*   **`AnalysisScreen.swift`**: 5-tab detail view with 11 native Swift Charts.
+*   **`HomeScreen.swift`**: Dashboard for morning briefs, indices, and sector pulse.
+*   **`PortfolioScreen.swift`**: Rupee-styled hero card and 10-segment risk meter.
+*   **`EarningsDashboardView.swift`**: Specialized view for corporate filings and regulatory news.
+*   **`TechnicalMomentumView.swift`**: Native charts for Factor Engine and PKScreener data.
+*   **`ExpertNetworkView.swift`**: Integration of the Advisor Intelligence pipeline.
+*   **`PreIPOMarketplaceView.swift`**: Specialized UI for unlisted/IPO-bound company tracking.
 
 ### Premium Components
 *   **`DenominationBackground.swift`**: Uses `Canvas` drawing for the watermark effect.
 *   **`LaunchSequenceView.swift`**: Animated startup sequence using `TimelineView`.
 *   **`AppSoundManager.swift`**: Orchestrates "Rupee Rustle" audio feedback.
-*   **`generate_icons.py`**: Python utility for automated multi-resolution app icon generation with gradients.
+*   **`HapticManager.swift`**: Centralized engine for `EKPressStyle` spring interactions.
 
 ---
 

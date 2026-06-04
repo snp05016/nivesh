@@ -20,7 +20,8 @@ from database import (
     get_session, get_user_by_credentials, User, Portfolio, AnalysisHistory,
     SignalEvent, PriceTarget, TradeJournal, DeviceToken, AdvisorInsight,
     NewsArticle, YouTubeVideo, PortfolioValuationHistory, PKScreenerSignal,
-    MacroEvent, NetWorthLedger, create_access_token, verify_access_token,
+    MacroEvent, NetWorthLedger, MarketErrorLog, log_market_error,
+    create_access_token, verify_access_token,
     is_admin, promote_initial_admins, get_analysis_for_date, get_all_ticker_history,
     save_analysis, get_recent_analyses
 )

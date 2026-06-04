@@ -18,11 +18,11 @@
 | iOS frontend | SwiftUI (iOS 16+), Swift Charts, zero dependencies |
 | Backend API | FastAPI (Python), uvicorn, subprocess isolation |
 | AI pipeline | TradingAgents (LangGraph multi-agent) |
-| AI models | Claude 3.5 Haiku (agents) + Claude 3.5 Sonnet (reformatter) |
-| Live market data | yfinance (Yahoo Finance) with NSE-session fallbacks |
-| News sources | Yahoo Finance News (enriched), Moneycontrol, Economic Times |
-| Advisor Intelligence | Claude 3.5 Haiku (YouTube extraction) + rapidfuzz (Hinglish matching) |
-| Deterministic Engine| Factor Engine (Technical), Options Scraper (Derivatives), Piotroski (Fundamental) |
+| AI models | Multi-provider (Claude 3.5, DeepSeek-V3, MiniMax, Gemini) |
+| Live market data | yfinance + jugaad-data (direct NSE) |
+| News sources | Enriched YF News, Moneycontrol, Economic Times |
+| Advisor Intelligence | Claude 3.5 Haiku + rapidfuzz (Hinglish matching) |
+| Deterministic Engine| Factor Engine, Options Scraper, Piotroski, PKScreener |
 | Feedback Loop | Epistemic Feedback Injector (Price Delta tracking) |
 | NLP Engine | singleton FinBERT (yiyanghkust/finbert-tone) |
 
@@ -30,54 +30,64 @@
 
 ## Technical Deep Dive: The AI Analysis Engine
 
-The Nivesh AI pipeline is a sophisticated multi-stage orchestration engine designed for high-fidelity financial reasoning, built on a **LangGraph** foundation.
+The Nivesh AI pipeline is a sophisticated multi-stage orchestration engine designed for high-fidelity financial reasoning, built on a **LangGraph** foundation with multi-provider LLM support.
 
 ### Step 1: Epistemic Feedback Injection
-Before any compute starts, the `feedback_injector` identifies the last report for this ticker. It computes the **Price Delta** since that report and injects a "Performance Review" block into the AI's HumanMessage. This prevents the model from repeating past thesis errors.
+The `feedback_injector.py` service computes the price delta since the last analysis for this ticker. It injects a performance summary into the HumanMessage layer to ground the model in its own historical accuracy.
 
 ### Step 2: The Smart Cache Gatekeeper (Haiku 3.5)
-Performs a **Differential News Check** to determine if a trend-changing event has occurred.
-- **Outcome**: If "NO", the system skips the AI run, clones the previous report, and updates the price (**SMART CACHE HIT**).
+Performs a **Differential News Check** vs the last report timestamp to skip redundant deep analyses.
 
 ### Step 3: Deterministic Pre-Computation
-To ensure mathematical accuracy, several engines run before the agents:
-- **Factor Engine**: Mathematical computation of 30+ technical indicators.
-- **Options Scraper**: Computes PCR, Max Pain, and **Institutional OI Skew** from NSE option chains.
-- **Piotroski**: Calculates 9-point fundamental health score.
-- **FinBERT**: Scores top news headlines for institutional sentiment.
+Mathematical engines provide "ground truth" prose to the analysts:
+- **Factor Engine**: 30+ technical indicators.
+- **Options Scraper**: PCR, Max Pain, and **Institutional OI Skew**.
+- **Piotroski**: 9-point fundamental health score.
+- **PKScreener**: Technical breakout and momentum signals.
+- **FinBERT**: Institutional sentiment scoring for news.
 
 ### Step 4: Multi-Agent Orchestration (LangGraph Patterns)
 
 #### A. Analyst Team Four-Agent Architecture
-Market (Technical), News (Red Flags), Fundamentals (Promoter), and Social (Euphoria) agents run in parallel.
+Market, News (Red Flags), Fundamentals, and Social agents run in parallel to populate the `AgentState`.
 
 #### B. Bullish vs Bearish Researcher Debate Pattern
 Adversarial loop stress-testing the investment thesis before synthesis.
 
 #### C. Risk Management Three-Perspective Analysis
-The proposal is reviewed by a 3-agent committee (**Aggressive**, **Conservative**, **Neutral**) in a circular loop managed by `ConditionalLogic` until risks are fully explored.
+The proposal is reviewed by **Aggressive**, **Conservative**, and **Neutral** analysts in a circular loop managed by `ConditionalLogic`.
+
+### Step 5: Deterministic Reformatting (Sonnet 3.5)
+Structures the final JSON using **Dual-Breakpoint Prompt Caching** (Blueprint + History).
 
 ---
 
-## iOS App — 8 Tabs
+## iOS App — UI Layer Communities
 
-| Tab | View | Community Focus |
-|---|---|---|
-| **Home** | `HomeScreen` | Morning Brief, Indices strip, Sector Pulse heatmap. |
-| **Directory** | `SearchScreen` | Bilingual search (खोज) with screener presets. |
-| **Assets** | `PortfolioScreen` | Rupee-styled hero card, 10-segment risk meter, Red Flags. |
-| **Alerts** | `AlertsScreen` | Auth & Alerts community focus. |
-| **Archives** | `HistoryScreen` | Local analysis history cache. |
-| **Compare** | `CompareScreen` | Side-by-side comparison of stocks. |
-| **Registry** | `SettingsScreen` | App styles, User preferences, Server config. |
-| **Journal** | `TradeJournalScreen`| Ledger for trade psychology (FOMO/Confidence). |
+| View | Focus |
+|---|---|
+| **AnalysisScreen** | 5-tab deep-dive with 11 native Swift Charts. |
+| **HomeScreen** | Morning Brief, Indices, and Sector Pulse heatmap. |
+| **PortfolioScreen**| Rupee-styled hero card and 10-segment risk meter. |
+| **EarningsDashboard**| Corporate filings and regulatory news scraper. |
+| **PreIPOMarketplace**| Unlisted/IPO-bound company tracking. |
+| **TechnicalMomentum**| Native charts for Factor Engine and PKScreener data. |
+| **ExpertNetwork** | Integration of the Advisor Intelligence pipeline. |
 
 ---
 
-## Design System (Banknote Aesthetic)
+## Core Abstractions & "God Nodes" (Graph Insights)
 
-- **Guilloché Patterns**: Animated wave dividers (`GuillocheDivider`).
-- **Security Thread**: Gold vertical strip with micro-text (`SecurityThread`).
-- **Paper Texture**: 500-grain canvas noise overlay.
-- **Rupee Rustle**: Audio feedback for UI interactions (`AppSoundManager`).
-- **Haptics**: Centralized engine for `EKPressStyle` spring interactions (`HapticManager`).
+*   **`CodingKeys`**: Structural bridge between Swift data models and backend schemas.
+*   **`get_session()`**: Central hub for database state transitions.
+*   **`TradingAgentsGraph`**: Primary AI orchestration entry point.
+*   **`ConditionalLogic`**: Manages the iterative graph transitions.
+*   **`AgentState`**: Shared memory carry-object for research data.
+
+---
+
+## Resilience & Monitoring
+
+- **Graph Checkpointing**: Per-ticker SQLite databases allow crash recovery.
+- **Token Auditing**: Centralized `token_log.jsonl` for LLM cost tracking.
+- **Model Gating**: `capabilities.py` ensures provider-specific features are handled safely.

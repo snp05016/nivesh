@@ -130,18 +130,20 @@ struct PreIPOMarketplaceView: View {
 
     private var pageHeader: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("प्री-आईपीओ और अनलिस्टेड")
+                    .font(Theme.hindiFont(size: 11))
+                    .foregroundColor(Theme.inkSecondary)
                 Text("PRE-IPO & UNLISTED MARKET")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .tracking(2)
-                    .foregroundColor(Theme.securityGold)
+                    .font(Theme.engravedSerif(size: 24, weight: .bold))
+                    .foregroundColor(Theme.inkPrimary)
                 Text("OTC Secondary Transaction Valuations")
-                    .font(.system(size: 10))
+                    .font(Theme.officialStampFont(size: 9))
                     .foregroundColor(Theme.inkTertiary)
             }
             Spacer()
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Theme.screenPadding)
         .padding(.top, 14)
         .padding(.bottom, 10)
         .background(Theme.canvasDeep)

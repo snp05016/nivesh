@@ -582,6 +582,88 @@ class LocalReportManager: ObservableObject {
     }
 }
 
+// MARK: - Analysis Error Diagnostics
+
+struct DiagnosticError: Codable {
+    let error: Bool
+    let errorCode: String
+    let errorTitle: String
+    let errorDetail: String
+    let errorType: String
+    let phaseFailed: String?
+    let ticker: String?
+    let timestamp: String?
+    let suggestedAction: String?
+    let diagnosticInfo: String?
+    let httpStatus: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case error, ticker, timestamp
+        case errorCode = "error_code"
+        case errorTitle = "error_title"
+        case errorDetail = "error_detail"
+        case errorType = "error_type"
+        case phaseFailed = "phase_failed"
+        case suggestedAction = "suggested_action"
+        case diagnosticInfo = "diagnostic_info"
+        case httpStatus = "http_status"
+    }
+}
+
+struct AnalysisErrorInfo {
+    let diagnostic: DiagnosticError?
+    let rawError: String
+    let httpStatusCode: Int
+    let responseBody: String
+    let responseHeaders: String
+    let requestUrl: String
+    let elapsedSeconds: Double
+    let quickInfoElapsed: Double?
+    let isRetryable: Bool
+    let isMockMode: Bool
+    let isDeepScan: Bool
+
+    var isRateLimit: Bool { diagnostic?.errorType == "rate_limit" }
+    var isServerError: Bool { diagnostic?.errorType == "server" }
+    var isAIFailure: Bool { diagnostic?.errorType == "ai_generation" }
+    var isConnectionError: Bool { diagnostic?.errorType == "connection" }
+
+    var iconName: String {
+        if isRateLimit { return "hand.raised.slash.fill" }
+        if isServerError { return "xmark.shield.fill" }
+        if isAIFailure { return "brain.head.profile" }
+        if isConnectionError { return "wifi.slash" }
+        return "exclamationmark.triangle.fill"
+    }
+
+    var badgeText: String {
+        if isRateLimit { return "RATE LIMITED" }
+        if isServerError { return "SERVER ERROR" }
+        if isAIFailure { return "AI FAILURE" }
+        if isConnectionError { return "CONNECTION LOST" }
+        return "PROCESS ERROR"
+    }
+
+    var displayTitle: String {
+        diagnostic?.errorTitle ?? "Analysis Failed"
+    }
+
+    var displayDetail: String {
+        diagnostic?.errorDetail ?? rawError
+    }
+
+    var suggestedActionText: String {
+        guard let action = diagnostic?.suggestedAction else { return "RETRY" }
+        switch action {
+        case "WAIT": return "Please wait and try again shortly."
+        case "RETRY": return "Tap 'Retry' below to attempt the analysis again."
+        case "CHECK_CONFIG": return "Check your API keys and server configuration."
+        case "CONTACT_SUPPORT": return "Please contact support with the diagnostic info below."
+        default: return action
+        }
+    }
+}
+
 // MARK: - Sector Performance
 
 struct AnalystRating: Codable, Identifiable {
@@ -1274,6 +1356,99 @@ struct PostResultMoversResponse: Codable {
     let fetchedAt: String
     enum CodingKeys: String, CodingKey {
         case movers
+        case fetchedAt = "fetched_at"
+    }
+}
+
+// MARK: - Core Markets Data Contracts (dashboard-pulse extended payload)
+
+struct LiveReportingSync: Codable {
+    let declaredCount: Int
+    let totalExpected: Int
+    let syncRatioPct: Double
+    let source: String
+    let fetchedAt: String
+    enum CodingKeys: String, CodingKey {
+        case declaredCount = "declared_count"
+        case totalExpected = "total_expected"
+        case syncRatioPct = "sync_ratio_pct"
+        case source
+        case fetchedAt = "fetched_at"
+    }
+}
+
+struct YoYMarketHealth: Codable {
+    let revenueYoYPct: Double
+    let netProfitYoYPct: Double
+    let companiesReported: Int
+    let source: String
+    let fetchedAt: String
+    enum CodingKeys: String, CodingKey {
+        case revenueYoYPct = "revenue_yoy_pct"
+        case netProfitYoYPct = "net_profit_yoy_pct"
+        case companiesReported = "companies_reported"
+        case source
+        case fetchedAt = "fetched_at"
+    }
+}
+
+struct CapIndexGridEntry: Codable, Identifiable {
+    var id: String { capBracket }
+    let capBracket: String
+    let tickerCount: Int
+    let avgMarketCapCr: String
+    let avgRevenueCr: String
+    let avgNetProfitCr: String
+    let avgPeRatio: Double?
+    let avgRevenueYoYPct: Double?
+    enum CodingKeys: String, CodingKey {
+        case capBracket = "cap_bracket"
+        case tickerCount = "ticker_count"
+        case avgMarketCapCr = "avg_market_cap_cr"
+        case avgRevenueCr = "avg_revenue_cr"
+        case avgNetProfitCr = "avg_net_profit_cr"
+        case avgPeRatio = "avg_pe_ratio"
+        case avgRevenueYoYPct = "avg_revenue_yoy_pct"
+    }
+}
+
+struct MarketErrorEntry: Codable, Identifiable {
+    var id: Int
+    let timestamp: String?
+    let component: String
+    let errorMessage: String
+    let contextTicker: String?
+    enum CodingKeys: String, CodingKey {
+        case id, timestamp, component
+        case errorMessage = "error_message"
+        case contextTicker = "context_ticker"
+    }
+}
+
+struct MarketErrorLogsResponse: Codable {
+    let errors: [MarketErrorEntry]
+    let count: Int
+    let fetchedAt: String
+    enum CodingKeys: String, CodingKey {
+        case errors, count
+        case fetchedAt = "fetched_at"
+    }
+}
+
+// MARK: - Extended Market Dashboard (with new core markets sections)
+
+struct ExtendedMarketDashboardResponse: Codable {
+    let pulse: MarketPulseResponse?
+    let momentum: MomentumResponse?
+    let liveReportingSync: LiveReportingSync?
+    let yoyMarketHealth: YoYMarketHealth?
+    let capIndexAggregator: [CapIndexGridEntry]?
+    let fetchedAt: String?
+    enum CodingKeys: String, CodingKey {
+        case pulse, momentum
+        case liveReportingSync = "live_reporting_sync"
+        case yoyMarketHealth = "yoy_market_health"
+        case capIndexAggregator = "cap_index_aggregator"
         case fetchedAt = "fetched_at"
     }
 }

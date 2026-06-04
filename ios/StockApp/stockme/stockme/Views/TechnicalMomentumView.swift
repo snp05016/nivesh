@@ -35,18 +35,20 @@ struct TechnicalMomentumView: View {
 
     private var pageHeader: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("तकनीकी गति")
+                    .font(Theme.hindiFont(size: 11))
+                    .foregroundColor(Theme.inkSecondary)
                 Text("TECHNICAL MOMENTUM")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .tracking(2)
-                    .foregroundColor(Theme.securityGold)
+                    .font(Theme.engravedSerif(size: 24, weight: .bold))
+                    .foregroundColor(Theme.inkPrimary)
                 Text("Algorithmic Indicator Engine")
-                    .font(.system(size: 10))
+                    .font(Theme.officialStampFont(size: 9))
                     .foregroundColor(Theme.inkTertiary)
             }
             Spacer()
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Theme.screenPadding)
         .padding(.top, 14)
         .padding(.bottom, 10)
         .background(Theme.canvasDeep)
@@ -69,7 +71,7 @@ struct TechnicalMomentumView: View {
                     .foregroundColor(Theme.inkTertiary)
                 Spacer()
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Theme.screenPadding)
             .padding(.vertical, 10)
             .background(Theme.canvasDeep)
         }
@@ -91,6 +93,7 @@ struct TechnicalMomentumView: View {
                     }
                 }
             }
+            .padding(.horizontal, Theme.screenPadding)
         }
         .background(Theme.canvasDeep)
     }
@@ -131,7 +134,7 @@ struct TechnicalMomentumView: View {
                     }
                 }
             }
-            .padding(16)
+            .padding(Theme.screenPadding)
         }
         .background(Theme.canvas)
     }
@@ -140,8 +143,8 @@ struct TechnicalMomentumView: View {
     private var momentumFilterRow: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("MOMENTUM FILTER")
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                .tracking(2)
+                .font(Theme.officialStampFont(size: 10))
+                .tracking(1.5)
                 .foregroundColor(Theme.inkSecondary)
 
             HStack(spacing: 8) {

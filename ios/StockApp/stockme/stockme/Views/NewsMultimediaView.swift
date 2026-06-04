@@ -16,17 +16,14 @@ struct NewsMultimediaView: View {
             Theme.canvas.ignoresSafeArea()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 20) {
                     pageHeader
                     // 8.1 Horizontal Curated News Carousel
                     newsCarousel
-                    GuillocheDivider().padding(.horizontal, 16).padding(.vertical, 6)
                     // 8.2 Embedded Podcast Network
                     podcastSection
-                    GuillocheDivider().padding(.horizontal, 16).padding(.vertical, 6)
                     // 8.3 Behind-the-News Editorial
                     editorialSection
-                    GuillocheDivider().padding(.horizontal, 16).padding(.vertical, 6)
                     // 8.4 Expert Execution Panel
                     expertPanel
                 }
@@ -40,18 +37,20 @@ struct NewsMultimediaView: View {
 
     private var pageHeader: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("समाचार और बुद्धिमत्ता")
+                    .font(Theme.hindiFont(size: 11))
+                    .foregroundColor(Theme.inkSecondary)
                 Text("NEWS & INTELLIGENCE")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .tracking(2)
-                    .foregroundColor(Theme.securityGold)
+                    .font(Theme.engravedSerif(size: 24, weight: .bold))
+                    .foregroundColor(Theme.inkPrimary)
                 Text("Premium Financial Newswire")
-                    .font(.system(size: 10))
+                    .font(Theme.officialStampFont(size: 9))
                     .foregroundColor(Theme.inkTertiary)
             }
             Spacer()
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Theme.screenPadding)
         .padding(.top, 14)
         .padding(.bottom, 10)
         .background(Theme.canvasDeep)
@@ -61,12 +60,7 @@ struct NewsMultimediaView: View {
 
     private var newsCarousel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("MACRO UPDATES")
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                .tracking(2)
-                .foregroundColor(Theme.inkSecondary)
-                .padding(.horizontal, 16)
-                .padding(.top, 14)
+            SectionHeader(title: "MACRO UPDATES", hindiTitle: "व्यापक आर्थिक अपडेट")
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
@@ -88,12 +82,7 @@ struct NewsMultimediaView: View {
 
     private var podcastSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("MARKET DEEP DIVES")
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                .tracking(2)
-                .foregroundColor(Theme.inkSecondary)
-                .padding(.horizontal, 16)
-                .padding(.top, 14)
+            SectionHeader(title: "MARKET DEEP DIVES", hindiTitle: "गहन विश्लेषण")
 
             if isLoading && videos.isEmpty {
                 HStack(spacing: 12) {
@@ -118,12 +107,7 @@ struct NewsMultimediaView: View {
 
     private var editorialSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("DEEP STRUCTURAL ANALYSIS")
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                .tracking(2)
-                .foregroundColor(Theme.inkSecondary)
-                .padding(.horizontal, 16)
-                .padding(.top, 14)
+            SectionHeader(title: "DEEP STRUCTURAL ANALYSIS", hindiTitle: "गहन संरचनात्मक विश्लेषण")
 
             // Long-horizon socioeconomic columns
             let editorials = articles.filter { ($0.summary?.count ?? 0) > 100 }.prefix(4)
@@ -146,12 +130,7 @@ struct NewsMultimediaView: View {
 
     private var expertPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("GET EXPERT ADVICE")
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                .tracking(2)
-                .foregroundColor(Theme.inkSecondary)
-                .padding(.horizontal, 16)
-                .padding(.top, 14)
+            SectionHeader(title: "GET EXPERT ADVICE", hindiTitle: "विशेषज्ञ सलाह")
 
             // Tab bar
             HStack(spacing: 0) {

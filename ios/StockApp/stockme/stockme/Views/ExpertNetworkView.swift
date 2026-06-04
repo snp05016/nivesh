@@ -164,18 +164,20 @@ struct ExpertNetworkView: View {
 
     private var pageHeader: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("विशेषज्ञ नेटवर्क")
+                    .font(Theme.hindiFont(size: 11))
+                    .foregroundColor(Theme.inkSecondary)
                 Text("MARKET MINDS")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .tracking(2)
-                    .foregroundColor(Theme.securityGold)
+                    .font(Theme.engravedSerif(size: 24, weight: .bold))
+                    .foregroundColor(Theme.inkPrimary)
                 Text("SEBI-Certified Expert Network")
-                    .font(.system(size: 10))
+                    .font(Theme.officialStampFont(size: 9))
                     .foregroundColor(Theme.inkTertiary)
             }
             Spacer()
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Theme.screenPadding)
         .padding(.top, 14)
         .padding(.bottom, 10)
         .background(Theme.canvasDeep)
@@ -185,12 +187,8 @@ struct ExpertNetworkView: View {
 
     private var expertsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("VERIFIED PROFESSIONAL DIRECTORY")
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                .tracking(2)
-                .foregroundColor(Theme.inkSecondary)
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+            SectionHeader(title: "VERIFIED PROFESSIONAL DIRECTORY", hindiTitle: "विशेषज्ञ निर्देशिका")
+                .padding(.top, 8)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
@@ -208,11 +206,7 @@ struct ExpertNetworkView: View {
 
     private var postsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("STRATEGY WRITE-UPS")
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                .tracking(2)
-                .foregroundColor(Theme.inkSecondary)
-                .padding(.horizontal, 16)
+            SectionHeader(title: "STRATEGY WRITE-UPS", hindiTitle: "रणनीति लेख")
 
             ForEach(vm.posts) { post in
                 ExpertPostCard(post: post, isSuperpro: isSuperpro,

@@ -9,6 +9,7 @@ enum NetworkError: Error, LocalizedError {
     case decodingError(String)
     case connectionFailed
     case unauthorized
+    case analysisDiagnostic(AnalysisErrorInfo)
 
     var errorDescription: String? {
         switch self {
@@ -18,7 +19,13 @@ enum NetworkError: Error, LocalizedError {
         case .decodingError:     return "Could not read server response. Please try again."
         case .connectionFailed:  return "Could not connect to server. Make sure the app is running on your computer."
         case .unauthorized:      return "Wrong username or password."
+        case .analysisDiagnostic(let info): return info.displayDetail
         }
+    }
+
+    var diagnosticInfo: AnalysisErrorInfo? {
+        if case .analysisDiagnostic(let info) = self { return info }
+        return nil
     }
 }
 
@@ -142,29 +149,98 @@ class NetworkManager: ObservableObject {
 
     func analyze(ticker: String, exchange: String = "NSE", userId: Int? = nil, useMock: Bool = false, deepScan: Bool = false) async throws -> StockAnalysis {
         guard let url = URL(string: "\(baseURL)/analyze") else { throw NetworkError.invalidURL }
+        let requestUrl = "\(baseURL)/analyze"
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.httpBody = try JSONEncoder().encode(AnalyzeRequest(ticker: ticker, exchange: exchange, userId: userId, useMock: useMock, deepScan: deepScan))
 
+        let requestStart = Date()
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await session.data(for: request)
         } catch {
-            throw NetworkError.connectionFailed
+            let elapsed = Date().timeIntervalSince(requestStart)
+            let info = AnalysisErrorInfo(
+                diagnostic: nil,
+                rawError: error.localizedDescription,
+                httpStatusCode: 0,
+                responseBody: "",
+                responseHeaders: "",
+                requestUrl: requestUrl,
+                elapsedSeconds: elapsed,
+                quickInfoElapsed: nil,
+                isRetryable: true,
+                isMockMode: useMock,
+                isDeepScan: deepScan
+            )
+            throw NetworkError.analysisDiagnostic(info)
+        }
+        let elapsed = Date().timeIntervalSince(requestStart)
+
+        guard let http = response as? HTTPURLResponse else {
+            let info = AnalysisErrorInfo(
+                diagnostic: nil,
+                rawError: "Invalid HTTP response.",
+                httpStatusCode: 0,
+                responseBody: String(data: data, encoding: .utf8) ?? "",
+                responseHeaders: "",
+                requestUrl: requestUrl,
+                elapsedSeconds: elapsed,
+                quickInfoElapsed: nil,
+                isRetryable: true,
+                isMockMode: useMock,
+                isDeepScan: deepScan
+            )
+            throw NetworkError.analysisDiagnostic(info)
         }
 
-        guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        let responseBody = String(data: data, encoding: .utf8) ?? ""
+        let responseHeaders = (http.allHeaderFields as? [String: String] ?? [:])
+            .map { "\($0.key): \($0.value)" }
+            .sorted()
+            .joined(separator: "\n")
+
         guard (200...299).contains(http.statusCode) else {
-            throw NetworkError.serverError(http.statusCode, String(data: data, encoding: .utf8))
+            var diagnostic: DiagnosticError? = nil
+            if let responseData = responseBody.data(using: .utf8) {
+                diagnostic = try? JSONDecoder().decode(DiagnosticError.self, from: responseData)
+            }
+            let info = AnalysisErrorInfo(
+                diagnostic: diagnostic,
+                rawError: responseBody,
+                httpStatusCode: http.statusCode,
+                responseBody: responseBody,
+                responseHeaders: responseHeaders,
+                requestUrl: requestUrl,
+                elapsedSeconds: elapsed,
+                quickInfoElapsed: nil,
+                isRetryable: http.statusCode == 429 || http.statusCode == 503 || http.statusCode == 500 || http.statusCode == 499,
+                isMockMode: useMock,
+                isDeepScan: deepScan
+            )
+            throw NetworkError.analysisDiagnostic(info)
         }
         do {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             return try decoder.decode(StockAnalysis.self, from: data)
         } catch {
-            throw NetworkError.decodingError(error.localizedDescription)
+            let info = AnalysisErrorInfo(
+                diagnostic: nil,
+                rawError: "Decoding error: \(error.localizedDescription)",
+                httpStatusCode: http.statusCode,
+                responseBody: responseBody,
+                responseHeaders: responseHeaders,
+                requestUrl: requestUrl,
+                elapsedSeconds: elapsed,
+                quickInfoElapsed: nil,
+                isRetryable: false,
+                isMockMode: useMock,
+                isDeepScan: deepScan
+            )
+            throw NetworkError.analysisDiagnostic(info)
         }
     }
 

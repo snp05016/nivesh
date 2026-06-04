@@ -85,30 +85,40 @@ struct AlertsScreen: View {
                                 if !activeAlerts.isEmpty {
                                     VStack(alignment: .leading, spacing: 12) {
                                         SectionHeader(title: "Active Alerts", hindiTitle: "सक्रिय अलर्ट")
-                                        ForEach(activeAlerts) { alert in
-                                            AlertRow(alert: alert) {
-                                                if let user = authManager.currentUser {
-                                                    Task { await viewModel.removeAlert(alertId: alert.id, userId: user.userId) }
+                                        ScrollView(.horizontal, showsIndicators: false) {
+                                            HStack(spacing: 12) {
+                                                ForEach(activeAlerts) { alert in
+                                                    AlertRow(alert: alert, onDelete: {
+                                                        if let user = authManager.currentUser {
+                                                            Task { await viewModel.removeAlert(alertId: alert.id, userId: user.userId) }
+                                                        }
+                                                    })
+                                                    .frame(width: 320)
                                                 }
                                             }
+                                            .padding(.horizontal, Theme.screenPadding)
                                         }
                                     }
-                                    .padding(.horizontal, Theme.screenPadding)
                                 }
 
                                 // Triggered alerts
                                 if !triggeredAlerts.isEmpty {
                                     VStack(alignment: .leading, spacing: 12) {
                                         SectionHeader(title: "Triggered", hindiTitle: "लक्ष्य पहुंचा")
-                                        ForEach(triggeredAlerts) { alert in
-                                            AlertRow(alert: alert, isTriggered: true) {
-                                                if let user = authManager.currentUser {
-                                                    Task { await viewModel.removeAlert(alertId: alert.id, userId: user.userId) }
+                                        ScrollView(.horizontal, showsIndicators: false) {
+                                            HStack(spacing: 12) {
+                                                ForEach(triggeredAlerts) { alert in
+                                                    AlertRow(alert: alert, isTriggered: true, onDelete: {
+                                                        if let user = authManager.currentUser {
+                                                            Task { await viewModel.removeAlert(alertId: alert.id, userId: user.userId) }
+                                                        }
+                                                    })
+                                                    .frame(width: 320)
                                                 }
                                             }
+                                            .padding(.horizontal, Theme.screenPadding)
                                         }
                                     }
-                                    .padding(.horizontal, Theme.screenPadding)
                                 }
 
                                 Spacer(minLength: 100)
@@ -233,17 +243,21 @@ private struct AlertRow: View {
                             .foregroundColor(Theme.inkTertiary)
                     }
                 }
+
+                // Delete button (visible on card, since swipe actions don't work in horizontal scroll)
+                Button(action: onDelete) {
+                    Image(systemName: "trash.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(Theme.bearRed.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 4)
             }
             .padding(.vertical, 14)
             .padding(.leading, 12)
             .padding(.trailing, 16)
         }
         .banknoteCard()
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive, action: onDelete) {
-                Label("Remove", systemImage: "trash")
-            }
-        }
     }
 }
 

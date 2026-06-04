@@ -351,6 +351,36 @@ class NetWorthLedger(Base):
     )
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE: market_error_logs
+# Diagnostic telemetry — populated whenever a market data fetcher fails.
+# Read by GET /api/v1/admin/error-logs for iOS console debugging.
+# ─────────────────────────────────────────────────────────────────────────────
+class MarketErrorLog(Base):
+    __tablename__ = "market_error_logs"
+
+    id             = Column(Integer, primary_key=True, index=True)
+    timestamp      = Column(DateTime, default=datetime.utcnow)
+    component      = Column(String(100), nullable=False)   # "filings_extractor", "nse_data_provider", etc.
+    error_message  = Column(Text, nullable=False)            # full traceback / error string
+    context_ticker = Column(String(30), nullable=True)       # optional — ticker being processed when error hit
+
+
+def log_market_error(component: str, error_message: str, context_ticker: str | None = None) -> None:
+    """Write a diagnostic error row to market_error_logs. Non-fatal — swallows its own errors."""
+    try:
+        with get_session() as session:
+            entry = MarketErrorLog(
+                component=component,
+                error_message=str(error_message)[:2000],  # guard against runaway text
+                context_ticker=context_ticker,
+            )
+            session.add(entry)
+            session.commit()
+    except Exception:
+        pass  # telemetry must never cause a cascading failure
+
+
 # ---------------------------------------------------------------------------
 # Password hashing
 # ---------------------------------------------------------------------------
