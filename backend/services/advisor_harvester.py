@@ -56,11 +56,11 @@ YOUTUBE_API_KEY: str = os.environ.get("YOUTUBE_API_KEY", "").strip()
 # ---------------------------------------------------------------------------
 
 ADVISOR_REGISTRY = [
-    {"name": "SOIC", "channel_id": "UCDXBf-BGJZxGQEjbJFZlfLg", "youtube_handle": "@soicfinance"},
-    {"name": "Basant Maheshwari", "channel_id": "UC5iGxRs3oVxE_yMxFJgcR0A", "youtube_handle": "@basantmaheshwari"},
-    {"name": "Shankar Sharma", "channel_id": "UCW6f5RnBqJjT6PnFvYuSqkA", "youtube_handle": "@shankarsharma"},
-    {"name": "Neeraj Marathe", "channel_id": "UCH1q_xJFB5KPJ_d3IQHY9NA", "youtube_handle": "@neerajmarathe"},
-    {"name": "Valuepickr", "channel_id": "UCm7mXqe96V8pVBe5YMNsVaA", "youtube_handle": "@valuepickr"},
+    {"name": "SOIC", "channel_id": "UCB7GnQlJPIL6rBBqEoX87vA", "youtube_handle": "@soicfinance"},
+    {"name": "Basant Maheshwari", "channel_id": "UCqvuLvdIkUjAtSFrKw5LhXg", "youtube_handle": "@bmtheequitydesk"},
+    {"name": "Shankar Sharma", "channel_id": "UCAk_whGHM2aAiZZADLF_GOw", "youtube_handle": "@FirstGlobalAdvisory"},
+    {"name": "Neeraj Marathe", "channel_id": "UCfJkQXEUC8QH9LgPbaMFjdw", "youtube_handle": "@neerajmarathe"},
+    {"name": "Valuepickr", "channel_id": "UCBEHGVRm5ZG-NS4ZRbczxQQ", "youtube_handle": "@rupakroyc"},
 ]
 
 # ---------------------------------------------------------------------------

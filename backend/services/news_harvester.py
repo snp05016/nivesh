@@ -96,7 +96,6 @@ async def harvest_news(lookback_hours: int = 26):
             try:
                 feed = feedparser.parse(feed_config["url"])
                 for entry in feed.entries[:20]:  # Max 20 per feed
-                    savepoint = db.begin_nested()
                     try:
                         # Skip if already in DB (unique constraint on article_url)
                         url = entry.get("link", "")
@@ -141,8 +140,7 @@ async def harvest_news(lookback_hours: int = 26):
                             is_red_flag=is_red_flag(full_text),
                         )
                         db.add(article)
-                        db.commit()
-                        db.refresh(article)
+                        db.flush() # Send to DB to get ID/check constraints, but don't commit yet
 
                         # Ticker matching
                         tickers = extract_tickers_from_text(full_text, db)
@@ -158,17 +156,14 @@ async def harvest_news(lookback_hours: int = 26):
                         except Exception as e:
                             logger.warning(f"Sentiment scoring failed for article: {e}")
 
-                        db.commit()
-
+                        db.commit() # Commit the full article processing unit
                         articles_added += 1
                         logger.info(f"Added: {headline[:60]}")
 
                     except Exception as e:
                         logger.warning(f"Article processing error: {e}")
-                        savepoint.rollback()
+                        db.rollback() # Rollback the session on error
                         continue
-                    else:
-                        savepoint.commit()
 
             except Exception as e:
                 logger.error(f"Feed error for {feed_config['url']}: {e}")

@@ -106,9 +106,19 @@ def _fetch_youtube_api(video_id: str, duration_seconds: float) -> Optional[dict]
         return None
 
     try:
-        raw = YouTubeTranscriptApi.get_transcript(
-            video_id, languages=["en", "hi"]
-        )
+        # Some versions/forks use static method, others need an instance
+        if hasattr(YouTubeTranscriptApi, "get_transcript"):
+            raw = YouTubeTranscriptApi.get_transcript(
+                video_id, languages=["en", "hi"]
+            )
+        elif hasattr(YouTubeTranscriptApi, "fetch"):
+            # Instance-based fetch (seen in some versions like 1.2.x)
+            raw = YouTubeTranscriptApi().fetch(
+                video_id, languages=["en", "hi"]
+            )
+        else:
+            # Fallback to manual list/find
+            raw = YouTubeTranscriptApi().list(video_id).find_transcript(["en", "hi"]).fetch()
     except (TranscriptsDisabled, NoTranscriptFound) as exc:
         logger.warning(
             "YouTube Transcript API: no transcript for %s — %s", video_id, exc
@@ -121,14 +131,24 @@ def _fetch_youtube_api(video_id: str, duration_seconds: float) -> Optional[dict]
         return None
 
     # Normalise to standard segment format
-    segments = [
-        {
-            "start": float(entry.get("start", 0)),
-            "end": float(entry.get("start", 0)) + float(entry.get("duration", 0)),
-            "text": entry.get("text", "").strip(),
-        }
-        for entry in raw
-    ]
+    segments = []
+    for entry in raw:
+        if hasattr(entry, "text"):
+            # Dataclass-based entry (seen in some library versions)
+            text = getattr(entry, "text", "")
+            start = float(getattr(entry, "start", 0))
+            duration = float(getattr(entry, "duration", 0))
+        else:
+            # Dictionary-based entry (standard)
+            text = entry.get("text", "")
+            start = float(entry.get("start", 0))
+            duration = float(entry.get("duration", 0))
+            
+        segments.append({
+            "start": start,
+            "end": start + duration,
+            "text": text.strip(),
+        })
 
     full_text = " ".join(seg["text"] for seg in segments)
 
