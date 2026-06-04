@@ -135,7 +135,7 @@ extension NetworkManager {
         guard let url = URL(string: "\(baseURL)\(path)") else { return nil }
         var req = URLRequest(url: url); req.timeoutInterval = 25
         do {
-            let (data, resp) = try await session.data(for: req)
+            let (data, resp) = try await URLSession.shared.data(for: req)
             guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
             return _diagnosticDecode(EarningsCalendarDayResponse.self, from: data, label: "EarningsCalendar")
         } catch {
@@ -149,7 +149,7 @@ extension NetworkManager {
         guard let url = URL(string: "\(baseURL)/api/v1/earnings/feed?sort=\(sort)") else { return nil }
         var req = URLRequest(url: url); req.timeoutInterval = 20
         do {
-            let (data, resp) = try await session.data(for: req)
+            let (data, resp) = try await URLSession.shared.data(for: req)
             guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
             return _diagnosticDecode(EarningsFeedResponse.self, from: data, label: "EarningsFeed")
         } catch {

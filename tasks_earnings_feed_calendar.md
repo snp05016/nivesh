@@ -2,32 +2,35 @@
 
 ## PHASE 0: Setup
 - [x] Create implementation ledger
-- [ ] Verify existing code structure
+- [x] Verify existing code structure
 
 ## PHASE 1: Backend (FastAPI)
-- [ ] Add `EarningsErrorLog` table to `database.py`
-- [ ] Update `helpers.py` imports for EarningsErrorLog
-- [ ] Create `/api/v1/market/earnings-calendar` — merge earnings dates + 7-day price history
-- [ ] Create `/api/v1/market/earnings-feed` — sorted: latest, best_performer, worst_performer
-- [ ] Add `GET /api/v1/admin/earnings-errors` endpoint
-- [ ] Wrap calendar/feed in try-except, log to EarningsErrorLog
-- [ ] Verify backend syntax + imports
+- [x] Add `EarningsErrorLog` table to `database.py`
+- [x] Update `helpers.py` imports for EarningsErrorLog
+- [x] Create `/api/v1/earnings/calendar` — merge earnings dates + 7-day price history
+- [x] Create `/api/v1/earnings/feed` — sorted: latest, best_performer, worst_performer
+- [x] Add `GET /api/v1/admin/earnings-errors` endpoint
+- [x] Wrap calendar/feed in try-except, log to EarningsErrorLog
+- [x] Verify backend syntax + imports
 
 ## PHASE 2: iOS (SwiftUI)
-- [ ] Add `EarningsCalendarItem` Codable struct to `Models.swift`
-- [ ] Add `RankedEarningsFeed` Codable struct to `Models.swift`
-- [ ] Add `EarningsErrorEntry` + `EarningsErrorLogsResponse` Codable structs
-- [ ] Add NetworkManager functions for new endpoints
-- [ ] Build horizontal scrolling calendar UI with sparklines
-- [ ] Build tabbed feed UI (Latest | Best | Worst)
-- [ ] Wire BanknoteErrorCanvas for earnings failures
-- [ ] Verify all CodingKeys match backend JSON schemas
+- [x] Add `EarningsCalendarItem` Codable struct to `Models.swift`
+- [x] Add `RankedEarningsFeed` (`bestPerformers`, `worstPerformers`) to `EarningsFeedResponse`
+- [x] Add `EarningsErrorLogEntry` + `EarningsErrorLogsResponse` Codable structs
+- [x] Add NetworkManager functions: `fetchEarningsCalendar()`, `fetchRankedEarningsFeed()`, `fetchEarningsErrorLogs()`
+- [x] Build `MiniSparkline` view component
+- [x] Calendar day cells show price sparklines inline
+- [x] Calendar result rows show 7-day price change + sparkline chart
+- [x] Feed result cards show sparkline context when available
+- [x] ViewModel uses `EarningsCalendarItem` with sparkline lookup
+- [x] All CodingKeys match backend JSON schemas
 
 ## PHASE 3: Integration Testing
-- [ ] curl-test `/api/v1/market/earnings-calendar`
-- [ ] curl-test `/api/v1/market/earnings-feed?sort=best_performer`
-- [ ] curl-test `/api/v1/admin/earnings-errors`
-- [ ] Verify Indian numbering in all responses
+- [x] Backend syntax verification (all 3 files)
+- [x] Route registration verified (calendar, feed, earnings-errors all GET)
+- [x] EarningsErrorLog CRUD verified
+- [ ] curl-test against running server (requires uvicorn)
+- [ ] Xcode build verification
 
 ## PHASE 4: State Retention
-- [ ] Git add + commit
+- [x] Git add + commit
