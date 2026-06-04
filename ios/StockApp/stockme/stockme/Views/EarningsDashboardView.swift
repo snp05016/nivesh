@@ -1093,7 +1093,7 @@ struct VarianceTrackerView: View {
             // Load estimates for top 20 from current feed
             var loaded: [EarningsEstimate] = []
             for ticker in vm.filteredFeed.prefix(20).map({ $0.ticker }) {
-                if let est = await NetworkManager.shared.fetchEarningsEstimates(ticker: ticker) {
+                if let est = try? await NetworkManager.shared.fetchEarningsEstimates(ticker: ticker) {
                     loaded.append(est)
                 }
             }
@@ -1271,7 +1271,7 @@ struct PostResultMonitorView: View {
                 let hour = Calendar.current.component(.hour, from: Date())
                 // Active market hours: 9:15 AM – 3:30 PM IST
                 if hour >= 9 && hour < 16 {
-                    let movers = await NetworkManager.shared.fetchPostResultMovers()
+                    let movers = (try? await NetworkManager.shared.fetchPostResultMovers()) ?? []
                     if !Task.isCancelled { vm.postResultMovers = movers }
                 }
                 try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
