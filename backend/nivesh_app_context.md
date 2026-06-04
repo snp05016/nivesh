@@ -29,11 +29,11 @@
 
 ## Technical Deep Dive: The AI Analysis Engine
 
-The Nivesh AI pipeline is a sophisticated multi-stage orchestration engine designed for high-fidelity financial reasoning. It is isolated in a Python subprocess for resource management and uses a 3-layer caching strategy.
+The Nivesh AI pipeline is a sophisticated multi-stage orchestration engine designed for high-fidelity financial reasoning, built on a **LangGraph** foundation.
 
 ### Step 1: The Smart Cache Gatekeeper (Haiku 3.5)
 Before executing the expensive graph, the system performs a **Differential News Check**:
-- **Logic**: Haiku determines if a "major fundamental shift, severe shock, or significant trend-changing event" has occurred since the last analysis.
+- **Logic**: Haiku determines if a "major fundamental shift" or "significant trend-changing event" has occurred since the last analysis.
 - **Outcome**: If "NO", the system skips the AI run, clones the previous report, and updates the price only (**SMART CACHE HIT**).
 
 ### Step 2: Deterministic Pre-Computation (The Factor Engine)
@@ -42,47 +42,29 @@ To ensure the AI doesn't "hallucinate" technical levels, the **Factor Engine** r
 - **Fundamentals**: `piotroski.py` computes the 9-point health score (0-9).
 - **Result**: These numbers are passed into the AI as "ground truth" prose.
 
-### Step 3: Multi-Agent Orchestration (LangGraph)
-If a cache miss occurs, the system initializes an `OptimizedTradingAgentsGraph`.
+### Step 3: Multi-Agent Orchestration (LangGraph Patterns)
 
-#### A. Parallel Analyst Layer
+#### A. Analyst Team Four-Agent Architecture
 Four specialized agents run in parallel to gather raw intelligence:
 1.  **Market Analyst**: Interprets Factor Engine data into behavioral trends.
 2.  **News Analyst**: Scans for corporate announcements and **Red Flags** (Audit Resignations, CFO exits).
 3.  **Fundamentals Analyst**: Checks Promoter Pledging (>30% = Bearish) and DII/FII flows.
 4.  **Social Analyst**: Measures retail euphoria as a contrarian risk signal.
 
-#### B. The Dialectical Debate
-To prevent AI "echo chambers," the system enters a debate phase:
-- **Bull Researcher**: Makes the strongest possible case for capital appreciation.
-- **Bear Researcher**: Actively tries to invalidate the Bull case, focusing on structural risks.
-- **Iteration**: They challenge each other for 1+ rounds to refine the "edges" of the investment thesis.
+#### B. Bullish vs Bearish Researcher Debate Pattern
+- **Adversarial Loop**: The `Bull Researcher` and `Bear Researcher` engage in a dialectical challenge to stress-test the investment thesis.
+- **Iteration**: They challenge each other for 1+ rounds (managed by `ConditionalLogic`) to refine the "edges" of the thesis.
 
-#### C. Synthesis & Proposal
-- **Research Manager**: Reads the entire debate and writes a balanced summary of disagreements.
-- **Trader**: Proposes a concrete Buy/Sell/Hold transaction with 3-month, 12-month, and 36-month target prices.
-
-#### D. The Risk Jury (Iterative Loop)
-The Trader's proposal is reviewed by a 3-agent Risk Committee in a circular loop:
+#### C. Risk Management Three-Perspective Analysis
+The proposal is reviewed by a 3-agent committee in a circular loop:
 1.  **Aggressive Analyst**: Looks for high-alpha opportunities.
 2.  **Conservative Analyst**: Focuses on capital preservation.
 3.  **Neutral Analyst**: Bridges the gap.
-They debate the proposal until the judge determines the risk is fully explored, before passing it to the **Portfolio Manager** for the final "raw" verdict.
+They debate the proposal until `ConditionalLogic` determines the risk is fully explored, before passing it to the **Portfolio Manager** for the final "raw" verdict.
 
 ### Step 4: Deterministic Reformatting & Indian Market Weighting (Sonnet 3.5)
-Final structuring using **Dual-Breakpoint Prompt Caching**:
+Final structuring using **Dual-Breakpoint Prompt Caching** strategy:
 - **Applied Heuristics**: "Minskyan Tension Gauge" (fragile rallies) and "Behavioral Translation" (e.g., RSI < 30 is "Retail capitulation").
-
----
-
-## Advisor Intelligence — YouTube Harvest Engine
-
-A background CRON job runs the `advisor_harvester.py` to ingest expert sentiment.
-
-1.  **Transcript Extraction**: Fetches transcripts via YouTube API or local **Whisper large-v3** fallback (if captions are disabled).
-2.  **Fuzzy Ticker Matching**: Uses `rapidfuzz` to identify stocks mentioned in **Hinglish** commentary (e.g., "HDFC wala bank").
-3.  **Stance Extraction**: Haiku extracts the advisor's stance (BULLISH/BEARISH/NEUTRAL) and catalyst summaries.
-4.  **Consensus API**: The `/api/v1/portfolio/advisor-consensus` endpoint aggregates this data into "Sector Signals" and "Trending Tickers".
 
 ---
 
@@ -98,18 +80,13 @@ A background CRON job runs the `advisor_harvester.py` to ingest expert sentiment
 
 ---
 
-## iOS App — 8 Tabs
+## Core Abstractions & "God Nodes" (Graph Insights)
 
-| Tab | View | Description |
-|---|---|---|
-| **Home** | `HomeScreen` | Morning Brief (Priority Items), Indices strip, Sector Pulse heatmap. |
-| **Directory** | `SearchScreen` | Bilingual search (खोज) with screener presets. |
-| **Assets** | `PortfolioScreen` | Rupee-styled hero card, 10-segment risk meter, Red Flags system. |
-| **Alerts** | `AlertsScreen` | Manage price targets. Triggered alerts show on Home. |
-| **Archives** | `HistoryScreen` | Cached analysis reports with Signal Change diffs. |
-| **Compare** | `CompareScreen` | Side-by-side stock comparison (Price, P/E, Signal). |
-| **Registry** | `SettingsScreen` | User preferences, App styles, Server configuration. |
-| **Journal** | `TradeJournalScreen`| Log entry reasons, moods (FOMO/Confidence), and outcomes. |
+*   **`CodingKeys`**: The central bridge between Swift data models and backend JSON schemas.
+*   **`get_session()`**: Core dependency for all database-driven state transitions.
+*   **`TradingAgentsGraph`**: Primary entry point for AI orchestration.
+*   **`ConditionalLogic`**: Manages flow transitions within the graph.
+*   **`AgentState`**: Shared memory for agent communication.
 
 ---
 
