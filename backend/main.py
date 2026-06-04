@@ -69,9 +69,9 @@ from tradingagents.graph.setup import GraphSetup
 from tradingagents.agents.utils.agent_utils import get_instrument_context_from_state
 
 # Model Identifiers
-HAIKU_MODEL = "claude-haiku-4-5-20251001"
-SONNET_MODEL = "claude-sonnet-4-6"
-DEEPSEEK_MODEL = "deepseek-v4-flash"  # Tier 1 — bulk agent tasks
+HAIKU_MODEL = "claude-3-5-haiku-20241022"
+SONNET_MODEL = "claude-3-5-sonnet-latest"
+DEEPSEEK_MODEL = "deepseek-chat"  # Tier 1 — bulk agent tasks
 
 # ---------------------------------------------------------------------------
 # DeepSeek OpenAI-compatible client helper
@@ -1448,15 +1448,23 @@ def _normalize_response(result: dict) -> dict:
     if not isinstance(result.get("disclaimer"), str) or not result["disclaimer"].strip():
         result["disclaimer"] = "This is an AI-generated analysis. Do your own research before investing."
 
-    # 9. company_name — must be non-empty string
+    # 9. ticker — must be non-empty string
+    if not isinstance(result.get("ticker"), str) or not result["ticker"].strip():
+        result["ticker"] = str(result.get("company_name", "UNKNOWN"))
+
+    # 10. exchange — must be non-empty string (iOS decodes as non-optional)
+    if not isinstance(result.get("exchange"), str) or not result["exchange"].strip():
+        result["exchange"] = "NSE"
+
+    # 11. company_name — must be non-empty string
     if not isinstance(result.get("company_name"), str) or not result["company_name"].strip():
         result["company_name"] = str(result.get("ticker", "Unknown"))
 
-    # 10. fundamentals_snapshot — must be dict (iOS decodes as non-optional)
+    # 13. fundamentals_snapshot — must be dict (iOS decodes as non-optional)
     if not isinstance(result.get("fundamentals_snapshot"), dict):
         result["fundamentals_snapshot"] = {}
 
-    # 11. analysis_date — must be string
+    # 14. analysis_date — must be string
     if not isinstance(result.get("analysis_date"), str):
         from datetime import date
         result["analysis_date"] = date.today().strftime("%Y-%m-%d")
@@ -1493,11 +1501,16 @@ def analyze(ticker: str, exchange: str, user_id: int | None = None, deep_scan: b
         if cached_today:
             print(f"[CACHE HIT] Returning existing analysis for {full_ticker} on {analysis_date}")
             cached_today = _normalize_response(cached_today)
+            cached_today["ticker"] = ticker.upper()
+            cached_today["exchange"] = exchange
             cached_today["_cache_type"] = "CACHE HIT"
             if user_id:
                 user_has_it = session.query(AnalysisHistory).filter_by(user_id=user_id, ticker=ticker.upper(), analysis_date=analysis_date).first()
                 if not user_has_it:
-                    cached_today = save_analysis(session, user_id, ticker.upper(), cached_today, raw_output=cached_today.get("raw_output"))
+                    try:
+                        cached_today = save_analysis(session, user_id, ticker.upper(), cached_today, raw_output=cached_today.get("raw_output"))
+                    except Exception as _cache_save_err:
+                        print(f"[WARN] Cache hit save_analysis failed for {ticker}: {_cache_save_err}")
             from datetime import timezone as _tz
             _cutoff = datetime.now(_tz.utc).replace(tzinfo=None) - timedelta(days=14)
             _advisor_rows = (
@@ -1566,18 +1579,24 @@ def analyze(ticker: str, exchange: str, user_id: int | None = None, deep_scan: b
                                 new_analysis["current_price_inr"] = curr_p
 
                             new_analysis = _normalize_response(new_analysis)
+                            new_analysis["ticker"] = ticker.upper()
+                            new_analysis["exchange"] = exchange
                             new_analysis["_cache_type"] = "SMART CACHE"
-                            with get_session() as session:
-                                new_analysis = save_analysis(session, user_id, ticker.upper(), new_analysis, raw_output=new_analysis.get("raw_output"))
-                                from datetime import timezone as _tz
-                                _cutoff = datetime.now(_tz.utc).replace(tzinfo=None) - timedelta(days=14)
-                                _advisor_rows = (
-                                    session.query(AdvisorInsight)
-                                    .filter(AdvisorInsight.ticker == ticker.upper(), AdvisorInsight.published_at >= _cutoff)
-                                    .order_by(AdvisorInsight.published_at.desc())
-                                    .limit(10)
-                                    .all()
-                                )
+                            try:
+                                with get_session() as session:
+                                    new_analysis = save_analysis(session, user_id, ticker.upper(), new_analysis, raw_output=new_analysis.get("raw_output"))
+                                    from datetime import timezone as _tz
+                                    _cutoff = datetime.now(_tz.utc).replace(tzinfo=None) - timedelta(days=14)
+                                    _advisor_rows = (
+                                        session.query(AdvisorInsight)
+                                        .filter(AdvisorInsight.ticker == ticker.upper(), AdvisorInsight.published_at >= _cutoff)
+                                        .order_by(AdvisorInsight.published_at.desc())
+                                        .limit(10)
+                                        .all()
+                                    )
+                            except Exception as _save_err:
+                                print(f"[WARN] Smart cache save_analysis failed for {ticker}: {_save_err}")
+                                _advisor_rows = []
                             new_analysis["advisor_matrix"] = [
                                 {
                                     "advisor_name": r.advisor_name,
@@ -1683,19 +1702,25 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
 
     result = reformat_with_claude(raw_output, full_ticker, exchange, prior_analyses=prior)
     result = _normalize_response(result)
+    result["ticker"] = ticker.upper()
+    result["exchange"] = exchange
     result["_cache_type"] = "FULL AI"
 
-    with get_session() as session:
-        result = save_analysis(session, user_id, ticker.upper(), result, raw_output=raw_output)
-        from datetime import timezone as _tz
-        _cutoff = datetime.now(_tz.utc).replace(tzinfo=None) - timedelta(days=14)
-        _advisor_rows = (
-            session.query(AdvisorInsight)
-            .filter(AdvisorInsight.ticker == ticker.upper(), AdvisorInsight.published_at >= _cutoff)
-            .order_by(AdvisorInsight.published_at.desc())
-            .limit(10)
-            .all()
-        )
+    try:
+        with get_session() as session:
+            result = save_analysis(session, user_id, ticker.upper(), result, raw_output=raw_output)
+            from datetime import timezone as _tz
+            _cutoff = datetime.now(_tz.utc).replace(tzinfo=None) - timedelta(days=14)
+            _advisor_rows = (
+                session.query(AdvisorInsight)
+                .filter(AdvisorInsight.ticker == ticker.upper(), AdvisorInsight.published_at >= _cutoff)
+                .order_by(AdvisorInsight.published_at.desc())
+                .limit(10)
+                .all()
+            )
+    except Exception as e:
+        print(f"[WARN] save_analysis failed for {ticker}, returning result anyway: {e}")
+        _advisor_rows = []
     result["advisor_matrix"] = [
         {
             "advisor_name": r.advisor_name,

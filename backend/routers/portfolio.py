@@ -75,7 +75,7 @@ def _deepseek_chat(
     for attempt in range(3):
         try:
             response = client.chat.completions.create(
-                model="deepseek-v4-flash",
+                model="deepseek-chat",
                 messages=messages,
                 max_tokens=max_tokens,
                 temperature=temperature,
@@ -2344,7 +2344,7 @@ def export_portfolio_pdf(user_id: int, authorization: str = Header(None)):
         try:
             import os
             import anthropic
-            SONNET_MODEL = "claude-sonnet-4-6"
+            SONNET_MODEL = "claude-3-5-sonnet-latest"
             api_key = os.getenv("ANTHROPIC_API_KEY")
             if api_key and api_key != "placeholder":
                 client = anthropic.Anthropic(api_key=api_key)

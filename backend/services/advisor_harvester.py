@@ -67,7 +67,7 @@ ADVISOR_REGISTRY = [
 # DeepSeek V4 Flash stance extraction (Tier 1 — migrated from Claude Haiku)
 # ---------------------------------------------------------------------------
 
-_DEEPSEEK_MODEL = "deepseek-v4-flash"
+_DEEPSEEK_MODEL = "deepseek-chat"
 
 HAIKU_SYSTEM = """You are a financial transcript analyst. Extract structured investment stance data from Indian financial advisor commentary. Output ONLY valid JSON. No preamble. No explanation."""
 

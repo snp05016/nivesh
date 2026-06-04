@@ -14,12 +14,15 @@ from datetime import date, datetime, timedelta
 import yfinance as yf
 import anthropic
 from fastapi import APIRouter, HTTPException, Request, Header
+from fastapi.responses import JSONResponse as _JSONResponse
+from datetime import timezone as _timezone
 
 from helpers import (
     get_session, EXCHANGE_SUFFIX, NSE_TICKERS, NSE_TICKER_OVERRIDES,
     _resolve_ticker, _to_ns, _yf_price, _yf_fetch_info,
     _quick_info_cache, _QUICK_INFO_TTL,
     _get_analyze_semaphore, _running_analyses,
+    _ANALYZE_MAX_CONCURRENT,
     _dash_start_job, _dash_end_job,
     _log_token_usage, TOKEN_LOG_PATH,
     AnalyzeRequest, BatchAnalyzeRequest,
@@ -35,9 +38,9 @@ router = APIRouter(tags=["Analysis"])
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-HAIKU_MODEL = "claude-haiku-4-5-20251001"
-SONNET_MODEL = "claude-sonnet-4-6"
-DEEPSEEK_MODEL = "deepseek-v4-flash"
+HAIKU_MODEL = "claude-3-5-haiku-20241022"
+SONNET_MODEL = "claude-3-5-sonnet-latest"
+DEEPSEEK_MODEL = "deepseek-chat"
 
 SECTOR_PE_MAP = {
     "Technology": 35, "Financial Services": 18, "Energy": 12,
@@ -200,17 +203,33 @@ def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False):
     from dotenv import load_dotenv
     from pathlib import Path as _Path
     import os
+    import traceback
+    import sys
     env_path = _Path(__file__).parent.parent / ".env"
     load_dotenv(dotenv_path=env_path, override=True)
-    # Import analyze from main module
-    import sys
-    sys.path.insert(0, str(_Path(__file__).parent.parent))
-    from main import analyze
     try:
+        sys.path.insert(0, str(_Path(__file__).parent.parent))
+        from main import analyze
         result = analyze(ticker, exchange, user_id, deep_scan=deep_scan)
         queue.put({"status": "ok", "result": result})
+    except ImportError as e:
+        tb = traceback.format_exc()
+        print(f"[WORKER] Import failed: {e}\n{tb}")
+        queue.put({
+            "status": "error",
+            "error": f"Failed to import analysis engine: {e}",
+            "phase": "worker_import",
+            "diagnostic": f"Import traceback:\n{tb[-2000:]}",
+        })
     except Exception as e:
-        queue.put({"status": "error", "error": str(e)})
+        tb = traceback.format_exc()
+        print(f"[WORKER] Analysis failed: {e}\n{tb}")
+        queue.put({
+            "status": "error",
+            "error": str(e),
+            "phase": "analyze_execution",
+            "diagnostic": f"Exception type: {type(e).__name__}\nTraceback:\n{tb[-3000:]}",
+        })
 
 # ---------------------------------------------------------------------------
 # GET /quick-info
@@ -403,15 +422,64 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
 # ---------------------------------------------------------------------------
 # POST /analyze
 # ---------------------------------------------------------------------------
+
+def _build_analysis_error(
+    error_code: str,
+    error_title: str,
+    error_detail: str,
+    error_type: str,
+    phase_failed: str,
+    ticker: str,
+    suggested_action: str,
+    diagnostic_info: str = "",
+    http_status: int = 500,
+) -> _JSONResponse:
+    body = {
+        "error": True,
+        "error_code": error_code,
+        "error_title": error_title,
+        "error_detail": error_detail,
+        "error_type": error_type,
+        "phase_failed": phase_failed,
+        "ticker": ticker,
+        "timestamp": datetime.now(_timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "suggested_action": suggested_action,
+        "diagnostic_info": diagnostic_info,
+        "http_status": http_status,
+    }
+    return _JSONResponse(status_code=http_status, content=body)
+
+
 @router.post("/analyze")
 async def analyze_endpoint(req: AnalyzeRequest, request: Request):
     user_id = req.user_id
+    ticker = req.ticker.upper()
     if user_id and user_id in _running_analyses:
-        raise HTTPException(status_code=429, detail="Analysis already running for this user. Please wait.")
+        return _build_analysis_error(
+            error_code="ALREADY_RUNNING",
+            error_title="Analysis Already Running",
+            error_detail=f"You already have an active analysis in progress for {ticker} (or another stock). Please wait for it to complete before starting a new one. This limit exists to prevent AI API credit waste.",
+            error_type="rate_limit",
+            phase_failed="duplicate_guard",
+            ticker=ticker,
+            suggested_action="WAIT",
+            diagnostic_info=f"User {user_id} already has entry in _running_analyses set.",
+            http_status=429,
+        )
     if user_id:
         sem = _get_analyze_semaphore(user_id)
         if not sem.acquire(blocking=False):
-            raise HTTPException(status_code=429, detail="Too many concurrent analyses. Please wait.")
+            return _build_analysis_error(
+                error_code="CONCURRENCY_LIMITED",
+                error_title="Too Many Concurrent Analyses",
+                error_detail="You have reached the maximum of 2 concurrent analyses. Please wait for one of your running analyses to complete before starting a new one.",
+                error_type="rate_limit",
+                phase_failed="semaphore_acquire",
+                ticker=ticker,
+                suggested_action="WAIT",
+                diagnostic_info=f"Per-user semaphore ({_ANALYZE_MAX_CONCURRENT} max) exhausted for user {user_id}.",
+                http_status=429,
+            )
         _running_analyses.add(user_id)
     try:
         job_id = str(uuid.uuid4())[:12]
@@ -427,11 +495,20 @@ async def analyze_endpoint(req: AnalyzeRequest, request: Request):
         try:
             while p.is_alive():
                 if await request.is_disconnected():
-                    print(f"\n[AI] 🚨 Client disconnected! FORCE KILLING AI query for {req.ticker} to save credits! 🚨")
                     p.terminate()
                     p.join()
                     _dash_end_job(job_id, killed=True)
-                    return {}
+                    return _build_analysis_error(
+                        error_code="CLIENT_DISCONNECTED",
+                        error_title="Client Disconnected During Analysis",
+                        error_detail="The app disconnected from the server while the AI was generating the report. The analysis was aborted to save AI API credits. Please try again when you have a stable connection.",
+                        error_type="connection",
+                        phase_failed="client_disconnect",
+                        ticker=ticker,
+                        suggested_action="RETRY",
+                        diagnostic_info=f"Request.is_disconnected() returned True during polling loop. Analysis subprocess (PID {p.pid}) was forcefully terminated.",
+                        http_status=499,
+                    )
 
                 if not queue.empty():
                     res = queue.get()
@@ -439,8 +516,21 @@ async def analyze_endpoint(req: AnalyzeRequest, request: Request):
                         _dash_end_job(job_id, result=res["result"])
                         return res["result"]
                     else:
-                        _dash_end_job(job_id, error=res["error"])
-                        raise HTTPException(status_code=500, detail=res["error"])
+                        worker_error = res.get("error", "Unknown worker error")
+                        worker_phase = res.get("phase", "worker_execution")
+                        worker_diag = res.get("diagnostic", "")
+                        _dash_end_job(job_id, error=worker_error)
+                        return _build_analysis_error(
+                            error_code="AI_FAILURE",
+                            error_title="AI Analysis Generation Failed",
+                            error_detail=f"The analysis pipeline encountered an error while generating the report for {ticker}. An internal fallback was also attempted but the system could not produce a valid result.",
+                            error_type="ai_generation",
+                            phase_failed=worker_phase,
+                            ticker=ticker,
+                            suggested_action="RETRY",
+                            diagnostic_info=f"Subprocess error: {worker_error}\nPhase: {worker_phase}\n{worker_diag}",
+                            http_status=500,
+                        )
 
                 await asyncio.sleep(0.5)
 
@@ -450,11 +540,34 @@ async def analyze_endpoint(req: AnalyzeRequest, request: Request):
                     _dash_end_job(job_id, result=res["result"])
                     return res["result"]
                 else:
-                    _dash_end_job(job_id, error=res["error"])
-                    raise HTTPException(status_code=500, detail=res["error"])
+                    worker_error = res.get("error", "Unknown worker error")
+                    worker_phase = res.get("phase", "worker_execution")
+                    worker_diag = res.get("diagnostic", "")
+                    _dash_end_job(job_id, error=worker_error)
+                    return _build_analysis_error(
+                        error_code="AI_FAILURE",
+                        error_title="AI Analysis Generation Failed",
+                        error_detail=f"The analysis pipeline encountered an error while generating the report for {ticker}. The subprocess completed but returned an error.",
+                        error_type="ai_generation",
+                        phase_failed=worker_phase,
+                        ticker=ticker,
+                        suggested_action="RETRY",
+                        diagnostic_info=f"Subprocess error: {worker_error}\n{worker_diag}",
+                        http_status=500,
+                    )
 
             _dash_end_job(job_id, error="Process unexpectedly exited")
-            raise HTTPException(status_code=500, detail="Process unexpectedly exited.")
+            return _build_analysis_error(
+                error_code="PROCESS_CRASHED",
+                error_title="AI Worker Process Terminated",
+                error_detail=f"The analysis worker process for {ticker} exited without producing any output. This usually means an internal dependency failed to load or the AI API call timed out without a response. This can happen if the Anthropic or DeepSeek APIs are temporarily unavailable.",
+                error_type="server",
+                phase_failed="worker_execution",
+                ticker=ticker,
+                suggested_action="RETRY",
+                diagnostic_info=f"Worker process PID {p.pid} exited with exit code {p.exitcode}. No data was placed on the multiprocessing queue before termination. Check server logs for import errors or API timeout traces.",
+                http_status=500,
+            )
         finally:
             if p.is_alive():
                 p.terminate()
