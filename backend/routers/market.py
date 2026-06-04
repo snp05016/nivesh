@@ -1313,27 +1313,27 @@ def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple
         "MARUTI": "Maruti Suzuki India Ltd",
     }
 
-    for ticker in tickers:
+    import concurrent.futures
+
+    def _fetch_one(ticker: str):
+        """Fetch and build earnings result for one ticker. Returns (result_dict_or_None, error_str_or_None)."""
         try:
             full_ticker = _to_ns(ticker)
             t_obj, fin = _get_quarterly_fin(full_ticker)
 
             if fin is None or fin.empty:
-                errors.append(f"{ticker}: no quarterly financial data from yfinance")
-                continue
+                return None, f"{ticker}: no quarterly financial data from yfinance"
 
             # Extract key rows
             rev_row = fin.loc["Total Revenue"] if "Total Revenue" in fin.index else None
             profit_row = fin.loc["Net Income"] if "Net Income" in fin.index else None
 
             if rev_row is None and profit_row is None:
-                errors.append(f"{ticker}: missing Total Revenue and Net Income rows")
-                continue
+                return None, f"{ticker}: missing Total Revenue and Net Income rows"
 
             cols = list(fin.columns)
             if len(cols) == 0:
-                errors.append(f"{ticker}: no quarter columns in financials")
-                continue
+                return None, f"{ticker}: no quarter columns in financials"
 
             # Most recent quarter
             latest_col = cols[0]
@@ -1417,12 +1417,25 @@ def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple
                 "revenue_growth_pct": revenue_growth_pct,
                 "net_profit_growth_pct": net_profit_growth_pct,
             }
-            results.append(item)
+            return item, None
 
         except Exception as e:
             log_earnings_error("earnings_feed_yfinance_fallback", str(e), failed_ticker=ticker)
-            errors.append(f"{ticker}: {str(e)[:120]}")
-            continue
+            return None, f"{ticker}: {str(e)[:120]}"
+
+    # Parallel fetch with 45-second overall timeout (12 tickers * 3 retries each = 36+ yfinance calls)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_fetch_one, t): t for t in tickers}
+        for fut in concurrent.futures.as_completed(futures, timeout=45):
+            ticker = futures[fut]
+            try:
+                item, err = fut.result(timeout=0)
+                if item:
+                    results.append(item)
+                if err:
+                    errors.append(err)
+            except Exception:
+                errors.append(f"{ticker}: timed out or executor error (yfinance slow)")
 
     diagnostic = ""
     if not results:

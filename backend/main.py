@@ -19,6 +19,7 @@ load_dotenv(dotenv_path=env_path, override=True)
 from services.disk_cache import get as _dcache_get, set as _dcache_set, stats as _dcache_stats
 from services.staleness import compute_staleness
 from services.piotroski import compute_piotroski
+from services.error_telemetry import CorrelationIDMiddleware
 
 from dotenv import load_dotenv
 import multiprocessing
@@ -488,6 +489,7 @@ class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 app.add_middleware(_SecurityHeadersMiddleware)
+app.add_middleware(CorrelationIDMiddleware)
 
 # ---------------------------------------------------------------------------
 # Financial Error Boundary Handlers

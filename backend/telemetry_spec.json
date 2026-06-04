@@ -1,0 +1,275 @@
+{
+  "$schema_description": "Nivesh Diagnostic Telemetry Contract — canonical schema for all error/diagnostic logging across the iOS client and FastAPI backend. Every exception intercepted by the app MUST produce a payload conforming to this contract. The payload is transmitted via POST /api/telemetry/diagnostic and persisted to PostgreSQL for operational visibility.",
+
+  "contract_version": "1.0.0",
+  "last_updated": "2026-06-05T00:00:00Z",
+
+  "payload_schema": {
+    "error_uuid": {
+      "type": "string",
+      "format": "UUIDv4",
+      "description": "Generated client-side at the moment of exception interception. Used as the canonical key for deduplication and lookup.",
+      "example": "a3f2c8e1-9b4d-4e7a-b1c2-d5f6a7e8b9c0"
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Trace token prefixed with 'nivesh_ios_' that links the failing request to all upstream logs. Passed via the X-Correlation-ID HTTP header. Generated once per API call chain.",
+      "pattern": "^nivesh_ios_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+      "example": "nivesh_ios_1a2b3c4d-5e6f-7890-abcd-ef1234567890"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "ISO 8601 UTC",
+      "description": "Moment the exception was intercepted on the client or server. Always UTC, always includes the 'Z' suffix.",
+      "example": "2026-06-05T14:32:17.421Z"
+    },
+    "subsystem": {
+      "type": "string",
+      "description": "Which logical section of the app produced the error.",
+      "enum": [
+        "MARKETS_DASHBOARD",
+        "EARNINGS_FEED",
+        "PORTFOLIO",
+        "ANALYSIS",
+        "EXPERT_NETWORK",
+        "PREIPO_MARKETPLACE",
+        "ALERTS",
+        "TRADE_JOURNAL",
+        "AUTH",
+        "NEWS_MULTIMEDIA"
+      ],
+      "example": "ANALYSIS"
+    },
+    "classification": {
+      "type": "string",
+      "description": "Error category used for routing, alert severity, and recovery strategy selection.",
+      "enum": [
+        "INFRASTRUCTURE_EXCEPTION",
+        "DOM_SCRAPE_SHIFT",
+        "SCHEMA_DRIFT",
+        "AGENT_PIPELINE_DROP",
+        "AUTH_FAILURE",
+        "RATE_LIMIT",
+        "DATA_PROVIDER_TIMEOUT",
+        "CACHE_CORRUPTION",
+        "VALIDATION_ERROR",
+        "UNKNOWN"
+      ],
+      "example": "SCHEMA_DRIFT"
+    },
+    "context": {
+      "type": "object",
+      "description": "Runtime context at the moment of failure.",
+      "properties": {
+        "target_ticker": {
+          "type": ["string", "null"],
+          "description": "NSE/BSE ticker symbol the operation was targeting, if applicable.",
+          "example": "RELIANCE"
+        },
+        "market_hours_state": {
+          "type": "string",
+          "description": "Whether the Indian market was live or closed at failure time.",
+          "enum": [
+            "LIVE_TRADING",
+            "PRE_MARKET",
+            "POST_MARKET",
+            "CLOSED",
+            "EXCHANGE_HOLIDAY"
+          ],
+          "example": "LIVE_TRADING"
+        },
+        "active_data_provider": {
+          "type": ["string", "null"],
+          "description": "Which data source was being queried when the error occurred (NSE direct, Screener.in, YouTube, BSE, etc.).",
+          "example": "NSE_DIRECT"
+        }
+      },
+      "required": ["market_hours_state"]
+    },
+    "telemetry": {
+      "type": "object",
+      "description": "Request-level metadata for tracing the failing HTTP call end-to-end.",
+      "properties": {
+        "http_method": {
+          "type": "string",
+          "description": "HTTP method of the failing request.",
+          "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+          "example": "GET"
+        },
+        "request_route": {
+          "type": "string",
+          "description": "Backend route path that served the failing request.",
+          "example": "/api/analysis/fundamentals/RELIANCE"
+        },
+        "ios_swift_file": {
+          "type": ["string", "null"],
+          "description": "The iOS Swift source file that initiated the network call (populated when the error surfaces on the client).",
+          "example": "NetworkManager.swift"
+        },
+        "failing_node_contract": {
+          "type": ["string", "null"],
+          "description": "Human-readable label for the backend function or data-fetching node whose contract was violated, e.g. 'fetch_fundamentals: expected dict, got None'.",
+          "example": "fetch_fundamentals: expected dict, got NoneType"
+        }
+      },
+      "required": ["http_method", "request_route"]
+    },
+    "exception": {
+      "type": "object",
+      "description": "Structured exception payload with app-level-only traceback.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Python exception class name or Swift error type.",
+          "example": "KeyError"
+        },
+        "message": {
+          "type": "string",
+          "description": "Exception message string, truncated to 1024 characters.",
+          "example": "'quarterly_financials' not found in response payload"
+        },
+        "cleaned_traceback": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "A single stack frame in the format 'file_path:line_number in function_name'."
+          },
+          "description": "Traceback frames filtered to ONLY app-level paths per traceback_cleaning_rules. Ordered from innermost (failing line) to outermost (caller).",
+          "example": [
+            "/backend/services/factor_engine.py:142 in compute_piotroski_score",
+            "/backend/routers/analysis.py:88 in get_fundamentals",
+            "/backend/routers/analysis.py:45 in analysis_router"
+          ]
+        }
+      },
+      "required": ["type", "message"]
+    },
+    "automated_recovery_action": {
+      "type": "string",
+      "description": "What the system automatically did to recover. Empty string if no action was taken.",
+      "example": "Fell back to cached response from 2026-06-05T14:30:00Z"
+    }
+  },
+
+  "enums": {
+    "classification": {
+      "description": "Valid error classifications and their meanings.",
+      "values": {
+        "INFRASTRUCTURE_EXCEPTION": "Database connection failure, Redis timeout, disk-full, or OS-level fault.",
+        "DOM_SCRAPE_SHIFT": "Web scraper returned unexpected HTML structure (NSE/BSE/Screener.in changed their DOM).",
+        "SCHEMA_DRIFT": "Response payload shape changed — missing keys, type mismatch, or unexpected nulls.",
+        "AGENT_PIPELINE_DROP": "One of the LangChain/LangGraph trading agent nodes threw an unhandled exception or timed out.",
+        "AUTH_FAILURE": "Token expired, invalid credentials, or unauthorized access to a protected resource.",
+        "RATE_LIMIT": "Third-party API rate limit exceeded (NSE, BSE, Screener.in, YouTube, etc.).",
+        "DATA_PROVIDER_TIMEOUT": "Upstream data provider did not respond within the configured deadline.",
+        "CACHE_CORRUPTION": "Cached response was malformed, stale beyond threshold, or failed deserialization.",
+        "VALIDATION_ERROR": "Request payload failed Pydantic/FastAPI validation or business-rule validation.",
+        "UNKNOWN": "Fallback classification when no other category matches."
+      }
+    },
+    "market_hours_state": {
+      "description": "Indian market session states (NSE/BSE trading calendar).",
+      "values": {
+        "LIVE_TRADING": "Market is open — 09:15 to 15:30 IST, Monday through Friday.",
+        "PRE_MARKET": "Pre-open session — 09:00 to 09:15 IST.",
+        "POST_MARKET": "Post-close session — 15:30 to 16:00 IST.",
+        "CLOSED": "Outside trading hours on a business day.",
+        "EXCHANGE_HOLIDAY": "NSE/BSE declared holiday (e.g., Diwali, Republic Day)."
+      }
+    },
+    "subsystem": {
+      "description": "App sections that can produce telemetry.",
+      "values": {
+        "MARKETS_DASHBOARD": "Market overview, indices, sector performance, heatmaps.",
+        "EARNINGS_FEED": "Quarterly results, earnings transcripts, conference call summaries.",
+        "PORTFOLIO": "User holdings, watchlist, P&L tracking, portfolio snapshots.",
+        "ANALYSIS": "Fundamental analysis, technical momentum, Piotroski scores, AI-driven analysis.",
+        "EXPERT_NETWORK": "Expert opinions, consensus estimates, analyst ratings.",
+        "PREIPO_MARKETPLACE": "Pre-IPO share discovery, grey market premium tracking.",
+        "ALERTS": "Price alerts, news alerts, event-driven notifications.",
+        "TRADE_JOURNAL": "Trade logging, performance review, strategy backtesting.",
+        "AUTH": "Login, registration, token refresh, session management.",
+        "NEWS_MULTIMEDIA": "News aggregation, YouTube finance harvesting, sentiment scoring."
+      }
+    }
+  },
+
+  "traceback_cleaning_rules": {
+    "description": "Rules applied server-side before persisting exception.cleaned_traceback. Only frames whose file paths MATCH allowed prefixes survive. All other frames are stripped.",
+    "allowed_path_prefixes": [
+      "/backend/routers/",
+      "/backend/services/",
+      "/backend/tradingagents-core/"
+    ],
+    "banned_path_patterns": [
+      "/site-packages/uvicorn/",
+      "/starlette/",
+      "/anyio/",
+      "/fastapi/",
+      "/site-packages/pydantic/",
+      "/site-packages/sqlalchemy/",
+      "/site-packages/httpx/",
+      "/site-packages/langchain/",
+      "/site-packages/langgraph/",
+      "/usr/lib/",
+      "/Library/Frameworks/",
+      "<frozen importlib",
+      "<frozen _bootstrap"
+    ],
+    "max_frames": 15,
+    "note": "If after cleaning zero frames remain, the traceback is populated with a single entry: '<all frames were framework-level — no app code in traceback>'"
+  },
+
+  "ios_requirements": {
+    "description": "Requirements the iOS client MUST satisfy to ship compliant telemetry.",
+    "correlation_id_header": {
+      "header_name": "X-Correlation-ID",
+      "format": "nivesh_ios_{uuid4}",
+      "generation": "Generated once per API call chain in NetworkManager.swift. Passed on every request including retries.",
+      "fallback": "If the client fails to generate a correlation ID, the backend assigns one prefixed with 'nivesh_srv_' at middleware level."
+    },
+    "console_mirror": {
+      "description": "Every telemetry payload posted to /api/telemetry/diagnostic MUST also be printed to the iOS console via os_log(.error) for local debugging.",
+      "format": "[NIVESH_TELEMETRY] {compact_json_payload}"
+    },
+    "diagnostic_drawer": {
+      "description": "The iOS app MUST provide a diagnostic drawer (accessible via Settings > Diagnostics or a long-press gesture on the app version label) that displays the last 20 telemetry events stored locally.",
+      "max_events": 20,
+      "retention": "In-memory ring buffer, cleared on app terminate."
+    },
+    "visual_defensiveness": {
+      "description": "When ANY telemetry event fires, the affected UI component MUST degrade gracefully instead of showing a blank screen or crashing.",
+      "rules": [
+        "Show a cached/stale-data banner with timestamp instead of an empty table view.",
+        "Present a toast with a retry button for transient failures (RATE_LIMIT, DATA_PROVIDER_TIMEOUT).",
+        "For SCHEMA_DRIFT, render only the fields that parsed successfully; missing fields show '—'.",
+        "For INFRASTRUCTURE_EXCEPTION, present a full-screen 'We'll be right back' placeholder with the correlation ID visible so support can trace it."
+      ]
+    }
+  },
+
+  "sql_schema": {
+    "description": "PostgreSQL DDL for persisting telemetry payloads. Designed for the Nivesh backend's existing PostgreSQL instance.",
+    "table_name": "telemetry_events",
+    "ddl": "CREATE TABLE IF NOT EXISTS telemetry_events (\n    id              BIGSERIAL PRIMARY KEY,\n    error_uuid      UUID NOT NULL UNIQUE,\n    correlation_id  TEXT NOT NULL,\n    timestamp       TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n    subsystem       TEXT NOT NULL,\n    classification  TEXT NOT NULL,\n\n    -- context\n    target_ticker         TEXT,\n    market_hours_state    TEXT NOT NULL,\n    active_data_provider  TEXT,\n\n    -- telemetry\n    http_method           TEXT NOT NULL,\n    request_route         TEXT NOT NULL,\n    ios_swift_file        TEXT,\n    failing_node_contract TEXT,\n\n    -- exception\n    exception_type    TEXT NOT NULL,\n    exception_message TEXT NOT NULL,\n    cleaned_traceback JSONB NOT NULL DEFAULT '[]'::jsonb,\n\n    -- recovery\n    automated_recovery_action TEXT NOT NULL DEFAULT '',\n\n    -- metadata\n    payload_version  TEXT NOT NULL DEFAULT '1.0.0',\n    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n\n    -- constraints\n    CONSTRAINT chk_subsystem CHECK (\n        subsystem IN (\n            'MARKETS_DASHBOARD', 'EARNINGS_FEED', 'PORTFOLIO', 'ANALYSIS',\n            'EXPERT_NETWORK', 'PREIPO_MARKETPLACE', 'ALERTS', 'TRADE_JOURNAL',\n            'AUTH', 'NEWS_MULTIMEDIA'\n        )\n    ),\n    CONSTRAINT chk_classification CHECK (\n        classification IN (\n            'INFRASTRUCTURE_EXCEPTION', 'DOM_SCRAPE_SHIFT', 'SCHEMA_DRIFT',\n            'AGENT_PIPELINE_DROP', 'AUTH_FAILURE', 'RATE_LIMIT',\n            'DATA_PROVIDER_TIMEOUT', 'CACHE_CORRUPTION', 'VALIDATION_ERROR',\n            'UNKNOWN'\n        )\n    ),\n    CONSTRAINT chk_market_hours CHECK (\n        market_hours_state IN (\n            'LIVE_TRADING', 'PRE_MARKET', 'POST_MARKET', 'CLOSED', 'EXCHANGE_HOLIDAY'\n        )\n    ),\n    CONSTRAINT chk_http_method CHECK (\n        http_method IN ('GET', 'POST', 'PUT', 'DELETE', 'PATCH')\n    )\n);\n\n-- Index for correlation_id lookups (support traces)\nCREATE INDEX IF NOT EXISTS idx_telemetry_correlation_id\n    ON telemetry_events (correlation_id);\n\n-- Index for time-range queries (dashboard, alerting)\nCREATE INDEX IF NOT EXISTS idx_telemetry_timestamp\n    ON telemetry_events (timestamp DESC);\n\n-- Composite index for subsystem + classification dashboards\nCREATE INDEX IF NOT EXISTS idx_telemetry_subsystem_class\n    ON telemetry_events (subsystem, classification);\n\n-- Index for ticker-specific debugging\nCREATE INDEX IF NOT EXISTS idx_telemetry_ticker\n    ON telemetry_events (target_ticker)\n    WHERE target_ticker IS NOT NULL;\n\n-- Index for error_uuid deduplication lookups\nCREATE UNIQUE INDEX IF NOT EXISTS idx_telemetry_error_uuid\n    ON telemetry_events (error_uuid);"
+  },
+
+  "api_endpoint": {
+    "description": "The backend route that accepts telemetry payloads.",
+    "method": "POST",
+    "route": "/api/telemetry/diagnostic",
+    "auth_required": true,
+    "rate_limit": "100 requests per minute per client",
+    "request_body": "JSON payload conforming to payload_schema above.",
+    "response_201": {
+      "status": "recorded",
+      "error_uuid": "a3f2c8e1-9b4d-4e7a-b1c2-d5f6a7e8b9c0"
+    },
+    "response_400": {
+      "detail": "Validation error description referencing the specific field that failed."
+    },
+    "response_429": {
+      "detail": "Rate limit exceeded. Retry after N seconds."
+    }
+  }
+}

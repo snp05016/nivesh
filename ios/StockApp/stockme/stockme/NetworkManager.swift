@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import UserNotifications
+import os.log
 
 enum NetworkError: Error, LocalizedError {
     case invalidURL
@@ -98,7 +99,23 @@ class NetworkManager: ObservableObject {
     private func authRequest(_ url: URL) -> URLRequest {
         var req = URLRequest(url: url)
         if let token = authToken { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        let corrId = generateCorrelationID(subsystem: "ios")
+        req.setValue(corrId, forHTTPHeaderField: "X-Correlation-ID")
         return req
+    }
+
+    // MARK: - Correlation ID
+
+    /// Generates a unique correlation ID for every outgoing request.
+    /// Format: ``nivesh_ios_{subsystem}_{uuid_short}``
+    /// Logged to both os_log and print() for Xcode console visibility.
+    func generateCorrelationID(subsystem: String) -> String {
+        let short = UUID().uuidString.prefix(8)
+        let corrId = "nivesh_ios_\(subsystem)_\(short)"
+        let logMsg = "[Nivesh] CorrelationID: \(corrId)"
+        os_log(.info, "%{public}@", logMsg)
+        print(logMsg)
+        return corrId
     }
 
     private func dataWithRetry(for request: URLRequest, retries: Int = 1) async throws -> (Data, URLResponse) {
@@ -838,6 +855,8 @@ class NetworkManager: ObservableObject {
         }
         var req = URLRequest(url: url)
         req.timeoutInterval = timeout
+        let corrId = generateCorrelationID(subsystem: "ios")
+        req.setValue(corrId, forHTTPHeaderField: "X-Correlation-ID")
         let data: Data, response: URLResponse
         do {
             (data, response) = try await session.data(for: req)

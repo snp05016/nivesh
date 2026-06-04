@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - Banknote Error Canvas
 
@@ -13,8 +16,10 @@ struct BanknoteErrorCanvas: View {
     let title: String
     let detail: String
     var retryAction: (() async -> Void)? = nil
+    var diagnosticPayload: DiagnosticErrorPayload? = nil
 
     @State private var isRetrying = false
+    @State private var showDiagnostics = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,6 +57,11 @@ struct BanknoteErrorCanvas: View {
                         .multilineTextAlignment(.leading)
                         .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    // Diagnostic drawer (when payload is present)
+                    if let payload = diagnosticPayload {
+                        DiagnosticErrorDrawer(payload: payload, isExpanded: $showDiagnostics)
+                    }
 
                     // Retry button (if provided)
                     if let retryAction = retryAction {
@@ -201,6 +211,143 @@ struct MarketSectionErrorRow: View {
     }
 }
 
+// MARK: - Diagnostic Error Drawer
+
+/// Expandable diagnostic telemetry panel styled with banknote aesthetic.
+/// Shows correlation_id, error_uuid, classification, failing_node_contract,
+/// exception message, and cleaned traceback in monospaced font.
+/// Includes a "COPY TO CLIPBOARD" button for the full JSON payload.
+struct DiagnosticErrorDrawer: View {
+    let payload: DiagnosticErrorPayload
+    @Binding var isExpanded: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // ── Tappable header row ────────────────────────────────────
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(Theme.securityGold)
+                    Text("DIAGNOSTICS")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .tracking(2)
+                        .foregroundColor(Theme.securityGold)
+                    Spacer()
+                    Text(isExpanded ? "▾" : "▸")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(Theme.securityGold.opacity(0.6))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Theme.securityGold.opacity(0.04))
+            }
+
+            // ── Expanded diagnostic details ────────────────────────────
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 10) {
+                    // Divider
+                    Rectangle()
+                        .fill(Theme.borderSage)
+                        .frame(height: 1)
+
+                    // Correlation ID
+                    diagnosticRow(label: "correlation_id", value: payload.correlationId)
+                    // Error UUID
+                    diagnosticRow(label: "error_uuid", value: payload.errorUuid)
+                    // Classification
+                    diagnosticRow(label: "classification", value: payload.classification)
+                    // Failing node contract
+                    if let contract = payload.telemetry?.failingNodeContract {
+                        diagnosticRow(label: "failing_node", value: contract)
+                    }
+                    // Exception
+                    if let exc = payload.exception {
+                        if let type = exc.type {
+                            diagnosticRow(label: "exception_type", value: type)
+                        }
+                        if let msg = exc.message {
+                            diagnosticRow(label: "exception_msg", value: msg)
+                        }
+                        if let traceback = exc.cleanedTraceback, !traceback.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("cleaned_traceback")
+                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                    .foregroundColor(Theme.inkTertiary)
+                                ForEach(traceback, id: \.self) { line in
+                                    Text(line)
+                                        .font(.system(size: 9, weight: .regular, design: .monospaced))
+                                        .foregroundColor(Theme.inkSecondary)
+                                        .lineLimit(3)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+
+                    // ── Copy to Clipboard button ───────────────────────
+                    Button {
+                        copyPayloadToClipboard()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 9))
+                            Text("COPY TO CLIPBOARD")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .tracking(1)
+                        }
+                        .foregroundColor(Theme.securityGold)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity)
+                        .background(Theme.securityGold.opacity(0.06))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 2)
+                                .stroke(Theme.securityGold.opacity(0.2), lineWidth: 1)
+                        )
+                    }
+                }
+                .padding(12)
+                .background(Theme.canvasDeep)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 2)
+                        .stroke(Theme.borderSage, lineWidth: 1)
+                )
+            }
+        }
+    }
+
+    // MARK: - Row helper
+
+    private func diagnosticRow(label: String, value: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(label)
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundColor(Theme.inkTertiary)
+                .frame(width: 110, alignment: .leading)
+            Text(value)
+                .font(.system(size: 10, weight: .regular, design: .monospaced))
+                .foregroundColor(Theme.inkPrimary)
+                .multilineTextAlignment(.leading)
+            Spacer()
+        }
+    }
+
+    // MARK: - Clipboard
+
+    private func copyPayloadToClipboard() {
+        guard let data = try? JSONEncoder().encode(payload),
+              let json = String(data: data, encoding: .utf8) else { return }
+        #if os(iOS)
+        UIPasteboard.general.string = json
+        #endif
+    }
+}
+
 // MARK: - Preview
 
 #if DEBUG
@@ -211,6 +358,39 @@ struct BanknoteErrorCanvas_Previews: PreviewProvider {
                 title: "Market Data Unavailable",
                 detail: "NSE connection timed out after 15 seconds.\nComponent: nse_data_provider\nTicker: RELIANCE\n\nError: HTTPSConnectionPool(host='nseindia.com', port=443): Read timed out.",
                 retryAction: { try? await Task.sleep(nanoseconds: 1_000_000_000) }
+            )
+
+            BanknoteErrorCanvas(
+                title: "Earnings Feed Failed",
+                detail: "Earnings feed aggregation failed due to NSE API rate limit.",
+                diagnosticPayload: DiagnosticErrorPayload(
+                    errorUuid: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    correlationId: "nivesh_ios_earnings_a1b2c3d4",
+                    timestamp: "2026-06-05T03:30:00Z",
+                    subsystem: "EARNINGS_FEED",
+                    classification: "API_RATE_LIMIT",
+                    context: DiagnosticContext(
+                        targetTicker: "RELIANCE",
+                        marketHoursState: "REGULAR",
+                        activeDataProvider: "nse_data_provider"
+                    ),
+                    telemetry: DiagnosticTelemetry(
+                        httpMethod: "GET",
+                        requestRoute: "/api/v1/earnings/feed",
+                        iosSwiftFile: "EarningsDashboardView.swift",
+                        failingNodeContract: "GET /api/v1/earnings/feed -> EarningsFeedResponse"
+                    ),
+                    exception: DiagnosticException(
+                        type: "ConnectionError",
+                        message: "NSE API returned 429 Too Many Requests",
+                        cleanedTraceback: [
+                            "File backend/routers/earnings.py line 142 in get_earnings_feed",
+                            "File backend/services/nse_data_provider.py line 89 in fetch_earnings_data",
+                            "requests.exceptions.HTTPError: 429 Client Error"
+                        ]
+                    ),
+                    automatedRecoveryAction: "Exponential backoff retry scheduled (attempt 2/3)"
+                )
             )
 
             MarketSectionErrorRow(

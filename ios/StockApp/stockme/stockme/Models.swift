@@ -610,6 +610,70 @@ struct DiagnosticError: Codable {
     }
 }
 
+// MARK: - Diagnostic Error Payload (unified telemetry contract)
+
+struct DiagnosticErrorPayload: Codable {
+    let errorUuid: String
+    let correlationId: String
+    let timestamp: String
+    let subsystem: String
+    let classification: String
+    let context: DiagnosticContext?
+    let telemetry: DiagnosticTelemetry?
+    let exception: DiagnosticException?
+    let automatedRecoveryAction: String?
+
+    enum CodingKeys: String, CodingKey {
+        case errorUuid = "error_uuid"
+        case correlationId = "correlation_id"
+        case timestamp
+        case subsystem
+        case classification
+        case context
+        case telemetry
+        case exception
+        case automatedRecoveryAction = "automated_recovery_action"
+    }
+}
+
+struct DiagnosticContext: Codable {
+    let targetTicker: String?
+    let marketHoursState: String?
+    let activeDataProvider: String?
+
+    enum CodingKeys: String, CodingKey {
+        case targetTicker = "target_ticker"
+        case marketHoursState = "market_hours_state"
+        case activeDataProvider = "active_data_provider"
+    }
+}
+
+struct DiagnosticTelemetry: Codable {
+    let httpMethod: String?
+    let requestRoute: String?
+    let iosSwiftFile: String?
+    let failingNodeContract: String?
+
+    enum CodingKeys: String, CodingKey {
+        case httpMethod = "http_method"
+        case requestRoute = "request_route"
+        case iosSwiftFile = "ios_swift_file"
+        case failingNodeContract = "failing_node_contract"
+    }
+}
+
+struct DiagnosticException: Codable {
+    let type: String?
+    let message: String?
+    let cleanedTraceback: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case message
+        case cleanedTraceback = "cleaned_traceback"
+    }
+}
+
 struct AnalysisErrorInfo {
     let diagnostic: DiagnosticError?
     let rawError: String

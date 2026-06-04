@@ -72,7 +72,7 @@ class EarningsDashboardViewModel: ObservableObject {
                     self.feedError = nil  // not a fetch error — just no data
                 }
             } else {
-                self.feedError = "Network or decode failure — check server connection"
+                self.feedError = "Feed endpoint unreachable. Check: (1) Is the server running? (2) Is the backend URL correct in Settings? (3) Check iOS console for details."
             }
 
             // Movers
