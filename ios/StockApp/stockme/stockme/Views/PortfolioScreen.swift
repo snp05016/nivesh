@@ -158,6 +158,11 @@ struct PortfolioScreen: View {
                                     .padding(.horizontal, Theme.screenPadding)
                             }
 
+                            if let user = authManager.currentUser {
+                                PortfolioChartsStrip(userId: user.userId)
+                                    .padding(.horizontal, Theme.screenPadding)
+                            }
+
                             HStack(spacing: 0) {
                                 TabNoteButton(title: "Holdings", isSelected: selectedTab == 0) { selectedTab = 0 }
                                 TabNoteButton(title: "Watchlist", isSelected: selectedTab == 1) { selectedTab = 1 }
@@ -1421,6 +1426,216 @@ private struct NoteEditorSheet: View {
             }
         }
         
+        // MARK: - Portfolio Charts Strip (backend-generated chart PNGs)
+
+        private struct PortfolioChartsStrip: View {
+            let userId: Int
+            @State private var charts: [ChartItem] = []
+            @State private var isLoading = false
+            @State private var errorMsg: String? = nil
+            @State private var expandedChart: ChartItem? = nil
+
+            var body: some View {
+                VStack(alignment: .leading, spacing: 12) {
+                    // Section header
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("पोर्टफोलियो चार्ट")
+                            .font(.system(size: 10, weight: .regular))
+                            .foregroundColor(Theme.inkSecondary)
+                        Text("PORTFOLIO CHARTS")
+                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .tracking(2.0)
+                            .foregroundColor(Theme.inkPrimary.opacity(0.7))
+                    }
+
+                    if isLoading {
+                        HStack(spacing: 12) {
+                            ForEach(0..<3, id: \.self) { _ in
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Theme.inkTertiary.opacity(0.08))
+                                    .frame(width: 200, height: 160)
+                            }
+                        }
+                        .shimmerPlaceholder(isLoading: true)
+                    } else if let err = errorMsg {
+                        // Compact error state
+                        HStack(spacing: 8) {
+                            Image(systemName: "chart.bar.xaxis")
+                                .font(.system(size: 14))
+                                .foregroundColor(Theme.inkTertiary)
+                            Text("Charts unavailable")
+                                .font(.system(size: 11))
+                                .foregroundColor(Theme.inkTertiary)
+                        }
+                        .padding(.vertical, 12)
+                    } else if !charts.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                ForEach(charts) { chart in
+                                    chartCard(chart)
+                                }
+                            }
+                        }
+                    } else {
+                        // Empty state — charts will populate after backend generates them
+                        HStack(spacing: 8) {
+                            Image(systemName: "chart.bar")
+                                .font(.system(size: 14))
+                                .foregroundColor(Theme.inkTertiary.opacity(0.6))
+                            Text("Charts will appear here after portfolio snapshot is generated")
+                                .font(.system(size: 11))
+                                .foregroundColor(Theme.inkTertiary)
+                        }
+                        .padding(.vertical, 12)
+                    }
+                }
+                .onAppear { fetchCharts() }
+                .sheet(item: $expandedChart) { chart in
+                    expandedChartView(chart)
+                }
+            }
+
+            private func chartCard(_ chart: ChartItem) -> some View {
+                Button(action: {
+                    HapticManager.impact(.light)
+                    expandedChart = chart
+                }) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        // Chart image
+                        AsyncImage(url: URL(string: chart.url)) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 200, height: 130)
+                                    .clipped()
+                                    .cornerRadius(6)
+                            case .failure(_):
+                                Rectangle()
+                                    .fill(Theme.inkTertiary.opacity(0.08))
+                                    .frame(width: 200, height: 130)
+                                    .cornerRadius(6)
+                                    .overlay(
+                                        Image(systemName: "chart.bar.xaxis")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(Theme.inkTertiary.opacity(0.4))
+                                    )
+                            case .empty:
+                                Rectangle()
+                                    .fill(Theme.inkTertiary.opacity(0.06))
+                                    .frame(width: 200, height: 130)
+                                    .cornerRadius(6)
+                                    .overlay(ProgressView().tint(Theme.securityGold))
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+
+                        // Title and description
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(chart.title)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(Theme.inkPrimary)
+                                .lineLimit(1)
+
+                            Text(chart.description)
+                                .font(.system(size: 9))
+                                .foregroundColor(Theme.inkTertiary)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.horizontal, 4)
+                    }
+                    .frame(width: 200)
+                    .padding(8)
+                    .background(Theme.canvasDeep)
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Theme.borderSage, lineWidth: 0.5)
+                    )
+                }
+                .buttonStyle(EKPressStyle())
+            }
+
+            private func expandedChartView(_ chart: ChartItem) -> some View {
+                NavigationStack {
+                    ZStack {
+                        Theme.canvas.ignoresSafeArea()
+
+                        VStack(spacing: 0) {
+                            // Toolbar
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(chart.title)
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(Theme.inkPrimary)
+                                    Text(chart.description)
+                                        .font(.system(size: 11))
+                                        .foregroundColor(Theme.inkSecondary)
+                                }
+                                Spacer()
+                                Button("Done") { expandedChart = nil }
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(Theme.securityGold)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(Theme.canvasDeep)
+
+                            // Full chart image
+                            ScrollView([.horizontal, .vertical]) {
+                                AsyncImage(url: URL(string: chart.url)) { phase in
+                                    switch phase {
+                                    case .success(let image):
+                                        image
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fit)
+                                    case .failure(_):
+                                        VStack(spacing: 12) {
+                                            Image(systemName: "exclamationmark.triangle")
+                                                .font(.system(size: 32))
+                                                .foregroundColor(Theme.holdAmber)
+                                            Text("Failed to load chart image")
+                                                .font(.system(size: 13))
+                                                .foregroundColor(Theme.inkSecondary)
+                                        }
+                                        .frame(maxWidth: .infinity, minHeight: 300)
+                                    case .empty:
+                                        ProgressView()
+                                            .frame(maxWidth: .infinity, minHeight: 300)
+                                    @unknown default:
+                                        EmptyView()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            private func fetchCharts() {
+                guard !isLoading else { return }
+                isLoading = true
+                errorMsg = nil
+                Task {
+                    do {
+                        let resp = try await NetworkManager.shared.fetchPortfolioCharts(userId: userId)
+                        await MainActor.run {
+                            charts = resp.charts
+                            isLoading = false
+                        }
+                    } catch {
+                        await MainActor.run {
+                            errorMsg = error.localizedDescription
+                            isLoading = false
+                        }
+                    }
+                }
+            }
+        }
+
         struct ShareSheet: UIViewControllerRepresentable {
             let items: [Any]
             func makeUIViewController(context: Context) -> UIActivityViewController {

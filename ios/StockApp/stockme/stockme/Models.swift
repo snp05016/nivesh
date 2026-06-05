@@ -1593,6 +1593,21 @@ struct MarketErrorLogsResponse: Codable {
     }
 }
 
+// MARK: - Portfolio Charts
+
+struct ChartItem: Codable, Identifiable {
+    var id: String { filename }
+    let filename: String
+    let title: String
+    let description: String
+    let url: String
+}
+
+struct PortfolioChartsResponse: Codable {
+    let charts: [ChartItem]
+    let count: Int
+}
+
 // MARK: - Extended Market Dashboard (with new core markets sections)
 
 struct ExtendedMarketDashboardResponse: Codable {

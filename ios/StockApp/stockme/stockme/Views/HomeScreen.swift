@@ -780,15 +780,18 @@ struct HomeScreen: View {
                                         .padding(.bottom, 12)
                                     }
 
-                                    // Regular news cards
-                                    VStack(spacing: 10) {
-                                        ForEach(feed.news.prefix(8)) { article in
-                                            NewsCardView(article: article) { ticker in
+                                    // 5-wide compact news grid (2 rows × 5 cols = 10 items)
+                                    LazyVGrid(
+                                        columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5),
+                                        spacing: 8
+                                    ) {
+                                        ForEach(feed.news.prefix(10)) { article in
+                                            CompactNewsCell(article: article) { ticker in
                                                 navigationPath.append(ticker)
                                             }
-                                            .padding(.horizontal, Theme.screenPadding)
                                         }
                                     }
+                                    .padding(.horizontal, Theme.screenPadding)
                                 } else if feedVM.isLoading {
                                     // Skeleton shimmer while loading
                                     ForEach(0..<3, id: \.self) { _ in
@@ -1929,6 +1932,102 @@ func safeIndianCurrency(_ raw: Double) -> String {
     // Block any value that looks like it was passed as raw millions/billions
     // (i.e. > 100 crore threshold without going through formatLakhsCrores)
     return IndianFormatter.formatLakhsCrores(raw)
+}
+
+// MARK: - Compact News Cell (2 rows × 5 columns grid)
+
+struct CompactNewsCell: View {
+    let article: NewsArticleItem
+    var onTickerTap: ((String) -> Void)? = nil
+
+    private let goldAccent = Color(red: 0.78, green: 0.64, blue: 0.25)
+
+    var sourceLabel: String {
+        switch article.source {
+        case "moneycontrol": return "MC"
+        case "economic_times": return "ET"
+        case "nse": return "NSE"
+        default: return String(article.source.prefix(3)).uppercased()
+        }
+    }
+
+    var body: some View {
+        Button(action: {
+            if let url = URL(string: article.articleUrl) {
+                UIApplication.shared.open(url)
+            }
+        }) {
+            VStack(alignment: .leading, spacing: 4) {
+                // Thumbnail image
+                if let imageUrl = article.imageUrl, let url = URL(string: imageUrl) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 120, height: 72)
+                                .clipped()
+                                .cornerRadius(6)
+                        case .failure(_), .empty:
+                            Rectangle()
+                                .fill(Color.primary.opacity(0.06))
+                                .frame(width: 120, height: 72)
+                                .cornerRadius(6)
+                                .overlay(
+                                    Image(systemName: "newspaper")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(Color.primary.opacity(0.2))
+                                )
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                } else {
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.06))
+                        .frame(width: 120, height: 72)
+                        .cornerRadius(6)
+                        .overlay(
+                            Image(systemName: "newspaper")
+                                .font(.system(size: 16))
+                                .foregroundColor(Color.primary.opacity(0.2))
+                        )
+                }
+
+                // Source badge
+                Text(sourceLabel)
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .tracking(1.0)
+                    .foregroundColor(goldAccent)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(goldAccent.opacity(0.12))
+                    .cornerRadius(3)
+
+                // Headline (max 2 lines)
+                Text(article.headline)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.primary.opacity(0.85))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineSpacing(1)
+
+                Spacer(minLength: 0)
+            }
+            .frame(width: 120, height: 160, alignment: .topLeading)
+            .padding(6)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Theme.canvasDeep)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+                    )
+            )
+        }
+        .buttonStyle(EKPressStyle())
+    }
 }
 
 // MARK: - Section 15: SwiftUI Preview Environment

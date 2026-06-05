@@ -946,6 +946,26 @@ class NetworkManager: ObservableObject {
         }
     }
 
+    // MARK: - Portfolio Charts
+
+    func fetchPortfolioCharts(userId: Int) async throws -> PortfolioChartsResponse {
+        guard let url = URL(string: "\(baseURL)/api/v1/portfolio/charts/\(userId)") else {
+            throw NetworkError.fetchFailed(endpoint: "/api/v1/portfolio/charts/\(userId)", status: 0, body: "Invalid URL")
+        }
+        var request = authRequest(url)
+        request.timeoutInterval = 20
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: "/api/v1/portfolio/charts/\(userId)", status: (response as? HTTPURLResponse)?.statusCode ?? 0, body: String(body))
+        }
+        do {
+            return try JSONDecoder().decode(PortfolioChartsResponse.self, from: data)
+        } catch {
+            throw NetworkError.decodingError(error.localizedDescription)
+        }
+    }
+
     // MARK: - Advisor Intelligence
 
     func fetchAdvisoryConsensus(userId: Int) async throws -> AdvisoryConsensusResponse {

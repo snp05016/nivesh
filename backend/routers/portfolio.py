@@ -1493,6 +1493,39 @@ async def get_valuation_history(user_id: int, days: int = 90, authorization: str
 
 
 # ---------------------------------------------------------------------------
+# 14a. GET /api/v1/portfolio/charts/{user_id}
+# ---------------------------------------------------------------------------
+@router.get("/api/v1/portfolio/charts/{user_id}")
+def portfolio_charts_endpoint(user_id: int, authorization: str = Header(None)):
+    """Generate portfolio charts as PNG images. Returns list of chart metadata with URLs."""
+    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
+    if token_user is None or token_user != user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        from portfolio_charts import generate_portfolio_charts
+        import os
+        chart_dir = os.path.join(os.path.dirname(__file__), "..", "charts")
+        chart_dir = os.path.abspath(chart_dir)
+        charts = generate_portfolio_charts(user_id, chart_dir)
+        return {
+            "charts": [
+                {
+                    "filename": c["filename"],
+                    "title": c["title"],
+                    "description": c["description"],
+                    "url": f"/charts/{c['filename']}",
+                }
+                for c in charts
+            ],
+            "count": len(charts),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
 # 14. GET /portfolio/risk-analysis/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/risk-analysis/{user_id}")

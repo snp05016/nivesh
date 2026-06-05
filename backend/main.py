@@ -26,6 +26,7 @@ import multiprocessing
 import asyncio
 from fastapi import Request
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.staticfiles import StaticFiles
 from collections import deque
 import uuid
 from fastapi.responses import StreamingResponse, HTMLResponse
@@ -520,6 +521,13 @@ app.include_router(user.router)
 app.include_router(dashboard.router)
 app.include_router(notifications.router)
 
+# ---------------------------------------------------------------------------
+# Static files — serve generated portfolio charts
+# ---------------------------------------------------------------------------
+import os as _os
+_charts_dir = _os.path.join(_os.path.dirname(__file__), "charts")
+_os.makedirs(_charts_dir, exist_ok=True)
+app.mount("/charts", StaticFiles(directory=_charts_dir), name="charts")
 
 # ---------------------------------------------------------------------------
 # Admin Harvest Endpoints (trigger on demand)
