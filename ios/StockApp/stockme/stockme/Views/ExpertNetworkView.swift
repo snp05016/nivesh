@@ -58,7 +58,10 @@ private struct PostDTO: Decodable {
 class ExpertNetworkViewModel: ObservableObject {
     @Published var experts: [MarketExpert] = []
     @Published var posts: [ExpertPost] = []
+    @Published var advisors: [AdvisorBiography] = []
+    @Published var insights: [TextAdvisoryInsight] = []
     @Published var isLoading = false
+    @Published var fetchError: String? = nil
     @AppStorage("expert_bookmarks") private var bookmarksRaw: String = ""
 
     var bookmarkedPostIds: Set<String> {
@@ -81,12 +84,23 @@ class ExpertNetworkViewModel: ObservableObject {
 
     func load() {
         isLoading = true
+        fetchError = nil
         Task {
+            async let advisorsFetch = NetworkManager.shared.fetchAdvisors()
+            async let insightsFetch = NetworkManager.shared.fetchIdeasFeed()
+            let (a, i) = await (advisorsFetch, insightsFetch)
+            advisors = a?.advisors ?? []
+            insights = i?.insights ?? []
+
             async let expertsFetch = fetchExperts()
             async let postsFetch = fetchPosts()
             let (e, p) = await (expertsFetch, postsFetch)
             experts = e.isEmpty ? Self.fallbackExperts : e
             posts = p
+
+            if advisors.isEmpty && insights.isEmpty {
+                fetchError = "No advisor data available. Check backend connection."
+            }
             isLoading = false
         }
     }
@@ -137,6 +151,7 @@ class ExpertNetworkViewModel: ObservableObject {
 
 struct ExpertNetworkView: View {
     @StateObject private var vm = ExpertNetworkViewModel()
+    @State private var selectedSegment = 0
     private let isSuperpro: Bool = true
 
     var body: some View {
@@ -145,15 +160,41 @@ struct ExpertNetworkView: View {
 
             VStack(spacing: 0) {
                 pageHeader
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        // 7.1 Expert Directory
-                        expertsSection
-                        GuillocheDivider().padding(.horizontal, 16)
-                        // 7.4 Posts
-                        postsSection
+
+                // Segmented control
+                Picker("", selection: $selectedSegment) {
+                    Text("Advisory Wire").tag(0)
+                    Text("Verified Minds").tag(1)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+
+                if vm.isLoading {
+                    Spacer()
+                    loadingShimmer
+                    Spacer()
+                } else if let error = vm.fetchError {
+                    ErrorDiagnoserView(
+                        error: error,
+                        context: ErrorDiagnostic(
+                            endpoint: "/api/v1/ideas/feed",
+                            classification: "IDEAS_FETCH_FAILURE"
+                        ),
+                        retryAction: { await vm.load() }
+                    )
+                    Spacer()
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 12) {
+                            if selectedSegment == 0 {
+                                advisoryWireSection
+                            } else {
+                                verifiedMindsSection
+                            }
+                        }
+                        .padding(.bottom, 20)
                     }
-                    .padding(.bottom, 20)
                 }
             }
         }
@@ -183,38 +224,155 @@ struct ExpertNetworkView: View {
         .background(Theme.canvasDeep)
     }
 
-    // MARK: 7.1 Experts Section
+    // MARK: Advisory Wire Section
 
-    private var expertsSection: some View {
+    private var advisoryWireSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "VERIFIED PROFESSIONAL DIRECTORY", hindiTitle: "विशेषज्ञ निर्देशिका")
+            SectionHeader(title: "ADVISORY WIRE", hindiTitle: "सलाह तार")
                 .padding(.top, 8)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(vm.experts) { expert in
-                        ExpertProfileCard(expert: expert)
-                    }
+            if vm.insights.isEmpty {
+                emptyAdvisoryWire
+            } else {
+                ForEach(vm.insights) { insight in
+                    InsightCard(insight: insight)
+                        .padding(.horizontal, 16)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 4)
             }
         }
     }
 
-    // MARK: 7.4 Posts Section
+    private var emptyAdvisoryWire: some View {
+        VStack(spacing: 8) {
+            Text("No advisory insights available.")
+                .font(.system(size: 12))
+                .foregroundColor(Theme.inkTertiary)
+            Text("Check backend connection.")
+                .font(.system(size: 10))
+                .foregroundColor(Theme.inkTertiary.opacity(0.6))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+    }
 
-    private var postsSection: some View {
+    // MARK: Verified Minds Section
+
+    private var verifiedMindsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "STRATEGY WRITE-UPS", hindiTitle: "रणनीति लेख")
+            SectionHeader(title: "VERIFIED MINDS", hindiTitle: "प्रमाणित विशेषज्ञ")
+                .padding(.top, 8)
 
-            ForEach(vm.posts) { post in
-                ExpertPostCard(post: post, isSuperpro: isSuperpro,
-                               onLike: { vm.toggleLike(postId: post.id) },
-                               onBookmark: { vm.toggleBookmark(postId: post.id) })
-                .padding(.horizontal, 16)
+            if vm.advisors.isEmpty {
+                emptyVerifiedMinds
+            } else {
+                ForEach(vm.advisors) { advisor in
+                    AdvisorBioCard(advisor: advisor)
+                        .padding(.horizontal, 16)
+                }
             }
         }
+    }
+
+    private var emptyVerifiedMinds: some View {
+        VStack(spacing: 8) {
+            Text("No advisor data available.")
+                .font(.system(size: 12))
+                .foregroundColor(Theme.inkTertiary)
+            Text("Check backend connection.")
+                .font(.system(size: 10))
+                .foregroundColor(Theme.inkTertiary.opacity(0.6))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+    }
+
+    // MARK: Loading Shimmer
+
+    private var loadingShimmer: some View {
+        VStack(spacing: 16) {
+            ForEach(0..<3, id: \.self) { _ in
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Theme.canvasDeep)
+                    .frame(height: 120)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Theme.borderSage, lineWidth: 0.5)
+                    )
+                    .padding(.horizontal, 16)
+                    .shimmerPlaceholder(isLoading: true)
+            }
+        }
+    }
+}
+
+// MARK: - Advisory Wire Insight Card
+
+private func sentimentColor(for sentiment: String?) -> Color {
+    guard let s = sentiment?.uppercased() else { return Theme.inkTertiary }
+    if s.contains("BULLISH") || s.contains("POSITIVE") { return Theme.bullGreen }
+    if s.contains("BEARISH") || s.contains("NEGATIVE") { return Theme.bearRed }
+    return Theme.inkTertiary
+}
+
+private func sentimentLabel(for sentiment: String?) -> String {
+    guard let s = sentiment?.uppercased() else { return "NEUTRAL" }
+    if s.contains("BULLISH") || s.contains("POSITIVE") { return "BULLISH" }
+    if s.contains("BEARISH") || s.contains("NEGATIVE") { return "BEARISH" }
+    return "NEUTRAL"
+}
+
+struct InsightCard: View {
+    let insight: TextAdvisoryInsight
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Header row: advisor name + timestamp + sentiment badge
+            HStack {
+                if let name = insight.advisorName, !name.isEmpty {
+                    Text(name)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(Theme.inkSecondary)
+                }
+                Spacer()
+                if let ts = insight.timestamp {
+                    Text(ts)
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(Theme.inkTertiary)
+                }
+                // Sentiment badge
+                Text(sentimentLabel(for: insight.extractedSentiment))
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .tracking(0.5)
+                    .foregroundColor(sentimentColor(for: insight.extractedSentiment))
+                    .padding(.horizontal, 6).padding(.vertical, 3)
+                    .background(sentimentColor(for: insight.extractedSentiment).opacity(0.08))
+                    .cornerRadius(3)
+            }
+
+            // Content text (monospaced)
+            Text(insight.contentText)
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundColor(Theme.inkPrimary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Ticker tag
+            if let ticker = insight.targetTicker, !ticker.isEmpty {
+                HStack(spacing: 4) {
+                    Text(ticker)
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundColor(Theme.securityGold)
+                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .background(Theme.securityGold.opacity(0.10))
+                        .cornerRadius(4)
+                    Spacer()
+                }
+            }
+        }
+        .padding(14)
+        .background(Theme.canvasDeep)
+        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.borderSage, lineWidth: 0.5))
+        .cornerRadius(4)
     }
 }
 
