@@ -325,4 +325,30 @@ extension NetworkManager {
             return nil
         }
     }
+
+    // MARK: - Ideas Workspace
+
+    func fetchAdvisors() async -> AdvisorsResponse? {
+        guard let url = URL(string: "\(baseURL)/api/v1/ideas/advisors") else { return nil }
+        do {
+            let (data, resp) = try await URLSession.shared.data(for: URLRequest(url: url))
+            guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+            return _diagnosticDecode(AdvisorsResponse.self, from: data, label: "Advisors")
+        } catch {
+            os_log(.error, "[Nivesh/Fetch] Advisors: %{public}@", error.localizedDescription)
+            return nil
+        }
+    }
+
+    func fetchIdeasFeed(limit: Int = 20, sentiment: String = "all") async -> IdeasFeedResponse? {
+        guard let url = URL(string: "\(baseURL)/api/v1/ideas/feed?limit=\(limit)&sentiment=\(sentiment)") else { return nil }
+        do {
+            let (data, resp) = try await URLSession.shared.data(for: URLRequest(url: url))
+            guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+            return _diagnosticDecode(IdeasFeedResponse.self, from: data, label: "IdeasFeed")
+        } catch {
+            os_log(.error, "[Nivesh/Fetch] IdeasFeed: %{public}@", error.localizedDescription)
+            return nil
+        }
+    }
 }
