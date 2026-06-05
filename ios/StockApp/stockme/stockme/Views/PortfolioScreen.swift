@@ -1475,7 +1475,9 @@ private struct NoteEditorSheet: View {
                                     chartCard(chart)
                                 }
                             }
+                            .padding(.horizontal, Theme.screenPadding)
                         }
+                        .horizontalScrollFixed(height: 240)
                     } else {
                         // Empty state — charts will populate after backend generates them
                         HStack(spacing: 8) {

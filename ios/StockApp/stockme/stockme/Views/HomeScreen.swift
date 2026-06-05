@@ -848,6 +848,7 @@ struct HomeScreen: View {
                                                 }
                                                 .padding(.horizontal, Theme.screenPadding)
                                             }
+                                            .horizontalScrollFixed(height: 180)
                                         }
 
                                         if !row2.isEmpty {
@@ -861,6 +862,7 @@ struct HomeScreen: View {
                                                 }
                                                 .padding(.horizontal, Theme.screenPadding)
                                             }
+                                            .horizontalScrollFixed(height: 180)
                                         }
 
                                         if !row3.isEmpty {
@@ -874,6 +876,7 @@ struct HomeScreen: View {
                                                 }
                                                 .padding(.horizontal, Theme.screenPadding)
                                             }
+                                            .horizontalScrollFixed(height: 180)
                                         }
                                     }
                                 }

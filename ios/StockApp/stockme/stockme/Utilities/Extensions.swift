@@ -25,6 +25,21 @@ extension Color {
 // MARK: - View modifiers
 
 extension View {
+    /// Fixes horizontal scroll UX: direction lock (fixed height), trailing inset, fade edge
+    func horizontalScrollFixed(height: CGFloat? = nil) -> some View {
+        self
+            .frame(height: height)
+            .overlay(alignment: .trailing) {
+                LinearGradient(
+                    gradient: Gradient(colors: [Theme.canvas.opacity(0), Theme.canvas]),
+                    startPoint: .leading, endPoint: .trailing
+                )
+                .frame(width: 32)
+                .allowsHitTesting(false)
+            }
+            .padding(.trailing, 16)
+    }
+
     func inkCard() -> some View {
         self
             .background(Theme.canvas)
