@@ -780,18 +780,19 @@ struct HomeScreen: View {
                                         .padding(.bottom, 12)
                                     }
 
-                                    // 5-wide compact news grid (2 rows × 5 cols = 10 items)
-                                    LazyVGrid(
-                                        columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5),
-                                        spacing: 8
-                                    ) {
-                                        ForEach(feed.news.prefix(10)) { article in
-                                            CompactNewsCell(article: article) { ticker in
-                                                navigationPath.append(ticker)
+                                    // Horizontal scrolling news strip — screen-width constrained
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 10) {
+                                            ForEach(feed.news.prefix(10)) { article in
+                                                CompactNewsCell(article: article) { ticker in
+                                                    navigationPath.append(ticker)
+                                                }
+                                                .frame(width: 150)
                                             }
                                         }
+                                        .padding(.horizontal, Theme.screenPadding)
                                     }
-                                    .padding(.horizontal, Theme.screenPadding)
+                                    .horizontalScrollFixed(height: 140)
                                 } else if feedVM.isLoading {
                                     // Skeleton shimmer while loading
                                     ForEach(0..<3, id: \.self) { _ in
