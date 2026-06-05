@@ -1496,17 +1496,67 @@ async def get_valuation_history(user_id: int, days: int = 90, authorization: str
 # 14a. GET /api/v1/portfolio/charts/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/api/v1/portfolio/charts/{user_id}")
-def portfolio_charts_endpoint(user_id: int, authorization: str = Header(None)):
-    """Generate portfolio charts as PNG images. Returns list of chart metadata with URLs."""
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
+async def portfolio_charts_endpoint(
+    user_id: int,
+    authorization: str = Header(None),
+    regenerate: bool = False,
+):
+    """Generate portfolio charts as PNG images. Returns list of chart metadata with URLs.
+
+    Charts are cached on disk per user. Set ?regenerate=true to force re‑generation.
+    Uses a thread-pool executor so the event loop is never blocked.
+    """
+    token_user = verify_access_token(
+        authorization.split(" ", 1)[1]
+        if authorization and authorization.startswith("Bearer ")
+        else ""
+    )
     if token_user is None or token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         from portfolio_charts import generate_portfolio_charts
         import os
+        import asyncio
+        import time as _time_module
+        from concurrent.futures import ThreadPoolExecutor
+
         chart_dir = os.path.join(os.path.dirname(__file__), "..", "charts")
         chart_dir = os.path.abspath(chart_dir)
-        charts = generate_portfolio_charts(user_id, chart_dir)
+        os.makedirs(chart_dir, exist_ok=True)
+
+        # ── Cache: serve existing charts unless regenerate was requested ──
+        existing = []
+        if not regenerate and os.path.isdir(chart_dir):
+            cutoff = _time_module.time() - 86400  # 24 h TTL
+            for fname in sorted(os.listdir(chart_dir)):
+                if fname.startswith(f"chart_{user_id}_") and fname.endswith(".png"):
+                    fpath = os.path.join(chart_dir, fname)
+                    if os.path.getmtime(fpath) > cutoff:
+                        existing.append(fname)
+
+        if existing and not regenerate:
+            cached_charts = []
+            for fname in sorted(existing):
+                n = fname.replace(f"chart_{user_id}_", "").replace(".png", "")
+                cached_charts.append({
+                    "filename": fname,
+                    "title": f"Chart {n}",
+                    "description": "Cached portfolio chart",
+                    "url": f"/charts/{fname}",
+                })
+            return {"charts": cached_charts, "count": len(cached_charts), "cached": True}
+
+        # ── Generate charts in thread pool (non-blocking) with 90 s timeout ──
+        loop = asyncio.get_running_loop()
+        charts = await asyncio.wait_for(
+            loop.run_in_executor(
+                ThreadPoolExecutor(max_workers=1),
+                generate_portfolio_charts,
+                user_id,
+                chart_dir,
+            ),
+            timeout=90.0,
+        )
         return {
             "charts": [
                 {
@@ -1518,10 +1568,18 @@ def portfolio_charts_endpoint(user_id: int, authorization: str = Header(None)):
                 for c in charts
             ],
             "count": len(charts),
+            "cached": False,
         }
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="Chart generation timed out after 90 seconds. Charts will be available on next request.",
+        )
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        print(f"[CHARTS] Generation failed: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
