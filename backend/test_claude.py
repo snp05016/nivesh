@@ -1,5 +1,5 @@
 import os
-from main import SONNET_MODEL, HAIKU_MODEL, DEEPSEEK_MODEL
+from services.orchestrator import SONNET_MODEL, HAIKU_MODEL, DEEPSEEK_MODEL
 import anthropic
 
 claude_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))

@@ -1,5 +1,5 @@
 import os
-from main import _deepseek_chat, reformat_with_claude
+from services.orchestrator import _deepseek_chat, reformat_with_claude
 
 print("Testing DeepSeek...")
 try:

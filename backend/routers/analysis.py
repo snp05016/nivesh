@@ -209,7 +209,7 @@ def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False):
     load_dotenv(dotenv_path=env_path, override=True)
     try:
         sys.path.insert(0, str(_Path(__file__).parent.parent))
-        from main import analyze
+        from services.orchestrator import analyze
         result = analyze(ticker, exchange, user_id, deep_scan=deep_scan)
         queue.put({"status": "ok", "result": result})
     except ImportError as e:

@@ -7,7 +7,7 @@ from datetime import date
 # Add current directory to path so we can import main
 sys.path.append(os.getcwd())
 
-from main import analyze, _normalize_response
+from services.orchestrator import analyze, _normalize_response
 
 async def diagnostic():
     ticker = "TCS"
