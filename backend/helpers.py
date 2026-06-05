@@ -101,7 +101,7 @@ TOKEN_LOG_PATH = os.path.join(os.path.dirname(__file__), "token_log.jsonl")
 _rate_limit_store: dict[str, list[float]] = defaultdict(list)
 _rate_limit_lock = threading.Lock()
 _RATE_LIMIT_WINDOW = 60
-_RATE_LIMIT_MAX = 30
+_RATE_LIMIT_MAX = 120    # increased from 30 — earnings dashboard fires 15+ parallel requests per load
 
 def _check_rate_limit(client_ip: str) -> bool:
     now = time.time()

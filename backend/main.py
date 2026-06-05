@@ -373,7 +373,7 @@ import threading
 _rate_limit_store: dict[str, list[float]] = defaultdict(list)
 _rate_limit_lock = threading.Lock()
 _RATE_LIMIT_WINDOW = 60  # seconds
-_RATE_LIMIT_MAX = 30     # requests per window
+_RATE_LIMIT_MAX = 120    # requests per window (increased from 30 — earnings dashboard fires 15+ parallel requests)
 
 def _check_rate_limit(client_ip: str) -> bool:
     now = time.time()
