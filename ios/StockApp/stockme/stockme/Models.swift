@@ -1625,3 +1625,61 @@ struct ExtendedMarketDashboardResponse: Codable {
         case fetchedAt = "fetched_at"
     }
 }
+
+// MARK: - Ideas Workspace Models
+
+struct AdvisorBiography: Codable, Identifiable {
+    let id: Int
+    let advisorName: String
+    let sebiRegNumber: String
+    let experienceYears: Int
+    let analyticalFramework: String?
+    let fullBiographyText: String
+    let createdAt: String?
+    enum CodingKeys: String, CodingKey {
+        case id
+        case advisorName = "advisor_name"
+        case sebiRegNumber = "sebi_reg_number"
+        case experienceYears = "experience_years"
+        case analyticalFramework = "analytical_framework"
+        case fullBiographyText = "full_biography_text"
+        case createdAt = "created_at"
+    }
+}
+
+struct AdvisorsResponse: Codable {
+    let advisors: [AdvisorBiography]
+    let count: Int
+    let fetchedAt: String
+    enum CodingKeys: String, CodingKey {
+        case advisors, count
+        case fetchedAt = "fetched_at"
+    }
+}
+
+struct TextAdvisoryInsight: Codable, Identifiable {
+    let id: Int
+    let advisorName: String?
+    let timestamp: String?
+    let contentText: String
+    let targetTicker: String?
+    let extractedSentiment: String?
+    enum CodingKeys: String, CodingKey {
+        case id
+        case advisorName = "advisor_name"
+        case timestamp
+        case contentText = "content_text"
+        case targetTicker = "target_ticker"
+        case extractedSentiment = "extracted_sentiment"
+    }
+}
+
+struct IdeasFeedResponse: Codable {
+    let insights: [TextAdvisoryInsight]
+    let count: Int
+    let fetchedAt: String
+    enum CodingKeys: String, CodingKey {
+        case insights, count
+        case fetchedAt = "fetched_at"
+    }
+}
