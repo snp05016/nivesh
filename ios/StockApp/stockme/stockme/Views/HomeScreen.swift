@@ -767,32 +767,21 @@ struct HomeScreen: View {
                                     .padding(.bottom, 12)
 
                                 if let feed = feedVM.feed {
-                                    // Red flag alerts at the top (if any)
-                                    if !feed.redFlagAlerts.isEmpty {
-                                        VStack(spacing: 8) {
-                                            ForEach(feed.redFlagAlerts) { article in
-                                                NewsCardView(article: article) { ticker in
-                                                    navigationPath.append(ticker)
-                                                }
-                                                .padding(.horizontal, Theme.screenPadding)
-                                            }
-                                        }
-                                        .padding(.bottom, 12)
-                                    }
-
-                                    // Horizontal scrolling news strip
+                                    // Horizontal scrolling news strip — all news in one scroll
                                     ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 10) {
+                                        HStack(spacing: 12) {
                                             ForEach(feed.news.prefix(10)) { article in
                                                 CompactNewsCell(article: article) { ticker in
                                                     navigationPath.append(ticker)
                                                 }
-                                                .frame(width: 220)
+                                                .frame(
+                                                    width: UIScreen.main.bounds.width * 0.62,
+                                                    height: UIScreen.main.bounds.width * 0.44
+                                                )
                                             }
                                         }
                                         .padding(.horizontal, Theme.screenPadding)
                                     }
-                                    .frame(height: 176)
                                 } else if feedVM.isLoading {
                                     // Skeleton shimmer while loading
                                     ForEach(0..<3, id: \.self) { _ in
@@ -2019,7 +2008,7 @@ struct CompactNewsCell: View {
 
                 Spacer(minLength: 0)
             }
-            .frame(height: 160, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
             .padding(8)
             .background(
                 RoundedRectangle(cornerRadius: 8)
