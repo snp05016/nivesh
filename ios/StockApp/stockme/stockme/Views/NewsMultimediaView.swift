@@ -27,7 +27,7 @@ struct NewsMultimediaView: View {
                     // 8.4 Expert Execution Panel
                     expertPanel
                 }
-                .padding(.bottom, 24)
+                .padding(.bottom, Theme.Spacing.large)
             }
         }
         .task { await loadFeed() }
@@ -39,20 +39,20 @@ struct NewsMultimediaView: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text("समाचार और बुद्धिमत्ता")
-                    .font(Theme.hindiFont(size: 11))
+                    .font(Theme.hindiFont(size: 11, relativeTo: .caption))
                     .foregroundColor(Theme.inkSecondary)
                 Text("NEWS & INTELLIGENCE")
-                    .font(Theme.engravedSerif(size: 24, weight: .bold))
+                    .font(Theme.engravedSerif(size: 24, weight: .bold, relativeTo: .title2))
                     .foregroundColor(Theme.inkPrimary)
                 Text("Premium Financial Newswire")
-                    .font(Theme.officialStampFont(size: 9))
+                    .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                     .foregroundColor(Theme.inkTertiary)
             }
             Spacer()
         }
         .padding(.horizontal, Theme.screenPadding)
-        .padding(.top, 14)
-        .padding(.bottom, 10)
+        .padding(.top, Theme.Spacing.standard)
+        .padding(.bottom, Theme.Spacing.standard)
         .background(Theme.canvasDeep)
     }
 
@@ -72,8 +72,8 @@ struct NewsMultimediaView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 4)
+                .padding(.horizontal, Theme.Spacing.card)
+                .padding(.vertical, Theme.Spacing.small)
             }
         }
     }
@@ -88,7 +88,7 @@ struct NewsMultimediaView: View {
                 HStack(spacing: 12) {
                     ForEach(0..<3, id: \.self) { _ in videoCardPlaceholder }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Theme.Spacing.card)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
@@ -96,7 +96,7 @@ struct NewsMultimediaView: View {
                             VideoCard(video: video)
                         }
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Theme.Spacing.card)
                     .padding(.vertical, 4)
                 }
             }
@@ -113,15 +113,15 @@ struct NewsMultimediaView: View {
             let editorials = articles.filter { ($0.summary?.count ?? 0) > 100 }.prefix(4)
             ForEach(Array(editorials)) { article in
                 EditorialRow(article: article)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Theme.Spacing.card)
             }
 
             if editorials.isEmpty && !isLoading {
                 Text("No editorial columns available.")
-                    .font(.system(size: 12))
+                    .font(.caption)
                     .foregroundColor(Theme.inkTertiary)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
+                    .padding(.horizontal, Theme.Spacing.card)
+                    .padding(.bottom, Theme.Spacing.medium)
             }
         }
     }
@@ -137,22 +137,22 @@ struct NewsMultimediaView: View {
                 ForEach(Array(expertTabs.enumerated()), id: \.offset) { idx, tab in
                     Button(action: { expertTab = idx }) {
                         Text(tab)
-                            .font(.system(size: 10, weight: expertTab == idx ? .bold : .regular))
+                            .font(.caption2.weight(expertTab == idx ? .bold : .regular))
                             .foregroundColor(expertTab == idx ? Theme.securityGold : Theme.inkTertiary)
                             .multilineTextAlignment(.center)
-                            .padding(.vertical, 9)
+                            .padding(.vertical, Theme.Spacing.medium)
                             .frame(maxWidth: .infinity)
                             .background(expertTab == idx ? Theme.securityGold.opacity(0.08) : Color.clear)
                     }
                 }
             }
             .background(Theme.canvasDeep)
-            .cornerRadius(8)
-            .padding(.horizontal, 16)
+            .cornerRadius(Theme.CornerRadius.medium)
+            .padding(.horizontal, Theme.Spacing.card)
 
             // Expert call cards based on selected panel
             expertCallCards(for: expertTab)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Theme.Spacing.card)
         }
     }
 
@@ -167,10 +167,10 @@ struct NewsMultimediaView: View {
     @ViewBuilder
     private func expertCallCards(for tab: Int) -> some View {
         Text(expertCallPlaceholder(for: tab))
-            .font(.system(size: 12))
+            .font(.caption)
             .foregroundColor(Theme.inkSecondary)
             .lineSpacing(4)
-            .padding(14)
+            .padding(Theme.Spacing.standard)
             .frame(maxWidth: .infinity, alignment: .leading)
             .banknoteCard()
     }
@@ -178,24 +178,26 @@ struct NewsMultimediaView: View {
     // MARK: Placeholders
 
     private var newsCardPlaceholder: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            RoundedRectangle(cornerRadius: 6).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 220, height: 100)
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 180, height: 12)
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 120, height: 10)
+        let cardWidth: CGFloat = UIScreen.main.bounds.width * 0.58
+        return VStack(alignment: .leading, spacing: 8) {
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).fill(Theme.inkTertiary.opacity(0.10)).frame(width: cardWidth, height: UIScreen.main.bounds.height * 0.12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: cardWidth * 0.8, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: cardWidth * 0.55, height: 10)
         }
-        .padding(12)
-        .frame(width: 220)
+        .padding(Theme.Spacing.standard)
+        .frame(width: cardWidth)
         .banknoteCard()
         .shimmerPlaceholder(isLoading: true)
     }
 
     private var videoCardPlaceholder: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            RoundedRectangle(cornerRadius: 6).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 180, height: 100)
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 150, height: 12)
+        let cardWidth: CGFloat = UIScreen.main.bounds.width * 0.45
+        return VStack(alignment: .leading, spacing: 8) {
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).fill(Theme.inkTertiary.opacity(0.10)).frame(width: cardWidth, height: UIScreen.main.bounds.height * 0.07)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: cardWidth * 0.83, height: 12)
         }
-        .padding(10)
-        .frame(width: 180)
+        .padding(Theme.Spacing.standard)
+        .frame(width: cardWidth)
         .banknoteCard()
         .shimmerPlaceholder(isLoading: true)
     }
@@ -243,17 +245,17 @@ struct NewsCarouselCard: View {
                 let color: Color = sentiment.lowercased().contains("positive") ? Theme.bullGreen :
                                    sentiment.lowercased().contains("negative") ? Theme.bearRed : Theme.holdAmber
                 Text(sentiment.uppercased())
-                    .font(.system(size: 7, weight: .bold, design: .monospaced))
+                    .font(.caption2.weight(.bold).monospaced())
                     .tracking(1)
                     .foregroundColor(color)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, Theme.Spacing.tight)
+                    .padding(.vertical, Theme.Spacing.xSmall)
                     .background(color.opacity(0.10))
-                    .cornerRadius(3)
+                    .cornerRadius(Theme.CornerRadius.small)
             }
 
             Text(article.headline)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.caption.weight(.semibold))
                 .foregroundColor(Theme.inkPrimary)
                 .lineLimit(3)
                 .lineSpacing(2)
@@ -262,17 +264,17 @@ struct NewsCarouselCard: View {
 
             HStack {
                 Text(article.source)
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.caption2.weight(.medium))
                     .foregroundColor(Theme.inkTertiary)
                 Spacer()
                 // 8.3 Time-elapsed label
                 Text(timeLabel)
-                    .font(.system(size: 9))
+                    .font(.caption2)
                     .foregroundColor(Theme.inkTertiary)
             }
         }
-        .padding(12)
-        .frame(width: 220, height: 130)
+        .padding(Theme.Spacing.standard)
+        .frame(width: UIScreen.main.bounds.width * 0.58, height: UIScreen.main.bounds.height * 0.16)
         .banknoteCard()
     }
 }
@@ -285,52 +287,81 @@ struct VideoCard: View {
 
     var body: some View {
         Button(action: { showPlayer = true }) {
-            VStack(alignment: .leading, spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Theme.canvasDeep)
-                        .frame(width: 180, height: 100)
-                    Image(systemName: "play.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundColor(Theme.securityGold.opacity(0.8))
-                    VStack {
-                        Spacer()
-                        HStack {
-                            Spacer()
-                            Text(video.formattedDuration)
-                                .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(Color.black.opacity(0.5))
-                                .cornerRadius(3)
-                                .padding(6)
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                // Thumbnail with AsyncImage
+                ZStack(alignment: .bottomTrailing) {
+                    if let thumbUrl = video.thumbnailUrl, let url = URL(string: thumbUrl) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(16/9, contentMode: .fill)
+                                    .frame(height: UIScreen.main.bounds.height * 0.07)
+                                    .clipped()
+                                    .cornerRadius(Theme.CornerRadius.tight)
+                            case .failure(_), .empty:
+                                Rectangle()
+                                    .fill(Theme.canvasDeep)
+                                    .aspectRatio(16/9, contentMode: .fill)
+                                    .frame(height: UIScreen.main.bounds.height * 0.07)
+                                    .cornerRadius(Theme.CornerRadius.tight)
+                                    .overlay(
+                                        Image(systemName: "play.circle.fill")
+                                            .font(.largeTitle)
+                                            .foregroundColor(Theme.inkTertiary.opacity(0.4))
+                                    )
+                            @unknown default:
+                                EmptyView()
+                            }
                         }
+                    } else {
+                        Rectangle()
+                            .fill(Theme.canvasDeep)
+                            .aspectRatio(16/9, contentMode: .fill)
+                            .frame(height: UIScreen.main.bounds.height * 0.07)
+                            .cornerRadius(Theme.CornerRadius.tight)
+                            .overlay(
+                                Image(systemName: "play.circle.fill")
+                                    .font(.largeTitle)
+                                    .foregroundColor(Theme.inkTertiary.opacity(0.4))
+                            )
                     }
-                    .frame(width: 180, height: 100)
+
+                    // Duration badge
+                    if video.durationSeconds > 0 {
+                        Text(video.formattedDuration)
+                            .font(.caption2.weight(.semibold).monospaced())
+                            .foregroundColor(.white)
+                            .padding(.horizontal, Theme.Spacing.tight)
+                            .padding(.vertical, Theme.Spacing.xSmall)
+                            .background(Color.black.opacity(0.65))
+                            .cornerRadius(Theme.CornerRadius.small)
+                            .padding(Theme.Spacing.tight)
+                    }
                 }
 
+                // Title
                 Text(video.title)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.caption.weight(.semibold))
                     .foregroundColor(Theme.inkPrimary)
                     .lineLimit(2)
                     .lineSpacing(2)
-                    .frame(width: 180, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
+                // Channel + views footer
                 HStack {
                     Text(video.channelName)
-                        .font(.system(size: 9))
+                        .font(.caption2)
                         .foregroundColor(Theme.inkSecondary)
                     Spacer()
                     Text("\(video.formattedViewCount) views")
-                        .font(.system(size: 9))
+                        .font(.caption2)
                         .foregroundColor(Theme.inkTertiary)
                 }
             }
-            .frame(width: 180)
         }
         .buttonStyle(EKPressStyle())
-        // 8.2 In-app playback (opens Safari/native — no external SDK needed)
         .sheet(isPresented: $showPlayer) {
             if let url = URL(string: video.videoUrl) {
                 SafariSheetView(url: url)
@@ -355,13 +386,13 @@ struct EditorialRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(article.headline)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.footnote.weight(.semibold))
                 .foregroundColor(Theme.inkPrimary)
                 .lineSpacing(2)
 
             if let summary = article.summary {
                 Text(summary)
-                    .font(.system(size: 11))
+                    .font(.caption)
                     .foregroundColor(Theme.inkSecondary)
                     .lineLimit(3)
                     .lineSpacing(3)
@@ -369,16 +400,16 @@ struct EditorialRow: View {
 
             HStack {
                 Text(article.source)
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.caption2.weight(.medium))
                     .foregroundColor(Theme.inkTertiary)
                 Spacer()
                 // 8.3 time-elapsed publication marker
                 Text(timeLabel)
-                    .font(.system(size: 9))
+                    .font(.caption2)
                     .foregroundColor(Theme.inkTertiary)
             }
         }
-        .padding(12)
+        .padding(Theme.Spacing.standard)
         .banknoteCard()
     }
 }

@@ -6,8 +6,8 @@ private enum NiveshTheme {
     static let background    = Color(hex: "1C1A14")
     static let canvasDeep    = Color(hex: "242018")
     static let canvasShadow  = Color(hex: "141210")
-    static let inkSecondary  = Color(hex: "8A9E80")
-    static let inkTertiary   = Color(hex: "5C5C52")
+    static let inkSecondary  = Color(hex: "9BAF92")
+    static let inkTertiary   = Color(hex: "8A8A7A")
     static let goldBright    = Color(hex: "C8A84A")
     static let goldDull      = Color(hex: "B8973A")
     static let goldGradient  = LinearGradient(
@@ -18,6 +18,7 @@ private enum NiveshTheme {
     static let outerBorder   = Color(hex: "C8A84A").opacity(0.55)
     static let innerBorder   = Color(hex: "C8A84A").opacity(0.25)
     static let ruleColor     = Color(hex: "C8A84A").opacity(0.35)
+    static let iconCornerRadius: CGFloat = 22
 }
 
 // MARK: - Icon canvas (N + rising chart + dot + निवेश)
@@ -128,17 +129,17 @@ struct LaunchScreenView: View {
                 VStack(spacing: 20) {
                     // Icon mark — 130×130 with double border
                     ZStack {
-                        RoundedRectangle(cornerRadius: 22)
+                        RoundedRectangle(cornerRadius: NiveshTheme.iconCornerRadius)
                             .fill(NiveshTheme.canvasDeep)
-                            .frame(width: 130, height: 130)
+                            .frame(width: UIScreen.main.bounds.width * 0.35, height: UIScreen.main.bounds.width * 0.35)
 
-                        RoundedRectangle(cornerRadius: 22)
+                        RoundedRectangle(cornerRadius: NiveshTheme.iconCornerRadius)
                             .stroke(NiveshTheme.outerBorder, lineWidth: 1.2)
-                            .frame(width: 130, height: 130)
+                            .frame(width: UIScreen.main.bounds.width * 0.35, height: UIScreen.main.bounds.width * 0.35)
 
                         RoundedRectangle(cornerRadius: 19)
                             .stroke(NiveshTheme.innerBorder, lineWidth: 0.5)
-                            .frame(width: 122, height: 122)
+                            .frame(width: UIScreen.main.bounds.width * 0.35 * (122.0 / 130.0), height: UIScreen.main.bounds.width * 0.35 * (122.0 / 130.0))
 
                         NiveshIconCanvas()
                             .frame(width: 100, height: 100)
@@ -150,26 +151,26 @@ struct LaunchScreenView: View {
                         HStack(spacing: 14) {
                             Rectangle()
                                 .fill(NiveshTheme.ruleColor)
-                                .frame(width: 22, height: 0.6)
+                                .frame(width: UIScreen.main.bounds.width * 0.056, height: 0.6)
 
                             Text("NIVESH")
-                                .font(Font.custom("Georgia-Bold", size: 24))
+                                .font(Font.custom("Georgia-Bold", size: 24, relativeTo: .title))
                                 .tracking(24 * 0.20)
                                 .overlay(NiveshTheme.goldGradient)
                                 .mask(
                                     Text("NIVESH")
-                                        .font(Font.custom("Georgia-Bold", size: 24))
+                                        .font(Font.custom("Georgia-Bold", size: 24, relativeTo: .title))
                                         .tracking(24 * 0.20)
                                 )
 
                             Rectangle()
                                 .fill(NiveshTheme.ruleColor)
-                                .frame(width: 22, height: 0.6)
+                                .frame(width: UIScreen.main.bounds.width * 0.056, height: 0.6)
                         }
 
                         // Subtitle
                         Text("निवेश · Invest with Clarity")
-                            .font(Font.custom("Georgia", size: 13).italic())
+                            .font(Font.custom("Georgia", size: 13, relativeTo: .footnote).italic())
                             .tracking(13 * 0.08)
                             .foregroundColor(NiveshTheme.inkSecondary)
                     }
@@ -184,7 +185,7 @@ struct LaunchScreenView: View {
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(NiveshTheme.canvasShadow)
-                        .frame(width: 64, height: 3.5)
+                        .frame(width: UIScreen.main.bounds.width * 0.164, height: 3.5)
 
                     Capsule()
                         .fill(NiveshTheme.goldBright)
@@ -194,7 +195,7 @@ struct LaunchScreenView: View {
 
                 // ── Disclaimer ──────────────────────────────────────────
                 Text("For informational purposes only")
-                    .font(.system(size: 8.5))
+                    .font(.caption2)
                     .tracking(8.5 * 0.05)
                     .foregroundColor(NiveshTheme.inkTertiary)
                     .padding(.bottom, 40)

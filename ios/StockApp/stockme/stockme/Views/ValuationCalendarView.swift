@@ -9,17 +9,17 @@ struct ValuationCalendarView: View {
     @State private var selectedSnapshot: ValuationSnapshot? = nil
     @State private var selectedMonth: Date = Date()
 
-    private let goldAccent = Color(red: 0.78, green: 0.64, blue: 0.25)
-    private let bullGreen  = Color(red: 0.10, green: 0.53, blue: 0.24)
-    private let bearRed    = Color(red: 0.72, green: 0.09, blue: 0.09)
-    private let dimText    = Color.primary.opacity(0.45)
+    private let goldAccent = Theme.securityGold
+    private let bullGreen  = Theme.bullGreen
+    private let bearRed    = Theme.bearRed
+    private let dimText    = Theme.inkSecondary
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
                 .fill(.ultraThinMaterial)
                 .overlay(PaperTexture().opacity(0.6))
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.primary.opacity(0.07), lineWidth: 0.5))
+                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderFine, lineWidth: 0.5))
 
             RBISealBackground().opacity(0.04)
 
@@ -29,27 +29,27 @@ struct ValuationCalendarView: View {
                 VStack(alignment: .leading, spacing: 0) {
 
                     // Card Header
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("मूल्यांकन इतिहास")
-                            .font(.system(size: 10, weight: .regular))
+                            .font(.caption)
                             .foregroundColor(dimText)
                         HStack {
                             Text("PORTFOLIO CALENDAR")
-                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                .font(Theme.serialNumberFont(size: 11))
                                 .tracking(2.0)
-                                .foregroundColor(.primary.opacity(0.45))
+                                .foregroundColor(Theme.inkSecondary)
                             Spacer()
                             // Period selector
-                            HStack(spacing: 4) {
+                            HStack(spacing: Theme.Spacing.small) {
                                 ForEach(["1M", "3M", "6M", "1Y"], id: \.self) { period in
                                     Button(action: { vm.fetchHistory(userId: userId, period: period) }) {
                                         Text(period)
-                                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                            .font(Theme.serialNumberFont(size: 9))
                                             .foregroundColor(vm.selectedPeriod == period ? goldAccent : dimText)
-                                            .padding(.horizontal, 6)
+                                            .padding(.horizontal, Theme.Spacing.tight)
                                             .padding(.vertical, 3)
                                             .background(vm.selectedPeriod == period ? goldAccent.opacity(0.12) : Color.clear)
-                                            .cornerRadius(4)
+                                            .cornerRadius(Theme.CornerRadius.small)
                                     }
                                     .buttonStyle(EKPressStyle())
                                 }
@@ -59,7 +59,7 @@ struct ValuationCalendarView: View {
                     .padding(.bottom, 10)
 
                     GuillocheDivider()
-                        .padding(.bottom, 14)
+                        .padding(.bottom, Theme.Spacing.card)
 
                     // Summary Stats Row
                     if let summary = vm.summary {
@@ -121,25 +121,25 @@ struct ValuationCalendarView: View {
                         }
                         .chartXAxis {
                             AxisMarks(values: .stride(by: .month)) { _ in
-                                AxisGridLine().foregroundStyle(Color.primary.opacity(0.06))
+                                AxisGridLine().foregroundStyle(Theme.borderFine)
                                 AxisValueLabel(format: .dateTime.month(.abbreviated))
-                                    .font(.system(size: 9))
+                                    .font(Theme.officialStampFont(size: 9))
                                     .foregroundStyle(dimText)
                             }
                         }
                         .chartYAxis {
                             AxisMarks(position: .trailing) { value in
-                                AxisGridLine().foregroundStyle(Color.primary.opacity(0.06))
+                                AxisGridLine().foregroundStyle(Theme.borderFine)
                                 AxisValueLabel {
                                     if let v = value.as(Double.self) {
                                         Text(formatCompact(v))
-                                            .font(.system(size: 9, design: .monospaced))
+                                            .font(Theme.serialNumberFont(size: 9))
                                             .foregroundStyle(dimText)
                                     }
                                 }
                             }
                         }
-                        .frame(height: 140)
+                        .frame(height: UIScreen.main.bounds.height * 0.17)
                         .chartOverlay { proxy in
                             GeometryReader { geo in
                                 Rectangle().fill(.clear).contentShape(Rectangle())
@@ -162,18 +162,18 @@ struct ValuationCalendarView: View {
                         if let sel = selectedSnapshot {
                             HStack {
                                 Text(sel.date)
-                                    .font(.system(size: 11, design: .monospaced))
+                                    .font(Theme.serialNumberFont(size: 11))
                                     .foregroundColor(dimText)
                                 Spacer()
                                 Text(formatCurrency(sel.totalValue))
-                                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                                    .foregroundColor(.primary.opacity(0.85))
+                                    .font(Theme.serialNumberFont(size: 13))
+                                    .foregroundColor(.secondary)
                                 Text(String(format: "%+.2f%%", sel.pnlPercent))
-                                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                    .font(Theme.serialNumberFont(size: 12))
                                     .foregroundColor(sel.pnlPercent >= 0 ? bullGreen : bearRed)
                             }
-                            .padding(.horizontal, 4)
-                            .padding(.bottom, 8)
+                            .padding(.horizontal, Theme.Spacing.small)
+                            .padding(.bottom, Theme.Spacing.medium)
                         }
 
                         // Calendar Heat Grid
@@ -184,13 +184,13 @@ struct ValuationCalendarView: View {
                             .frame(maxWidth: .infinity, minHeight: 200)
                     } else {
                         Text("No valuation history yet. First snapshot captured at market close.")
-                            .font(.system(size: 12))
+                            .font(Theme.officialStampFont(size: 12))
                             .foregroundColor(dimText)
                             .frame(maxWidth: .infinity, minHeight: 80)
                             .multilineTextAlignment(.center)
                     }
                 }
-                .padding(14)
+                .padding(Theme.Spacing.card)
             }
         }
         .onAppear { vm.fetchHistory(userId: userId, period: "3M") }
@@ -221,11 +221,11 @@ struct CalendarHeatGrid: View {
     let snapshots: [ValuationSnapshot]
     @Binding var selectedMonth: Date
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.small), count: 7)
     private let dayLabels = ["M", "T", "W", "T", "F", "S", "S"]
-    private let goldAccent = Color(red: 0.78, green: 0.64, blue: 0.25)
-    private let bullGreen  = Color(red: 0.10, green: 0.53, blue: 0.24)
-    private let bearRed    = Color(red: 0.72, green: 0.09, blue: 0.09)
+    private let goldAccent = Theme.securityGold
+    private let bullGreen  = Theme.bullGreen
+    private let bearRed    = Theme.bearRed
 
     // Build lookup dict from snapshot date string to pnl_percent
     var pnlByDate: [String: Double] {
@@ -247,48 +247,48 @@ struct CalendarHeatGrid: View {
     }
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: Theme.Spacing.small) {
             // Month navigation
             HStack {
                 Button(action: { changeMonth(-1) }) {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.primary.opacity(0.45))
+                        .font(Theme.officialStampFont(size: 11))
+                        .foregroundColor(Theme.inkSecondary)
                 }
                 .buttonStyle(EKPressStyle())
                 Spacer()
                 Text(selectedMonth, format: .dateTime.month(.wide).year())
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                    .foregroundColor(.primary.opacity(0.55))
+                    .font(Theme.serialNumberFont(size: 11))
+                    .foregroundColor(Theme.inkPrimary)
                 Spacer()
                 Button(action: { changeMonth(1) }) {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.primary.opacity(0.45))
+                        .font(Theme.officialStampFont(size: 11))
+                        .foregroundColor(Theme.inkSecondary)
                 }
                 .buttonStyle(EKPressStyle())
             }
-            .padding(.bottom, 4)
+            .padding(.bottom, Theme.Spacing.small)
 
             // Day labels
-            LazyVGrid(columns: columns, spacing: 4) {
+            LazyVGrid(columns: columns, spacing: Theme.Spacing.small) {
                 ForEach(dayLabels, id: \.self) { label in
                     Text(label)
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundColor(.primary.opacity(0.30))
+                        .font(Theme.officialStampFont(size: 9))
+                        .foregroundColor(Theme.inkTertiary)
                         .frame(maxWidth: .infinity)
                 }
             }
 
             // Day cells
-            LazyVGrid(columns: columns, spacing: 4) {
+            LazyVGrid(columns: columns, spacing: Theme.Spacing.small) {
                 ForEach(0..<daysInSelectedMonth.count, id: \.self) { idx in
                     if let date = daysInSelectedMonth[idx] {
                         let dateStr = ISO8601DateFormatter().string(from: date).prefix(10).description
                         let pnl = pnlByDate[dateStr]
                         DayCell(date: date, pnlPercent: pnl)
                     } else {
-                        Color.clear.frame(height: 28)
+                        Color.clear.frame(minHeight: 28)
                     }
                 }
             }
@@ -305,11 +305,11 @@ struct CalendarHeatGrid: View {
 struct DayCell: View {
     let date: Date
     let pnlPercent: Double?
-    private let bullGreen  = Color(red: 0.10, green: 0.53, blue: 0.24)
-    private let bearRed    = Color(red: 0.72, green: 0.09, blue: 0.09)
+    private let bullGreen  = Theme.bullGreen
+    private let bearRed    = Theme.bearRed
 
     var cellColor: Color {
-        guard let pnl = pnlPercent else { return Color.primary.opacity(0.05) }
+        guard let pnl = pnlPercent else { return Theme.borderFine }
         if pnl >= 1.5  { return bullGreen.opacity(0.85) }
         if pnl >= 0.5  { return bullGreen.opacity(0.50) }
         if pnl >= 0.0  { return bullGreen.opacity(0.20) }
@@ -320,15 +320,15 @@ struct DayCell: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 5)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.tight)
                 .fill(cellColor)
-                .frame(height: 28)
+                .frame(minHeight: 28)
             Text("\(Calendar.current.component(.day, from: date))")
-                .font(.system(size: 10, weight: pnlPercent != nil ? .semibold : .regular, design: .monospaced))
+                .font(Theme.serialNumberFont(size: 10))
                 .foregroundColor(
                     pnlPercent != nil
-                        ? Color.primary.opacity(0.80)
-                        : Color.primary.opacity(0.25)
+                        ? .secondary
+                        : Theme.inkTertiary
                 )
         }
     }
@@ -379,11 +379,11 @@ struct StatPill: View {
     var body: some View {
         VStack(alignment: .center, spacing: 3) {
             Text(label)
-                .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                .font(Theme.serialNumberFont(size: 8))
                 .tracking(1.0)
-                .foregroundColor(Color.primary.opacity(0.35))
+                .foregroundColor(Theme.inkTertiary)
             Text(value)
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .font(Theme.serialNumberFont(size: 12))
                 .foregroundColor(color)
         }
         .frame(maxWidth: .infinity)

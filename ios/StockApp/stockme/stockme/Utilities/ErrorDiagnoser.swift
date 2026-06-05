@@ -130,12 +130,12 @@ struct ErrorDiagnoserView: View {
     var body: some View {
         if let error = error {
             VStack(spacing: 0) {
-                VStack(spacing: 16) {
+                VStack(spacing: Theme.Spacing.card) {
                     currencyBand
 
-                    VStack(spacing: 10) {
+                    VStack(spacing: Theme.Spacing.standard) {
                         Text("DATA FAULT")
-                            .font(Font.custom("Georgia-Bold", size: 14))
+                            .font(Theme.engravedSerif(size: 14, weight: .bold))
                             .foregroundColor(Theme.bearRed)
                             .tracking(3)
 
@@ -146,8 +146,8 @@ struct ErrorDiagnoserView: View {
                                 Text("ERROR VECTOR")
                                     .font(.system(size: 7, weight: .bold, design: .monospaced))
                                     .tracking(2)
-                                    .foregroundColor(Theme.bearRed.opacity(0.4))
-                                    .padding(.horizontal, 6)
+                                    .foregroundColor(Theme.bearRed.opacity(0.6))
+                                    .padding(.horizontal, Theme.Spacing.tight)
                                     .background(Theme.canvasDeep)
                             )
 
@@ -165,13 +165,13 @@ struct ErrorDiagnoserView: View {
                                 isRetrying = true
                                 Task { await retry(); isRetrying = false }
                             } label: {
-                                HStack(spacing: 6) {
+                                HStack(spacing: Theme.Spacing.tight) {
                                     if isRetrying { ProgressView().scaleEffect(0.7).tint(Theme.securityGold) }
                                     Text(isRetrying ? "RETRYING…" : "RETRY")
-                                        .font(.system(size: 9, weight: .bold)).tracking(3)
+                                        .font(Theme.officialStampFont(size: 9)).tracking(3)
                                 }
                                 .foregroundColor(Theme.securityGold)
-                                .padding(.horizontal, 16).padding(.vertical, 6)
+                                .padding(.horizontal, Theme.Spacing.card).padding(.vertical, Theme.Spacing.tight)
                                 .background(Theme.securityGold.opacity(0.06))
                                 .overlay(RoundedRectangle(cornerRadius: 2)
                                     .stroke(Theme.securityGold.opacity(0.25), lineWidth: 1))
@@ -179,12 +179,12 @@ struct ErrorDiagnoserView: View {
                             .disabled(isRetrying)
                         }
                     }
-                    .padding(.horizontal, 16).padding(.bottom, 16)
+                    .padding(.horizontal, Theme.Spacing.card).padding(.bottom, Theme.Spacing.card)
                 }
                 .background(
                     ZStack {
                         Theme.canvasDeep
-                        Text("₹").font(Font.custom("Georgia-Bold", size: 140))
+                        Text("₹").font(Theme.engravedSerif(size: 140, weight: .bold))
                             .foregroundColor(Theme.bearRed.opacity(0.02))
                             .offset(x: 50, y: 10).allowsHitTesting(false)
                     }
@@ -195,8 +195,8 @@ struct ErrorDiagnoserView: View {
 
                 Text("NIVESH APPAREL • RBI • \(context.classification.prefix(20).uppercased())")
                     .font(.system(size: 6, weight: .medium, design: .monospaced))
-                    .foregroundColor(Theme.inkTertiary.opacity(0.4))
-                    .tracking(1.2).padding(.top, 6)
+                    .foregroundColor(Theme.inkTertiary)
+                    .tracking(1.2).padding(.top, Theme.Spacing.tight)
             }
             .padding(Theme.cardPadding)
         }
@@ -212,7 +212,7 @@ struct ErrorDiagnoserView: View {
                 Rectangle().fill(Theme.bearRed.opacity(0.25)).frame(height: 1)
                 Text("DIAGNOSTIC").font(.system(size: 8, weight: .bold, design: .monospaced))
                     .tracking(3).foregroundColor(Theme.bearRed.opacity(0.6))
-                    .padding(.horizontal, 12).padding(.vertical, 2)
+                    .padding(.horizontal, Theme.Spacing.standard).padding(.vertical, Theme.Spacing.xSmall)
                 Rectangle().fill(Theme.bearRed.opacity(0.25)).frame(height: 1)
             }
             Rectangle().fill(Theme.bearRed.opacity(0.10)).frame(width: 32, height: 22)
@@ -225,17 +225,17 @@ struct ErrorDiagnoserView: View {
     private var diagnosticExpander: some View {
         VStack(spacing: 0) {
             Button { withAnimation(.easeInOut(duration: 0.2)) { showDiagnostics.toggle() } } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: showDiagnostics ? "chevron.down" : "chevron.right").font(.system(size: 8, weight: .bold))
                     Text("DIAGNOSTICS").font(.system(size: 8, weight: .bold, design: .monospaced)).tracking(2)
                     Spacer()
                     Text(context.correlationId ?? "no-id").font(.system(size: 7, design: .monospaced))
                         .foregroundColor(Theme.inkTertiary).lineLimit(1)
                 }
-                .foregroundColor(Theme.securityGold.opacity(0.7)).padding(.vertical, 4)
+                .foregroundColor(Theme.securityGold.opacity(0.7)).padding(.vertical, Theme.Spacing.small)
             }
             if showDiagnostics {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     diagRow("Endpoint", context.endpoint)
                     if let s = context.httpStatus { diagRow("HTTP", "\(s)") }
                     if let c = context.correlationId { diagRow("Correlation ID", c) }
@@ -247,22 +247,22 @@ struct ErrorDiagnoserView: View {
                         UIPasteboard.general.string = "ERROR: \(error ?? "")\n\(context.summary)"
                         #endif
                     } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: Theme.Spacing.small) {
                             Image(systemName: "doc.on.doc").font(.system(size: 8))
                             Text("COPY TO CLIPBOARD").font(.system(size: 7, weight: .bold, design: .monospaced)).tracking(1)
                         }
-                        .foregroundColor(Theme.securityGold.opacity(0.6)).padding(.vertical, 4)
+                        .foregroundColor(Theme.securityGold.opacity(0.6)).padding(.vertical, Theme.Spacing.small)
                     }
                 }
-                .padding(8).background(Theme.canvasShadow.opacity(0.3)).cornerRadius(2)
+                .padding(Theme.Spacing.medium).background(Theme.canvasShadow.opacity(0.3)).cornerRadius(2)
             }
         }
     }
 
     private func diagRow(_ label: String, _ value: String) -> some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: Theme.Spacing.medium) {
             Text(label.uppercased()).font(.system(size: 7, weight: .semibold, design: .monospaced))
-                .foregroundColor(Theme.inkTertiary).frame(width: 70, alignment: .leading)
+                .foregroundColor(Theme.inkTertiary).frame(minWidth: 60, alignment: .leading)
             Text(value).font(.system(size: 7, design: .monospaced))
                 .foregroundColor(Theme.inkSecondary).frame(maxWidth: .infinity, alignment: .leading)
         }

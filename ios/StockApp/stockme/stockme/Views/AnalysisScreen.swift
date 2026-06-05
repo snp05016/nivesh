@@ -160,7 +160,7 @@ struct AnalysisScreen: View {
                 } label: {
                     Image(systemName: "chevron.left")
                         .foregroundColor(Theme.inkPrimary)
-                        .padding(8)
+                        .padding(Theme.Spacing.medium)
                         .background(Theme.canvasDeep)
                         .clipShape(Circle())
                 }
@@ -278,7 +278,7 @@ struct AnalysisScreen: View {
                             .foregroundColor(info.change >= 0 ? Theme.bullGreen : Theme.bearRed)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(24)
+                        .padding(Theme.Spacing.large)
                         .banknoteCard()
                     }
                     .padding(.top, 20)
@@ -295,7 +295,7 @@ struct AnalysisScreen: View {
                             .foregroundColor(Theme.inkPrimary)
                             .lineSpacing(4)
                     }
-                    .padding(20)
+                    .padding(Theme.Spacing.screen)
                     .background(Theme.holdAmber.opacity(0.06))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.securityGold.opacity(0.4), lineWidth: 1))
@@ -305,14 +305,14 @@ struct AnalysisScreen: View {
                     if deepScanEnabled {
                         HStack(spacing: 6) {
                             Image(systemName: "waveform.badge.magnifyingglass")
-                                .font(.system(size: 11, weight: .medium))
+                                .font(.caption.weight(.medium))
                             Text("DEEP SCAN ACTIVE")
                                 .font(Theme.officialStampFont(size: 8))
                                 .tracking(1.5)
                         }
                         .foregroundColor(Theme.securityGold)
                         .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, Theme.Spacing.tight)
                         .background(Theme.securityGold.opacity(0.08))
                         .clipShape(Capsule())
                         .overlay(Capsule().stroke(Theme.securityGold.opacity(0.25), lineWidth: 0.5))
@@ -333,10 +333,10 @@ struct AnalysisScreen: View {
                             .foregroundColor(Theme.inkPrimary)
 
                         Text(useMockAI ? "Bypassing heavy compute to preserve tender." : "Securing fundamental, news, and technical data threads...")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.footnote.weight(.medium))
                             .foregroundColor(Theme.inkSecondary)
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
+                            .padding(.horizontal, Theme.Spacing.xLarge)
                     }
 
                     Button(action: {
@@ -362,7 +362,7 @@ struct AnalysisScreen: View {
 
                         if let desc = info.description {
                             Text(desc)
-                                .font(.system(size: 14, weight: .medium))
+                                .font(.subheadline.weight(.medium))
                                 .foregroundColor(Theme.inkSecondary)
                                 .lineSpacing(6)
                         }
@@ -383,7 +383,7 @@ struct AnalysisScreen: View {
                             }
                         }
                     }
-                    .padding(24)
+                    .padding(Theme.Spacing.large)
                     .banknoteCard()
 
                     if let news = info.recentNews, !news.isEmpty {
@@ -437,7 +437,7 @@ struct AnalysisScreen: View {
                                 .animation(.easeInOut(duration: 0.3), value: livePrice)
                             if livePrice != nil {
                                 Text("LIVE")
-                                    .font(.system(size: 8, weight: .bold))
+                                    .font(.caption2.weight(.bold))
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 4)
                                     .padding(.vertical, 2)
@@ -483,7 +483,7 @@ struct AnalysisScreen: View {
                 }
                 .padding(.horizontal, Theme.screenPadding)
             }
-            .background(Theme.canvasDeep.opacity(0.95))
+            .background(Theme.canvasDeep.opacity(1.0))
 
             // ── Tab pages ──────────────────────────────────────────────
             TabView(selection: $activeTab) {
@@ -509,7 +509,7 @@ struct AnalysisScreen: View {
                 if let event = viewModel.earningsEvents.first(where: { $0.ticker.uppercased() == ticker.uppercased() }) {
                     HStack(spacing: 10) {
                         Image(systemName: "calendar.badge.exclamationmark")
-                            .foregroundColor(Theme.holdAmber).font(.system(size: 16))
+                            .foregroundColor(Theme.holdAmber).font(.body)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("EARNINGS DUE")
                                 .font(Theme.officialStampFont(size: 8))
@@ -522,7 +522,7 @@ struct AnalysisScreen: View {
                         }
                         Spacer()
                     }
-                    .padding(14)
+                    .padding(Theme.Spacing.standard)
                     .background(Theme.holdAmber.opacity(0.07))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.holdAmber.opacity(0.4), lineWidth: 1))
@@ -603,7 +603,7 @@ struct AnalysisScreen: View {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 10) {
                             Image(systemName: "arrow.triangle.2.circlepath")
-                                .foregroundColor(Theme.securityGold).font(.system(size: 14))
+                                .foregroundColor(Theme.securityGold).font(.subheadline)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("SIGNAL CHANGED — WHY?")
                                     .font(Theme.officialStampFont(size: 8))
@@ -628,11 +628,11 @@ struct AnalysisScreen: View {
                         ForEach(factors, id: \.0) { label, text in
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(label.uppercased()).font(Theme.officialStampFont(size: 7)).foregroundColor(Theme.inkTertiary)
-                                Text(text).font(.system(size: 13, weight: .medium)).foregroundColor(Theme.inkSecondary).lineSpacing(3)
+                                Text(text).font(.footnote.weight(.medium)).foregroundColor(Theme.inkSecondary).lineSpacing(3)
                             }
                         }
                     }
-                    .padding(16)
+                    .padding(Theme.Spacing.card)
                     .background(Theme.securityGold.opacity(0.04))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.securityGold.opacity(0.3), lineWidth: 1))
@@ -664,7 +664,7 @@ struct AnalysisScreen: View {
                 // Alert row
                 Button { showSetAlertSheet = true } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: "bell.badge").font(.system(size: 18)).foregroundColor(Theme.securityGold)
+                        Image(systemName: "bell.badge").font(.headline).foregroundColor(Theme.securityGold)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("SET PRICE ALERT")
                                 .font(Theme.officialStampFont(size: 9)).foregroundColor(Theme.inkPrimary)
@@ -674,7 +674,7 @@ struct AnalysisScreen: View {
                         Spacer()
                         Image(systemName: "chevron.right").foregroundColor(Theme.inkTertiary)
                     }
-                    .padding(16).banknoteCard()
+                    .padding(Theme.Spacing.card).banknoteCard()
                 }
                 .ekPressHaptic()
                 .sheet(isPresented: $showSetAlertSheet) {
@@ -689,7 +689,7 @@ struct AnalysisScreen: View {
                         Text(note)
                             .font(Theme.hindiFont(size: 14)).foregroundColor(Theme.inkPrimary).lineSpacing(4)
                     }
-                    .padding(20)
+                    .padding(Theme.Spacing.screen)
                     .background(Theme.holdAmber.opacity(0.06))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.securityGold.opacity(0.4), lineWidth: 1))
@@ -767,7 +767,7 @@ struct AnalysisScreen: View {
                 if let patterns = analysis.patterns, !patterns.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 8) {
-                            Image(systemName: "waveform.path.ecg").foregroundColor(Theme.securityGold).font(.system(size: 14))
+                            Image(systemName: "waveform.path.ecg").foregroundColor(Theme.securityGold).font(.subheadline)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text("ऐतिहासिक पैटर्न").font(Theme.hindiFont(size: 9)).foregroundColor(Theme.inkTertiary)
                                 Text("PATTERNS DETECTED").font(Theme.officialStampFont(size: 9)).foregroundColor(Theme.inkPrimary)
@@ -776,12 +776,12 @@ struct AnalysisScreen: View {
                         GuillocheDivider()
                         ForEach(patterns, id: \.self) { pattern in
                             HStack(alignment: .top, spacing: 8) {
-                                Image(systemName: "sparkle").foregroundColor(Theme.securityGold).font(.system(size: 10)).padding(.top, 3)
-                                Text(pattern).font(.system(size: 14, weight: .medium)).foregroundColor(Theme.inkSecondary).lineSpacing(3)
+                                Image(systemName: "sparkle").foregroundColor(Theme.securityGold).font(.caption2).padding(.top, 3)
+                                Text(pattern).font(.subheadline.weight(.medium)).foregroundColor(Theme.inkSecondary).lineSpacing(3)
                             }
                         }
                     }
-                    .padding(16).banknoteCard()
+                    .padding(Theme.Spacing.card).banknoteCard()
                 }
 
                 AnalysisNoteSection(title: "The Bull Case", items: analysis.bullCase, color: Theme.bullGreen)
@@ -796,13 +796,13 @@ struct AnalysisScreen: View {
                             let isCorp = point.lowercased().contains("split") || point.lowercased().contains("bonus") || point.lowercased().contains("rights") || point.lowercased().contains("dividend")
                             HStack(alignment: .top, spacing: 10) {
                                 Rectangle().fill(Theme.securityGold.opacity(0.4)).frame(width: 2, height: 14).padding(.top, 3)
-                                Text(point).font(.system(size: 14, weight: .medium)).foregroundColor(Theme.inkSecondary).lineSpacing(3)
+                                Text(point).font(.subheadline.weight(.medium)).foregroundColor(Theme.inkSecondary).lineSpacing(3)
                                 Spacer()
                                 if isCorp { BanknoteSignalBadge(text: "CORP ACTION", color: Theme.securityGold, rotation: -2) }
                             }
                         }
                     }
-                    .padding(20).banknoteCard()
+                    .padding(Theme.Spacing.screen).banknoteCard()
                 }
 
                 if let ratings = viewModel.analystRatings, !ratings.ratings.isEmpty {
@@ -835,12 +835,12 @@ struct AnalysisScreen: View {
                                             .foregroundColor(brokerGradeColor(r.grade))
                                         Text(r.period).font(Theme.serialNumberFont(size: 8)).foregroundColor(Theme.inkTertiary)
                                     }
-                                    .padding(8).banknoteCard()
+                                    .padding(Theme.Spacing.medium).banknoteCard()
                                 }
                             }
                         }
                     }
-                    .padding(16).banknoteCard()
+                    .padding(Theme.Spacing.card).banknoteCard()
                 }
 
                 // ── Street Intelligence — Advisor Matrix ──────────────
@@ -864,16 +864,16 @@ struct AnalysisScreen: View {
             VStack(spacing: 16) {
                 if let qi = viewModel.quickInfo, let low = qi.week52Low, let high = qi.week52High {
                     PriceRangeGauge(low52w: low, high52w: high, current: qi.price, target12m: analysis.targetPrices.mediumTerm12m)
-                        .padding(20).banknoteCard()
+                        .padding(Theme.Spacing.screen).banknoteCard()
                 }
 
                 if let history = viewModel.quickInfo?.priceHistory90d, !history.isEmpty {
                     PriceHistoryChart(prices: history, ticker: ticker, week52High: viewModel.quickInfo?.week52High, week52Low: viewModel.quickInfo?.week52Low)
-                        .padding(20).banknoteCard()
+                        .padding(Theme.Spacing.screen).banknoteCard()
                     RSIChart(prices: history)
-                        .padding(20).banknoteCard()
+                        .padding(Theme.Spacing.screen).banknoteCard()
                     VolumeChart(prices: history)
-                        .padding(20).banknoteCard()
+                        .padding(Theme.Spacing.screen).banknoteCard()
                 } else {
                     VStack(spacing: 12) {
                         Image(systemName: "chart.xyaxis.line")
@@ -894,7 +894,7 @@ struct AnalysisScreen: View {
                         purchaseDate: pd,
                         ticker: ticker
                     )
-                    .padding(20).banknoteCard()
+                    .padding(Theme.Spacing.screen).banknoteCard()
                 }
 
                 Spacer(minLength: 80)
@@ -936,14 +936,14 @@ struct AnalysisScreen: View {
                             HStack(spacing: 0) {
                                 Text(point.period)
                                     .font(Theme.serialNumberFont(size: 10)).foregroundColor(Theme.inkTertiary)
-                                    .frame(width: 90, alignment: .leading)
+                                    .frame(minWidth: 80, alignment: .leading)
                                 TrendBar(label: "PRO", value: point.promoter, color: Color(hex: "4A5A8A"))
                                 TrendBar(label: "FII", value: point.fii, color: Theme.bullGreen)
                                 TrendBar(label: "DII", value: point.dii, color: Theme.securityGold)
                             }
                         }
                     }
-                    .padding(16).banknoteCard()
+                    .padding(Theme.Spacing.card).banknoteCard()
                 }
 
                 // Shareholding chart
@@ -959,13 +959,13 @@ struct AnalysisScreen: View {
                         diiPct: diiVal,
                         publicPct: max(0, 100 - holdingTotal)
                     )
-                    .padding(20).banknoteCard()
+                    .padding(Theme.Spacing.screen).banknoteCard()
                 }
 
                 // Financials chart
                 if !viewModel.quarterlyFinancials.isEmpty {
                     FinancialsChart(quarters: viewModel.quarterlyFinancials)
-                        .padding(20).banknoteCard()
+                        .padding(Theme.Spacing.screen).banknoteCard()
                 }
 
                 // Disclaimer
@@ -1053,7 +1053,7 @@ struct AnalysisScreen: View {
                             .foregroundColor(qi.change >= 0 ? Theme.bullGreen : Theme.bearRed)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(24)
+                        .padding(Theme.Spacing.large)
                         .banknoteCard()
                     }
                     .padding(.top, 20)
@@ -1085,12 +1085,12 @@ struct AnalysisScreen: View {
                     GuillocheDivider()
 
                     Text(info.suggestedActionText)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.footnote.weight(.medium))
                         .foregroundColor(info.isRateLimit ? Theme.holdAmber : Theme.securityGold)
                         .lineSpacing(4)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(20)
+                .padding(Theme.Spacing.screen)
                 .banknoteCard()
 
                 // ── What Went Wrong ────────────────────────────────────
@@ -1102,11 +1102,11 @@ struct AnalysisScreen: View {
                     } icon: {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(Theme.bearRed)
-                            .font(.system(size: 12))
+                            .font(.footnote)
                     }
 
                     Text(info.displayDetail)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.subheadline.weight(.medium))
                         .foregroundColor(Theme.inkSecondary)
                         .lineSpacing(5)
 
@@ -1121,7 +1121,7 @@ struct AnalysisScreen: View {
                         }
                     }
                 }
-                .padding(20)
+                .padding(Theme.Spacing.screen)
                 .banknoteCard()
 
                 // ── Performance Trace ──────────────────────────────────
@@ -1133,7 +1133,7 @@ struct AnalysisScreen: View {
                     } icon: {
                         Image(systemName: "stopwatch")
                             .foregroundColor(Theme.securityGold)
-                            .font(.system(size: 12))
+                            .font(.footnote)
                     }
 
                     VStack(spacing: 8) {
@@ -1182,7 +1182,7 @@ struct AnalysisScreen: View {
                         }
                     }
                 }
-                .padding(20)
+                .padding(Theme.Spacing.screen)
                 .banknoteCard()
 
                 // ── Network Trace ──────────────────────────────────────
@@ -1194,7 +1194,7 @@ struct AnalysisScreen: View {
                     } icon: {
                         Image(systemName: "network")
                             .foregroundColor(Theme.inkSecondary)
-                            .font(.system(size: 12))
+                            .font(.footnote)
                     }
 
                     VStack(alignment: .leading, spacing: 6) {
@@ -1219,7 +1219,7 @@ struct AnalysisScreen: View {
                         }
                     }
                 }
-                .padding(20)
+                .padding(Theme.Spacing.screen)
                 .banknoteCard()
 
                 // ── Backend Diagnostic ─────────────────────────────────
@@ -1232,7 +1232,7 @@ struct AnalysisScreen: View {
                         } icon: {
                             Image(systemName: "gearshape.2")
                                 .foregroundColor(Theme.holdAmber)
-                                .font(.system(size: 12))
+                                .font(.footnote)
                         }
 
                         CollapsibleSection(header: "SERVER TRACE (tap to expand)") {
@@ -1242,7 +1242,7 @@ struct AnalysisScreen: View {
                                 .lineSpacing(4)
                         }
                     }
-                    .padding(20)
+                    .padding(Theme.Spacing.screen)
                     .banknoteCard()
                 }
 
@@ -1255,7 +1255,7 @@ struct AnalysisScreen: View {
                     } icon: {
                         Image(systemName: "iphone")
                             .foregroundColor(Theme.inkSecondary)
-                            .font(.system(size: 12))
+                            .font(.footnote)
                     }
 
                     VStack(spacing: 6) {
@@ -1265,7 +1265,7 @@ struct AnalysisScreen: View {
                         TraceRow(label: "Base URL", value: info.requestUrl)
                     }
                 }
-                .padding(20)
+                .padding(Theme.Spacing.screen)
                 .banknoteCard()
 
                 // ── Action Buttons ─────────────────────────────────────
@@ -1306,7 +1306,7 @@ private struct MacroImpactBanner: View {
                     MacroImpactChip(item: item)
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, Theme.screenPadding)
         }
     }
 }
@@ -1335,6 +1335,13 @@ private struct MacroImpactChip: View {
         return words.prefix(6).joined(separator: " ")
     }
 
+    var textColor: Color {
+        switch item.direction ?? "neutral" {
+        case "positive", "negative": return .white
+        default: return .primary
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 3) {
@@ -1343,14 +1350,14 @@ private struct MacroImpactChip: View {
                 Text(directionArrow)
                     .font(.caption2)
             }
-            .foregroundColor(.white)
+            .foregroundColor(textColor)
             Text(shortImpact)
-                .font(.system(size: 10, design: .serif))
-                .foregroundColor(.white.opacity(0.85))
+                .font(.system(.caption2, design: .serif))
+                .foregroundColor(textColor.opacity(0.85))
                 .lineLimit(1)
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.vertical, Theme.Spacing.tight)
         .background(chipColor.opacity(0.8))
         .cornerRadius(6)
     }
@@ -1389,7 +1396,7 @@ private struct KeyFactorCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 14))
+                    .font(.subheadline)
                     .foregroundColor(color)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(hindiTitle)
@@ -1402,11 +1409,11 @@ private struct KeyFactorCard: View {
             }
             GuillocheDivider()
             Text(text)
-                .font(.system(size: 14, weight: .medium))
+                .font(.subheadline.weight(.medium))
                 .foregroundColor(Theme.inkSecondary)
                 .lineSpacing(4)
         }
-        .padding(16)
+        .padding(Theme.Spacing.card)
         .background(color.opacity(0.04))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(color.opacity(0.2), lineWidth: 0.8))
@@ -1448,7 +1455,7 @@ private struct NewsItemCard: View {
                     } placeholder: {
                         Rectangle().fill(Theme.inkSecondary.opacity(0.1))
                     }
-                    .frame(width: 80, height: 80)
+                    .frame(width: UIScreen.main.bounds.width * 0.20, height: UIScreen.main.bounds.width * 0.20)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
 
@@ -1464,12 +1471,12 @@ private struct NewsItemCard: View {
                             .font(Theme.officialStampFont(size: 8))
                         Spacer()
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 10))
+                            .font(.caption2)
                     }
                     .foregroundColor(Theme.inkSecondary)
                 }
             }
-            .padding(12)
+            .padding(Theme.Spacing.standard)
             .banknoteCard()
         }
         .buttonStyle(.plain)
@@ -1504,8 +1511,8 @@ private struct HorizonNoteCard: View {
             .font(Theme.serialNumberFont(size: 11))
             .foregroundColor(upside >= 0 ? Theme.bullGreen : Theme.bearRed)
         }
-        .padding(16)
-        .frame(width: 130)
+        .padding(Theme.Spacing.card)
+        .frame(width: UIScreen.main.bounds.width * 0.33)
         .banknoteCard()
         .overlay(
             VStack {
@@ -1539,14 +1546,14 @@ private struct AnalysisNoteSection: View {
                             .frame(width: 2, height: 14)
                             .padding(.top, 4)
                         Text(item)
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.subheadline.weight(.medium))
                             .foregroundColor(Theme.inkSecondary)
                             .lineSpacing(4)
                     }
                 }
             }
         }
-        .padding(24)
+        .padding(Theme.Spacing.large)
         .banknoteCard()
         .overlay(
             HStack(spacing: 0) {
@@ -1574,14 +1581,14 @@ private struct StatNoteCell: View {
                     .font(Theme.officialStampFont(size: 8))
                     .foregroundColor(Theme.inkSecondary)
                 Image(systemName: "questionmark.circle")
-                    .font(.system(size: 8))
+                    .font(.caption2)
                     .foregroundColor(Theme.inkTertiary.opacity(0.6))
             }
             Text(value)
                 .font(Theme.serialNumberFont(size: 16))
                 .foregroundColor(Theme.inkPrimary)
         }
-        .padding(16)
+        .padding(Theme.Spacing.card)
         .frame(maxWidth: .infinity, alignment: .leading)
         .banknoteCard()
         .onLongPressGesture(minimumDuration: 0.4) {
@@ -1632,13 +1639,13 @@ private struct ConfidenceCard: View {
             if percent < 50 {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 10)).foregroundColor(Theme.holdAmber)
+                        .font(.caption2).foregroundColor(Theme.holdAmber)
                     Text("Uncertainty is high. Cross-check before acting.")
-                        .font(.system(size: 11, weight: .medium)).foregroundColor(Theme.holdAmber)
+                        .font(.caption.weight(.medium)).foregroundColor(Theme.holdAmber)
                 }
             }
         }
-        .padding(20).banknoteCard()
+        .padding(Theme.Spacing.screen).banknoteCard()
     }
 }
 
@@ -1651,7 +1658,7 @@ private struct TrendBar: View {
     var body: some View {
         VStack(spacing: 2) {
             Text(String(format: "%.1f%%", value))
-                .font(.system(size: 9, weight: .medium)).foregroundColor(color)
+                .font(.caption2.weight(.medium)).foregroundColor(color)
             GeometryReader { geo in
                 RoundedRectangle(cornerRadius: 2)
                     .fill(color.opacity(0.25))
@@ -1661,7 +1668,7 @@ private struct TrendBar: View {
                     .frame(width: geo.size.width * min(value / 80.0, 1.0))
             }
             .frame(height: 6)
-            Text(label).font(.system(size: 7)).foregroundColor(Theme.inkTertiary)
+            Text(label).font(.caption2).foregroundColor(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
     }
@@ -1680,7 +1687,7 @@ private struct ValuationBadge: View {
         HStack(spacing: 10) {
             Image(systemName: isAbove ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
                 .foregroundColor(badgeColor)
-                .font(.system(size: 16))
+                .font(.body)
             VStack(alignment: .leading, spacing: 2) {
                 Text("VALUATION VS HISTORY")
                     .font(Theme.officialStampFont(size: 8))
@@ -1697,7 +1704,7 @@ private struct ValuationBadge: View {
                 Text(String(format: "%.1f", peVsAvg.avgPe3y)).font(Theme.serialNumberFont(size: 11)).foregroundColor(Theme.inkSecondary)
             }
         }
-        .padding(12)
+        .padding(Theme.Spacing.standard)
         .background(badgeColor.opacity(0.07))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(badgeColor.opacity(0.35), lineWidth: 1))
@@ -1733,7 +1740,7 @@ private struct GlossarySheet: View {
                         .foregroundColor(Theme.inkPrimary)
                     GuillocheDivider()
                     Text(glossaryDefinitions[term] ?? "No definition available for this term.")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.body.weight(.medium))
                         .foregroundColor(Theme.inkSecondary)
                         .lineSpacing(6)
                     Spacer()
@@ -1768,7 +1775,7 @@ struct AnalysisLimitationsCard: View {
                         .font(Theme.officialStampFont(size: 9)).foregroundColor(Theme.inkPrimary)
                     Spacer()
                     Image(systemName: expanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 10)).foregroundColor(Theme.inkTertiary)
+                        .font(.caption2).foregroundColor(Theme.inkTertiary)
                 }
             }
             .buttonStyle(.plain)
@@ -1789,7 +1796,7 @@ struct AnalysisLimitationsCard: View {
                 .onAppear { shownBefore = true }
             }
         }
-        .padding(16).banknoteCard()
+        .padding(Theme.Spacing.card).banknoteCard()
     }
 }
 
@@ -1810,7 +1817,7 @@ struct NewsReaderView: View {
                         } placeholder: {
                             Rectangle().fill(Theme.inkSecondary.opacity(0.1))
                         }
-                        .frame(height: 240)
+                        .frame(height: UIScreen.main.bounds.height * 0.28)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                         .padding(.horizontal, Theme.screenPadding)
                     }
@@ -1838,7 +1845,7 @@ struct NewsReaderView: View {
 
                         if let summary = item.summary, !summary.isEmpty {
                             Text(summary)
-                                .font(.system(size: 17, weight: .medium, design: .serif))
+                                .font(.system(.headline, design: .serif).weight(.medium))
                                 .foregroundColor(Theme.inkSecondary)
                                 .lineSpacing(8)
                         } else {
@@ -1915,7 +1922,7 @@ private struct CollapsibleSection<Content: View>: View {
             }) {
                 HStack(spacing: 6) {
                     Image(systemName: expanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.caption2.weight(.bold))
                         .foregroundColor(Theme.securityGold)
                     Text(header)
                         .font(Theme.serialNumberFont(size: 10))

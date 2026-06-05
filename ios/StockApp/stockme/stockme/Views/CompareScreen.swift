@@ -29,7 +29,7 @@ struct CompareScreen: View {
                             }
                             Image(systemName: "arrow.left.arrow.right")
                                 .foregroundColor(Theme.securityGold)
-                                .font(.system(size: 18, weight: .bold))
+                                .font(.headline.weight(.bold))
                             StockPickerButton(label: "Stock B", selected: selectedB, searchText: $searchTextB) { entry in
                                 selectedB = entry
                                 searchTextB = ""
@@ -69,7 +69,7 @@ struct CompareScreen: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button { dismiss() } label: {
                         Image(systemName: "chevron.left")
-                            .foregroundColor(Theme.inkPrimary).padding(8)
+                            .foregroundColor(Theme.inkPrimary).padding(Theme.Spacing.medium)
                             .background(Theme.canvasDeep).clipShape(Circle())
                     }
                 }
@@ -201,11 +201,11 @@ private struct StockPickerButton: View {
                     .font(Theme.serialNumberFont(size: 13))
                     .foregroundColor(selected != nil ? Theme.inkPrimary : Theme.inkSecondary)
                 if let s = selected {
-                    Text(s.companyName).font(.system(size: 10)).foregroundColor(Theme.inkTertiary).lineLimit(1)
+                    Text(s.companyName).font(.caption2).foregroundColor(Theme.inkTertiary).lineLimit(1)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
+            .padding(Theme.Spacing.standard)
             .banknoteCard()
         }
         .sheet(isPresented: $showPicker) {
@@ -219,7 +219,7 @@ private struct StockPickerButton: View {
                                 .autocorrectionDisabled().textInputAutocapitalization(.characters)
                                 .foregroundColor(Theme.inkPrimary)
                         }
-                        .padding(12)
+                        .padding(Theme.Spacing.standard)
                         .background(Theme.inkPrimary.opacity(0.05))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .padding()
@@ -231,7 +231,7 @@ private struct StockPickerButton: View {
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(entry.ticker).font(Theme.serialNumberFont(size: 13)).foregroundColor(Theme.inkPrimary)
-                                    Text(entry.companyName).font(.system(size: 11)).foregroundColor(Theme.inkSecondary)
+                                    Text(entry.companyName).font(.caption).foregroundColor(Theme.inkSecondary)
                                 }
                                 .padding(.vertical, 4)
                             }

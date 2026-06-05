@@ -34,17 +34,17 @@ extension View {
                     gradient: Gradient(colors: [Theme.canvas.opacity(0), Theme.canvas]),
                     startPoint: .leading, endPoint: .trailing
                 )
-                .frame(width: 32)
+                .frame(width: Theme.Spacing.xLarge)
                 .allowsHitTesting(false)
             }
-            .padding(.trailing, 16)
+            .padding(.horizontal, Theme.Spacing.card)
     }
 
     func inkCard() -> some View {
         self
             .background(Theme.canvas)
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.inkPrimary.opacity(0.1), lineWidth: 1))
-            .cornerRadius(16)
+            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.inkPrimary.opacity(0.1), lineWidth: 1))
+            .cornerRadius(Theme.CornerRadius.card)
     }
 
     func shimmerPlaceholder(isLoading: Bool) -> some View {

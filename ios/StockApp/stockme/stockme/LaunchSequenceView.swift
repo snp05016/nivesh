@@ -12,6 +12,7 @@ struct LaunchSequenceView: View {
     @State private var fadingOut = false
 
     @Environment(\.colorScheme) var colorScheme
+    private let guillocheHeight: CGFloat = 20
 
     var body: some View {
         ZStack {
@@ -21,43 +22,47 @@ struct LaunchSequenceView: View {
                 Spacer()
 
                 // ₹ Medallion — springs in first
-                ZStack {
-                    // Outer ring
-                    Circle()
-                        .stroke(Theme.borderSage, lineWidth: 0.5)
-                        .frame(width: 96, height: 96)
-                        .scaleEffect(medallionVisible ? 1 : 0.5)
-                        .opacity(medallionVisible ? 1 : 0)
+                GeometryReader { geo in
+                    ZStack {
+                        // Outer ring
+                        Circle()
+                            .stroke(Theme.borderSage, lineWidth: 0.5)
+                            .frame(width: geo.size.width * 0.25, height: geo.size.width * 0.25)
+                            .scaleEffect(medallionVisible ? 1 : 0.5)
+                            .opacity(medallionVisible ? 1 : 0)
 
-                    // Inner ring
-                    Circle()
-                        .stroke(Theme.borderSage.opacity(0.5), lineWidth: 0.5)
-                        .frame(width: 78, height: 78)
-                        .scaleEffect(innerRingVisible ? 1 : 0.6)
-                        .opacity(innerRingVisible ? 1 : 0)
+                        // Inner ring
+                        Circle()
+                            .stroke(Theme.borderSage.opacity(0.5), lineWidth: 0.5)
+                            .frame(width: geo.size.width * 0.20, height: geo.size.width * 0.20)
+                            .scaleEffect(innerRingVisible ? 1 : 0.6)
+                            .opacity(innerRingVisible ? 1 : 0)
 
-                    // ₹ symbol
-                    Text("₹")
-                        .font(Theme.engravedSerif(size: 44, weight: .bold))
-                        .foregroundColor(Theme.inkPrimary)
-                        .scaleEffect(medallionVisible ? 1 : 0.4)
-                        .opacity(medallionVisible ? 1 : 0)
+                        // ₹ symbol
+                        Text("₹")
+                            .font(Theme.engravedSerif(size: 44, weight: .bold, relativeTo: .largeTitle))
+                            .foregroundColor(Theme.inkPrimary)
+                            .scaleEffect(medallionVisible ? 1 : 0.4)
+                            .opacity(medallionVisible ? 1 : 0)
+                    }
+                    .frame(maxWidth: .infinity)
                 }
+                .aspectRatio(1, contentMode: .fit)
 
-                Spacer().frame(height: 40)
+                Spacer().frame(height: Theme.Spacing.xLarge)
 
                 // Text stack
-                VStack(spacing: 10) {
+                VStack(spacing: Theme.Spacing.standard) {
                     // Hindi above
                     Text("निवेश")
-                        .font(Theme.hindiFont(size: 14))
+                        .font(Theme.hindiFont(size: 14, relativeTo: .subheadline))
                         .foregroundColor(Theme.inkSecondary)
                         .opacity(hindiVisible ? 1 : 0)
                         .offset(y: hindiVisible ? 0 : 5)
 
                     // Main title
                     Text("NIVESH")
-                        .font(Theme.engravedSerif(size: 42, weight: .bold))
+                        .font(Theme.engravedSerif(size: 42, weight: .bold, relativeTo: .largeTitle))
                         .foregroundColor(Theme.inkPrimary)
                         .tracking(4)
                         .opacity(titleVisible ? 1 : 0)
@@ -65,21 +70,21 @@ struct LaunchSequenceView: View {
 
                     // Subtitle
                     Text("RESERVE BANK OF INTELLIGENCE")
-                        .font(Theme.officialStampFont(size: 9))
+                        .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                         .tracking(2)
                         .foregroundColor(Theme.inkSecondary)
                         .opacity(subtitleVisible ? 1 : 0)
                 }
 
-                Spacer().frame(height: 52)
+                Spacer().frame(height: Theme.Spacing.xLarge)
 
                 // Guilloché line draws itself in
                 ZStack {
                     AnimatedGuilloche(progress: guillocheProgress)
                         .opacity(guillocheProgress > 0 ? 1 : 0)
                 }
-                .frame(height: 20)
-                .padding(.horizontal, 48)
+                .frame(height: guillocheHeight)
+                .padding(.horizontal, Theme.Spacing.xLarge)
 
                 Spacer()
             }

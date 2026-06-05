@@ -64,7 +64,7 @@ struct AlertsScreen: View {
                     } else if viewModel.alerts.isEmpty {
                         // Empty state
                         Spacer()
-                        VStack(spacing: 16) {
+                        VStack(spacing: Theme.Spacing.card) {
                             Image(systemName: "bell.slash")
                                 .font(.system(size: 40))
                                 .foregroundColor(Theme.inkSecondary.opacity(0.3))
@@ -80,20 +80,20 @@ struct AlertsScreen: View {
                         Spacer()
                     } else {
                         ScrollView {
-                            VStack(spacing: 24) {
+                            VStack(spacing: Theme.Spacing.large) {
                                 // Active alerts
                                 if !activeAlerts.isEmpty {
-                                    VStack(alignment: .leading, spacing: 12) {
+                                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                                         SectionHeader(title: "Active Alerts", hindiTitle: "सक्रिय अलर्ट")
                                         ScrollView(.horizontal, showsIndicators: false) {
-                                            HStack(spacing: 12) {
+                                            HStack(spacing: Theme.Spacing.standard) {
                                                 ForEach(activeAlerts) { alert in
                                                     AlertRow(alert: alert, onDelete: {
                                                         if let user = authManager.currentUser {
                                                             Task { await viewModel.removeAlert(alertId: alert.id, userId: user.userId) }
                                                         }
                                                     })
-                                                    .frame(width: 320)
+                                                    .frame(width: UIScreen.main.bounds.width * 0.85)
                                                 }
                                             }
                                             .padding(.horizontal, Theme.screenPadding)
@@ -103,17 +103,17 @@ struct AlertsScreen: View {
 
                                 // Triggered alerts
                                 if !triggeredAlerts.isEmpty {
-                                    VStack(alignment: .leading, spacing: 12) {
+                                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                                         SectionHeader(title: "Triggered", hindiTitle: "लक्ष्य पहुंचा")
                                         ScrollView(.horizontal, showsIndicators: false) {
-                                            HStack(spacing: 12) {
+                                            HStack(spacing: Theme.Spacing.standard) {
                                                 ForEach(triggeredAlerts) { alert in
                                                     AlertRow(alert: alert, isTriggered: true, onDelete: {
                                                         if let user = authManager.currentUser {
                                                             Task { await viewModel.removeAlert(alertId: alert.id, userId: user.userId) }
                                                         }
                                                     })
-                                                    .frame(width: 320)
+                                                    .frame(width: UIScreen.main.bounds.width * 0.85)
                                                 }
                                             }
                                             .padding(.horizontal, Theme.screenPadding)
@@ -130,7 +130,7 @@ struct AlertsScreen: View {
                 // Triggered banner
                 if viewModel.showTriggeredBanner, let first = viewModel.triggeredBanner.first {
                     VStack {
-                        HStack(spacing: 10) {
+                        HStack(spacing: Theme.Spacing.standard) {
                             Image(systemName: "bell.fill").foregroundColor(Theme.securityGold)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("ALERT TRIGGERED")
@@ -145,13 +145,13 @@ struct AlertsScreen: View {
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundColor(Theme.securityGold)
                         }
-                        .padding(16)
+                        .padding(Theme.Spacing.card)
                         .background(Theme.canvas)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
                         .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.securityGold.opacity(0.4), lineWidth: 1))
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
+                        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.large).stroke(Theme.securityGold.opacity(0.4), lineWidth: 1))
+                        .padding(.horizontal, Theme.Spacing.card)
+                        .padding(.top, Theme.Spacing.medium)
                         Spacer()
                     }
                     .zIndex(10)
@@ -159,7 +159,7 @@ struct AlertsScreen: View {
                     .animation(.spring(response: 0.4), value: viewModel.showTriggeredBanner)
                 }
 
-                // FAB
+                // FAB — opaque background prevents z-index bleed-through
                 VStack {
                     Spacer()
                     HStack {
@@ -168,12 +168,13 @@ struct AlertsScreen: View {
                             ZStack {
                                 Circle().fill(Theme.securityGold).frame(width: 56, height: 56)
                                     .shadow(color: Theme.securityGold.opacity(0.3), radius: 10, x: 0, y: 5)
-                                Image(systemName: "bell.badge.plus").font(.system(size: 22, weight: .bold)).foregroundColor(.white)
+                                Image(systemName: "bell.badge.plus").font(.title2.weight(.bold)).foregroundColor(.white)
                             }
                         }
                         .padding(Theme.screenPadding)
                     }
                 }
+                .background(Theme.canvas.opacity(0.85))
             }
         }
         .onAppear {
@@ -204,17 +205,17 @@ private struct AlertRow: View {
             Rectangle()
                 .fill(isTriggered ? Theme.bullGreen.opacity(0.4) : Theme.securityGold.opacity(0.3))
                 .frame(width: 1)
-                .padding(.vertical, 12)
+                .padding(.vertical, Theme.Spacing.standard)
 
-            HStack(spacing: 16) {
+            HStack(spacing: Theme.Spacing.card) {
                 // Direction icon
                 VStack {
                     Image(systemName: alert.isAbove ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                        .font(.system(size: 28))
+                        .font(.title)
                         .foregroundColor(alert.isAbove ? Theme.bullGreen : Theme.bearRed)
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text(alert.ticker)
                         .font(Theme.engravedSerif(size: 16, weight: .bold))
                         .foregroundColor(Theme.inkPrimary)
@@ -225,11 +226,11 @@ private struct AlertRow: View {
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 4) {
+                VStack(alignment: .trailing, spacing: Theme.Spacing.small) {
                     // Target price
-                    HStack(spacing: 4) {
+                    HStack(spacing: Theme.Spacing.small) {
                         Image(systemName: alert.isAbove ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 10))
+                            .font(.caption2)
                         Text(IndianFormatter.price(alert.targetPrice))
                     }
                     .font(Theme.serialNumberFont(size: 14))
@@ -247,15 +248,15 @@ private struct AlertRow: View {
                 // Delete button (visible on card, since swipe actions don't work in horizontal scroll)
                 Button(action: onDelete) {
                     Image(systemName: "trash.circle.fill")
-                        .font(.system(size: 22))
+                        .font(.title2)
                         .foregroundColor(Theme.bearRed.opacity(0.7))
                 }
                 .buttonStyle(.plain)
-                .padding(.leading, 4)
+                .padding(.leading, Theme.Spacing.small)
             }
-            .padding(.vertical, 14)
-            .padding(.leading, 12)
-            .padding(.trailing, 16)
+            .padding(.vertical, Theme.Spacing.standard)
+            .padding(.leading, Theme.Spacing.standard)
+            .padding(.trailing, Theme.Spacing.card)
         }
         .banknoteCard()
     }
@@ -285,10 +286,10 @@ struct AddAlertSheet: View {
             ZStack {
                 Theme.canvas.ignoresSafeArea()
                 ScrollView {
-                    VStack(spacing: 20) {
+                    VStack(spacing: Theme.Spacing.screen) {
                         // Stock search
                         if selectedTicker.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                                 Text("SEARCH STOCK")
                                     .font(Theme.officialStampFont(size: 9))
                                     .foregroundColor(Theme.inkSecondary)
@@ -297,7 +298,7 @@ struct AddAlertSheet: View {
                                     TextField("Ticker or company...", text: $searchText)
                                         .foregroundColor(Theme.inkPrimary)
                                 }
-                                .padding(14)
+                                .padding(Theme.Spacing.standard)
                                 .banknoteCard()
 
                                 if !searchResults.isEmpty {
@@ -311,12 +312,12 @@ struct AddAlertSheet: View {
                                                 HStack {
                                                     VStack(alignment: .leading, spacing: 2) {
                                                         Text(entry.ticker).font(Theme.serialNumberFont(size: 13)).foregroundColor(Theme.inkPrimary)
-                                                        Text(entry.companyName).font(.system(size: 11)).foregroundColor(Theme.inkSecondary)
+                                                        Text(entry.companyName).font(.caption).foregroundColor(Theme.inkSecondary)
                                                     }
                                                     Spacer()
                                                     Image(systemName: "plus.circle").foregroundColor(Theme.securityGold)
                                                 }
-                                                .padding(12)
+                                                .padding(Theme.Spacing.standard)
                                             }
                                             Divider().background(Theme.borderFine)
                                         }
@@ -329,19 +330,19 @@ struct AddAlertSheet: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(selectedTicker).font(Theme.engravedSerif(size: 16, weight: .bold)).foregroundColor(Theme.inkPrimary)
-                                    Text(selectedCompany).font(.system(size: 12)).foregroundColor(Theme.inkSecondary)
+                                    Text(selectedCompany).font(.caption).foregroundColor(Theme.inkSecondary)
                                 }
                                 Spacer()
                                 Button { selectedTicker = ""; selectedCompany = "" } label: {
                                     Image(systemName: "xmark.circle.fill").foregroundColor(Theme.inkTertiary)
                                 }
                             }
-                            .padding(16)
+                            .padding(Theme.Spacing.card)
                             .banknoteCard()
                         }
 
                         // Direction toggle
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                             Text("ALERT WHEN PRICE GOES")
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundColor(Theme.inkSecondary)
@@ -349,14 +350,14 @@ struct AddAlertSheet: View {
                                 Button { direction = "above" } label: {
                                     HStack { Image(systemName: "arrow.up"); Text("Above Target") }
                                         .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 12)
+                                        .padding(.vertical, Theme.Spacing.standard)
                                         .background(direction == "above" ? Theme.bullGreen.opacity(0.1) : Color.clear)
                                         .foregroundColor(direction == "above" ? Theme.bullGreen : Theme.inkTertiary)
                                 }
                                 Button { direction = "below" } label: {
                                     HStack { Image(systemName: "arrow.down"); Text("Below Target") }
                                         .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 12)
+                                        .padding(.vertical, Theme.Spacing.standard)
                                         .background(direction == "below" ? Theme.bearRed.opacity(0.1) : Color.clear)
                                         .foregroundColor(direction == "below" ? Theme.bearRed : Theme.inkTertiary)
                                 }
@@ -366,7 +367,7 @@ struct AddAlertSheet: View {
                         }
 
                         // Target price
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                             Text("TARGET PRICE (₹)")
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundColor(Theme.inkSecondary)
@@ -374,12 +375,12 @@ struct AddAlertSheet: View {
                                 .keyboardType(.decimalPad)
                                 .font(Theme.serialNumberFont(size: 18))
                                 .foregroundColor(Theme.inkPrimary)
-                                .padding(16)
+                                .padding(Theme.Spacing.card)
                                 .banknoteCard()
                         }
 
                         if !errorText.isEmpty {
-                            Text(errorText).font(.system(size: 12)).foregroundColor(Theme.bearRed)
+                            Text(errorText).font(.caption).foregroundColor(Theme.bearRed)
                         }
 
                         Button {
@@ -403,14 +404,14 @@ struct AddAlertSheet: View {
                                 else { Text("SET ALERT").font(Theme.officialStampFont(size: 10)) }
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(18)
+                            .padding(Theme.Spacing.card)
                             .background(canAdd ? Theme.inkPrimary : Theme.inkPrimary.opacity(0.15))
                             .foregroundColor(canAdd ? Theme.canvas : Theme.inkPrimary.opacity(0.3))
                             .banknoteCard()
                         }
                         .disabled(!canAdd || isAdding)
                     }
-                    .padding(20)
+                    .padding(Theme.Spacing.screen)
                 }
             }
             .navigationTitle("Set Price Alert")

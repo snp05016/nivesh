@@ -21,8 +21,8 @@ struct TutorialOverlayView: View {
                         Rectangle()
                             .fill(Color.black.opacity(0.82))
                             .ignoresSafeArea()
-                        RoundedRectangle(cornerRadius: 10)
-                            .frame(width: rect.width + 12, height: rect.height + 12)
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                            .frame(width: rect.width + Theme.Spacing.standard, height: rect.height + Theme.Spacing.standard)
                             .position(x: rect.midX, y: rect.midY)
                             .blendMode(.destinationOut)
                     }
@@ -74,7 +74,7 @@ struct TutorialOverlayView: View {
                 spotlightRect: tabRect(index: 0, geo: geo)),
             TutorialStep(number: 3,  title: "Your Morning Brief",
                 body: "A personalised summary generated every morning. It tells you what changed overnight, which stocks need attention, and the market mood.",
-                spotlightRect: CGRect(x: 16, y: 280, width: w - 32, height: 120)),
+                spotlightRect: CGRect(x: 16, y: geo.size.height * 0.35, width: geo.size.width - 32, height: geo.size.height * 0.15)),
             TutorialStep(number: 4,  title: "Search & Discover",
                 body: "Search any NSE or BSE stock by name or ticker. Long-press any result for a quick preview. Use Discover presets to find new investment ideas.",
                 spotlightRect: tabRect(index: 1, geo: geo)),
@@ -83,10 +83,10 @@ struct TutorialOverlayView: View {
                 spotlightRect: tabRect(index: 2, geo: geo)),
             TutorialStep(number: 6,  title: "Red Flags",
                 body: "Watches your holdings for danger signs — SEBI surveillance, bearish signal flips, or promoters pledging too many shares. Check this weekly.",
-                spotlightRect: CGRect(x: 16, y: 420, width: w - 32, height: 100)),
+                spotlightRect: CGRect(x: 16, y: geo.size.height * 0.52, width: geo.size.width - 32, height: geo.size.height * 0.125)),
             TutorialStep(number: 7,  title: "The Main Analysis",
                 body: "Tap any stock to run a full AI analysis. It takes 30–90 seconds and analyses fundamentals, news, promoter activity, global macro, and Indian market sentiment together.",
-                spotlightRect: CGRect(x: 80, y: 300, width: 230, height: 230)),
+                spotlightRect: CGRect(x: geo.size.width * 0.20, y: geo.size.height * 0.37, width: geo.size.width * 0.60, height: geo.size.width * 0.60)),
             TutorialStep(number: 8,  title: "Price Alerts",
                 body: "Set a target price for any stock. The app tells you immediately when a stock crosses your target — every time you open the app.",
                 spotlightRect: tabRect(index: 3, geo: geo)),
@@ -115,16 +115,15 @@ struct TutorialOverlayView: View {
                 VStack(spacing: 0) {
                     Spacer(minLength: 60)
                     cardBody(step: step)
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, Theme.Spacing.screen)
                     Spacer(minLength: h - rect.minY + 24)
                 }
-                .ignoresSafeArea(edges: .bottom)
             } else {
                 // Spotlight in top half → card floats BELOW it
                 VStack(spacing: 0) {
                     Spacer(minLength: rect.maxY + 24)
                     cardBody(step: step)
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, Theme.Spacing.screen)
                     Spacer(minLength: 40)
                 }
             }
@@ -132,7 +131,7 @@ struct TutorialOverlayView: View {
             VStack(spacing: 0) {
                 Spacer()
                 cardBody(step: step)
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, Theme.Spacing.large)
                 Spacer()
             }
         }
@@ -151,39 +150,39 @@ struct TutorialOverlayView: View {
                     .font(Theme.officialStampFont(size: 9))
                     .foregroundColor(Theme.inkTertiary)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 10)
+            .padding(.horizontal, Theme.Spacing.screen)
+            .padding(.top, Theme.Spacing.card)
+            .padding(.bottom, Theme.Spacing.standard)
 
             Rectangle()
                 .fill(Theme.securityGold.opacity(0.3))
                 .frame(height: 0.5)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Theme.Spacing.screen)
 
             Text(step.title)
-                .font(Font.custom("Georgia-Bold", size: 18))
+                .font(Theme.engravedSerif(size: 18, weight: .bold, relativeTo: .headline))
                 .foregroundColor(Theme.inkPrimary)
-                .padding(.horizontal, 20)
-                .padding(.top, 14)
-                .padding(.bottom, 6)
+                .padding(.horizontal, Theme.Spacing.screen)
+                .padding(.top, Theme.Spacing.card)
+                .padding(.bottom, Theme.Spacing.tight)
 
             Text(step.body)
-                .font(.system(size: 14))
+                .font(Theme.officialStampFont(size: 14))
                 .foregroundColor(Theme.inkSecondary)
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 16)
+                .padding(.horizontal, Theme.Spacing.screen)
+                .padding(.bottom, Theme.Spacing.card)
 
-            HStack(spacing: 12) {
+            HStack(spacing: Theme.Spacing.standard) {
                 if tutorialManager.currentStep > 1 {
                     Button(action: { tutorialManager.previous() }) {
                         Text("← Back")
                             .font(Theme.officialStampFont(size: 10))
                             .foregroundColor(Theme.securityGold)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .overlay(RoundedRectangle(cornerRadius: 6)
+                            .padding(.horizontal, Theme.Spacing.card)
+                            .padding(.vertical, Theme.Spacing.standard)
+                            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight)
                                 .stroke(Theme.securityGold.opacity(0.5), lineWidth: 1))
                     }
                     .buttonStyle(EKPressStyle())
@@ -199,25 +198,25 @@ struct TutorialOverlayView: View {
                          ? "Start Investing →" : "Next →")
                         .font(Theme.officialStampFont(size: 10))
                         .foregroundColor(Theme.canvasDeep)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 10)
+                        .padding(.horizontal, Theme.Spacing.screen)
+                        .padding(.vertical, Theme.Spacing.standard)
                         .background(Theme.securityGold)
-                        .cornerRadius(6)
+                        .cornerRadius(Theme.CornerRadius.tight)
                 }
                 .buttonStyle(EKPressStyle())
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 20)
+            .padding(.horizontal, Theme.Spacing.screen)
+            .padding(.bottom, Theme.Spacing.screen)
         }
         .background(Theme.canvasDeep)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
         .overlay(
             ZStack {
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
                     .stroke(Theme.securityGold.opacity(0.6), lineWidth: 1.2)
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                     .stroke(Theme.securityGold.opacity(0.22), lineWidth: 0.5)
-                    .padding(4)
+                    .padding(Theme.Spacing.small)
             }
         )
         .shadow(color: Color.black.opacity(0.5), radius: 24, x: 0, y: 8)

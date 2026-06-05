@@ -92,7 +92,7 @@ struct SearchScreen: View {
                                 }
                             }
                         }
-                        .padding(16)
+                        .padding(Theme.Spacing.card)
                         .background(Theme.canvasDeep)
                         .overlay(
                             Rectangle()
@@ -127,7 +127,7 @@ struct SearchScreen: View {
                                                 .font(Theme.officialStampFont(size: 9))
                                                 .foregroundColor(activePreset == item.preset ? Theme.canvasDeep : Theme.securityGold)
                                                 .padding(.horizontal, 12)
-                                                .padding(.vertical, 7)
+                                                .padding(.vertical, Theme.Spacing.tight)
                                                 .background(
                                                     activePreset == item.preset
                                                         ? Theme.securityGold
@@ -358,7 +358,7 @@ private struct ScreenerResultRow: View {
             Rectangle()
                 .fill(Theme.securityGold.opacity(0.4))
                 .frame(width: 1)
-                .padding(.vertical, 12)
+                .padding(.vertical, Theme.Spacing.standard)
 
             HStack(spacing: 16) {
                 StockIcon(ticker: result.ticker, signal: nil)
@@ -382,9 +382,9 @@ private struct ScreenerResultRow: View {
                 }
                 Image(systemName: "arrow.right")
                     .foregroundColor(Theme.inkSecondary.opacity(0.3))
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.footnote.weight(.bold))
             }
-            .padding(.vertical, 14)
+            .padding(.vertical, Theme.Spacing.standard)
             .padding(.leading, 12)
             .padding(.trailing, 16)
         }
@@ -400,7 +400,7 @@ private struct StockEntryRow: View {
             Rectangle()
                 .fill(Theme.inkSecondary.opacity(0.3))
                 .frame(width: 1)
-                .padding(.vertical, 12)
+                .padding(.vertical, Theme.Spacing.standard)
 
             HStack(spacing: 16) {
                 StockIcon(ticker: entry.ticker, signal: nil)
@@ -416,9 +416,9 @@ private struct StockEntryRow: View {
                 Spacer()
                 Image(systemName: "arrow.right")
                     .foregroundColor(Theme.inkSecondary.opacity(0.3))
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.subheadline.weight(.bold))
             }
-            .padding(.vertical, 14)
+            .padding(.vertical, Theme.Spacing.standard)
             .padding(.leading, 12)
             .padding(.trailing, 16)
         }
@@ -432,7 +432,7 @@ private struct SearchSkeletonRow: View {
             Rectangle()
                 .fill(Theme.inkSecondary.opacity(0.15))
                 .frame(width: 1)
-                .padding(.vertical, 12)
+                .padding(.vertical, Theme.Spacing.standard)
 
             HStack(spacing: 16) {
                 Circle()
@@ -441,14 +441,14 @@ private struct SearchSkeletonRow: View {
                 VStack(alignment: .leading, spacing: 6) {
                     RoundedRectangle(cornerRadius: 3)
                         .fill(Theme.inkTertiary.opacity(0.15))
-                        .frame(width: 140, height: 12)
+                        .frame(width: UIScreen.main.bounds.width * 0.35, height: 12)
                     RoundedRectangle(cornerRadius: 3)
                         .fill(Theme.inkTertiary.opacity(0.1))
-                        .frame(width: 80, height: 9)
+                        .frame(width: UIScreen.main.bounds.width * 0.20, height: 9)
                 }
                 Spacer()
             }
-            .padding(.vertical, 14)
+            .padding(.vertical, Theme.Spacing.standard)
             .padding(.leading, 12)
             .padding(.trailing, 16)
         }

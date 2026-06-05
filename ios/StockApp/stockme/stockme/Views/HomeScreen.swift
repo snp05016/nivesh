@@ -22,8 +22,8 @@ private let bullGreen  = Color(red: 0.10, green: 0.53, blue: 0.24)
 private let bearRed    = Color(red: 0.72, green: 0.09, blue: 0.09)
 private let neutralAmber = Color(red: 0.80, green: 0.55, blue: 0.05)
 private let goldAccent = Color(red: 0.78, green: 0.64, blue: 0.25)
-private let dimText    = Color.primary.opacity(0.45)
-private let subtleText = Color.primary.opacity(0.30)
+private let dimText    = Color.secondary
+private let subtleText = Color(uiColor: .tertiaryLabel)
 
 // MARK: - NiveshBulletRow
 
@@ -35,10 +35,10 @@ struct NiveshBulletRow: View {
             Circle()
                 .fill(goldAccent)
                 .frame(width: 4, height: 4)
-                .padding(.top, 6)
+                .padding(.top, Theme.Spacing.tight)
 
             Text(stripEmoji(text))
-                .font(.system(size: 14, weight: .regular))
+                .font(.body)
                 .foregroundColor(.primary.opacity(0.80))
                 .fixedSize(horizontal: false, vertical: true)
                 .lineSpacing(3)
@@ -54,17 +54,17 @@ struct PriorityPill: View {
 
     var body: some View {
         Text(label)
-            .font(.system(size: 9, weight: .bold, design: .monospaced))
+            .font(.caption2.weight(.bold)).monospaced()
             .tracking(1.5)
             .foregroundColor(color)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
+            .padding(.horizontal, Theme.Spacing.tight)
+            .padding(.vertical, Theme.Spacing.small)
             .background(color.opacity(0.12))
             .overlay(
-                RoundedRectangle(cornerRadius: 4)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                     .stroke(color.opacity(0.25), lineWidth: 0.5)
             )
-            .cornerRadius(4)
+            .cornerRadius(Theme.CornerRadius.small)
     }
 }
 
@@ -81,19 +81,19 @@ struct ADBreathBar: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
             Text("ADVANCE / DECLINE BREADTH")
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .font(.caption2.weight(.semibold)).monospaced()
                 .tracking(1.5)
                 .foregroundColor(dimText)
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                         .fill(bearRed.opacity(0.15))
                         .frame(maxWidth: .infinity)
 
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                         .fill(
                             LinearGradient(
                                 colors: [bullGreen.opacity(0.9), bullGreen.opacity(0.6)],
@@ -105,19 +105,19 @@ struct ADBreathBar: View {
                 }
             }
             .frame(height: 8)
-            .cornerRadius(4)
+            .cornerRadius(Theme.CornerRadius.small)
 
             HStack {
-                HStack(spacing: 4) {
+                HStack(spacing: Theme.Spacing.small) {
                     Circle().fill(bullGreen).frame(width: 5, height: 5)
                     Text("\(advancing) advancing")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.caption)
                         .foregroundColor(bullGreen)
                 }
                 Spacer()
-                HStack(spacing: 4) {
+                HStack(spacing: Theme.Spacing.small) {
                     Text("\(declining) declining")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.caption)
                         .foregroundColor(bearRed)
                     Circle().fill(bearRed).frame(width: 5, height: 5)
                 }
@@ -140,27 +140,27 @@ struct IndexRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Theme.Spacing.standard) {
             RoundedRectangle(cornerRadius: 1)
                 .fill(changeColor.opacity(0.7))
                 .frame(width: 2, height: 20)
 
             Text(name)
-                .font(.system(size: 13, weight: .medium))
+                .font(.footnote.weight(.medium))
                 .foregroundColor(.primary.opacity(0.85))
 
             Spacer()
 
             Text(value)
-                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                .font(.footnote.weight(.semibold)).monospaced()
                 .foregroundColor(.primary.opacity(0.85))
 
             Text(changeText)
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .font(.caption.weight(.semibold)).monospaced()
                 .foregroundColor(changeColor)
-                .frame(width: 62, alignment: .trailing)
+                .frame(minWidth: 60, alignment: .trailing)
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, Theme.Spacing.small)
     }
 }
 
@@ -174,25 +174,25 @@ struct MomentumSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.Spacing.medium) {
                 Rectangle()
                     .fill(stanceColor)
                     .frame(width: 3, height: 14)
                     .cornerRadius(1.5)
 
                 Text(stance)
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .font(.caption2.weight(.bold)).monospaced()
                     .tracking(2.0)
                     .foregroundColor(stanceColor)
 
                 Spacer()
 
                 Text("\(stocks.count) stocks")
-                    .font(.system(size: 10, weight: .regular))
+                    .font(.caption2)
                     .foregroundColor(subtleText)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(.horizontal, Theme.Spacing.standard)
+            .padding(.vertical, Theme.Spacing.medium)
             .background(stanceColor.opacity(0.06))
 
             VStack(spacing: 0) {
@@ -205,9 +205,9 @@ struct MomentumSectionView: View {
             }
         }
         .background(stanceColor.opacity(0.03))
-        .cornerRadius(10)
+        .cornerRadius(Theme.CornerRadius.large)
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
                 .stroke(stanceColor.opacity(0.15), lineWidth: 0.5)
         )
     }
@@ -223,24 +223,24 @@ struct SignalBadge: View {
 
     var body: some View {
         Text(label)
-            .font(.system(size: 9, weight: isDeathCross ? .bold : .medium, design: .monospaced))
+            .font(.caption2.weight(isDeathCross ? .bold : .medium)).monospaced()
             .tracking(0.5)
             .foregroundColor(isDeathCross ? bearRed : Color.primary.opacity(0.55))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
+            .padding(.horizontal, Theme.Spacing.tight)
+            .padding(.vertical, Theme.Spacing.small)
             .background(
                 isDeathCross
                     ? bearRed.opacity(0.10)
                     : Color.primary.opacity(0.05)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 4)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                     .stroke(
                         isDeathCross ? bearRed.opacity(0.3) : Color.primary.opacity(0.12),
                         lineWidth: 0.5
                     )
             )
-            .cornerRadius(4)
+            .cornerRadius(Theme.CornerRadius.small)
     }
 }
 
@@ -262,20 +262,20 @@ struct MomentumStockRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Text(stock.ticker)
-                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                .font(.footnote.weight(.semibold)).monospaced()
                 .foregroundColor(.primary.opacity(0.90))
-                .frame(width: 90, alignment: .leading)
+                .frame(minWidth: 80, alignment: .leading)
 
             Text("₹\(IndianFormatter.price(stock.lastPrice))")
-                .font(.system(size: 13, weight: .regular, design: .monospaced))
+                .font(.footnote).monospaced()
                 .foregroundColor(.primary.opacity(0.70))
 
             Spacer()
 
             SignalBadge(label: signalText)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 9)
+        .padding(.horizontal, Theme.Spacing.standard)
+        .padding(.vertical, Theme.Spacing.medium)
     }
 }
 
@@ -288,10 +288,10 @@ struct MacroGroupView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(groupTitle)
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .font(.caption2.weight(.semibold)).monospaced()
                 .tracking(1.8)
                 .foregroundColor(dimText)
-                .padding(.bottom, 8)
+                .padding(.bottom, Theme.Spacing.medium)
 
             VStack(spacing: 0) {
                 ForEach(rows) { row in
@@ -316,27 +316,27 @@ struct MacroRowView: View {
         HStack(alignment: .center, spacing: 0) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(row.name)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.footnote.weight(.medium))
                     .foregroundColor(.primary.opacity(0.85))
             }
 
             Spacer()
 
             Text(String(format: "%.2f", row.price))
-                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                .font(.footnote.weight(.semibold)).monospaced()
                 .foregroundColor(.primary.opacity(0.85))
-                .frame(width: 80, alignment: .trailing)
+                .frame(minWidth: 70, alignment: .trailing)
 
             Text("\(row.changePct >= 0 ? "+" : "")\(String(format: "%.2f", row.changePct))%")
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .font(.caption.weight(.semibold)).monospaced()
                 .foregroundColor(changeColor)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
+                .padding(.horizontal, Theme.Spacing.tight)
+                .padding(.vertical, Theme.Spacing.xSmall)
                 .background(changeColor.opacity(0.08))
-                .cornerRadius(4)
-                .frame(width: 64, alignment: .trailing)
+                .cornerRadius(Theme.CornerRadius.small)
+                .frame(minWidth: 60, alignment: .trailing)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, Theme.Spacing.medium)
     }
 }
 
@@ -361,18 +361,18 @@ struct FundReturnRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Text("\(rank)")
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .font(.caption.weight(.medium)).monospaced()
                 .foregroundColor(subtleText)
                 .frame(width: 14)
 
             Text(fundName)
-                .font(.system(size: 13, weight: .medium))
+                .font(.footnote.weight(.medium))
                 .foregroundColor(.primary.opacity(0.85))
                 .lineLimit(1)
 
             Spacer()
 
-            HStack(spacing: 6) {
+            HStack(spacing: Theme.Spacing.tight) {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 2)
@@ -382,15 +382,15 @@ struct FundReturnRow: View {
                             .frame(width: geo.size.width * barWidth)
                     }
                 }
-                .frame(width: 52, height: 4)
+                .frame(width: UIScreen.main.bounds.width * 0.13, height: 4)
 
                 Text(formattedReturn)
-                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .font(.caption.weight(.semibold)).monospaced()
                     .foregroundColor(returnColor)
-                    .frame(width: 44, alignment: .trailing)
+                    .frame(minWidth: 40, alignment: .trailing)
             }
         }
-        .padding(.vertical, 7)
+        .padding(.vertical, Theme.Spacing.medium)
     }
 }
 
@@ -399,10 +399,10 @@ struct FundReturnRow: View {
 struct AdvisoryConsensusEmptyCard: View {
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
                 .fill(.ultraThinMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
                         .stroke(Color.primary.opacity(0.07), lineWidth: 0.5)
                 )
 
@@ -415,32 +415,32 @@ struct AdvisoryConsensusEmptyCard: View {
                 VStack(alignment: .leading, spacing: 0) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("दलाल स्ट्रीट सलाह")
-                            .font(.system(size: 10, weight: .regular))
+                            .font(.caption2)
                             .foregroundColor(dimText)
                         Text("DALAL STREET ADVISORY")
-                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .font(.caption.weight(.semibold)).monospaced()
                             .tracking(2.0)
                             .foregroundColor(.primary.opacity(0.7))
                     }
-                    .padding(.bottom, 10)
+                    .padding(.bottom, Theme.Spacing.standard)
 
                     GuillocheDivider()
-                        .padding(.bottom, 12)
+                        .padding(.bottom, Theme.Spacing.standard)
 
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(alignment: .top, spacing: Theme.Spacing.standard) {
                         Image(systemName: "clock.badge")
-                            .font(.system(size: 22, weight: .light))
+                            .font(.title2.weight(.light))
                             .foregroundColor(goldAccent.opacity(0.7))
                             .frame(width: 28)
 
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                             Text("Next harvest at 1:30 AM")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(.footnote.weight(.semibold))
                                 .foregroundColor(.primary.opacity(0.80))
 
                             Text("Advisor stances from SOIC, Basant Maheshwari, and others will appear here after the nightly run.")
-                                .font(.system(size: 12, weight: .regular))
-                                .foregroundColor(.primary.opacity(0.50))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .lineSpacing(2)
                         }
@@ -570,7 +570,7 @@ struct HomeScreen: View {
 
                 ScrollViewReader { proxy in
                     ScrollView {
-                        VStack(spacing: 16) {
+                        VStack(spacing: Theme.Spacing.card) {
 
                             // ── Section 1: Header + Daily Action ─────────────
                             Group {
@@ -591,44 +591,44 @@ struct HomeScreen: View {
                                                     .fill(Theme.securityGold.opacity(0.15))
                                                     .frame(width: 40, height: 40)
                                                 Text(String(user.displayName.prefix(1)).uppercased())
-                                                    .font(.system(size: 16, weight: .bold))
+                                                    .font(.headline.weight(.bold))
                                                     .foregroundColor(Theme.securityGold)
                                             }
                                             .overlay(Circle().stroke(Theme.securityGold.opacity(0.4), lineWidth: 1))
                                         }
                                     }
                                     .padding(.horizontal, Theme.screenPadding)
-                                    .padding(.top, 12)
+                                    .padding(.top, Theme.Spacing.standard)
                                 }
                                 
                                 // NEW: Horizontal Quick Nav Bar
                                 ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 8) {
+                                    HStack(spacing: Theme.Spacing.medium) {
                                         ForEach(HomeSectionID.allCases) { section in
                                             if section != .top {
                                                 Button(action: {
                                                     HapticManager.selection()
                                                     scrollTarget = section.rawValue
                                                 }) {
-                                                    HStack(spacing: 4) {
+                                                    HStack(spacing: Theme.Spacing.small) {
                                                         Image(systemName: section.icon)
-                                                            .font(.system(size: 9))
+                                                            .font(.caption2)
                                                         Text(section.title.uppercased())
                                                             .font(Theme.officialStampFont(size: 9))
                                                     }
                                                     .foregroundColor(Theme.inkPrimary)
-                                                    .padding(.horizontal, 12)
-                                                    .padding(.vertical, 8)
+                                                    .padding(.horizontal, Theme.Spacing.standard)
+                                                    .padding(.vertical, Theme.Spacing.medium)
                                                     .background(Theme.securityGold.opacity(0.12))
-                                                    .cornerRadius(16)
-                                                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
+                                                    .cornerRadius(Theme.CornerRadius.card)
+                                                    .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
                                                 }
                                                 .buttonStyle(EKPressStyle())
                                             }
                                         }
                                     }
                                     .padding(.horizontal, Theme.screenPadding)
-                                    .padding(.bottom, 4)
+                                    .padding(.bottom, Theme.Spacing.small)
                                 }
 
                                 if let action = dailyAction {
@@ -651,20 +651,20 @@ struct HomeScreen: View {
                             .id(HomeSectionID.portfolio.rawValue)
 
                             // ── Section 3: Market Indices ─────────────────────
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(alignment: .center, spacing: 8) {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                                HStack(alignment: .center, spacing: Theme.Spacing.medium) {
                                     SectionHeader(title: "Market Indices", hindiTitle: "बाजार सूचकांक")
                                     if viewModel.indicesFetchFailed {
                                         Text("DELAYED")
                                             .font(Theme.officialStampFont(size: 8))
                                             .foregroundColor(Theme.bearRed)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
+                                            .padding(.horizontal, Theme.Spacing.tight)
+                                            .padding(.vertical, Theme.Spacing.xSmall)
                                             .overlay(RoundedRectangle(cornerRadius: 3).stroke(Theme.bearRed, lineWidth: 0.5))
                                     }
                                 }
                                 ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 12) {
+                                    HStack(spacing: Theme.Spacing.standard) {
                                         ForEach(viewModel.indices) { index in
                                             let valueStr: String = {
                                                 if index.ticker == "USDINR=X" {
@@ -695,7 +695,7 @@ struct HomeScreen: View {
                             .id(HomeSectionID.indices.rawValue)
 
                             // ── Section 4: Watchlist ──────────────────────────
-                            VStack(spacing: 16) {
+                            VStack(spacing: Theme.Spacing.card) {
                                 SectionHeader(title: "Watchlist", hindiTitle: "बाज़ार की निगरानी", actionLabel: "SEE ALL →") { }
                                 if viewModel.watchlist.isEmpty && !viewModel.isLoading {
                                     Text("Add stocks to your watchlist to see them here")
@@ -703,9 +703,9 @@ struct HomeScreen: View {
                                         .foregroundColor(Theme.inkTertiary)
                                         .multilineTextAlignment(.center)
                                         .padding(.horizontal, Theme.screenPadding)
-                                        .padding(.vertical, 20)
+                                        .padding(.vertical, Theme.Spacing.screen)
                                 } else {
-                                    VStack(spacing: 12) {
+                                    VStack(spacing: Theme.Spacing.standard) {
                                         ForEach(viewModel.watchlist) { stock in
                                             NavigationLink(value: stock.ticker) {
                                                 StockRow(stock: stock)
@@ -724,7 +724,7 @@ struct HomeScreen: View {
                             }
 
                             // ── Section 5: Sector Pulse ───────────────────────
-                            VStack(spacing: 12) {
+                            VStack(spacing: Theme.Spacing.standard) {
                                 SectionHeader(title: "Sector Pulse", hindiTitle: "क्षेत्र प्रदर्शन")
                                 if !viewModel.sectorData.isEmpty {
                                     SectorHeatmapView(sectors: viewModel.sectorData)
@@ -736,7 +736,7 @@ struct HomeScreen: View {
                             .id(HomeSectionID.sectors.rawValue)
 
                             // ── Section 6: Morning Brief ──────────────────────
-                            VStack(spacing: 16) {
+                            VStack(spacing: Theme.Spacing.card) {
                                 SectionHeader(title: "Morning Brief", hindiTitle: "प्रातःकालीन सारांश")
                                 if let briefData = viewModel.morningBriefData {
                                     MorningDecreeCard(briefData: briefData)
@@ -752,24 +752,24 @@ struct HomeScreen: View {
                                 // Section header (bilingual, matches existing pattern)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("ताज़ा समाचार")
-                                        .font(.system(size: 10, weight: .regular))
-                                        .foregroundColor(Color.primary.opacity(0.35))
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
                                     Text("MARKET NEWS")
-                                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                        .font(.caption.weight(.semibold)).monospaced()
                                         .tracking(2.0)
-                                        .foregroundColor(Color.primary.opacity(0.45))
+                                        .foregroundColor(.secondary)
                                 }
-                                .padding(.bottom, 10)
+                                .padding(.bottom, Theme.Spacing.standard)
                                 .padding(.horizontal, Theme.screenPadding)
 
                                 GuillocheDivider()
                                     .padding(.horizontal, Theme.screenPadding)
-                                    .padding(.bottom, 12)
+                                    .padding(.bottom, Theme.Spacing.standard)
 
                                 if let feed = feedVM.feed {
                                     // Horizontal scrolling news strip — all news in one scroll
                                     ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 12) {
+                                        HStack(spacing: Theme.Spacing.standard) {
                                             ForEach(feed.news.prefix(10)) { article in
                                                 CompactNewsCell(article: article) { ticker in
                                                     navigationPath.append(ticker)
@@ -787,7 +787,7 @@ struct HomeScreen: View {
                                     ForEach(0..<3, id: \.self) { _ in
                                         RoundedRectangle(cornerRadius: 14)
                                             .fill(Color.primary.opacity(0.05))
-                                            .frame(height: 90)
+                                            .frame(height: UIScreen.main.bounds.height * 0.11)
                                             .padding(.horizontal, Theme.screenPadding)
                                     }
                                 }
@@ -805,80 +805,52 @@ struct HomeScreen: View {
                             // ── Section 6c: YOUTUBE FEED ─────────────────────────
                             if let feed = feedVM.feed, !feed.youtubeVideos.isEmpty {
                                 let videos = Array(feed.youtubeVideos.prefix(15))
-                                let row1 = Array(videos.prefix(5))
-                                let row2 = Array(videos.dropFirst(5).prefix(5))
-                                let row3 = Array(videos.dropFirst(10).prefix(5))
 
                                 VStack(alignment: .leading, spacing: 0) {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("विशेषज्ञ विश्लेषण")
-                                            .font(.system(size: 10, weight: .regular))
-                                            .foregroundColor(Color.primary.opacity(0.35))
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
                                         Text("EXPERT VIDEOS")
-                                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                            .font(.caption.weight(.semibold)).monospaced()
                                             .tracking(2.0)
-                                            .foregroundColor(Color.primary.opacity(0.45))
+                                            .foregroundColor(.secondary)
                                     }
-                                    .padding(.bottom, 10)
+                                    .padding(.bottom, Theme.Spacing.standard)
                                     .padding(.horizontal, Theme.screenPadding)
 
                                     GuillocheDivider()
                                         .padding(.horizontal, Theme.screenPadding)
-                                        .padding(.bottom, 12)
+                                        .padding(.bottom, Theme.Spacing.standard)
 
-                                    VStack(spacing: 12) {
-                                        if !row1.isEmpty {
-                                            ScrollView(.horizontal, showsIndicators: false) {
-                                                HStack(spacing: 10) {
-                                                    ForEach(row1) { video in
-                                                        YouTubeCompactCard(video: video) { ticker in
-                                                            navigationPath.append(ticker)
-                                                        }
-                                                    }
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        LazyHGrid(
+                                            rows: [
+                                                GridItem(.fixed(260)),
+                                                GridItem(.fixed(260)),
+                                                GridItem(.fixed(260))
+                                            ],
+                                            spacing: Theme.Spacing.standard
+                                        ) {
+                                            ForEach(videos) { video in
+                                                YouTubeCompactCard(video: video) { ticker in
+                                                    navigationPath.append(ticker)
                                                 }
-                                                .padding(.horizontal, Theme.screenPadding)
+                                                .frame(width: 240)
                                             }
-                                            .horizontalScrollFixed(height: 180)
                                         }
-
-                                        if !row2.isEmpty {
-                                            ScrollView(.horizontal, showsIndicators: false) {
-                                                HStack(spacing: 10) {
-                                                    ForEach(row2) { video in
-                                                        YouTubeCompactCard(video: video) { ticker in
-                                                            navigationPath.append(ticker)
-                                                        }
-                                                    }
-                                                }
-                                                .padding(.horizontal, Theme.screenPadding)
-                                            }
-                                            .horizontalScrollFixed(height: 180)
-                                        }
-
-                                        if !row3.isEmpty {
-                                            ScrollView(.horizontal, showsIndicators: false) {
-                                                HStack(spacing: 10) {
-                                                    ForEach(row3) { video in
-                                                        YouTubeCompactCard(video: video) { ticker in
-                                                            navigationPath.append(ticker)
-                                                        }
-                                                    }
-                                                }
-                                                .padding(.horizontal, Theme.screenPadding)
-                                            }
-                                            .horizontalScrollFixed(height: 180)
-                                        }
+                                        .padding(.horizontal, Theme.screenPadding)
                                     }
                                 }
                                 .id(HomeSectionID.youtube.rawValue)
                             }
 
                             // ── Section 7: Upcoming Results ───────────────────
-                            VStack(spacing: 12) {
+                            VStack(spacing: Theme.Spacing.standard) {
                                 SectionHeader(title: "This Week's Results", hindiTitle: "आगामी परिणाम")
                                 let upcoming = viewModel.earningsEvents.filter { $0.daysAway >= 0 && $0.daysAway <= 14 }
                                 if !upcoming.isEmpty {
-                                    VStack(spacing: 8) {
+                                    VStack(spacing: Theme.Spacing.medium) {
                                         ForEach(upcoming) { event in
                                             NavigationLink(value: event.ticker) {
                                                 HStack {
@@ -893,7 +865,7 @@ struct HomeScreen: View {
                                                         .font(Theme.serialNumberFont(size: 10))
                                                         .foregroundColor(Theme.inkTertiary)
                                                     Image(systemName: "chevron.right")
-                                                        .font(.system(size: 9))
+                                                        .font(.caption2)
                                                         .foregroundColor(Theme.inkTertiary)
                                                 }
                                                 .padding(.horizontal, Theme.screenPadding)
@@ -964,6 +936,9 @@ struct HomeScreen: View {
                         }
                         scrollTarget = nil
                     }
+                    .safeAreaInset(edge: .bottom) {
+                        Color.clear.frame(height: 90)
+                    }
                 }
             }
             .navigationDestination(for: String.self) { ticker in
@@ -1025,7 +1000,7 @@ private struct DailyActionCard: View {
                 .fill(borderColor)
                 .frame(width: 3)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                 HStack {
                     Text("TODAY'S ACTION")
                         .font(Theme.officialStampFont(size: 8))
@@ -1034,23 +1009,23 @@ private struct DailyActionCard: View {
                     Text(urgencyLabel)
                         .font(Theme.officialStampFont(size: 8))
                         .foregroundColor(borderColor)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
+                        .padding(.horizontal, Theme.Spacing.tight)
+                        .padding(.vertical, Theme.Spacing.xSmall)
                         .overlay(RoundedRectangle(cornerRadius: 3).stroke(borderColor, lineWidth: 0.5))
                 }
 
                 Text(stripEmoji(response.action))
-                    .font(.system(size: 14, design: .serif).italic())
+                    .font(.body).fontDesign(.serif).italic()
                     .foregroundColor(Theme.inkPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                     .lineSpacing(3)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.horizontal, Theme.Spacing.standard)
+            .padding(.vertical, Theme.Spacing.standard)
         }
         .background(Theme.canvasDeep)
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(borderColor.opacity(0.3), lineWidth: 0.5))
-        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(borderColor.opacity(0.3), lineWidth: 0.5))
+        .cornerRadius(Theme.CornerRadius.medium)
     }
 }
 
@@ -1077,7 +1052,7 @@ private struct PortfolioNoteCard: View {
                 HStack {
                     Spacer()
                     CornerOrnament()
-                        .padding(.top, 8)
+                        .padding(.top, Theme.Spacing.medium)
                         .padding(.trailing, 8)
                 }
                 Spacer()
@@ -1099,11 +1074,11 @@ private struct PortfolioNoteCard: View {
                         .font(Theme.hindiFont(size: 11))
                         .foregroundColor(Theme.inkSecondary)
                 }
-                .padding(.bottom, 8)
+                .padding(.bottom, Theme.Spacing.medium)
 
                 GuillocheDivider()
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text("निवेश पोर्टफोलियो")
                         .font(Theme.hindiFont(size: 11))
                         .foregroundColor(Theme.inkSecondary)
@@ -1113,14 +1088,14 @@ private struct PortfolioNoteCard: View {
                         .foregroundColor(Theme.inkSecondary)
 
                     Text("I PROMISE TO PAY THE BEARER")
-                        .font(.system(size: 8, weight: .medium))
+                        .font(.caption2.weight(.medium))
                         .tracking(2)
                         .foregroundColor(Theme.inkTertiary)
-                        .padding(.bottom, 2)
+                        .padding(.bottom, Theme.Spacing.xSmall)
 
                     PortfolioValueDisplay(target: value, fontSize: 30)
 
-                    HStack(spacing: 6) {
+                    HStack(spacing: Theme.Spacing.tight) {
                         Image(systemName: totalPnL >= 0 ? "arrow.up.right" : "arrow.down.right")
                         Text(totalPnL.inrFormatted)
                         Text("(\((invested > 0 ? totalPnL/invested*100 : 0).percentFormatted))")
@@ -1128,19 +1103,19 @@ private struct PortfolioNoteCard: View {
                     .font(Theme.serialNumberFont(size: 13))
                     .foregroundColor(totalPnL >= 0 ? Theme.bullGreen : Theme.bearRed)
                 }
-                .padding(.top, 4)
+                .padding(.top, Theme.Spacing.small)
 
                 // Signature block
                 VStack(alignment: .leading, spacing: 0) {
                     Text("Platform Governor")
-                        .font(.system(size: 7, weight: .bold))
+                        .font(.caption2.weight(.bold))
                         .foregroundColor(Theme.inkSecondary)
                     Text("Nirav Patel")
-                        .font(Font.custom("SnellRoundhand", size: 18))
+                        .font(Font.custom("SnellRoundhand", size: 18, relativeTo: .title2))
                         .foregroundColor(Theme.inkPrimary.opacity(0.7))
                         .padding(.top, -2)
                 }
-                .padding(.top, 12)
+                .padding(.top, Theme.Spacing.standard)
 
                 GuillocheDivider()
 
@@ -1154,7 +1129,7 @@ private struct PortfolioNoteCard: View {
             }
             .padding(.leading, 32)
             .padding(.trailing, 24)
-            .padding(.vertical, 20)
+            .padding(.vertical, Theme.Spacing.screen)
         }
         .banknoteCard()
         .clipped()
@@ -1168,7 +1143,7 @@ private struct StatNoteBlock: View {
     let color: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             Text(label)
                 .font(Theme.officialStampFont(size: 8))
                 .foregroundColor(Theme.inkSecondary)
@@ -1222,11 +1197,11 @@ private struct MorningDecreeCard: View {
                     // Header
                     VStack(alignment: .leading, spacing: 2) {
                         Text("प्रातःकालीन सारांश")
-                            .font(.system(size: 10, weight: .regular))
+                            .font(.caption2)
                             .foregroundColor(Theme.inkSecondary)
                         HStack {
                             Text("MORNING BRIEF")
-                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                .font(.caption.weight(.semibold)).monospaced()
                                 .tracking(2.0)
                                 .foregroundColor(Theme.inkPrimary)
                             Spacer()
@@ -1238,9 +1213,9 @@ private struct MorningDecreeCard: View {
                     .padding(.trailing, cardHPad)
 
                     GuillocheDivider()
-                        .padding(.horizontal, 4)
-                        .padding(.top, 6)
-                        .padding(.bottom, 10)
+                        .padding(.horizontal, Theme.Spacing.small)
+                        .padding(.top, Theme.Spacing.tight)
+                        .padding(.bottom, Theme.Spacing.standard)
 
                     // Lead sentence with priority pill detection
                     VStack(alignment: .leading, spacing: sectionGap) {
@@ -1253,7 +1228,7 @@ private struct MorningDecreeCard: View {
                         }
 
                         Text(leadSentence)
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.subheadline.weight(.medium))
                             .foregroundColor(.primary.opacity(0.85))
                             .fixedSize(horizontal: false, vertical: true)
                             .lineSpacing(3)
@@ -1265,7 +1240,7 @@ private struct MorningDecreeCard: View {
                         .fill(Color.primary.opacity(0.08))
                         .frame(height: 0.5)
                         .padding(.horizontal, cardHPad)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, Theme.Spacing.standard)
 
                     // Bullet points
                     if !remainingBullets.isEmpty {
@@ -1283,23 +1258,23 @@ private struct MorningDecreeCard: View {
                             .fill(Color.primary.opacity(0.08))
                             .frame(height: 0.5)
                             .padding(.horizontal, cardHPad)
-                            .padding(.top, 10)
-                            .padding(.bottom, 8)
+                            .padding(.top, Theme.Spacing.standard)
+                            .padding(.bottom, Theme.Spacing.medium)
 
-                        VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                             Text("TODAY'S PRIORITIES")
-                                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                .font(.caption2.weight(.semibold)).monospaced()
                                 .tracking(1.5)
                                 .foregroundColor(dimText)
 
                             ForEach(items.prefix(5)) { item in
-                                HStack(spacing: 8) {
+                                HStack(spacing: Theme.Spacing.medium) {
                                     PriorityPill(
                                         label: item.type == "alert_triggered" ? "ALERT" : "SIGNAL",
                                         color: item.type == "alert_triggered" ? bearRed : goldAccent
                                     )
                                     Text(stripEmoji(item.message))
-                                        .font(.system(size: 12, weight: .regular))
+                                        .font(.caption)
                                         .foregroundColor(.primary.opacity(0.70))
                                         .lineLimit(2)
                                 }
@@ -1310,16 +1285,16 @@ private struct MorningDecreeCard: View {
 
                     // Timestamp footer
                     GuillocheDivider()
-                        .padding(.horizontal, 4)
-                        .padding(.top, 6)
+                        .padding(.horizontal, Theme.Spacing.small)
+                        .padding(.top, Theme.Spacing.tight)
 
                     HStack {
                         Text("Updated \(briefData.generatedAt)")
-                            .font(.system(size: 9, weight: .regular))
+                            .font(.caption2)
                             .foregroundColor(subtleText)
                         Spacer()
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 8, weight: .semibold))
+                            .font(.caption2.weight(.semibold))
                             .foregroundColor(subtleText)
                     }
                     .padding(.horizontal, cardHPad)
@@ -1328,9 +1303,9 @@ private struct MorningDecreeCard: View {
             }
         }
         .background(Theme.canvasDeep)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
                 .stroke(Theme.borderFine, lineWidth: 0.5)
         )
     }
@@ -1340,7 +1315,7 @@ private struct SectorPulseCard: View {
     let sector: SectorPerformance
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
             Text(sector.name.uppercased())
                 .font(Theme.officialStampFont(size: 8))
                 .foregroundColor(Theme.inkSecondary)
@@ -1361,7 +1336,7 @@ private struct SectorPulseCard: View {
             }
             .frame(height: 3)
         }
-        .padding(12)
+        .padding(Theme.Spacing.standard)
         .banknoteCard()
     }
 }
@@ -1372,7 +1347,7 @@ private struct TimeframeConflictsBanner: View {
     let conflicts: [TimeframeConflict]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             Text("TIMING INSIGHTS")
                 .font(.system(.caption, design: .default).weight(.medium))
                 .tracking(1.5)
@@ -1401,7 +1376,7 @@ private struct TimeframeConflictCard: View {
     var isBottomFishing: Bool { conflict.conflictType == "BUY_THE_DIP" }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
             HStack {
                 Text(conflict.ticker)
                     .font(.system(.subheadline, design: .monospaced).weight(.bold))
@@ -1410,24 +1385,24 @@ private struct TimeframeConflictCard: View {
                 Text(isBottomFishing ? "BUY THE DIP" : "TAKE PROFITS")
                     .font(.system(.caption2, design: .default).weight(.bold))
                     .foregroundColor(.white)
-                    .padding(.horizontal, 5).padding(.vertical, 2)
+                    .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                     .background(isBottomFishing ? Theme.signalEmerald : Theme.signalRuby)
                     .cornerRadius(3)
             }
 
             if let hint = conflict.actionHint {
                 Text(stripEmoji(hint))
-                    .font(.system(size: 11, design: .serif).italic())
+                    .font(.caption).fontDesign(.serif).italic()
                     .foregroundColor(Theme.inkSecondary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(10)
-        .frame(width: 200)
+        .padding(Theme.Spacing.medium)
+        .frame(width: UIScreen.main.bounds.width * 0.42)
         .background(Theme.canvasDeep)
-        .cornerRadius(8)
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.borderFine, lineWidth: 0.5))
+        .cornerRadius(Theme.CornerRadius.medium)
+        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(Theme.borderFine, lineWidth: 0.5))
     }
 }
 
@@ -1442,9 +1417,9 @@ private struct DashboardSection<Content: View>: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            HStack(spacing: 6) {
+            HStack(spacing: Theme.Spacing.tight) {
                 Image(systemName: icon)
-                    .font(.system(size: 11))
+                    .font(.caption)
                     .foregroundColor(Theme.securityGold)
                 SectionHeader(title: title, hindiTitle: hindi)
             }
@@ -1471,10 +1446,10 @@ private struct DashboardLoadingCard: View {
                     .foregroundColor(Theme.inkTertiary)
             }
         }
-        .padding(16)
+        .padding(Theme.Spacing.card)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.canvasDeep)
-        .cornerRadius(8)
+        .cornerRadius(Theme.CornerRadius.medium)
         .padding(.horizontal, Theme.screenPadding)
     }
 }
@@ -1494,10 +1469,10 @@ private struct MarketPulseDashCard: View {
                     // Header
                     VStack(alignment: .leading, spacing: 2) {
                         Text("बाजार की नब्ज")
-                            .font(.system(size: 10, weight: .regular))
+                            .font(.caption2)
                             .foregroundColor(Theme.inkSecondary)
                         Text("MARKET PULSE")
-                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .font(.caption.weight(.semibold)).monospaced()
                             .tracking(2.0)
                             .foregroundColor(Theme.inkPrimary)
                     }
@@ -1506,9 +1481,9 @@ private struct MarketPulseDashCard: View {
                     .padding(.trailing, cardHPad)
 
                     GuillocheDivider()
-                        .padding(.horizontal, 4)
-                        .padding(.top, 6)
-                        .padding(.bottom, 10)
+                        .padding(.horizontal, Theme.Spacing.small)
+                        .padding(.top, Theme.Spacing.tight)
+                        .padding(.bottom, Theme.Spacing.standard)
 
                     // A/D Breadth Bar
                     if pulse.advances + pulse.declines > 0 {
@@ -1521,7 +1496,7 @@ private struct MarketPulseDashCard: View {
                         .fill(Color.primary.opacity(0.08))
                         .frame(height: 0.5)
                         .padding(.horizontal, cardHPad)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, Theme.Spacing.standard)
 
                     // Index rows
                     VStack(spacing: 0) {
@@ -1556,9 +1531,9 @@ private struct MarketPulseDashCard: View {
             }
         }
         .background(Theme.canvasDeep)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
                 .stroke(Theme.borderFine, lineWidth: 0.5)
         )
     }
@@ -1578,10 +1553,10 @@ private struct MomentumDashCard: View {
                     // Header
                     VStack(alignment: .leading, spacing: 2) {
                         Text("गति विश्लेषण")
-                            .font(.system(size: 10, weight: .regular))
+                            .font(.caption2)
                             .foregroundColor(Theme.inkSecondary)
                         Text("MOMENTUM SCAN")
-                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .font(.caption.weight(.semibold)).monospaced()
                             .tracking(2.0)
                             .foregroundColor(Theme.inkPrimary)
                     }
@@ -1590,9 +1565,9 @@ private struct MomentumDashCard: View {
                     .padding(.trailing, cardHPad)
 
                     GuillocheDivider()
-                        .padding(.horizontal, 4)
-                        .padding(.top, 6)
-                        .padding(.bottom, 10)
+                        .padding(.horizontal, Theme.Spacing.small)
+                        .padding(.top, Theme.Spacing.tight)
+                        .padding(.bottom, Theme.Spacing.standard)
 
                     // Bullish section
                     if !momentum.bullish.isEmpty {
@@ -1621,9 +1596,9 @@ private struct MomentumDashCard: View {
             }
         }
         .background(Theme.canvasDeep)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
                 .stroke(Theme.borderFine, lineWidth: 0.5)
         )
     }
@@ -1664,10 +1639,10 @@ private struct MacroDashCard: View {
                     // Header
                     VStack(alignment: .leading, spacing: 2) {
                         Text("वृहद अर्थव्यवस्था")
-                            .font(.system(size: 10, weight: .regular))
+                            .font(.caption2)
                             .foregroundColor(Theme.inkSecondary)
                         Text("MACRO & ALTERNATIVES")
-                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .font(.caption.weight(.semibold)).monospaced()
                             .tracking(2.0)
                             .foregroundColor(Theme.inkPrimary)
                     }
@@ -1676,12 +1651,12 @@ private struct MacroDashCard: View {
                     .padding(.trailing, cardHPad)
 
                     GuillocheDivider()
-                        .padding(.horizontal, 4)
-                        .padding(.top, 6)
-                        .padding(.bottom, 10)
+                        .padding(.horizontal, Theme.Spacing.small)
+                        .padding(.top, Theme.Spacing.tight)
+                        .padding(.bottom, Theme.Spacing.standard)
 
                     // Grouped sections
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                         ForEach(macroGroups, id: \.title) { group in
                             let items = itemsForGroup(group.keys)
                             if !items.isEmpty {
@@ -1691,7 +1666,7 @@ private struct MacroDashCard: View {
                                     Rectangle()
                                         .fill(Color.primary.opacity(0.08))
                                         .frame(height: 0.5)
-                                        .padding(.vertical, 4)
+                                        .padding(.vertical, Theme.Spacing.small)
                                 }
                             }
                         }
@@ -1708,9 +1683,9 @@ private struct MacroDashCard: View {
             }
         }
         .background(Theme.canvasDeep)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
                 .stroke(Theme.borderFine, lineWidth: 0.5)
         )
     }
@@ -1743,7 +1718,7 @@ struct MarketMoodGauge: View {
     var body: some View {
         VStack(spacing: 10) {
             Text("MARKET MOOD GAUGE")
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .font(.caption2.weight(.bold)).monospaced()
                 .tracking(2)
                 .foregroundColor(Theme.inkSecondary)
 
@@ -1780,19 +1755,19 @@ struct MarketMoodGauge: View {
                         .position(x: cx, y: cy)
                 }
             }
-            .frame(height: 80)
+            .frame(height: UIScreen.main.bounds.height * 0.10)
             .clipped()
 
-            VStack(spacing: 4) {
+            VStack(spacing: Theme.Spacing.small) {
                 Text(moodLabel)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.footnote.weight(.bold))
                     .foregroundColor(needleColor)
                 Text(String(format: "A/D Ratio: %.2f", ratio))
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.caption2).monospaced()
                     .foregroundColor(Theme.inkTertiary)
             }
         }
-        .padding(14)
+        .padding(Theme.Spacing.standard)
         .banknoteCard()
     }
 }
@@ -1832,28 +1807,28 @@ struct IndexCardView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             Text(index.name)
-                .font(.system(size: 10, weight: .semibold))
+                .font(.caption2.weight(.semibold))
                 .foregroundColor(Theme.inkSecondary)
                 .lineLimit(1)
 
             Text(valueStr)
-                .font(.system(size: 18, weight: .bold, design: .monospaced))
+                .font(.headline.weight(.bold)).monospaced()
                 .foregroundColor(Theme.inkPrimary)
                 .monospacedDigit()
 
-            HStack(spacing: 4) {
+            HStack(spacing: Theme.Spacing.small) {
                 Image(systemName: isPositive ? "arrow.up.right" : "arrow.down.right")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.caption2.weight(.bold))
                     .foregroundColor(isPositive ? Theme.bullGreen : Theme.bearRed)
                 Text(changeStr)
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .font(.caption.weight(.bold)).monospaced()
                     .foregroundColor(isPositive ? Theme.bullGreen : Theme.bearRed)
             }
         }
-        .padding(14)
-        .frame(width: 140)
+        .padding(Theme.Spacing.standard)
+        .frame(width: UIScreen.main.bounds.width * 0.35)
         .banknoteCard()
     }
 }
@@ -1874,32 +1849,32 @@ struct MomentumRowView: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 6) {
+        HStack(spacing: Theme.Spacing.standard) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                HStack(spacing: Theme.Spacing.tight) {
                     Text(ticker.ticker)
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .font(.footnote.weight(.bold)).monospaced()
                         .foregroundColor(Theme.inkPrimary)
                     Text(crossoverLabel.uppercased())
-                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .font(.caption2.weight(.bold)).monospaced()
                         .tracking(0.8)
                         .foregroundColor(signalColor)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
+                        .padding(.horizontal, Theme.Spacing.tight)
+                        .padding(.vertical, Theme.Spacing.xSmall)
                         .background(signalColor.opacity(0.10))
                         .cornerRadius(3)
                 }
                 HStack(spacing: 10) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("LTP").font(.system(size: 8)).foregroundColor(Theme.inkTertiary)
+                        Text("LTP").font(.caption2).foregroundColor(Theme.inkTertiary)
                         Text(IndianFormatter.price(ticker.lastPrice))
-                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .font(.caption.weight(.semibold)).monospaced()
                             .foregroundColor(Theme.inkPrimary)
                     }
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("SINCE").font(.system(size: 8)).foregroundColor(Theme.inkTertiary)
+                        Text("SINCE").font(.caption2).foregroundColor(Theme.inkTertiary)
                         Text(ticker.trendDate)
-                            .font(.system(size: 10, design: .monospaced))
+                            .font(.caption2).monospaced()
                             .foregroundColor(Theme.inkSecondary)
                     }
                 }
@@ -1908,11 +1883,11 @@ struct MomentumRowView: View {
             // Native Swift Charts trend sparkline
             if !ticker.sparkline.isEmpty {
                 SparklineView(values: ticker.sparkline, color: signalColor)
-                    .frame(width: 56, height: 32)
+                    .frame(width: UIScreen.main.bounds.width * 0.14, height: UIScreen.main.bounds.width * 0.08)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, Theme.Spacing.standard)
+        .padding(.vertical, Theme.Spacing.standard)
     }
 }
 
@@ -1950,7 +1925,7 @@ struct CompactNewsCell: View {
                 UIApplication.shared.open(url)
             }
         }) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 // Thumbnail image
                 if let imageUrl = article.imageUrl, let url = URL(string: imageUrl) {
                     AsyncImage(url: url) { phase in
@@ -1961,15 +1936,15 @@ struct CompactNewsCell: View {
                                 .aspectRatio(contentMode: .fill)
                                 .frame(height: 72)
                                 .clipped()
-                                .cornerRadius(6)
+                                .cornerRadius(Theme.CornerRadius.tight)
                         case .failure(_), .empty:
                             Rectangle()
                                 .fill(Color.primary.opacity(0.06))
                                 .frame(height: 72)
-                                .cornerRadius(6)
+                                .cornerRadius(Theme.CornerRadius.tight)
                                 .overlay(
                                     Image(systemName: "newspaper")
-                                        .font(.system(size: 16))
+                                        .font(.headline)
                                         .foregroundColor(Color.primary.opacity(0.2))
                                 )
                         @unknown default:
@@ -1980,27 +1955,27 @@ struct CompactNewsCell: View {
                     Rectangle()
                         .fill(Color.primary.opacity(0.06))
                         .frame(height: 72)
-                        .cornerRadius(6)
+                        .cornerRadius(Theme.CornerRadius.tight)
                         .overlay(
                             Image(systemName: "newspaper")
-                                .font(.system(size: 16))
+                                .font(.headline)
                                 .foregroundColor(Color.primary.opacity(0.2))
                         )
                 }
 
                 // Source badge
                 Text(sourceLabel)
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .font(.caption2.weight(.bold)).monospaced()
                     .tracking(1.0)
                     .foregroundColor(goldAccent)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, Theme.Spacing.tight)
+                    .padding(.vertical, Theme.Spacing.xSmall)
                     .background(goldAccent.opacity(0.12))
                     .cornerRadius(3)
 
                 // Headline (max 2 lines)
                 Text(article.headline)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.caption2.weight(.medium))
                     .foregroundColor(.primary.opacity(0.85))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -2009,12 +1984,12 @@ struct CompactNewsCell: View {
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
-            .padding(8)
+            .padding(Theme.Spacing.medium)
             .background(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                     .fill(Theme.canvasDeep)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 8)
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                             .stroke(Theme.borderSage, lineWidth: 0.5)
                     )
             )
@@ -2077,10 +2052,10 @@ private struct InstitutionalDashCard: View {
                     // Header
                     VStack(alignment: .leading, spacing: 2) {
                         Text("संस्थागत प्रवाह")
-                            .font(.system(size: 10, weight: .regular))
+                            .font(.caption2)
                             .foregroundColor(Theme.inkSecondary)
                         Text("INSTITUTIONAL ALLOCATION")
-                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .font(.caption.weight(.semibold)).monospaced()
                             .tracking(2.0)
                             .foregroundColor(Theme.inkPrimary)
                     }
@@ -2089,16 +2064,16 @@ private struct InstitutionalDashCard: View {
                     .padding(.trailing, cardHPad)
 
                     GuillocheDivider()
-                        .padding(.horizontal, 4)
-                        .padding(.top, 6)
-                        .padding(.bottom, 10)
+                        .padding(.horizontal, Theme.Spacing.small)
+                        .padding(.top, Theme.Spacing.tight)
+                        .padding(.bottom, Theme.Spacing.standard)
 
                     Text("TOP PERFORMING MUTUAL FUNDS — 1Y RETURN")
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                        .font(.caption2.weight(.semibold)).monospaced()
                         .tracking(1.5)
                         .foregroundColor(dimText)
                         .padding(.horizontal, cardHPad)
-                        .padding(.bottom, 10)
+                        .padding(.bottom, Theme.Spacing.standard)
 
                     // Fund rows
                     VStack(spacing: 0) {

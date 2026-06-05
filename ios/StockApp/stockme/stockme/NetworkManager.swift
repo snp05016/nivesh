@@ -953,7 +953,7 @@ class NetworkManager: ObservableObject {
             throw NetworkError.fetchFailed(endpoint: "/api/v1/portfolio/charts/\(userId)", status: 0, body: "Invalid URL")
         }
         var request = authRequest(url)
-        request.timeoutInterval = 20
+        request.timeoutInterval = 90  // chart generation can take 30-60s for large portfolios
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             let body = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"

@@ -65,28 +65,28 @@ struct stockmeApp: App {
     // MARK: - Biometric Auth
 
     private var biometricLockScreen: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: Theme.Spacing.large) {
             Image(systemName: "faceid")
-                .font(.system(size: 60))
+                .font(.largeTitle)
                 .foregroundColor(Theme.securityGold)
             Text("NIVESH")
-                .font(Font.custom("Georgia-Bold", size: 28))
+                .font(Font.custom("Georgia-Bold", size: 28, relativeTo: .title))
                 .foregroundColor(Theme.inkPrimary)
             Text("Authenticate to continue")
-                .font(.system(size: 14))
+                .font(.subheadline)
                 .foregroundColor(Theme.inkSecondary)
             Button {
                 authenticateWithBiometrics()
             } label: {
-                HStack(spacing: 8) {
+                HStack(spacing: Theme.Spacing.medium) {
                     Image(systemName: "faceid")
                     Text("Unlock with Face ID")
                 }
-                .font(.system(size: 15, weight: .medium))
+                .font(.body.weight(.medium))
                 .foregroundColor(.white)
-                .padding(.horizontal, 32).padding(.vertical, 14)
+                .padding(.horizontal, Theme.Spacing.xLarge).padding(.vertical, Theme.Spacing.standard)
                 .background(Theme.securityGold)
-                .cornerRadius(10)
+                .cornerRadius(Theme.CornerRadius.large)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

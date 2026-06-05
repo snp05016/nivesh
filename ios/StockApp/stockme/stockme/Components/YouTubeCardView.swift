@@ -4,8 +4,8 @@ struct YouTubeCardView: View {
     let video: YouTubeVideoItem
     var onTickerTap: ((String) -> Void)? = nil
 
-    private let goldAccent = Color(red: 0.78, green: 0.64, blue: 0.25)
-    private let dimText    = Color.primary.opacity(0.45)
+    private let goldAccent = Theme.securityGold
+    private let dimText    = Color.secondary
 
     var body: some View {
         Button(action: {
@@ -22,40 +22,42 @@ struct YouTubeCardView: View {
                             case .success(let image):
                                 image
                                     .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: 110, height: 70)
+                                    .aspectRatio(16/9, contentMode: .fill)
+                                    .frame(maxWidth: .infinity)
                                     .clipped()
-                                    .cornerRadius(8)
+                                    .cornerRadius(Theme.CornerRadius.medium)
                             default:
                                 Rectangle()
                                     .fill(Color.primary.opacity(0.08))
-                                    .frame(width: 110, height: 70)
-                                    .cornerRadius(8)
+                                    .aspectRatio(16/9, contentMode: .fill)
+                                    .frame(maxWidth: .infinity)
+                                    .cornerRadius(Theme.CornerRadius.medium)
                             }
                         }
                     } else {
                         Rectangle()
                             .fill(Color.primary.opacity(0.08))
-                            .frame(width: 110, height: 70)
-                            .cornerRadius(8)
+                            .aspectRatio(16/9, contentMode: .fill)
+                            .frame(maxWidth: .infinity)
+                            .cornerRadius(Theme.CornerRadius.medium)
                     }
 
                     // Play button overlay
                     Image(systemName: "play.circle.fill")
-                        .font(.system(size: 22, weight: .regular))
+                        .font(.title2.weight(.regular))
                         .foregroundStyle(.white, Color.black.opacity(0.55))
-                        .padding(4)
+                        .padding(Theme.Spacing.small)
 
                     // Duration badge
                     if video.durationSeconds > 0 {
                         Text(video.formattedDuration)
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .font(.caption2.weight(.semibold).monospaced())
                             .foregroundColor(.white)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 2)
+                            .padding(.horizontal, Theme.Spacing.small)
+                            .padding(.vertical, Theme.Spacing.xSmall)
                             .background(Color.black.opacity(0.70))
-                            .cornerRadius(3)
-                            .padding(4)
+                            .cornerRadius(Theme.CornerRadius.small)
+                            .padding(Theme.Spacing.small)
                     }
                 }
 
@@ -63,13 +65,13 @@ struct YouTubeCardView: View {
                 VStack(alignment: .leading, spacing: 5) {
                     // Channel name
                     Text(video.channelName.uppercased())
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(.caption2.weight(.bold).monospaced())
                         .tracking(1.2)
                         .foregroundColor(goldAccent)
 
                     // Title
                     Text(video.title)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.footnote.weight(.semibold))
                         .foregroundColor(.primary.opacity(0.88))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -80,22 +82,22 @@ struct YouTubeCardView: View {
                     // Footer: views + tickers
                     HStack(spacing: 6) {
                         Image(systemName: "eye")
-                            .font(.system(size: 9))
+                            .font(.caption2)
                             .foregroundColor(dimText)
                         Text(video.formattedViewCount)
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .font(.caption2.weight(.medium).monospaced())
                             .foregroundColor(dimText)
 
                         // Ticker chips (tappable)
                         ForEach(video.tickersMentioned.prefix(2), id: \.self) { ticker in
                             Button(action: { onTickerTap?(ticker) }) {
                                 Text(ticker)
-                                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                    .font(.caption2.weight(.semibold).monospaced())
                                     .foregroundColor(.primary.opacity(0.65))
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 2)
+                                    .padding(.horizontal, Theme.Spacing.tight)
+                                    .padding(.vertical, Theme.Spacing.xSmall)
                                     .background(Color.primary.opacity(0.07))
-                                    .cornerRadius(3)
+                                    .cornerRadius(Theme.CornerRadius.small)
                             }
                             .buttonStyle(EKPressStyle())
                         }
@@ -104,17 +106,17 @@ struct YouTubeCardView: View {
 
                 Spacer(minLength: 0)
             }
-            .padding(12)
+            .padding(Theme.Spacing.standard)
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
                     .fill(.ultraThinMaterial)
                     .overlay(PaperTexture().opacity(0.45))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
                     .stroke(Color.primary.opacity(0.07), lineWidth: 0.5)
             )
-            .cornerRadius(12)
+            .cornerRadius(Theme.CornerRadius.large)
         }
         .buttonStyle(EKPressStyle())
     }
@@ -126,7 +128,7 @@ struct YouTubeCompactCard: View {
     let video: YouTubeVideoItem
     var onTickerTap: ((String) -> Void)? = nil
 
-    private let goldAccent = Color(red: 0.78, green: 0.64, blue: 0.25)
+    private let goldAccent = Theme.securityGold
 
     var body: some View {
         Button(action: {
@@ -143,53 +145,55 @@ struct YouTubeCompactCard: View {
                             case .success(let image):
                                 image
                                     .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: 155, height: 87)
+                                    .aspectRatio(16/9, contentMode: .fill)
+                                    .frame(maxWidth: .infinity)
                                     .clipped()
-                                    .cornerRadius(6)
+                                    .cornerRadius(Theme.CornerRadius.tight)
                             default:
                                 Rectangle()
                                     .fill(Color.primary.opacity(0.08))
-                                    .frame(width: 155, height: 87)
-                                    .cornerRadius(6)
+                                    .aspectRatio(16/9, contentMode: .fill)
+                                    .frame(maxWidth: .infinity)
+                                    .cornerRadius(Theme.CornerRadius.tight)
                             }
                         }
                     } else {
                         Rectangle()
                             .fill(Color.primary.opacity(0.08))
-                            .frame(width: 155, height: 87)
-                            .cornerRadius(6)
+                            .aspectRatio(16/9, contentMode: .fill)
+                            .frame(maxWidth: .infinity)
+                            .cornerRadius(Theme.CornerRadius.tight)
                     }
 
                     // Play button
                     Image(systemName: "play.circle.fill")
-                        .font(.system(size: 18, weight: .regular))
+                        .font(.title3.weight(.regular))
                         .foregroundStyle(.white, Color.black.opacity(0.55))
-                        .padding(3)
+                        .padding(Theme.Spacing.small)
 
                     // Duration badge
                     if video.durationSeconds > 0 {
                         Text(video.formattedDuration)
-                            .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                            .font(.caption2.weight(.semibold).monospaced())
                             .foregroundColor(.white)
-                            .padding(.horizontal, 3)
-                            .padding(.vertical, 1.5)
+                            .padding(.horizontal, Theme.Spacing.small)
+                            .padding(.vertical, Theme.Spacing.xSmall)
                             .background(Color.black.opacity(0.70))
-                            .cornerRadius(2)
-                            .padding(3)
+                            .cornerRadius(Theme.CornerRadius.small)
+                            .padding(Theme.Spacing.small)
                     }
                 }
 
                 // Channel
                 Text(video.channelName.uppercased())
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .font(.caption2.weight(.bold).monospaced())
                     .tracking(0.8)
                     .foregroundColor(goldAccent)
                     .lineLimit(1)
 
                 // Title
                 Text(video.title)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.caption.weight(.semibold))
                     .foregroundColor(.primary.opacity(0.88))
                     .lineLimit(2)
                     .lineSpacing(1)
@@ -197,11 +201,11 @@ struct YouTubeCompactCard: View {
                 // Views
                 HStack(spacing: 3) {
                     Image(systemName: "eye")
-                        .font(.system(size: 8))
-                        .foregroundColor(Color.primary.opacity(0.35))
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
                     Text(video.formattedViewCount)
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
-                        .foregroundColor(Color.primary.opacity(0.35))
+                        .font(.caption2.weight(.medium).monospaced())
+                        .foregroundColor(.secondary)
                 }
 
                 // Ticker chips
@@ -210,30 +214,30 @@ struct YouTubeCompactCard: View {
                         ForEach(video.tickersMentioned.prefix(2), id: \.self) { ticker in
                             Button(action: { onTickerTap?(ticker) }) {
                                 Text(ticker)
-                                    .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                                    .font(.caption2.weight(.semibold).monospaced())
                                     .foregroundColor(.primary.opacity(0.65))
-                                    .padding(.horizontal, 4)
-                                    .padding(.vertical, 1.5)
+                                    .padding(.horizontal, Theme.Spacing.small)
+                                    .padding(.vertical, Theme.Spacing.xSmall)
                                     .background(Color.primary.opacity(0.07))
-                                    .cornerRadius(2)
+                                    .cornerRadius(Theme.CornerRadius.small)
                             }
                             .buttonStyle(EKPressStyle())
                         }
                     }
                 }
             }
-            .frame(width: 155, alignment: .leading)
-            .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.Spacing.medium)
             .background(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
                     .fill(.ultraThinMaterial)
                     .overlay(PaperTexture().opacity(0.45))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
                     .stroke(Color.primary.opacity(0.07), lineWidth: 0.5)
             )
-            .cornerRadius(10)
+            .cornerRadius(Theme.CornerRadius.large)
         }
         .buttonStyle(EKPressStyle())
     }

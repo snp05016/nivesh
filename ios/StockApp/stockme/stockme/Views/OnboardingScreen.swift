@@ -21,16 +21,16 @@ struct OnboardingScreen: View {
                         .stroke(Theme.inkSecondary.opacity(0.3), lineWidth: 1)
                         .frame(width: 100, height: 100)
                     Text("₹")
-                        .font(Theme.engravedSerif(size: 48, weight: .bold))
+                        .font(Theme.engravedSerif(size: 48, weight: .bold, relativeTo: .largeTitle))
                         .foregroundColor(Theme.inkPrimary)
                 }
                 .staggerAppear(delay: 0.1)
-                .padding(.bottom, 32)
+                .padding(.bottom, Theme.Spacing.xLarge)
 
                 // App name
                 VStack(spacing: 8) {
                     Text("निवेश / NIVESH")
-                        .font(Theme.engravedSerif(size: 44, weight: .bold))
+                        .font(Theme.engravedSerif(size: 44, weight: .bold, relativeTo: .largeTitle))
                         .foregroundColor(Theme.inkPrimary)
                     
                     Text("OFFICIAL FINANCIAL TENDER")
@@ -41,21 +41,21 @@ struct OnboardingScreen: View {
 
                 // Tagline
                 Text("Invest with Official Clarity")
-                    .font(Theme.engravedSerif(size: 16))
+                    .font(Theme.engravedSerif(size: 16, relativeTo: .body))
                     .italic()
                     .foregroundColor(Theme.inkSecondary)
-                    .padding(.top, 16)
+                    .padding(.top, Theme.Spacing.card)
                     .staggerAppear(delay: 0.3)
 
                 Spacer()
 
                 // Features (Presented as Registry Bulletins)
-                VStack(spacing: 20) {
+                VStack(spacing: Theme.Spacing.screen) {
                     FeatureRegistryRow(icon: "shield.righthalf.filled", text: "AI-verified analysis for the Indian market", delay: 0.5)
                     FeatureRegistryRow(icon: "indianrupeesign", text: "Secure real-time P&L tracking", delay: 0.6)
                     FeatureRegistryRow(icon: "doc.text.fill", text: "Official archives and record keeping", delay: 0.7)
                 }
-                .padding(.horizontal, 40)
+                .padding(.horizontal, Theme.Spacing.xLarge)
                 .padding(.bottom, 48)
 
                 // CTA (The Official Access Button)
@@ -64,12 +64,12 @@ struct OnboardingScreen: View {
                         .font(Theme.labelStyle)
                         .foregroundColor(Theme.canvas)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 20)
+                        .padding(.vertical, Theme.Spacing.screen)
                         .background(Theme.inkPrimary)
                         .banknoteCard()
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 48)
+                .padding(.horizontal, Theme.Spacing.large)
+                .padding(.bottom, Theme.Spacing.xLarge * 1.5)
                 .staggerAppear(delay: 0.8)
             }
         }
@@ -82,13 +82,13 @@ private struct FeatureRegistryRow: View {
     let delay: Double
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: Theme.Spacing.card) {
             Image(systemName: icon)
-                .font(.system(size: 20))
+                .font(.title3)
                 .foregroundColor(Theme.securityGold)
                 .frame(width: 32)
             Text(text.uppercased())
-                .font(.system(size: 11, weight: .bold))
+                .font(.caption.weight(.bold))
                 .foregroundColor(Theme.inkSecondary)
             Spacer()
         }

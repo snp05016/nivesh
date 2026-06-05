@@ -57,12 +57,12 @@ struct AdvisoryMatrixCard: View {
 
     private var emptyState: some View {
         Text("No advisor commentary found for \(ticker) in the last 14 days.")
-            .font(.system(size: 14))
+            .font(Theme.officialStampFont(size: 14))
             .foregroundColor(Theme.inkTertiary)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 20)
-            .padding(.horizontal, 16)
+            .padding(.vertical, Theme.Spacing.screen)
+            .padding(.horizontal, Theme.Spacing.card)
     }
 
     // MARK: - Insight Rows
@@ -86,9 +86,9 @@ struct AdvisoryMatrixCard: View {
 
     private func stanceColor(_ stance: String) -> Color {
         switch stance.uppercased() {
-        case "BULLISH": return Color(red: 0.10, green: 0.53, blue: 0.24)
-        case "BEARISH": return Color(red: 0.72, green: 0.09, blue: 0.09)
-        default: return Color(red: 0.80, green: 0.55, blue: 0.05)
+        case "BULLISH": return Theme.bullGreen
+        case "BEARISH": return Theme.bearRed
+        default: return Theme.holdAmber
         }
     }
 }
@@ -99,11 +99,11 @@ private struct AdvisorInsightRowView: View {
     let insight: AdvisorInsightRow
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
             // Name + Stance chip
-            HStack(alignment: .center, spacing: 8) {
+            HStack(alignment: .center, spacing: Theme.Spacing.medium) {
                 Text(insight.advisorName)
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.headline)
                     .foregroundColor(Theme.inkPrimary)
 
                 Spacer()
@@ -113,14 +113,14 @@ private struct AdvisorInsightRowView: View {
 
             // Catalyst summary
             Text(insight.catalystSummary)
-                .font(.system(size: 14))
+                .font(Theme.officialStampFont(size: 14))
                 .foregroundColor(Theme.inkPrimary)
                 .lineLimit(2)
 
             // Video title + Watch button
-            HStack(alignment: .center, spacing: 8) {
+            HStack(alignment: .center, spacing: Theme.Spacing.medium) {
                 Text(insight.videoTitle)
-                    .font(.system(size: 12))
+                    .font(Theme.officialStampFont(size: 12))
                     .foregroundColor(Theme.inkSecondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -131,52 +131,52 @@ private struct AdvisorInsightRowView: View {
             }
 
             // Date · Confidence · Source
-            HStack(spacing: 6) {
+            HStack(spacing: Theme.Spacing.tight) {
                 Text(formatDate(insight.publishedAt))
                     .font(Theme.serialNumberFont(size: 10))
                     .foregroundColor(Theme.inkTertiary)
 
                 Text("·")
-                    .font(.system(size: 10))
+                    .font(Theme.officialStampFont(size: 10))
                     .foregroundColor(Theme.inkTertiary)
 
                 Text(insight.confidence.uppercased())
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(Theme.officialStampFont(size: 10))
                     .foregroundColor(confidenceColor(insight.confidence))
 
                 Text("·")
-                    .font(.system(size: 10))
+                    .font(Theme.officialStampFont(size: 10))
                     .foregroundColor(Theme.inkTertiary)
 
                 Text(transcriptSourceLabel(insight.transcriptSource))
-                    .font(.system(size: 10))
+                    .font(Theme.officialStampFont(size: 10))
                     .foregroundColor(Theme.inkTertiary)
                     .lineLimit(1)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, Theme.Spacing.card)
+        .padding(.vertical, Theme.Spacing.standard)
     }
 
     // MARK: - Stance Chip
 
     private func stanceChip(_ stance: String) -> some View {
         let color = stanceColor(stance)
-        return HStack(spacing: 4) {
+        return HStack(spacing: Theme.Spacing.small) {
             Circle()
                 .fill(color)
                 .frame(width: 6, height: 6)
             Text(stance.uppercased())
-                .font(.system(size: 9, weight: .semibold))
+                .font(Theme.officialStampFont(size: 9))
                 .tracking(0.5)
                 .foregroundColor(color)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.horizontal, Theme.Spacing.medium)
+        .padding(.vertical, Theme.Spacing.small)
         .background(color.opacity(0.10))
-        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
         .overlay(
-            RoundedRectangle(cornerRadius: 4)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                 .stroke(color.opacity(0.35), lineWidth: 0.5)
         )
     }
@@ -189,14 +189,14 @@ private struct AdvisorInsightRowView: View {
                 UIApplication.shared.open(url)
             }
         } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "play.fill").font(.system(size: 9))
-                Text("WATCH").font(.system(size: 10, weight: .semibold))
+            HStack(spacing: Theme.Spacing.small) {
+                Image(systemName: "play.fill").font(Theme.officialStampFont(size: 9))
+                Text("WATCH").font(Theme.officialStampFont(size: 10))
             }
             .foregroundColor(Theme.securityGold)
-            .padding(.horizontal, 10)
+            .padding(.horizontal, Theme.Spacing.standard)
             .padding(.vertical, 5)
-            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.securityGold.opacity(0.6), lineWidth: 0.8))
+            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.securityGold.opacity(0.6), lineWidth: 0.8))
         }
         .buttonStyle(EKPressStyle())
     }
@@ -205,17 +205,17 @@ private struct AdvisorInsightRowView: View {
 
     private func stanceColor(_ stance: String) -> Color {
         switch stance.uppercased() {
-        case "BULLISH": return Color(red: 0.10, green: 0.53, blue: 0.24)
-        case "BEARISH": return Color(red: 0.72, green: 0.09, blue: 0.09)
-        default: return Color(red: 0.80, green: 0.55, blue: 0.05)
+        case "BULLISH": return Theme.bullGreen
+        case "BEARISH": return Theme.bearRed
+        default: return Theme.holdAmber
         }
     }
 
     private func confidenceColor(_ confidence: String) -> Color {
         switch confidence.uppercased() {
-        case "HIGH": return Color(red: 0.10, green: 0.53, blue: 0.24)
-        case "LOW": return Color.gray.opacity(0.7)
-        default: return Color(red: 0.80, green: 0.55, blue: 0.05)
+        case "HIGH": return Theme.bullGreen
+        case "LOW": return Theme.inkSecondary
+        default: return Theme.holdAmber
         }
     }
 

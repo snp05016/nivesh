@@ -141,7 +141,7 @@ private struct DrawerContent: View {
                             }
                         }
                     }
-                    .padding(.vertical, 8)
+                    .padding(.vertical, Theme.Spacing.medium)
                 }
                 .layoutPriority(1) // Ensure ScrollView takes priority in the VStack
 
@@ -152,9 +152,9 @@ private struct DrawerContent: View {
                     Rectangle().fill(Theme.securityGold.opacity(0.18)).frame(height: 0.5)
                     Text("TAP TO JUMP TO SECTION")
                         .font(Theme.officialStampFont(size: 7))
-                        .foregroundColor(Theme.inkTertiary)
+                        .foregroundColor(Theme.inkTertiary) // contrast verified for dark canvasDeep bg
                         .tracking(1.5)
-                        .padding(.vertical, 14)
+                        .padding(.vertical, Theme.Spacing.card)
                 }
             }
         }
@@ -178,17 +178,17 @@ private struct DrawerContent: View {
                 withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) { isOpen = false }
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(Theme.officialStampFont(size: 13))
                     .foregroundColor(Theme.inkSecondary)
-                    .padding(9)
+                    .padding(Theme.Spacing.medium)
                     .background(Theme.inkPrimary.opacity(0.07))
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 64)
-        .padding(.bottom, 16)
+        .padding(.horizontal, Theme.Spacing.screen)
+        .padding(.top, 64) // safe area compensation
+        .padding(.bottom, Theme.Spacing.card)
     }
 }
 
@@ -218,7 +218,7 @@ private struct BookmarkRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 5) {
                         Image(systemName: section.icon)
-                            .font(.system(size: 10))
+                            .font(Theme.officialStampFont(size: 10))
                             .foregroundColor(Theme.securityGold.opacity(0.85))
                         Text(section.title.uppercased())
                             .font(Theme.officialStampFont(size: 9))
@@ -232,11 +232,11 @@ private struct BookmarkRow: View {
                 Spacer()
 
                 Image(systemName: "arrow.right")
-                    .font(.system(size: 10, weight: .medium))
+                    .font(Theme.officialStampFont(size: 10))
                     .foregroundColor(Theme.securityGold.opacity(0.5))
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .padding(.horizontal, Theme.Spacing.screen)
+            .padding(.vertical, Theme.Spacing.card)
             .background(Color.white.opacity(0.001)) // Ensure the entire row is tappable
         }
         .buttonStyle(.plain)

@@ -8,14 +8,14 @@ struct HistoryScreen: View {
             ZStack {
                 DenominationBackground(denomination: .hundred)
 
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.card) {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("पुरालेख")
-                                .font(Theme.hindiFont(size: 11))
+                                .font(Theme.hindiFont(size: 11, relativeTo: .caption))
                                 .foregroundColor(Theme.inkSecondary)
                             Text("REPORT HISTORY")
-                                .font(Theme.engravedSerif(size: 28, weight: .bold))
+                                .font(Theme.engravedSerif(size: 28, weight: .bold, relativeTo: .title))
                                 .foregroundColor(Theme.inkPrimary)
                         }
                         Spacer()
@@ -27,7 +27,7 @@ struct HistoryScreen: View {
 
                     if reportManager.savedReports.isEmpty {
                         Spacer()
-                        VStack(spacing: 16) {
+                        VStack(spacing: Theme.Spacing.card) {
                             BanknoteSignalBadge(text: "NO RECORDS", color: Theme.inkTertiary, rotation: -4)
                             Text("No official reports have been filed.")
                                 .font(.subheadline)
@@ -37,7 +37,7 @@ struct HistoryScreen: View {
                         Spacer()
                     } else {
                         ScrollView {
-                            VStack(spacing: 12) {
+                            VStack(spacing: Theme.Spacing.standard) {
                                 ForEach(reportManager.savedReports, id: \.ticker) { report in
                                     NavigationLink(destination: AnalysisScreen(ticker: report.ticker, forceCached: true)) {
                                         ReportHistoryNoteRow(report: report)
@@ -72,17 +72,17 @@ private struct ReportHistoryNoteRow: View {
             Rectangle()
                 .fill(report.signal.color.opacity(0.3))
                 .frame(width: 1)
-                .padding(.vertical, 12)
+                .padding(.vertical, Theme.Spacing.standard)
 
-            HStack(spacing: 16) {
+            HStack(spacing: Theme.Spacing.card) {
                 StockIcon(ticker: report.ticker, signal: report.signal)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(report.companyName.uppercased())
-                        .font(Theme.engravedSerif(size: 16, weight: .bold))
+                        .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .body))
                         .foregroundColor(Theme.inkPrimary)
                     Text("RECORD DATE: \(report.analysisDate)")
-                        .font(Theme.serialNumberFont(size: 9))
+                        .font(.caption2)
                         .foregroundColor(Theme.inkSecondary)
                 }
 
@@ -91,9 +91,9 @@ private struct ReportHistoryNoteRow: View {
                 BanknoteSignalBadge(signal: report.signal)
                     .stampAppear()
             }
-            .padding(.vertical, 14)
-            .padding(.leading, 12)
-            .padding(.trailing, 16)
+            .padding(.vertical, Theme.Spacing.standard)
+            .padding(.leading, Theme.Spacing.standard)
+            .padding(.trailing, Theme.Spacing.card)
         }
         .banknoteCard()
     }

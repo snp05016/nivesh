@@ -10,21 +10,21 @@ struct AdvisorBioCard: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(advisor.advisorName)
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.subheadline.weight(.bold))
                         .foregroundColor(Theme.inkPrimary)
                     Text("\(advisor.experienceYears) Years of Market Research")
-                        .font(.system(size: 11))
+                        .font(.caption)
                         .foregroundColor(Theme.inkTertiary)
                 }
                 Spacer()
                 // SEBI badge
                 Text("SEBI\nREG")
-                    .font(.system(size: 7, weight: .bold))
+                    .font(.caption2.weight(.bold))
                     .multilineTextAlignment(.center)
                     .foregroundColor(Theme.bullGreen)
-                    .padding(6)
+                    .padding(Theme.Spacing.tight)
                     .background(Theme.bullGreen.opacity(0.08))
-                    .cornerRadius(4)
+                    .cornerRadius(Theme.CornerRadius.small)
             }
 
             // Framework tags
@@ -33,19 +33,20 @@ struct AdvisorBioCard: View {
                     HStack(spacing: 4) {
                         ForEach(framework.components(separatedBy: ","), id: \.self) { tag in
                             Text(tag.trimmingCharacters(in: .whitespaces))
-                                .font(.system(size: 8))
+                                .font(.caption2)
                                 .foregroundColor(Theme.securityGold)
-                                .padding(.horizontal, 6).padding(.vertical, 3)
+                                .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.small)
                                 .background(Theme.securityGold.opacity(0.08))
-                                .cornerRadius(3)
+                                .cornerRadius(Theme.CornerRadius.small)
                         }
                     }
+                    .padding(.horizontal, Theme.screenPadding)
                 }
             }
 
             // Biography
             Text(advisor.fullBiographyText)
-                .font(.system(size: 11))
+                .font(.caption)
                 .foregroundColor(Theme.inkSecondary)
                 .lineLimit(isExpanded ? nil : 4)
                 .lineSpacing(3)
@@ -54,12 +55,12 @@ struct AdvisorBioCard: View {
             Button(isExpanded ? "Show Less" : "Read More") {
                 withAnimation { isExpanded.toggle() }
             }
-            .font(.system(size: 10, weight: .medium))
+            .font(.caption2.weight(.medium))
             .foregroundColor(Theme.securityGold)
         }
-        .padding(14)
+        .padding(Theme.Spacing.standard)
         .background(Theme.canvasDeep)
-        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.borderSage, lineWidth: 0.5))
-        .cornerRadius(4)
+        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.borderSage, lineWidth: 0.5))
+        .cornerRadius(Theme.CornerRadius.small)
     }
 }

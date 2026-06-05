@@ -197,19 +197,19 @@ struct EarningsDashboardView: View {
     // MARK: Header
 
     private var headerBar: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: Theme.Spacing.standard) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                 Text("EARNINGS DASHBOARD")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .font(.caption.weight(.bold).monospaced())
                     .tracking(2)
                     .foregroundColor(Theme.securityGold)
                 if let p = vm.progress {
                     Text("\(p.reported)/\(p.total) results declared")
-                        .font(.system(size: 12, weight: .regular))
+                        .font(.footnote)
                         .foregroundColor(Theme.inkSecondary)
                 } else if let err = vm.progressError {
                     Text("⚠ \(err.prefix(60))")
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .font(.caption.weight(.medium).monospaced())
                         .foregroundColor(Theme.bearRed)
                         .lineLimit(1)
                 }
@@ -221,7 +221,7 @@ struct EarningsDashboardView: View {
                 Text("QoQ").tag("qoq")
             }
             .pickerStyle(.segmented)
-            .frame(width: 100)
+            .frame(minWidth: 100)
             .onChange(of: comparisonMode) { _, val in vm.comparisonMode = val }
         }
         .padding(.horizontal, 16)
@@ -234,11 +234,11 @@ struct EarningsDashboardView: View {
 
     private var tabBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 4) {
+            HStack(spacing: Theme.Spacing.small) {
                 ForEach(Array(tabs.enumerated()), id: \.offset) { idx, name in
                     Button(action: { selectedTab = idx }) {
                         Text(name)
-                            .font(.system(size: 11, weight: selectedTab == idx ? .bold : .regular))
+                            .font(.caption.weight(selectedTab == idx ? .bold : .regular))
                             .foregroundColor(selectedTab == idx ? Theme.securityGold : Theme.inkTertiary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
@@ -247,12 +247,12 @@ struct EarningsDashboardView: View {
                                     ? Theme.securityGold.opacity(0.10)
                                     : Color.clear
                             )
-                            .cornerRadius(6)
+                            .cornerRadius(Theme.CornerRadius.tight)
                     }
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .padding(.horizontal, Theme.Spacing.standard)
+            .padding(.vertical, Theme.Spacing.tight)
         }
         .background(Theme.canvasDeep)
         .overlay(Divider(), alignment: .bottom)
@@ -281,7 +281,7 @@ struct EarningsProgressView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: Theme.Spacing.card) {
                 // Full-page error if everything failed
                 if vm.isTotalFailure {
                     ErrorDiagnoserView(
@@ -314,29 +314,29 @@ struct EarningsProgressView: View {
                 // 1.3 Market Cap Index Aggregator
                 marketCapIndexCard
             }
-            .padding(16)
+            .padding(Theme.Spacing.card)
         }
         .background(Theme.canvas)
     }
 
     private func progressCard(_ p: EarningsProgressResponse) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             Text("LIVE REPORTING SYNC")
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .font(.caption2.weight(.bold).monospaced())
                 .tracking(2)
                 .foregroundColor(Theme.inkSecondary)
 
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.tight) {
                 Text("\(p.reported)")
-                    .font(Theme.engravedSerif(size: 36, weight: .bold))
+                    .font(Theme.engravedSerif(size: 36, weight: .bold, relativeTo: .largeTitle))
                     .foregroundColor(Theme.inkPrimary)
                 Text("/\(p.total)")
-                    .font(Theme.engravedSerif(size: 20))
+                    .font(Theme.engravedSerif(size: 20, relativeTo: .title3))
                     .foregroundColor(Theme.inkTertiary)
                 Spacer()
                 let pct = p.total > 0 ? Double(p.reported) / Double(p.total) : 0
                 Text("\(Int(pct * 100))% filed")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.footnote.weight(.medium))
                     .foregroundColor(Theme.bullGreen)
             }
 
@@ -356,28 +356,28 @@ struct EarningsProgressView: View {
             .frame(height: 6)
 
             Text("companies have declared results against total statutory listed exchange obligations")
-                .font(.system(size: 11))
+                .font(.caption)
                 .foregroundColor(Theme.inkTertiary)
         }
-        .padding(16)
+        .padding(Theme.Spacing.card)
         .banknoteCard()
     }
 
     private var progressCardPlaceholder: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.12)).frame(height: 14).frame(width: 140)
-            RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.12)).frame(height: 36).frame(width: 180)
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.12)).frame(height: 14).frame(width: UIScreen.main.bounds.width * 0.35)
+            RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.12)).frame(height: 36).frame(width: UIScreen.main.bounds.width * 0.45)
             RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.12)).frame(height: 6)
         }
-        .padding(16)
+        .padding(Theme.Spacing.card)
         .banknoteCard()
         .shimmerPlaceholder(isLoading: true)
     }
 
     private var aggregateCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             Text("YoY AGGREGATE MARKET HEALTH")
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .font(.caption2.weight(.bold).monospaced())
                 .tracking(2)
                 .foregroundColor(Theme.inkSecondary)
 
@@ -402,24 +402,24 @@ struct EarningsProgressView: View {
 
             // Source label
             Text(sourceLabel)
-                .font(.system(size: 7, weight: .medium, design: .monospaced))
-                .foregroundColor(Theme.inkTertiary.opacity(0.5))
+                .font(.caption2.weight(.medium).monospaced())
+                .foregroundColor(Theme.inkTertiary)
         }
-        .padding(16)
+        .padding(Theme.Spacing.card)
         .banknoteCard()
     }
 
     private func aggregateMetric(label: String, value: Double, isLoading: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
             Text(label)
-                .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                .font(.caption2.weight(.semibold).monospaced())
                 .tracking(1.2)
                 .foregroundColor(Theme.inkTertiary)
             if isLoading {
                 RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.12)).frame(width: 60, height: 22)
             } else {
                 Text(IndianFormatter.delta(value))
-                    .font(.system(size: 20, weight: .bold, design: .monospaced))
+                    .font(.title3.weight(.bold).monospaced())
                     .foregroundColor(value >= 0 ? Theme.bullGreen : Theme.bearRed)
             }
         }
@@ -428,9 +428,9 @@ struct EarningsProgressView: View {
 
     // 1.3 Market Cap Index Aggregator — prefers backend grid, falls back to earnings table
     private var marketCapIndexCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             Text("MARKET CAP INDEX AGGREGATOR")
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .font(.caption2.weight(.bold).monospaced())
                 .tracking(2)
                 .foregroundColor(Theme.inkSecondary)
 
@@ -444,16 +444,16 @@ struct EarningsProgressView: View {
                 // Fallback: per-company earnings table
                 // 1.3 Multi-Tier Index Weight Tabs
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
+                    HStack(spacing: Theme.Spacing.tight) {
                         ForEach(["all", "nifty50", "large_cap", "mid_cap", "small_cap"], id: \.self) { cap in
                             Button(action: { vm.selectedMarketCap = cap }) {
                                 Text(capLabel(cap))
-                                    .font(.system(size: 10, weight: vm.selectedMarketCap == cap ? .bold : .regular))
+                                    .font(.caption.weight(vm.selectedMarketCap == cap ? .bold : .regular))
                                     .foregroundColor(vm.selectedMarketCap == cap ? Theme.securityGold : Theme.inkSecondary)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 5)
                                     .background(vm.selectedMarketCap == cap ? Theme.securityGold.opacity(0.10) : Theme.canvasDeep)
-                                    .cornerRadius(5)
+                                    .cornerRadius(Theme.CornerRadius.tight)
                                     .overlay(RoundedRectangle(cornerRadius: 5).stroke(Theme.borderSage, lineWidth: 0.5))
                             }
                         }
@@ -462,7 +462,7 @@ struct EarningsProgressView: View {
                 earningsTable
             }
         }
-        .padding(16)
+        .padding(Theme.Spacing.card)
         .banknoteCard()
     }
 
@@ -471,11 +471,11 @@ struct EarningsProgressView: View {
         VStack(spacing: 0) {
             // Header
             HStack(spacing: 0) {
-                Text("BRACKET").tableHeaderStyle().frame(width: 80, alignment: .leading)
+                Text("BRACKET").tableHeaderStyle().frame(width: UIScreen.main.bounds.width * 0.20, alignment: .leading)
                 Text("MCAP").tableHeaderStyle().frame(maxWidth: .infinity, alignment: .trailing)
                 Text("REVENUE").tableHeaderStyle().frame(maxWidth: .infinity, alignment: .trailing)
                 Text("PROFIT").tableHeaderStyle().frame(maxWidth: .infinity, alignment: .trailing)
-                Text("PE").tableHeaderStyle().frame(width: 36, alignment: .trailing)
+                Text("PE").tableHeaderStyle().frame(width: UIScreen.main.bounds.width * 0.10, alignment: .trailing)
             }
             .padding(.horizontal, 8).padding(.vertical, 6)
             .background(Theme.canvasDeep)
@@ -485,27 +485,27 @@ struct EarningsProgressView: View {
             ForEach(vm.capIndexAggregator) { row in
                 HStack(spacing: 0) {
                     Text(row.capBracket.uppercased())
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(.caption2.weight(.bold).monospaced())
                         .foregroundColor(row.capBracket == "All" ? Theme.securityGold : Theme.inkPrimary)
-                        .frame(width: 80, alignment: .leading)
+                        .frame(width: UIScreen.main.bounds.width * 0.20, alignment: .leading)
                     Text(row.avgMarketCapCr)
-                        .font(.system(size: 9, design: .monospaced)).foregroundColor(Theme.inkSecondary)
+                        .font(.caption2.monospaced()).foregroundColor(Theme.inkSecondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     Text(row.avgRevenueCr)
-                        .font(.system(size: 9, design: .monospaced)).foregroundColor(Theme.inkSecondary)
+                        .font(.caption2.monospaced()).foregroundColor(Theme.inkSecondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     Text(row.avgNetProfitCr)
-                        .font(.system(size: 9, design: .monospaced)).foregroundColor(Theme.inkSecondary)
+                        .font(.caption2.monospaced()).foregroundColor(Theme.inkSecondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     Text(row.avgPeRatio.map { String(format: "%.1f", $0) } ?? "—")
-                        .font(.system(size: 9, design: .monospaced)).foregroundColor(Theme.inkTertiary)
-                        .frame(width: 36, alignment: .trailing)
+                        .font(.caption2.monospaced()).foregroundColor(Theme.inkTertiary)
+                        .frame(width: UIScreen.main.bounds.width * 0.10, alignment: .trailing)
                 }
                 .padding(.horizontal, 8).padding(.vertical, 7)
                 Divider().opacity(0.25)
             }
         }
-        .cornerRadius(6)
+        .cornerRadius(Theme.CornerRadius.tight)
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.borderSage, lineWidth: 0.5))
     }
 
@@ -524,9 +524,9 @@ struct EarningsProgressView: View {
             // Header row
             HStack(spacing: 0) {
                 Text("COMPANY").tableHeaderStyle().frame(maxWidth: .infinity, alignment: .leading)
-                Text("REVENUE").tableHeaderStyle().frame(width: 90, alignment: .trailing)
-                Text("GROSS PROFIT").tableHeaderStyle().frame(width: 90, alignment: .trailing)
-                Text("NET PROFIT").tableHeaderStyle().frame(width: 90, alignment: .trailing)
+                Text("REVENUE").tableHeaderStyle().frame(minWidth: UIScreen.main.bounds.width * 0.22, alignment: .trailing)
+                Text("GROSS PROFIT").tableHeaderStyle().frame(minWidth: UIScreen.main.bounds.width * 0.22, alignment: .trailing)
+                Text("NET PROFIT").tableHeaderStyle().frame(minWidth: UIScreen.main.bounds.width * 0.22, alignment: .trailing)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
@@ -548,7 +548,7 @@ struct EarningsProgressView: View {
                 }
             }
         }
-        .cornerRadius(6)
+        .cornerRadius(Theme.CornerRadius.tight)
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.borderSage, lineWidth: 0.5))
     }
 
@@ -557,42 +557,42 @@ struct EarningsProgressView: View {
         let revGrowth = r.revenueGrowthPct
         let profitGrowth = r.netProfitGrowthPct
         return HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                 Text(r.ticker)
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .font(.caption.weight(.semibold).monospaced())
                     .foregroundColor(Theme.inkPrimary)
                 Text(r.isConsolidated ? "Consolidated" : "Standalone")
-                    .font(.system(size: 9))
+                    .font(.caption2)
                     .foregroundColor(Theme.inkTertiary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Text(IndianFormatter.formatLakhsCrores(r.revenue))
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .font(.caption.weight(.medium).monospaced())
                 .foregroundColor(Theme.inkPrimary)
-                .frame(width: 90, alignment: .trailing)
+                .frame(minWidth: UIScreen.main.bounds.width * 0.22, alignment: .trailing)
 
             Text(r.grossProfit != nil ? IndianFormatter.formatLakhsCrores(r.grossProfit!) : "—")
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .font(.caption.weight(.medium).monospaced())
                 .foregroundColor(Theme.inkSecondary)
-                .frame(width: 90, alignment: .trailing)
+                .frame(minWidth: UIScreen.main.bounds.width * 0.22, alignment: .trailing)
 
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                 Text(IndianFormatter.formatLakhsCrores(r.netProfit))
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .font(.caption.weight(.medium).monospaced())
                     .foregroundColor(Theme.inkPrimary)
                 Text(IndianFormatter.delta(profitGrowth))
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.caption2.weight(.bold))
                     .foregroundColor(profitGrowth >= 0 ? Theme.bullGreen : Theme.bearRed)
             }
-            .frame(width: 90, alignment: .trailing)
+            .frame(minWidth: UIScreen.main.bounds.width * 0.22, alignment: .trailing)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
     }
 
     private var tableRowPlaceholder: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Theme.Spacing.medium) {
             RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 60, height: 12)
             Spacer()
             RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
@@ -668,21 +668,21 @@ struct EarningsCalendarView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: Theme.Spacing.card) {
                 // 1.2 Horizontal Calendar Day Scroller
                 calendarScrollRow
                 GuillocheDivider()
                 // Results for selected date
                 selectedDayResults
             }
-            .padding(16)
+            .padding(Theme.Spacing.card)
         }
         .background(Theme.canvas)
     }
 
     private var calendarScrollRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.Spacing.medium) {
                 ForEach(calendarDays, id: \.self) { date in
                     Button(action: { vm.selectCalendarDate(date) }) {
                         calendarDayCell(date)
@@ -690,8 +690,8 @@ struct EarningsCalendarView: View {
                     .buttonStyle(EKPressStyle())
                 }
             }
-            .padding(.horizontal, 4)
-            .padding(.vertical, 4)
+            .padding(.horizontal, Theme.Spacing.card)
+            .padding(.vertical, Theme.Spacing.small)
         }
     }
 
@@ -704,9 +704,9 @@ struct EarningsCalendarView: View {
         // Extract sparkline from any result that has it
         let sparkData = dayResults.first(where: { !$0.sparkline.isEmpty })?.sparkline ?? []
 
-        return VStack(spacing: 4) {
+        return VStack(spacing: Theme.Spacing.small) {
             Text(monthLabel(date))
-                .font(.system(size: 8, weight: .medium, design: .monospaced))
+                .font(.caption2.weight(.medium).monospaced())
                 .foregroundColor(sel ? Theme.securityGold : Theme.inkTertiary)
             Text(dayLabel(date))
                 .font(Theme.engravedSerif(size: 16, weight: .bold))
@@ -718,22 +718,22 @@ struct EarningsCalendarView: View {
                     .frame(width: 36, height: 16)
             } else if count > 0 {
                 Text("\(count)")
-                    .font(.system(size: 8, weight: .bold))
+                    .font(.caption2.weight(.bold))
                     .foregroundColor(sel ? Theme.securityGold : Theme.inkTertiary)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 2)
                     .background(sel ? Theme.securityGold.opacity(0.15) : Theme.inkTertiary.opacity(0.08))
-                    .cornerRadius(4)
+                    .cornerRadius(Theme.CornerRadius.small)
             } else {
                 Color.clear.frame(height: 16)
             }
         }
-        .frame(width: 60)
-        .padding(.vertical, 8)
+        .frame(width: UIScreen.main.bounds.width / 5.5)
+        .padding(.vertical, Theme.Spacing.medium)
         .background(sel ? Theme.securityGold.opacity(0.08) : Theme.canvasDeep)
-        .cornerRadius(8)
+        .cornerRadius(Theme.CornerRadius.medium)
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                 .stroke(sel ? Theme.securityGold.opacity(0.4) : Theme.borderSage, lineWidth: sel ? 1 : 0.5)
         )
     }
@@ -746,16 +746,16 @@ struct EarningsCalendarView: View {
             return df.string(from: vm.selectedCalendarDate)
         }()
         let count = vm.calendarDayResults.count
-        return VStack(alignment: .leading, spacing: 12) {
+        return VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
 
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     // 1.2 count badge in title
                     Text("\(humanDate) — \(count) Earnings")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.footnote.weight(.semibold))
                         .foregroundColor(Theme.inkPrimary)
                     Text("Tap a company row to set an earnings alert")
-                        .font(.system(size: 10))
+                        .font(.caption)
                         .foregroundColor(Theme.inkTertiary)
                 }
                 Spacer()
@@ -763,7 +763,7 @@ struct EarningsCalendarView: View {
 
             if vm.calendarDayResults.isEmpty {
                 Text("No results scheduled for this date.")
-                    .font(.system(size: 12))
+                    .font(.footnote)
                     .foregroundColor(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 24)
@@ -773,34 +773,34 @@ struct EarningsCalendarView: View {
                 }
             }
         }
-        .padding(16)
+        .padding(Theme.Spacing.card)
         .banknoteCard()
     }
 
     private func calendarResultRow(_ r: EarningsCalendarItem) -> some View {
         let userId = authManager.currentUser?.userId ?? 0
-        return HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
+        return HStack(spacing: Theme.Spacing.standard) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                HStack(spacing: Theme.Spacing.tight) {
                     Text(r.ticker)
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .font(.footnote.weight(.bold).monospaced())
                         .foregroundColor(Theme.inkPrimary)
                     Text(r.isConsolidated ? "Consol" : "Standalone")
-                        .font(.system(size: 9))
+                        .font(.caption2)
                         .foregroundColor(Theme.inkTertiary)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
                         .background(Theme.inkTertiary.opacity(0.08))
-                        .cornerRadius(3)
+                        .cornerRadius(Theme.CornerRadius.small)
                     // 7-day price change badge
                     if let chg = r.priceChange7dPct {
                         Text(IndianFormatter.delta(chg))
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.caption2.weight(.bold))
                             .foregroundColor(chg >= 0 ? Theme.bullGreen : Theme.bearRed)
                     }
                 }
                 Text(r.companyName)
-                    .font(.system(size: 11))
+                    .font(.caption)
                     .foregroundColor(Theme.inkSecondary)
                 // Sparkline row
                 if !r.sparkline.isEmpty {
@@ -823,17 +823,17 @@ struct EarningsCalendarView: View {
                     }
                 }
             }) {
-                HStack(spacing: 4) {
+                HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: alertSetFor == r.ticker ? "bell.fill" : "bell")
-                        .font(.system(size: 11))
+                        .font(.caption)
                     Text("Alert")
-                        .font(.system(size: 10, weight: .medium))
+                        .font(.caption.weight(.medium))
                 }
                 .foregroundColor(alertSetFor == r.ticker ? Theme.securityGold : Theme.inkSecondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(alertSetFor == r.ticker ? Theme.securityGold.opacity(0.10) : Theme.canvasDeep)
-                .cornerRadius(6)
+                .cornerRadius(Theme.CornerRadius.tight)
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.borderSage, lineWidth: 0.5))
             }
         }
@@ -852,7 +852,7 @@ struct EarningsFeedView: View {
             // 2.2 Tabbed Performance Sorting Grid
             sortTabBar
             ScrollView {
-                LazyVStack(spacing: 10) {
+                LazyVStack(spacing: Theme.Spacing.standard) {
                     if vm.isLoading && vm.feed.isEmpty {
                         ForEach(0..<6, id: \.self) { _ in feedCardPlaceholder }
                     } else if vm.filteredFeed.isEmpty {
@@ -874,7 +874,7 @@ struct EarningsFeedView: View {
                         }
                     }
                 }
-                .padding(16)
+                .padding(Theme.Spacing.card)
             }
         }
         .background(Theme.canvas)
@@ -886,7 +886,7 @@ struct EarningsFeedView: View {
                 ForEach([("latest", "Latest Results"), ("best", "Best Performer"), ("worst", "Worst Performer")], id: \.0) { key, label in
                     Button(action: { vm.selectedSort = key }) {
                         Text(label)
-                            .font(.system(size: 11, weight: vm.selectedSort == key ? .bold : .regular))
+                            .font(.caption.weight(vm.selectedSort == key ? .bold : .regular))
                             .foregroundColor(vm.selectedSort == key ? Theme.securityGold : Theme.inkTertiary)
                             .padding(.vertical, 10)
                             .frame(maxWidth: .infinity)
@@ -896,12 +896,12 @@ struct EarningsFeedView: View {
             }
             // Data source indicator
             if let src = vm.feedDataSource {
-                HStack(spacing: 4) {
+                HStack(spacing: Theme.Spacing.small) {
                     Circle()
                         .fill(src == "database" ? Theme.bullGreen : src == "yfinance_fallback" ? Theme.holdAmber : Theme.bearRed)
                         .frame(width: 5, height: 5)
                     Text("Source: \(src.replacingOccurrences(of: "_", with: " ").uppercased())")
-                        .font(.system(size: 8, weight: .medium, design: .monospaced))
+                        .font(.caption2.weight(.medium).monospaced())
                         .foregroundColor(Theme.inkTertiary.opacity(0.6))
                 }
                 .padding(.vertical, 3)
@@ -912,12 +912,12 @@ struct EarningsFeedView: View {
     }
 
     private var feedCardPlaceholder: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 100, height: 13)
             RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.10)).frame(height: 13)
             RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 160, height: 11)
         }
-        .padding(14)
+        .padding(Theme.Spacing.standard)
         .banknoteCard()
         .shimmerPlaceholder(isLoading: true)
     }
@@ -930,46 +930,46 @@ struct EarningsResultCard: View {
     let comparisonMode: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             // Header row
-            HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
+            HStack(spacing: Theme.Spacing.medium) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                    HStack(spacing: Theme.Spacing.tight) {
                         Text(result.ticker)
-                            .font(.system(size: 14, weight: .bold, design: .monospaced))
+                            .font(.subheadline.weight(.bold).monospaced())
                             .foregroundColor(Theme.inkPrimary)
                         Text(result.isConsolidated ? "CONSOL" : "STANDALONE")
-                            .font(.system(size: 8, weight: .bold, design: .monospaced))
+                            .font(.caption2.weight(.bold).monospaced())
                             .tracking(1)
                             .foregroundColor(Theme.inkTertiary)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
                             .background(Theme.inkTertiary.opacity(0.08))
-                            .cornerRadius(3)
+                            .cornerRadius(Theme.CornerRadius.small)
                     }
                     Text(result.companyName)
-                        .font(.system(size: 11))
+                        .font(.caption)
                         .foregroundColor(Theme.inkSecondary)
                 }
                 Spacer()
-                VStack(alignment: .trailing, spacing: 3) {
+                VStack(alignment: .trailing, spacing: Theme.Spacing.small) {
                     Text(IndianFormatter.price(result.ltp))
-                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .font(.footnote.weight(.semibold).monospaced())
                         .foregroundColor(Theme.inkPrimary)
                     Text(IndianFormatter.delta(result.changePercent))
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.caption.weight(.bold))
                         .foregroundColor(result.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed)
                 }
             }
 
             // Sparkline price context
             if let spark = result.sparkline, !spark.isEmpty {
-                HStack(spacing: 8) {
+                HStack(spacing: Theme.Spacing.medium) {
                     MiniSparkline(data: spark, color: result.netProfitGrowthPct >= 0 ? Theme.bullGreen : Theme.bearRed)
                         .frame(height: 22)
                     if let chg7d = result.priceChange7dPct {
                         Text("7d: \(IndianFormatter.delta(chg7d))")
-                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .font(.caption2.weight(.medium).monospaced())
                             .foregroundColor(chg7d >= 0 ? Theme.bullGreen : Theme.bearRed)
                     }
                 }
@@ -1002,26 +1002,26 @@ struct EarningsResultCard: View {
             // 2.1 Absolute elapsed timestamp
             if let reportedDate = result.parsedReportedAt {
                 Text(IndianFormatter.elapsed(from: reportedDate))
-                    .font(.system(size: 10))
+                    .font(.caption)
                     .foregroundColor(Theme.inkTertiary)
             }
         }
-        .padding(14)
+        .padding(Theme.Spacing.standard)
         .banknoteCard()
     }
 
     private func metricColumn(label: String, current: String, growth: Double?) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             Text(label)
-                .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                .font(.caption2.weight(.semibold).monospaced())
                 .tracking(1)
                 .foregroundColor(Theme.inkTertiary)
             Text(current)
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .font(.footnote.weight(.semibold).monospaced())
                 .foregroundColor(Theme.inkPrimary)
             if let g = growth {
                 Text(IndianFormatter.delta(g))
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.caption.weight(.bold))
                     .foregroundColor(g >= 0 ? Theme.bullGreen : Theme.bearRed)
             }
         }
@@ -1093,14 +1093,14 @@ struct ScreenerView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.card) {
                 // Header
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text("स्क्रीनर सूची")
-                        .font(.system(size: 10, weight: .regular))
+                        .font(.caption)
                         .foregroundColor(Theme.inkSecondary)
                     Text("STOCK SCREENERS")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .font(.caption.weight(.bold).monospaced())
                         .tracking(2)
                         .foregroundColor(Theme.inkPrimary)
                 }
@@ -1115,8 +1115,8 @@ struct ScreenerView: View {
 
                 // Screener preset cards — banknote aesthetic grid
                 LazyVGrid(
-                    columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2),
-                    spacing: 10
+                    columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.standard), count: 2),
+                    spacing: Theme.Spacing.standard
                 ) {
                     ForEach(screenerPresets) { preset in
                         screenerPresetCard(preset)
@@ -1141,19 +1141,19 @@ struct ScreenerView: View {
     // MARK: - Empty State (no feed data at all)
 
     private var emptyStateMessage: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Theme.Spacing.card) {
             Spacer().frame(height: 20)
             Image(systemName: "magnifyingglass.circle")
-                .font(.system(size: 40, weight: .light))
+                .font(.largeTitle.weight(.light))
                 .foregroundColor(Theme.securityGold.opacity(0.6))
 
-            VStack(spacing: 6) {
+            VStack(spacing: Theme.Spacing.tight) {
                 Text("Run analysis to populate screener data")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.footnote.weight(.semibold))
                     .foregroundColor(Theme.inkPrimary)
                     .multilineTextAlignment(.center)
                 Text("Screeners scan your earnings feed for stocks matching technical, fundamental, and momentum criteria. Start by analyzing stocks in the Analysis tab.")
-                    .font(.system(size: 11))
+                    .font(.caption)
                     .foregroundColor(Theme.inkTertiary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1163,7 +1163,7 @@ struct ScreenerView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
         .background(Theme.canvasDeep)
-        .cornerRadius(12)
+        .cornerRadius(Theme.CornerRadius.large)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Theme.borderSage, lineWidth: 0.5)
@@ -1173,22 +1173,22 @@ struct ScreenerView: View {
     // MARK: - No Results for Selected Preset
 
     private var noResultsForPreset: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: Theme.Spacing.standard) {
             GuillocheDivider()
                 .padding(.horizontal, 16)
 
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.Spacing.medium) {
                 Image(systemName: "info.circle")
-                    .font(.system(size: 14))
+                    .font(.subheadline)
                     .foregroundColor(Theme.holdAmber)
                 Text("This screener requires backend data not available in the current feed. Run a full analysis to populate comprehensive screening data.")
-                    .font(.system(size: 11))
+                    .font(.caption)
                     .foregroundColor(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(12)
+            .padding(Theme.Spacing.standard)
             .background(Theme.canvasDeep)
-            .cornerRadius(8)
+            .cornerRadius(Theme.CornerRadius.medium)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(Theme.borderSage, lineWidth: 0.5)
@@ -1229,7 +1229,7 @@ struct ScreenerView: View {
                 filteredResults = []
             }
         }) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                 // Icon + Bookmark row
                 HStack {
                     ZStack {
@@ -1237,7 +1237,7 @@ struct ScreenerView: View {
                             .fill(Theme.securityGold.opacity(0.12))
                             .frame(width: 32, height: 32)
                         Image(systemName: preset.icon)
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.subheadline.weight(.medium))
                             .foregroundColor(isSelected ? Theme.securityGold : Theme.inkSecondary)
                     }
 
@@ -1249,18 +1249,18 @@ struct ScreenerView: View {
                         HapticManager.impact(.light)
                     }) {
                         Image(systemName: isBookmarked ? "star.fill" : "star")
-                            .font(.system(size: 12))
+                            .font(.footnote)
                             .foregroundColor(isBookmarked ? Theme.securityGold : Theme.inkTertiary.opacity(0.5))
                     }
 
                     // Match count badge
                     Text(matchCount)
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(.caption.weight(.bold).monospaced())
                         .foregroundColor(Theme.securityGold)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(Theme.securityGold.opacity(0.10))
-                        .cornerRadius(8)
+                        .cornerRadius(Theme.CornerRadius.medium)
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(Theme.securityGold.opacity(0.2), lineWidth: 0.5)
@@ -1269,24 +1269,24 @@ struct ScreenerView: View {
 
                 // Title
                 Text(preset.title)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.caption.weight(.semibold))
                     .foregroundColor(isSelected ? Theme.inkPrimary : Theme.inkPrimary.opacity(0.85))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
 
                 // Description
                 Text(preset.description)
-                    .font(.system(size: 9))
+                    .font(.caption2)
                     .foregroundColor(Theme.inkTertiary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Spacer(minLength: 0)
             }
-            .padding(12)
-            .frame(height: 160, alignment: .topLeading)
+            .padding(Theme.Spacing.standard)
+            .frame(minHeight: UIScreen.main.bounds.height * 0.18, alignment: .topLeading)
             .background(isSelected ? Theme.securityGold.opacity(0.06) : Theme.canvasDeep)
-            .cornerRadius(10)
+            .cornerRadius(Theme.CornerRadius.large)
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(
@@ -1306,69 +1306,69 @@ struct ScreenerView: View {
         }
 
         return AnyView(
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                 GuillocheDivider()
 
                 HStack {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("SCREENER RESULTS")
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .font(.caption2.weight(.bold).monospaced())
                             .tracking(2)
                             .foregroundColor(Theme.inkSecondary)
                         Text(preset.title)
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.footnote.weight(.semibold))
                             .foregroundColor(Theme.inkPrimary)
                     }
                     Spacer()
                     Text("\(filteredResults.count) matches")
-                        .font(.system(size: 10, weight: .medium))
+                        .font(.caption.weight(.medium))
                         .foregroundColor(Theme.securityGold)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(Theme.securityGold.opacity(0.10))
-                        .cornerRadius(6)
+                        .cornerRadius(Theme.CornerRadius.tight)
                 }
 
                 VStack(spacing: 0) {
                     // Table header
                     HStack(spacing: 0) {
                         Text("TICKER").tableHeaderStyle().frame(maxWidth: .infinity, alignment: .leading)
-                        Text("LTP").tableHeaderStyle().frame(width: 70, alignment: .trailing)
-                        Text("CHG%").tableHeaderStyle().frame(width: 55, alignment: .trailing)
-                        Text("PROFIT GR%").tableHeaderStyle().frame(width: 70, alignment: .trailing)
+                        Text("LTP").tableHeaderStyle().frame(minWidth: UIScreen.main.bounds.width * 0.18, alignment: .trailing)
+                        Text("CHG%").tableHeaderStyle().frame(minWidth: UIScreen.main.bounds.width * 0.14, alignment: .trailing)
+                        Text("PROFIT GR%").tableHeaderStyle().frame(minWidth: UIScreen.main.bounds.width * 0.18, alignment: .trailing)
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(Theme.canvasDeep)
-                    .cornerRadius(4)
+                    .cornerRadius(Theme.CornerRadius.small)
 
                     ForEach(Array(filteredResults.prefix(15).enumerated()), id: \.offset) { idx, r in
                         HStack(spacing: 0) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(r.ticker)
-                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                    .font(.footnote.weight(.bold).monospaced())
                                     .foregroundColor(Theme.inkPrimary)
                                 Text(r.companyName)
-                                    .font(.system(size: 9))
+                                    .font(.caption2)
                                     .foregroundColor(Theme.inkTertiary)
                                     .lineLimit(1)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
 
                             Text(IndianFormatter.price(r.ltp))
-                                .font(.system(size: 10, design: .monospaced))
+                                .font(.caption.monospaced())
                                 .foregroundColor(Theme.inkPrimary)
-                                .frame(width: 70, alignment: .trailing)
+                                .frame(minWidth: UIScreen.main.bounds.width * 0.18, alignment: .trailing)
 
                             Text(IndianFormatter.delta(r.changePercent))
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .font(.caption.weight(.bold).monospaced())
                                 .foregroundColor(r.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed)
-                                .frame(width: 55, alignment: .trailing)
+                                .frame(minWidth: UIScreen.main.bounds.width * 0.14, alignment: .trailing)
 
                             Text(IndianFormatter.delta(r.netProfitGrowthPct))
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .font(.caption.weight(.bold).monospaced())
                                 .foregroundColor(r.netProfitGrowthPct >= 0 ? Theme.bullGreen : Theme.bearRed)
-                                .frame(width: 70, alignment: .trailing)
+                                .frame(minWidth: UIScreen.main.bounds.width * 0.18, alignment: .trailing)
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
@@ -1380,7 +1380,7 @@ struct ScreenerView: View {
                 }
                 .padding(.vertical, 4)
                 .background(Theme.canvasDeep)
-                .cornerRadius(8)
+                .cornerRadius(Theme.CornerRadius.medium)
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(Theme.borderSage, lineWidth: 0.5)
@@ -1414,21 +1414,21 @@ struct VarianceTrackerView: View {
             // 4.3 Pre-Result Sentiment Segmentation Tabs
             expectationFilterBar
             ScrollView {
-                LazyVStack(spacing: 12) {
+                LazyVStack(spacing: Theme.Spacing.standard) {
                     if isLoading && estimates.isEmpty {
                         ForEach(0..<4, id: \.self) { _ in variancePlaceholder }
                     } else if filteredEstimates.isEmpty {
                         Text("No variance data available.")
-                            .font(.system(size: 13))
+                            .font(.footnote)
                             .foregroundColor(Theme.inkTertiary)
-                            .padding(40)
+                            .padding(Theme.Spacing.xLarge)
                     } else {
                         ForEach(filteredEstimates) { est in
                             VarianceCard(estimate: est)
                         }
                     }
                 }
-                .padding(16)
+                .padding(Theme.Spacing.card)
             }
         }
         .background(Theme.canvas)
@@ -1440,7 +1440,7 @@ struct VarianceTrackerView: View {
             ForEach([("all","All"), ("high","High Expectations"), ("low","Low Expectations")], id: \.0) { key, label in
                 Button(action: { expectationFilter = key }) {
                     Text(label)
-                        .font(.system(size: 11, weight: expectationFilter == key ? .bold : .regular))
+                        .font(.caption.weight(expectationFilter == key ? .bold : .regular))
                         .foregroundColor(expectationFilter == key ? Theme.securityGold : Theme.inkTertiary)
                         .padding(.vertical, 10)
                         .frame(maxWidth: .infinity)
@@ -1453,11 +1453,11 @@ struct VarianceTrackerView: View {
     }
 
     private var variancePlaceholder: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 100, height: 13)
             RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.10)).frame(height: 60)
         }
-        .padding(14).banknoteCard().shimmerPlaceholder(isLoading: true)
+        .padding(Theme.Spacing.standard).banknoteCard().shimmerPlaceholder(isLoading: true)
     }
 
     private func loadEstimates() {
@@ -1482,14 +1482,14 @@ struct VarianceCard: View {
     let estimate: EarningsEstimate
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             HStack {
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text(estimate.ticker)
-                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .font(.subheadline.weight(.bold).monospaced())
                         .foregroundColor(Theme.inkPrimary)
                     Text(estimate.companyName)
-                        .font(.system(size: 11))
+                        .font(.caption)
                         .foregroundColor(Theme.inkSecondary)
                 }
                 Spacer()
@@ -1514,31 +1514,31 @@ struct VarianceCard: View {
                                variancePct: nil)
             }
         }
-        .padding(14)
+        .padding(Theme.Spacing.standard)
         .banknoteCard()
     }
 
     private func varianceColumn(label: String, estimate: String?, actual: String?, variancePct: Double?) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(label)
-                .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                .font(.caption2.weight(.semibold).monospaced())
                 .tracking(1)
                 .foregroundColor(Theme.inkTertiary)
             if let est = estimate {
-                HStack(spacing: 4) {
-                    Text("Est:").font(.system(size: 9)).foregroundColor(Theme.inkTertiary)
-                    Text(est).font(.system(size: 10, weight: .medium)).foregroundColor(Theme.inkSecondary)
+                HStack(spacing: Theme.Spacing.small) {
+                    Text("Est:").font(.caption2).foregroundColor(Theme.inkTertiary)
+                    Text(est).font(.caption.weight(.medium)).foregroundColor(Theme.inkSecondary)
                 }
             }
             if let act = actual {
-                HStack(spacing: 4) {
-                    Text("Act:").font(.system(size: 9)).foregroundColor(Theme.inkTertiary)
-                    Text(act).font(.system(size: 10, weight: .semibold)).foregroundColor(Theme.inkPrimary)
+                HStack(spacing: Theme.Spacing.small) {
+                    Text("Act:").font(.caption2).foregroundColor(Theme.inkTertiary)
+                    Text(act).font(.caption.weight(.semibold)).foregroundColor(Theme.inkPrimary)
                 }
             }
             if let pct = variancePct {
                 Text(IndianFormatter.delta(pct))
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.caption.weight(.bold))
                     .foregroundColor(pct >= 0 ? Theme.bullGreen : Theme.bearRed)
             }
         }
@@ -1555,13 +1555,13 @@ struct VarianceCard: View {
         let color: Color = beats ? Theme.bullGreen : Theme.bearRed
         return AnyView(
             Text(label)
-                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                .font(.caption2.weight(.bold).monospaced())
                 .tracking(1)
                 .foregroundColor(color)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(color.opacity(0.10))
-                .cornerRadius(4)
+                .cornerRadius(Theme.CornerRadius.small)
                 .overlay(RoundedRectangle(cornerRadius: 4).stroke(color.opacity(0.3), lineWidth: 0.5))
         )
     }
@@ -1574,25 +1574,25 @@ struct PostResultMonitorView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                 HStack {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("POST-RESULT PRICE SHOCKER MATRIX")
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .font(.caption2.weight(.bold).monospaced())
                             .tracking(2)
                             .foregroundColor(Theme.inkSecondary)
                         Text("Equities experiencing peak volatility after earnings")
-                            .font(.system(size: 10))
+                            .font(.caption)
                             .foregroundColor(Theme.inkTertiary)
                     }
                     Spacer()
                     // 5-second refresh indicator
-                    HStack(spacing: 4) {
+                    HStack(spacing: Theme.Spacing.small) {
                         Circle()
                             .fill(Theme.bullGreen)
                             .frame(width: 6, height: 6)
                         Text("5s refresh")
-                            .font(.system(size: 9))
+                            .font(.caption2)
                             .foregroundColor(Theme.inkTertiary)
                     }
                 }
@@ -1602,9 +1602,9 @@ struct PostResultMonitorView: View {
                 // Table header
                 HStack(spacing: 0) {
                     Text("COMPANY").tableHeaderStyle().frame(maxWidth: .infinity, alignment: .leading)
-                    Text("RESULT DATE").tableHeaderStyle().frame(width: 80, alignment: .trailing)
-                    Text("LTP").tableHeaderStyle().frame(width: 80, alignment: .trailing)
-                    Text("CHG %").tableHeaderStyle().frame(width: 65, alignment: .trailing)
+                    Text("RESULT DATE").tableHeaderStyle().frame(minWidth: UIScreen.main.bounds.width * 0.20, alignment: .trailing)
+                    Text("LTP").tableHeaderStyle().frame(minWidth: UIScreen.main.bounds.width * 0.20, alignment: .trailing)
+                    Text("CHG %").tableHeaderStyle().frame(minWidth: UIScreen.main.bounds.width * 0.16, alignment: .trailing)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -1616,9 +1616,9 @@ struct PostResultMonitorView: View {
                     }
                 } else if vm.postResultMovers.isEmpty {
                     Text("No significant post-result movers currently.")
-                        .font(.system(size: 12))
+                        .font(.footnote)
                         .foregroundColor(Theme.inkTertiary)
-                        .padding(40)
+                        .padding(Theme.Spacing.xLarge)
                         .frame(maxWidth: .infinity)
                 } else {
                     ForEach(vm.postResultMovers) { mover in
@@ -1660,36 +1660,36 @@ struct PostResultMonitorView: View {
     private func postResultRow(_ m: PostResultMover) -> some View {
         let isPos = m.changePercent >= 0
         return HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                 Text(m.ticker)
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .font(.footnote.weight(.bold).monospaced())
                     .foregroundColor(Theme.inkPrimary)
                 Text(m.companyName)
-                    .font(.system(size: 10))
+                    .font(.caption)
                     .foregroundColor(Theme.inkSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Text(m.resultDate)
-                .font(.system(size: 10, design: .monospaced))
+                .font(.caption.monospaced())
                 .foregroundColor(Theme.inkTertiary)
-                .frame(width: 80, alignment: .trailing)
+                .frame(minWidth: UIScreen.main.bounds.width * 0.20, alignment: .trailing)
 
             Text(IndianFormatter.price(m.ltp))
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .font(.footnote.weight(.semibold).monospaced())
                 .foregroundColor(Theme.inkPrimary)
-                .frame(width: 80, alignment: .trailing)
+                .frame(minWidth: UIScreen.main.bounds.width * 0.20, alignment: .trailing)
 
-            HStack(spacing: 4) {
+            HStack(spacing: Theme.Spacing.small) {
                 // Directional Trend Indicator
                 Image(systemName: isPos ? "arrow.up" : "arrow.down")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.caption.weight(.bold))
                     .foregroundColor(isPos ? Theme.bullGreen : Theme.bearRed)
                 Text(IndianFormatter.delta(m.changePercent))
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .font(.caption.weight(.bold).monospaced())
                     .foregroundColor(isPos ? Theme.bullGreen : Theme.bearRed)
             }
-            .frame(width: 65, alignment: .trailing)
+            .frame(minWidth: UIScreen.main.bounds.width * 0.16, alignment: .trailing)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -1697,7 +1697,7 @@ struct PostResultMonitorView: View {
 
     private var moverRowPlaceholder: some View {
         HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
                 RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 110, height: 10)
             }
@@ -1717,7 +1717,7 @@ struct PostResultMonitorView: View {
 private extension Text {
     func tableHeaderStyle() -> some View {
         self
-            .font(.system(size: 8, weight: .bold, design: .monospaced))
+            .font(.caption2.weight(.bold).monospaced())
             .tracking(1.2)
             .foregroundColor(Theme.inkTertiary)
     }

@@ -70,32 +70,72 @@ enum Theme {
 
     // MARK: - Typography
 
-    static func engravedSerif(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        weight == .bold
-            ? Font.custom("Georgia-Bold", size: size)
-            : Font.custom("Georgia", size: size)
+    /// Maps SwiftUI `Font.TextStyle` to UIKit `UIFont.TextStyle` for Dynamic Type scaling.
+    private static func uiTextStyle(from style: Font.TextStyle) -> UIFont.TextStyle {
+        switch style {
+        case .largeTitle:  return .largeTitle
+        case .title:       return .title1
+        case .title2:      return .title2
+        case .title3:      return .title3
+        case .headline:    return .headline
+        case .subheadline: return .subheadline
+        case .body:        return .body
+        case .callout:     return .callout
+        case .footnote:    return .footnote
+        case .caption:     return .caption1
+        case .caption2:    return .caption2
+        @unknown default:  return .body
+        }
     }
 
-    static func serialNumberFont(size: CGFloat) -> Font {
-        Font.system(size: size, weight: .medium, design: .monospaced)
+    static func engravedSerif(size: CGFloat, weight: Font.Weight = .regular, relativeTo style: Font.TextStyle = .body) -> Font {
+        weight == .bold
+            ? Font.custom("Georgia-Bold", size: size, relativeTo: style)
+            : Font.custom("Georgia", size: size, relativeTo: style)
+    }
+
+    static func serialNumberFont(size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
+        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
+        return Font.system(size: scaled, weight: .medium, design: .monospaced)
     }
 
     // Official stamp labels — apply .tracking(1.5) on Text at call site
-    static func officialStampFont(size: CGFloat) -> Font {
-        Font.system(size: size, weight: .medium)
+    static func officialStampFont(size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
+        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
+        return Font.system(size: scaled, weight: .medium, design: .default)
     }
 
-    static func hindiFont(size: CGFloat) -> Font {
-        Font.custom("Georgia", size: size).italic()
+    static func hindiFont(size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
+        Font.custom("Georgia", size: size, relativeTo: style).italic()
     }
 
-    static let labelStyle = Font.system(size: 10, weight: .bold).uppercaseSmallCaps()
+    static let labelStyle = Font.caption.weight(.bold).uppercaseSmallCaps()
 
     // MARK: - Spacing
 
-    static let cardPadding: CGFloat = 20
-    static let screenPadding: CGFloat = 20
-    static let sectionSpacing: CGFloat = 32
+    enum Spacing {
+        static let xSmall: CGFloat = 2
+        static let small: CGFloat = 4
+        static let tight: CGFloat = 6
+        static let medium: CGFloat = 8
+        static let standard: CGFloat = 12
+        static let card: CGFloat = 16
+        static let screen: CGFloat = 20
+        static let large: CGFloat = 24
+        static let xLarge: CGFloat = 32
+    }
+
+    enum CornerRadius {
+        static let small: CGFloat = 4
+        static let tight: CGFloat = 6
+        static let medium: CGFloat = 8
+        static let large: CGFloat = 12
+        static let card: CGFloat = 16
+    }
+
+    static let cardPadding: CGFloat = Spacing.screen
+    static let screenPadding: CGFloat = Spacing.screen
+    static let sectionSpacing: CGFloat = Spacing.xLarge
 
     // MARK: - Gradients
 
@@ -186,8 +226,8 @@ struct GuillocheDivider: View {
             }
             .stroke(Theme.inkSecondary.opacity(0.08), lineWidth: 0.5)
         }
-        .frame(height: 8)
-        .padding(.vertical, 6)
+        .frame(height: Theme.Spacing.medium)
+        .padding(.vertical, Theme.Spacing.tight)
     }
 }
 
@@ -218,15 +258,18 @@ struct CountUpNumber: View {
 // MARK: - Stagger Appear
 
 struct StaggerAppear: ViewModifier {
+    private static let staggerOffset: CGFloat = 10
+    private static let staggerDuration: Double = 0.5
+
     let delay: Double
     @State private var isVisible = false
 
     func body(content: Content) -> some View {
         content
             .opacity(isVisible ? 1 : 0)
-            .offset(y: isVisible ? 0 : 10)
+            .offset(y: isVisible ? 0 : Self.staggerOffset)
             .onAppear {
-                withAnimation(.easeOut(duration: 0.5).delay(delay)) {
+                withAnimation(.easeOut(duration: Self.staggerDuration).delay(delay)) {
                     isVisible = true
                 }
             }
@@ -240,20 +283,22 @@ extension View {
 
     // Double-border banknote card (toned down 10%)
     func banknoteCard() -> some View {
-        self
+        let shadowRadius: CGFloat = 3
+        let shadowY: CGFloat = 2
+        return self
             .background(Theme.canvasDeep)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
             .overlay(
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                         .stroke(Color.white.opacity(0.5), lineWidth: 0.5)
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                         .stroke(Theme.inkPrimary.opacity(0.12), lineWidth: 1)
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.tight)
                         .stroke(Theme.inkSecondary.opacity(0.16), lineWidth: 0.5)
                         .padding(3)
                 }
             )
-            .shadow(color: Theme.inkPrimary.opacity(0.06), radius: 3, x: 0, y: 2)
+            .shadow(color: Theme.inkPrimary.opacity(0.06), radius: shadowRadius, x: 0, y: shadowY)
     }
 }

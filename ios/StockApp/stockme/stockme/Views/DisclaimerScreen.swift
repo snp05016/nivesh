@@ -11,22 +11,22 @@ struct DisclaimerScreen: View {
             VStack(spacing: 0) {
                 Spacer()
 
-                VStack(spacing: 24) {
+                VStack(spacing: Theme.Spacing.large) {
                     // Official Warning Stamp
                     BanknoteSignalBadge(text: "OFFICIAL NOTICE", color: Theme.securityGold, rotation: -4)
                         .scaleEffect(1.2)
 
-                    VStack(spacing: 4) {
+                    VStack(spacing: Theme.Spacing.small) {
                         Text("महत्वपूर्ण सूचना")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.caption2.weight(.bold))
                             .foregroundColor(Theme.inkSecondary)
                         Text("REGISTRY DISCLAIMER")
-                            .font(Theme.engravedSerif(size: 22, weight: .bold))
+                            .font(Theme.engravedSerif(size: 22, weight: .bold, relativeTo: .title2))
                             .foregroundColor(Theme.inkPrimary)
                     }
                     .staggerAppear(delay: 0.1)
 
-                    VStack(spacing: 16) {
+                    VStack(spacing: Theme.Spacing.card) {
                         DisclaimerBulletin(
                             icon: "info.circle.fill",
                             text: "This application is for educational purposes only and does not constitute financial advice.",
@@ -43,34 +43,34 @@ struct DisclaimerScreen: View {
                             delay: 0.4
                         )
                     }
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, Theme.Spacing.medium)
                 }
-                .padding(32)
+                .padding(Theme.Spacing.xLarge)
                 .banknoteCard()
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Theme.Spacing.screen)
                 .staggerAppear(delay: 0.1)
 
                 Spacer()
 
-                VStack(spacing: 16) {
+                VStack(spacing: Theme.Spacing.card) {
                     Button(action: onAccept) {
                         Text("I ACKNOWLEDGE & CONTINUE")
                             .font(Theme.labelStyle)
                             .foregroundColor(Theme.canvas)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 20)
+                            .padding(.vertical, Theme.Spacing.screen)
                             .background(Theme.inkPrimary)
                             .banknoteCard()
                     }
 
                     Text("By entering the registry you agree to the official terms of use.")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.caption2.weight(.bold))
                         .foregroundColor(Theme.inkSecondary.opacity(0.6))
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, Theme.Spacing.large)
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 40)
+                .padding(.horizontal, Theme.Spacing.large)
+                .padding(.bottom, Theme.Spacing.xLarge)
                 .staggerAppear(delay: 0.5)
             }
         }
@@ -83,14 +83,14 @@ private struct DisclaimerBulletin: View {
     let delay: Double
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: Theme.Spacing.standard) {
             Image(systemName: icon)
-                .font(.system(size: 14))
+                .font(.subheadline)
                 .foregroundColor(Theme.inkSecondary.opacity(0.4))
                 .frame(width: 20)
                 .padding(.top, 2)
             Text(text.uppercased())
-                .font(.system(size: 10, weight: .bold))
+                .font(.caption2.weight(.bold))
                 .foregroundColor(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .lineSpacing(2)

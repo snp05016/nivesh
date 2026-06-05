@@ -29,7 +29,7 @@ struct LoginScreen: View {
                                 .stroke(Theme.inkSecondary.opacity(0.3), lineWidth: 1)
                                 .frame(width: 80, height: 80)
                             Text("₹")
-                                .font(Theme.engravedSerif(size: 40, weight: .bold))
+                                .font(Theme.engravedSerif(size: 40, weight: .bold, relativeTo: .largeTitle))
                                 .foregroundColor(Theme.inkPrimary)
                         }
                         .padding(.top, 60)
@@ -37,7 +37,7 @@ struct LoginScreen: View {
 
                         VStack(spacing: 4) {
                             Text("निवेश / NIVESH")
-                                .font(Theme.engravedSerif(size: 34, weight: .bold))
+                                .font(Theme.engravedSerif(size: 34, weight: .bold, relativeTo: .largeTitle))
                                 .foregroundColor(Theme.inkPrimary)
                             Text(isRegistering ? "NEW REGISTRY ENROLLMENT" : "CENTRAL REGISTRY ACCESS")
                                 .font(Theme.labelStyle)
@@ -46,16 +46,16 @@ struct LoginScreen: View {
                         .staggerAppear(delay: 0.2)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.bottom, 48)
+                    .padding(.bottom, Theme.Spacing.xLarge)
 
                     // Entry Form
-                    VStack(spacing: 24) {
+                    VStack(spacing: Theme.Spacing.large) {
                         VStack(spacing: 16) {
                             if isRegistering {
                                 // Display Name
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text("पूरा नाम / FULL NAME")
-                                        .font(.system(size: 8, weight: .black))
+                                        .font(.caption2.weight(.black))
                                         .foregroundColor(Theme.inkSecondary)
                                     
                                     HStack(spacing: 12) {
@@ -68,7 +68,7 @@ struct LoginScreen: View {
                                             .submitLabel(.next)
                                             .onSubmit { focusedField = .username }
                                     }
-                                    .padding(16)
+                                    .padding(Theme.Spacing.card)
                                     .banknoteCard()
                                 }
                                 .staggerAppear(delay: 0.1)
@@ -77,7 +77,7 @@ struct LoginScreen: View {
                             // Username
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("प्रयोक्ता नाम / USERNAME")
-                                    .font(.system(size: 8, weight: .black))
+                                    .font(.caption2.weight(.black))
                                     .foregroundColor(Theme.inkSecondary)
                                 
                                 HStack(spacing: 12) {
@@ -92,14 +92,14 @@ struct LoginScreen: View {
                                         .submitLabel(.next)
                                         .onSubmit { focusedField = .password }
                                 }
-                                .padding(16)
+                                .padding(Theme.Spacing.card)
                                 .banknoteCard()
                             }
 
                             // Password
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("कूटशब्द / SECURITY KEY")
-                                    .font(.system(size: 8, weight: .black))
+                                    .font(.caption2.weight(.black))
                                     .foregroundColor(Theme.inkSecondary)
                                 
                                 HStack(spacing: 12) {
@@ -112,7 +112,7 @@ struct LoginScreen: View {
                                         .submitLabel(.go)
                                         .onSubmit { attemptAction() }
                                 }
-                                .padding(16)
+                                .padding(Theme.Spacing.card)
                                 .banknoteCard()
                             }
                         }
@@ -123,10 +123,10 @@ struct LoginScreen: View {
                                 BanknoteSignalBadge(text: "DENIED", color: Theme.bearRed, rotation: -8)
                                     .scaleEffect(0.8)
                                 Text(err.uppercased())
-                                    .font(.system(size: 11, weight: .bold))
+                                    .font(.caption.weight(.bold))
                                     .foregroundColor(Theme.bearRed)
                             }
-                            .padding(12)
+                            .padding(Theme.Spacing.standard)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Theme.signalRuby.opacity(0.05))
                         }
@@ -143,7 +143,7 @@ struct LoginScreen: View {
                                 }
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(18)
+                            .padding(Theme.Spacing.card)
                             .background(canProceed ? Theme.inkPrimary : Theme.inkPrimary.opacity(0.1))
                             .foregroundColor(canProceed ? Theme.canvas : Theme.inkPrimary.opacity(0.3))
                             .banknoteCard()
@@ -156,7 +156,6 @@ struct LoginScreen: View {
                         }) {
                             Text(isRegistering ? "ALREADY ENROLLED? SIGN IN" : "NEW USER? ENROLL HERE")
                                 .font(Theme.labelStyle)
-                                .font(.system(size: 8))
                                 .foregroundColor(Theme.securityGold)
                         }
 
@@ -165,7 +164,6 @@ struct LoginScreen: View {
                             VStack(spacing: 12) {
                                 Text("QUICK AUTHENTICATION")
                                     .font(Theme.labelStyle)
-                                    .font(.system(size: 8))
                                     .foregroundColor(Theme.inkSecondary)
                                 
                                 HStack(spacing: 10) {
@@ -176,9 +174,9 @@ struct LoginScreen: View {
                                             focusedField = nil
                                         } label: {
                                             Text(name.uppercased())
-                                                .font(Theme.serialNumberFont(size: 11))
-                                                .padding(.horizontal, 16)
-                                                .padding(.vertical, 10)
+                                                .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
+                                                .padding(.horizontal, Theme.Spacing.card)
+                                                .padding(.vertical, Theme.Spacing.standard)
                                                 .background(username == name ? Theme.securityGold.opacity(0.1) : Color.clear)
                                                 .foregroundColor(username == name ? Theme.securityGold : Theme.inkPrimary)
                                                 .overlay(RoundedRectangle(cornerRadius: 2).stroke(username == name ? Theme.securityGold : Theme.inkPrimary.opacity(0.1), lineWidth: 1))
@@ -189,9 +187,9 @@ struct LoginScreen: View {
                             .padding(.top, 8)
                         }
                     }
-                    .padding(32)
+                    .padding(Theme.Spacing.xLarge)
                     .banknoteCard()
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, Theme.Spacing.large)
                     .staggerAppear(delay: 0.4)
                 }
             }

@@ -64,10 +64,10 @@ struct TechnicalMomentumView: View {
         } label: {
             HStack(spacing: 8) {
                 Text(selectedIndex)
-                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .font(Theme.serialNumberFont(size: 12))
                     .foregroundColor(Theme.inkPrimary)
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 10))
+                    .font(Theme.officialStampFont(size: 10))
                     .foregroundColor(Theme.inkTertiary)
                 Spacer()
             }
@@ -85,7 +85,8 @@ struct TechnicalMomentumView: View {
                 ForEach(Array(subTabs.enumerated()), id: \.offset) { idx, tab in
                     Button(action: { selectedSubTab = idx }) {
                         Text(tab)
-                            .font(.system(size: 11, weight: selectedSubTab == idx ? .bold : .regular))
+                            .font(Theme.officialStampFont(size: 11))
+                            .fontWeight(selectedSubTab == idx ? .bold : .regular)
                             .foregroundColor(selectedSubTab == idx ? Theme.securityGold : Theme.inkTertiary)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
@@ -123,7 +124,7 @@ struct TechnicalMomentumView: View {
                     let tickers = momentumTickers(for: selectedMomentum)
                     if tickers.isEmpty {
                         Text("No \(selectedMomentum.lowercased()) signals detected for \(selectedIndex).")
-                            .font(.system(size: 12))
+                            .font(Theme.officialStampFont(size: 12))
                             .foregroundColor(Theme.inkTertiary)
                             .padding(40)
                             .frame(maxWidth: .infinity)
@@ -163,14 +164,15 @@ struct TechnicalMomentumView: View {
                                 }
                             }
                             Text(filter)
-                                .font(.system(size: 10, weight: selectedMomentum == filter ? .bold : .regular))
+                                .font(Theme.officialStampFont(size: 10))
+                                .fontWeight(selectedMomentum == filter ? .bold : .regular)
                                 .foregroundColor(selectedMomentum == filter ? momentumColor(filter) : Theme.inkTertiary)
                         }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 6)
+                        .padding(.horizontal, Theme.Spacing.medium)
+                        .padding(.vertical, Theme.Spacing.tight)
                         .background(selectedMomentum == filter ? momentumColor(filter).opacity(0.08) : Color.clear)
-                        .cornerRadius(6)
-                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(
+                        .cornerRadius(Theme.CornerRadius.tight)
+                        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(
                             selectedMomentum == filter ? momentumColor(filter).opacity(0.3) : Theme.borderSage,
                             lineWidth: 0.5))
                     }
@@ -178,7 +180,7 @@ struct TechnicalMomentumView: View {
                 }
             }
         }
-        .padding(14)
+        .padding(Theme.Spacing.card)
         .banknoteCard()
     }
 
@@ -217,7 +219,7 @@ struct TechnicalMomentumView: View {
                     ForEach(0..<6, id: \.self) { _ in sectorPlaceholder }
                 }
             }
-            .padding(16)
+            .padding(Theme.Spacing.card)
         }
         .background(Theme.canvas)
     }
@@ -227,12 +229,12 @@ struct TechnicalMomentumView: View {
         VStack {
             Spacer()
             Text(label)
-                .font(.system(size: 14, weight: .semibold))
+                .font(Theme.officialStampFont(size: 14))
                 .foregroundColor(Theme.inkTertiary)
             Text("Data loading from \(selectedIndex)")
-                .font(.system(size: 11))
+                .font(Theme.officialStampFont(size: 11))
                 .foregroundColor(Theme.inkTertiary)
-                .padding(.top, 4)
+                .padding(.top, Theme.Spacing.small)
             Spacer()
         }
     }
@@ -240,21 +242,21 @@ struct TechnicalMomentumView: View {
     // MARK: Placeholders
 
     private var momentumCardPlaceholder: some View {
-        HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 80, height: 14)
+        HStack(spacing: Theme.Spacing.standard) {
+            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: UIScreen.main.bounds.width * 0.2, height: 14)
             Spacer()
             RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 60, height: 12)
             RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 40, height: 12)
         }
-        .padding(14)
+        .padding(Theme.Spacing.card)
         .banknoteCard()
         .shimmerPlaceholder(isLoading: true)
     }
 
     private var sectorPlaceholder: some View {
-        RoundedRectangle(cornerRadius: 8)
+        RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
             .fill(Theme.inkTertiary.opacity(0.08))
-            .frame(height: 80)
+            .frame(height: UIScreen.main.bounds.height * 0.1)
             .shimmerPlaceholder(isLoading: true)
     }
 
@@ -295,40 +297,40 @@ struct MomentumIndicatorCard: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Theme.Spacing.standard) {
             VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 8) {
+                HStack(spacing: Theme.Spacing.medium) {
                     Text(ticker.ticker)
-                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .font(Theme.serialNumberFont(size: 14))
                         .foregroundColor(Theme.inkPrimary)
                     // 9.4 Momentum classification badge
                     Text(momentumLabel.uppercased())
-                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .font(Theme.serialNumberFont(size: 8))
                         .tracking(1)
                         .foregroundColor(signalColor)
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, Theme.Spacing.tight)
                         .padding(.vertical, 3)
                         .background(signalColor.opacity(0.10))
-                        .cornerRadius(4)
+                        .cornerRadius(Theme.CornerRadius.small)
                 }
                 // 9.4 Core execution data
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("LTP").font(.system(size: 8)).foregroundColor(Theme.inkTertiary)
+                HStack(spacing: Theme.Spacing.standard) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                        Text("LTP").font(Theme.officialStampFont(size: 8)).foregroundColor(Theme.inkTertiary)
                         Text(IndianFormatter.price(ticker.lastPrice))
-                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .font(Theme.serialNumberFont(size: 12))
                             .foregroundColor(Theme.inkPrimary)
                     }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("MA20").font(.system(size: 8)).foregroundColor(Theme.inkTertiary)
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                        Text("MA20").font(Theme.officialStampFont(size: 8)).foregroundColor(Theme.inkTertiary)
                         Text(IndianFormatter.price(ticker.ma20))
-                            .font(.system(size: 11, design: .monospaced))
+                            .font(Theme.serialNumberFont(size: 11))
                             .foregroundColor(Theme.inkSecondary)
                     }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("SINCE").font(.system(size: 8)).foregroundColor(Theme.inkTertiary)
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                        Text("SINCE").font(Theme.officialStampFont(size: 8)).foregroundColor(Theme.inkTertiary)
                         Text(ticker.trendDate)
-                            .font(.system(size: 10, design: .monospaced))
+                            .font(Theme.serialNumberFont(size: 10))
                             .foregroundColor(Theme.inkSecondary)
                     }
                 }
@@ -339,22 +341,22 @@ struct MomentumIndicatorCard: View {
             // 9.4 / 9.5 Sparkline mini-chart
             if !ticker.sparkline.isEmpty {
                 SparklineView(values: ticker.sparkline, color: signalColor)
-                    .frame(width: 60, height: 36)
+                    .frame(width: UIScreen.main.bounds.width * 0.16, height: UIScreen.main.bounds.width * 0.10)
             }
 
             // 9.6 View in Chart button
             Button(action: {}) {
-                VStack(spacing: 2) {
+                VStack(spacing: Theme.Spacing.xSmall) {
                     Image(systemName: "chart.xyaxis.line")
-                        .font(.system(size: 13))
+                        .font(Theme.officialStampFont(size: 13))
                         .foregroundColor(Theme.securityGold)
                     Text("Chart")
-                        .font(.system(size: 8))
+                        .font(Theme.officialStampFont(size: 8))
                         .foregroundColor(Theme.securityGold.opacity(0.7))
                 }
             }
         }
-        .padding(12)
+        .padding(Theme.Spacing.standard)
         .banknoteCard()
     }
 }
@@ -390,20 +392,20 @@ struct SectorHeatBlock: View {
     let isPositive: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             Text(name)
-                .font(.system(size: 11, weight: .semibold))
+                .font(Theme.officialStampFont(size: 11))
                 .foregroundColor(Theme.inkPrimary)
             Text(String(format: "%.1f%%", pct))
-                .font(.system(size: 18, weight: .bold, design: .monospaced))
+                .font(Theme.serialNumberFont(size: 18))
                 .foregroundColor(isPositive ? Theme.bullGreen : Theme.bearRed)
         }
-        .padding(14)
+        .padding(Theme.Spacing.card)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(isPositive ? Theme.bullGreen.opacity(0.06) : Theme.bearRed.opacity(0.06))
-        .cornerRadius(8)
+        .cornerRadius(Theme.CornerRadius.medium)
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                 .stroke(isPositive ? Theme.bullGreen.opacity(0.2) : Theme.bearRed.opacity(0.2), lineWidth: 0.5)
         )
     }

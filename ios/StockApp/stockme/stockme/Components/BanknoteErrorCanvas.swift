@@ -21,6 +21,8 @@ struct BanknoteErrorCanvas: View {
     @State private var isRetrying = false
     @State private var showDiagnostics = false
 
+    private let bandSize = CGSize(width: 40, height: 28)
+
     var body: some View {
         VStack(spacing: 0) {
             // ── Paper texture card ──────────────────────────────────────
@@ -32,7 +34,7 @@ struct BanknoteErrorCanvas: View {
                 VStack(spacing: 12) {
                     // Denomination-style error title
                     Text(title)
-                        .font(Font.custom("Georgia-Bold", size: 16))
+                        .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
                         .foregroundColor(Theme.bearRed)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
@@ -43,16 +45,16 @@ struct BanknoteErrorCanvas: View {
                         .frame(height: 1)
                         .overlay(
                             Text("ERROR VECTOR")
-                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                .font(.caption2.weight(.bold).monospaced())
                                 .tracking(2)
-                                .foregroundColor(Theme.bearRed.opacity(0.5))
+                                .foregroundColor(.secondary)
                                 .padding(.horizontal, 8)
                                 .background(Theme.canvasDeep)
                         )
 
                     // Detail text — clean monospace for diagnostic traces
                     Text(detail)
-                        .font(.system(size: 11, weight: .regular, design: .monospaced))
+                        .font(.caption.weight(.regular).monospaced())
                         .foregroundColor(Theme.inkSecondary)
                         .multilineTextAlignment(.leading)
                         .lineSpacing(4)
@@ -79,48 +81,48 @@ struct BanknoteErrorCanvas: View {
                                         .tint(Theme.securityGold)
                                 }
                                 Text(isRetrying ? "Retrying…" : "RETRY")
-                                    .font(.system(size: 10, weight: .bold))
+                                    .font(.caption2.weight(.bold))
                                     .tracking(2)
                             }
                             .foregroundColor(Theme.securityGold)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 8)
+                            .padding(.horizontal, Theme.Spacing.screen)
+                            .padding(.vertical, Theme.Spacing.medium)
                             .background(Theme.securityGold.opacity(0.08))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 2)
+                                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                                     .stroke(Theme.securityGold.opacity(0.3), lineWidth: 1)
                             )
                         }
                         .disabled(isRetrying)
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 20)
+                .padding(.horizontal, Theme.Spacing.screen)
+                .padding(.bottom, Theme.Spacing.screen)
             }
             .background(
                 ZStack {
                     Theme.canvasDeep
                     // Subtle watermark
                     Text("₹")
-                        .font(Font.custom("Georgia-Bold", size: 180))
+                        .font(Theme.engravedSerif(size: 180, weight: .bold, relativeTo: .largeTitle))
                         .foregroundColor(Theme.bearRed.opacity(0.025))
                         .offset(x: 60, y: 20)
                         .allowsHitTesting(false)
                 }
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                     .stroke(Theme.borderSage, lineWidth: 1)
             )
-            .cornerRadius(2)
+            .cornerRadius(Theme.CornerRadius.small)
             .shadow(color: Theme.canvasShadow.opacity(0.12), radius: 4, y: 2)
 
             // ── Serial number footer ────────────────────────────────────
             Text("NIVESH APPAREL • RESERVE BANK OF INDIA • ERROR: \(title.prefix(18).uppercased())")
-                .font(.system(size: 7, weight: .medium, design: .monospaced))
+                .font(.caption2.weight(.medium).monospaced())
                 .foregroundColor(Theme.inkTertiary.opacity(0.5))
                 .tracking(1.5)
-                .padding(.top, 8)
+                .padding(.top, Theme.Spacing.medium)
         }
         .padding(Theme.cardPadding)
     }
@@ -132,7 +134,7 @@ struct BanknoteErrorCanvas: View {
             // Left guilloche block
             Rectangle()
                 .fill(Theme.bearRed.opacity(0.12))
-                .frame(width: 40, height: 28)
+                .frame(width: bandSize.width, height: bandSize.height)
                 .overlay(
                     HStack(spacing: 2) {
                         ForEach(0..<3, id: \.self) { _ in
@@ -147,18 +149,18 @@ struct BanknoteErrorCanvas: View {
             VStack(spacing: 0) {
                 Rectangle().fill(Theme.bearRed.opacity(0.3)).frame(height: 1)
                 Text("DATA FAULT")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .font(.caption2.weight(.bold).monospaced())
                     .tracking(4)
                     .foregroundColor(Theme.bearRed.opacity(0.7))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 3)
+                    .padding(.horizontal, Theme.Spacing.card)
+                    .padding(.vertical, Theme.Spacing.small)
                 Rectangle().fill(Theme.bearRed.opacity(0.3)).frame(height: 1)
             }
 
             // Right guilloche block (mirror)
             Rectangle()
                 .fill(Theme.bearRed.opacity(0.12))
-                .frame(width: 40, height: 28)
+                .frame(width: bandSize.width, height: bandSize.height)
                 .overlay(
                     HStack(spacing: 2) {
                         ForEach(0..<3, id: \.self) { _ in
@@ -184,29 +186,29 @@ struct MarketSectionErrorRow: View {
         VStack(spacing: 8) {
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 10))
+                    .font(.caption2)
                     .foregroundColor(Theme.holdAmber)
                 Text(sectionLabel)
                     .font(Theme.labelStyle)
                     .foregroundColor(Theme.inkSecondary)
                 Spacer()
                 Text("UNAVAILABLE")
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .font(.caption2.weight(.bold).monospaced())
                     .tracking(1.5)
                     .foregroundColor(Theme.bearRed.opacity(0.6))
             }
             Text(errorMessage)
-                .font(.system(size: 10, weight: .regular, design: .monospaced))
+                .font(.caption2.weight(.regular).monospaced())
                 .foregroundColor(Theme.inkTertiary)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(10)
+                .padding(Theme.Spacing.standard)
                 .background(Theme.bearRed.opacity(0.04))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 2)
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                         .stroke(Theme.bearRed.opacity(0.1), lineWidth: 1)
                 )
-                .cornerRadius(2)
+                .cornerRadius(Theme.CornerRadius.small)
         }
     }
 }
@@ -231,19 +233,19 @@ struct DiagnosticErrorDrawer: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.caption2.weight(.bold))
                         .foregroundColor(Theme.securityGold)
                     Text("DIAGNOSTICS")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(.caption2.weight(.bold).monospaced())
                         .tracking(2)
                         .foregroundColor(Theme.securityGold)
                     Spacer()
                     Text(isExpanded ? "▾" : "▸")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(.caption2.weight(.bold).monospaced())
                         .foregroundColor(Theme.securityGold.opacity(0.6))
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                .padding(.horizontal, Theme.Spacing.standard)
+                .padding(.vertical, Theme.Spacing.standard)
                 .background(Theme.securityGold.opacity(0.04))
             }
 
@@ -276,16 +278,16 @@ struct DiagnosticErrorDrawer: View {
                         if let traceback = exc.cleanedTraceback, !traceback.isEmpty {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("cleaned_traceback")
-                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                    .font(.caption2.weight(.bold).monospaced())
                                     .foregroundColor(Theme.inkTertiary)
                                 ForEach(traceback, id: \.self) { line in
                                     Text(line)
-                                        .font(.system(size: 9, weight: .regular, design: .monospaced))
+                                        .font(.caption2.weight(.regular).monospaced())
                                         .foregroundColor(Theme.inkSecondary)
                                         .lineLimit(3)
                                 }
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, Theme.Spacing.small)
                         }
                     }
 
@@ -295,26 +297,26 @@ struct DiagnosticErrorDrawer: View {
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "doc.on.doc")
-                                .font(.system(size: 9))
+                                .font(.caption2)
                             Text("COPY TO CLIPBOARD")
-                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .font(.caption2.weight(.bold).monospaced())
                                 .tracking(1)
                         }
                         .foregroundColor(Theme.securityGold)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, Theme.Spacing.card)
+                        .padding(.vertical, Theme.Spacing.medium)
                         .frame(maxWidth: .infinity)
                         .background(Theme.securityGold.opacity(0.06))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 2)
+                            RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                                 .stroke(Theme.securityGold.opacity(0.2), lineWidth: 1)
                         )
                     }
                 }
-                .padding(12)
+                .padding(Theme.Spacing.standard)
                 .background(Theme.canvasDeep)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 2)
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                         .stroke(Theme.borderSage, lineWidth: 1)
                 )
             }
@@ -326,11 +328,11 @@ struct DiagnosticErrorDrawer: View {
     private func diagnosticRow(label: String, value: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Text(label)
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .font(.caption2.weight(.bold).monospaced())
                 .foregroundColor(Theme.inkTertiary)
-                .frame(width: 110, alignment: .leading)
+                .frame(minWidth: 80, maxWidth: 120, alignment: .leading)
             Text(value)
-                .font(.system(size: 10, weight: .regular, design: .monospaced))
+                .font(.caption2.weight(.regular).monospaced())
                 .foregroundColor(Theme.inkPrimary)
                 .multilineTextAlignment(.leading)
             Spacer()

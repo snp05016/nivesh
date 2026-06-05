@@ -36,8 +36,8 @@ struct TradeJournalScreen: View {
                     Spacer()
                 }
                 .padding(.horizontal, Theme.screenPadding)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
+                .padding(.top, Theme.Spacing.card)
+                .padding(.bottom, Theme.Spacing.standard)
 
                 // Segmented picker
                 Picker("Mode", selection: $selectedTab) {
@@ -62,14 +62,14 @@ struct TradeJournalScreen: View {
 
     var journalListView: some View {
         ScrollView {
-            LazyVStack(spacing: 10) {
+            LazyVStack(spacing: Theme.Spacing.standard) {
                 if isLoading {
                     ProgressView()
                         .tint(Theme.securityGold)
                         .padding(.top, 40)
                 } else if entries.isEmpty {
                     Text("No journal entries yet.\nTap 'Add Entry' to record your first trade decision.")
-                        .font(.system(size: 14, design: .serif).italic())
+                        .font(.subheadline).fontDesign(.serif).italic()
                         .foregroundColor(Theme.inkSecondary)
                         .multilineTextAlignment(.center)
                         .padding(.top, 40)
@@ -80,7 +80,7 @@ struct TradeJournalScreen: View {
                     }
                 }
             }
-            .padding(.bottom, 20)
+            .padding(.bottom, Theme.Spacing.screen)
         }
     }
 
@@ -88,7 +88,7 @@ struct TradeJournalScreen: View {
 
     var addEntryView: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.card) {
                 // Ticker
                 VStack(alignment: .leading, spacing: 4) {
                     Text("TICKER")
@@ -98,25 +98,25 @@ struct TradeJournalScreen: View {
                         .font(.system(.body, design: .monospaced))
                         .foregroundColor(Theme.inkPrimary)
                         .autocapitalization(.allCharacters)
-                        .padding(10)
+                        .padding(Theme.Spacing.standard)
                         .background(Theme.canvasDeep)
-                        .cornerRadius(6)
-                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.borderFine))
+                        .cornerRadius(Theme.CornerRadius.tight)
+                        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.borderFine))
                 }
 
                 // Action picker
                 VStack(alignment: .leading, spacing: 4) {
                     Text("ACTION")
                         .font(.caption2).tracking(1).foregroundColor(Theme.inkSecondary)
-                    HStack(spacing: 8) {
+                    HStack(spacing: Theme.Spacing.medium) {
                         ForEach(actions, id: \.self) { action in
                             Button(action: { newAction = action }) {
                                 Text(action)
                                     .font(.caption.weight(.semibold))
                                     .foregroundColor(newAction == action ? .white : Theme.inkSecondary)
-                                    .padding(.horizontal, 12).padding(.vertical, 6)
+                                    .padding(.horizontal, Theme.Spacing.standard).padding(.vertical, Theme.Spacing.tight)
                                     .background(newAction == action ? actionColor(action) : Theme.canvasDeep)
-                                    .cornerRadius(4)
+                                    .cornerRadius(Theme.CornerRadius.small)
                             }
                             .buttonStyle(.plain)
                         }
@@ -132,10 +132,10 @@ struct TradeJournalScreen: View {
                         .keyboardType(.decimalPad)
                         .font(.system(.body, design: .monospaced))
                         .foregroundColor(Theme.inkPrimary)
-                        .padding(10)
+                        .padding(Theme.Spacing.standard)
                         .background(Theme.canvasDeep)
-                        .cornerRadius(6)
-                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.borderFine))
+                        .cornerRadius(Theme.CornerRadius.tight)
+                        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.borderFine))
                 }
 
                 // Reason
@@ -143,13 +143,13 @@ struct TradeJournalScreen: View {
                     Text("REASON / THESIS")
                         .font(.caption2).tracking(1).foregroundColor(Theme.inkSecondary)
                     TextEditor(text: $newReason)
-                        .font(.system(size: 14, design: .serif))
+                        .font(.subheadline).fontDesign(.serif)
                         .foregroundColor(Theme.inkPrimary)
                         .frame(minHeight: 80)
-                        .padding(8)
+                        .padding(Theme.Spacing.medium)
                         .background(Theme.canvasDeep)
-                        .cornerRadius(6)
-                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.borderFine))
+                        .cornerRadius(Theme.CornerRadius.tight)
+                        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.borderFine))
                         .scrollContentBackground(.hidden)
                 }
 
@@ -157,15 +157,15 @@ struct TradeJournalScreen: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("MOOD")
                         .font(.caption2).tracking(1).foregroundColor(Theme.inkSecondary)
-                    HStack(spacing: 8) {
+                    HStack(spacing: Theme.Spacing.medium) {
                         ForEach(moods, id: \.self) { mood in
                             Button(action: { newMood = newMood == mood.lowercased() ? nil : mood.lowercased() }) {
                                 Text(mood)
                                     .font(.caption)
                                     .foregroundColor(newMood == mood.lowercased() ? .white : Theme.inkSecondary)
-                                    .padding(.horizontal, 8).padding(.vertical, 5)
+                                    .padding(.horizontal, Theme.Spacing.medium).padding(.vertical, Theme.Spacing.small)
                                     .background(newMood == mood.lowercased() ? Theme.securityGold : Theme.canvasDeep)
-                                    .cornerRadius(4)
+                                    .cornerRadius(Theme.CornerRadius.small)
                             }
                             .buttonStyle(.plain)
                         }
@@ -184,13 +184,13 @@ struct TradeJournalScreen: View {
                     }
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
+                    .padding(.vertical, Theme.Spacing.standard)
                     .background(Theme.securityGold)
-                    .cornerRadius(6)
+                    .cornerRadius(Theme.CornerRadius.tight)
                 }
                 .buttonStyle(.plain)
                 .disabled(isSubmitting || newTicker.isEmpty || newReason.isEmpty)
-                .padding(.top, 8)
+                .padding(.top, Theme.Spacing.medium)
             }
             .padding()
         }
@@ -245,7 +245,7 @@ private struct JournalEntryCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             HStack {
                 Text(entry.ticker)
                     .font(.system(.subheadline, design: .monospaced).weight(.bold))
@@ -253,9 +253,9 @@ private struct JournalEntryCard: View {
                 Text(entry.action)
                     .font(.caption.weight(.bold))
                     .foregroundColor(.white)
-                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                     .background(actionColor)
-                    .cornerRadius(3)
+                    .cornerRadius(Theme.CornerRadius.small)
                 Spacer()
                 if let price = entry.priceAtTime {
                     Text("₹\(String(format: "%.2f", price))")
@@ -266,7 +266,7 @@ private struct JournalEntryCard: View {
 
             if let reason = entry.reasonText, !reason.isEmpty {
                 Text(reason)
-                    .font(.system(size: 13, design: .serif).italic())
+                    .font(.footnote).fontDesign(.serif).italic()
                     .foregroundColor(Theme.inkPrimary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -295,7 +295,7 @@ private struct JournalEntryCard: View {
         }
         .padding()
         .background(Theme.canvasDeep)
-        .cornerRadius(8)
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.borderFine, lineWidth: 0.5))
+        .cornerRadius(Theme.CornerRadius.medium)
+        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(Theme.borderFine, lineWidth: 0.5))
     }
 }

@@ -5,6 +5,7 @@ struct ContentView: View {
     @EnvironmentObject var tutorialManager: TutorialManager
     @State private var selectedTab = 0
     @State private var showLaunch = true
+    private let launchOffset: CGFloat = 24
 
     init() {
         let appearance = UITabBarAppearance()
@@ -14,7 +15,7 @@ struct ContentView: View {
 
         let goldColor = UIColor(Theme.securityGold)
         let mutedColor = UIColor(Theme.inkTertiary)
-        let smallFont = UIFont.systemFont(ofSize: 9, weight: .medium)
+        let smallFont = UIFont.preferredFont(forTextStyle: .caption2)
 
         appearance.stackedLayoutAppearance.selected.iconColor = goldColor
         appearance.stackedLayoutAppearance.selected.titleTextAttributes = [
@@ -36,7 +37,7 @@ struct ContentView: View {
             if authManager.isLoggedIn {
                 mainTabView
                     .opacity(showLaunch ? 0 : 1)
-                    .offset(y: showLaunch ? 24 : 0)
+                    .offset(y: showLaunch ? launchOffset : 0)
                     .animation(.spring(response: 0.55, dampingFraction: 0.82), value: showLaunch)
             } else {
                 LoginScreen()
@@ -86,8 +87,10 @@ struct ContentView: View {
         .overlay(
             Group {
                 if tutorialManager.isShowingTutorial {
-                    TutorialOverlayView()
-                        .ignoresSafeArea()
+                    ZStack {
+                        Theme.canvas.ignoresSafeArea()
+                        TutorialOverlayView()
+                    }
                 }
             }
         )
@@ -122,21 +125,21 @@ struct MarketsView: View {
             VStack(spacing: 0) {
                 // Sub-navigation bar within Markets tab
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: Theme.Spacing.small) {
                         ForEach(Array(marketTabs.enumerated()), id: \.offset) { idx, name in
                             Button(action: { selectedMarketTab = idx }) {
                                 Text(name)
-                                    .font(.system(size: 11, weight: selectedMarketTab == idx ? .bold : .regular))
+                                    .font(.caption.weight(selectedMarketTab == idx ? .bold : .regular))
                                     .foregroundColor(selectedMarketTab == idx ? Theme.securityGold : Theme.inkTertiary)
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 9)
+                                    .padding(.horizontal, Theme.Spacing.standard)
+                                    .padding(.vertical, Theme.Spacing.medium)
                                     .background(selectedMarketTab == idx ? Theme.securityGold.opacity(0.10) : Color.clear)
-                                    .cornerRadius(6)
+                                    .cornerRadius(Theme.CornerRadius.tight)
                             }
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, Theme.Spacing.standard)
+                    .padding(.vertical, Theme.Spacing.medium)
                 }
                 .background(Theme.canvasDeep)
                 .overlay(Divider(), alignment: .bottom)

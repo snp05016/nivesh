@@ -11,10 +11,10 @@ struct AppHeader: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("भारतीय वित्तीय विश्लेषण")
-                        .font(Theme.hindiFont(size: 11))
+                        .font(Theme.hindiFont(size: 11, relativeTo: .caption))
                         .foregroundColor(Theme.inkSecondary)
                     Text("RESERVE BANK OF INTELLIGENCE")
-                        .font(Theme.officialStampFont(size: 9))
+                        .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                         .foregroundColor(Theme.inkPrimary)
                 }
                 Spacer()
@@ -23,7 +23,7 @@ struct AppHeader: View {
                         .stroke(Theme.borderSage, lineWidth: 0.5)
                         .frame(width: 38, height: 38)
                     Text("₹")
-                        .font(Theme.engravedSerif(size: 20, weight: .bold))
+                        .font(Theme.engravedSerif(size: 20, weight: .bold, relativeTo: .title3))
                         .foregroundColor(Theme.inkPrimary)
                 }
             }
@@ -33,10 +33,10 @@ struct AppHeader: View {
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("खाता धारक / ACCOUNT HOLDER")
-                        .font(Theme.officialStampFont(size: 8))
+                        .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
                         .foregroundColor(Theme.inkSecondary)
                     Text(name.uppercased())
-                        .font(Theme.engravedSerif(size: 24, weight: .bold))
+                        .font(Theme.engravedSerif(size: 24, weight: .bold, relativeTo: .title2))
                         .foregroundColor(Theme.inkPrimary)
                 }
                 Spacer()
@@ -55,21 +55,21 @@ private struct StockPreviewCard: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                         .fill(Theme.inkSecondary.opacity(0.08))
                         .frame(width: 48, height: 48)
                     Text(String(stock.ticker.prefix(2)))
-                        .font(Theme.engravedSerif(size: 18, weight: .bold))
+                        .font(Theme.engravedSerif(size: 18, weight: .bold, relativeTo: .headline))
                         .foregroundColor(Theme.inkPrimary)
                 }
-                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.borderFine, lineWidth: 0.5))
+                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.borderFine, lineWidth: 0.5))
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(stock.companyName)
-                        .font(Theme.engravedSerif(size: 15, weight: .bold))
+                        .font(Theme.engravedSerif(size: 15, weight: .bold, relativeTo: .subheadline))
                         .foregroundColor(Theme.inkPrimary)
                     Text(stock.ticker + " • " + stock.exchange)
-                        .font(Theme.serialNumberFont(size: 10))
+                        .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
                         .foregroundColor(Theme.inkSecondary)
                 }
                 Spacer()
@@ -82,31 +82,31 @@ private struct StockPreviewCard: View {
 
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("₹")
-                    .font(Theme.engravedSerif(size: 16, weight: .bold))
+                    .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
                     .foregroundColor(Theme.securityGold)
                 Text(stock.currentPrice.inrFormatted.replacingOccurrences(of: "₹", with: ""))
-                    .font(Theme.serialNumberFont(size: 28))
+                    .font(Theme.serialNumberFont(size: 28, relativeTo: .title))
                     .foregroundColor(Theme.inkPrimary)
                 Spacer()
                 Text((stock.changePercent >= 0 ? "+" : "") + stock.changePercent.percentFormatted)
-                    .font(Theme.serialNumberFont(size: 16))
+                    .font(Theme.serialNumberFont(size: 16, relativeTo: .callout))
                     .foregroundColor(stock.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, Theme.Spacing.medium)
+                    .padding(.vertical, Theme.Spacing.small)
                     .background((stock.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed).opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
             }
 
             Text("LONG PRESS · TAP TO ANALYSE")
-                .font(Theme.officialStampFont(size: 7))
+                .font(Theme.officialStampFont(size: 7, relativeTo: .caption2))
                 .foregroundColor(Theme.inkTertiary)
                 .frame(maxWidth: .infinity, alignment: .center)
         }
-        .padding(20)
-        .frame(width: 300)
+        .padding(Theme.Spacing.screen)
+        .frame(width: UIScreen.main.bounds.width * 0.85)
         .background(Theme.canvasDeep)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.borderFine, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
+        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.large).stroke(Theme.borderFine, lineWidth: 1))
     }
 }
 
@@ -123,7 +123,7 @@ struct StockRow: View {
             Rectangle()
                 .fill(Theme.inkSecondary.opacity(0.35))
                 .frame(width: 1)
-                .padding(.vertical, 12)
+                .padding(.vertical, Theme.Spacing.standard)
 
             HStack(spacing: 16) {
                 ZStack {
@@ -131,17 +131,17 @@ struct StockRow: View {
                         .fill(Theme.inkSecondary.opacity(0.05))
                         .frame(width: 44, height: 44)
                     Text(String(stock.ticker.prefix(2)))
-                        .font(Theme.engravedSerif(size: 16, weight: .bold))
+                        .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
                         .foregroundColor(Theme.inkPrimary)
                 }
                 .overlay(RoundedRectangle(cornerRadius: 2).stroke(Theme.borderFine, lineWidth: 0.5))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(stock.companyName)
-                        .font(Theme.engravedSerif(size: 16, weight: .bold))
+                        .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
                         .foregroundColor(Theme.inkPrimary)
                     Text(stock.ticker)
-                        .font(Theme.serialNumberFont(size: 10))
+                        .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
                         .foregroundColor(Theme.inkSecondary)
 
                     // ASM/GSM status chip
@@ -149,19 +149,19 @@ struct StockRow: View {
                         Text("⚠ \(status)")
                             .font(.caption2.weight(.semibold))
                             .foregroundColor(.white)
-                            .padding(.horizontal, 5).padding(.vertical, 2)
+                            .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                             .background(Theme.signalRuby)
-                            .cornerRadius(3)
+                            .cornerRadius(Theme.CornerRadius.small)
                     }
 
                     // Last signal badge
                     if let signal = lastSignal {
                         Text(signal.uppercased())
-                            .font(.system(size: 9, weight: .medium))
+                            .font(.caption2.weight(.medium))
                             .foregroundColor(Theme.securityGold)
-                            .padding(.horizontal, 5).padding(.vertical, 2)
+                            .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                             .background(Theme.securityGold.opacity(0.12))
-                            .cornerRadius(3)
+                            .cornerRadius(Theme.CornerRadius.small)
                     }
 
                     // Upcoming event pill
@@ -169,9 +169,9 @@ struct StockRow: View {
                         Text("Results in \(days)d")
                             .font(.caption2.weight(.medium))
                             .foregroundColor(.white)
-                            .padding(.horizontal, 5).padding(.vertical, 2)
+                            .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                             .background(days <= 3 ? Theme.signalRuby : Theme.securityGold)
-                            .cornerRadius(3)
+                            .cornerRadius(Theme.CornerRadius.small)
                     }
                 }
 
@@ -179,11 +179,11 @@ struct StockRow: View {
 
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(stock.currentPrice.inrFormatted)
-                        .font(Theme.serialNumberFont(size: 14))
+                        .font(Theme.serialNumberFont(size: 14, relativeTo: .footnote))
                         .foregroundColor(Theme.inkPrimary)
                         .contentTransition(.numericText())
                     Text((stock.changePercent >= 0 ? "+" : "") + stock.changePercent.percentFormatted)
-                        .font(Theme.serialNumberFont(size: 12))
+                        .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
                         .foregroundColor(stock.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed)
                         .contentTransition(.numericText())
                 }
@@ -194,9 +194,9 @@ struct StockRow: View {
                         .padding(.trailing, 4)
                 }
             }
-            .padding(.vertical, 14)
-            .padding(.leading, 12)
-            .padding(.trailing, 16)
+            .padding(.vertical, Theme.Spacing.standard)
+            .padding(.leading, Theme.Spacing.standard)
+            .padding(.trailing, Theme.Spacing.card)
         }
         .banknoteCard()
         .contextMenu {
@@ -231,21 +231,21 @@ struct IndexChip: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(name)
-                .font(Theme.officialStampFont(size: 8))
+                .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
                 .foregroundColor(Theme.inkSecondary)
             HStack(spacing: 8) {
                 Text(value)
-                    .font(Theme.serialNumberFont(size: 13))
+                    .font(Theme.serialNumberFont(size: 13, relativeTo: .footnote))
                     .foregroundColor(Theme.inkPrimary)
                     .contentTransition(.numericText())
                 Text(change)
-                    .font(Theme.serialNumberFont(size: 11))
+                    .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
                     .foregroundColor(isPositive ? Theme.bullGreen : Theme.bearRed)
                     .contentTransition(.numericText())
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, Theme.Spacing.card)
+        .padding(.vertical, Theme.Spacing.standard)
         .banknoteCard()
         .scaleEffect(pressed ? 0.95 : 1.0)
         .animation(.spring(response: 0.2, dampingFraction: 0.7), value: pressed)
@@ -272,11 +272,11 @@ struct SectionHeader: View {
                 VStack(alignment: .leading, spacing: 2) {
                     if let hindi = hindiTitle {
                         Text(hindi)
-                            .font(Theme.hindiFont(size: 11))
+                            .font(Theme.hindiFont(size: 11, relativeTo: .caption))
                             .foregroundColor(Theme.inkSecondary)
                     }
                     Text(title.uppercased())
-                        .font(Theme.officialStampFont(size: 10))
+                        .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
                         .foregroundColor(Theme.inkPrimary)
                 }
                 Spacer()
@@ -286,7 +286,7 @@ struct SectionHeader: View {
                         action()
                     }) {
                         Text(label)
-                            .font(.system(size: 12, weight: .bold))
+                            .font(.caption.weight(.bold))
                             .foregroundColor(Theme.securityGold)
                     }
                 }
@@ -309,7 +309,7 @@ struct StockIcon: View {
                 .fill(Theme.inkSecondary.opacity(0.05))
                 .frame(width: 44, height: 44)
             Text(String(ticker.prefix(2)))
-                .font(Theme.engravedSerif(size: 16, weight: .bold))
+                .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
                 .foregroundColor(Theme.inkPrimary)
         }
         .overlay(Rectangle().stroke(Theme.borderFine, lineWidth: 0.5))

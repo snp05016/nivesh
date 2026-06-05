@@ -7,14 +7,14 @@ private struct ChartExplainCard: View {
     let text: String
     var body: some View {
         Text(text)
-            .font(.system(size: 13, weight: .medium))
+            .font(Theme.officialStampFont(size: 13))
             .foregroundColor(Theme.inkSecondary)
             .lineSpacing(4)
-            .padding(16)
+            .padding(Theme.Spacing.card)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.inkSecondary.opacity(0.04))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.borderFine, lineWidth: 0.5))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight))
+            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.borderFine, lineWidth: 0.5))
     }
 }
 
@@ -153,7 +153,7 @@ struct PriceHistoryChart: View {
                 .chartXAxis {
                     AxisMarks(values: .automatic(desiredCount: 4)) {
                         AxisValueLabel(format: .dateTime.month(.abbreviated))
-                            .font(.system(size: 9))
+                            .font(Theme.officialStampFont(size: 9))
                             .foregroundStyle(Theme.inkTertiary)
                     }
                 }
@@ -244,14 +244,14 @@ struct RSIChart: View {
                         .foregroundStyle(Theme.bearRed.opacity(0.5))
                         .lineStyle(StrokeStyle(lineWidth: 0.8, dash: [4, 2]))
                         .annotation(position: .trailing) {
-                            Text("OB").font(.system(size: 8)).foregroundColor(Theme.bearRed)
+                            Text("OB").font(Theme.officialStampFont(size: 8)).foregroundColor(Theme.bearRed)
                         }
 
                     RuleMark(y: .value("OS", 30))
                         .foregroundStyle(Theme.bullGreen.opacity(0.5))
                         .lineStyle(StrokeStyle(lineWidth: 0.8, dash: [4, 2]))
                         .annotation(position: .trailing) {
-                            Text("OS").font(.system(size: 8)).foregroundColor(Theme.bullGreen)
+                            Text("OS").font(Theme.officialStampFont(size: 8)).foregroundColor(Theme.bullGreen)
                         }
 
                     ForEach(rsiData, id: \.date) { p in
@@ -270,7 +270,7 @@ struct RSIChart: View {
                             .symbolSize(40)
                             .annotation(position: .top) {
                                 Text(String(format: "%.0f", last.rsi))
-                                    .font(.system(size: 9, weight: .bold))
+                                    .font(Theme.officialStampFont(size: 9))
                                     .foregroundColor(Theme.securityGold)
                             }
                     }
@@ -280,13 +280,13 @@ struct RSIChart: View {
                 .chartXAxis {
                     AxisMarks(values: .automatic(desiredCount: 4)) {
                         AxisValueLabel(format: .dateTime.month(.abbreviated))
-                            .font(.system(size: 9))
+                            .font(Theme.officialStampFont(size: 9))
                             .foregroundStyle(Theme.inkTertiary)
                     }
                 }
                 .chartYAxis {
                     AxisMarks(values: [0, 30, 70, 100]) {
-                        AxisValueLabel().font(.system(size: 9)).foregroundStyle(Theme.inkTertiary)
+                        AxisValueLabel().font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkTertiary)
                         AxisGridLine().foregroundStyle(Theme.borderFine)
                     }
                 }
@@ -328,7 +328,7 @@ struct VolumeChart: View {
                             .foregroundStyle(Theme.securityGold.opacity(0.7))
                             .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 2]))
                             .annotation(position: .trailing) {
-                                Text("Avg").font(.system(size: 8)).foregroundColor(Theme.securityGold)
+                                Text("Avg").font(Theme.officialStampFont(size: 8)).foregroundColor(Theme.securityGold)
                             }
                     }
 
@@ -352,7 +352,7 @@ struct VolumeChart: View {
                                 .foregroundStyle(Theme.securityGold)
                                 .annotation(position: .top) {
                                     Text("!")
-                                        .font(.system(size: 8, weight: .bold))
+                                        .font(Theme.officialStampFont(size: 8))
                                         .foregroundColor(Theme.securityGold)
                                 }
                             }
@@ -363,7 +363,7 @@ struct VolumeChart: View {
                 .chartXAxis {
                     AxisMarks(values: .automatic(desiredCount: 4)) {
                         AxisValueLabel(format: .dateTime.month(.abbreviated))
-                            .font(.system(size: 9))
+                            .font(Theme.officialStampFont(size: 9))
                             .foregroundStyle(Theme.inkTertiary)
                     }
                 }
@@ -413,14 +413,14 @@ struct ShareholdingChart: View {
                     .foregroundStyle(d.color)
                     .annotation(position: .top) {
                         Text(String(format: "%.1f%%", d.value))
-                            .font(.system(size: 9, weight: .medium))
+                            .font(Theme.officialStampFont(size: 9))
                             .foregroundColor(Theme.inkSecondary)
                     }
                 }
                 .frame(height: 140)
                 .chartXAxis {
                     AxisMarks {
-                        AxisValueLabel().font(.system(size: 10)).foregroundStyle(Theme.inkSecondary)
+                        AxisValueLabel().font(Theme.officialStampFont(size: 10)).foregroundStyle(Theme.inkSecondary)
                     }
                 }
                 .chartYAxis {
@@ -494,11 +494,11 @@ struct FinancialsChart: View {
                         .annotation(position: .top) {
                             VStack(spacing: 1) {
                                 Text("Latest")
-                                    .font(.system(size: 8))
+                                    .font(Theme.officialStampFont(size: 8))
                                     .foregroundColor(Theme.securityGold)
                                 if let yoy = yoyGrowthAnnotation {
                                     Text(yoy)
-                                        .font(.system(size: 8, weight: .bold))
+                                        .font(Theme.officialStampFont(size: 8))
                                         .foregroundColor(yoy.hasPrefix("+") ? Theme.bullGreen : Theme.bearRed)
                                 }
                             }
@@ -508,7 +508,7 @@ struct FinancialsChart: View {
                 .frame(height: 160)
                 .chartXAxis {
                     AxisMarks {
-                        AxisValueLabel().font(.system(size: 8)).foregroundStyle(Theme.inkTertiary)
+                        AxisValueLabel().font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                     }
                 }
                 .chartYAxis {
@@ -596,7 +596,7 @@ struct PriceRangeGauge: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("52W LOW")
-                            .font(.system(size: 8))
+                            .font(Theme.officialStampFont(size: 8))
                             .foregroundColor(Theme.inkTertiary)
                         Text(low52w.inrFormatted)
                             .font(Theme.serialNumberFont(size: 11))
@@ -605,7 +605,7 @@ struct PriceRangeGauge: View {
                     Spacer()
                     VStack(alignment: .center, spacing: 2) {
                         Text("NOW")
-                            .font(.system(size: 8))
+                            .font(Theme.officialStampFont(size: 8))
                             .foregroundColor(Theme.inkTertiary)
                         Text(current.inrFormatted)
                             .font(Theme.serialNumberFont(size: 11))
@@ -614,7 +614,7 @@ struct PriceRangeGauge: View {
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("TARGET")
-                            .font(.system(size: 8))
+                            .font(Theme.officialStampFont(size: 8))
                             .foregroundColor(Theme.inkTertiary)
                         Text(target12m.inrFormatted)
                             .font(Theme.serialNumberFont(size: 11))
@@ -668,7 +668,7 @@ struct PortfolioAllocationChart: View {
                             if pct > 5 {
                                 VStack(spacing: 1) {
                                     Text(h.stock.ticker)
-                                        .font(.system(size: 8, weight: .bold))
+                                        .font(Theme.officialStampFont(size: 8))
                                         .foregroundColor(.white)
                                     Text(String(format: "%.0f%%", pct))
                                         .font(.system(size: 7))
@@ -685,12 +685,14 @@ struct PortfolioAllocationChart: View {
                             .font(Theme.engravedSerif(size: 14, weight: .bold))
                             .foregroundColor(Theme.securityGold)
                         Text(total.shortFormatted)
-                            .font(Font.custom("Georgia-Bold", size: 18))
+                            .font(Theme.engravedSerif(size: 18, weight: .bold))
                             .foregroundColor(Theme.inkPrimary)
                         Text("TOTAL")
                             .font(Theme.officialStampFont(size: 7))
                             .foregroundColor(Theme.inkSecondary)
                     }
+                    .background(Theme.canvasDeep.opacity(0.7))
+                    .cornerRadius(Theme.CornerRadius.medium)
                 }
 
                 // High-concentration warnings
@@ -737,7 +739,7 @@ struct PnLWaterfallChart: View {
                     .foregroundStyle(h.pnl >= 0 ? Theme.bullGreen.opacity(0.8) : Theme.bearRed.opacity(0.8))
                     .annotation(position: h.pnl >= 0 ? .trailing : .leading) {
                         Text(h.pnl.shortFormatted)
-                            .font(.system(size: 9))
+                            .font(Theme.officialStampFont(size: 9))
                             .foregroundColor(h.pnl >= 0 ? Theme.bullGreen : Theme.bearRed)
                     }
                 }
@@ -749,7 +751,7 @@ struct PnLWaterfallChart: View {
                 }
                 .chartYAxis {
                     AxisMarks {
-                        AxisValueLabel().font(.system(size: 10)).foregroundStyle(Theme.inkSecondary)
+                        AxisValueLabel().font(Theme.officialStampFont(size: 10)).foregroundStyle(Theme.inkSecondary)
                     }
                 }
 
@@ -823,7 +825,7 @@ struct StockVsNiftyChart: View {
                         .foregroundStyle(Theme.inkSecondary.opacity(0.4))
                         .lineStyle(StrokeStyle(lineWidth: 0.8, dash: [4, 2]))
                         .annotation(position: .leading) {
-                            Text("Buy").font(.system(size: 8)).foregroundColor(Theme.inkTertiary)
+                            Text("Buy").font(Theme.officialStampFont(size: 8)).foregroundColor(Theme.inkTertiary)
                         }
 
                     ForEach(filteredStock) { p in
@@ -856,7 +858,7 @@ struct StockVsNiftyChart: View {
                 .chartXAxis {
                     AxisMarks(values: .automatic(desiredCount: 4)) {
                         AxisValueLabel(format: .dateTime.month(.abbreviated))
-                            .font(.system(size: 9)).foregroundStyle(Theme.inkTertiary)
+                            .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkTertiary)
                     }
                 }
                 .chartYAxis {

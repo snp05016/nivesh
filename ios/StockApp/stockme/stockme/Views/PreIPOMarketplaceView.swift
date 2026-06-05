@@ -153,78 +153,79 @@ struct PreIPOMarketplaceView: View {
 
     private var advisoryBanner: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
+            HStack(spacing: Theme.Spacing.standard) {
                 ForEach(vm.advisories) { adv in
                     advisoryCard(adv)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.horizontal, Theme.Spacing.card)
+            .padding(.vertical, Theme.Spacing.standard)
         }
         .background(Theme.canvasDeep)
     }
 
     private func advisoryCard(_ adv: OTCAdvisory) -> some View {
-        ZStack {
-            VStack(alignment: .leading, spacing: 8) {
+        let cardWidth = UIScreen.main.bounds.width * 0.75
+        return ZStack {
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                 HStack {
                     Text("SUPER PRO ADVISORY")
-                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .font(Theme.serialNumberFont(size: 8))
                         .tracking(1.5)
                         .foregroundColor(Theme.securityGold)
                     Spacer()
                     Image(systemName: "lock.fill")
-                        .font(.system(size: 10))
+                        .font(Theme.officialStampFont(size: 10))
                         .foregroundColor(Theme.securityGold.opacity(0.6))
                 }
                 Text(adv.companyName)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(Theme.officialStampFont(size: 13))
                     .foregroundColor(Theme.inkPrimary)
-                HStack(spacing: 12) {
+                HStack(spacing: Theme.Spacing.standard) {
                     metricTag("Entry", IndianFormatter.price(adv.entryPrice))
                     metricTag("Tgt", IndianFormatter.price(adv.targetPrice))
                     metricTag("SL", IndianFormatter.price(adv.stopLoss))
                 }
                 // 6.1 Rationale text blurred for non-premium
                 Text(adv.rationale)
-                    .font(.system(size: 10))
+                    .font(Theme.officialStampFont(size: 10))
                     .foregroundColor(Theme.inkSecondary)
                     .lineLimit(2)
                     .blur(radius: isSuperpro ? 0 : 4)
             }
-            .padding(12)
-            .frame(width: 260)
+            .padding(Theme.Spacing.standard)
+            .frame(width: cardWidth)
             .background(Theme.canvasDeep)
-            .cornerRadius(8)
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.securityGold.opacity(0.25), lineWidth: 1))
+            .cornerRadius(Theme.CornerRadius.medium)
+            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(Theme.securityGold.opacity(0.25), lineWidth: 1))
 
             // 6.1 Premium Token Security Lock
             if !isSuperpro {
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                     .fill(Theme.canvasDeep.opacity(0.6))
                     .overlay(
-                        VStack(spacing: 4) {
+                        VStack(spacing: Theme.Spacing.small) {
                             Image(systemName: "lock.shield")
-                                .font(.system(size: 18))
+                                .font(Theme.officialStampFont(size: 18))
                                 .foregroundColor(Theme.securityGold)
                             Text("SUPER PRO")
-                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .font(Theme.serialNumberFont(size: 9))
                                 .tracking(2)
                                 .foregroundColor(Theme.securityGold)
                         }
                     )
             }
         }
-        .frame(width: 260)
+        .frame(width: cardWidth)
     }
 
     private func metricTag(_ label: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
             Text(label)
-                .font(.system(size: 8, weight: .bold))
+                .font(Theme.officialStampFont(size: 8))
                 .foregroundColor(Theme.inkTertiary)
             Text(value)
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .font(Theme.serialNumberFont(size: 11))
                 .foregroundColor(Theme.inkPrimary)
         }
     }
@@ -232,12 +233,12 @@ struct PreIPOMarketplaceView: View {
     // MARK: 6.5 Search Bar
 
     private var searchBar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Theme.Spacing.standard) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 13))
+                .font(Theme.officialStampFont(size: 13))
                 .foregroundColor(Theme.inkTertiary)
             TextField("Search unlisted companies…", text: $vm.searchText)
-                .font(.system(size: 13))
+                .font(Theme.officialStampFont(size: 13))
                 .foregroundColor(Theme.inkPrimary)
             if !vm.searchText.isEmpty {
                 Button(action: { vm.searchText = "" }) {
@@ -246,7 +247,7 @@ struct PreIPOMarketplaceView: View {
                 }
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, Theme.Spacing.standard)
         .padding(.vertical, 9)
         .background(Theme.canvasDeep)
     }
@@ -264,7 +265,7 @@ struct PreIPOMarketplaceView: View {
                     }
                 }
             }
-            .padding(16)
+            .padding(Theme.Spacing.card)
         }
     }
 
@@ -277,10 +278,10 @@ struct PreIPOMarketplaceView: View {
 
         return VStack(alignment: .leading, spacing: 0) {
             // Main Row
-            HStack(spacing: 12) {
+            HStack(spacing: Theme.Spacing.standard) {
                 // Company initials badge
                 ZStack {
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.tight)
                         .fill(Theme.securityGold.opacity(0.10))
                         .frame(width: 44, height: 44)
                     Text(String(company.name.prefix(2)).uppercased())
@@ -290,10 +291,10 @@ struct PreIPOMarketplaceView: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(company.name)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(Theme.officialStampFont(size: 13))
                         .foregroundColor(Theme.inkPrimary)
                     Text(company.sector)
-                        .font(.system(size: 10))
+                        .font(Theme.officialStampFont(size: 10))
                         .foregroundColor(Theme.inkSecondary)
                 }
 
@@ -302,14 +303,14 @@ struct PreIPOMarketplaceView: View {
                 // 6.2 LTP + delta
                 VStack(alignment: .trailing, spacing: 3) {
                     Text(IndianFormatter.price(company.ltp))
-                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .font(Theme.serialNumberFont(size: 13))
                         .foregroundColor(Theme.inkPrimary)
                     HStack(spacing: 3) {
                         Image(systemName: isPos ? "arrow.up" : "arrow.down")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(Theme.officialStampFont(size: 9))
                             .foregroundColor(isPos ? Theme.bullGreen : Theme.bearRed)
                         Text(IndianFormatter.delta(company.changePct))
-                            .font(.system(size: 11, weight: .bold))
+                            .font(Theme.officialStampFont(size: 11))
                             .foregroundColor(isPos ? Theme.bullGreen : Theme.bearRed)
                     }
                 }
@@ -317,79 +318,79 @@ struct PreIPOMarketplaceView: View {
                 // Bookmark
                 Button(action: { vm.toggleBookmark(company.id); HapticManager.impact(.light) }) {
                     Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
-                        .font(.system(size: 13))
+                        .font(Theme.officialStampFont(size: 13))
                         .foregroundColor(isBookmarked ? Theme.securityGold : Theme.inkTertiary)
                 }
 
                 // 6.4 Chevron Expand Control
                 Button(action: { withAnimation(.easeInOut(duration: 0.25)) { vm.toggleExpand(company.id) } }) {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(Theme.officialStampFont(size: 11))
                         .foregroundColor(Theme.inkTertiary)
                 }
             }
-            .padding(14)
+            .padding(Theme.Spacing.card)
 
             // 6.4 Expanded Metadata Sheet
             if isExpanded {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                     Divider().opacity(0.4)
 
                     Text(company.description)
-                        .font(.system(size: 12))
+                        .font(Theme.officialStampFont(size: 12))
                         .foregroundColor(Theme.inkSecondary)
                         .lineSpacing(3)
 
                     // 6.3 OTC Pricing Detail
-                    HStack(spacing: 12) {
+                    HStack(spacing: Theme.Spacing.standard) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("OTC LTP")
-                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                .font(Theme.serialNumberFont(size: 8))
                                 .foregroundColor(Theme.inkTertiary)
                             Text(IndianFormatter.price(company.ltp))
-                                .font(.system(size: 16, weight: .bold, design: .monospaced))
+                                .font(Theme.serialNumberFont(size: 16))
                                 .foregroundColor(Theme.inkPrimary)
                         }
                         Divider().frame(height: 36)
                         VStack(alignment: .leading, spacing: 3) {
                             Text("ABS CHANGE")
-                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                .font(Theme.serialNumberFont(size: 8))
                                 .foregroundColor(Theme.inkTertiary)
                             Text(IndianFormatter.formatLakhsCrores(company.changeAbs))
-                                .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                                .font(Theme.serialNumberFont(size: 14))
                                 .foregroundColor(company.changeAbs >= 0 ? Theme.bullGreen : Theme.bearRed)
                         }
                         Divider().frame(height: 36)
                         VStack(alignment: .leading, spacing: 3) {
                             Text("% CHANGE")
-                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                .font(Theme.serialNumberFont(size: 8))
                                 .foregroundColor(Theme.inkTertiary)
                             Text(IndianFormatter.delta(company.changePct))
-                                .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                                .font(Theme.serialNumberFont(size: 14))
                                 .foregroundColor(company.changePct >= 0 ? Theme.bullGreen : Theme.bearRed)
                         }
                     }
 
                     // Key Metrics grid
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Theme.Spacing.medium) {
                         ForEach(Array(company.keyMetrics.sorted(by: { $0.key < $1.key })), id: \.key) { key, val in
                             HStack {
                                 Text(key)
-                                    .font(.system(size: 10))
+                                    .font(Theme.officialStampFont(size: 10))
                                     .foregroundColor(Theme.inkTertiary)
                                 Spacer()
                                 Text(val)
-                                    .font(.system(size: 10, weight: .semibold))
+                                    .font(Theme.officialStampFont(size: 10))
                                     .foregroundColor(Theme.inkPrimary)
                             }
-                            .padding(8)
+                            .padding(Theme.Spacing.medium)
                             .background(Theme.canvasDeep)
-                            .cornerRadius(5)
+                            .cornerRadius(Theme.CornerRadius.tight)
                         }
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.bottom, 14)
+                .padding(.horizontal, Theme.Spacing.card)
+                .padding(.bottom, Theme.Spacing.card)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }

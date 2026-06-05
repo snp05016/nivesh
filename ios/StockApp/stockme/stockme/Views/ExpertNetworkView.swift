@@ -167,8 +167,8 @@ struct ExpertNetworkView: View {
                     Text("Verified Minds").tag(1)
                 }
                 .pickerStyle(.segmented)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                .padding(.horizontal, Theme.Spacing.card)
+                .padding(.vertical, Theme.Spacing.medium)
 
                 if vm.isLoading {
                     Spacer()
@@ -193,7 +193,7 @@ struct ExpertNetworkView: View {
                                 verifiedMindsSection
                             }
                         }
-                        .padding(.bottom, 20)
+                        .padding(.bottom, Theme.Spacing.screen)
                     }
                 }
             }
@@ -236,20 +236,20 @@ struct ExpertNetworkView: View {
             } else {
                 ForEach(vm.insights) { insight in
                     InsightCard(insight: insight)
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, Theme.Spacing.card)
                 }
             }
         }
     }
 
     private var emptyAdvisoryWire: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Theme.Spacing.medium) {
             Text("No advisory insights available.")
-                .font(.system(size: 12))
+                .font(Theme.officialStampFont(size: 12))
                 .foregroundColor(Theme.inkTertiary)
             Text("Check backend connection.")
-                .font(.system(size: 10))
-                .foregroundColor(Theme.inkTertiary.opacity(0.6))
+                .font(Theme.officialStampFont(size: 10))
+                .foregroundColor(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
@@ -267,20 +267,20 @@ struct ExpertNetworkView: View {
             } else {
                 ForEach(vm.advisors) { advisor in
                     AdvisorBioCard(advisor: advisor)
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, Theme.Spacing.card)
                 }
             }
         }
     }
 
     private var emptyVerifiedMinds: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Theme.Spacing.medium) {
             Text("No advisor data available.")
-                .font(.system(size: 12))
+                .font(Theme.officialStampFont(size: 12))
                 .foregroundColor(Theme.inkTertiary)
             Text("Check backend connection.")
-                .font(.system(size: 10))
-                .foregroundColor(Theme.inkTertiary.opacity(0.6))
+                .font(Theme.officialStampFont(size: 10))
+                .foregroundColor(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
@@ -289,16 +289,16 @@ struct ExpertNetworkView: View {
     // MARK: Loading Shimmer
 
     private var loadingShimmer: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Theme.Spacing.card) {
             ForEach(0..<3, id: \.self) { _ in
-                RoundedRectangle(cornerRadius: 4)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                     .fill(Theme.canvasDeep)
                     .frame(height: 120)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 4)
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                             .stroke(Theme.borderSage, lineWidth: 0.5)
                     )
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Theme.Spacing.card)
                     .shimmerPlaceholder(isLoading: true)
             }
         }
@@ -325,54 +325,54 @@ struct InsightCard: View {
     let insight: TextAdvisoryInsight
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             // Header row: advisor name + timestamp + sentiment badge
             HStack {
                 if let name = insight.advisorName, !name.isEmpty {
                     Text(name)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(Theme.officialStampFont(size: 11))
                         .foregroundColor(Theme.inkSecondary)
                 }
                 Spacer()
                 if let ts = insight.timestamp {
                     Text(ts)
-                        .font(.system(size: 9, design: .monospaced))
+                        .font(Theme.serialNumberFont(size: 9))
                         .foregroundColor(Theme.inkTertiary)
                 }
                 // Sentiment badge
                 Text(sentimentLabel(for: insight.extractedSentiment))
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .font(Theme.serialNumberFont(size: 8))
                     .tracking(0.5)
                     .foregroundColor(sentimentColor(for: insight.extractedSentiment))
-                    .padding(.horizontal, 6).padding(.vertical, 3)
+                    .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, 3)
                     .background(sentimentColor(for: insight.extractedSentiment).opacity(0.08))
-                    .cornerRadius(3)
+                    .cornerRadius(Theme.CornerRadius.small)
             }
 
             // Content text (monospaced)
             Text(insight.contentText)
-                .font(.system(size: 12, design: .monospaced))
+                .font(Theme.serialNumberFont(size: 12))
                 .foregroundColor(Theme.inkPrimary)
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
 
             // Ticker tag
             if let ticker = insight.targetTicker, !ticker.isEmpty {
-                HStack(spacing: 4) {
+                HStack(spacing: Theme.Spacing.small) {
                     Text(ticker)
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(Theme.serialNumberFont(size: 9))
                         .foregroundColor(Theme.securityGold)
                         .padding(.horizontal, 7).padding(.vertical, 3)
                         .background(Theme.securityGold.opacity(0.10))
-                        .cornerRadius(4)
+                        .cornerRadius(Theme.CornerRadius.small)
                     Spacer()
                 }
             }
         }
-        .padding(14)
+        .padding(Theme.Spacing.card)
         .background(Theme.canvasDeep)
-        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.borderSage, lineWidth: 0.5))
-        .cornerRadius(4)
+        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.borderSage, lineWidth: 0.5))
+        .cornerRadius(Theme.CornerRadius.small)
     }
 }
 
@@ -397,74 +397,74 @@ struct ExpertProfileCard: View {
                         .foregroundColor(Theme.inkPrimary)
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text(expert.name)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(Theme.officialStampFont(size: 13))
                         .foregroundColor(Theme.inkPrimary)
                     // 7.1 Regulatory Compliance Badge
                     if expert.isVerified {
-                        HStack(spacing: 4) {
+                        HStack(spacing: Theme.Spacing.small) {
                             Image(systemName: "checkmark.seal.fill")
-                                .font(.system(size: 10))
+                                .font(Theme.officialStampFont(size: 10))
                                 .foregroundColor(Theme.bullGreen)
                             Text("SEBI REGISTERED")
-                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                .font(Theme.serialNumberFont(size: 8))
                                 .tracking(1)
                                 .foregroundColor(Theme.bullGreen)
                         }
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, Theme.Spacing.tight)
                         .padding(.vertical, 3)
                         .background(Theme.bullGreen.opacity(0.08))
-                        .cornerRadius(4)
+                        .cornerRadius(Theme.CornerRadius.small)
                     }
                 }
             }
 
             // 7.2 Experience + Strategy
-            HStack(spacing: 6) {
+            HStack(spacing: Theme.Spacing.tight) {
                 Image(systemName: "clock.fill")
-                    .font(.system(size: 9))
+                    .font(Theme.officialStampFont(size: 9))
                     .foregroundColor(Theme.inkTertiary)
                 Text("\(expert.yearsExperience)+ years on Dalal Street")
-                    .font(.system(size: 10))
+                    .font(Theme.officialStampFont(size: 10))
                     .foregroundColor(Theme.inkSecondary)
             }
 
             Text(expert.strategy)
-                .font(.system(size: 11, weight: .semibold))
+                .font(Theme.officialStampFont(size: 11))
                 .foregroundColor(Theme.securityGold)
 
             // SEBI Reg ID
             if let regId = expert.sebiRegId {
                 Text("SEBI: \(regId)")
-                    .font(.system(size: 9, design: .monospaced))
+                    .font(Theme.serialNumberFont(size: 9))
                     .foregroundColor(Theme.inkTertiary)
             }
 
             // 7.2 Focus tags + post count
-            HStack(spacing: 4) {
+            HStack(spacing: Theme.Spacing.small) {
                 ForEach(expert.focusTags.prefix(3), id: \.self) { tag in
                     Text(tag)
-                        .font(.system(size: 8, weight: .semibold))
+                        .font(Theme.officialStampFont(size: 8))
                         .foregroundColor(Theme.inkSecondary)
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, Theme.Spacing.tight)
                         .padding(.vertical, 3)
                         .background(Theme.borderSage)
-                        .cornerRadius(4)
+                        .cornerRadius(Theme.CornerRadius.small)
                 }
             }
 
-            HStack(spacing: 4) {
+            HStack(spacing: Theme.Spacing.small) {
                 Image(systemName: "doc.text.fill")
-                    .font(.system(size: 9))
+                    .font(Theme.officialStampFont(size: 9))
                     .foregroundColor(Theme.inkTertiary)
                 Text("\(expert.postCount) posts")
-                    .font(.system(size: 10))
+                    .font(Theme.officialStampFont(size: 10))
                     .foregroundColor(Theme.inkTertiary)
             }
         }
-        .padding(14)
-        .frame(width: 240)
+        .padding(Theme.Spacing.card)
+        .frame(maxWidth: .infinity)
         .banknoteCard()
     }
 }
@@ -492,61 +492,60 @@ struct ExpertPostCard: View {
                         .font(Theme.engravedSerif(size: 14, weight: .bold))
                         .foregroundColor(Theme.inkPrimary)
                 }
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text(post.expertName)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(Theme.officialStampFont(size: 12))
                         .foregroundColor(Theme.inkPrimary)
                     Text(IndianFormatter.elapsed(from: post.publishedAt))
-                        .font(.system(size: 10))
+                        .font(Theme.officialStampFont(size: 10))
                         .foregroundColor(Theme.inkTertiary)
                 }
                 Spacer()
                 if let ticker = post.ticker {
                     Text(ticker)
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(Theme.serialNumberFont(size: 9))
                         .foregroundColor(Theme.securityGold)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, 7).padding(.vertical, 3)
                         .background(Theme.securityGold.opacity(0.10))
-                        .cornerRadius(4)
+                        .cornerRadius(Theme.CornerRadius.small)
                 }
             }
 
             // 7.3 Chart blur for premium content
             ZStack {
                 Text(post.content)
-                    .font(.system(size: 13))
+                    .font(Theme.officialStampFont(size: 13))
                     .foregroundColor(Theme.inkPrimary)
                     .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
                     .blur(radius: post.isPremium && !isSuperpro ? 5 : 0)
 
                 if post.isPremium && !isSuperpro {
-                    VStack(spacing: 6) {
+                    VStack(spacing: Theme.Spacing.tight) {
                         Image(systemName: "lock.shield.fill")
-                            .font(.system(size: 20))
+                            .font(Theme.officialStampFont(size: 20))
                             .foregroundColor(Theme.securityGold)
                         Text("SUPER PRO REQUIRED")
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .font(Theme.serialNumberFont(size: 9))
                             .tracking(1.5)
                             .foregroundColor(Theme.securityGold)
                     }
-                    .padding(16)
+                    .padding(Theme.Spacing.card)
                     .background(Theme.canvasDeep.opacity(0.8))
-                    .cornerRadius(8)
+                    .cornerRadius(Theme.CornerRadius.medium)
                 }
             }
 
             // 7.4 Interaction row
-            HStack(spacing: 16) {
+            HStack(spacing: Theme.Spacing.card) {
                 // Like counter
                 Button(action: { onLike(); HapticManager.impact(.light) }) {
                     HStack(spacing: 5) {
                         Image(systemName: post.isLiked ? "heart.fill" : "heart")
-                            .font(.system(size: 13))
+                            .font(Theme.officialStampFont(size: 13))
                             .foregroundColor(post.isLiked ? Theme.bearRed : Theme.inkTertiary)
                         Text("\(post.likeCount + (post.isLiked ? 1 : 0))")
-                            .font(.system(size: 11))
+                            .font(Theme.officialStampFont(size: 11))
                             .foregroundColor(Theme.inkTertiary)
                     }
                 }
@@ -554,26 +553,26 @@ struct ExpertPostCard: View {
                 // Bookmark
                 Button(action: { onBookmark(); HapticManager.impact(.light) }) {
                     Image(systemName: post.isBookmarked ? "bookmark.fill" : "bookmark")
-                        .font(.system(size: 13))
+                        .font(Theme.officialStampFont(size: 13))
                         .foregroundColor(post.isBookmarked ? Theme.securityGold : Theme.inkTertiary)
                 }
 
                 Spacer()
 
                 if post.isPremium {
-                    HStack(spacing: 4) {
+                    HStack(spacing: Theme.Spacing.small) {
                         Image(systemName: "crown.fill")
-                            .font(.system(size: 9))
+                            .font(Theme.officialStampFont(size: 9))
                             .foregroundColor(Theme.securityGold)
                         Text("SUPER PRO")
-                            .font(.system(size: 8, weight: .bold, design: .monospaced))
+                            .font(Theme.serialNumberFont(size: 8))
                             .tracking(1)
                             .foregroundColor(Theme.securityGold.opacity(0.7))
                     }
                 }
             }
         }
-        .padding(14)
+        .padding(Theme.Spacing.card)
         .banknoteCard()
     }
 }

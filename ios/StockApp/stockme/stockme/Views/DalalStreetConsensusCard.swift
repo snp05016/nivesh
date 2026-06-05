@@ -46,9 +46,9 @@ class AdvisoryConsensusViewModel: ObservableObject {
 
 // MARK: - Colors
 
-private let bullishColor = Color(red: 0.10, green: 0.53, blue: 0.24)
-private let bearishColor = Color(red: 0.72, green: 0.09, blue: 0.09)
-private let neutralColor = Color(red: 0.80, green: 0.55, blue: 0.05)
+private let bullishColor = Theme.bullGreen
+private let bearishColor = Theme.bearRed
+private let neutralColor = Theme.holdAmber
 
 // MARK: - Indian Number Formatter
 
@@ -96,7 +96,7 @@ struct DalalStreetConsensusCard: View {
                 .progressViewStyle(CircularProgressViewStyle(tint: Theme.inkSecondary))
             Spacer()
         }
-        .padding(.vertical, 28)
+        .padding(.vertical, Theme.Spacing.xLarge)
         .banknoteCard()
         .padding(.horizontal, Theme.screenPadding)
     }
@@ -154,7 +154,7 @@ struct DalalStreetConsensusCard: View {
                     .font(Theme.officialStampFont(size: 8))
                     .tracking(1.5)
                     .foregroundColor(Theme.inkTertiary)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Theme.Spacing.card)
                     .padding(.bottom, 6)
 
                 VStack(spacing: 8) {
@@ -162,7 +162,7 @@ struct DalalStreetConsensusCard: View {
                         SectorSignalRow(signal: signal)
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Theme.Spacing.card)
                 .padding(.bottom, 12)
 
                 GuillocheDivider()
@@ -175,7 +175,7 @@ struct DalalStreetConsensusCard: View {
                     .font(Theme.officialStampFont(size: 8))
                     .tracking(1.5)
                     .foregroundColor(Theme.inkTertiary)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Theme.Spacing.card)
                     .padding(.bottom, 6)
 
                 VStack(spacing: 0) {
@@ -186,7 +186,7 @@ struct DalalStreetConsensusCard: View {
                         })
                     }
                 }
-                .padding(.bottom, 8)
+                .padding(.bottom, Theme.Spacing.medium)
             }
         }
         .banknoteCard()
@@ -217,7 +217,7 @@ private struct SectorSignalRow: View {
                 .tracking(0.5)
                 .foregroundColor(Theme.inkPrimary)
                 .lineLimit(1)
-                .frame(width: 90, alignment: .leading)
+                .frame(minWidth: 80, alignment: .leading)
 
             // Progress bar
             GeometryReader { geo in
@@ -236,7 +236,7 @@ private struct SectorSignalRow: View {
                 .font(Theme.serialNumberFont(size: 8))
                 .foregroundColor(Theme.inkSecondary)
                 .lineLimit(1)
-                .frame(width: 90, alignment: .trailing)
+                .frame(minWidth: 80, alignment: .trailing)
         }
         .frame(height: 18)
     }
@@ -261,7 +261,7 @@ private struct TrendingTickerRow: View {
                 Text(stripEmoji(ticker.ticker))
                     .font(Theme.serialNumberFont(size: 12))
                     .foregroundColor(Theme.inkPrimary)
-                    .frame(width: 56, alignment: .leading)
+                    .frame(minWidth: 50, alignment: .leading)
 
                 // Stance dot
                 Circle()
@@ -279,15 +279,15 @@ private struct TrendingTickerRow: View {
                 // Views in Indian format
                 HStack(spacing: 3) {
                     Image(systemName: "eye.fill")
-                        .font(.system(size: 8))
+                        .font(Theme.officialStampFont(size: 8))
                         .foregroundColor(Theme.inkTertiary)
                     Text(formatIndianViews(ticker.totalViewCount))
                         .font(Theme.serialNumberFont(size: 9))
                         .foregroundColor(Theme.inkTertiary)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.horizontal, Theme.Spacing.card)
+            .padding(.vertical, Theme.Spacing.standard)
         }
         .buttonStyle(EKPressStyle())
         .overlay(
