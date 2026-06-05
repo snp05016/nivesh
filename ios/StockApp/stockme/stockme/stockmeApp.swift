@@ -5,7 +5,7 @@ import UserNotifications
 @main
 struct stockmeApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-
+    
     @StateObject private var authManager = AuthManager()
     @StateObject private var reportManager = LocalReportManager()
     @StateObject private var tutorialManager = TutorialManager()
@@ -14,7 +14,7 @@ struct stockmeApp: App {
     @AppStorage("hasAcceptedDisclaimer") private var hasAcceptedDisclaimer = false
     @AppStorage("darkMode") private var darkMode = false
     @AppStorage("dev_welcome_notification") private var devWelcomeNotification = false
-
+    
     var body: some Scene {
         WindowGroup {
             Group {
@@ -57,3 +57,4 @@ struct stockmeApp: App {
             }
         }
     }
+}

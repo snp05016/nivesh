@@ -70,7 +70,7 @@ from tradingagents.graph.setup import GraphSetup
 from tradingagents.agents.utils.agent_utils import get_instrument_context_from_state
 
 # Model Identifiers
-HAIKU_MODEL = "claude-3-5-haiku-20241022"
+HAIKU_MODEL = "claude-haiku-4-5-20251001"  # updated from deprecated claude-3-5-haiku-20241022
 SONNET_MODEL = "claude-3-5-sonnet-latest"
 DEEPSEEK_MODEL = "deepseek-chat"  # Tier 1 — bulk agent tasks
 
