@@ -461,6 +461,71 @@ def log_notification_error(failure_point: str, error_trace: str, target_device: 
         pass  # telemetry must never cascade
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE: advisor_biographies
+# Verified SEBI-registered research analysts providing public market commentary.
+# ─────────────────────────────────────────────────────────────────────────────
+class AdvisorBiography(Base):
+    __tablename__ = "advisor_biographies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    advisor_name = Column(String(100), nullable=False, index=True)
+    sebi_reg_number = Column(String(20), nullable=False, unique=True)
+    experience_years = Column(Integer, default=0)
+    analytical_framework = Column(String(200), nullable=True)  # e.g. "Wyckoff, Volume Profile"
+    full_biography_text = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE: text_advisory_insights
+# Stores parsed text-based advisory content (newsletter excerpts, Twitter/X
+# threads, blog posts). Populated by nightly ideas_harvester.py.
+# ─────────────────────────────────────────────────────────────────────────────
+class TextAdvisoryInsight(Base):
+    __tablename__ = "text_advisory_insights"
+
+    id = Column(Integer, primary_key=True, index=True)
+    advisor_id = Column(Integer, ForeignKey("advisor_biographies.id"), nullable=False, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    content_text = Column(Text, nullable=False)
+    target_ticker = Column(String(30), nullable=True, index=True)
+    extracted_sentiment = Column(String(20), nullable=True)  # BULLISH/BEARISH/NEUTRAL
+    source_url = Column(String(500), nullable=True)
+
+    advisor = relationship("AdvisorBiography", foreign_keys=[advisor_id])
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE: ideas_error_logs
+# Diagnostic telemetry for Ideas workspace failures (advisor harvester, feed
+# parser, etc.). Read by GET /api/v1/admin/ideas-errors.
+# ─────────────────────────────────────────────────────────────────────────────
+class IdeasErrorLog(Base):
+    __tablename__ = "ideas_error_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    module = Column(String(100), nullable=False)
+    error_trace = Column(Text, nullable=False)
+    context_ticker = Column(String(30), nullable=True)
+
+
+def log_ideas_error(module: str, error_trace: str, context_ticker: str | None = None) -> None:
+    """Write a diagnostic error row to ideas_error_logs. Non-fatal — swallows its own errors."""
+    try:
+        with get_session() as session:
+            entry = IdeasErrorLog(
+                module=module,
+                error_trace=str(error_trace)[:2000],  # guard against runaway text
+                context_ticker=context_ticker,
+            )
+            session.add(entry)
+            session.commit()
+    except Exception:
+        pass  # telemetry must never cause a cascading failure
+
+
 # ---------------------------------------------------------------------------
 # Password hashing
 # ---------------------------------------------------------------------------
