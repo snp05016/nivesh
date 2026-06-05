@@ -9,9 +9,11 @@ struct stockmeApp: App {
     @StateObject private var authManager = AuthManager()
     @StateObject private var reportManager = LocalReportManager()
     @StateObject private var tutorialManager = TutorialManager()
+    @StateObject private var notificationManager = NotificationManager.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("hasAcceptedDisclaimer") private var hasAcceptedDisclaimer = false
     @AppStorage("darkMode") private var darkMode = false
+    @AppStorage("dev_welcome_notification") private var devWelcomeNotification = false
 
     var body: some Scene {
         WindowGroup {
@@ -33,7 +35,17 @@ struct stockmeApp: App {
             .environmentObject(tutorialManager)
             .preferredColorScheme(darkMode ? .dark : nil)
             .onAppear {
-                requestNotificationPermissions()
+                Task {
+                    await notificationManager.requestAuthorization()
+                }
+                // Dev welcome notification (triggered by toggle in Settings dev tools)
+                if devWelcomeNotification {
+                    NotificationManager.shared.scheduleLocal(
+                        title: "Welcome to Nivesh",
+                        body: "Developer tools active — notification pipeline verified.",
+                        subtitle: "Environment: DEBUG"
+                    )
+                }
                 // Listen for tutorial reset from Settings dev tools
                 NotificationCenter.default.addObserver(
                     forName: Notification.Name("resetTutorial"),
@@ -45,17 +57,3 @@ struct stockmeApp: App {
             }
         }
     }
-
-    private func requestNotificationPermissions() {
-        UNUserNotificationCenter.current().requestAuthorization(
-            options: [.alert, .badge, .sound]
-        ) { granted, _ in
-            UserDefaults.standard.set(granted, forKey: "notifications_granted")
-            if granted {
-                DispatchQueue.main.async {
-                    UIApplication.shared.registerForRemoteNotifications()
-                }
-            }
-        }
-    }
-}

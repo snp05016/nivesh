@@ -431,6 +431,36 @@ def log_earnings_error(module: str, error_trace: str, failed_ticker: str | None 
         pass  # telemetry must never cascade
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE: notification_error_logs
+# Telemetry for push notification pipeline failures.
+# Read by GET /api/v1/admin/notification-errors for backend dashboard debugging.
+# ─────────────────────────────────────────────────────────────────────────────
+class NotificationErrorLog(Base):
+    __tablename__ = "notification_error_logs"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    timestamp     = Column(DateTime, default=datetime.utcnow)
+    failure_point = Column(String(100), nullable=False)   # "token_registration", "apns_dispatch"
+    error_trace   = Column(Text, nullable=False)            # full traceback / error string
+    target_device = Column(String(200), nullable=True)      # device token or identifier
+
+
+def log_notification_error(failure_point: str, error_trace: str, target_device: str | None = None) -> None:
+    """Write a diagnostic error row to notification_error_logs. Non-fatal."""
+    try:
+        with get_session() as session:
+            entry = NotificationErrorLog(
+                failure_point=failure_point,
+                error_trace=str(error_trace)[:2000],
+                target_device=target_device,
+            )
+            session.add(entry)
+            session.commit()
+    except Exception:
+        pass  # telemetry must never cascade
+
+
 # ---------------------------------------------------------------------------
 # Password hashing
 # ---------------------------------------------------------------------------

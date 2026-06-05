@@ -1,6 +1,6 @@
 import SwiftUI
 import OSLog
-
+import Combine
 // MARK: - Universal Error Diagnostic Context
 
 /// Lightweight diagnostic context — attached to every error in the app.

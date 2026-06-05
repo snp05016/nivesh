@@ -12,6 +12,9 @@ struct SettingsScreen: View {
     @AppStorage("dataRefreshRate") private var dataRefreshRate = "Real-time"
     @AppStorage("currencyDisplay") private var currencyDisplay = "Lakhs/Crores"
     @AppStorage("ipoAlerts") private var ipoAlerts = false
+    @AppStorage("dev_welcome_notification") private var devWelcomeNotification = false
+
+    @StateObject private var notificationManager = NotificationManager.shared
 
     @State private var showClearHistoryAlert = false
     @State private var showServerURLSheet = false
@@ -339,6 +342,26 @@ struct SettingsScreen: View {
 
                 Divider().background(Theme.inkSecondary.opacity(0.05))
 
+                // Row 4b — Welcome Notification Toggle
+                HStack {
+                    SettingIcon(icon: "party.popper.fill", color: Theme.bullGreen)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("WELCOME NOTIFICATION")
+                            .font(Theme.officialStampFont(size: 9))
+                            .foregroundColor(Theme.inkPrimary)
+                        Text("Fire 'Welcome to Nivesh' on every app open")
+                            .font(.system(size: 10))
+                            .foregroundColor(Theme.inkTertiary)
+                    }
+                    Spacer()
+                    Toggle("", isOn: $devWelcomeNotification)
+                        .tint(Theme.securityGold)
+                        .labelsHidden()
+                }
+                .padding(.vertical, 12)
+
+                Divider().background(Theme.inkSecondary.opacity(0.05))
+
                 // Row 5 — APNs Device Token
                 HStack {
                     SettingIcon(icon: "key.fill", color: Theme.inkTertiary)
@@ -346,7 +369,9 @@ struct SettingsScreen: View {
                         Text("APNS DEVICE TOKEN")
                             .font(Theme.officialStampFont(size: 9))
                             .foregroundColor(Theme.inkPrimary)
-                        let token = UserDefaults.standard.string(forKey: "apns_device_token") ?? "Not registered"
+                        let token = notificationManager.deviceToken
+                            ?? UserDefaults.standard.string(forKey: "apns_device_token")
+                            ?? "Not registered"
                         Text(token.count > 16 ? String(token.prefix(16)) + "..." : token)
                             .font(Theme.serialNumberFont(size: 9))
                             .foregroundColor(Theme.inkTertiary)
@@ -356,7 +381,9 @@ struct SettingsScreen: View {
                 .padding(.vertical, 14)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    if let token = UserDefaults.standard.string(forKey: "apns_device_token") {
+                    let token = notificationManager.deviceToken
+                        ?? UserDefaults.standard.string(forKey: "apns_device_token")
+                    if let token = token {
                         UIPasteboard.general.string = token
                         notifToastMessage = "Token copied"
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { notifToastMessage = nil }
@@ -364,6 +391,20 @@ struct SettingsScreen: View {
                 }
 
                 Divider().background(Theme.inkSecondary.opacity(0.05))
+
+                // Row 5b — Notification Registration Error
+                if let error = notificationManager.registrationError {
+                    ErrorDiagnoserView(
+                        error: error,
+                        context: ErrorDiagnostic(
+                            endpoint: "/api/v1/notifications/register",
+                            classification: "INFRASTRUCTURE_EXCEPTION"
+                        )
+                    )
+                    .padding(.vertical, 8)
+
+                    Divider().background(Theme.inkSecondary.opacity(0.05))
+                }
 
                 // Row 6 — Reset Tutorial
                 HStack {

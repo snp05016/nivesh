@@ -7,18 +7,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         _ application: UIApplication,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
-        let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-        UserDefaults.standard.set(token, forKey: "apns_device_token")
-        Task {
-            try? await NetworkManager.shared.registerDeviceToken(token: token)
-        }
+        NotificationManager.shared.handleDeviceToken(deviceToken)
     }
 
     func application(
         _ application: UIApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
-        print("[APNs] Failed to register: \(error)")
+        NotificationManager.shared.handleRegistrationError(error)
     }
 
     func userNotificationCenter(
