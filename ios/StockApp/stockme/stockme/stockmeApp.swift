@@ -1,11 +1,12 @@
 import SwiftUI
 import Combine
 import UserNotifications
+import LocalAuthentication
 
 @main
 struct stockmeApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
+
     @StateObject private var authManager = AuthManager()
     @StateObject private var reportManager = LocalReportManager()
     @StateObject private var tutorialManager = TutorialManager()
@@ -14,18 +15,18 @@ struct stockmeApp: App {
     @AppStorage("hasAcceptedDisclaimer") private var hasAcceptedDisclaimer = false
     @AppStorage("darkMode") private var darkMode = false
     @AppStorage("dev_welcome_notification") private var devWelcomeNotification = false
-    
+    @AppStorage("useBiometrics") private var useBiometrics = false
+    @State private var isBiometricLocked = true
+
     var body: some Scene {
         WindowGroup {
             Group {
                 if !hasCompletedOnboarding {
-                    OnboardingScreen {
-                        hasCompletedOnboarding = true
-                    }
+                    OnboardingScreen { hasCompletedOnboarding = true }
                 } else if !hasAcceptedDisclaimer {
-                    DisclaimerScreen {
-                        hasAcceptedDisclaimer = true
-                    }
+                    DisclaimerScreen { hasAcceptedDisclaimer = true }
+                } else if useBiometrics && isBiometricLocked {
+                    biometricLockScreen
                 } else {
                     ContentView()
                 }
@@ -37,6 +38,9 @@ struct stockmeApp: App {
             .onAppear {
                 Task {
                     await notificationManager.requestAuthorization()
+                }
+                if useBiometrics {
+                    authenticateWithBiometrics()
                 }
                 // Dev welcome notification (triggered by toggle in Settings dev tools)
                 if devWelcomeNotification {
@@ -53,6 +57,59 @@ struct stockmeApp: App {
                 ) { _ in
                     tutorialManager.resetForTesting()
                     tutorialManager.isShowingTutorial = true
+                }
+            }
+        }
+    }
+
+    // MARK: - Biometric Auth
+
+    private var biometricLockScreen: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "faceid")
+                .font(.system(size: 60))
+                .foregroundColor(Theme.securityGold)
+            Text("NIVESH")
+                .font(Font.custom("Georgia-Bold", size: 28))
+                .foregroundColor(Theme.inkPrimary)
+            Text("Authenticate to continue")
+                .font(.system(size: 14))
+                .foregroundColor(Theme.inkSecondary)
+            Button {
+                authenticateWithBiometrics()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "faceid")
+                    Text("Unlock with Face ID")
+                }
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(.white)
+                .padding(.horizontal, 32).padding(.vertical, 14)
+                .background(Theme.securityGold)
+                .cornerRadius(10)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.canvas)
+    }
+
+    private func authenticateWithBiometrics() {
+        let context = LAContext()
+        var error: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
+            print("[Nivesh/Biometrics] Not available: \(error?.localizedDescription ?? "unknown")")
+            isBiometricLocked = false  // fallback — skip biometrics if not available
+            return
+        }
+        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics,
+                               localizedReason: "Unlock Nivesh to access your portfolio") { success, authError in
+            DispatchQueue.main.async {
+                if success {
+                    isBiometricLocked = false
+                    print("[Nivesh/Biometrics] Authenticated successfully")
+                } else {
+                    print("[Nivesh/Biometrics] Failed: \(authError?.localizedDescription ?? "unknown")")
+                    // Stay locked — user can tap button to retry
                 }
             }
         }

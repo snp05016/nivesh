@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
 YOUTUBE_API_AVAILABLE = bool(YOUTUBE_API_KEY and len(YOUTUBE_API_KEY) > 10)
+MIN_SUBSCRIBER_THRESHOLD = 100_000  # only harvest from channels with 100k+ subscribers
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SEBI REGISTERED CHANNEL REGISTRY

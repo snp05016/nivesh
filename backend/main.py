@@ -2706,7 +2706,7 @@ async function refresh(){
 }
 
 refresh();
-setInterval(refresh, 30000);
+setInterval(refresh, 5000);  // refresh every 5 seconds for real-time AI pipeline status
 </script>
 </body>
 </html>"""
