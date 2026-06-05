@@ -30,7 +30,7 @@ struct LoginScreen: View {
                                 .frame(width: 80, height: 80)
                             Text("₹")
                                 .font(Theme.engravedSerif(size: 40, weight: .bold, relativeTo: .largeTitle))
-                                .foregroundColor(Theme.inkPrimary)
+                                .foregroundStyle(Theme.inkPrimary)
                         }
                         .padding(.top, 60)
                         .staggerAppear(delay: 0.1)
@@ -38,10 +38,10 @@ struct LoginScreen: View {
                         VStack(spacing: 4) {
                             Text("निवेश / NIVESH")
                                 .font(Theme.engravedSerif(size: 34, weight: .bold, relativeTo: .largeTitle))
-                                .foregroundColor(Theme.inkPrimary)
+                                .foregroundStyle(Theme.inkPrimary)
                             Text(isRegistering ? "NEW REGISTRY ENROLLMENT" : "CENTRAL REGISTRY ACCESS")
                                 .font(Theme.labelStyle)
-                                .foregroundColor(Theme.inkSecondary)
+                                .foregroundStyle(Theme.inkSecondary)
                         }
                         .staggerAppear(delay: 0.2)
                     }
@@ -56,14 +56,14 @@ struct LoginScreen: View {
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text("पूरा नाम / FULL NAME")
                                         .font(.caption2.weight(.black))
-                                        .foregroundColor(Theme.inkSecondary)
+                                        .foregroundStyle(Theme.inkSecondary)
                                     
                                     HStack(spacing: 12) {
                                         Image(systemName: "person.text.rectangle.fill")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(Theme.inkSecondary.opacity(0.5))
+                                            .font(.callout)
+                                            .foregroundStyle(Theme.inkSecondary.opacity(0.5))
                                         TextField("official name...", text: $displayName)
-                                            .foregroundColor(Theme.inkPrimary)
+                                            .foregroundStyle(Theme.inkPrimary)
                                             .focused($focusedField, equals: .displayName)
                                             .submitLabel(.next)
                                             .onSubmit { focusedField = .username }
@@ -78,16 +78,16 @@ struct LoginScreen: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("प्रयोक्ता नाम / USERNAME")
                                     .font(.caption2.weight(.black))
-                                    .foregroundColor(Theme.inkSecondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                                 
                                 HStack(spacing: 12) {
                                     Image(systemName: "person.fill")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(Theme.inkSecondary.opacity(0.5))
+                                        .font(.callout)
+                                        .foregroundStyle(Theme.inkSecondary.opacity(0.5))
                                     TextField("identity entry...", text: $username)
                                         .autocorrectionDisabled()
                                         .autocapitalization(.none)
-                                        .foregroundColor(Theme.inkPrimary)
+                                        .foregroundStyle(Theme.inkPrimary)
                                         .focused($focusedField, equals: .username)
                                         .submitLabel(.next)
                                         .onSubmit { focusedField = .password }
@@ -100,14 +100,14 @@ struct LoginScreen: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("कूटशब्द / SECURITY KEY")
                                     .font(.caption2.weight(.black))
-                                    .foregroundColor(Theme.inkSecondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                                 
                                 HStack(spacing: 12) {
                                     Image(systemName: "lock.shield.fill")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(Theme.inkSecondary.opacity(0.5))
+                                        .font(.callout)
+                                        .foregroundStyle(Theme.inkSecondary.opacity(0.5))
                                     SecureField("••••••••", text: $password)
-                                        .foregroundColor(Theme.inkPrimary)
+                                        .foregroundStyle(Theme.inkPrimary)
                                         .focused($focusedField, equals: .password)
                                         .submitLabel(.go)
                                         .onSubmit { attemptAction() }
@@ -124,7 +124,7 @@ struct LoginScreen: View {
                                     .scaleEffect(0.8)
                                 Text(err.uppercased())
                                     .font(.caption.weight(.bold))
-                                    .foregroundColor(Theme.bearRed)
+                                    .foregroundStyle(Theme.bearRed)
                             }
                             .padding(Theme.Spacing.standard)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -145,7 +145,7 @@ struct LoginScreen: View {
                             .frame(maxWidth: .infinity)
                             .padding(Theme.Spacing.card)
                             .background(canProceed ? Theme.inkPrimary : Theme.inkPrimary.opacity(0.1))
-                            .foregroundColor(canProceed ? Theme.canvas : Theme.inkPrimary.opacity(0.3))
+                            .foregroundStyle(canProceed ? Theme.canvas : Theme.inkPrimary.opacity(0.3))
                             .banknoteCard()
                         }
                         .disabled(!canProceed || authManager.isLoggingIn)
@@ -156,7 +156,7 @@ struct LoginScreen: View {
                         }) {
                             Text(isRegistering ? "ALREADY ENROLLED? SIGN IN" : "NEW USER? ENROLL HERE")
                                 .font(Theme.labelStyle)
-                                .foregroundColor(Theme.securityGold)
+                                .foregroundStyle(Theme.securityGold)
                         }
 
                         if !isRegistering {
@@ -164,7 +164,7 @@ struct LoginScreen: View {
                             VStack(spacing: 12) {
                                 Text("QUICK AUTHENTICATION")
                                     .font(Theme.labelStyle)
-                                    .foregroundColor(Theme.inkSecondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                                 
                                 HStack(spacing: 10) {
                                     ForEach(["saumya", "nirav", "ankur"], id: \.self) { name in
@@ -178,7 +178,7 @@ struct LoginScreen: View {
                                                 .padding(.horizontal, Theme.Spacing.card)
                                                 .padding(.vertical, Theme.Spacing.standard)
                                                 .background(username == name ? Theme.securityGold.opacity(0.1) : Color.clear)
-                                                .foregroundColor(username == name ? Theme.securityGold : Theme.inkPrimary)
+                                                .foregroundStyle(username == name ? Theme.securityGold : Theme.inkPrimary)
                                                 .overlay(RoundedRectangle(cornerRadius: 2).stroke(username == name ? Theme.securityGold : Theme.inkPrimary.opacity(0.1), lineWidth: 1))
                                         }
                                     }

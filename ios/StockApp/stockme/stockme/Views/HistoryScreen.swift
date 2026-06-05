@@ -13,10 +13,10 @@ struct HistoryScreen: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("पुरालेख")
                                 .font(Theme.hindiFont(size: 11, relativeTo: .caption))
-                                .foregroundColor(Theme.inkSecondary)
+                                .foregroundStyle(Theme.inkSecondary)
                             Text("REPORT HISTORY")
                                 .font(Theme.engravedSerif(size: 28, weight: .bold, relativeTo: .title))
-                                .foregroundColor(Theme.inkPrimary)
+                                .foregroundStyle(Theme.inkPrimary)
                         }
                         Spacer()
                     }
@@ -31,7 +31,7 @@ struct HistoryScreen: View {
                             BanknoteSignalBadge(text: "NO RECORDS", color: Theme.inkTertiary, rotation: -4)
                             Text("No official reports have been filed.")
                                 .font(.subheadline)
-                                .foregroundColor(Theme.inkSecondary)
+                                .foregroundStyle(Theme.inkSecondary)
                         }
                         .frame(maxWidth: .infinity)
                         Spacer()
@@ -80,10 +80,10 @@ private struct ReportHistoryNoteRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(report.companyName.uppercased())
                         .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .body))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                     Text("RECORD DATE: \(report.analysisDate)")
                         .font(.caption2)
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
 
                 Spacer()

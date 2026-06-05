@@ -32,12 +32,12 @@ struct ValuationCalendarView: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("मूल्यांकन इतिहास")
                             .font(.caption)
-                            .foregroundColor(dimText)
+                            .foregroundStyle(dimText)
                         HStack {
                             Text("PORTFOLIO CALENDAR")
                                 .font(Theme.serialNumberFont(size: 11))
                                 .tracking(2.0)
-                                .foregroundColor(Theme.inkSecondary)
+                                .foregroundStyle(Theme.inkSecondary)
                             Spacer()
                             // Period selector
                             HStack(spacing: Theme.Spacing.small) {
@@ -45,7 +45,7 @@ struct ValuationCalendarView: View {
                                     Button(action: { vm.fetchHistory(userId: userId, period: period) }) {
                                         Text(period)
                                             .font(Theme.serialNumberFont(size: 9))
-                                            .foregroundColor(vm.selectedPeriod == period ? goldAccent : dimText)
+                                            .foregroundStyle(vm.selectedPeriod == period ? goldAccent : dimText)
                                             .padding(.horizontal, Theme.Spacing.tight)
                                             .padding(.vertical, 3)
                                             .background(vm.selectedPeriod == period ? goldAccent.opacity(0.12) : Color.clear)
@@ -139,22 +139,20 @@ struct ValuationCalendarView: View {
                                 }
                             }
                         }
-                        .frame(height: UIScreen.main.bounds.height * 0.17)
+                        .frame(height: UIScreen.main.bounds.width * 0.38)
                         .chartOverlay { proxy in
-                            GeometryReader { geo in
-                                Rectangle().fill(.clear).contentShape(Rectangle())
-                                    .gesture(DragGesture(minimumDistance: 0)
-                                        .onChanged { drag in
-                                            let x = drag.location.x - geo.frame(in: .local).minX
-                                            if let date: Date = proxy.value(atX: x) {
-                                                selectedSnapshot = vm.snapshots.min(by: {
-                                                    abs($0.parsedDate.timeIntervalSince(date)) <
-                                                    abs($1.parsedDate.timeIntervalSince(date))
-                                                })
-                                            }
+                            Rectangle().fill(.clear).contentShape(Rectangle())
+                                .gesture(DragGesture(minimumDistance: 0)
+                                    .onChanged { drag in
+                                        let x = drag.location.x
+                                        if let date: Date = proxy.value(atX: x) {
+                                            selectedSnapshot = vm.snapshots.min(by: {
+                                                abs($0.parsedDate.timeIntervalSince(date)) <
+                                                abs($1.parsedDate.timeIntervalSince(date))
+                                            })
                                         }
-                                    )
-                            }
+                                    }
+                                )
                         }
                         .padding(.bottom, 12)
 
@@ -163,14 +161,14 @@ struct ValuationCalendarView: View {
                             HStack {
                                 Text(sel.date)
                                     .font(Theme.serialNumberFont(size: 11))
-                                    .foregroundColor(dimText)
+                                    .foregroundStyle(dimText)
                                 Spacer()
                                 Text(formatCurrency(sel.totalValue))
                                     .font(Theme.serialNumberFont(size: 13))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                                 Text(String(format: "%+.2f%%", sel.pnlPercent))
                                     .font(Theme.serialNumberFont(size: 12))
-                                    .foregroundColor(sel.pnlPercent >= 0 ? bullGreen : bearRed)
+                                    .foregroundStyle(sel.pnlPercent >= 0 ? bullGreen : bearRed)
                             }
                             .padding(.horizontal, Theme.Spacing.small)
                             .padding(.bottom, Theme.Spacing.medium)
@@ -185,7 +183,7 @@ struct ValuationCalendarView: View {
                     } else {
                         Text("No valuation history yet. First snapshot captured at market close.")
                             .font(Theme.officialStampFont(size: 12))
-                            .foregroundColor(dimText)
+                            .foregroundStyle(dimText)
                             .frame(maxWidth: .infinity, minHeight: 80)
                             .multilineTextAlignment(.center)
                     }
@@ -253,20 +251,21 @@ struct CalendarHeatGrid: View {
                 Button(action: { changeMonth(-1) }) {
                     Image(systemName: "chevron.left")
                         .font(Theme.officialStampFont(size: 11))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 .buttonStyle(EKPressStyle())
                 Spacer()
                 Text(selectedMonth, format: .dateTime.month(.wide).year())
                     .font(Theme.serialNumberFont(size: 11))
-                    .foregroundColor(Theme.inkPrimary)
+                    .foregroundStyle(Theme.inkPrimary)
                 Spacer()
                 Button(action: { changeMonth(1) }) {
                     Image(systemName: "chevron.right")
                         .font(Theme.officialStampFont(size: 11))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 .buttonStyle(EKPressStyle())
+                .accessibilityLabel("Next month")
             }
             .padding(.bottom, Theme.Spacing.small)
 
@@ -275,7 +274,7 @@ struct CalendarHeatGrid: View {
                 ForEach(dayLabels, id: \.self) { label in
                     Text(label)
                         .font(Theme.officialStampFont(size: 9))
-                        .foregroundColor(Theme.inkTertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -325,7 +324,7 @@ struct DayCell: View {
                 .frame(minHeight: 28)
             Text("\(Calendar.current.component(.day, from: date))")
                 .font(Theme.serialNumberFont(size: 10))
-                .foregroundColor(
+                .foregroundStyle(
                     pnlPercent != nil
                         ? .secondary
                         : Theme.inkTertiary
@@ -381,10 +380,10 @@ struct StatPill: View {
             Text(label)
                 .font(Theme.serialNumberFont(size: 8))
                 .tracking(1.0)
-                .foregroundColor(Theme.inkTertiary)
+                .foregroundStyle(Theme.inkTertiary)
             Text(value)
                 .font(Theme.serialNumberFont(size: 12))
-                .foregroundColor(color)
+                .foregroundStyle(color)
         }
         .frame(maxWidth: .infinity)
     }

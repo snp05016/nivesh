@@ -11,17 +11,17 @@ struct AdvisorBioCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(advisor.advisorName)
                         .font(.subheadline.weight(.bold))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                     Text("\(advisor.experienceYears) Years of Market Research")
                         .font(.caption)
-                        .foregroundColor(Theme.inkTertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
                 Spacer()
                 // SEBI badge
                 Text("SEBI\nREG")
                     .font(.caption2.weight(.bold))
                     .multilineTextAlignment(.center)
-                    .foregroundColor(Theme.bullGreen)
+                    .foregroundStyle(Theme.bullGreen)
                     .padding(Theme.Spacing.tight)
                     .background(Theme.bullGreen.opacity(0.08))
                     .cornerRadius(Theme.CornerRadius.small)
@@ -29,12 +29,12 @@ struct AdvisorBioCard: View {
 
             // Framework tags
             if let framework = advisor.analyticalFramework {
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     HStack(spacing: 4) {
                         ForEach(framework.components(separatedBy: ","), id: \.self) { tag in
                             Text(tag.trimmingCharacters(in: .whitespaces))
                                 .font(.caption2)
-                                .foregroundColor(Theme.securityGold)
+                                .foregroundStyle(Theme.securityGold)
                                 .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.small)
                                 .background(Theme.securityGold.opacity(0.08))
                                 .cornerRadius(Theme.CornerRadius.small)
@@ -42,12 +42,13 @@ struct AdvisorBioCard: View {
                     }
                     .padding(.horizontal, Theme.screenPadding)
                 }
+                .scrollIndicators(.hidden)
             }
 
             // Biography
             Text(advisor.fullBiographyText)
                 .font(.caption)
-                .foregroundColor(Theme.inkSecondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .lineLimit(isExpanded ? nil : 4)
                 .lineSpacing(3)
 
@@ -56,7 +57,7 @@ struct AdvisorBioCard: View {
                 withAnimation { isExpanded.toggle() }
             }
             .font(.caption2.weight(.medium))
-            .foregroundColor(Theme.securityGold)
+            .foregroundStyle(Theme.securityGold)
         }
         .padding(Theme.Spacing.standard)
         .background(Theme.canvasDeep)

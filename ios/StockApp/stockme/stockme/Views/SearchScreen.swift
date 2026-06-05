@@ -43,10 +43,10 @@ struct SearchScreen: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("खोजें")
                             .font(Theme.hindiFont(size: 11))
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                         Text("SEARCH DIRECTORY")
                             .font(Theme.engravedSerif(size: 28, weight: .bold))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, Theme.screenPadding)
@@ -57,14 +57,14 @@ struct SearchScreen: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("खोज / SEARCH DIRECTORY")
                             .font(Theme.officialStampFont(size: 8))
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
 
                         HStack {
                             Image(systemName: "magnifyingglass")
-                                .foregroundColor(Theme.inkSecondary)
+                                .foregroundStyle(Theme.inkSecondary)
                             TextField("Enter ticker or company name...", text: $searchText)
                                 .focused($isSearchFocused)
-                                .foregroundColor(Theme.inkPrimary)
+                                .foregroundStyle(Theme.inkPrimary)
                                 .tint(Theme.securityGold)
                                 .font(Theme.serialNumberFont(size: 14))
                                 .autocapitalization(.allCharacters)
@@ -74,8 +74,9 @@ struct SearchScreen: View {
                                         Spacer()
                                         Button(action: { hideKeyboard() }) {
                                             Image(systemName: "keyboard.chevron.compact.down")
-                                                .foregroundColor(Theme.securityGold)
+                                                .foregroundStyle(Theme.securityGold)
                                         }
+                                        .accessibilityLabel("Dismiss keyboard")
                                     }
                                 }
                             if isSearching {
@@ -88,8 +89,9 @@ struct SearchScreen: View {
                                     hideKeyboard()
                                 }) {
                                     Image(systemName: "xmark.circle.fill")
-                                        .foregroundColor(Theme.inkSecondary)
+                                        .foregroundStyle(Theme.inkSecondary)
                                 }
+                                .accessibilityLabel("Clear search")
                             }
                         }
                         .padding(Theme.Spacing.card)
@@ -107,10 +109,10 @@ struct SearchScreen: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("DISCOVER / खोजें")
                                 .font(Theme.officialStampFont(size: 8))
-                                .foregroundColor(Theme.inkSecondary)
+                                .foregroundStyle(Theme.inkSecondary)
                                 .padding(.horizontal, Theme.screenPadding)
 
-                            ScrollView(.horizontal, showsIndicators: false) {
+                            ScrollView(.horizontal) {
                                 HStack(spacing: 8) {
                                     ForEach(screenerPresets, id: \.preset) { item in
                                         Button {
@@ -125,7 +127,7 @@ struct SearchScreen: View {
                                         } label: {
                                             Text(item.label)
                                                 .font(Theme.officialStampFont(size: 9))
-                                                .foregroundColor(activePreset == item.preset ? Theme.canvasDeep : Theme.securityGold)
+                                                .foregroundStyle(activePreset == item.preset ? Theme.canvasDeep : Theme.securityGold)
                                                 .padding(.horizontal, 12)
                                                 .padding(.vertical, Theme.Spacing.tight)
                                                 .background(
@@ -143,6 +145,7 @@ struct SearchScreen: View {
                                 }
                                 .padding(.horizontal, Theme.screenPadding)
                             }
+                            .scrollIndicators(.hidden)
                         }
                         .padding(.bottom, 4)
                     }
@@ -178,7 +181,7 @@ struct SearchScreen: View {
                                         BanknoteSignalBadge(text: "NO RESULTS", color: Theme.inkSecondary, rotation: -3)
                                         Text("No stocks matched this screen")
                                             .font(.subheadline)
-                                            .foregroundColor(Theme.inkSecondary)
+                                            .foregroundStyle(Theme.inkSecondary)
                                     }
                                     .padding(.top, 40)
                                 } else if activePreset != nil {
@@ -203,13 +206,13 @@ struct SearchScreen: View {
                                             BanknoteSignalBadge(text: "NOT FOUND", color: Theme.bearRed, rotation: -4)
                                             Text("No entries matching '\(searchText)'")
                                                 .font(.subheadline)
-                                                .foregroundColor(Theme.inkSecondary)
+                                                .foregroundStyle(Theme.inkSecondary)
                                             // Still allow direct navigation — user may know the exact ticker
                                             let ticker = searchText.uppercased().trimmingCharacters(in: .whitespaces)
                                             NavigationLink(value: ticker) {
                                                 Text("Analyse \(ticker) anyway →")
                                                     .font(.caption)
-                                                    .foregroundColor(Theme.securityGold)
+                                                    .foregroundStyle(Theme.securityGold)
                                             }
                                             .ekPressHaptic()
                                         }
@@ -231,7 +234,7 @@ struct SearchScreen: View {
                                         if searchResultsTotalCount > 20 {
                                             Text("Showing top 20 results. Type more to narrow down.")
                                                 .font(Theme.serialNumberFont(size: 10))
-                                                .foregroundColor(Theme.inkTertiary)
+                                                .foregroundStyle(Theme.inkTertiary)
                                                 .padding(.top, 4)
                                         }
                                     }
@@ -366,11 +369,11 @@ private struct ScreenerResultRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text((result.companyName ?? result.ticker).uppercased())
                         .font(Theme.engravedSerif(size: 15, weight: .bold))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                     if let reason = result.reason {
                         Text(reason)
                             .font(Theme.serialNumberFont(size: 10))
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                             .lineLimit(1)
                     }
                 }
@@ -378,10 +381,10 @@ private struct ScreenerResultRow: View {
                 if let conf = result.confidencePct {
                     Text("\(conf)%")
                         .font(Theme.officialStampFont(size: 9))
-                        .foregroundColor(Theme.securityGold)
+                        .foregroundStyle(Theme.securityGold)
                 }
                 Image(systemName: "arrow.right")
-                    .foregroundColor(Theme.inkSecondary.opacity(0.3))
+                    .foregroundStyle(Theme.inkSecondary.opacity(0.3))
                     .font(.footnote.weight(.bold))
             }
             .padding(.vertical, Theme.Spacing.standard)
@@ -408,14 +411,14 @@ private struct StockEntryRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(entry.companyName.uppercased())
                         .font(Theme.engravedSerif(size: 16, weight: .bold))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                     Text("\(entry.ticker) • \(entry.sector)")
                         .font(Theme.serialNumberFont(size: 10))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 Spacer()
                 Image(systemName: "arrow.right")
-                    .foregroundColor(Theme.inkSecondary.opacity(0.3))
+                    .foregroundStyle(Theme.inkSecondary.opacity(0.3))
                     .font(.subheadline.weight(.bold))
             }
             .padding(.vertical, Theme.Spacing.standard)

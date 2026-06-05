@@ -120,10 +120,10 @@ struct DalalStreetConsensusCard: View {
                     Text("DALAL STREET ADVISORY CONSENSUS")
                         .font(Theme.officialStampFont(size: 10))
                         .tracking(0.8)
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                     Text("दलाल स्ट्रीट सलाह")
                         .font(Theme.hindiFont(size: 8))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 .padding(.leading, 10)
 
@@ -132,7 +132,7 @@ struct DalalStreetConsensusCard: View {
                 Text("7D")
                     .font(Theme.officialStampFont(size: 9))
                     .tracking(1)
-                    .foregroundColor(Theme.securityGold)
+                    .foregroundStyle(Theme.securityGold)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Theme.securityGold.opacity(0.10))
@@ -153,7 +153,7 @@ struct DalalStreetConsensusCard: View {
                 Text("SECTOR HEAT")
                     .font(Theme.officialStampFont(size: 8))
                     .tracking(1.5)
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .padding(.horizontal, Theme.Spacing.card)
                     .padding(.bottom, 6)
 
@@ -174,7 +174,7 @@ struct DalalStreetConsensusCard: View {
                 Text("MOST DISCUSSED")
                     .font(Theme.officialStampFont(size: 8))
                     .tracking(1.5)
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .padding(.horizontal, Theme.Spacing.card)
                     .padding(.bottom, 6)
 
@@ -215,26 +215,24 @@ private struct SectorSignalRow: View {
             Text(stripEmoji(signal.theme).uppercased())
                 .font(Theme.officialStampFont(size: 9))
                 .tracking(0.5)
-                .foregroundColor(Theme.inkPrimary)
+                .foregroundStyle(Theme.inkPrimary)
                 .lineLimit(1)
                 .frame(minWidth: 80, alignment: .leading)
 
             // Progress bar
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(bearishColor.opacity(0.18))
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(bullishColor.opacity(0.75))
-                        .frame(width: geo.size.width * bullFraction)
-                }
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(bearishColor.opacity(0.18))
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(bullishColor.opacity(0.75))
+                    .frame(width: UIScreen.main.bounds.width * 0.25 * bullFraction)
             }
             .frame(height: 5)
 
             // Count label
             Text("\(signal.bullishCount) BULL / \(signal.bearishCount) BEAR")
                 .font(Theme.serialNumberFont(size: 8))
-                .foregroundColor(Theme.inkSecondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .lineLimit(1)
                 .frame(minWidth: 80, alignment: .trailing)
         }
@@ -260,7 +258,7 @@ private struct TrendingTickerRow: View {
                 // Ticker label
                 Text(stripEmoji(ticker.ticker))
                     .font(Theme.serialNumberFont(size: 12))
-                    .foregroundColor(Theme.inkPrimary)
+                    .foregroundStyle(Theme.inkPrimary)
                     .frame(minWidth: 50, alignment: .leading)
 
                 // Stance dot
@@ -271,7 +269,7 @@ private struct TrendingTickerRow: View {
                 // Mention count
                 Text("\(ticker.mentionCount) mentions")
                     .font(Theme.officialStampFont(size: 9))
-                    .foregroundColor(Theme.inkSecondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .lineLimit(1)
 
                 Spacer()
@@ -280,10 +278,10 @@ private struct TrendingTickerRow: View {
                 HStack(spacing: 3) {
                     Image(systemName: "eye.fill")
                         .font(Theme.officialStampFont(size: 8))
-                        .foregroundColor(Theme.inkTertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                     Text(formatIndianViews(ticker.totalViewCount))
                         .font(Theme.serialNumberFont(size: 9))
-                        .foregroundColor(Theme.inkTertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
             }
             .padding(.horizontal, Theme.Spacing.card)

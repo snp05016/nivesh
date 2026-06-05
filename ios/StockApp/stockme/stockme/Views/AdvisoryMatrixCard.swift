@@ -16,10 +16,10 @@ struct AdvisoryMatrixCard: View {
                     Text("STREET INTELLIGENCE")
                         .font(Theme.officialStampFont(size: 10))
                         .tracking(0.8)
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                     Text("सलाहकार मत")
                         .font(Theme.hindiFont(size: 8))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 .padding(.leading, 10)
 
@@ -28,7 +28,7 @@ struct AdvisoryMatrixCard: View {
                 Text("POWERED BY AI")
                     .font(Theme.officialStampFont(size: 7))
                     .tracking(0.5)
-                    .foregroundColor(Theme.securityGold)
+                    .foregroundStyle(Theme.securityGold)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Theme.securityGold.opacity(0.10))
@@ -58,7 +58,7 @@ struct AdvisoryMatrixCard: View {
     private var emptyState: some View {
         Text("No advisor commentary found for \(ticker) in the last 14 days.")
             .font(Theme.officialStampFont(size: 14))
-            .foregroundColor(Theme.inkTertiary)
+            .foregroundStyle(Theme.inkTertiary)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
             .padding(.vertical, Theme.Spacing.screen)
@@ -104,7 +104,7 @@ private struct AdvisorInsightRowView: View {
             HStack(alignment: .center, spacing: Theme.Spacing.medium) {
                 Text(insight.advisorName)
                     .font(.headline)
-                    .foregroundColor(Theme.inkPrimary)
+                    .foregroundStyle(Theme.inkPrimary)
 
                 Spacer()
 
@@ -114,14 +114,14 @@ private struct AdvisorInsightRowView: View {
             // Catalyst summary
             Text(insight.catalystSummary)
                 .font(Theme.officialStampFont(size: 14))
-                .foregroundColor(Theme.inkPrimary)
+                .foregroundStyle(Theme.inkPrimary)
                 .lineLimit(2)
 
             // Video title + Watch button
             HStack(alignment: .center, spacing: Theme.Spacing.medium) {
                 Text(insight.videoTitle)
                     .font(Theme.officialStampFont(size: 12))
-                    .foregroundColor(Theme.inkSecondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
 
@@ -134,23 +134,23 @@ private struct AdvisorInsightRowView: View {
             HStack(spacing: Theme.Spacing.tight) {
                 Text(formatDate(insight.publishedAt))
                     .font(Theme.serialNumberFont(size: 10))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
 
                 Text("·")
                     .font(Theme.officialStampFont(size: 10))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
 
                 Text(insight.confidence.uppercased())
                     .font(Theme.officialStampFont(size: 10))
-                    .foregroundColor(confidenceColor(insight.confidence))
+                    .foregroundStyle(confidenceColor(insight.confidence))
 
                 Text("·")
                     .font(Theme.officialStampFont(size: 10))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
 
                 Text(transcriptSourceLabel(insight.transcriptSource))
                     .font(Theme.officialStampFont(size: 10))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .lineLimit(1)
             }
         }
@@ -169,7 +169,7 @@ private struct AdvisorInsightRowView: View {
             Text(stance.uppercased())
                 .font(Theme.officialStampFont(size: 9))
                 .tracking(0.5)
-                .foregroundColor(color)
+                .foregroundStyle(color)
         }
         .padding(.horizontal, Theme.Spacing.medium)
         .padding(.vertical, Theme.Spacing.small)
@@ -193,7 +193,7 @@ private struct AdvisorInsightRowView: View {
                 Image(systemName: "play.fill").font(Theme.officialStampFont(size: 9))
                 Text("WATCH").font(Theme.officialStampFont(size: 10))
             }
-            .foregroundColor(Theme.securityGold)
+            .foregroundStyle(Theme.securityGold)
             .padding(.horizontal, Theme.Spacing.standard)
             .padding(.vertical, 5)
             .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.securityGold.opacity(0.6), lineWidth: 0.8))

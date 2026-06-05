@@ -44,29 +44,29 @@ struct SettingsScreen: View {
                             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                                 Text("प्रमाणित उपयोगकर्ता / VERIFIED USER")
                                     .font(Theme.officialStampFont(size: 8))
-                                    .foregroundColor(Theme.inkSecondary)
+                                    .foregroundStyle(Theme.inkSecondary)
 
                                 HStack(spacing: Theme.Spacing.card) {
                                     ZStack {
                                         Rectangle()
-                                            .fill(Color(hex: "E5E0D5"))
+                                            .fill(Theme.avatarBackground)
                                             .frame(width: UIScreen.main.bounds.width * 0.16, height: UIScreen.main.bounds.width * 0.20)
                                             .overlay(
-                                                Text(String(user.displayName.prefix(1)))
-                                                    .font(.title.weight(.bold))
-                                                    .foregroundColor(Theme.inkPrimary.opacity(0.2))
-                                            )
-                                        Color.orange.opacity(0.04)
+                                            Text(String(user.displayName.prefix(1)))
+                                                .font(.title.weight(.bold))
+                                                .foregroundStyle(Theme.inkPrimary.opacity(0.2))
+                                        )
+                                    Color.orange.opacity(0.04)
                                     }
                                     .overlay(Rectangle().stroke(Theme.borderFine, lineWidth: 0.5))
 
                                     VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                                         Text(user.displayName.uppercased())
                                             .font(Theme.engravedSerif(size: 20, weight: .bold))
-                                            .foregroundColor(Theme.inkPrimary)
+                                            .foregroundStyle(Theme.inkPrimary)
                                         Text("REGISTRY ID: 00\(user.userId)7249")
                                             .font(Theme.serialNumberFont(size: 11))
-                                            .foregroundColor(Theme.inkSecondary)
+                                            .foregroundStyle(Theme.inkSecondary)
                                     }
                                     Spacer()
 
@@ -95,11 +95,11 @@ struct SettingsScreen: View {
                                     SettingIcon(icon: "trash.fill", color: Theme.bearRed)
                                     Text("VOID ALL RECORDS")
                                         .font(Theme.officialStampFont(size: 9))
-                                        .foregroundColor(Theme.inkPrimary)
+                                        .foregroundStyle(Theme.inkPrimary)
                                     Spacer()
                                     Text("\(reportManager.savedReports.count)")
                                         .font(Theme.serialNumberFont(size: 14))
-                                        .foregroundColor(Theme.inkSecondary)
+                                        .foregroundStyle(Theme.inkSecondary)
                                 }
                                 .padding(.vertical, Theme.Spacing.standard)
                                 .contentShape(Rectangle())
@@ -112,10 +112,10 @@ struct SettingsScreen: View {
                                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                         Text("SERVER URL")
                                             .font(Theme.officialStampFont(size: 9))
-                                            .foregroundColor(Theme.inkPrimary)
+                                            .foregroundStyle(Theme.inkPrimary)
                                         Text(NetworkManager.shared.baseURL)
                                             .font(Theme.serialNumberFont(size: 10))
-                                            .foregroundColor(Theme.inkTertiary)
+                                            .foregroundStyle(Theme.inkTertiary)
                                             .lineLimit(1)
                                     }
                                     Spacer()
@@ -125,7 +125,7 @@ struct SettingsScreen: View {
                                         showServerURLSheet = true
                                     }
                                     .font(Theme.officialStampFont(size: 9))
-                                    .foregroundColor(Theme.securityGold)
+                                    .foregroundStyle(Theme.securityGold)
                                 }
                                 .padding(.vertical, Theme.Spacing.standard)
                                 Divider().background(Theme.inkSecondary.opacity(0.05))
@@ -138,7 +138,7 @@ struct SettingsScreen: View {
                                     Spacer()
                                     Text("VOID SESSION / SIGN OUT")
                                         .font(Theme.officialStampFont(size: 9))
-                                        .foregroundColor(Theme.bearRed)
+                                        .foregroundStyle(Theme.bearRed)
                                     Spacer()
                                 }
                                 .padding(.vertical, Theme.Spacing.card)
@@ -153,11 +153,11 @@ struct SettingsScreen: View {
                             VStack(spacing: Theme.Spacing.medium) {
                                 Image(systemName: "laurel.leading")
                                     .font(.title)
-                                    .foregroundColor(Theme.inkSecondary.opacity(0.1))
+                                    .foregroundStyle(Theme.inkSecondary.opacity(0.1))
 
                                 Text("NIVESH OFFICIAL TENDER v1.0")
                                     .font(Theme.officialStampFont(size: 8))
-                                    .foregroundColor(Theme.inkTertiary)
+                                    .foregroundStyle(Theme.inkTertiary)
                                     .onTapGesture(count: 3) {
                                         let gen = UIImpactFeedbackGenerator(style: .heavy)
                                         gen.impactOccurred()
@@ -204,10 +204,10 @@ struct SettingsScreen: View {
             HStack(alignment: .bottom, spacing: Theme.Spacing.tight) {
                 Text("डेव टूल्स")
                     .font(Theme.hindiFont(size: 9))
-                    .foregroundColor(Theme.inkSecondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 Text("DEVELOPER TOOLS")
                     .font(Theme.officialStampFont(size: 9))
-                    .foregroundColor(Theme.bearRed)
+                    .foregroundStyle(Theme.bearRed)
                 BanknoteSignalBadge(text: "DEV ONLY", color: Theme.bearRed, rotation: -2)
                     .scaleEffect(0.7)
             }
@@ -220,15 +220,15 @@ struct SettingsScreen: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("TEST STOCK NOTIFICATION")
                             .font(Theme.officialStampFont(size: 9))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                         Text("Send a test push for any stock")
                             .font(Theme.serialNumberFont(size: 10))
-                            .foregroundColor(Theme.inkTertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.caption)
-                        .foregroundColor(Theme.securityGold)
+                        .foregroundStyle(Theme.securityGold)
                 }
                 .padding(.vertical, Theme.Spacing.standard)
                 .contentShape(Rectangle())
@@ -242,10 +242,10 @@ struct SettingsScreen: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("PUSH MORNING SUMMARY NOW")
                             .font(Theme.officialStampFont(size: 9))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                         Text("Send today's brief as a notification")
                             .font(Theme.serialNumberFont(size: 10))
-                            .foregroundColor(Theme.inkTertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                     Spacer()
                 }
@@ -273,10 +273,10 @@ struct SettingsScreen: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("HARVEST YOUTUBE NOW")
                             .font(Theme.officialStampFont(size: 9))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                         Text("Run channel + portfolio harvest on demand")
                             .font(Theme.serialNumberFont(size: 10))
-                            .foregroundColor(Theme.inkTertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                     Spacer()
                     if youtubeHarvestLoading {
@@ -284,7 +284,7 @@ struct SettingsScreen: View {
                     } else {
                         Image(systemName: "chevron.right")
                             .font(.caption)
-                            .foregroundColor(Theme.securityGold)
+                            .foregroundStyle(Theme.securityGold)
                     }
                 }
                 .padding(.vertical, Theme.Spacing.standard)
@@ -314,11 +314,11 @@ struct SettingsScreen: View {
                     SettingIcon(icon: "bell.fill", color: Theme.inkSecondary)
                     Text("NOTIFICATION STATUS")
                         .font(Theme.officialStampFont(size: 9))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                     Spacer()
                     Text(notifPermissionStatus)
                         .font(Theme.serialNumberFont(size: 11))
-                        .foregroundColor(notifPermissionStatus == "Granted ✓" ? Theme.bullGreen : notifPermissionStatus == "Denied ✗" ? Theme.bearRed : Theme.holdAmber)
+                        .foregroundStyle(notifPermissionStatus == "Granted ✓" ? Theme.bullGreen : notifPermissionStatus == "Denied ✗" ? Theme.bearRed : Theme.holdAmber)
                 }
                 .padding(.vertical, Theme.Spacing.standard)
                 .contentShape(Rectangle())
@@ -348,10 +348,10 @@ struct SettingsScreen: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("WELCOME NOTIFICATION")
                             .font(Theme.officialStampFont(size: 9))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                         Text("Fire 'Welcome to Nivesh' on every app open")
                             .font(.caption2)
-                            .foregroundColor(Theme.inkTertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                     Spacer()
                     Toggle("", isOn: $devWelcomeNotification)
@@ -368,13 +368,13 @@ struct SettingsScreen: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("APNS DEVICE TOKEN")
                             .font(Theme.officialStampFont(size: 9))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                         let token = notificationManager.deviceToken
                             ?? UserDefaults.standard.string(forKey: "apns_device_token")
                             ?? "Not registered"
                         Text(token.count > 16 ? String(token.prefix(16)) + "..." : token)
                             .font(Theme.serialNumberFont(size: 9))
-                            .foregroundColor(Theme.inkTertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                     Spacer()
                 }
@@ -412,15 +412,15 @@ struct SettingsScreen: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("REPLAY APP TUTORIAL")
                             .font(Theme.officialStampFont(size: 9))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                         Text("See the guided tour again")
                             .font(Theme.serialNumberFont(size: 10))
-                            .foregroundColor(Theme.inkTertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.caption)
-                        .foregroundColor(Theme.securityGold)
+                        .foregroundStyle(Theme.securityGold)
                 }
                 .padding(.vertical, Theme.Spacing.standard)
                 .contentShape(Rectangle())
@@ -439,10 +439,10 @@ struct SettingsScreen: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("CLEAR ALL USERDEFAULTS")
                             .font(Theme.officialStampFont(size: 9))
-                            .foregroundColor(Theme.bearRed)
+                            .foregroundStyle(Theme.bearRed)
                         Text("Simulates fresh install")
                             .font(Theme.serialNumberFont(size: 10))
-                            .foregroundColor(Theme.inkTertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                     Spacer()
                 }
@@ -464,7 +464,7 @@ struct SettingsScreen: View {
             if let toast = notifToastMessage {
                 Text(toast)
                     .font(Theme.serialNumberFont(size: 11))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, Theme.Spacing.card)
                     .padding(.vertical, Theme.Spacing.medium)
                     .background(Color.black.opacity(0.8))
@@ -496,19 +496,19 @@ struct SettingsScreen: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                         Text("TICKER SYMBOL")
                             .font(Theme.officialStampFont(size: 9))
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                         TextField("e.g. RELIANCE", text: $testNotifTicker)
                             .autocapitalization(.allCharacters)
                             .disableAutocorrection(true)
                             .font(Theme.serialNumberFont(size: 15))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                             .padding(Theme.Spacing.standard)
                             .banknoteCard()
                     }
                     VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                         Text("EXCHANGE")
                             .font(Theme.officialStampFont(size: 9))
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                         Picker("Exchange", selection: $testNotifExchange) {
                             Text("NSE").tag("NSE")
                             Text("BSE").tag("BSE")
@@ -531,7 +531,7 @@ struct SettingsScreen: View {
                     } label: {
                         Text("SEND TEST NOTIFICATION")
                             .font(Theme.officialStampFont(size: 10))
-                            .foregroundColor(Theme.canvasDeep)
+                            .foregroundStyle(Theme.canvasDeep)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, Theme.Spacing.standard)
                             .background(testNotifTicker.isEmpty ? Theme.inkTertiary : Theme.securityGold)
@@ -564,10 +564,10 @@ private struct SettingsNoteGroup<Content: View>: View {
             HStack(alignment: .bottom, spacing: Theme.Spacing.tight) {
                 Text(hindi)
                     .font(Theme.hindiFont(size: 9))
-                    .foregroundColor(Theme.inkSecondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 Text(title.uppercased())
                     .font(Theme.officialStampFont(size: 9))
-                    .foregroundColor(Theme.inkPrimary)
+                    .foregroundStyle(Theme.inkPrimary)
             }
             .padding(.horizontal, Theme.Spacing.small)
 
@@ -589,7 +589,7 @@ private struct SettingIcon: View {
                 .frame(width: 32, height: 32)
             Image(systemName: icon)
                 .font(.subheadline.weight(.medium))
-                .foregroundColor(color.opacity(0.6))
+                .foregroundStyle(color.opacity(0.6))
         }
         .padding(.trailing, Theme.Spacing.standard)
     }
@@ -607,7 +607,7 @@ private struct ToggleNoteRow: View {
             Toggle(isOn: $isOn) {
                 Text(title.uppercased())
                     .font(Theme.officialStampFont(size: 9))
-                    .foregroundColor(Theme.inkPrimary)
+                    .foregroundStyle(Theme.inkPrimary)
             }
             .tint(Theme.securityGold)
         }
@@ -628,7 +628,7 @@ private struct PickerNoteRow: View {
             SettingIcon(icon: icon, color: color)
             Text(title.uppercased())
                 .font(Theme.officialStampFont(size: 9))
-                .foregroundColor(Theme.inkPrimary)
+                .foregroundStyle(Theme.inkPrimary)
             Spacer()
             Picker("", selection: $selection) {
                 ForEach(options, id: \.self) { option in
@@ -661,10 +661,10 @@ private struct ServerURLSheet: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                         Text("SERVER URL")
                             .font(Theme.officialStampFont(size: 9))
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                         TextField("http://127.0.0.1:8000", text: $draft)
                             .font(Theme.serialNumberFont(size: 15))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                             .keyboardType(.URL)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
@@ -672,7 +672,7 @@ private struct ServerURLSheet: View {
                             .banknoteCard()
                         Text("Must start with http:// or https://")
                             .font(Theme.serialNumberFont(size: 11))
-                            .foregroundColor(Theme.inkTertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
 
                     // Test connection
@@ -693,7 +693,7 @@ private struct ServerURLSheet: View {
                         .frame(maxWidth: .infinity)
                         .padding(Theme.Spacing.standard)
                         .background(isValidURL ? Theme.inkSecondary.opacity(0.08) : Theme.inkSecondary.opacity(0.03))
-                        .foregroundColor(isValidURL ? Theme.inkPrimary : Theme.inkTertiary)
+                        .foregroundStyle(isValidURL ? Theme.inkPrimary : Theme.inkTertiary)
                         .banknoteCard()
                     }
                     .disabled(!isValidURL || testLoading)
@@ -701,7 +701,7 @@ private struct ServerURLSheet: View {
                     if let result = testResult {
                         Text(result)
                             .font(Theme.serialNumberFont(size: 13))
-                            .foregroundColor(result.hasPrefix("✓") ? Theme.bullGreen : Theme.bearRed)
+                            .foregroundStyle(result.hasPrefix("✓") ? Theme.bullGreen : Theme.bearRed)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
 

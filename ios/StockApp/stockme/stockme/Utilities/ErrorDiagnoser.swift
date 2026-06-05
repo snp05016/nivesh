@@ -136,7 +136,7 @@ struct ErrorDiagnoserView: View {
                     VStack(spacing: Theme.Spacing.standard) {
                         Text("DATA FAULT")
                             .font(Theme.engravedSerif(size: 14, weight: .bold))
-                            .foregroundColor(Theme.bearRed)
+                            .foregroundStyle(Theme.bearRed)
                             .tracking(3)
 
                         Rectangle()
@@ -144,16 +144,16 @@ struct ErrorDiagnoserView: View {
                             .frame(height: 1)
                             .overlay(
                                 Text("ERROR VECTOR")
-                                    .font(.system(size: 7, weight: .bold, design: .monospaced))
+                                    .font(Theme.officialStampFont(size: 7))
                                     .tracking(2)
-                                    .foregroundColor(Theme.bearRed.opacity(0.6))
+                                    .foregroundStyle(Theme.bearRed.opacity(0.6))
                                     .padding(.horizontal, Theme.Spacing.tight)
                                     .background(Theme.canvasDeep)
                             )
 
                         Text(error)
-                            .font(.system(size: 11, weight: .regular, design: .monospaced))
-                            .foregroundColor(Theme.inkSecondary)
+                            .font(Theme.serialNumberFont(size: 11))
+                            .foregroundStyle(Theme.inkSecondary)
                             .multilineTextAlignment(.leading)
                             .lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
@@ -170,7 +170,7 @@ struct ErrorDiagnoserView: View {
                                     Text(isRetrying ? "RETRYING…" : "RETRY")
                                         .font(Theme.officialStampFont(size: 9)).tracking(3)
                                 }
-                                .foregroundColor(Theme.securityGold)
+                                .foregroundStyle(Theme.securityGold)
                                 .padding(.horizontal, Theme.Spacing.card).padding(.vertical, Theme.Spacing.tight)
                                 .background(Theme.securityGold.opacity(0.06))
                                 .overlay(RoundedRectangle(cornerRadius: 2)
@@ -185,7 +185,7 @@ struct ErrorDiagnoserView: View {
                     ZStack {
                         Theme.canvasDeep
                         Text("₹").font(Theme.engravedSerif(size: 140, weight: .bold))
-                            .foregroundColor(Theme.bearRed.opacity(0.02))
+                            .foregroundStyle(Theme.bearRed.opacity(0.02))
                             .offset(x: 50, y: 10).allowsHitTesting(false)
                     }
                 )
@@ -194,8 +194,8 @@ struct ErrorDiagnoserView: View {
                 .shadow(color: Theme.canvasShadow.opacity(0.1), radius: 3, y: 2)
 
                 Text("NIVESH APPAREL • RBI • \(context.classification.prefix(20).uppercased())")
-                    .font(.system(size: 6, weight: .medium, design: .monospaced))
-                    .foregroundColor(Theme.inkTertiary)
+                    .font(Theme.serialNumberFont(size: 6))
+                    .foregroundStyle(Theme.inkTertiary)
                     .tracking(1.2).padding(.top, Theme.Spacing.tight)
             }
             .padding(Theme.cardPadding)
@@ -210,8 +210,8 @@ struct ErrorDiagnoserView: View {
                 })
             VStack(spacing: 0) {
                 Rectangle().fill(Theme.bearRed.opacity(0.25)).frame(height: 1)
-                Text("DIAGNOSTIC").font(.system(size: 8, weight: .bold, design: .monospaced))
-                    .tracking(3).foregroundColor(Theme.bearRed.opacity(0.6))
+                Text("DIAGNOSTIC").font(Theme.officialStampFont(size: 8))
+                    .tracking(3).foregroundStyle(Theme.bearRed.opacity(0.6))
                     .padding(.horizontal, Theme.Spacing.standard).padding(.vertical, Theme.Spacing.xSmall)
                 Rectangle().fill(Theme.bearRed.opacity(0.25)).frame(height: 1)
             }
@@ -226,13 +226,13 @@ struct ErrorDiagnoserView: View {
         VStack(spacing: 0) {
             Button { withAnimation(.easeInOut(duration: 0.2)) { showDiagnostics.toggle() } } label: {
                 HStack(spacing: Theme.Spacing.small) {
-                    Image(systemName: showDiagnostics ? "chevron.down" : "chevron.right").font(.system(size: 8, weight: .bold))
-                    Text("DIAGNOSTICS").font(.system(size: 8, weight: .bold, design: .monospaced)).tracking(2)
+                    Image(systemName: showDiagnostics ? "chevron.down" : "chevron.right").font(.caption.weight(.bold))
+                    Text("DIAGNOSTICS").font(Theme.officialStampFont(size: 8)).tracking(2)
                     Spacer()
-                    Text(context.correlationId ?? "no-id").font(.system(size: 7, design: .monospaced))
-                        .foregroundColor(Theme.inkTertiary).lineLimit(1)
+                    Text(context.correlationId ?? "no-id").font(Theme.serialNumberFont(size: 7))
+                        .foregroundStyle(Theme.inkTertiary).lineLimit(1)
                 }
-                .foregroundColor(Theme.securityGold.opacity(0.7)).padding(.vertical, Theme.Spacing.small)
+                .foregroundStyle(Theme.securityGold.opacity(0.7)).padding(.vertical, Theme.Spacing.small)
             }
             if showDiagnostics {
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
@@ -248,10 +248,10 @@ struct ErrorDiagnoserView: View {
                         #endif
                     } label: {
                         HStack(spacing: Theme.Spacing.small) {
-                            Image(systemName: "doc.on.doc").font(.system(size: 8))
-                            Text("COPY TO CLIPBOARD").font(.system(size: 7, weight: .bold, design: .monospaced)).tracking(1)
+                            Image(systemName: "doc.on.doc").font(.caption2)
+                            Text("COPY TO CLIPBOARD").font(Theme.officialStampFont(size: 7)).tracking(1)
                         }
-                        .foregroundColor(Theme.securityGold.opacity(0.6)).padding(.vertical, Theme.Spacing.small)
+                        .foregroundStyle(Theme.securityGold.opacity(0.6)).padding(.vertical, Theme.Spacing.small)
                     }
                 }
                 .padding(Theme.Spacing.medium).background(Theme.canvasShadow.opacity(0.3)).cornerRadius(2)
@@ -261,10 +261,10 @@ struct ErrorDiagnoserView: View {
 
     private func diagRow(_ label: String, _ value: String) -> some View {
         HStack(alignment: .top, spacing: Theme.Spacing.medium) {
-            Text(label.uppercased()).font(.system(size: 7, weight: .semibold, design: .monospaced))
-                .foregroundColor(Theme.inkTertiary).frame(minWidth: 60, alignment: .leading)
-            Text(value).font(.system(size: 7, design: .monospaced))
-                .foregroundColor(Theme.inkSecondary).frame(maxWidth: .infinity, alignment: .leading)
+            Text(label.uppercased()).font(Theme.officialStampFont(size: 7))
+                .foregroundStyle(Theme.inkTertiary).frame(minWidth: 60, alignment: .leading)
+            Text(value).font(Theme.serialNumberFont(size: 7))
+                .foregroundStyle(Theme.inkSecondary).frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

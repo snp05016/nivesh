@@ -79,9 +79,8 @@ struct NiveshNavigationSidebar: View {
     @Binding var isOpen: Bool
     @Binding var scrollTarget: String?
 
-    private let drawerWidth = UIScreen.main.bounds.width * 0.78
-
     var body: some View {
+        let drawerWidth = UIScreen.main.bounds.width * 0.78
         ZStack(alignment: .leading) {
             // Scrim — transparent when closed, blocks touches only when open
             Color.black
@@ -98,12 +97,12 @@ struct NiveshNavigationSidebar: View {
             )
             .frame(width: drawerWidth)
             .offset(x: isOpen ? 0 : -drawerWidth)
-            // Crucial: Only allow hits on the drawer itself if it's open, 
+            // Crucial: Only allow hits on the drawer itself if it's open,
             // but the drawer content should always handle its internal touches
             .allowsHitTesting(isOpen)
         }
         .ignoresSafeArea()
-        // Removed the .allowsHitTesting(isOpen) from the outer ZStack 
+        // Removed the .allowsHitTesting(isOpen) from the outer ZStack
         // to ensure the transition/animation logic works correctly without clipping
         .animation(.spring(response: 0.38, dampingFraction: 0.88), value: isOpen)
     }
@@ -129,7 +128,7 @@ private struct DrawerContent: View {
                 header
                 Rectangle().fill(Theme.securityGold.opacity(0.28)).frame(height: 0.5)
 
-                ScrollView(showsIndicators: false) {
+                ScrollView() {
                     VStack(spacing: 0) {
                         ForEach(Array(HomeSectionID.allCases.enumerated()), id: \.element.id) { i, section in
                             BookmarkRow(number: i + 1, section: section) {
@@ -143,6 +142,7 @@ private struct DrawerContent: View {
                     }
                     .padding(.vertical, Theme.Spacing.medium)
                 }
+                .scrollIndicators(.hidden)
                 .layoutPriority(1) // Ensure ScrollView takes priority in the VStack
 
                 Spacer(minLength: 0)
@@ -152,7 +152,7 @@ private struct DrawerContent: View {
                     Rectangle().fill(Theme.securityGold.opacity(0.18)).frame(height: 0.5)
                     Text("TAP TO JUMP TO SECTION")
                         .font(Theme.officialStampFont(size: 7))
-                        .foregroundColor(Theme.inkTertiary) // contrast verified for dark canvasDeep bg
+                        .foregroundStyle(Theme.inkTertiary) // contrast verified for dark canvasDeep bg
                         .tracking(1.5)
                         .padding(.vertical, Theme.Spacing.card)
                 }
@@ -167,10 +167,10 @@ private struct DrawerContent: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("NIVESH")
                     .font(Theme.engravedSerif(size: 16, weight: .bold))
-                    .foregroundColor(Theme.inkPrimary)
+                    .foregroundStyle(Theme.inkPrimary)
                 Text("SECTION NAVIGATOR")
                     .font(Theme.officialStampFont(size: 8))
-                    .foregroundColor(Theme.securityGold)
+                    .foregroundStyle(Theme.securityGold)
                     .tracking(1.5)
             }
             Spacer()
@@ -179,12 +179,13 @@ private struct DrawerContent: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(Theme.officialStampFont(size: 13))
-                    .foregroundColor(Theme.inkSecondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .padding(Theme.Spacing.medium)
                     .background(Theme.inkPrimary.opacity(0.07))
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Close sidebar")
         }
         .padding(.horizontal, Theme.Spacing.screen)
         .padding(.top, 64) // safe area compensation
@@ -212,28 +213,28 @@ private struct BookmarkRow: View {
                         .frame(width: 32, height: 32)
                     Text("\(number)")
                         .font(Theme.serialNumberFont(size: 12))
-                        .foregroundColor(Theme.securityGold)
+                        .foregroundStyle(Theme.securityGold)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 5) {
                         Image(systemName: section.icon)
                             .font(Theme.officialStampFont(size: 10))
-                            .foregroundColor(Theme.securityGold.opacity(0.85))
+                            .foregroundStyle(Theme.securityGold.opacity(0.85))
                         Text(section.title.uppercased())
                             .font(Theme.officialStampFont(size: 9))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                     }
                     Text(section.hindiTitle)
                         .font(Theme.hindiFont(size: 10))
-                        .foregroundColor(Theme.inkTertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
 
                 Spacer()
 
                 Image(systemName: "arrow.right")
                     .font(Theme.officialStampFont(size: 10))
-                    .foregroundColor(Theme.securityGold.opacity(0.5))
+                    .foregroundStyle(Theme.securityGold.opacity(0.5))
             }
             .padding(.horizontal, Theme.Spacing.screen)
             .padding(.vertical, Theme.Spacing.card)

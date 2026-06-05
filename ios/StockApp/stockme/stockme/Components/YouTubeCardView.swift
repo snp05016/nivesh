@@ -52,7 +52,7 @@ struct YouTubeCardView: View {
                     if video.durationSeconds > 0 {
                         Text(video.formattedDuration)
                             .font(.caption2.weight(.semibold).monospaced())
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.small)
                             .padding(.vertical, Theme.Spacing.xSmall)
                             .background(Color.black.opacity(0.70))
@@ -67,12 +67,12 @@ struct YouTubeCardView: View {
                     Text(video.channelName.uppercased())
                         .font(.caption2.weight(.bold).monospaced())
                         .tracking(1.2)
-                        .foregroundColor(goldAccent)
+                        .foregroundStyle(goldAccent)
 
                     // Title
                     Text(video.title)
                         .font(.footnote.weight(.semibold))
-                        .foregroundColor(.primary.opacity(0.88))
+                        .foregroundStyle(.primary.opacity(0.88))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                         .lineSpacing(2)
@@ -83,17 +83,17 @@ struct YouTubeCardView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "eye")
                             .font(.caption2)
-                            .foregroundColor(dimText)
+                            .foregroundStyle(dimText)
                         Text(video.formattedViewCount)
                             .font(.caption2.weight(.medium).monospaced())
-                            .foregroundColor(dimText)
+                            .foregroundStyle(dimText)
 
                         // Ticker chips (tappable)
                         ForEach(video.tickersMentioned.prefix(2), id: \.self) { ticker in
                             Button(action: { onTickerTap?(ticker) }) {
                                 Text(ticker)
                                     .font(.caption2.weight(.semibold).monospaced())
-                                    .foregroundColor(.primary.opacity(0.65))
+                                    .foregroundStyle(.primary.opacity(0.65))
                                     .padding(.horizontal, Theme.Spacing.tight)
                                     .padding(.vertical, Theme.Spacing.xSmall)
                                     .background(Color.primary.opacity(0.07))
@@ -175,7 +175,7 @@ struct YouTubeCompactCard: View {
                     if video.durationSeconds > 0 {
                         Text(video.formattedDuration)
                             .font(.caption2.weight(.semibold).monospaced())
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.small)
                             .padding(.vertical, Theme.Spacing.xSmall)
                             .background(Color.black.opacity(0.70))
@@ -188,13 +188,13 @@ struct YouTubeCompactCard: View {
                 Text(video.channelName.uppercased())
                     .font(.caption2.weight(.bold).monospaced())
                     .tracking(0.8)
-                    .foregroundColor(goldAccent)
+                    .foregroundStyle(goldAccent)
                     .lineLimit(1)
 
                 // Title
                 Text(video.title)
                     .font(.caption.weight(.semibold))
-                    .foregroundColor(.primary.opacity(0.88))
+                    .foregroundStyle(.primary.opacity(0.88))
                     .lineLimit(2)
                     .lineSpacing(1)
 
@@ -202,10 +202,10 @@ struct YouTubeCompactCard: View {
                 HStack(spacing: 3) {
                     Image(systemName: "eye")
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     Text(video.formattedViewCount)
                         .font(.caption2.weight(.medium).monospaced())
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 // Ticker chips
@@ -215,7 +215,7 @@ struct YouTubeCompactCard: View {
                             Button(action: { onTickerTap?(ticker) }) {
                                 Text(ticker)
                                     .font(.caption2.weight(.semibold).monospaced())
-                                    .foregroundColor(.primary.opacity(0.65))
+                                    .foregroundStyle(.primary.opacity(0.65))
                                     .padding(.horizontal, Theme.Spacing.small)
                                     .padding(.vertical, Theme.Spacing.xSmall)
                                     .background(Color.primary.opacity(0.07))
@@ -226,7 +226,6 @@ struct YouTubeCompactCard: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Theme.Spacing.medium)
             .background(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
@@ -237,7 +236,7 @@ struct YouTubeCompactCard: View {
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
                     .stroke(Color.primary.opacity(0.07), lineWidth: 0.5)
             )
-            .cornerRadius(Theme.CornerRadius.large)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
         }
         .buttonStyle(EKPressStyle())
     }

@@ -53,6 +53,22 @@ enum Theme {
     static let signalEmerald = bullGreen
     static let signalRuby    = bearRed
 
+    // MARK: - Chart & Data Colors
+
+    static let chartPromoter = adaptive("4A5A8A", "6A7AAA")
+    static let avatarBackground = adaptive("E5E0D5", "3A3530")
+
+    // MARK: - Denomination Tints (banknote-specific)
+
+    enum NoteTint {
+        static let ten: Color = adaptive("6B3A28", "9B6050")
+        static let fifty: Color = adaptive("4A5A8A", "6A7AAA")
+        static let hundred: Color = adaptive("7A6BA0", "9A8BC0")
+        static let twoHundred: Color = adaptive("C85A20", "E87A40")
+        static let fiveHundred: Color = adaptive("4A6B5A", "6A8B7A")
+        static let twoThousand: Color = adaptive("B040A0", "D060C0")
+    }
+
     // MARK: - Borders (toned down 10%)
 
     static let borderFine = adaptive("2C2C2C", "E8E0D0", alpha: 0.10)
@@ -144,6 +160,12 @@ enum Theme {
         startPoint: .top,
         endPoint: .bottom
     )
+
+    static let securityGoldGradient = LinearGradient(
+        colors: [securityGold, securityGold.opacity(0.78)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
 }
 
 // MARK: - Paper Texture (dark-mode aware)
@@ -172,7 +194,7 @@ struct PaperTexture: View {
             .allowsHitTesting(false)
 
             Rectangle()
-                .fill(Color(hex: "5C6B5A").opacity(colorScheme == .dark ? 0.025 : 0.030))
+                .fill(Theme.inkSecondary.opacity(colorScheme == .dark ? 0.025 : 0.030))
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
         }
@@ -193,7 +215,7 @@ struct BanknoteWatermark: View {
                 .overlay(
                     Text(text)
                         .font(Theme.engravedSerif(size: size, weight: .bold))
-                        .foregroundColor(Theme.inkPrimary.opacity(opacity))
+                        .foregroundStyle(Theme.inkPrimary.opacity(opacity))
                         .rotationEffect(.degrees(-20))
                         .offset(x: size * 0.1, y: size * 0.1),
                     alignment: alignment
@@ -207,27 +229,29 @@ struct BanknoteWatermark: View {
 
 struct GuillocheDivider: View {
     var body: some View {
-        ZStack {
-            Path { path in
-                let w = UIScreen.main.bounds.width
-                path.move(to: .zero)
-                for x in stride(from: 0, through: w, by: 4) {
-                    path.addLine(to: CGPoint(x: x, y: sin(x / 4.0) * 2))
+        GeometryReader { geo in
+            ZStack {
+                Path { path in
+                    let w = geo.size.width
+                    path.move(to: .zero)
+                    for x in stride(from: 0, through: w, by: 4) {
+                        path.addLine(to: CGPoint(x: x, y: sin(x / 4.0) * 2))
+                    }
                 }
-            }
-            .stroke(Theme.inkSecondary.opacity(0.22), lineWidth: 0.5)
+                .stroke(Theme.inkSecondary.opacity(0.22), lineWidth: 0.5)
 
-            Path { path in
-                let w = UIScreen.main.bounds.width
-                path.move(to: CGPoint(x: 0, y: 4))
-                for x in stride(from: 0, through: w, by: 4) {
-                    path.addLine(to: CGPoint(x: x, y: cos(x / 4.0) * 2 + 4))
+                Path { path in
+                    let w = geo.size.width
+                    path.move(to: CGPoint(x: 0, y: 4))
+                    for x in stride(from: 0, through: w, by: 4) {
+                        path.addLine(to: CGPoint(x: x, y: cos(x / 4.0) * 2 + 4))
+                    }
                 }
+                .stroke(Theme.inkSecondary.opacity(0.08), lineWidth: 0.5)
             }
-            .stroke(Theme.inkSecondary.opacity(0.08), lineWidth: 0.5)
+            .frame(height: Theme.Spacing.medium)
+            .padding(.vertical, Theme.Spacing.tight)
         }
-        .frame(height: Theme.Spacing.medium)
-        .padding(.vertical, Theme.Spacing.tight)
     }
 }
 
@@ -245,7 +269,7 @@ struct CountUpNumber: View {
         Text(prefix + IndianFormatter.price(current))
             .font(font)
             .monospacedDigit()
-            .foregroundColor(color)
+            .foregroundStyle(color)
             .onAppear {
                 withAnimation(.easeOut(duration: 1.2)) { current = target }
             }

@@ -144,11 +144,11 @@ struct TutorialOverlayView: View {
             HStack {
                 Text("\(tutorialManager.currentStep) of \(tutorialManager.totalSteps)")
                     .font(Theme.serialNumberFont(size: 10))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                 Spacer()
                 Button("Skip") { tutorialManager.skip() }
                     .font(Theme.officialStampFont(size: 9))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
             .padding(.horizontal, Theme.Spacing.screen)
             .padding(.top, Theme.Spacing.card)
@@ -161,14 +161,14 @@ struct TutorialOverlayView: View {
 
             Text(step.title)
                 .font(Theme.engravedSerif(size: 18, weight: .bold, relativeTo: .headline))
-                .foregroundColor(Theme.inkPrimary)
+                .foregroundStyle(Theme.inkPrimary)
                 .padding(.horizontal, Theme.Spacing.screen)
                 .padding(.top, Theme.Spacing.card)
                 .padding(.bottom, Theme.Spacing.tight)
 
             Text(step.body)
                 .font(Theme.officialStampFont(size: 14))
-                .foregroundColor(Theme.inkSecondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, Theme.Spacing.screen)
@@ -179,7 +179,7 @@ struct TutorialOverlayView: View {
                     Button(action: { tutorialManager.previous() }) {
                         Text("← Back")
                             .font(Theme.officialStampFont(size: 10))
-                            .foregroundColor(Theme.securityGold)
+                            .foregroundStyle(Theme.securityGold)
                             .padding(.horizontal, Theme.Spacing.card)
                             .padding(.vertical, Theme.Spacing.standard)
                             .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight)
@@ -197,7 +197,7 @@ struct TutorialOverlayView: View {
                     Text(tutorialManager.currentStep == tutorialManager.totalSteps
                          ? "Start Investing →" : "Next →")
                         .font(Theme.officialStampFont(size: 10))
-                        .foregroundColor(Theme.canvasDeep)
+                        .foregroundStyle(Theme.canvasDeep)
                         .padding(.horizontal, Theme.Spacing.screen)
                         .padding(.vertical, Theme.Spacing.standard)
                         .background(Theme.securityGold)

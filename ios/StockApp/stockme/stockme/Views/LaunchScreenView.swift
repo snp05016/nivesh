@@ -1,25 +1,6 @@
 import SwiftUI
 
-// MARK: - Theme tokens (dark-mode fixed — launch screen always dark)
-
-private enum NiveshTheme {
-    static let background    = Color(hex: "1C1A14")
-    static let canvasDeep    = Color(hex: "242018")
-    static let canvasShadow  = Color(hex: "141210")
-    static let inkSecondary  = Color(hex: "9BAF92")
-    static let inkTertiary   = Color(hex: "8A8A7A")
-    static let goldBright    = Color(hex: "C8A84A")
-    static let goldDull      = Color(hex: "B8973A")
-    static let goldGradient  = LinearGradient(
-        colors: [Color(hex: "C8A84A"), Color(hex: "B8973A")],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
-    static let outerBorder   = Color(hex: "C8A84A").opacity(0.55)
-    static let innerBorder   = Color(hex: "C8A84A").opacity(0.25)
-    static let ruleColor     = Color(hex: "C8A84A").opacity(0.35)
-    static let iconCornerRadius: CGFloat = 22
-}
+// Launch screen forced to dark mode — all Theme.* tokens resolve to dark variants
 
 // MARK: - Icon canvas (N + rising chart + dot + निवेश)
 
@@ -52,8 +33,8 @@ private struct NiveshIconCanvas: View {
                     fill.closeSubpath()
                     ctx.fill(fill, with: .linearGradient(
                         Gradient(stops: [
-                            .init(color: NiveshTheme.goldDull.opacity(0.28), location: 0),
-                            .init(color: NiveshTheme.goldDull.opacity(0), location: 1),
+                            .init(color: Theme.securityGold.opacity(0.22), location: 0),
+                            .init(color: Theme.securityGold.opacity(0), location: 1),
                         ]),
                         startPoint: CGPoint(x: w / 2, y: 0),
                         endPoint: CGPoint(x: w / 2, y: h)
@@ -65,14 +46,14 @@ private struct NiveshIconCanvas: View {
                     var path = Path()
                     path.move(to: pts[0])
                     for p in pts.dropFirst() { path.addLine(to: p) }
-                    ctx.stroke(path, with: .color(NiveshTheme.goldBright.opacity(0.18)),
+                    ctx.stroke(path, with: .color(Theme.securityGold.opacity(0.18)),
                                style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
                 }
 
                 // "N" — Georgia Bold, gold gradient mask
                 Text("N")
                     .font(Font.custom("Georgia-Bold", size: w * 0.78))
-                    .overlay(NiveshTheme.goldGradient)
+                    .overlay(Theme.securityGoldGradient)
                     .mask(Text("N").font(Font.custom("Georgia-Bold", size: w * 0.78)))
                     .frame(width: w, height: h, alignment: .center)
                     .offset(y: -h * 0.02)
@@ -83,7 +64,7 @@ private struct NiveshIconCanvas: View {
                     path.move(to: pts[0])
                     for p in pts.dropFirst() { path.addLine(to: p) }
                     ctx.stroke(path, with: .linearGradient(
-                        Gradient(colors: [NiveshTheme.goldBright, NiveshTheme.goldDull]),
+                        Gradient(colors: [Theme.securityGold, Theme.securityGold]),
                         startPoint: pts[0],
                         endPoint: pts.last!
                     ), style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
@@ -94,17 +75,17 @@ private struct NiveshIconCanvas: View {
                 Canvas { ctx, _ in
                     let haloRect = CGRect(x: peak.x - 10.5, y: peak.y - 10.5, width: 21, height: 21)
                     ctx.stroke(Path(ellipseIn: haloRect),
-                               with: .color(NiveshTheme.goldBright.opacity(0.35)),
+                               with: .color(Theme.securityGold.opacity(0.35)),
                                lineWidth: 1.2)
                     let dotRect = CGRect(x: peak.x - 6, y: peak.y - 6, width: 12, height: 12)
-                    ctx.fill(Path(ellipseIn: dotRect), with: .color(NiveshTheme.goldBright))
+                    ctx.fill(Path(ellipseIn: dotRect), with: .color(Theme.securityGold))
                 }
 
                 // निवेश — below centre
                 Text("निवेश")
                     .font(Font.custom("Georgia", size: w * 0.12).italic())
                     .tracking(2)
-                    .foregroundColor(NiveshTheme.goldBright.opacity(0.65))
+                    .foregroundStyle(Theme.securityGold.opacity(0.65))
                     .frame(width: w, height: h, alignment: .bottom)
                     .padding(.bottom, h * 0.06)
             }
@@ -119,87 +100,90 @@ struct LaunchScreenView: View {
     @State private var loadProgress: CGFloat = 0
 
     var body: some View {
-        ZStack {
-            NiveshTheme.background.ignoresSafeArea()
+        GeometryReader { geo in
+            ZStack {
+                Theme.canvas.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                Spacer()
+                VStack(spacing: 0) {
+                    Spacer()
 
-                // ── Mark + wordmark stack ──────────────────────────────
-                VStack(spacing: 20) {
-                    // Icon mark — 130×130 with double border
-                    ZStack {
-                        RoundedRectangle(cornerRadius: NiveshTheme.iconCornerRadius)
-                            .fill(NiveshTheme.canvasDeep)
-                            .frame(width: UIScreen.main.bounds.width * 0.35, height: UIScreen.main.bounds.width * 0.35)
+                    // ── Mark + wordmark stack ──────────────────────────────
+                    VStack(spacing: 20) {
+                        // Icon mark — 130×130 with double border
+                        ZStack {
+                            RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
+                                .fill(Theme.canvasDeep)
+                                .frame(width: geo.size.width * 0.35, height: geo.size.width * 0.35)
 
-                        RoundedRectangle(cornerRadius: NiveshTheme.iconCornerRadius)
-                            .stroke(NiveshTheme.outerBorder, lineWidth: 1.2)
-                            .frame(width: UIScreen.main.bounds.width * 0.35, height: UIScreen.main.bounds.width * 0.35)
+                            RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
+                                .stroke(Theme.securityGold.opacity(0.55), lineWidth: 1.2)
+                                .frame(width: geo.size.width * 0.35, height: geo.size.width * 0.35)
 
-                        RoundedRectangle(cornerRadius: 19)
-                            .stroke(NiveshTheme.innerBorder, lineWidth: 0.5)
-                            .frame(width: UIScreen.main.bounds.width * 0.35 * (122.0 / 130.0), height: UIScreen.main.bounds.width * 0.35 * (122.0 / 130.0))
+                            RoundedRectangle(cornerRadius: 19)
+                                .stroke(Theme.securityGold.opacity(0.25), lineWidth: 0.5)
+                                .frame(width: geo.size.width * 0.35 * (122.0 / 130.0), height: geo.size.width * 0.35 * (122.0 / 130.0))
 
-                        NiveshIconCanvas()
-                            .frame(width: 100, height: 100)
-                    }
-
-                    // Wordmark row
-                    VStack(spacing: 8) {
-                        // NIVESH + flanking rules
-                        HStack(spacing: 14) {
-                            Rectangle()
-                                .fill(NiveshTheme.ruleColor)
-                                .frame(width: UIScreen.main.bounds.width * 0.056, height: 0.6)
-
-                            Text("NIVESH")
-                                .font(Font.custom("Georgia-Bold", size: 24, relativeTo: .title))
-                                .tracking(24 * 0.20)
-                                .overlay(NiveshTheme.goldGradient)
-                                .mask(
-                                    Text("NIVESH")
-                                        .font(Font.custom("Georgia-Bold", size: 24, relativeTo: .title))
-                                        .tracking(24 * 0.20)
-                                )
-
-                            Rectangle()
-                                .fill(NiveshTheme.ruleColor)
-                                .frame(width: UIScreen.main.bounds.width * 0.056, height: 0.6)
+                            NiveshIconCanvas()
+                                .frame(width: 100, height: 100)
                         }
 
-                        // Subtitle
-                        Text("निवेश · Invest with Clarity")
-                            .font(Font.custom("Georgia", size: 13, relativeTo: .footnote).italic())
-                            .tracking(13 * 0.08)
-                            .foregroundColor(NiveshTheme.inkSecondary)
+                        // Wordmark row
+                        VStack(spacing: 8) {
+                            // NIVESH + flanking rules
+                            HStack(spacing: 14) {
+                                Rectangle()
+                                    .fill(Theme.securityGold.opacity(0.35))
+                                    .frame(width: geo.size.width * 0.056, height: 0.6)
+
+                                Text("NIVESH")
+                                    .font(Font.custom("Georgia-Bold", size: 24, relativeTo: .title))
+                                    .tracking(24 * 0.20)
+                                    .overlay(Theme.securityGoldGradient)
+                                    .mask(
+                                        Text("NIVESH")
+                                            .font(Font.custom("Georgia-Bold", size: 24, relativeTo: .title))
+                                            .tracking(24 * 0.20)
+                                    )
+
+                                Rectangle()
+                                    .fill(Theme.securityGold.opacity(0.35))
+                                    .frame(width: geo.size.width * 0.056, height: 0.6)
+                            }
+
+                            // Subtitle
+                            Text("निवेश · Invest with Clarity")
+                                .font(Font.custom("Georgia", size: 13, relativeTo: .footnote).italic())
+                                .tracking(13 * 0.08)
+                                .foregroundStyle(Theme.inkSecondary)
+                        }
                     }
+                    .scaleEffect(markVisible ? 1.0 : 0.88)
+                    .opacity(markVisible ? 1.0 : 0.0)
+                    .animation(.easeOut(duration: 0.65), value: markVisible)
+
+                    Spacer()
+
+                    // ── Loading bar ─────────────────────────────────────────
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Theme.canvasShadow)
+                            .frame(width: geo.size.width * 0.164, height: 3.5)
+
+                        Capsule()
+                            .fill(Theme.securityGold)
+                            .frame(width: loadProgress, height: 3.5)
+                    }
+                    .padding(.bottom, 28)
+
+                    // ── Disclaimer ──────────────────────────────────────────
+                    Text("For informational purposes only")
+                        .font(.caption2)
+                        .tracking(8.5 * 0.05)
+                        .foregroundStyle(Theme.inkTertiary)
+                        .padding(.bottom, 40)
                 }
-                .scaleEffect(markVisible ? 1.0 : 0.88)
-                .opacity(markVisible ? 1.0 : 0.0)
-                .animation(.easeOut(duration: 0.65), value: markVisible)
-
-                Spacer()
-
-                // ── Loading bar ─────────────────────────────────────────
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(NiveshTheme.canvasShadow)
-                        .frame(width: UIScreen.main.bounds.width * 0.164, height: 3.5)
-
-                    Capsule()
-                        .fill(NiveshTheme.goldBright)
-                        .frame(width: loadProgress, height: 3.5)
-                }
-                .padding(.bottom, 28)
-
-                // ── Disclaimer ──────────────────────────────────────────
-                Text("For informational purposes only")
-                    .font(.caption2)
-                    .tracking(8.5 * 0.05)
-                    .foregroundColor(NiveshTheme.inkTertiary)
-                    .padding(.bottom, 40)
             }
+            .preferredColorScheme(.dark)
         }
         .onAppear {
             markVisible = true

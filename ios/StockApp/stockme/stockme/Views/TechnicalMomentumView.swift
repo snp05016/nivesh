@@ -38,13 +38,13 @@ struct TechnicalMomentumView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("तकनीकी गति")
                     .font(Theme.hindiFont(size: 11))
-                    .foregroundColor(Theme.inkSecondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 Text("TECHNICAL MOMENTUM")
                     .font(Theme.engravedSerif(size: 24, weight: .bold))
-                    .foregroundColor(Theme.inkPrimary)
+                    .foregroundStyle(Theme.inkPrimary)
                 Text("Algorithmic Indicator Engine")
                     .font(Theme.officialStampFont(size: 9))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
             Spacer()
         }
@@ -65,10 +65,10 @@ struct TechnicalMomentumView: View {
             HStack(spacing: 8) {
                 Text(selectedIndex)
                     .font(Theme.serialNumberFont(size: 12))
-                    .foregroundColor(Theme.inkPrimary)
+                    .foregroundStyle(Theme.inkPrimary)
                 Image(systemName: "chevron.down")
                     .font(Theme.officialStampFont(size: 10))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                 Spacer()
             }
             .padding(.horizontal, Theme.screenPadding)
@@ -80,14 +80,14 @@ struct TechnicalMomentumView: View {
     // MARK: 9.2 Horizontal Analytics Sub-Bar
 
     private var subTabBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             HStack(spacing: 0) {
                 ForEach(Array(subTabs.enumerated()), id: \.offset) { idx, tab in
                     Button(action: { selectedSubTab = idx }) {
                         Text(tab)
                             .font(Theme.officialStampFont(size: 11))
                             .fontWeight(selectedSubTab == idx ? .bold : .regular)
-                            .foregroundColor(selectedSubTab == idx ? Theme.securityGold : Theme.inkTertiary)
+                            .foregroundStyle(selectedSubTab == idx ? Theme.securityGold : Theme.inkTertiary)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
                             .background(selectedSubTab == idx ? Theme.securityGold.opacity(0.08) : Color.clear)
@@ -96,6 +96,7 @@ struct TechnicalMomentumView: View {
             }
             .padding(.horizontal, Theme.screenPadding)
         }
+        .scrollIndicators(.hidden)
         .background(Theme.canvasDeep)
     }
 
@@ -125,7 +126,7 @@ struct TechnicalMomentumView: View {
                     if tickers.isEmpty {
                         Text("No \(selectedMomentum.lowercased()) signals detected for \(selectedIndex).")
                             .font(Theme.officialStampFont(size: 12))
-                            .foregroundColor(Theme.inkTertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                             .padding(40)
                             .frame(maxWidth: .infinity)
                     } else {
@@ -146,7 +147,7 @@ struct TechnicalMomentumView: View {
             Text("MOMENTUM FILTER")
                 .font(Theme.officialStampFont(size: 10))
                 .tracking(1.5)
-                .foregroundColor(Theme.inkSecondary)
+                .foregroundStyle(Theme.inkSecondary)
 
             HStack(spacing: 8) {
                 ForEach(momentumFilters, id: \.self) { filter in
@@ -166,7 +167,7 @@ struct TechnicalMomentumView: View {
                             Text(filter)
                                 .font(Theme.officialStampFont(size: 10))
                                 .fontWeight(selectedMomentum == filter ? .bold : .regular)
-                                .foregroundColor(selectedMomentum == filter ? momentumColor(filter) : Theme.inkTertiary)
+                                .foregroundStyle(selectedMomentum == filter ? momentumColor(filter) : Theme.inkTertiary)
                         }
                         .padding(.horizontal, Theme.Spacing.medium)
                         .padding(.vertical, Theme.Spacing.tight)
@@ -230,10 +231,10 @@ struct TechnicalMomentumView: View {
             Spacer()
             Text(label)
                 .font(Theme.officialStampFont(size: 14))
-                .foregroundColor(Theme.inkTertiary)
+                .foregroundStyle(Theme.inkTertiary)
             Text("Data loading from \(selectedIndex)")
                 .font(Theme.officialStampFont(size: 11))
-                .foregroundColor(Theme.inkTertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .padding(.top, Theme.Spacing.small)
             Spacer()
         }
@@ -256,7 +257,7 @@ struct TechnicalMomentumView: View {
     private var sectorPlaceholder: some View {
         RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
             .fill(Theme.inkTertiary.opacity(0.08))
-            .frame(height: UIScreen.main.bounds.height * 0.1)
+            .frame(height: UIScreen.main.bounds.width * 0.5)
             .shimmerPlaceholder(isLoading: true)
     }
 
@@ -302,12 +303,12 @@ struct MomentumIndicatorCard: View {
                 HStack(spacing: Theme.Spacing.medium) {
                     Text(ticker.ticker)
                         .font(Theme.serialNumberFont(size: 14))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                     // 9.4 Momentum classification badge
                     Text(momentumLabel.uppercased())
                         .font(Theme.serialNumberFont(size: 8))
                         .tracking(1)
-                        .foregroundColor(signalColor)
+                        .foregroundStyle(signalColor)
                         .padding(.horizontal, Theme.Spacing.tight)
                         .padding(.vertical, 3)
                         .background(signalColor.opacity(0.10))
@@ -316,22 +317,22 @@ struct MomentumIndicatorCard: View {
                 // 9.4 Core execution data
                 HStack(spacing: Theme.Spacing.standard) {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                        Text("LTP").font(Theme.officialStampFont(size: 8)).foregroundColor(Theme.inkTertiary)
+                        Text("LTP").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                         Text(IndianFormatter.price(ticker.lastPrice))
                             .font(Theme.serialNumberFont(size: 12))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                     }
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                        Text("MA20").font(Theme.officialStampFont(size: 8)).foregroundColor(Theme.inkTertiary)
+                        Text("MA20").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                         Text(IndianFormatter.price(ticker.ma20))
                             .font(Theme.serialNumberFont(size: 11))
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                        Text("SINCE").font(Theme.officialStampFont(size: 8)).foregroundColor(Theme.inkTertiary)
+                        Text("SINCE").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                         Text(ticker.trendDate)
                             .font(Theme.serialNumberFont(size: 10))
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                 }
             }
@@ -349,10 +350,10 @@ struct MomentumIndicatorCard: View {
                 VStack(spacing: Theme.Spacing.xSmall) {
                     Image(systemName: "chart.xyaxis.line")
                         .font(Theme.officialStampFont(size: 13))
-                        .foregroundColor(Theme.securityGold)
+                        .foregroundStyle(Theme.securityGold)
                     Text("Chart")
                         .font(Theme.officialStampFont(size: 8))
-                        .foregroundColor(Theme.securityGold.opacity(0.7))
+                        .foregroundStyle(Theme.securityGold.opacity(0.7))
                 }
             }
         }
@@ -395,10 +396,10 @@ struct SectorHeatBlock: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             Text(name)
                 .font(Theme.officialStampFont(size: 11))
-                .foregroundColor(Theme.inkPrimary)
+                .foregroundStyle(Theme.inkPrimary)
             Text(String(format: "%.1f%%", pct))
                 .font(Theme.serialNumberFont(size: 18))
-                .foregroundColor(isPositive ? Theme.bullGreen : Theme.bearRed)
+                .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
         }
         .padding(Theme.Spacing.card)
         .frame(maxWidth: .infinity, alignment: .leading)

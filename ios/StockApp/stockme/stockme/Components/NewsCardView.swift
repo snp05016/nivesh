@@ -32,29 +32,30 @@ struct NewsCardView: View {
                 UIApplication.shared.open(url)
             }
         }) {
-            VStack(alignment: .leading, spacing: 0) {
-                // Hero image (if available)
-                if let imageUrl = article.imageUrl, let url = URL(string: imageUrl) {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: UIScreen.main.bounds.height * 0.20)
-                                .clipped()
-                        case .failure(_):
-                            EmptyView()
-                        case .empty:
-                            Rectangle()
-                                .fill(Color.primary.opacity(0.04))
-                                .frame(height: UIScreen.main.bounds.height * 0.12)
-                        @unknown default:
-                            EmptyView()
+            GeometryReader { geo in
+                VStack(alignment: .leading, spacing: 0) {
+                    // Hero image (if available)
+                    if let imageUrl = article.imageUrl, let url = URL(string: imageUrl) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: geo.size.width * 0.43)
+                                    .clipped()
+                            case .failure(_):
+                                EmptyView()
+                            case .empty:
+                                Rectangle()
+                                    .fill(Color.primary.opacity(0.04))
+                                    .frame(height: geo.size.width * 0.26)
+                            @unknown default:
+                                EmptyView()
+                            }
                         }
                     }
-                }
 
                 VStack(alignment: .leading, spacing: 8) {
                     // Header row
@@ -63,7 +64,7 @@ struct NewsCardView: View {
                         Text(sourceLabel.uppercased())
                             .font(.caption2.weight(.bold).monospaced())
                             .tracking(1.2)
-                            .foregroundColor(goldAccent)
+                            .foregroundStyle(goldAccent)
                             .padding(.horizontal, Theme.Spacing.tight)
                             .padding(.vertical, Theme.Spacing.small)
                             .background(goldAccent.opacity(0.10))
@@ -82,7 +83,7 @@ struct NewsCardView: View {
                                     .font(.caption2.weight(.bold).monospaced())
                                     .tracking(1.0)
                             }
-                            .foregroundColor(bearRed)
+                            .foregroundStyle(bearRed)
                             .padding(.horizontal, Theme.Spacing.tight)
                             .padding(.vertical, Theme.Spacing.small)
                             .background(bearRed.opacity(0.10))
@@ -96,7 +97,7 @@ struct NewsCardView: View {
                             Button(action: { onTickerTap?(ticker) }) {
                                 Text(ticker)
                                     .font(.caption2.weight(.semibold).monospaced())
-                                    .foregroundColor(.primary.opacity(0.75))
+                                    .foregroundStyle(.primary.opacity(0.75))
                                     .padding(.horizontal, Theme.Spacing.tight)
                                     .padding(.vertical, Theme.Spacing.small)
                                     .background(Color.primary.opacity(0.07))
@@ -109,7 +110,7 @@ struct NewsCardView: View {
                     // Headline
                     Text(article.headline)
                         .font(.footnote.weight(.semibold))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
                         .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
                         .lineSpacing(2)
@@ -118,7 +119,7 @@ struct NewsCardView: View {
                     if let summary = article.summary, !summary.isEmpty {
                         Text(summary)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .lineLimit(2)
                             .lineSpacing(2)
                     }
@@ -127,7 +128,7 @@ struct NewsCardView: View {
                     HStack {
                         Text(relativeTime(article.publishedAt))
                             .font(.caption)
-                            .foregroundColor(dimText)
+                            .foregroundStyle(dimText)
 
                         Spacer()
 
@@ -138,7 +139,7 @@ struct NewsCardView: View {
                                 .frame(width: 5, height: 5)
                             Text(sentiment.capitalized)
                                 .font(.caption2.weight(.medium))
-                                .foregroundColor(sentimentColor)
+                                .foregroundStyle(sentimentColor)
                         }
                     }
                 }
@@ -171,6 +172,7 @@ struct NewsCardView: View {
             .cornerRadius(Theme.CornerRadius.large)
         }
         .buttonStyle(EKPressStyle())
+        }
     }
 
     func relativeTime(_ isoString: String) -> String {

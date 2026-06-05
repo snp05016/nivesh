@@ -19,10 +19,10 @@ struct DisclaimerScreen: View {
                     VStack(spacing: Theme.Spacing.small) {
                         Text("महत्वपूर्ण सूचना")
                             .font(.caption2.weight(.bold))
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                         Text("REGISTRY DISCLAIMER")
                             .font(Theme.engravedSerif(size: 22, weight: .bold, relativeTo: .title2))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                     }
                     .staggerAppear(delay: 0.1)
 
@@ -56,7 +56,7 @@ struct DisclaimerScreen: View {
                     Button(action: onAccept) {
                         Text("I ACKNOWLEDGE & CONTINUE")
                             .font(Theme.labelStyle)
-                            .foregroundColor(Theme.canvas)
+                            .foregroundStyle(Theme.canvas)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, Theme.Spacing.screen)
                             .background(Theme.inkPrimary)
@@ -65,7 +65,7 @@ struct DisclaimerScreen: View {
 
                     Text("By entering the registry you agree to the official terms of use.")
                         .font(.caption2.weight(.bold))
-                        .foregroundColor(Theme.inkSecondary.opacity(0.6))
+                        .foregroundStyle(Theme.inkSecondary.opacity(0.6))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, Theme.Spacing.large)
                 }
@@ -86,12 +86,12 @@ private struct DisclaimerBulletin: View {
         HStack(alignment: .top, spacing: Theme.Spacing.standard) {
             Image(systemName: icon)
                 .font(.subheadline)
-                .foregroundColor(Theme.inkSecondary.opacity(0.4))
+                .foregroundStyle(Theme.inkSecondary.opacity(0.4))
                 .frame(width: 20)
                 .padding(.top, 2)
             Text(text.uppercased())
                 .font(.caption2.weight(.bold))
-                .foregroundColor(Theme.inkSecondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .lineSpacing(2)
         }

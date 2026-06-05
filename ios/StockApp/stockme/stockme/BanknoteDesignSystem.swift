@@ -28,8 +28,8 @@ struct SecurityThread: View {
             VStack(spacing: 2) {
                 ForEach(0..<20, id: \.self) { _ in
                     Text("NIVESH ₹ RBI ")
-                        .font(.system(size: 5, weight: .medium, design: .monospaced))
-                        .foregroundColor(Theme.securityGold.opacity(0.38))
+                        .font(Theme.serialNumberFont(size: 5))
+                        .foregroundStyle(Theme.securityGold.opacity(0.38))
                         .rotationEffect(.degrees(-90))
                         .fixedSize()
                 }
@@ -47,7 +47,7 @@ struct RupeeWatermark: View {
     var body: some View {
         Text("₹")
             .font(Font.custom("Georgia-Bold", size: 320))
-            .foregroundColor(Theme.securityGold.opacity(0.035))
+            .foregroundStyle(Theme.securityGold.opacity(0.035))
             .offset(x: 60, y: -40)
             .allowsHitTesting(false)
     }
@@ -99,9 +99,9 @@ struct BanknoteSignalBadge: View {
 
     var body: some View {
         Text(text.uppercased())
-            .font(.system(size: 9, weight: .bold))
+            .font(Theme.officialStampFont(size: 9))
             .tracking(2)
-            .foregroundColor(tintColor)
+            .foregroundStyle(tintColor)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(tintColor.opacity(0.07))
@@ -125,10 +125,10 @@ struct PortfolioValueDisplay: View {
         HStack(alignment: .firstTextBaseline, spacing: 1) {
             Text("₹")
                 .font(Theme.engravedSerif(size: fontSize, weight: .bold))
-                .foregroundColor(Theme.securityGold)
+                .foregroundStyle(Theme.securityGold)
             Text(IndianFormatter.priceWithoutSymbol(current))
                 .font(Theme.engravedSerif(size: fontSize, weight: .bold))
-                .foregroundColor(Theme.inkPrimary)
+                .foregroundStyle(Theme.inkPrimary)
                 .monospacedDigit()
         }
         .onAppear {
@@ -180,7 +180,7 @@ struct GovernorSealAvatar: View {
                 .frame(width: 40, height: 40)
             Text(initials.uppercased())
                 .font(Theme.engravedSerif(size: 16, weight: .bold))
-                .foregroundColor(Theme.inkPrimary)
+                .foregroundStyle(Theme.inkPrimary)
         }
         .frame(width: 52, height: 52)
     }

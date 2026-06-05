@@ -108,21 +108,21 @@ struct PortfolioScreen: View {
                         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                             Text("निवेश पोर्टफोलियो")
                                 .font(Theme.hindiFont(size: 11))
-                                .foregroundColor(Theme.inkSecondary)
+                                .foregroundStyle(Theme.inkSecondary)
                             Text("MY PORTFOLIO")
                                 .font(Theme.engravedSerif(size: 28, weight: .bold))
-                                .foregroundColor(Theme.inkPrimary)
+                                .foregroundStyle(Theme.inkPrimary)
                         }
                         Spacer()
                         HStack(spacing: Theme.Spacing.standard) {
                             Button { showExportOptions = true } label: {
                                 Image(systemName: "square.and.arrow.up")
-                                    .foregroundColor(Theme.inkSecondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                                     .padding(Theme.Spacing.medium)
                             }
                             ZStack {
                                 Circle().stroke(Theme.borderSage, lineWidth: 0.5).frame(width: 44, height: 44)
-                                Text("₹").font(Theme.engravedSerif(size: 18, weight: .bold)).foregroundColor(Theme.inkPrimary)
+                                Text("₹").font(Theme.engravedSerif(size: 18, weight: .bold)).foregroundStyle(Theme.inkPrimary)
                             }
                         }
                     }
@@ -172,35 +172,36 @@ struct PortfolioScreen: View {
                             .padding(.horizontal, Theme.screenPadding)
 
                             if selectedTab == 0 {
-                                ScrollView(.horizontal, showsIndicators: false) {
+                                ScrollView(.horizontal) {
                                     HStack(spacing: Theme.Spacing.standard) {
                                         ForEach(viewModel.holdings) { holding in
                                             NavigationLink(value: HoldingNavValue(ticker: holding.stock.ticker, userNote: holding.notes, purchaseDateStr: holding.purchaseDate, holding: holding)) {
                                                 HoldingNoteRow(holding: holding, signalWarning: signalWarnings[holding.stock.ticker])
                                                     .frame(width: UIScreen.main.bounds.width * 0.78)
                                             }
-                                            .ekPress()
-                                            .contextMenu {
-                                                Button("Edit Holding") {
-                                                    editingHolding = holding
-                                                    showEditHoldingSheet = true
-                                                }
-                                                Button("Add Note") {
-                                                    noteEditingHolding = holding
-                                                    noteEditorText = holding.notes ?? ""
-                                                    showNoteEditor = true
-                                                }
-                                                Button("Remove from Portfolio", role: .destructive) {
-                                                    deletingTicker = holding.stock.ticker
-                                                    showDeleteAlert = true
-                                                }
+                                        .ekPress()
+                                        .contextMenu {
+                                            Button("Edit Holding") {
+                                                editingHolding = holding
+                                                showEditHoldingSheet = true
+                                            }
+                                            Button("Add Note") {
+                                                noteEditingHolding = holding
+                                                noteEditorText = holding.notes ?? ""
+                                                showNoteEditor = true
+                                            }
+                                            Button("Remove from Portfolio", role: .destructive) {
+                                                deletingTicker = holding.stock.ticker
+                                                showDeleteAlert = true
                                             }
                                         }
                                     }
-                                    .padding(.horizontal, Theme.screenPadding)
                                 }
+                                .padding(.horizontal, Theme.screenPadding)
+                                .scrollIndicators(.hidden)
+                            }
                             } else if selectedTab == 1 {
-                                ScrollView(.horizontal, showsIndicators: false) {
+                                ScrollView(.horizontal) {
                                     HStack(spacing: Theme.Spacing.standard) {
                                         ForEach(viewModel.watchlistItems) { item in
                                             NavigationLink(value: item.ticker) {
@@ -215,6 +216,7 @@ struct PortfolioScreen: View {
                                     }
                                     .padding(.horizontal, Theme.screenPadding)
                                 }
+                                .scrollIndicators(.hidden)
                             } else if selectedTab == 2 {
                                 if let user = authManager.currentUser {
                                     TradeJournalScreen(userId: user.userId)
@@ -242,10 +244,10 @@ struct PortfolioScreen: View {
                     VStack {
                         HStack(spacing: Theme.Spacing.medium) {
                             Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(Theme.bullGreen)
+                                .foregroundStyle(Theme.bullGreen)
                             Text("\(addedBannerTicker) added to watchlist")
                                 .font(Theme.serialNumberFont(size: 13))
-                                .foregroundColor(Theme.inkPrimary)
+                                .foregroundStyle(Theme.inkPrimary)
                         }
                         .padding(.horizontal, 20)
                         .padding(.vertical, Theme.Spacing.standard)
@@ -282,7 +284,7 @@ struct PortfolioScreen: View {
                                     .shadow(color: Theme.securityGold.opacity(0.3), radius: 10, x: 0, y: 5)
                                 Image(systemName: "plus")
                                     .font(.title2.weight(.bold))
-                                    .foregroundColor(.white)
+                                    .foregroundStyle(.white)
                             }
                         }
                         .padding(Theme.screenPadding)
@@ -409,7 +411,7 @@ struct PortfolioScreen: View {
                 BanknoteSignalBadge(text: "EMPTY", color: Theme.inkSecondary.opacity(0.4))
                 Text("Add stocks to your watchlist to track them here")
                     .font(Theme.serialNumberFont(size: 13))
-                    .foregroundColor(Theme.inkSecondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
                 Button {
@@ -421,7 +423,7 @@ struct PortfolioScreen: View {
                         Text("ADD STOCK")
                             .font(Theme.officialStampFont(size: 10))
                     }
-                    .foregroundColor(Theme.securityGold)
+                    .foregroundStyle(Theme.securityGold)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.securityGold, lineWidth: 1))
@@ -466,12 +468,12 @@ private struct PortfolioRiskCard: View {
                 Text("PORTFOLIO RISK")
                     .font(.system(.caption, design: .default).weight(.medium))
                     .tracking(1.5)
-                    .foregroundColor(Theme.securityGold)
+                    .foregroundStyle(Theme.securityGold)
                 Spacer()
                 if let label = riskAnalysis?.riskScoreLabel {
                     Text(label)
                         .font(.caption2)
-                        .foregroundColor(riskColor)
+                        .foregroundStyle(riskColor)
                         .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                         .background(riskColor.opacity(0.15))
                         .cornerRadius(Theme.CornerRadius.small)
@@ -493,7 +495,7 @@ private struct PortfolioRiskCard: View {
             if let beta = riskAnalysis?.portfolioBeta {
                 Text("β \(String(format: "%.2f", beta))")
                     .font(.system(.caption, design: .monospaced))
-                    .foregroundColor(Theme.inkSecondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
 
             // Concentration warnings
@@ -502,7 +504,7 @@ private struct PortfolioRiskCard: View {
                     ForEach(warnings) { w in
                         Text("\(w.ticker) \(String(format: "%.0f", w.pctOfPortfolio))%")
                             .font(.caption2)
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                             .background(Theme.signalRuby)
                             .cornerRadius(Theme.CornerRadius.small)
@@ -514,14 +516,14 @@ private struct PortfolioRiskCard: View {
             if let pair = riskAnalysis?.highestCorrelationPair, pair.correlation > 0.7 {
                 Text("\(pair.tickerA) ↔ \(pair.tickerB) highly correlated")
                     .font(.caption)
-                    .foregroundColor(Theme.securityGold)
+                    .foregroundStyle(Theme.securityGold)
             }
 
             // Summary
             if let summary = riskAnalysis?.riskSummary {
                 Text(summary)
                     .font(.caption.italic())
-                    .foregroundColor(Theme.inkSecondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -549,17 +551,17 @@ private struct RedFlagsSection: View {
                         Text("RED FLAGS")
                             .font(.system(.caption, design: .default).weight(.medium))
                             .tracking(1.5)
-                            .foregroundColor(Theme.signalRuby)
+                            .foregroundStyle(Theme.signalRuby)
                         Text("\(rf.totalFlags)")
                             .font(.caption2.weight(.bold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                             .background(Theme.signalRuby)
                             .clipShape(Capsule())
                         Spacer()
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                             .font(.caption2)
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                 }
                 .buttonStyle(.plain)
@@ -574,20 +576,20 @@ private struct RedFlagsSection: View {
                                     HStack {
                                         Text(flag.ticker)
                                             .font(.system(.caption, design: .monospaced).weight(.bold))
-                                            .foregroundColor(Theme.inkPrimary)
+                                            .foregroundStyle(Theme.inkPrimary)
                                         Text(flag.flagType.replacingOccurrences(of: "_", with: " "))
                                             .font(.caption2)
-                                            .foregroundColor(Theme.inkSecondary)
+                                            .foregroundStyle(Theme.inkSecondary)
                                             .tracking(0.5)
                                     }
                                     Text(flag.detail)
                                         .font(.caption2)
-                                        .foregroundColor(Theme.inkSecondary)
+                                        .foregroundStyle(Theme.inkSecondary)
                                 }
                                 Spacer()
                                 Image(systemName: "chevron.right")
                                     .font(.caption2)
-                                    .foregroundColor(Theme.inkTertiary)
+                                    .foregroundStyle(Theme.inkTertiary)
                             }
                         }
                         .buttonStyle(.plain)
@@ -596,7 +598,7 @@ private struct RedFlagsSection: View {
                     if let summary = rf.summary, !summary.isEmpty {
                         Text(summary)
                             .font(.caption.italic())
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, Theme.Spacing.small)
                     }
@@ -622,7 +624,7 @@ private struct TabNoteButton: View {
         }) {
             Text(title.uppercased())
                 .font(Theme.officialStampFont(size: 9))
-                .foregroundColor(isSelected ? Theme.inkPrimary : Theme.inkTertiary)
+                .foregroundStyle(isSelected ? Theme.inkPrimary : Theme.inkTertiary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Theme.Spacing.standard)
                 .background(isSelected ? Theme.inkSecondary.opacity(0.05) : Color.clear)
@@ -655,14 +657,14 @@ private struct HoldingNoteRow: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text(holding.stock.companyName.uppercased())
                         .font(Theme.engravedSerif(size: 15, weight: .bold))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                     Text("\(Int(holding.shares)) SHARES • AVG ₹\(holding.buyPrice.inrFormatted)")
                         .font(Theme.serialNumberFont(size: 9))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     if let note = holding.notes, !note.isEmpty {
                         Text(note)
                             .font(Font.custom("Georgia", size: 12, relativeTo: .caption).italic())
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                             .lineLimit(1)
                             .truncationMode(.tail)
                     }
@@ -673,7 +675,7 @@ private struct HoldingNoteRow: View {
                             Text(warning.signalFlipped ? "SIGNAL CHANGED" : "BEARISH")
                                 .font(Theme.officialStampFont(size: 7))
                         }
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                         .background(Theme.bearRed)
                         .clipShape(Capsule())
@@ -685,10 +687,10 @@ private struct HoldingNoteRow: View {
                 VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                     Text(holding.currentValue.inrFormatted)
                         .font(Theme.serialNumberFont(size: 14))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                     Text(holding.pnl.inrFormatted)
                         .font(Theme.serialNumberFont(size: 12))
-                        .foregroundColor(holding.pnl >= 0 ? Theme.bullGreen : Theme.bearRed)
+                        .foregroundStyle(holding.pnl >= 0 ? Theme.bullGreen : Theme.bearRed)
                 }
             }
             .padding(.vertical, Theme.Spacing.standard)
@@ -718,15 +720,15 @@ private struct PortfolioHeroNote: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("NIVESH")
                             .font(Theme.engravedSerif(size: 14, weight: .bold))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                         Text("Reserve Bank of Intelligence")
                             .font(Theme.serialNumberFont(size: 8))
-                            .foregroundColor(Theme.inkTertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                     Spacer()
                     Text("भारतीय निवेश")
                         .font(Theme.hindiFont(size: 11))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 .padding(.bottom, 8)
 
@@ -735,16 +737,16 @@ private struct PortfolioHeroNote: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text("निवेश पोर्टफोलियो")
                         .font(Theme.hindiFont(size: 11))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
 
                     Text("TOTAL VALUATION")
                         .font(Theme.officialStampFont(size: 9))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
 
                     Text("I PROMISE TO PAY THE BEARER")
                         .font(.caption2.weight(.medium))
                         .tracking(2)
-                        .foregroundColor(Theme.inkTertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                         .padding(.bottom, 2)
 
                     PortfolioValueDisplay(target: value, fontSize: 30)
@@ -755,7 +757,7 @@ private struct PortfolioHeroNote: View {
                         Text("(\((invested > 0 ? totalPnL/invested*100 : 0).percentFormatted))")
                     }
                     .font(Theme.serialNumberFont(size: 13))
-                    .foregroundColor(totalPnL >= 0 ? Theme.bullGreen : Theme.bearRed)
+                    .foregroundStyle(totalPnL >= 0 ? Theme.bullGreen : Theme.bearRed)
                 }
                 .padding(.top, 4)
 
@@ -788,10 +790,10 @@ private struct StatNoteBlock: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             Text(label)
                 .font(Theme.officialStampFont(size: 8))
-                .foregroundColor(Theme.inkSecondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text(value)
                 .font(Theme.serialNumberFont(size: 14))
-                .foregroundColor(color)
+                .foregroundStyle(color)
         }
     }
 }
@@ -814,11 +816,11 @@ private struct WatchlistRowView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text(item.companyName.uppercased())
                         .font(Theme.engravedSerif(size: 14, weight: .bold))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                         .lineLimit(1)
                     Text(item.ticker)
                         .font(Theme.serialNumberFont(size: 9))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
 
                 Spacer()
@@ -826,11 +828,11 @@ private struct WatchlistRowView: View {
                 VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                     Text("₹\(item.currentPrice.inrFormatted)")
                         .font(Theme.serialNumberFont(size: 14))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                     let changeStr = (item.dayChangePct >= 0 ? "+" : "") + String(format: "%.2f%%", item.dayChangePct)
                     Text(changeStr)
                         .font(Theme.serialNumberFont(size: 12))
-                        .foregroundColor(item.dayChangePct >= 0 ? Theme.bullGreen : Theme.bearRed)
+                        .foregroundStyle(item.dayChangePct >= 0 ? Theme.bullGreen : Theme.bearRed)
                 }
             }
             .padding(.vertical, Theme.Spacing.standard)
@@ -905,15 +907,15 @@ private struct AddHoldingSheet: View {
                     // Stock search
                     VStack(alignment: .leading, spacing: 0) {
                         HStack {
-                            Image(systemName: "magnifyingglass").foregroundColor(Theme.inkTertiary)
+                            Image(systemName: "magnifyingglass").foregroundStyle(Theme.inkTertiary)
                             if let entry = selectedEntry {
                                 HStack(spacing: Theme.Spacing.tight) {
                                     Text(entry.ticker)
                                         .font(Theme.serialNumberFont(size: 14))
-                                        .foregroundColor(Theme.inkPrimary)
+                                        .foregroundStyle(Theme.inkPrimary)
                                     Text(entry.companyName)
                                         .font(Theme.serialNumberFont(size: 12))
-                                        .foregroundColor(Theme.inkSecondary)
+                                        .foregroundStyle(Theme.inkSecondary)
                                         .lineLimit(1)
                                     Spacer()
                                     Button {
@@ -921,13 +923,14 @@ private struct AddHoldingSheet: View {
                                         searchText = ""
                                     } label: {
                                         Image(systemName: "xmark.circle.fill")
-                                            .foregroundColor(Theme.inkTertiary)
+                                            .foregroundStyle(Theme.inkTertiary)
                                     }
+                                    .accessibilityLabel("Clear selection")
                                 }
                             } else {
                                 TextField("Search stock…", text: $searchText)
                                     .font(Theme.serialNumberFont(size: 14))
-                                    .foregroundColor(Theme.inkPrimary)
+                                    .foregroundStyle(Theme.inkPrimary)
                                     .autocorrectionDisabled()
                                     .textInputAutocapitalization(.characters)
                             }
@@ -949,14 +952,14 @@ private struct AddHoldingSheet: View {
                                         VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                             Text(entry.companyName)
                                                 .font(Theme.engravedSerif(size: 13, weight: .bold))
-                                                .foregroundColor(Theme.inkPrimary)
+                                                .foregroundStyle(Theme.inkPrimary)
                                             Text(entry.ticker)
                                                 .font(Theme.serialNumberFont(size: 10))
-                                                .foregroundColor(Theme.inkSecondary)
+                                                .foregroundStyle(Theme.inkSecondary)
                                         }
                                         Spacer()
                                         Image(systemName: "checkmark.circle")
-                                            .foregroundColor(Theme.securityGold)
+                                            .foregroundStyle(Theme.securityGold)
                                     }
                                     .padding(.vertical, 4)
                                 }
@@ -972,11 +975,11 @@ private struct AddHoldingSheet: View {
                         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                             Text("NUMBER OF SHARES")
                                 .font(Theme.officialStampFont(size: 9))
-                                .foregroundColor(Theme.inkSecondary)
+                                .foregroundStyle(Theme.inkSecondary)
                             TextField("e.g. 100", text: $sharesText)
                                 .keyboardType(.numberPad)
                                 .font(Theme.serialNumberFont(size: 16))
-                                .foregroundColor(Theme.inkPrimary)
+                                .foregroundStyle(Theme.inkPrimary)
                                 .padding(Theme.Spacing.standard)
                                 .background(Theme.inkPrimary.opacity(0.05))
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -985,11 +988,11 @@ private struct AddHoldingSheet: View {
                         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                             Text("BUY PRICE (₹)")
                                 .font(Theme.officialStampFont(size: 9))
-                                .foregroundColor(Theme.inkSecondary)
+                                .foregroundStyle(Theme.inkSecondary)
                             TextField("e.g. 1530.00", text: $buyPriceText)
                                 .keyboardType(.decimalPad)
                                 .font(Theme.serialNumberFont(size: 16))
-                                .foregroundColor(Theme.inkPrimary)
+                                .foregroundStyle(Theme.inkPrimary)
                                 .padding(Theme.Spacing.standard)
                                 .background(Theme.inkPrimary.opacity(0.05))
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -997,7 +1000,7 @@ private struct AddHoldingSheet: View {
                         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                             Text("PURCHASE DATE")
                                 .font(Theme.officialStampFont(size: 9))
-                                .foregroundColor(Theme.inkSecondary)
+                                .foregroundStyle(Theme.inkSecondary)
                             DatePicker("", selection: $purchaseDate, displayedComponents: .date)
                                 .labelsHidden()
                                 .accentColor(Theme.securityGold)
@@ -1009,11 +1012,11 @@ private struct AddHoldingSheet: View {
                         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                             Text("TARGET PRICE (₹)")
                                 .font(Theme.officialStampFont(size: 9))
-                                .foregroundColor(Theme.inkSecondary)
+                                .foregroundStyle(Theme.inkSecondary)
                             TextField("optional...", text: $targetPriceText)
                                 .keyboardType(.decimalPad)
                                 .font(Theme.serialNumberFont(size: 16))
-                                .foregroundColor(Theme.inkPrimary)
+                                .foregroundStyle(Theme.inkPrimary)
                                 .padding(Theme.Spacing.standard)
                                 .background(Theme.inkPrimary.opacity(0.05))
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -1022,10 +1025,10 @@ private struct AddHoldingSheet: View {
                         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                             Text("NOTES / INVESTMENT REASON")
                                 .font(Theme.officialStampFont(size: 9))
-                                .foregroundColor(Theme.inkSecondary)
+                                .foregroundStyle(Theme.inkSecondary)
                             TextField("Why did you buy this?", text: $notes)
                                 .font(Theme.serialNumberFont(size: 14))
-                                .foregroundColor(Theme.inkPrimary)
+                                .foregroundStyle(Theme.inkPrimary)
                                 .padding(Theme.Spacing.standard)
                                 .background(Theme.inkPrimary.opacity(0.05))
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -1034,7 +1037,7 @@ private struct AddHoldingSheet: View {
                         if let err = errorText {
                             Text(err)
                                 .font(Theme.serialNumberFont(size: 12))
-                                .foregroundColor(Theme.bearRed)
+                                .foregroundStyle(Theme.bearRed)
                                 .multilineTextAlignment(.center)
                         }
                         
@@ -1071,7 +1074,7 @@ private struct AddHoldingSheet: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, Theme.Spacing.standard)
                             .background(canAdd ? Theme.securityGold : Theme.inkTertiary.opacity(0.3))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                         }
                         .disabled(!canAdd)
@@ -1091,12 +1094,12 @@ private struct AddHoldingSheet: View {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
                     .font(.subheadline.weight(.bold))
-                    .foregroundColor(Theme.securityGold)
+                    .foregroundStyle(Theme.securityGold)
                 }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                         .font(Theme.serialNumberFont(size: 13))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
         }
@@ -1137,10 +1140,10 @@ private struct EditHoldingSheet: View {
                             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                 Text(holding.stock.companyName.uppercased())
                                     .font(Theme.engravedSerif(size: 15, weight: .bold))
-                                    .foregroundColor(Theme.inkPrimary)
+                                    .foregroundStyle(Theme.inkPrimary)
                                 Text(holding.stock.ticker)
                                     .font(Theme.serialNumberFont(size: 10))
-                                    .foregroundColor(Theme.inkSecondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                             }
                             Spacer()
                         }
@@ -1151,11 +1154,11 @@ private struct EditHoldingSheet: View {
                             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                                 Text("NUMBER OF SHARES")
                                     .font(Theme.officialStampFont(size: 9))
-                                    .foregroundColor(Theme.inkSecondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                                 TextField("Shares", text: $sharesText)
                                     .keyboardType(.numberPad)
                                     .font(Theme.serialNumberFont(size: 16))
-                                    .foregroundColor(Theme.inkPrimary)
+                                    .foregroundStyle(Theme.inkPrimary)
                                     .padding(Theme.Spacing.standard)
                                     .background(Theme.inkPrimary.opacity(0.05))
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -1164,11 +1167,11 @@ private struct EditHoldingSheet: View {
                             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                                 Text("BUY PRICE (₹)")
                                     .font(Theme.officialStampFont(size: 9))
-                                    .foregroundColor(Theme.inkSecondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                                 TextField("Buy Price", text: $buyPriceText)
                                     .keyboardType(.decimalPad)
                                     .font(Theme.serialNumberFont(size: 16))
-                                    .foregroundColor(Theme.inkPrimary)
+                                    .foregroundStyle(Theme.inkPrimary)
                                     .padding(Theme.Spacing.standard)
                                     .background(Theme.inkPrimary.opacity(0.05))
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -1177,7 +1180,7 @@ private struct EditHoldingSheet: View {
                             if let err = errorText {
                                 Text(err)
                                     .font(Theme.serialNumberFont(size: 12))
-                                    .foregroundColor(Theme.bearRed)
+                                    .foregroundStyle(Theme.bearRed)
                                     .multilineTextAlignment(.center)
                             }
                             
@@ -1210,7 +1213,7 @@ private struct EditHoldingSheet: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, Theme.Spacing.standard)
                                 .background(canSave ? Theme.securityGold : Theme.inkTertiary.opacity(0.3))
-                                .foregroundColor(.white)
+                                .foregroundStyle(.white)
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
                             .disabled(!canSave)
@@ -1229,12 +1232,12 @@ private struct EditHoldingSheet: View {
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         }
                         .font(.subheadline.weight(.bold))
-                        .foregroundColor(Theme.securityGold)
+                        .foregroundStyle(Theme.securityGold)
                     }
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") { dismiss() }
                             .font(Theme.serialNumberFont(size: 13))
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                 }
             }
@@ -1256,10 +1259,10 @@ private struct NoteEditorSheet: View {
                             VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                                 Text("अपना नोट / PERSONAL NOTE")
                                     .font(Theme.officialStampFont(size: 9))
-                                    .foregroundColor(Theme.inkSecondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                                 Text(holding.stock.companyName.uppercased())
                                     .font(Theme.engravedSerif(size: 18, weight: .bold))
-                                    .foregroundColor(Theme.inkPrimary)
+                                    .foregroundStyle(Theme.inkPrimary)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 20)
@@ -1267,7 +1270,7 @@ private struct NoteEditorSheet: View {
                             // Text editor
                             TextEditor(text: $noteText)
                                 .font(Theme.engravedSerif(size: 15))
-                                .foregroundColor(Theme.inkPrimary)
+                                .foregroundStyle(Theme.inkPrimary)
                                 .frame(minHeight: 150)
                                 .padding(Theme.Spacing.card)
                                 .background(Theme.canvasDeep)
@@ -1278,7 +1281,7 @@ private struct NoteEditorSheet: View {
                             // Character count
                             Text("\(noteText.count)/280 characters")
                                 .font(Theme.serialNumberFont(size: 11))
-                                .foregroundColor(noteText.count > 280 ? Theme.bearRed : Theme.inkTertiary)
+                                .foregroundStyle(noteText.count > 280 ? Theme.bearRed : Theme.inkTertiary)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                                 .padding(.horizontal, 20)
                             
@@ -1325,10 +1328,10 @@ private struct NoteEditorSheet: View {
                         VStack(spacing: 0) {
                             HStack {
                                 Image(systemName: "magnifyingglass")
-                                    .foregroundColor(Theme.inkTertiary)
+                                    .foregroundStyle(Theme.inkTertiary)
                                 TextField("Search stocks…", text: $searchText)
                                     .font(Theme.serialNumberFont(size: 14))
-                                    .foregroundColor(Theme.inkPrimary)
+                                    .foregroundStyle(Theme.inkPrimary)
                                     .autocorrectionDisabled()
                                     .textInputAutocapitalization(.characters)
                             }
@@ -1348,21 +1351,21 @@ private struct NoteEditorSheet: View {
                                         VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                             Text(entry.companyName)
                                                 .font(Theme.engravedSerif(size: 14, weight: .bold))
-                                                .foregroundColor(Theme.inkPrimary)
+                                                .foregroundStyle(Theme.inkPrimary)
                                             HStack(spacing: Theme.Spacing.tight) {
                                                 Text(entry.ticker)
                                                     .font(Theme.serialNumberFont(size: 10))
-                                                    .foregroundColor(Theme.inkSecondary)
+                                                    .foregroundStyle(Theme.inkSecondary)
                                                 Text("·")
-                                                    .foregroundColor(Theme.inkTertiary)
+                                                    .foregroundStyle(Theme.inkTertiary)
                                                 Text(entry.sector)
                                                     .font(Theme.serialNumberFont(size: 10))
-                                                    .foregroundColor(Theme.inkTertiary)
+                                                    .foregroundStyle(Theme.inkTertiary)
                                             }
                                         }
                                         Spacer()
                                         Image(systemName: "plus.circle")
-                                            .foregroundColor(Theme.securityGold)
+                                            .foregroundStyle(Theme.securityGold)
                                     }
                                     .padding(.vertical, 6)
                                 }
@@ -1377,7 +1380,7 @@ private struct NoteEditorSheet: View {
                         ToolbarItem(placement: .cancellationAction) {
                             Button("Cancel") { dismiss() }
                                 .font(Theme.serialNumberFont(size: 13))
-                                .foregroundColor(Theme.inkSecondary)
+                                .foregroundStyle(Theme.inkSecondary)
                         }
                     }
                 }
@@ -1400,14 +1403,14 @@ private struct NoteEditorSheet: View {
                         }
                         .banknoteCard()
                         .tag(0)
-                        
+
                         ScrollView {
                             PnLWaterfallChart(holdings: holdings)
                                 .padding(Theme.Spacing.screen)
                         }
                         .banknoteCard()
                         .tag(1)
-                        
+
                         ScrollView {
                             SectorHeatmapView(sectors: sectorData)
                                 .padding(Theme.Spacing.screen)
@@ -1416,11 +1419,11 @@ private struct NoteEditorSheet: View {
                         .tag(2)
                     }
                     .tabViewStyle(.page(indexDisplayMode: .always))
-                    .frame(height: UIScreen.main.bounds.height * 0.55)
-                    
+                    .frame(height: UIScreen.main.bounds.height * 0.65)
+
                     Text("Swipe to explore →")
                         .font(Theme.serialNumberFont(size: 11))
-                        .foregroundColor(Theme.inkTertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .onAppear {
@@ -1444,31 +1447,31 @@ private struct NoteEditorSheet: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("पोर्टफोलियो चार्ट")
                             .font(.caption)
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                         Text("PORTFOLIO CHARTS")
                             .font(.caption.weight(.semibold).monospaced())
                             .tracking(2.0)
-                            .foregroundColor(Theme.inkPrimary.opacity(0.7))
+                            .foregroundStyle(Theme.inkPrimary.opacity(0.7))
                     }
 
                     if isLoading {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: Theme.Spacing.standard) {
-                                ForEach(0..<3, id: \.self) { idx in
+                        ScrollView(.horizontal) {
+                            HStack(alignment: .top, spacing: Theme.Spacing.card) {
+                                ForEach(0..<3, id: \.self) { _ in
                                     VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                                         RoundedRectangle(cornerRadius: Theme.CornerRadius.tight)
                                             .fill(Theme.inkTertiary.opacity(0.08))
-                                            .frame(width: UIScreen.main.bounds.width * 0.50, height: UIScreen.main.bounds.height * 0.15)
+                                            .frame(width: UIScreen.main.bounds.width * 0.85, height: UIScreen.main.bounds.height * 0.22)
                                             .overlay(
                                                 ProgressView()
                                                     .tint(Theme.securityGold)
                                             )
                                         RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                                             .fill(Theme.inkTertiary.opacity(0.12))
-                                            .frame(width: UIScreen.main.bounds.width * 0.35, height: 10)
+                                            .frame(width: UIScreen.main.bounds.width * 0.55, height: 10)
                                         RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                                             .fill(Theme.inkTertiary.opacity(0.08))
-                                            .frame(width: UIScreen.main.bounds.width * 0.25, height: 8)
+                                            .frame(width: UIScreen.main.bounds.width * 0.40, height: 8)
                                     }
                                     .padding(Theme.Spacing.medium)
                                     .background(Theme.canvasDeep)
@@ -1481,21 +1484,21 @@ private struct NoteEditorSheet: View {
                             }
                             .padding(.horizontal, Theme.screenPadding)
                         }
-                        .shimmerPlaceholder(isLoading: true)
+                        .scrollIndicators(.hidden)
                     } else if let err = errorMsg {
                         // Error state with detailed debug info
                         VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                             HStack(spacing: Theme.Spacing.medium) {
                                 Image(systemName: "chart.bar.xaxis")
                                     .font(.subheadline)
-                                    .foregroundColor(Theme.bearRed.opacity(0.6))
+                                    .foregroundStyle(Theme.bearRed.opacity(0.6))
                                 Text("Charts unavailable")
                                     .font(.caption.weight(.semibold))
-                                    .foregroundColor(Theme.inkPrimary)
+                                    .foregroundStyle(Theme.inkPrimary)
                             }
                             Text("Error: \(err)")
                                 .font(.caption2.monospaced())
-                                .foregroundColor(Theme.bearRed.opacity(0.7))
+                                .foregroundStyle(Theme.bearRed.opacity(0.7))
                                 .lineLimit(3)
                                 .fixedSize(horizontal: false, vertical: true)
                             Button(action: { fetchCharts() }) {
@@ -1505,7 +1508,7 @@ private struct NoteEditorSheet: View {
                                     Text("RETRY")
                                         .font(.caption2.weight(.bold))
                                 }
-                                .foregroundColor(Theme.securityGold)
+                                .foregroundStyle(Theme.securityGold)
                                 .padding(.horizontal, Theme.Spacing.standard)
                                 .padding(.vertical, Theme.Spacing.tight)
                                 .background(Theme.securityGold.opacity(0.08))
@@ -1515,24 +1518,24 @@ private struct NoteEditorSheet: View {
                         }
                         .padding(.vertical, Theme.Spacing.standard)
                     } else if !charts.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: Theme.Spacing.standard) {
+                        ScrollView(.horizontal) {
+                            HStack(alignment: .top, spacing: Theme.Spacing.card) {
                                 ForEach(charts) { chart in
                                     chartCard(chart)
                                 }
                             }
                             .padding(.horizontal, Theme.screenPadding)
                         }
-                        .frame(height: UIScreen.main.bounds.height * 0.28)
+                        .scrollIndicators(.hidden)
                     } else {
                         // Empty state — charts will populate after backend generates them
                         HStack(spacing: Theme.Spacing.medium) {
                             Image(systemName: "chart.bar")
                                 .font(.subheadline)
-                                .foregroundColor(Theme.inkTertiary.opacity(0.6))
+                                .foregroundStyle(Theme.inkTertiary.opacity(0.6))
                             Text("Charts will appear here after portfolio snapshot is generated")
                                 .font(.caption)
-                                .foregroundColor(Theme.inkTertiary)
+                                .foregroundStyle(Theme.inkTertiary)
                         }
                         .padding(.vertical, Theme.Spacing.standard)
                     }
@@ -1544,35 +1547,37 @@ private struct NoteEditorSheet: View {
             }
 
             private func chartCard(_ chart: ChartItem) -> some View {
-                Button(action: {
+                let cardWidth = UIScreen.main.bounds.width * 0.85
+                let imageHeight = UIScreen.main.bounds.height * 0.22
+                return Button(action: {
                     HapticManager.impact(.light)
                     expandedChart = chart
                 }) {
                     VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                         // Chart image
-                        AsyncImage(url: URL(string: chart.url)) { phase in
+                        AsyncImage(url: URL(string: "\(NetworkManager.shared.baseURL)\(chart.url)")) { phase in
                             switch phase {
                             case .success(let image):
                                 image
                                     .resizable()
                                     .aspectRatio(contentMode: .fill)
-                                    .frame(width: UIScreen.main.bounds.width * 0.50, height: UIScreen.main.bounds.height * 0.15)
+                                    .frame(width: cardWidth, height: imageHeight)
                                     .clipped()
                                     .cornerRadius(Theme.CornerRadius.tight)
                             case .failure(_):
                                 Rectangle()
                                     .fill(Theme.inkTertiary.opacity(0.08))
-                                    .frame(width: UIScreen.main.bounds.width * 0.50, height: UIScreen.main.bounds.height * 0.15)
+                                    .frame(width: cardWidth, height: imageHeight)
                                     .cornerRadius(Theme.CornerRadius.tight)
                                     .overlay(
                                         Image(systemName: "chart.bar.xaxis")
                                             .font(.title2)
-                                            .foregroundColor(Theme.inkTertiary.opacity(0.4))
+                                            .foregroundStyle(Theme.inkTertiary.opacity(0.4))
                                     )
                             case .empty:
                                 Rectangle()
                                     .fill(Theme.inkTertiary.opacity(0.06))
-                                    .frame(width: UIScreen.main.bounds.width * 0.50, height: UIScreen.main.bounds.height * 0.15)
+                                    .frame(width: cardWidth, height: imageHeight)
                                     .cornerRadius(Theme.CornerRadius.tight)
                                     .overlay(ProgressView().tint(Theme.securityGold))
                             @unknown default:
@@ -1584,23 +1589,23 @@ private struct NoteEditorSheet: View {
                         VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                             Text(chart.title)
                                 .font(.caption.weight(.semibold))
-                                .foregroundColor(Theme.inkPrimary)
+                                .foregroundStyle(Theme.inkPrimary)
                                 .lineLimit(1)
 
                             Text(chart.description)
                                 .font(.caption2)
-                                .foregroundColor(Theme.inkTertiary)
+                                .foregroundStyle(Theme.inkTertiary)
                                 .lineLimit(2)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         .padding(.horizontal, Theme.Spacing.small)
                     }
-                    .frame(width: UIScreen.main.bounds.width * 0.50)
+                    .frame(width: cardWidth)
                     .padding(Theme.Spacing.medium)
                     .background(Theme.canvasDeep)
                     .cornerRadius(Theme.CornerRadius.large)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 10)
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
                             .stroke(Theme.borderSage, lineWidth: 0.5)
                     )
                 }
@@ -1618,15 +1623,15 @@ private struct NoteEditorSheet: View {
                                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                     Text(chart.title)
                                         .font(.subheadline.weight(.bold))
-                                        .foregroundColor(Theme.inkPrimary)
+                                        .foregroundStyle(Theme.inkPrimary)
                                     Text(chart.description)
                                         .font(.caption)
-                                        .foregroundColor(Theme.inkSecondary)
+                                        .foregroundStyle(Theme.inkSecondary)
                                 }
                                 Spacer()
                                 Button("Done") { expandedChart = nil }
                                     .font(.footnote.weight(.medium))
-                                    .foregroundColor(Theme.securityGold)
+                                    .foregroundStyle(Theme.securityGold)
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, Theme.Spacing.standard)
@@ -1634,7 +1639,7 @@ private struct NoteEditorSheet: View {
 
                             // Full chart image
                             ScrollView([.horizontal, .vertical]) {
-                                AsyncImage(url: URL(string: chart.url)) { phase in
+                                AsyncImage(url: URL(string: "\(NetworkManager.shared.baseURL)\(chart.url)")) { phase in
                                     switch phase {
                                     case .success(let image):
                                         image
@@ -1644,10 +1649,10 @@ private struct NoteEditorSheet: View {
                                         VStack(spacing: Theme.Spacing.standard) {
                                             Image(systemName: "exclamationmark.triangle")
                                                 .font(.largeTitle)
-                                                .foregroundColor(Theme.holdAmber)
+                                                .foregroundStyle(Theme.holdAmber)
                                             Text("Failed to load chart image")
                                                 .font(.footnote)
-                                                .foregroundColor(Theme.inkSecondary)
+                                                .foregroundStyle(Theme.inkSecondary)
                                         }
                                         .frame(maxWidth: .infinity, minHeight: 300)
                                     case .empty:

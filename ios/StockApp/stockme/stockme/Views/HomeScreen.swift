@@ -39,7 +39,7 @@ struct NiveshBulletRow: View {
 
             Text(stripEmoji(text))
                 .font(.body)
-                .foregroundColor(.primary.opacity(0.80))
+                .foregroundStyle(.primary.opacity(0.80))
                 .fixedSize(horizontal: false, vertical: true)
                 .lineSpacing(3)
         }
@@ -56,7 +56,7 @@ struct PriorityPill: View {
         Text(label)
             .font(.caption2.weight(.bold)).monospaced()
             .tracking(1.5)
-            .foregroundColor(color)
+            .foregroundStyle(color)
             .padding(.horizontal, Theme.Spacing.tight)
             .padding(.vertical, Theme.Spacing.small)
             .background(color.opacity(0.12))
@@ -85,24 +85,22 @@ struct ADBreathBar: View {
             Text("ADVANCE / DECLINE BREADTH")
                 .font(.caption2.weight(.semibold)).monospaced()
                 .tracking(1.5)
-                .foregroundColor(dimText)
+                .foregroundStyle(dimText)
 
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(bearRed.opacity(0.15))
-                        .frame(maxWidth: .infinity)
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(bearRed.opacity(0.15))
+                    .frame(maxWidth: .infinity)
 
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(
-                            LinearGradient(
-                                colors: [bullGreen.opacity(0.9), bullGreen.opacity(0.6)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(
+                        LinearGradient(
+                            colors: [bullGreen.opacity(0.9), bullGreen.opacity(0.6)],
+                            startPoint: .leading,
+                            endPoint: .trailing
                         )
-                        .frame(width: geo.size.width * advancingRatio)
-                }
+                    )
+                    .frame(width: UIScreen.main.bounds.width * advancingRatio)
             }
             .frame(height: 8)
             .cornerRadius(Theme.CornerRadius.small)
@@ -112,13 +110,13 @@ struct ADBreathBar: View {
                     Circle().fill(bullGreen).frame(width: 5, height: 5)
                     Text("\(advancing) advancing")
                         .font(.caption)
-                        .foregroundColor(bullGreen)
+                        .foregroundStyle(bullGreen)
                 }
                 Spacer()
                 HStack(spacing: Theme.Spacing.small) {
                     Text("\(declining) declining")
                         .font(.caption)
-                        .foregroundColor(bearRed)
+                        .foregroundStyle(bearRed)
                     Circle().fill(bearRed).frame(width: 5, height: 5)
                 }
             }
@@ -147,17 +145,17 @@ struct IndexRow: View {
 
             Text(name)
                 .font(.footnote.weight(.medium))
-                .foregroundColor(.primary.opacity(0.85))
+                .foregroundStyle(.primary.opacity(0.85))
 
             Spacer()
 
             Text(value)
                 .font(.footnote.weight(.semibold)).monospaced()
-                .foregroundColor(.primary.opacity(0.85))
+                .foregroundStyle(.primary.opacity(0.85))
 
             Text(changeText)
                 .font(.caption.weight(.semibold)).monospaced()
-                .foregroundColor(changeColor)
+                .foregroundStyle(changeColor)
                 .frame(minWidth: 60, alignment: .trailing)
         }
         .padding(.vertical, Theme.Spacing.small)
@@ -183,13 +181,13 @@ struct MomentumSectionView: View {
                 Text(stance)
                     .font(.caption2.weight(.bold)).monospaced()
                     .tracking(2.0)
-                    .foregroundColor(stanceColor)
+                    .foregroundStyle(stanceColor)
 
                 Spacer()
 
                 Text("\(stocks.count) stocks")
                     .font(.caption2)
-                    .foregroundColor(subtleText)
+                    .foregroundStyle(subtleText)
             }
             .padding(.horizontal, Theme.Spacing.standard)
             .padding(.vertical, Theme.Spacing.medium)
@@ -225,7 +223,7 @@ struct SignalBadge: View {
         Text(label)
             .font(.caption2.weight(isDeathCross ? .bold : .medium)).monospaced()
             .tracking(0.5)
-            .foregroundColor(isDeathCross ? bearRed : Color.primary.opacity(0.55))
+            .foregroundStyle(isDeathCross ? bearRed : Color.primary.opacity(0.55))
             .padding(.horizontal, Theme.Spacing.tight)
             .padding(.vertical, Theme.Spacing.small)
             .background(
@@ -263,12 +261,12 @@ struct MomentumStockRow: View {
         HStack(spacing: 10) {
             Text(stock.ticker)
                 .font(.footnote.weight(.semibold)).monospaced()
-                .foregroundColor(.primary.opacity(0.90))
+                .foregroundStyle(.primary.opacity(0.90))
                 .frame(minWidth: 80, alignment: .leading)
 
             Text("₹\(IndianFormatter.price(stock.lastPrice))")
                 .font(.footnote).monospaced()
-                .foregroundColor(.primary.opacity(0.70))
+                .foregroundStyle(.primary.opacity(0.70))
 
             Spacer()
 
@@ -290,7 +288,7 @@ struct MacroGroupView: View {
             Text(groupTitle)
                 .font(.caption2.weight(.semibold)).monospaced()
                 .tracking(1.8)
-                .foregroundColor(dimText)
+                .foregroundStyle(dimText)
                 .padding(.bottom, Theme.Spacing.medium)
 
             VStack(spacing: 0) {
@@ -317,19 +315,19 @@ struct MacroRowView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(row.name)
                     .font(.footnote.weight(.medium))
-                    .foregroundColor(.primary.opacity(0.85))
+                    .foregroundStyle(.primary.opacity(0.85))
             }
 
             Spacer()
 
             Text(String(format: "%.2f", row.price))
                 .font(.footnote.weight(.semibold)).monospaced()
-                .foregroundColor(.primary.opacity(0.85))
+                .foregroundStyle(.primary.opacity(0.85))
                 .frame(minWidth: 70, alignment: .trailing)
 
             Text("\(row.changePct >= 0 ? "+" : "")\(String(format: "%.2f", row.changePct))%")
                 .font(.caption.weight(.semibold)).monospaced()
-                .foregroundColor(changeColor)
+                .foregroundStyle(changeColor)
                 .padding(.horizontal, Theme.Spacing.tight)
                 .padding(.vertical, Theme.Spacing.xSmall)
                 .background(changeColor.opacity(0.08))
@@ -362,31 +360,29 @@ struct FundReturnRow: View {
         HStack(spacing: 10) {
             Text("\(rank)")
                 .font(.caption.weight(.medium)).monospaced()
-                .foregroundColor(subtleText)
+                .foregroundStyle(subtleText)
                 .frame(width: 14)
 
             Text(fundName)
                 .font(.footnote.weight(.medium))
-                .foregroundColor(.primary.opacity(0.85))
+                .foregroundStyle(.primary.opacity(0.85))
                 .lineLimit(1)
 
             Spacer()
 
             HStack(spacing: Theme.Spacing.tight) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Color.primary.opacity(0.06))
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(returnColor.opacity(0.7))
-                            .frame(width: geo.size.width * barWidth)
-                    }
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.primary.opacity(0.06))
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(returnColor.opacity(0.7))
+                        .frame(width: UIScreen.main.bounds.width * 0.13 * barWidth)
                 }
                 .frame(width: UIScreen.main.bounds.width * 0.13, height: 4)
 
                 Text(formattedReturn)
                     .font(.caption.weight(.semibold)).monospaced()
-                    .foregroundColor(returnColor)
+                    .foregroundStyle(returnColor)
                     .frame(minWidth: 40, alignment: .trailing)
             }
         }
@@ -416,11 +412,11 @@ struct AdvisoryConsensusEmptyCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("दलाल स्ट्रीट सलाह")
                             .font(.caption2)
-                            .foregroundColor(dimText)
+                            .foregroundStyle(dimText)
                         Text("DALAL STREET ADVISORY")
                             .font(.caption.weight(.semibold)).monospaced()
                             .tracking(2.0)
-                            .foregroundColor(.primary.opacity(0.7))
+                            .foregroundStyle(.primary.opacity(0.7))
                     }
                     .padding(.bottom, Theme.Spacing.standard)
 
@@ -430,17 +426,17 @@ struct AdvisoryConsensusEmptyCard: View {
                     HStack(alignment: .top, spacing: Theme.Spacing.standard) {
                         Image(systemName: "clock.badge")
                             .font(.title2.weight(.light))
-                            .foregroundColor(goldAccent.opacity(0.7))
+                            .foregroundStyle(goldAccent.opacity(0.7))
                             .frame(width: 28)
 
                         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                             Text("Next harvest at 1:30 AM")
                                 .font(.footnote.weight(.semibold))
-                                .foregroundColor(.primary.opacity(0.80))
+                                .foregroundStyle(.primary.opacity(0.80))
 
                             Text("Advisor stances from SOIC, Basant Maheshwari, and others will appear here after the nightly run.")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .lineSpacing(2)
                         }
@@ -579,10 +575,10 @@ struct HomeScreen: View {
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text("भारतीय वित्तीय विश्लेषण")
                                                 .font(Theme.hindiFont(size: 11))
-                                                .foregroundColor(Theme.inkSecondary)
+                                                .foregroundStyle(Theme.inkSecondary)
                                             Text("RESERVE BANK OF INTELLIGENCE")
                                                 .font(Theme.officialStampFont(size: 9))
-                                                .foregroundColor(Theme.inkPrimary)
+                                                .foregroundStyle(Theme.inkPrimary)
                                         }
                                         Spacer()
                                         NavigationLink(destination: SettingsScreen()) {
@@ -592,7 +588,7 @@ struct HomeScreen: View {
                                                     .frame(width: 40, height: 40)
                                                 Text(String(user.displayName.prefix(1)).uppercased())
                                                     .font(.headline.weight(.bold))
-                                                    .foregroundColor(Theme.securityGold)
+                                                    .foregroundStyle(Theme.securityGold)
                                             }
                                             .overlay(Circle().stroke(Theme.securityGold.opacity(0.4), lineWidth: 1))
                                         }
@@ -602,7 +598,7 @@ struct HomeScreen: View {
                                 }
                                 
                                 // NEW: Horizontal Quick Nav Bar
-                                ScrollView(.horizontal, showsIndicators: false) {
+                                ScrollView(.horizontal) {
                                     HStack(spacing: Theme.Spacing.medium) {
                                         ForEach(HomeSectionID.allCases) { section in
                                             if section != .top {
@@ -616,7 +612,7 @@ struct HomeScreen: View {
                                                         Text(section.title.uppercased())
                                                             .font(Theme.officialStampFont(size: 9))
                                                     }
-                                                    .foregroundColor(Theme.inkPrimary)
+                                                    .foregroundStyle(Theme.inkPrimary)
                                                     .padding(.horizontal, Theme.Spacing.standard)
                                                     .padding(.vertical, Theme.Spacing.medium)
                                                     .background(Theme.securityGold.opacity(0.12))
@@ -630,6 +626,7 @@ struct HomeScreen: View {
                                     .padding(.horizontal, Theme.screenPadding)
                                     .padding(.bottom, Theme.Spacing.small)
                                 }
+                                .scrollIndicators(.hidden)
 
                                 if let action = dailyAction {
                                     DailyActionCard(response: action)
@@ -657,13 +654,13 @@ struct HomeScreen: View {
                                     if viewModel.indicesFetchFailed {
                                         Text("DELAYED")
                                             .font(Theme.officialStampFont(size: 8))
-                                            .foregroundColor(Theme.bearRed)
+                                            .foregroundStyle(Theme.bearRed)
                                             .padding(.horizontal, Theme.Spacing.tight)
                                             .padding(.vertical, Theme.Spacing.xSmall)
                                             .overlay(RoundedRectangle(cornerRadius: 3).stroke(Theme.bearRed, lineWidth: 0.5))
                                     }
                                 }
-                                ScrollView(.horizontal, showsIndicators: false) {
+                                ScrollView(.horizontal) {
                                     HStack(spacing: Theme.Spacing.standard) {
                                         ForEach(viewModel.indices) { index in
                                             let valueStr: String = {
@@ -691,6 +688,7 @@ struct HomeScreen: View {
                                     }
                                     .padding(.horizontal, Theme.screenPadding)
                                 }
+                                .scrollIndicators(.hidden)
                             }
                             .id(HomeSectionID.indices.rawValue)
 
@@ -700,7 +698,7 @@ struct HomeScreen: View {
                                 if viewModel.watchlist.isEmpty && !viewModel.isLoading {
                                     Text("Add stocks to your watchlist to see them here")
                                         .font(Theme.serialNumberFont(size: 13))
-                                        .foregroundColor(Theme.inkTertiary)
+                                        .foregroundStyle(Theme.inkTertiary)
                                         .multilineTextAlignment(.center)
                                         .padding(.horizontal, Theme.screenPadding)
                                         .padding(.vertical, Theme.Spacing.screen)
@@ -753,11 +751,11 @@ struct HomeScreen: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("ताज़ा समाचार")
                                         .font(.caption2)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                     Text("MARKET NEWS")
                                         .font(.caption.weight(.semibold)).monospaced()
                                         .tracking(2.0)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
                                 .padding(.bottom, Theme.Spacing.standard)
                                 .padding(.horizontal, Theme.screenPadding)
@@ -768,7 +766,7 @@ struct HomeScreen: View {
 
                                 if let feed = feedVM.feed {
                                     // Horizontal scrolling news strip — all news in one scroll
-                                    ScrollView(.horizontal, showsIndicators: false) {
+                                    ScrollView(.horizontal) {
                                         HStack(spacing: Theme.Spacing.standard) {
                                             ForEach(feed.news.prefix(10)) { article in
                                                 CompactNewsCell(article: article) { ticker in
@@ -782,12 +780,13 @@ struct HomeScreen: View {
                                         }
                                         .padding(.horizontal, Theme.screenPadding)
                                     }
+                                    .scrollIndicators(.hidden)
                                 } else if feedVM.isLoading {
                                     // Skeleton shimmer while loading
                                     ForEach(0..<3, id: \.self) { _ in
                                         RoundedRectangle(cornerRadius: 14)
                                             .fill(Color.primary.opacity(0.05))
-                                            .frame(height: UIScreen.main.bounds.height * 0.11)
+                                            .frame(height: UIScreen.main.bounds.width * 0.24)
                                             .padding(.horizontal, Theme.screenPadding)
                                     }
                                 }
@@ -801,6 +800,7 @@ struct HomeScreen: View {
                                 navigationPath.append(ticker)
                             }
                             .padding(.horizontal, Theme.screenPadding)
+                            .padding(.top, Theme.sectionSpacing)
 
                             // ── Section 6c: YOUTUBE FEED ─────────────────────────
                             if let feed = feedVM.feed, !feed.youtubeVideos.isEmpty {
@@ -810,11 +810,11 @@ struct HomeScreen: View {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("विशेषज्ञ विश्लेषण")
                                             .font(.caption2)
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(.secondary)
                                         Text("EXPERT VIDEOS")
                                             .font(.caption.weight(.semibold)).monospaced()
                                             .tracking(2.0)
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(.secondary)
                                     }
                                     .padding(.bottom, Theme.Spacing.standard)
                                     .padding(.horizontal, Theme.screenPadding)
@@ -823,24 +823,18 @@ struct HomeScreen: View {
                                         .padding(.horizontal, Theme.screenPadding)
                                         .padding(.bottom, Theme.Spacing.standard)
 
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        LazyHGrid(
-                                            rows: [
-                                                GridItem(.fixed(260)),
-                                                GridItem(.fixed(260)),
-                                                GridItem(.fixed(260))
-                                            ],
-                                            spacing: Theme.Spacing.standard
-                                        ) {
+                                    ScrollView(.horizontal) {
+                                        HStack(alignment: .top, spacing: Theme.Spacing.card) {
                                             ForEach(videos) { video in
                                                 YouTubeCompactCard(video: video) { ticker in
                                                     navigationPath.append(ticker)
                                                 }
-                                                .frame(width: 240)
+                                                .frame(width: UIScreen.main.bounds.width * 0.62)
                                             }
                                         }
                                         .padding(.horizontal, Theme.screenPadding)
                                     }
+                                    .scrollIndicators(.hidden)
                                 }
                                 .id(HomeSectionID.youtube.rawValue)
                             }
@@ -856,17 +850,17 @@ struct HomeScreen: View {
                                                 HStack {
                                                     Text(event.ticker)
                                                         .font(Theme.serialNumberFont(size: 13))
-                                                        .foregroundColor(Theme.inkPrimary)
+                                                        .foregroundStyle(Theme.inkPrimary)
                                                     Spacer()
                                                     Text(event.daysAway == 0 ? "Today" : "In \(event.daysAway) days")
                                                         .font(Theme.officialStampFont(size: 9))
-                                                        .foregroundColor(event.daysAway <= 3 ? Theme.holdAmber : Theme.inkSecondary)
+                                                        .foregroundStyle(event.daysAway <= 3 ? Theme.holdAmber : Theme.inkSecondary)
                                                     Text("· \(event.earningsDate)")
                                                         .font(Theme.serialNumberFont(size: 10))
-                                                        .foregroundColor(Theme.inkTertiary)
+                                                        .foregroundStyle(Theme.inkTertiary)
                                                     Image(systemName: "chevron.right")
                                                         .font(.caption2)
-                                                        .foregroundColor(Theme.inkTertiary)
+                                                        .foregroundStyle(Theme.inkTertiary)
                                                 }
                                                 .padding(.horizontal, Theme.screenPadding)
                                             }
@@ -1004,11 +998,11 @@ private struct DailyActionCard: View {
                 HStack {
                     Text("TODAY'S ACTION")
                         .font(Theme.officialStampFont(size: 8))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Spacer()
                     Text(urgencyLabel)
                         .font(Theme.officialStampFont(size: 8))
-                        .foregroundColor(borderColor)
+                        .foregroundStyle(borderColor)
                         .padding(.horizontal, Theme.Spacing.tight)
                         .padding(.vertical, Theme.Spacing.xSmall)
                         .overlay(RoundedRectangle(cornerRadius: 3).stroke(borderColor, lineWidth: 0.5))
@@ -1016,7 +1010,7 @@ private struct DailyActionCard: View {
 
                 Text(stripEmoji(response.action))
                     .font(.body).fontDesign(.serif).italic()
-                    .foregroundColor(Theme.inkPrimary)
+                    .foregroundStyle(Theme.inkPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                     .lineSpacing(3)
             }
@@ -1064,15 +1058,15 @@ private struct PortfolioNoteCard: View {
                     VStack(alignment: .leading, spacing: 1) {
                         Text("NIVESH")
                             .font(Theme.engravedSerif(size: 14, weight: .bold))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                         Text("Reserve Bank of Intelligence")
                             .font(Theme.serialNumberFont(size: 8))
-                            .foregroundColor(Theme.inkTertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                     Spacer()
                     Text("भारतीय निवेश")
                         .font(Theme.hindiFont(size: 11))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 .padding(.bottom, Theme.Spacing.medium)
 
@@ -1081,16 +1075,16 @@ private struct PortfolioNoteCard: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text("निवेश पोर्टफोलियो")
                         .font(Theme.hindiFont(size: 11))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
 
                     Text("PORTFOLIO VALUE")
                         .font(Theme.officialStampFont(size: 9))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
 
                     Text("I PROMISE TO PAY THE BEARER")
                         .font(.caption2.weight(.medium))
                         .tracking(2)
-                        .foregroundColor(Theme.inkTertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                         .padding(.bottom, Theme.Spacing.xSmall)
 
                     PortfolioValueDisplay(target: value, fontSize: 30)
@@ -1101,7 +1095,7 @@ private struct PortfolioNoteCard: View {
                         Text("(\((invested > 0 ? totalPnL/invested*100 : 0).percentFormatted))")
                     }
                     .font(Theme.serialNumberFont(size: 13))
-                    .foregroundColor(totalPnL >= 0 ? Theme.bullGreen : Theme.bearRed)
+                    .foregroundStyle(totalPnL >= 0 ? Theme.bullGreen : Theme.bearRed)
                 }
                 .padding(.top, Theme.Spacing.small)
 
@@ -1109,10 +1103,10 @@ private struct PortfolioNoteCard: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text("Platform Governor")
                         .font(.caption2.weight(.bold))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Text("Nirav Patel")
                         .font(Font.custom("SnellRoundhand", size: 18, relativeTo: .title2))
-                        .foregroundColor(Theme.inkPrimary.opacity(0.7))
+                        .foregroundStyle(Theme.inkPrimary.opacity(0.7))
                         .padding(.top, -2)
                 }
                 .padding(.top, Theme.Spacing.standard)
@@ -1146,10 +1140,10 @@ private struct StatNoteBlock: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             Text(label)
                 .font(Theme.officialStampFont(size: 8))
-                .foregroundColor(Theme.inkSecondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text(value)
                 .font(Theme.serialNumberFont(size: 14))
-                .foregroundColor(color)
+                .foregroundStyle(color)
         }
     }
 }
@@ -1198,12 +1192,12 @@ private struct MorningDecreeCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("प्रातःकालीन सारांश")
                             .font(.caption2)
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                         HStack {
                             Text("MORNING BRIEF")
                                 .font(.caption.weight(.semibold)).monospaced()
                                 .tracking(2.0)
-                                .foregroundColor(Theme.inkPrimary)
+                                .foregroundStyle(Theme.inkPrimary)
                             Spacer()
                             BanknoteSignalBadge(text: "VERIFIED", color: Theme.securityGold, rotation: -8)
                         }
@@ -1229,7 +1223,7 @@ private struct MorningDecreeCard: View {
 
                         Text(leadSentence)
                             .font(.subheadline.weight(.medium))
-                            .foregroundColor(.primary.opacity(0.85))
+                            .foregroundStyle(.primary.opacity(0.85))
                             .fixedSize(horizontal: false, vertical: true)
                             .lineSpacing(3)
                     }
@@ -1265,7 +1259,7 @@ private struct MorningDecreeCard: View {
                             Text("TODAY'S PRIORITIES")
                                 .font(.caption2.weight(.semibold)).monospaced()
                                 .tracking(1.5)
-                                .foregroundColor(dimText)
+                                .foregroundStyle(dimText)
 
                             ForEach(items.prefix(5)) { item in
                                 HStack(spacing: Theme.Spacing.medium) {
@@ -1275,7 +1269,7 @@ private struct MorningDecreeCard: View {
                                     )
                                     Text(stripEmoji(item.message))
                                         .font(.caption)
-                                        .foregroundColor(.primary.opacity(0.70))
+                                        .foregroundStyle(.primary.opacity(0.70))
                                         .lineLimit(2)
                                 }
                             }
@@ -1291,11 +1285,11 @@ private struct MorningDecreeCard: View {
                     HStack {
                         Text("Updated \(briefData.generatedAt)")
                             .font(.caption2)
-                            .foregroundColor(subtleText)
+                            .foregroundStyle(subtleText)
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.caption2.weight(.semibold))
-                            .foregroundColor(subtleText)
+                            .foregroundStyle(subtleText)
                     }
                     .padding(.horizontal, cardHPad)
                     .padding(.bottom, cardVPad)
@@ -1318,21 +1312,19 @@ private struct SectorPulseCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
             Text(sector.name.uppercased())
                 .font(Theme.officialStampFont(size: 8))
-                .foregroundColor(Theme.inkSecondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .lineLimit(1)
 
             Text((sector.changePct >= 0 ? "+" : "") + String(format: "%.2f%%", sector.changePct))
                 .font(Theme.serialNumberFont(size: 18))
-                .foregroundColor(sector.changePct >= 0 ? Theme.bullGreen : Theme.bearRed)
+                .foregroundStyle(sector.changePct >= 0 ? Theme.bullGreen : Theme.bearRed)
 
             // Mini bar
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Rectangle().fill(Theme.inkSecondary.opacity(0.08)).frame(height: 3)
-                    Rectangle()
-                        .fill(sector.changePct >= 0 ? Theme.bullGreen : Theme.bearRed)
-                        .frame(width: min(geo.size.width, geo.size.width * abs(sector.changePct) / 5.0), height: 3)
-                }
+            ZStack(alignment: .leading) {
+                Rectangle().fill(Theme.inkSecondary.opacity(0.08)).frame(height: 3)
+                Rectangle()
+                    .fill(sector.changePct >= 0 ? Theme.bullGreen : Theme.bearRed)
+                    .frame(width: min(UIScreen.main.bounds.height * 0.10, UIScreen.main.bounds.height * 0.10 * abs(sector.changePct) / 5.0), height: 3)
             }
             .frame(height: 3)
         }
@@ -1351,10 +1343,10 @@ private struct TimeframeConflictsBanner: View {
             Text("TIMING INSIGHTS")
                 .font(.system(.caption, design: .default).weight(.medium))
                 .tracking(1.5)
-                .foregroundColor(Theme.securityGold)
+                .foregroundStyle(Theme.securityGold)
                 .padding(.horizontal, Theme.screenPadding)
 
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack(spacing: 10) {
                     ForEach(conflicts) { conflict in
                         NavigationLink(value: conflict.ticker) {
@@ -1366,6 +1358,7 @@ private struct TimeframeConflictsBanner: View {
                 }
                 .padding(.horizontal, Theme.screenPadding)
             }
+            .scrollIndicators(.hidden)
         }
     }
 }
@@ -1380,11 +1373,11 @@ private struct TimeframeConflictCard: View {
             HStack {
                 Text(conflict.ticker)
                     .font(.system(.subheadline, design: .monospaced).weight(.bold))
-                    .foregroundColor(Theme.inkPrimary)
+                    .foregroundStyle(Theme.inkPrimary)
                 Spacer()
                 Text(isBottomFishing ? "BUY THE DIP" : "TAKE PROFITS")
                     .font(.system(.caption2, design: .default).weight(.bold))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                     .background(isBottomFishing ? Theme.signalEmerald : Theme.signalRuby)
                     .cornerRadius(3)
@@ -1393,7 +1386,7 @@ private struct TimeframeConflictCard: View {
             if let hint = conflict.actionHint {
                 Text(stripEmoji(hint))
                     .font(.caption).fontDesign(.serif).italic()
-                    .foregroundColor(Theme.inkSecondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -1420,7 +1413,7 @@ private struct DashboardSection<Content: View>: View {
             HStack(spacing: Theme.Spacing.tight) {
                 Image(systemName: icon)
                     .font(.caption)
-                    .foregroundColor(Theme.securityGold)
+                    .foregroundStyle(Theme.securityGold)
                 SectionHeader(title: title, hindiTitle: hindi)
             }
             content()
@@ -1439,11 +1432,11 @@ private struct DashboardLoadingCard: View {
                 ProgressView().tint(Theme.securityGold)
                 Text("Loading \(label)…")
                     .font(Theme.serialNumberFont(size: 12))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             } else {
                 Text("\(label) unavailable")
                     .font(Theme.serialNumberFont(size: 12))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
         }
         .padding(Theme.Spacing.card)
@@ -1470,11 +1463,11 @@ private struct MarketPulseDashCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("बाजार की नब्ज")
                             .font(.caption2)
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                         Text("MARKET PULSE")
                             .font(.caption.weight(.semibold)).monospaced()
                             .tracking(2.0)
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                     }
                     .padding(.top, cardVPad)
                     .padding(.leading, 10)
@@ -1554,11 +1547,11 @@ private struct MomentumDashCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("गति विश्लेषण")
                             .font(.caption2)
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                         Text("MOMENTUM SCAN")
                             .font(.caption.weight(.semibold)).monospaced()
                             .tracking(2.0)
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                     }
                     .padding(.top, cardVPad)
                     .padding(.leading, 10)
@@ -1640,11 +1633,11 @@ private struct MacroDashCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("वृहद अर्थव्यवस्था")
                             .font(.caption2)
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                         Text("MACRO & ALTERNATIVES")
                             .font(.caption.weight(.semibold)).monospaced()
                             .tracking(2.0)
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                     }
                     .padding(.top, cardVPad)
                     .padding(.leading, 10)
@@ -1720,7 +1713,7 @@ struct MarketMoodGauge: View {
             Text("MARKET MOOD GAUGE")
                 .font(.caption2.weight(.bold)).monospaced()
                 .tracking(2)
-                .foregroundColor(Theme.inkSecondary)
+                .foregroundStyle(Theme.inkSecondary)
 
             ZStack {
                 // Background arc (full 180°)
@@ -1755,16 +1748,16 @@ struct MarketMoodGauge: View {
                         .position(x: cx, y: cy)
                 }
             }
-            .frame(height: UIScreen.main.bounds.height * 0.10)
+            .aspectRatio(0.22, contentMode: .fit)
             .clipped()
 
             VStack(spacing: Theme.Spacing.small) {
                 Text(moodLabel)
                     .font(.footnote.weight(.bold))
-                    .foregroundColor(needleColor)
+                    .foregroundStyle(needleColor)
                 Text(String(format: "A/D Ratio: %.2f", ratio))
                     .font(.caption2).monospaced()
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
         }
         .padding(Theme.Spacing.standard)
@@ -1807,29 +1800,31 @@ struct IndexCardView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-            Text(index.name)
-                .font(.caption2.weight(.semibold))
-                .foregroundColor(Theme.inkSecondary)
-                .lineLimit(1)
+        GeometryReader { idxGeo in
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                Text(index.name)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .lineLimit(1)
 
-            Text(valueStr)
-                .font(.headline.weight(.bold)).monospaced()
-                .foregroundColor(Theme.inkPrimary)
-                .monospacedDigit()
+                Text(valueStr)
+                    .font(.headline.weight(.bold)).monospaced()
+                    .foregroundStyle(Theme.inkPrimary)
+                    .monospacedDigit()
 
-            HStack(spacing: Theme.Spacing.small) {
-                Image(systemName: isPositive ? "arrow.up.right" : "arrow.down.right")
-                    .font(.caption2.weight(.bold))
-                    .foregroundColor(isPositive ? Theme.bullGreen : Theme.bearRed)
-                Text(changeStr)
-                    .font(.caption.weight(.bold)).monospaced()
-                    .foregroundColor(isPositive ? Theme.bullGreen : Theme.bearRed)
+                HStack(spacing: Theme.Spacing.small) {
+                    Image(systemName: isPositive ? "arrow.up.right" : "arrow.down.right")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
+                    Text(changeStr)
+                        .font(.caption.weight(.bold)).monospaced()
+                        .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
+                }
             }
+            .padding(Theme.Spacing.standard)
+            .frame(width: idxGeo.size.width * 0.35)
+            .banknoteCard()
         }
-        .padding(Theme.Spacing.standard)
-        .frame(width: UIScreen.main.bounds.width * 0.35)
-        .banknoteCard()
     }
 }
 
@@ -1849,45 +1844,47 @@ struct MomentumRowView: View {
     }
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.standard) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                HStack(spacing: Theme.Spacing.tight) {
-                    Text(ticker.ticker)
-                        .font(.footnote.weight(.bold)).monospaced()
-                        .foregroundColor(Theme.inkPrimary)
-                    Text(crossoverLabel.uppercased())
-                        .font(.caption2.weight(.bold)).monospaced()
-                        .tracking(0.8)
-                        .foregroundColor(signalColor)
-                        .padding(.horizontal, Theme.Spacing.tight)
-                        .padding(.vertical, Theme.Spacing.xSmall)
-                        .background(signalColor.opacity(0.10))
-                        .cornerRadius(3)
+        GeometryReader { momGeo in
+            HStack(spacing: Theme.Spacing.standard) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                    HStack(spacing: Theme.Spacing.tight) {
+                        Text(ticker.ticker)
+                            .font(.footnote.weight(.bold)).monospaced()
+                            .foregroundStyle(Theme.inkPrimary)
+                        Text(crossoverLabel.uppercased())
+                            .font(.caption2.weight(.bold)).monospaced()
+                            .tracking(0.8)
+                            .foregroundStyle(signalColor)
+                            .padding(.horizontal, Theme.Spacing.tight)
+                            .padding(.vertical, Theme.Spacing.xSmall)
+                            .background(signalColor.opacity(0.10))
+                            .cornerRadius(3)
+                    }
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("LTP").font(.caption2).foregroundStyle(Theme.inkTertiary)
+                            Text(IndianFormatter.price(ticker.lastPrice))
+                                .font(.caption.weight(.semibold)).monospaced()
+                                .foregroundStyle(Theme.inkPrimary)
+                        }
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("SINCE").font(.caption2).foregroundStyle(Theme.inkTertiary)
+                            Text(ticker.trendDate)
+                                .font(.caption2).monospaced()
+                                .foregroundStyle(Theme.inkSecondary)
+                        }
+                    }
                 }
-                HStack(spacing: 10) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("LTP").font(.caption2).foregroundColor(Theme.inkTertiary)
-                        Text(IndianFormatter.price(ticker.lastPrice))
-                            .font(.caption.weight(.semibold)).monospaced()
-                            .foregroundColor(Theme.inkPrimary)
-                    }
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("SINCE").font(.caption2).foregroundColor(Theme.inkTertiary)
-                        Text(ticker.trendDate)
-                            .font(.caption2).monospaced()
-                            .foregroundColor(Theme.inkSecondary)
-                    }
+                Spacer()
+                // Native Swift Charts trend sparkline
+                if !ticker.sparkline.isEmpty {
+                    SparklineView(values: ticker.sparkline, color: signalColor)
+                        .frame(width: momGeo.size.width * 0.14, height: momGeo.size.width * 0.08)
                 }
             }
-            Spacer()
-            // Native Swift Charts trend sparkline
-            if !ticker.sparkline.isEmpty {
-                SparklineView(values: ticker.sparkline, color: signalColor)
-                    .frame(width: UIScreen.main.bounds.width * 0.14, height: UIScreen.main.bounds.width * 0.08)
-            }
+            .padding(.horizontal, Theme.Spacing.standard)
+            .padding(.vertical, Theme.Spacing.standard)
         }
-        .padding(.horizontal, Theme.Spacing.standard)
-        .padding(.vertical, Theme.Spacing.standard)
     }
 }
 
@@ -1945,7 +1942,7 @@ struct CompactNewsCell: View {
                                 .overlay(
                                     Image(systemName: "newspaper")
                                         .font(.headline)
-                                        .foregroundColor(Color.primary.opacity(0.2))
+                                        .foregroundStyle(Color.primary.opacity(0.2))
                                 )
                         @unknown default:
                             EmptyView()
@@ -1959,7 +1956,7 @@ struct CompactNewsCell: View {
                         .overlay(
                             Image(systemName: "newspaper")
                                 .font(.headline)
-                                .foregroundColor(Color.primary.opacity(0.2))
+                                .foregroundStyle(Color.primary.opacity(0.2))
                         )
                 }
 
@@ -1967,7 +1964,7 @@ struct CompactNewsCell: View {
                 Text(sourceLabel)
                     .font(.caption2.weight(.bold)).monospaced()
                     .tracking(1.0)
-                    .foregroundColor(goldAccent)
+                    .foregroundStyle(goldAccent)
                     .padding(.horizontal, Theme.Spacing.tight)
                     .padding(.vertical, Theme.Spacing.xSmall)
                     .background(goldAccent.opacity(0.12))
@@ -1976,7 +1973,7 @@ struct CompactNewsCell: View {
                 // Headline (max 2 lines)
                 Text(article.headline)
                     .font(.caption2.weight(.medium))
-                    .foregroundColor(.primary.opacity(0.85))
+                    .foregroundStyle(.primary.opacity(0.85))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                     .lineSpacing(1)
@@ -2053,11 +2050,11 @@ private struct InstitutionalDashCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("संस्थागत प्रवाह")
                             .font(.caption2)
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                         Text("INSTITUTIONAL ALLOCATION")
                             .font(.caption.weight(.semibold)).monospaced()
                             .tracking(2.0)
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                     }
                     .padding(.top, cardVPad)
                     .padding(.leading, 10)
@@ -2071,7 +2068,7 @@ private struct InstitutionalDashCard: View {
                     Text("TOP PERFORMING MUTUAL FUNDS — 1Y RETURN")
                         .font(.caption2.weight(.semibold)).monospaced()
                         .tracking(1.5)
-                        .foregroundColor(dimText)
+                        .foregroundStyle(dimText)
                         .padding(.horizontal, cardHPad)
                         .padding(.bottom, Theme.Spacing.standard)
 

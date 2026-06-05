@@ -12,10 +12,10 @@ struct AppHeader: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("भारतीय वित्तीय विश्लेषण")
                         .font(Theme.hindiFont(size: 11, relativeTo: .caption))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Text("RESERVE BANK OF INTELLIGENCE")
                         .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                 }
                 Spacer()
                 ZStack {
@@ -24,7 +24,7 @@ struct AppHeader: View {
                         .frame(width: 38, height: 38)
                     Text("₹")
                         .font(Theme.engravedSerif(size: 20, weight: .bold, relativeTo: .title3))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                 }
             }
 
@@ -34,10 +34,10 @@ struct AppHeader: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("खाता धारक / ACCOUNT HOLDER")
                         .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Text(name.uppercased())
                         .font(Theme.engravedSerif(size: 24, weight: .bold, relativeTo: .title2))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                 }
                 Spacer()
                 GovernorSealAvatar(initials: initials)
@@ -52,61 +52,63 @@ private struct StockPreviewCard: View {
     let stock: Stock
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(Theme.inkSecondary.opacity(0.08))
-                        .frame(width: 48, height: 48)
-                    Text(String(stock.ticker.prefix(2)))
-                        .font(Theme.engravedSerif(size: 18, weight: .bold, relativeTo: .headline))
-                        .foregroundColor(Theme.inkPrimary)
-                }
-                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.borderFine, lineWidth: 0.5))
+        GeometryReader { geo in
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                            .fill(Theme.inkSecondary.opacity(0.08))
+                            .frame(width: 48, height: 48)
+                        Text(String(stock.ticker.prefix(2)))
+                            .font(Theme.engravedSerif(size: 18, weight: .bold, relativeTo: .headline))
+                            .foregroundStyle(Theme.inkPrimary)
+                    }
+                    .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.borderFine, lineWidth: 0.5))
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(stock.companyName)
-                        .font(Theme.engravedSerif(size: 15, weight: .bold, relativeTo: .subheadline))
-                        .foregroundColor(Theme.inkPrimary)
-                    Text(stock.ticker + " • " + stock.exchange)
-                        .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
-                        .foregroundColor(Theme.inkSecondary)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(stock.companyName)
+                            .font(Theme.engravedSerif(size: 15, weight: .bold, relativeTo: .subheadline))
+                            .foregroundStyle(Theme.inkPrimary)
+                        Text(stock.ticker + " • " + stock.exchange)
+                            .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
+                            .foregroundStyle(Theme.inkSecondary)
+                    }
+                    Spacer()
+                    if let signal = stock.signal {
+                        BanknoteSignalBadge(signal: signal, rotation: -4)
+                    }
                 }
-                Spacer()
-                if let signal = stock.signal {
-                    BanknoteSignalBadge(signal: signal, rotation: -4)
+
+                GuillocheDivider()
+
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("₹")
+                        .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
+                        .foregroundStyle(Theme.securityGold)
+                    Text(stock.currentPrice.inrFormatted.replacingOccurrences(of: "₹", with: ""))
+                        .font(Theme.serialNumberFont(size: 28, relativeTo: .title))
+                        .foregroundStyle(Theme.inkPrimary)
+                    Spacer()
+                    Text((stock.changePercent >= 0 ? "+" : "") + stock.changePercent.percentFormatted)
+                        .font(Theme.serialNumberFont(size: 16, relativeTo: .callout))
+                        .foregroundStyle(stock.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed)
+                        .padding(.horizontal, Theme.Spacing.medium)
+                        .padding(.vertical, Theme.Spacing.small)
+                        .background((stock.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed).opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
                 }
+
+                Text("LONG PRESS · TAP TO ANALYSE")
+                    .font(Theme.officialStampFont(size: 7, relativeTo: .caption2))
+                    .foregroundStyle(Theme.inkTertiary)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
-
-            GuillocheDivider()
-
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("₹")
-                    .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
-                    .foregroundColor(Theme.securityGold)
-                Text(stock.currentPrice.inrFormatted.replacingOccurrences(of: "₹", with: ""))
-                    .font(Theme.serialNumberFont(size: 28, relativeTo: .title))
-                    .foregroundColor(Theme.inkPrimary)
-                Spacer()
-                Text((stock.changePercent >= 0 ? "+" : "") + stock.changePercent.percentFormatted)
-                    .font(Theme.serialNumberFont(size: 16, relativeTo: .callout))
-                    .foregroundColor(stock.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed)
-                    .padding(.horizontal, Theme.Spacing.medium)
-                    .padding(.vertical, Theme.Spacing.small)
-                    .background((stock.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed).opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
-            }
-
-            Text("LONG PRESS · TAP TO ANALYSE")
-                .font(Theme.officialStampFont(size: 7, relativeTo: .caption2))
-                .foregroundColor(Theme.inkTertiary)
-                .frame(maxWidth: .infinity, alignment: .center)
+            .padding(Theme.Spacing.screen)
+            .frame(width: geo.size.width * 0.85)
+            .background(Theme.canvasDeep)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
+            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.large).stroke(Theme.borderFine, lineWidth: 1))
         }
-        .padding(Theme.Spacing.screen)
-        .frame(width: UIScreen.main.bounds.width * 0.85)
-        .background(Theme.canvasDeep)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
-        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.large).stroke(Theme.borderFine, lineWidth: 1))
     }
 }
 
@@ -132,23 +134,23 @@ struct StockRow: View {
                         .frame(width: 44, height: 44)
                     Text(String(stock.ticker.prefix(2)))
                         .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                 }
                 .overlay(RoundedRectangle(cornerRadius: 2).stroke(Theme.borderFine, lineWidth: 0.5))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(stock.companyName)
                         .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                     Text(stock.ticker)
                         .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
 
                     // ASM/GSM status chip
                     if let status = asmGsmStatus, status == "ASM" || status == "GSM" {
                         Text("⚠ \(status)")
                             .font(.caption2.weight(.semibold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                             .background(Theme.signalRuby)
                             .cornerRadius(Theme.CornerRadius.small)
@@ -158,7 +160,7 @@ struct StockRow: View {
                     if let signal = lastSignal {
                         Text(signal.uppercased())
                             .font(.caption2.weight(.medium))
-                            .foregroundColor(Theme.securityGold)
+                            .foregroundStyle(Theme.securityGold)
                             .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                             .background(Theme.securityGold.opacity(0.12))
                             .cornerRadius(Theme.CornerRadius.small)
@@ -168,7 +170,7 @@ struct StockRow: View {
                     if let days = daysUntilEvent, days <= 14 {
                         Text("Results in \(days)d")
                             .font(.caption2.weight(.medium))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                             .background(days <= 3 ? Theme.signalRuby : Theme.securityGold)
                             .cornerRadius(Theme.CornerRadius.small)
@@ -180,11 +182,11 @@ struct StockRow: View {
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(stock.currentPrice.inrFormatted)
                         .font(Theme.serialNumberFont(size: 14, relativeTo: .footnote))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                         .contentTransition(.numericText())
                     Text((stock.changePercent >= 0 ? "+" : "") + stock.changePercent.percentFormatted)
                         .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
-                        .foregroundColor(stock.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed)
+                        .foregroundStyle(stock.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed)
                         .contentTransition(.numericText())
                 }
 
@@ -232,15 +234,15 @@ struct IndexChip: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(name)
                 .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
-                .foregroundColor(Theme.inkSecondary)
+                .foregroundStyle(Theme.inkSecondary)
             HStack(spacing: 8) {
                 Text(value)
                     .font(Theme.serialNumberFont(size: 13, relativeTo: .footnote))
-                    .foregroundColor(Theme.inkPrimary)
+                    .foregroundStyle(Theme.inkPrimary)
                     .contentTransition(.numericText())
                 Text(change)
                     .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
-                    .foregroundColor(isPositive ? Theme.bullGreen : Theme.bearRed)
+                    .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
                     .contentTransition(.numericText())
             }
         }
@@ -273,11 +275,11 @@ struct SectionHeader: View {
                     if let hindi = hindiTitle {
                         Text(hindi)
                             .font(Theme.hindiFont(size: 11, relativeTo: .caption))
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                     Text(title.uppercased())
                         .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                 }
                 Spacer()
                 if let label = actionLabel, let action = action {
@@ -287,7 +289,7 @@ struct SectionHeader: View {
                     }) {
                         Text(label)
                             .font(.caption.weight(.bold))
-                            .foregroundColor(Theme.securityGold)
+                            .foregroundStyle(Theme.securityGold)
                     }
                 }
             }
@@ -310,7 +312,7 @@ struct StockIcon: View {
                 .frame(width: 44, height: 44)
             Text(String(ticker.prefix(2)))
                 .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
-                .foregroundColor(Theme.inkPrimary)
+                .foregroundStyle(Theme.inkPrimary)
         }
         .overlay(Rectangle().stroke(Theme.borderFine, lineWidth: 0.5))
     }

@@ -15,25 +15,14 @@ enum Denomination {
         }
     }
 
-    var lightTint: Color {
+    var tint: Color {
         switch self {
-        case .ten:          return Color(hex: "6B3A28")
-        case .fifty:        return Color(hex: "4A5A8A")
-        case .hundred:      return Color(hex: "7A6BA0")
-        case .twoHundred:   return Color(hex: "C85A20")
-        case .fiveHundred:  return Color(hex: "4A6B5A")
-        case .twoThousand:  return Color(hex: "B040A0")
-        }
-    }
-
-    var darkTint: Color {
-        switch self {
-        case .ten:          return Color(hex: "9B6050")
-        case .fifty:        return Color(hex: "6A7AAA")
-        case .hundred:      return Color(hex: "9A8BC0")
-        case .twoHundred:   return Color(hex: "E87A40")
-        case .fiveHundred:  return Color(hex: "6A8B7A")
-        case .twoThousand:  return Color(hex: "D060C0")
+        case .ten:         return Theme.NoteTint.ten
+        case .fifty:       return Theme.NoteTint.fifty
+        case .hundred:     return Theme.NoteTint.hundred
+        case .twoHundred:  return Theme.NoteTint.twoHundred
+        case .fiveHundred: return Theme.NoteTint.fiveHundred
+        case .twoThousand: return Theme.NoteTint.twoThousand
         }
     }
 }
@@ -57,7 +46,7 @@ struct RBISealBackground: View {
                 let total = 20
                 let angle = Double(i - total / 2) * 9.5 - 90
                 Text(String(char))
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .font(Theme.serialNumberFont(size: 9))
                     .rotationEffect(.degrees(angle + 90))
                     .offset(y: -70)
                     .rotationEffect(.degrees(angle))
@@ -73,7 +62,7 @@ struct RBISealBackground: View {
                 let total = 16
                 let angle = Double(i - total / 2) * 11.0 + 90
                 Text(String(char))
-                    .font(.system(size: 8, weight: .medium, design: .monospaced))
+                    .font(Theme.serialNumberFont(size: 8))
                     .rotationEffect(.degrees(angle - 90))
                     .offset(y: 70)
                     .rotationEffect(.degrees(angle))
@@ -88,7 +77,7 @@ struct RBISealBackground: View {
                     .rotationEffect(.degrees(Double(angle)))
             }
         }
-        .foregroundColor(.primary)
+        .foregroundStyle(.primary)
         .opacity(opacity)
         .allowsHitTesting(false)
     }
@@ -100,8 +89,8 @@ struct MicroTextStrip: View {
     var body: some View {
         let text = "NIVESH ₹ RBI भारत NIVESH ₹ RBI भारत NIVESH ₹ RBI भारत NIVESH ₹ RBI भारत NIVESH ₹ RBI भारत "
         Text(text + text)
-            .font(.system(size: 7, weight: .medium, design: .monospaced))
-            .foregroundColor(.primary.opacity(0.10))
+            .font(Theme.serialNumberFont(size: 7))
+            .foregroundStyle(.primary.opacity(0.10))
             .lineLimit(1)
             .frame(maxWidth: .infinity, alignment: .leading)
             .allowsHitTesting(false)
@@ -115,7 +104,7 @@ struct DenominationBackground: View {
     @Environment(\.colorScheme) var colorScheme
 
     private var tint: Color {
-        colorScheme == .dark ? denomination.darkTint : denomination.lightTint
+        denomination.tint
     }
 
     var body: some View {

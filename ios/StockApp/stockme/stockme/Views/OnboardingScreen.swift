@@ -22,7 +22,7 @@ struct OnboardingScreen: View {
                         .frame(width: 100, height: 100)
                     Text("₹")
                         .font(Theme.engravedSerif(size: 48, weight: .bold, relativeTo: .largeTitle))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                 }
                 .staggerAppear(delay: 0.1)
                 .padding(.bottom, Theme.Spacing.xLarge)
@@ -31,11 +31,11 @@ struct OnboardingScreen: View {
                 VStack(spacing: 8) {
                     Text("निवेश / NIVESH")
                         .font(Theme.engravedSerif(size: 44, weight: .bold, relativeTo: .largeTitle))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                     
                     Text("OFFICIAL FINANCIAL TENDER")
                         .font(Theme.labelStyle)
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 .staggerAppear(delay: 0.2)
 
@@ -43,7 +43,7 @@ struct OnboardingScreen: View {
                 Text("Invest with Official Clarity")
                     .font(Theme.engravedSerif(size: 16, relativeTo: .body))
                     .italic()
-                    .foregroundColor(Theme.inkSecondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .padding(.top, Theme.Spacing.card)
                     .staggerAppear(delay: 0.3)
 
@@ -62,7 +62,7 @@ struct OnboardingScreen: View {
                 Button(action: onContinue) {
                     Text("ENTER REGISTRY")
                         .font(Theme.labelStyle)
-                        .foregroundColor(Theme.canvas)
+                        .foregroundStyle(Theme.canvas)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, Theme.Spacing.screen)
                         .background(Theme.inkPrimary)
@@ -85,11 +85,11 @@ private struct FeatureRegistryRow: View {
         HStack(spacing: Theme.Spacing.card) {
             Image(systemName: icon)
                 .font(.title3)
-                .foregroundColor(Theme.securityGold)
+                .foregroundStyle(Theme.securityGold)
                 .frame(width: 32)
             Text(text.uppercased())
                 .font(.caption.weight(.bold))
-                .foregroundColor(Theme.inkSecondary)
+                .foregroundStyle(Theme.inkSecondary)
             Spacer()
         }
         .staggerAppear(delay: delay)

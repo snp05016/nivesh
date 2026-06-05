@@ -124,13 +124,13 @@ struct MarketsView: View {
             Theme.canvas.ignoresSafeArea()
             VStack(spacing: 0) {
                 // Sub-navigation bar within Markets tab
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     HStack(spacing: Theme.Spacing.small) {
                         ForEach(Array(marketTabs.enumerated()), id: \.offset) { idx, name in
                             Button(action: { selectedMarketTab = idx }) {
                                 Text(name)
                                     .font(.caption.weight(selectedMarketTab == idx ? .bold : .regular))
-                                    .foregroundColor(selectedMarketTab == idx ? Theme.securityGold : Theme.inkTertiary)
+                                    .foregroundStyle(selectedMarketTab == idx ? Theme.securityGold : Theme.inkTertiary)
                                     .padding(.horizontal, Theme.Spacing.standard)
                                     .padding(.vertical, Theme.Spacing.medium)
                                     .background(selectedMarketTab == idx ? Theme.securityGold.opacity(0.10) : Color.clear)
@@ -141,6 +141,7 @@ struct MarketsView: View {
                     .padding(.horizontal, Theme.Spacing.standard)
                     .padding(.vertical, Theme.Spacing.medium)
                 }
+                .scrollIndicators(.hidden)
                 .background(Theme.canvasDeep)
                 .overlay(Divider(), alignment: .bottom)
 

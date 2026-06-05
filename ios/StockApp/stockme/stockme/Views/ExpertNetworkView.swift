@@ -208,13 +208,13 @@ struct ExpertNetworkView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("विशेषज्ञ नेटवर्क")
                     .font(Theme.hindiFont(size: 11))
-                    .foregroundColor(Theme.inkSecondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 Text("MARKET MINDS")
                     .font(Theme.engravedSerif(size: 24, weight: .bold))
-                    .foregroundColor(Theme.inkPrimary)
+                    .foregroundStyle(Theme.inkPrimary)
                 Text("SEBI-Certified Expert Network")
                     .font(Theme.officialStampFont(size: 9))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
             Spacer()
         }
@@ -246,10 +246,10 @@ struct ExpertNetworkView: View {
         VStack(spacing: Theme.Spacing.medium) {
             Text("No advisory insights available.")
                 .font(Theme.officialStampFont(size: 12))
-                .foregroundColor(Theme.inkTertiary)
+                .foregroundStyle(Theme.inkTertiary)
             Text("Check backend connection.")
                 .font(Theme.officialStampFont(size: 10))
-                .foregroundColor(Theme.inkTertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
@@ -277,10 +277,10 @@ struct ExpertNetworkView: View {
         VStack(spacing: Theme.Spacing.medium) {
             Text("No advisor data available.")
                 .font(Theme.officialStampFont(size: 12))
-                .foregroundColor(Theme.inkTertiary)
+                .foregroundStyle(Theme.inkTertiary)
             Text("Check backend connection.")
                 .font(Theme.officialStampFont(size: 10))
-                .foregroundColor(Theme.inkTertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
@@ -331,19 +331,19 @@ struct InsightCard: View {
                 if let name = insight.advisorName, !name.isEmpty {
                     Text(name)
                         .font(Theme.officialStampFont(size: 11))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 Spacer()
                 if let ts = insight.timestamp {
                     Text(ts)
                         .font(Theme.serialNumberFont(size: 9))
-                        .foregroundColor(Theme.inkTertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
                 // Sentiment badge
                 Text(sentimentLabel(for: insight.extractedSentiment))
                     .font(Theme.serialNumberFont(size: 8))
                     .tracking(0.5)
-                    .foregroundColor(sentimentColor(for: insight.extractedSentiment))
+                    .foregroundStyle(sentimentColor(for: insight.extractedSentiment))
                     .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, 3)
                     .background(sentimentColor(for: insight.extractedSentiment).opacity(0.08))
                     .cornerRadius(Theme.CornerRadius.small)
@@ -352,7 +352,7 @@ struct InsightCard: View {
             // Content text (monospaced)
             Text(insight.contentText)
                 .font(Theme.serialNumberFont(size: 12))
-                .foregroundColor(Theme.inkPrimary)
+                .foregroundStyle(Theme.inkPrimary)
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -361,7 +361,7 @@ struct InsightCard: View {
                 HStack(spacing: Theme.Spacing.small) {
                     Text(ticker)
                         .font(Theme.serialNumberFont(size: 9))
-                        .foregroundColor(Theme.securityGold)
+                        .foregroundStyle(Theme.securityGold)
                         .padding(.horizontal, 7).padding(.vertical, 3)
                         .background(Theme.securityGold.opacity(0.10))
                         .cornerRadius(Theme.CornerRadius.small)
@@ -394,23 +394,23 @@ struct ExpertProfileCard: View {
                         .frame(width: 52, height: 52)
                     Text(String(expert.name.prefix(2)).uppercased())
                         .font(Theme.engravedSerif(size: 18, weight: .bold))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                 }
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text(expert.name)
                         .font(Theme.officialStampFont(size: 13))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                     // 7.1 Regulatory Compliance Badge
                     if expert.isVerified {
                         HStack(spacing: Theme.Spacing.small) {
                             Image(systemName: "checkmark.seal.fill")
                                 .font(Theme.officialStampFont(size: 10))
-                                .foregroundColor(Theme.bullGreen)
+                                .foregroundStyle(Theme.bullGreen)
                             Text("SEBI REGISTERED")
                                 .font(Theme.serialNumberFont(size: 8))
                                 .tracking(1)
-                                .foregroundColor(Theme.bullGreen)
+                                .foregroundStyle(Theme.bullGreen)
                         }
                         .padding(.horizontal, Theme.Spacing.tight)
                         .padding(.vertical, 3)
@@ -424,21 +424,21 @@ struct ExpertProfileCard: View {
             HStack(spacing: Theme.Spacing.tight) {
                 Image(systemName: "clock.fill")
                     .font(Theme.officialStampFont(size: 9))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                 Text("\(expert.yearsExperience)+ years on Dalal Street")
                     .font(Theme.officialStampFont(size: 10))
-                    .foregroundColor(Theme.inkSecondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
 
             Text(expert.strategy)
                 .font(Theme.officialStampFont(size: 11))
-                .foregroundColor(Theme.securityGold)
+                .foregroundStyle(Theme.securityGold)
 
             // SEBI Reg ID
             if let regId = expert.sebiRegId {
                 Text("SEBI: \(regId)")
                     .font(Theme.serialNumberFont(size: 9))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
 
             // 7.2 Focus tags + post count
@@ -446,7 +446,7 @@ struct ExpertProfileCard: View {
                 ForEach(expert.focusTags.prefix(3), id: \.self) { tag in
                     Text(tag)
                         .font(Theme.officialStampFont(size: 8))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .padding(.horizontal, Theme.Spacing.tight)
                         .padding(.vertical, 3)
                         .background(Theme.borderSage)
@@ -457,10 +457,10 @@ struct ExpertProfileCard: View {
             HStack(spacing: Theme.Spacing.small) {
                 Image(systemName: "doc.text.fill")
                     .font(Theme.officialStampFont(size: 9))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                 Text("\(expert.postCount) posts")
                     .font(Theme.officialStampFont(size: 10))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
         }
         .padding(Theme.Spacing.card)
@@ -490,21 +490,21 @@ struct ExpertPostCard: View {
                         .frame(width: 36, height: 36)
                     Text(String(post.expertName.prefix(1)))
                         .font(Theme.engravedSerif(size: 14, weight: .bold))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                 }
                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text(post.expertName)
                         .font(Theme.officialStampFont(size: 12))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                     Text(IndianFormatter.elapsed(from: post.publishedAt))
                         .font(Theme.officialStampFont(size: 10))
-                        .foregroundColor(Theme.inkTertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
                 Spacer()
                 if let ticker = post.ticker {
                     Text(ticker)
                         .font(Theme.serialNumberFont(size: 9))
-                        .foregroundColor(Theme.securityGold)
+                        .foregroundStyle(Theme.securityGold)
                         .padding(.horizontal, 7).padding(.vertical, 3)
                         .background(Theme.securityGold.opacity(0.10))
                         .cornerRadius(Theme.CornerRadius.small)
@@ -515,7 +515,7 @@ struct ExpertPostCard: View {
             ZStack {
                 Text(post.content)
                     .font(Theme.officialStampFont(size: 13))
-                    .foregroundColor(Theme.inkPrimary)
+                    .foregroundStyle(Theme.inkPrimary)
                     .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
                     .blur(radius: post.isPremium && !isSuperpro ? 5 : 0)
@@ -524,11 +524,11 @@ struct ExpertPostCard: View {
                     VStack(spacing: Theme.Spacing.tight) {
                         Image(systemName: "lock.shield.fill")
                             .font(Theme.officialStampFont(size: 20))
-                            .foregroundColor(Theme.securityGold)
+                            .foregroundStyle(Theme.securityGold)
                         Text("SUPER PRO REQUIRED")
                             .font(Theme.serialNumberFont(size: 9))
                             .tracking(1.5)
-                            .foregroundColor(Theme.securityGold)
+                            .foregroundStyle(Theme.securityGold)
                     }
                     .padding(Theme.Spacing.card)
                     .background(Theme.canvasDeep.opacity(0.8))
@@ -543,10 +543,10 @@ struct ExpertPostCard: View {
                     HStack(spacing: 5) {
                         Image(systemName: post.isLiked ? "heart.fill" : "heart")
                             .font(Theme.officialStampFont(size: 13))
-                            .foregroundColor(post.isLiked ? Theme.bearRed : Theme.inkTertiary)
+                            .foregroundStyle(post.isLiked ? Theme.bearRed : Theme.inkTertiary)
                         Text("\(post.likeCount + (post.isLiked ? 1 : 0))")
                             .font(Theme.officialStampFont(size: 11))
-                            .foregroundColor(Theme.inkTertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                 }
 
@@ -554,8 +554,9 @@ struct ExpertPostCard: View {
                 Button(action: { onBookmark(); HapticManager.impact(.light) }) {
                     Image(systemName: post.isBookmarked ? "bookmark.fill" : "bookmark")
                         .font(Theme.officialStampFont(size: 13))
-                        .foregroundColor(post.isBookmarked ? Theme.securityGold : Theme.inkTertiary)
+                        .foregroundStyle(post.isBookmarked ? Theme.securityGold : Theme.inkTertiary)
                 }
+                .accessibilityLabel("Toggle bookmark")
 
                 Spacer()
 
@@ -563,11 +564,11 @@ struct ExpertPostCard: View {
                     HStack(spacing: Theme.Spacing.small) {
                         Image(systemName: "crown.fill")
                             .font(Theme.officialStampFont(size: 9))
-                            .foregroundColor(Theme.securityGold)
+                            .foregroundStyle(Theme.securityGold)
                         Text("SUPER PRO")
                             .font(Theme.serialNumberFont(size: 8))
                             .tracking(1)
-                            .foregroundColor(Theme.securityGold.opacity(0.7))
+                            .foregroundStyle(Theme.securityGold.opacity(0.7))
                     }
                 }
             }

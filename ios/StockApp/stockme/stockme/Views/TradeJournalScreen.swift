@@ -28,10 +28,10 @@ struct TradeJournalScreen: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("व्यापार पत्रिका")
                             .font(Theme.hindiFont(size: 11))
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                         Text("TRADE JOURNAL")
                             .font(Theme.engravedSerif(size: 24, weight: .bold))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                     }
                     Spacer()
                 }
@@ -70,7 +70,7 @@ struct TradeJournalScreen: View {
                 } else if entries.isEmpty {
                     Text("No journal entries yet.\nTap 'Add Entry' to record your first trade decision.")
                         .font(.subheadline).fontDesign(.serif).italic()
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .multilineTextAlignment(.center)
                         .padding(.top, 40)
                 } else {
@@ -92,11 +92,11 @@ struct TradeJournalScreen: View {
                 // Ticker
                 VStack(alignment: .leading, spacing: 4) {
                     Text("TICKER")
-                        .font(.caption2).tracking(1).foregroundColor(Theme.inkSecondary)
+                        .font(.caption2).tracking(1).foregroundStyle(Theme.inkSecondary)
                     TextField("e.g. RELIANCE", text: $newTicker)
                         .textFieldStyle(.plain)
                         .font(.system(.body, design: .monospaced))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                         .autocapitalization(.allCharacters)
                         .padding(Theme.Spacing.standard)
                         .background(Theme.canvasDeep)
@@ -107,13 +107,13 @@ struct TradeJournalScreen: View {
                 // Action picker
                 VStack(alignment: .leading, spacing: 4) {
                     Text("ACTION")
-                        .font(.caption2).tracking(1).foregroundColor(Theme.inkSecondary)
+                        .font(.caption2).tracking(1).foregroundStyle(Theme.inkSecondary)
                     HStack(spacing: Theme.Spacing.medium) {
                         ForEach(actions, id: \.self) { action in
                             Button(action: { newAction = action }) {
                                 Text(action)
                                     .font(.caption.weight(.semibold))
-                                    .foregroundColor(newAction == action ? .white : Theme.inkSecondary)
+                                    .foregroundStyle(newAction == action ? .white : Theme.inkSecondary)
                                     .padding(.horizontal, Theme.Spacing.standard).padding(.vertical, Theme.Spacing.tight)
                                     .background(newAction == action ? actionColor(action) : Theme.canvasDeep)
                                     .cornerRadius(Theme.CornerRadius.small)
@@ -126,12 +126,12 @@ struct TradeJournalScreen: View {
                 // Price
                 VStack(alignment: .leading, spacing: 4) {
                     Text("PRICE AT TIME (₹)")
-                        .font(.caption2).tracking(1).foregroundColor(Theme.inkSecondary)
+                        .font(.caption2).tracking(1).foregroundStyle(Theme.inkSecondary)
                     TextField("0.00", text: $newPrice)
                         .textFieldStyle(.plain)
                         .keyboardType(.decimalPad)
                         .font(.system(.body, design: .monospaced))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                         .padding(Theme.Spacing.standard)
                         .background(Theme.canvasDeep)
                         .cornerRadius(Theme.CornerRadius.tight)
@@ -141,10 +141,10 @@ struct TradeJournalScreen: View {
                 // Reason
                 VStack(alignment: .leading, spacing: 4) {
                     Text("REASON / THESIS")
-                        .font(.caption2).tracking(1).foregroundColor(Theme.inkSecondary)
+                        .font(.caption2).tracking(1).foregroundStyle(Theme.inkSecondary)
                     TextEditor(text: $newReason)
                         .font(.subheadline).fontDesign(.serif)
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                         .frame(minHeight: 80)
                         .padding(Theme.Spacing.medium)
                         .background(Theme.canvasDeep)
@@ -156,13 +156,13 @@ struct TradeJournalScreen: View {
                 // Mood
                 VStack(alignment: .leading, spacing: 4) {
                     Text("MOOD")
-                        .font(.caption2).tracking(1).foregroundColor(Theme.inkSecondary)
+                        .font(.caption2).tracking(1).foregroundStyle(Theme.inkSecondary)
                     HStack(spacing: Theme.Spacing.medium) {
                         ForEach(moods, id: \.self) { mood in
                             Button(action: { newMood = newMood == mood.lowercased() ? nil : mood.lowercased() }) {
                                 Text(mood)
                                     .font(.caption)
-                                    .foregroundColor(newMood == mood.lowercased() ? .white : Theme.inkSecondary)
+                                    .foregroundStyle(newMood == mood.lowercased() ? .white : Theme.inkSecondary)
                                     .padding(.horizontal, Theme.Spacing.medium).padding(.vertical, Theme.Spacing.small)
                                     .background(newMood == mood.lowercased() ? Theme.securityGold : Theme.canvasDeep)
                                     .cornerRadius(Theme.CornerRadius.small)
@@ -182,7 +182,7 @@ struct TradeJournalScreen: View {
                             .font(.system(.subheadline, design: .default).weight(.semibold))
                             .tracking(1.5)
                     }
-                    .foregroundColor(.black)
+                    .foregroundStyle(.black)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Theme.Spacing.standard)
                     .background(Theme.securityGold)
@@ -249,10 +249,10 @@ private struct JournalEntryCard: View {
             HStack {
                 Text(entry.ticker)
                     .font(.system(.subheadline, design: .monospaced).weight(.bold))
-                    .foregroundColor(Theme.inkPrimary)
+                    .foregroundStyle(Theme.inkPrimary)
                 Text(entry.action)
                     .font(.caption.weight(.bold))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                     .background(actionColor)
                     .cornerRadius(Theme.CornerRadius.small)
@@ -260,14 +260,14 @@ private struct JournalEntryCard: View {
                 if let price = entry.priceAtTime {
                     Text("₹\(String(format: "%.2f", price))")
                         .font(.system(.caption, design: .monospaced))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
 
             if let reason = entry.reasonText, !reason.isEmpty {
                 Text(reason)
                     .font(.footnote).fontDesign(.serif).italic()
-                    .foregroundColor(Theme.inkPrimary)
+                    .foregroundStyle(Theme.inkPrimary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -276,20 +276,20 @@ private struct JournalEntryCard: View {
                 let isLoss = outcome.lowercased().contains("loss")
                 Text("→ \(outcome)")
                     .font(.caption)
-                    .foregroundColor(isProfit ? Theme.signalEmerald : isLoss ? Theme.signalRuby : Theme.inkSecondary)
+                    .foregroundStyle(isProfit ? Theme.signalEmerald : isLoss ? Theme.signalRuby : Theme.inkSecondary)
             }
 
             HStack {
                 if let mood = entry.mood {
                     Text(mood.uppercased())
                         .font(.caption2).tracking(0.5)
-                        .foregroundColor(Theme.securityGold.opacity(0.7))
+                        .foregroundStyle(Theme.securityGold.opacity(0.7))
                 }
                 Spacer()
                 if let date = entry.createdAt {
                     Text(date)
                         .font(.caption2)
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
         }

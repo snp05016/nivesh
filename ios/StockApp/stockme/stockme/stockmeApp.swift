@@ -68,13 +68,13 @@ struct stockmeApp: App {
         VStack(spacing: Theme.Spacing.large) {
             Image(systemName: "faceid")
                 .font(.largeTitle)
-                .foregroundColor(Theme.securityGold)
+                .foregroundStyle(Theme.securityGold)
             Text("NIVESH")
                 .font(Font.custom("Georgia-Bold", size: 28, relativeTo: .title))
-                .foregroundColor(Theme.inkPrimary)
+                .foregroundStyle(Theme.inkPrimary)
             Text("Authenticate to continue")
                 .font(.subheadline)
-                .foregroundColor(Theme.inkSecondary)
+                .foregroundStyle(Theme.inkSecondary)
             Button {
                 authenticateWithBiometrics()
             } label: {
@@ -83,7 +83,7 @@ struct stockmeApp: App {
                     Text("Unlock with Face ID")
                 }
                 .font(.body.weight(.medium))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .padding(.horizontal, Theme.Spacing.xLarge).padding(.vertical, Theme.Spacing.standard)
                 .background(Theme.securityGold)
                 .cornerRadius(Theme.CornerRadius.large)

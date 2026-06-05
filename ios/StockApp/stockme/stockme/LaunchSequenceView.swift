@@ -41,7 +41,7 @@ struct LaunchSequenceView: View {
                         // ₹ symbol
                         Text("₹")
                             .font(Theme.engravedSerif(size: 44, weight: .bold, relativeTo: .largeTitle))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                             .scaleEffect(medallionVisible ? 1 : 0.4)
                             .opacity(medallionVisible ? 1 : 0)
                     }
@@ -56,14 +56,14 @@ struct LaunchSequenceView: View {
                     // Hindi above
                     Text("निवेश")
                         .font(Theme.hindiFont(size: 14, relativeTo: .subheadline))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .opacity(hindiVisible ? 1 : 0)
                         .offset(y: hindiVisible ? 0 : 5)
 
                     // Main title
                     Text("NIVESH")
                         .font(Theme.engravedSerif(size: 42, weight: .bold, relativeTo: .largeTitle))
-                        .foregroundColor(Theme.inkPrimary)
+                        .foregroundStyle(Theme.inkPrimary)
                         .tracking(4)
                         .opacity(titleVisible ? 1 : 0)
                         .offset(y: titleVisible ? 0 : 8)
@@ -72,7 +72,7 @@ struct LaunchSequenceView: View {
                     Text("RESERVE BANK OF INTELLIGENCE")
                         .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                         .tracking(2)
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .opacity(subtitleVisible ? 1 : 0)
                 }
 

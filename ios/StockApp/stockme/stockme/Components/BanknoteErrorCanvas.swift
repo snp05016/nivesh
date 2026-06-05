@@ -35,7 +35,7 @@ struct BanknoteErrorCanvas: View {
                     // Denomination-style error title
                     Text(title)
                         .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
-                        .foregroundColor(Theme.bearRed)
+                        .foregroundStyle(Theme.bearRed)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
 
@@ -47,7 +47,7 @@ struct BanknoteErrorCanvas: View {
                             Text("ERROR VECTOR")
                                 .font(.caption2.weight(.bold).monospaced())
                                 .tracking(2)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                                 .padding(.horizontal, 8)
                                 .background(Theme.canvasDeep)
                         )
@@ -55,7 +55,7 @@ struct BanknoteErrorCanvas: View {
                     // Detail text — clean monospace for diagnostic traces
                     Text(detail)
                         .font(.caption.weight(.regular).monospaced())
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .multilineTextAlignment(.leading)
                         .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
@@ -84,7 +84,7 @@ struct BanknoteErrorCanvas: View {
                                     .font(.caption2.weight(.bold))
                                     .tracking(2)
                             }
-                            .foregroundColor(Theme.securityGold)
+                            .foregroundStyle(Theme.securityGold)
                             .padding(.horizontal, Theme.Spacing.screen)
                             .padding(.vertical, Theme.Spacing.medium)
                             .background(Theme.securityGold.opacity(0.08))
@@ -105,7 +105,7 @@ struct BanknoteErrorCanvas: View {
                     // Subtle watermark
                     Text("₹")
                         .font(Theme.engravedSerif(size: 180, weight: .bold, relativeTo: .largeTitle))
-                        .foregroundColor(Theme.bearRed.opacity(0.025))
+                        .foregroundStyle(Theme.bearRed.opacity(0.025))
                         .offset(x: 60, y: 20)
                         .allowsHitTesting(false)
                 }
@@ -120,7 +120,7 @@ struct BanknoteErrorCanvas: View {
             // ── Serial number footer ────────────────────────────────────
             Text("NIVESH APPAREL • RESERVE BANK OF INDIA • ERROR: \(title.prefix(18).uppercased())")
                 .font(.caption2.weight(.medium).monospaced())
-                .foregroundColor(Theme.inkTertiary.opacity(0.5))
+                .foregroundStyle(Theme.inkTertiary.opacity(0.5))
                 .tracking(1.5)
                 .padding(.top, Theme.Spacing.medium)
         }
@@ -151,7 +151,7 @@ struct BanknoteErrorCanvas: View {
                 Text("DATA FAULT")
                     .font(.caption2.weight(.bold).monospaced())
                     .tracking(4)
-                    .foregroundColor(Theme.bearRed.opacity(0.7))
+                    .foregroundStyle(Theme.bearRed.opacity(0.7))
                     .padding(.horizontal, Theme.Spacing.card)
                     .padding(.vertical, Theme.Spacing.small)
                 Rectangle().fill(Theme.bearRed.opacity(0.3)).frame(height: 1)
@@ -187,19 +187,19 @@ struct MarketSectionErrorRow: View {
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.caption2)
-                    .foregroundColor(Theme.holdAmber)
+                    .foregroundStyle(Theme.holdAmber)
                 Text(sectionLabel)
                     .font(Theme.labelStyle)
-                    .foregroundColor(Theme.inkSecondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 Spacer()
                 Text("UNAVAILABLE")
                     .font(.caption2.weight(.bold).monospaced())
                     .tracking(1.5)
-                    .foregroundColor(Theme.bearRed.opacity(0.6))
+                    .foregroundStyle(Theme.bearRed.opacity(0.6))
             }
             Text(errorMessage)
                 .font(.caption2.weight(.regular).monospaced())
-                .foregroundColor(Theme.inkTertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(Theme.Spacing.standard)
@@ -234,15 +234,15 @@ struct DiagnosticErrorDrawer: View {
                 HStack(spacing: 6) {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                         .font(.caption2.weight(.bold))
-                        .foregroundColor(Theme.securityGold)
+                        .foregroundStyle(Theme.securityGold)
                     Text("DIAGNOSTICS")
                         .font(.caption2.weight(.bold).monospaced())
                         .tracking(2)
-                        .foregroundColor(Theme.securityGold)
+                        .foregroundStyle(Theme.securityGold)
                     Spacer()
                     Text(isExpanded ? "▾" : "▸")
                         .font(.caption2.weight(.bold).monospaced())
-                        .foregroundColor(Theme.securityGold.opacity(0.6))
+                        .foregroundStyle(Theme.securityGold.opacity(0.6))
                 }
                 .padding(.horizontal, Theme.Spacing.standard)
                 .padding(.vertical, Theme.Spacing.standard)
@@ -279,11 +279,11 @@ struct DiagnosticErrorDrawer: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("cleaned_traceback")
                                     .font(.caption2.weight(.bold).monospaced())
-                                    .foregroundColor(Theme.inkTertiary)
+                                    .foregroundStyle(Theme.inkTertiary)
                                 ForEach(traceback, id: \.self) { line in
                                     Text(line)
                                         .font(.caption2.weight(.regular).monospaced())
-                                        .foregroundColor(Theme.inkSecondary)
+                                        .foregroundStyle(Theme.inkSecondary)
                                         .lineLimit(3)
                                 }
                             }
@@ -302,7 +302,7 @@ struct DiagnosticErrorDrawer: View {
                                 .font(.caption2.weight(.bold).monospaced())
                                 .tracking(1)
                         }
-                        .foregroundColor(Theme.securityGold)
+                        .foregroundStyle(Theme.securityGold)
                         .padding(.horizontal, Theme.Spacing.card)
                         .padding(.vertical, Theme.Spacing.medium)
                         .frame(maxWidth: .infinity)
@@ -329,11 +329,11 @@ struct DiagnosticErrorDrawer: View {
         HStack(alignment: .top, spacing: 8) {
             Text(label)
                 .font(.caption2.weight(.bold).monospaced())
-                .foregroundColor(Theme.inkTertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .frame(minWidth: 80, maxWidth: 120, alignment: .leading)
             Text(value)
                 .font(.caption2.weight(.regular).monospaced())
-                .foregroundColor(Theme.inkPrimary)
+                .foregroundStyle(Theme.inkPrimary)
                 .multilineTextAlignment(.leading)
             Spacer()
         }

@@ -8,7 +8,7 @@ private struct ChartExplainCard: View {
     var body: some View {
         Text(text)
             .font(Theme.officialStampFont(size: 13))
-            .foregroundColor(Theme.inkSecondary)
+            .foregroundStyle(Theme.inkSecondary)
             .lineSpacing(4)
             .padding(Theme.Spacing.card)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -23,7 +23,7 @@ private struct ChartSectionHeader: View {
     var body: some View {
         Text(title.uppercased())
             .font(Theme.officialStampFont(size: 9))
-            .foregroundColor(Theme.inkPrimary)
+            .foregroundStyle(Theme.inkPrimary)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -74,7 +74,7 @@ struct PriceHistoryChart: View {
             if filtered.isEmpty {
                 Text("Insufficient price history data")
                     .font(Theme.serialNumberFont(size: 13))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, minHeight: 160)
             } else {
                 let sma50 = sma(filtered, period: min(50, filtered.count))
@@ -218,7 +218,7 @@ struct RSIChart: View {
             if rsiData.isEmpty {
                 Text("Insufficient price data for RSI")
                     .font(Theme.serialNumberFont(size: 13))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, minHeight: 120)
             } else {
                 Chart {
@@ -244,14 +244,14 @@ struct RSIChart: View {
                         .foregroundStyle(Theme.bearRed.opacity(0.5))
                         .lineStyle(StrokeStyle(lineWidth: 0.8, dash: [4, 2]))
                         .annotation(position: .trailing) {
-                            Text("OB").font(Theme.officialStampFont(size: 8)).foregroundColor(Theme.bearRed)
+                            Text("OB").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.bearRed)
                         }
 
                     RuleMark(y: .value("OS", 30))
                         .foregroundStyle(Theme.bullGreen.opacity(0.5))
                         .lineStyle(StrokeStyle(lineWidth: 0.8, dash: [4, 2]))
                         .annotation(position: .trailing) {
-                            Text("OS").font(Theme.officialStampFont(size: 8)).foregroundColor(Theme.bullGreen)
+                            Text("OS").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.bullGreen)
                         }
 
                     ForEach(rsiData, id: \.date) { p in
@@ -271,7 +271,7 @@ struct RSIChart: View {
                             .annotation(position: .top) {
                                 Text(String(format: "%.0f", last.rsi))
                                     .font(Theme.officialStampFont(size: 9))
-                                    .foregroundColor(Theme.securityGold)
+                                    .foregroundStyle(Theme.securityGold)
                             }
                     }
                 }
@@ -319,7 +319,7 @@ struct VolumeChart: View {
             if !hasVol {
                 Text("Volume data not available")
                     .font(Theme.serialNumberFont(size: 13))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, minHeight: 100)
             } else {
                 Chart {
@@ -328,7 +328,7 @@ struct VolumeChart: View {
                             .foregroundStyle(Theme.securityGold.opacity(0.7))
                             .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 2]))
                             .annotation(position: .trailing) {
-                                Text("Avg").font(Theme.officialStampFont(size: 8)).foregroundColor(Theme.securityGold)
+                                Text("Avg").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.securityGold)
                             }
                     }
 
@@ -353,7 +353,7 @@ struct VolumeChart: View {
                                 .annotation(position: .top) {
                                     Text("!")
                                         .font(Theme.officialStampFont(size: 8))
-                                        .foregroundColor(Theme.securityGold)
+                                        .foregroundStyle(Theme.securityGold)
                                 }
                             }
                         }
@@ -389,7 +389,7 @@ struct ShareholdingChart: View {
 
     var body: some View {
         let data: [(label: String, value: Double, color: Color)] = [
-            ("Promoter", promoterPct, Color(hex: "4A5A8A")),
+            ("Promoter", promoterPct, Theme.chartPromoter),
             ("FII", fiiPct, Theme.bullGreen),
             ("DII", diiPct, Theme.securityGold),
             ("Public", publicPct, Theme.inkSecondary)
@@ -402,7 +402,7 @@ struct ShareholdingChart: View {
             if total < 1 {
                 Text("Shareholding data not available")
                     .font(Theme.serialNumberFont(size: 13))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, minHeight: 80)
             } else {
                 Chart(data, id: \.label) { d in
@@ -414,7 +414,7 @@ struct ShareholdingChart: View {
                     .annotation(position: .top) {
                         Text(String(format: "%.1f%%", d.value))
                             .font(Theme.officialStampFont(size: 9))
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                 }
                 .frame(height: 140)
@@ -456,7 +456,7 @@ struct FinancialsChart: View {
             if quarters.isEmpty {
                 Text("Quarterly financials not available")
                     .font(Theme.serialNumberFont(size: 13))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, minHeight: 100)
             } else {
                 let shown = Array(quarters.prefix(8).reversed())
@@ -495,11 +495,11 @@ struct FinancialsChart: View {
                             VStack(spacing: 1) {
                                 Text("Latest")
                                     .font(Theme.officialStampFont(size: 8))
-                                    .foregroundColor(Theme.securityGold)
+                                    .foregroundStyle(Theme.securityGold)
                                 if let yoy = yoyGrowthAnnotation {
                                     Text(yoy)
                                         .font(Theme.officialStampFont(size: 8))
-                                        .foregroundColor(yoy.hasPrefix("+") ? Theme.bullGreen : Theme.bearRed)
+                                        .foregroundStyle(yoy.hasPrefix("+") ? Theme.bullGreen : Theme.bearRed)
                                 }
                             }
                         }
@@ -580,8 +580,8 @@ struct PriceRangeGauge: View {
 
                     // Target diamond
                     Image(systemName: "diamond.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(Theme.securityGold)
+                        .font(.caption)
+                        .foregroundStyle(Theme.securityGold)
                         .offset(x: targX - 5, y: -14)
 
                     // Current price dot
@@ -597,28 +597,28 @@ struct PriceRangeGauge: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("52W LOW")
                             .font(Theme.officialStampFont(size: 8))
-                            .foregroundColor(Theme.inkTertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                         Text(low52w.inrFormatted)
                             .font(Theme.serialNumberFont(size: 11))
-                            .foregroundColor(Theme.bearRed)
+                            .foregroundStyle(Theme.bearRed)
                     }
                     Spacer()
                     VStack(alignment: .center, spacing: 2) {
                         Text("NOW")
                             .font(Theme.officialStampFont(size: 8))
-                            .foregroundColor(Theme.inkTertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                         Text(current.inrFormatted)
                             .font(Theme.serialNumberFont(size: 11))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("TARGET")
                             .font(Theme.officialStampFont(size: 8))
-                            .foregroundColor(Theme.inkTertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                         Text(target12m.inrFormatted)
                             .font(Theme.serialNumberFont(size: 11))
-                            .foregroundColor(Theme.bullGreen)
+                            .foregroundStyle(Theme.bullGreen)
                     }
                 }
                 .offset(y: 20)
@@ -644,7 +644,7 @@ struct PortfolioAllocationChart: View {
             if holdings.isEmpty {
                 Text("No holdings to display")
                     .font(Theme.serialNumberFont(size: 13))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, minHeight: 200)
             } else {
                 let total = totalValue
@@ -669,10 +669,10 @@ struct PortfolioAllocationChart: View {
                                 VStack(spacing: 1) {
                                     Text(h.stock.ticker)
                                         .font(Theme.officialStampFont(size: 8))
-                                        .foregroundColor(.white)
+                                        .foregroundStyle(.white)
                                     Text(String(format: "%.0f%%", pct))
-                                        .font(.system(size: 7))
-                                        .foregroundColor(.white.opacity(0.8))
+                                        .font(Theme.serialNumberFont(size: 7))
+                                        .foregroundStyle(.white.opacity(0.8))
                                 }
                             }
                         }
@@ -683,13 +683,13 @@ struct PortfolioAllocationChart: View {
                     VStack(spacing: 2) {
                         Text("₹")
                             .font(Theme.engravedSerif(size: 14, weight: .bold))
-                            .foregroundColor(Theme.securityGold)
+                            .foregroundStyle(Theme.securityGold)
                         Text(total.shortFormatted)
                             .font(Theme.engravedSerif(size: 18, weight: .bold))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                         Text("TOTAL")
                             .font(Theme.officialStampFont(size: 7))
-                            .foregroundColor(Theme.inkSecondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                     .background(Theme.canvasDeep.opacity(0.7))
                     .cornerRadius(Theme.CornerRadius.medium)
@@ -699,11 +699,11 @@ struct PortfolioAllocationChart: View {
                 ForEach(holdings.filter { h in total > 0 && h.currentValue / total > 0.15 }) { h in
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 10))
-                            .foregroundColor(Theme.holdAmber)
+                            .font(.caption)
+                            .foregroundStyle(Theme.holdAmber)
                         Text("High concentration — \(h.stock.ticker) (\(String(format: "%.0f%%", h.currentValue / total * 100)))")
                             .font(Theme.serialNumberFont(size: 11))
-                            .foregroundColor(Theme.holdAmber)
+                            .foregroundStyle(Theme.holdAmber)
                     }
                 }
 
@@ -728,7 +728,7 @@ struct PnLWaterfallChart: View {
             if sorted.isEmpty {
                 Text("No holdings to display")
                     .font(Theme.serialNumberFont(size: 13))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, minHeight: 120)
             } else {
                 Chart(sorted.prefix(10)) { h in
@@ -740,7 +740,7 @@ struct PnLWaterfallChart: View {
                     .annotation(position: h.pnl >= 0 ? .trailing : .leading) {
                         Text(h.pnl.shortFormatted)
                             .font(Theme.officialStampFont(size: 9))
-                            .foregroundColor(h.pnl >= 0 ? Theme.bullGreen : Theme.bearRed)
+                            .foregroundStyle(h.pnl >= 0 ? Theme.bullGreen : Theme.bearRed)
                     }
                 }
                 .frame(height: CGFloat(min(sorted.count, 10)) * 32 + 20)
@@ -758,11 +758,11 @@ struct PnLWaterfallChart: View {
                 HStack {
                     Text("TOTAL P&L")
                         .font(Theme.officialStampFont(size: 8))
-                        .foregroundColor(Theme.inkSecondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Spacer()
                     Text(totalPnL.inrFormatted)
                         .font(Theme.serialNumberFont(size: 14))
-                        .foregroundColor(totalPnL >= 0 ? Theme.bullGreen : Theme.bearRed)
+                        .foregroundStyle(totalPnL >= 0 ? Theme.bullGreen : Theme.bearRed)
                 }
 
                 ChartExplainCard(text: "This shows exactly which stocks are growing your portfolio (green) and which are shrinking it (red). Focus on the red bars — are those stocks still worth holding, or has the investment thesis changed?")
@@ -817,7 +817,7 @@ struct StockVsNiftyChart: View {
             if filteredStock.isEmpty {
                 Text("Price history not available for comparison")
                     .font(Theme.serialNumberFont(size: 13))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, minHeight: 140)
             } else {
                 Chart {
@@ -825,7 +825,7 @@ struct StockVsNiftyChart: View {
                         .foregroundStyle(Theme.inkSecondary.opacity(0.4))
                         .lineStyle(StrokeStyle(lineWidth: 0.8, dash: [4, 2]))
                         .annotation(position: .leading) {
-                            Text("Buy").font(Theme.officialStampFont(size: 8)).foregroundColor(Theme.inkTertiary)
+                            Text("Buy").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                         }
 
                     ForEach(filteredStock) { p in
@@ -892,7 +892,7 @@ struct SectorHeatmapView: View {
             if sectors.isEmpty {
                 Text("Sector data loading…")
                     .font(Theme.serialNumberFont(size: 13))
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, minHeight: 80)
             } else {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
@@ -905,12 +905,12 @@ struct SectorHeatmapView: View {
                             VStack(spacing: 4) {
                                 Text(sector.name)
                                     .font(Theme.officialStampFont(size: 8))
-                                    .foregroundColor(Theme.inkPrimary)
+                                    .foregroundStyle(Theme.inkPrimary)
                                     .multilineTextAlignment(.center)
                                     .lineLimit(2)
                                 Text((sector.changePct >= 0 ? "+" : "") + String(format: "%.2f%%", sector.changePct))
                                     .font(Theme.serialNumberFont(size: 13))
-                                    .foregroundColor(color(for: sector.changePct))
+                                    .foregroundStyle(color(for: sector.changePct))
                             }
                             .padding(8)
                         }
