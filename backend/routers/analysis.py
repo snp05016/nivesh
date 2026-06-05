@@ -832,7 +832,164 @@ def screener_endpoint(preset: str):
     try:
         results = []
 
-        if preset == "quality_value":
+        if preset == "ghar_ghar_modi":
+            try:
+                from services.piotroski import compute_piotroski
+                from datetime import timedelta
+                cutoff_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d")
+                with get_session() as session:
+                    rows = session.query(AnalysisHistory).filter(
+                        AnalysisHistory.analysis_date >= cutoff_date,
+                        AnalysisHistory.signal.in_(["BULLISH", "CAUTIOUSLY BULLISH"]),
+                    ).order_by(AnalysisHistory.confidence_pct.desc()).limit(30).all()
+                    seen: dict[str, tuple] = {}
+                    for r in rows:
+                        if r.ticker not in seen:
+                            seen[r.ticker] = (r.signal, r.confidence_pct)
+                candidates = list(seen.items())
+
+                for ticker, (signal, conf) in candidates:
+                    try:
+                        ns = _to_ns(ticker)
+                        info = _yf_fetch_info(ns)
+                        pe = info.get("trailingPE") or info.get("forwardPE")
+                        sector = info.get("sector") or "Unknown"
+                        sector_pe = SECTOR_PE_MAP.get(sector, 25)
+                        if pe is None or pe <= 0 or pe >= sector_pe:
+                            continue
+                        # Piotroski F-Score check
+                        f_score = compute_piotroski(ticker)
+                        if f_score < 7:
+                            continue
+                        company = info.get("longName") or info.get("shortName") or ticker
+                        results.append({
+                            "ticker": ticker,
+                            "company_name": company,
+                            "signal": signal,
+                            "confidence_pct": conf or 0,
+                            "reason": f"Piotroski: {f_score}/9, PE: {pe:.1f} (below sector {sector_pe})",
+                            "f_score": f_score,
+                            "pe_ratio": round(pe, 1),
+                        })
+                    except Exception:
+                        continue
+                results = results[:12]
+            except Exception as _se:
+                print(f"[SCREENER ghar_ghar_modi] {_se}")
+
+        elif preset == "earnings_pioneers":
+            try:
+                from services.pkscreener_runner import PKScreenerRunner
+                from datetime import timedelta
+                with get_session() as session:
+                    pk_signals = session.query(PKScreenerSignal).filter(
+                        PKScreenerSignal.signal_date >= (datetime.utcnow() - timedelta(days=14)).strftime("%Y-%m-%d"),
+                    ).all()
+                    # Map ticker -> latest screener signal
+                    pk_map: dict[str, PKScreenerSignal] = {}
+                    for s in pk_signals:
+                        if s.ticker not in pk_map:
+                            pk_map[s.ticker] = s
+
+                for ticker, pk in pk_map.items():
+                    try:
+                        is_breakout = pk.breakout or False
+                        is_golden = pk.ma_signal and "golden" in pk.ma_signal.lower()
+                        if not (is_breakout or is_golden):
+                            continue
+                        # Check YoY net profit growth from analysis history
+                        with get_session() as session:
+                            latest = session.query(AnalysisHistory).filter(
+                                AnalysisHistory.ticker == ticker
+                            ).order_by(AnalysisHistory.created_at.desc()).first()
+                        if not latest:
+                            continue
+                        data = json.loads(latest.full_json or "{}")
+                        fs = data.get("fundamentals_snapshot", {})
+                        profit_growth = fs.get("net_profit_growth_pct") or fs.get("profit_growth_3y") or 0
+                        if profit_growth <= 20:
+                            continue
+                        company = data.get("company_name") or ticker
+                        results.append({
+                            "ticker": ticker,
+                            "company_name": company,
+                            "signal": latest.signal or "BULLISH",
+                            "confidence_pct": latest.confidence_pct or 0,
+                            "reason": f"Breakout: {is_breakout}, GoldenCross: {is_golden}, ProfitGr: {profit_growth}%",
+                            "profit_growth_pct": round(float(profit_growth), 1),
+                        })
+                    except Exception:
+                        continue
+                results = results[:12]
+            except Exception as _se:
+                print(f"[SCREENER earnings_pioneers] {_se}")
+
+        elif preset == "institutional_capitulation":
+            try:
+                from services.factor_engine import FactorEngine
+                from datetime import timedelta
+                # Check options data for high PCR
+                with get_session() as session:
+                    # Query recent analysis for tickers with bearish signals
+                    rows = session.query(AnalysisHistory).filter(
+                        AnalysisHistory.analysis_date >= (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d"),
+                    ).order_by(AnalysisHistory.created_at.desc()).limit(40).all()
+                    seen: set[str] = set()
+                    for r in rows:
+                        if r.ticker in seen:
+                            continue
+                        seen.add(r.ticker)
+                        try:
+                            ns = _to_ns(r.ticker)
+                            info = _yf_fetch_info(ns)
+                            rsi_val = None
+                            # Try to get RSI from various yfinance fields or compute approximate
+                            try:
+                                import yfinance as yf
+                                t = yf.Ticker(ns)
+                                hist = t.history(period="1mo")
+                                if len(hist) >= 14:
+                                    delta = hist["Close"].diff()
+                                    gain = delta.where(delta > 0, 0.0).rolling(14).mean()
+                                    loss = (-delta.where(delta < 0, 0.0)).rolling(14).mean()
+                                    rs = gain / loss.replace(0, 1e-10)
+                                    rsi_val = 100 - (100 / (1 + float(rs.iloc[-1])))
+                            except Exception:
+                                rsi_val = None
+                            if rsi_val is None or rsi_val >= 30:
+                                continue
+                            # Check PCR from options or use yfinance options data
+                            pcr_val = None
+                            try:
+                                opt = t.options
+                                if opt:
+                                    nearest = opt[0]
+                                    chain = t.option_chain(nearest)
+                                    total_puts = sum(p.volume or 0 for p in chain.puts)
+                                    total_calls = sum(c.volume or 0 for c in chain.calls)
+                                    if total_calls > 0:
+                                        pcr_val = round(total_puts / total_calls, 2)
+                            except Exception:
+                                pcr_val = None
+                            if pcr_val is None or pcr_val <= 1.5:
+                                continue
+                            company = info.get("longName") or info.get("shortName") or r.ticker
+                            results.append({
+                                "ticker": r.ticker,
+                                "company_name": company,
+                                "signal": "CAUTIOUSLY BEARISH",
+                                "confidence_pct": r.confidence_pct or 0,
+                                "reason": f"RSI: {rsi_val:.1f} (oversold), PCR: {pcr_val} (extreme fear)",
+                                "rsi": round(rsi_val, 1),
+                                "pcr": pcr_val,
+                            })
+                        except Exception:
+                            continue
+                results = results[:12]
+            except Exception as _se:
+                print(f"[SCREENER institutional_capitulation] {_se}")
+
+        elif preset == "quality_value":
             try:
                 from datetime import timedelta
                 cutoff_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d")
@@ -1037,6 +1194,9 @@ def screener_endpoint(preset: str):
 
         if not results:
             _seed = {
+                "ghar_ghar_modi":         [("TCS","Tata Consultancy Services"),("INFY","Infosys"),("HCLTECH","HCL Technologies"),("TECHM","Tech Mahindra"),("WIPRO","Wipro")],
+                "earnings_pioneers":      [("TATAMOTORS","Tata Motors"),("BAJFINANCE","Bajaj Finance"),("LT","Larsen & Toubro"),("BHARTIARTL","Bharti Airtel"),("TITAN","Titan")],
+                "institutional_capitulation": [("HDFCBANK","HDFC Bank"),("ICICIBANK","ICICI Bank"),("SBIN","SBI"),("AXISBANK","Axis Bank"),("KOTAKBANK","Kotak Mahindra")],
                 "quality_value":        [("RELIANCE","Reliance Industries"),("TCS","Tata Consultancy Services"),("INFY","Infosys"),("HDFCBANK","HDFC Bank"),("ICICIBANK","ICICI Bank")],
                 "promoter_conviction":  [("WIPRO","Wipro"),("HCLTECH","HCL Technologies"),("BAJAJFINSV","Bajaj Finserv"),("TITAN","Titan Company"),("PIDILITIND","Pidilite Industries")],
                 "fii_accumulation":     [("LT","Larsen & Toubro"),("SBIN","State Bank of India"),("AXISBANK","Axis Bank"),("KOTAKBANK","Kotak Mahindra Bank"),("ADANIPORTS","Adani Ports")],

@@ -685,7 +685,7 @@ struct PortfolioAllocationChart: View {
                             .font(Theme.engravedSerif(size: 14, weight: .bold))
                             .foregroundStyle(Theme.securityGold)
                         Text(total.shortFormatted)
-                            .font(Theme.engravedSerif(size: 18, weight: .bold))
+                            .font(Theme.serialNumberFont(size: 18))
                             .foregroundStyle(Theme.inkPrimary)
                         Text("TOTAL")
                             .font(Theme.officialStampFont(size: 7))

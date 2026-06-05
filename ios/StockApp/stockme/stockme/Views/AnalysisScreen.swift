@@ -319,26 +319,10 @@ struct AnalysisScreen: View {
                         .overlay(Capsule().stroke(Theme.securityGold.opacity(0.25), lineWidth: 0.5))
                     }
 
-                    ZStack {
-                        Circle()
-                            .stroke(Theme.securityGold.opacity(0.3), lineWidth: 1)
-                            .frame(width: 80, height: 80)
-                        ProgressView()
-                            .tint(Theme.securityGold)
-                            .scaleEffect(1.2)
-                    }
-
-                    VStack(spacing: 8) {
-                        Text(useMockAI ? "सत्यापन मोड / MOCK MODE ACTIVE" : "विश्लेषण प्रक्रिया / GENERATING INSIGHTS")
-                            .font(Theme.officialStampFont(size: 9))
-                            .foregroundStyle(Theme.inkPrimary)
-
-                        Text(useMockAI ? "Bypassing heavy compute to preserve tender." : "Securing fundamental, news, and technical data threads...")
-                            .font(.footnote.weight(.medium))
-                            .foregroundStyle(Theme.inkSecondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, Theme.Spacing.xLarge)
-                    }
+                    DialecticProgressView(
+                        userId: authManager.currentUser?.userId,
+                        ticker: ticker
+                    )
 
                     Button(action: {
                         HapticManager.impact(.rigid)

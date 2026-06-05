@@ -1,3 +1,7 @@
+// SOUND POLICY (AGENTS.md §2.9 VIII):
+// Rupee rustle sound LIMITED to: ① Trade Journal entry logged, ② AI Analysis complete.
+// Do NOT trigger on: price updates, index refreshes, navigation, or scrolling.
+
 import AVFoundation
 import Foundation
 

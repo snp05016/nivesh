@@ -105,6 +105,7 @@ private struct StockPreviewCard: View {
             }
             .padding(Theme.Spacing.screen)
             .frame(width: geo.size.width * 0.85)
+            .glassCard()
             .background(Theme.canvasDeep)
             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
             .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.large).stroke(Theme.borderFine, lineWidth: 1))

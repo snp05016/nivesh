@@ -83,7 +83,7 @@ struct stockmeApp: App {
                     Text("Unlock with Face ID")
                 }
                 .font(.body.weight(.medium))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.canvas)
                 .padding(.horizontal, Theme.Spacing.xLarge).padding(.vertical, Theme.Spacing.standard)
                 .background(Theme.securityGold)
                 .cornerRadius(Theme.CornerRadius.large)

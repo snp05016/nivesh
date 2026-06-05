@@ -754,7 +754,9 @@ private struct PortfolioHeroNote: View {
                     HStack(spacing: Theme.Spacing.medium) {
                         Text(totalPnL >= 0 ? "SURPLUS" : "DEFICIT")
                         Text(totalPnL.inrFormatted)
+                            .contentTransition(.numericText())
                         Text("(\((invested > 0 ? totalPnL/invested*100 : 0).percentFormatted))")
+                            .contentTransition(.numericText())
                     }
                     .font(Theme.serialNumberFont(size: 13))
                     .foregroundStyle(totalPnL >= 0 ? Theme.bullGreen : Theme.bearRed)
@@ -792,6 +794,7 @@ private struct StatNoteBlock: View {
                 .font(Theme.officialStampFont(size: 8))
                 .foregroundStyle(Theme.inkSecondary)
             Text(value)
+                .contentTransition(.numericText())
                 .font(Theme.serialNumberFont(size: 14))
                 .foregroundStyle(color)
         }
@@ -827,10 +830,12 @@ private struct WatchlistRowView: View {
 
                 VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                     Text("₹\(item.currentPrice.inrFormatted)")
+                        .contentTransition(.numericText())
                         .font(Theme.serialNumberFont(size: 14))
                         .foregroundStyle(Theme.inkPrimary)
                     let changeStr = (item.dayChangePct >= 0 ? "+" : "") + String(format: "%.2f%%", item.dayChangePct)
                     Text(changeStr)
+                        .contentTransition(.numericText())
                         .font(Theme.serialNumberFont(size: 12))
                         .foregroundStyle(item.dayChangePct >= 0 ? Theme.bullGreen : Theme.bearRed)
                 }

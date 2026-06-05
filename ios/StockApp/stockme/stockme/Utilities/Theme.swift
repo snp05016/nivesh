@@ -59,6 +59,7 @@ enum Theme {
     static let avatarBackground = adaptive("E5E0D5", "3A3530")
 
     // MARK: - Denomination Tints (banknote-specific)
+    // Use as .shadow(color:) or .overlay accents — NOT as full background fills
 
     enum NoteTint {
         static let ten: Color = adaptive("6B3A28", "9B6050")
@@ -324,5 +325,17 @@ extension View {
                 }
             )
             .shadow(color: Theme.inkPrimary.opacity(0.06), radius: shadowRadius, x: 0, y: shadowY)
+    }
+
+    // Glass-over-paper inner card layer — data floats on frosted glass
+    func glassCard() -> some View {
+        self
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
+                    .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
     }
 }

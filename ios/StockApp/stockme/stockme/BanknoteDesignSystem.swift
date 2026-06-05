@@ -127,7 +127,8 @@ struct PortfolioValueDisplay: View {
                 .font(Theme.engravedSerif(size: fontSize, weight: .bold))
                 .foregroundStyle(Theme.securityGold)
             Text(IndianFormatter.priceWithoutSymbol(current))
-                .font(Theme.engravedSerif(size: fontSize, weight: .bold))
+                .contentTransition(.numericText())
+                .font(Theme.serialNumberFont(size: fontSize))
                 .foregroundStyle(Theme.inkPrimary)
                 .monospacedDigit()
         }

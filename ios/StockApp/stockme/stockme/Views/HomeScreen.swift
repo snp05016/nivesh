@@ -150,10 +150,13 @@ struct IndexRow: View {
             Spacer()
 
             Text(value)
+                .contentTransition(.numericText())
                 .font(.footnote.weight(.semibold)).monospaced()
                 .foregroundStyle(.primary.opacity(0.85))
 
             Text(changeText)
+                .contentTransition(.numericText())
+                .sensoryFeedback(change >= 0 ? .increase : .decrease, trigger: change)
                 .font(.caption.weight(.semibold)).monospaced()
                 .foregroundStyle(changeColor)
                 .frame(minWidth: 60, alignment: .trailing)
@@ -321,11 +324,13 @@ struct MacroRowView: View {
             Spacer()
 
             Text(String(format: "%.2f", row.price))
+                .contentTransition(.numericText())
                 .font(.footnote.weight(.semibold)).monospaced()
                 .foregroundStyle(.primary.opacity(0.85))
                 .frame(minWidth: 70, alignment: .trailing)
 
             Text("\(row.changePct >= 0 ? "+" : "")\(String(format: "%.2f", row.changePct))%")
+                .contentTransition(.numericText())
                 .font(.caption.weight(.semibold)).monospaced()
                 .foregroundStyle(changeColor)
                 .padding(.horizontal, Theme.Spacing.tight)
@@ -1092,7 +1097,9 @@ private struct PortfolioNoteCard: View {
                     HStack(spacing: Theme.Spacing.tight) {
                         Image(systemName: totalPnL >= 0 ? "arrow.up.right" : "arrow.down.right")
                         Text(totalPnL.inrFormatted)
+                            .contentTransition(.numericText())
                         Text("(\((invested > 0 ? totalPnL/invested*100 : 0).percentFormatted))")
+                            .contentTransition(.numericText())
                     }
                     .font(Theme.serialNumberFont(size: 13))
                     .foregroundStyle(totalPnL >= 0 ? Theme.bullGreen : Theme.bearRed)
@@ -1142,6 +1149,7 @@ private struct StatNoteBlock: View {
                 .font(Theme.officialStampFont(size: 8))
                 .foregroundStyle(Theme.inkSecondary)
             Text(value)
+                .contentTransition(.numericText())
                 .font(Theme.serialNumberFont(size: 14))
                 .foregroundStyle(color)
         }
@@ -1316,6 +1324,7 @@ private struct SectorPulseCard: View {
                 .lineLimit(1)
 
             Text((sector.changePct >= 0 ? "+" : "") + String(format: "%.2f%%", sector.changePct))
+                .contentTransition(.numericText())
                 .font(Theme.serialNumberFont(size: 18))
                 .foregroundStyle(sector.changePct >= 0 ? Theme.bullGreen : Theme.bearRed)
 
@@ -1808,6 +1817,7 @@ struct IndexCardView: View {
                     .lineLimit(1)
 
                 Text(valueStr)
+                    .contentTransition(.numericText())
                     .font(.headline.weight(.bold)).monospaced()
                     .foregroundStyle(Theme.inkPrimary)
                     .monospacedDigit()
@@ -1817,6 +1827,8 @@ struct IndexCardView: View {
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
                     Text(changeStr)
+                        .contentTransition(.numericText())
+                        .sensoryFeedback(isPositive ? .increase : .decrease, trigger: index.changePct)
                         .font(.caption.weight(.bold)).monospaced()
                         .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
                 }

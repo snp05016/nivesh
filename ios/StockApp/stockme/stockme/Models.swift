@@ -954,11 +954,21 @@ struct ScreenerResult: Codable, Identifiable {
     let signal: String?
     let confidencePct: Int?
     let reason: String?
+    let fScore: Int?
+    let peRatio: Double?
+    let profitGrowthPct: Double?
+    let rsi: Double?
+    let pcr: Double?
 
     enum CodingKeys: String, CodingKey {
         case ticker, signal, reason
         case companyName = "company_name"
         case confidencePct = "confidence_pct"
+        case fScore = "f_score"
+        case peRatio = "pe_ratio"
+        case profitGrowthPct = "profit_growth_pct"
+        case rsi = "rsi"
+        case pcr = "pcr"
     }
 }
 

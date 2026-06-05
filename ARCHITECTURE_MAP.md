@@ -1240,8 +1240,16 @@ Live Display: Rich-based layout with progress table, messages panel, report pane
 1. Creates @StateObject managers: AuthManager, LocalReportManager, TutorialManager, NotificationManager
 2. Checks @AppStorage("hasCompletedOnboarding") -> shows OnboardingScreen
 3. Checks @AppStorage("hasAcceptedDisclaimer") -> shows DisclaimerScreen
-4. Checks biometric auth -> shows biometric lock screen
+4. Checks @AppStorage("useBiometrics") + @State isBiometricLocked -> shows biometric lock screen
 5. Main content: ContentView (5-tab navigation)
+
+**Biometric Lock Flow:**
+- `Info.plist` requires `NSFaceIDUsageDescription` ("Unlock Nivesh to access your portfolio") — iOS crashes without it
+- Lock screen: faceid SF Symbol + "NIVESH" (Georgia-Bold) + "Authenticate to continue" + "Unlock with Face ID" button (Theme.securityGold bg, Theme.canvas text)
+- Auto-triggers `authenticateWithBiometrics()` on `.onAppear` if `useBiometrics` is true
+- Uses `LAContext.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, ...)` — no passcode fallback
+- On success: `isBiometricLocked = false` -> shows ContentView; On failure: stays locked for retry
+- If biometrics unavailable device-wide: falls through unlocked
 
 **ContentView.swift** -- Auth gate + tab shell:
 - If not logged in: shows LoginScreen

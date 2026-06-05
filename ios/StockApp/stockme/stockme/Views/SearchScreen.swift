@@ -1,7 +1,10 @@
 import SwiftUI
 
 private let screenerPresets: [(label: String, preset: String)] = [
-    ("Quality Value",       "quality_value"),
+    ("Quality Value", "quality_value"),
+    ("Ghar Ghar Modi", "ghar_ghar_modi"),
+    ("Earnings Pioneers", "earnings_pioneers"),
+    ("Inst. Capitulation", "institutional_capitulation"),
     ("Promoter Conviction", "promoter_conviction"),
     ("FII Accumulation",    "fii_accumulation"),
     ("Turnaround",          "turnaround"),
@@ -104,7 +107,7 @@ struct SearchScreen: View {
                     .padding(.horizontal, Theme.screenPadding)
                     .padding(.bottom, 20)
 
-                    // Discover screener pills — only when not searching
+                    // Discover screener pills — glass capsule strip
                     if searchText.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("DISCOVER / खोजें")
@@ -113,34 +116,34 @@ struct SearchScreen: View {
                                 .padding(.horizontal, Theme.screenPadding)
 
                             ScrollView(.horizontal) {
-                                HStack(spacing: 8) {
+                                HStack(spacing: Theme.Spacing.medium) {
                                     ForEach(screenerPresets, id: \.preset) { item in
                                         Button {
-                                            HapticManager.selection()
+                                            HapticManager.light()
                                             if activePreset == item.preset {
                                                 activePreset = nil
                                                 screenerResults = []
                                             } else {
                                                 activePreset = item.preset
+                                                screenerResults = []
                                                 Task { await runScreener(preset: item.preset) }
                                             }
                                         } label: {
                                             Text(item.label)
                                                 .font(Theme.officialStampFont(size: 9))
-                                                .foregroundStyle(activePreset == item.preset ? Theme.canvasDeep : Theme.securityGold)
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, Theme.Spacing.tight)
+                                                .foregroundStyle(activePreset == item.preset ? Theme.canvasDeep : Theme.inkPrimary)
+                                                .padding(.horizontal, Theme.Spacing.standard)
+                                                .padding(.vertical, Theme.Spacing.medium)
                                                 .background(
-                                                    activePreset == item.preset
-                                                        ? Theme.securityGold
-                                                        : Theme.canvasDeep
+                                                    Capsule()
+                                                        .fill(activePreset == item.preset ? Theme.securityGold : .ultraThinMaterial)
                                                 )
-                                                .overlay(
-                                                    Rectangle().stroke(Theme.securityGold.opacity(0.5), lineWidth: 0.5)
+                                                .shadow(
+                                                    color: activePreset == item.preset ? Theme.securityGold.opacity(0.5) : .clear,
+                                                    radius: activePreset == item.preset ? 8 : 0
                                                 )
                                         }
                                         .buttonStyle(.plain)
-                                        .ekPressHaptic()
                                     }
                                 }
                                 .padding(.horizontal, Theme.screenPadding)
@@ -185,11 +188,11 @@ struct SearchScreen: View {
                                     }
                                     .padding(.top, 40)
                                 } else if activePreset != nil {
-                                    ForEach(screenerResults) { result in
+                                    ForEach(Array(screenerResults.enumerated()), id: \.element.id) { index, result in
                                         NavigationLink(value: result.ticker) {
                                             ScreenerResultRow(result: result)
                                         }
-                                        .ekPressHaptic()
+                                        .staggerAppear(delay: Double(index) * 0.06)
                                     }
                                 } else if searchText.isEmpty {
                                     ForEach(trendingStocks) { stock in
@@ -363,34 +366,73 @@ private struct ScreenerResultRow: View {
                 .frame(width: 1)
                 .padding(.vertical, Theme.Spacing.standard)
 
-            HStack(spacing: 16) {
+            HStack(spacing: Theme.Spacing.card) {
                 StockIcon(ticker: result.ticker, signal: nil)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text((result.companyName ?? result.ticker).uppercased())
-                        .font(Theme.engravedSerif(size: 15, weight: .bold))
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                    // TICKER — engraved serif for premium feel
+                    Text(result.ticker.uppercased())
+                        .font(Theme.engravedSerif(size: 14, weight: .bold))
                         .foregroundStyle(Theme.inkPrimary)
-                    if let reason = result.reason {
-                        Text(reason)
+                    if let company = result.companyName {
+                        Text(company)
                             .font(Theme.serialNumberFont(size: 10))
                             .foregroundStyle(Theme.inkSecondary)
                             .lineLimit(1)
                     }
+                    if let reason = result.reason {
+                        Text(reason)
+                            .font(.caption2)
+                            .foregroundStyle(Theme.inkTertiary)
+                            .lineLimit(1)
+                    }
                 }
                 Spacer()
-                if let conf = result.confidencePct {
-                    Text("\(conf)%")
-                        .font(Theme.officialStampFont(size: 9))
-                        .foregroundStyle(Theme.securityGold)
+                // Metrics column — serialNumberFont for all numbers
+                VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
+                    if let conf = result.confidencePct {
+                        Text("\(conf)%")
+                            .font(Theme.serialNumberFont(size: 11))
+                            .contentTransition(.numericText())
+                            .foregroundStyle(Theme.securityGold)
+                    }
+                    if let fs = result.fScore {
+                        Text("F:\(fs)/9")
+                            .font(Theme.serialNumberFont(size: 10))
+                            .contentTransition(.numericText())
+                            .foregroundStyle(Theme.bullGreen)
+                    }
+                    if let pe = result.peRatio {
+                        Text("PE:\(String(format: "%.1f", pe))")
+                            .font(Theme.serialNumberFont(size: 10))
+                            .foregroundStyle(Theme.inkSecondary)
+                    }
+                    if let pg = result.profitGrowthPct {
+                        Text("+\(String(format: "%.0f", pg))%")
+                            .font(Theme.serialNumberFont(size: 10))
+                            .contentTransition(.numericText())
+                            .foregroundStyle(Theme.bullGreen)
+                    }
+                    if let r = result.rsi {
+                        Text("RSI:\(String(format: "%.0f", r))")
+                            .font(Theme.serialNumberFont(size: 10))
+                            .foregroundStyle(Theme.bearRed)
+                    }
+                    if let pcr = result.pcr {
+                        Text("PCR:\(String(format: "%.1f", pcr))")
+                            .font(Theme.serialNumberFont(size: 10))
+                            .foregroundStyle(Theme.holdAmber)
+                    }
                 }
                 Image(systemName: "arrow.right")
                     .foregroundStyle(Theme.inkSecondary.opacity(0.3))
                     .font(.footnote.weight(.bold))
             }
             .padding(.vertical, Theme.Spacing.standard)
-            .padding(.leading, 12)
-            .padding(.trailing, 16)
+            .padding(.leading, Theme.Spacing.standard)
+            .padding(.trailing, Theme.Spacing.card)
         }
+        .glassCard()
         .banknoteCard()
     }
 }

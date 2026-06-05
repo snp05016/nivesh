@@ -92,7 +92,6 @@ struct LaunchSequenceView: View {
         .opacity(fadingOut ? 0 : 1)
         .scaleEffect(fadingOut ? 0.97 : 1)
         .onAppear {
-            AppSoundManager.shared.playRustling()
             startSequence()
         }
     }
