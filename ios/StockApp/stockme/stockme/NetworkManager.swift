@@ -851,7 +851,9 @@ class NetworkManager: ObservableObject {
         _ type: T.Type, endpoint: String, timeout: TimeInterval = 15
     ) async throws -> T {
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
-            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL: \(baseURL)\(endpoint)")
+            let err = NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL: \(baseURL)\(endpoint)")
+            GlobalErrorDiagnoser.shared.trackNetworkError(err, endpoint: endpoint)
+            throw err
         }
         var req = URLRequest(url: url)
         req.timeoutInterval = timeout
@@ -862,21 +864,29 @@ class NetworkManager: ObservableObject {
             (data, response) = try await session.data(for: req)
         } catch {
             let body = (error as NSError).localizedDescription
-            throw NetworkError.fetchFailed(endpoint: endpoint, status: -1, body: "Network error: \(body)")
+            let err = NetworkError.fetchFailed(endpoint: endpoint, status: -1, body: "Network error: \(body)")
+            GlobalErrorDiagnoser.shared.trackNetworkError(err, endpoint: endpoint)
+            throw err
         }
         guard let http = response as? HTTPURLResponse else {
-            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not an HTTP response")
+            let err = NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not an HTTP response")
+            GlobalErrorDiagnoser.shared.trackNetworkError(err, endpoint: endpoint)
+            throw err
         }
         guard (200...299).contains(http.statusCode) else {
             let body = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
-            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(body))
+            let err = NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(body))
+            GlobalErrorDiagnoser.shared.trackNetworkError(err, endpoint: endpoint)
+            throw err
         }
         do {
             return try JSONDecoder().decode(type, from: data)
         } catch {
             let rawStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<non-utf8>"
             let keys = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]).map { Array($0.keys).joined(separator: ", ") } ?? "?"
-            throw NetworkError.decodingError("\(error.localizedDescription) | Raw keys: \(keys) | Body: \(rawStr)")
+            let err = NetworkError.decodingError("\(error.localizedDescription) | Raw keys: \(keys) | Body: \(rawStr)")
+            GlobalErrorDiagnoser.shared.trackNetworkError(err, endpoint: endpoint)
+            throw err
         }
     }
 

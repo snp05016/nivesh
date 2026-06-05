@@ -33,6 +33,12 @@ class EarningsDashboardViewModel: ObservableObject {
     @Published var feedDataSource: String? = nil
     @Published var feedDiagnostic: String? = nil
 
+    /// Diagnostic contexts — attached to every error for full telemetry
+    private func trackError(_ message: String, endpoint: String, classification: String = "INFRASTRUCTURE_EXCEPTION") {
+        let diag = ErrorDiagnostic(endpoint: endpoint, swiftFile: "EarningsDashboardView.swift", classification: classification)
+        GlobalErrorDiagnoser.shared.track(message, diagnostic: diag)
+    }
+
     /// True if ALL sections failed — triggers full-page error canvas
     var isTotalFailure: Bool {
         progress == nil && feed.isEmpty && postResultMovers.isEmpty
@@ -275,15 +281,15 @@ struct EarningsProgressView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // Full-page error canvas if everything failed
+                // Full-page error if everything failed
                 if vm.isTotalFailure {
-                    BanknoteErrorCanvas(
-                        title: "Earnings Data Unavailable",
-                        detail: [
+                    ErrorDiagnoserView(
+                        error: [
                             vm.progressError.map { "Progress: \($0)" },
                             vm.feedError.map { "Feed: \($0)" },
                             vm.moversError.map { "Movers: \($0)" },
                         ].compactMap { $0 }.joined(separator: "\n\n"),
+                        context: ErrorDiagnostic(endpoint: "/api/v1/market/dashboard-pulse", classification: "INFRASTRUCTURE_EXCEPTION"),
                         retryAction: { vm.load() }
                     )
                 }
@@ -849,42 +855,18 @@ struct EarningsFeedView: View {
                     if vm.isLoading && vm.feed.isEmpty {
                         ForEach(0..<6, id: \.self) { _ in feedCardPlaceholder }
                     } else if vm.filteredFeed.isEmpty {
-                        // Show exact reason — from backend diagnostic or local error
-                        VStack(spacing: 12) {
-                            if let err = vm.feedError {
-                                // Fetch error — network/decode failure
-                                BanknoteErrorCanvas(
-                                    title: "Feed Fetch Failed",
-                                    detail: err,
-                                    retryAction: { vm.load() }
-                                )
-                            } else if let diag = vm.feedDiagnostic {
-                                // Backend-provided diagnostic
-                                BanknoteErrorCanvas(
-                                    title: "No Earnings Data",
-                                    detail: diag,
-                                    retryAction: { vm.load() }
-                                )
-                            } else if let src = vm.feedDataSource {
-                                BanknoteErrorCanvas(
-                                    title: "No Earnings Data",
-                                    detail: "Data source: \(src). No results available.\n\n"
-                                        + "The backend has no earnings records. "
-                                        + "Run an AI analysis on a stock to populate data.",
-                                    retryAction: { vm.load() }
-                                )
-                            } else {
-                                BanknoteErrorCanvas(
-                                    title: "No Earnings Data",
-                                    detail: "Backend returned empty results.\n\n"
-                                        + "Likely cause: No stock analyses have been run yet. "
-                                        + "The earnings feed reads from the Analysis History database. "
-                                        + "Run an AI analysis on a stock first to populate earnings data.\n\n"
-                                        + "If analyses exist and this persists, check the backend server logs.",
-                                    retryAction: { vm.load() }
-                                )
-                            }
-                        }
+                        // Universal diagnostic error display
+                        ErrorDiagnoserView(
+                            error: vm.feedError ?? vm.feedDiagnostic
+                                ?? (vm.feedDataSource != nil
+                                    ? "Data source: \(vm.feedDataSource!). No results available.\n\nThe backend has no earnings records. Run an AI analysis on a stock to populate data."
+                                    : "Backend returned empty results.\n\nLikely cause: No stock analyses have been run yet. The earnings feed reads from the Analysis History database. Run an AI analysis on a stock first to populate earnings data."),
+                            context: ErrorDiagnostic(
+                                endpoint: "/api/v1/earnings/feed",
+                                classification: vm.feedError != nil ? "INFRASTRUCTURE_EXCEPTION" : "DATA_EMPTY"
+                            ),
+                            retryAction: { vm.load() }
+                        )
                     } else {
                         ForEach(vm.filteredFeed) { result in
                             EarningsResultCard(result: result, comparisonMode: vm.comparisonMode)
