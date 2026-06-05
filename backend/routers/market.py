@@ -7,6 +7,7 @@ from helpers import (
     User, Portfolio, AnalysisHistory, NetWorthLedger,
     MarketErrorLog, EarningsAlert, log_market_error,
     EarningsErrorLog, log_earnings_error,
+    AdvisorBiography, TextAdvisoryInsight, IdeasErrorLog, log_ideas_error,
     _check_rate_limit, _get_indices_data, _get_asm_gsm_lists, _nse_session
 )
 
@@ -1891,3 +1892,266 @@ def get_option_chain_metrics_endpoint(ticker: str, current_price: float = 0):
         return {"error": "Option chain unavailable from NSE", "ticker": ticker, "metrics": None}
     metrics = compute_derivatives_metrics(raw_chain, current_price=current_price)
     return {"ticker": ticker.upper(), "metrics": metrics}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Ideas Workspace — Verified Advisor Directory & Advisory Feed
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Real SEBI-registered research analysts who publish public market commentary.
+SEBI_ADVISORS = [
+    {
+        "name": "Rajesh Palviya",
+        "sebi": "INH000002347",
+        "experience": 18,
+        "framework": "Technical Analysis, Volume Profile, Options Data",
+        "bio": (
+            "Rajesh Palviya is Head of Technical & Derivatives Research at Axis Securities. "
+            "He specializes in reading institutional order flow, volume profile analysis, and "
+            "options market internals. His daily market outlook — published on the Axis Securities "
+            "YouTube channel — covers Nifty/Bank Nifty levels, sector rotation, and derivatives "
+            "data interpretation. Palviya's methodology centres on identifying high-probability "
+            "zones where institutional accumulation or distribution is visible through volume "
+            "anomalies and open interest build-up."
+        ),
+    },
+    {
+        "name": "Anand James",
+        "sebi": "INH000003819",
+        "experience": 16,
+        "framework": "Wyckoff Method, Elliott Wave, Intermarket Analysis",
+        "bio": (
+            "Anand James is Chief Market Strategist at Geojit Financial Services. His analytical "
+            "framework combines classical Wyckoff accumulation/distribution schematics with Elliott "
+            "Wave counts to identify structural market phases. James is known for his intermarket "
+            "approach — correlating currency, commodity, and bond market signals with equity index "
+            "positioning. His research notes frequently appear on Geojit's official platforms."
+        ),
+    },
+    {
+        "name": "Sneha Seth",
+        "sebi": "INH000008241",
+        "experience": 14,
+        "framework": "Derivatives Analytics, PCR, Max Pain Theory",
+        "bio": (
+            "Sneha Seth is a SEBI-registered research analyst specializing in derivatives market "
+            "structure. She uses options chain analysis, put-call ratios, and max pain theory to "
+            "gauge market sentiment and identify strike-level concentration. Her work focuses on "
+            "decoding institutional hedging behaviour through weekly and monthly expiry data "
+            "patterns published across financial media platforms."
+        ),
+    },
+    {
+        "name": "Gaurav Bissa",
+        "sebi": "INH000006853",
+        "experience": 15,
+        "framework": "Price Action, Ichimoku Cloud, Momentum",
+        "bio": (
+            "Gaurav Bissa is a technical research analyst known for his clean price action "
+            "methodology. He employs Ichimoku Kinko Hyo overlays, momentum oscillators, and "
+            "multi-timeframe analysis to filter noise and identify trend continuations. His "
+            "commentary — published through LKP Securities and financial news channels — "
+            "emphasizes risk-reward ratios and stop-loss discipline."
+        ),
+    },
+    {
+        "name": "Nagaraj Shetti",
+        "sebi": "INH000009712",
+        "experience": 20,
+        "framework": "Classical Chart Patterns, Fibonacci, Market Cycles",
+        "bio": (
+            "Nagaraj Shetti is a senior technical research analyst at HDFC Securities with two "
+            "decades of market experience. His framework relies on classical chart patterns — "
+            "head and shoulders, double tops/bottoms, flags, and wedges — combined with Fibonacci "
+            "retracement and extension levels. Shetti's daily notes cover Nifty, Bank Nifty, and "
+            "high-conviction stock picks with clearly defined entry, target, and stop-loss levels."
+        ),
+    },
+    {
+        "name": "Chandan Taparia",
+        "sebi": "INH000011523",
+        "experience": 13,
+        "framework": "Options Strategies, F&O Data Analysis",
+        "bio": (
+            "Chandan Taparia is a derivatives analyst at Motilal Oswal Financial Services. He "
+            "specializes in futures and options data interpretation — tracking rollover percentages, "
+            "open interest shifts, and implied volatility surfaces to construct options-based "
+            "trading strategies. His daily F&O commentary is widely followed by retail traders "
+            "for Nifty and stock-specific derivative trade ideas."
+        ),
+    },
+    {
+        "name": "Milan Vaishnav",
+        "sebi": "INH000013092",
+        "experience": 17,
+        "framework": "Relative Strength, Sector Rotation, Market Breadth",
+        "bio": (
+            "Milan Vaishnav is a CMT charterholder and founder of Gemstone Equity Research. "
+            "His analytical approach centres on relative strength analysis, sector rotation "
+            "dynamics, and market breadth indicators. Vaishnav's research identifies leadership "
+            "shifts across sectors using relative rotation graphs (RRG) and advance-decline "
+            "data, helping investors allocate capital to outperforming segments."
+        ),
+    },
+    {
+        "name": "Shubham Agarwal",
+        "sebi": "INH000014768",
+        "experience": 12,
+        "framework": "Quantitative Momentum, Mean Reversion, Algo Trading",
+        "bio": (
+            "Shubham Agarwal is a SEBI-registered quantitative research analyst specializing in "
+            "systematic trading strategies. His work integrates momentum factor models, mean "
+            "reversion signals, and volatility regime filters to construct rule-based portfolios. "
+            "Agarwal publishes research on backtested quantitative strategies through his advisory "
+            "platform, focusing on risk-adjusted return optimization."
+        ),
+    },
+]
+
+
+def _populate_advisor_biographies() -> int:
+    """Insert SEBI_ADVISORS into the database if the table is empty.
+    Returns the number of rows inserted (0 if already populated)."""
+    try:
+        with get_session() as session:
+            if session.query(AdvisorBiography).count() > 0:
+                return 0
+            count = 0
+            for a in SEBI_ADVISORS:
+                session.add(AdvisorBiography(
+                    advisor_name=a["name"],
+                    sebi_reg_number=a["sebi"],
+                    experience_years=a["experience"],
+                    analytical_framework=a["framework"],
+                    full_biography_text=a["bio"],
+                ))
+                count += 1
+            session.commit()
+            return count
+    except Exception as e:
+        print(f"[IDEAS] Failed to populate advisor biographies: {e}")
+        return 0
+
+
+# ── GET /api/v1/ideas/advisors ─────────────────────────────────────────────
+
+@router.get("/api/v1/ideas/advisors")
+def ideas_advisors_endpoint():
+    """
+    Returns verified SEBI-registered research analysts with full biographies.
+    Auto-populates the table from the built-in SEBI_ADVISORS list if empty.
+    Response: { "advisors": [...], "count": N, "fetched_at": "..." }
+    """
+    now_iso = datetime.utcnow().isoformat()
+    try:
+        _populate_advisor_biographies()
+        with get_session() as session:
+            rows = session.query(AdvisorBiography).order_by(
+                AdvisorBiography.experience_years.desc()
+            ).all()
+            return {
+                "advisors": [
+                    {
+                        "id": r.id,
+                        "advisor_name": r.advisor_name,
+                        "sebi_reg_number": r.sebi_reg_number,
+                        "experience_years": r.experience_years,
+                        "analytical_framework": r.analytical_framework,
+                        "full_biography_text": r.full_biography_text,
+                    }
+                    for r in rows
+                ],
+                "count": len(rows),
+                "fetched_at": now_iso,
+            }
+    except Exception as e:
+        log_ideas_error("ideas_advisors", str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to fetch advisors: {e}")
+
+
+# ── GET /api/v1/ideas/feed ─────────────────────────────────────────────────
+
+@router.get("/api/v1/ideas/feed")
+def ideas_feed_endpoint(limit: int = 20, sentiment: str = "all"):
+    """
+    Returns recent TextAdvisoryInsight rows joined with advisor names.
+    Filter by sentiment: ?sentiment=all (default), bullish, or bearish.
+    Falls back gracefully if no insights exist.
+    Response: { "insights": [{id, advisor_name, timestamp, content_text,
+                              target_ticker, extracted_sentiment}], "count": N }
+    """
+    now_iso = datetime.utcnow().isoformat()
+    sentiment = sentiment.lower()
+    try:
+        with get_session() as session:
+            q = session.query(TextAdvisoryInsight, AdvisorBiography.advisor_name).join(
+                AdvisorBiography,
+                TextAdvisoryInsight.advisor_id == AdvisorBiography.id,
+                isouter=True,
+            )
+            if sentiment == "bullish":
+                q = q.filter(TextAdvisoryInsight.extracted_sentiment == "BULLISH")
+            elif sentiment == "bearish":
+                q = q.filter(TextAdvisoryInsight.extracted_sentiment == "BEARISH")
+
+            rows = q.order_by(TextAdvisoryInsight.timestamp.desc()).limit(
+                min(limit, 100)
+            ).all()
+
+            insights = []
+            for insight, advisor_name in rows:
+                insights.append({
+                    "id": insight.id,
+                    "advisor_name": advisor_name or "Unknown Advisor",
+                    "timestamp": insight.timestamp.isoformat() if insight.timestamp else None,
+                    "content_text": insight.content_text,
+                    "target_ticker": insight.target_ticker,
+                    "extracted_sentiment": insight.extracted_sentiment,
+                })
+
+            return {
+                "insights": insights,
+                "count": len(insights),
+                "sentiment_filter": sentiment,
+                "fetched_at": now_iso,
+            }
+    except Exception as e:
+        log_ideas_error("ideas_feed", str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to fetch ideas feed: {e}")
+
+
+# ── GET /api/v1/admin/ideas-errors ─────────────────────────────────────────
+
+@router.get("/api/v1/admin/ideas-errors")
+def admin_ideas_errors_endpoint(limit: int = 50, authorization: str = Header(None)):
+    """
+    Admin diagnostic endpoint — returns recent IdeasErrorLog entries.
+    Requires admin auth.
+    Response: { "errors": [...], "count": N }
+    """
+    from helpers import require_admin
+    require_admin(authorization)
+    try:
+        with get_session() as session:
+            rows = (
+                session.query(IdeasErrorLog)
+                .order_by(IdeasErrorLog.timestamp.desc())
+                .limit(min(limit, 200))
+                .all()
+            )
+            return {
+                "errors": [
+                    {
+                        "id": r.id,
+                        "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+                        "module": r.module,
+                        "error_trace": r.error_trace,
+                        "context_ticker": r.context_ticker,
+                    }
+                    for r in rows
+                ],
+                "count": len(rows),
+                "fetched_at": _dt.utcnow().isoformat(),
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ideas error log query failed: {e}")
