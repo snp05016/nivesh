@@ -2,7 +2,7 @@
 
 > **Authority:** This is the definitive technical blueprint and "System DNA" of the Nivesh ecosystem.
 > **Scope:** Full-stack analysis covering SwiftUI (iOS), FastAPI (Backend), LangGraph (AI Pipeline), and TradingAgents (Multi-Agent Framework).
-> **Last Updated:** June 5, 2026.
+> **Last Updated:** June 6, 2026.
 > **Total Files Indexed:** 259 source files (GitNexus: 11,614 symbols, 24,375 relationships, 179 execution flows)
 > **Documentation Target:** 3000-4000 Lines (Density: Maximum)
 
@@ -253,7 +253,7 @@ To handle complex Indian market rules without prohibitive latency or cost, the s
 |   |   |   |-- AnalysisScreen.swift        # Stock analysis: 5 sub-tabs, 11 charts, live price polling (1946 lines)
 |   |   |   |-- PortfolioScreen.swift       # Holdings, P&L, watchlist, risk analysis, export (1650 lines)
 |   |   |   |-- MarketsView.swift           # Markets hub with 5 sub-tabs
-|   |   |   |-- EarningsDashboardView.swift # Earnings feed + calendar + progress (1751 lines)
+|   |   |   |-- EarningsDashboardView.swift # Earnings feed + calendar + progress (1769 lines)
 |   |   |   |-- SearchScreen.swift          # Stock search + 5 screener presets
 |   |   |   |-- AlertsScreen.swift          # Price alert management
 |   |   |   |-- TradeJournalScreen.swift    # Trading journal with stats
@@ -2355,7 +2355,7 @@ Parameters: index=equities, symbol={ticker}
 
 ### 15.4. EarningsDashboardView.swift
 
-**File:** ios/StockApp/stockme/stockme/Views/EarningsDashboardView.swift (~1751 lines)
+**File:** ios/StockApp/stockme/stockme/Views/EarningsDashboardView.swift (~1769 lines)
 
 **Features:**
 - Earnings Feed: Latest results with revenue/profit growth% and sparklines

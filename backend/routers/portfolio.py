@@ -1525,6 +1525,7 @@ async def portfolio_charts_endpoint(
         os.makedirs(chart_dir, exist_ok=True)
 
         # ── Cache: serve existing charts unless regenerate was requested ──
+        meta_path = os.path.join(chart_dir, f"meta_{user_id}.json")
         existing = []
         if not regenerate and os.path.isdir(chart_dir):
             cutoff = _time_module.time() - 86400  # 24 h TTL
@@ -1535,13 +1536,22 @@ async def portfolio_charts_endpoint(
                         existing.append(fname)
 
         if existing and not regenerate:
+            # Try loading persisted metadata, fall back to generic names
+            import json as _json
+            cached_meta: dict[str, dict] = {}
+            if os.path.exists(meta_path):
+                try:
+                    cached_meta = _json.loads(open(meta_path).read())
+                except Exception:
+                    cached_meta = {}
             cached_charts = []
             for fname in sorted(existing):
                 n = fname.replace(f"chart_{user_id}_", "").replace(".png", "")
+                meta = cached_meta.get(fname, {})
                 cached_charts.append({
                     "filename": fname,
-                    "title": f"Chart {n}",
-                    "description": "Cached portfolio chart",
+                    "title": meta.get("title", f"Chart {n}"),
+                    "description": meta.get("description", "Portfolio chart"),
                     "url": f"/charts/{fname}",
                 })
             return {"charts": cached_charts, "count": len(cached_charts), "cached": True}
@@ -1557,6 +1567,14 @@ async def portfolio_charts_endpoint(
             ),
             timeout=90.0,
         )
+        # Persist metadata so cache hits use proper names
+        import json as _json
+        meta_dict = {c["filename"]: {"title": c["title"], "description": c["description"]} for c in charts}
+        try:
+            with open(meta_path, "w") as mf:
+                _json.dump(meta_dict, mf)
+        except Exception:
+            pass  # metadata write is best-effort
         return {
             "charts": [
                 {
