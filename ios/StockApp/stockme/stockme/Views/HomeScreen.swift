@@ -780,7 +780,7 @@ struct HomeScreen: View {
                                         .padding(.bottom, 12)
                                     }
 
-                                    // Horizontal scrolling news strip — screen-width constrained
+                                    // Horizontal scrolling news strip
                                     ScrollView(.horizontal, showsIndicators: false) {
                                         HStack(spacing: 10) {
                                             ForEach(feed.news.prefix(10)) { article in
@@ -792,7 +792,7 @@ struct HomeScreen: View {
                                         }
                                         .padding(.horizontal, Theme.screenPadding)
                                     }
-                                    .horizontalScrollFixed(height: 140)
+                                    .frame(height: 176)
                                 } else if feedVM.isLoading {
                                     // Skeleton shimmer while loading
                                     ForEach(0..<3, id: \.self) { _ in
@@ -2019,14 +2019,14 @@ struct CompactNewsCell: View {
 
                 Spacer(minLength: 0)
             }
-            .frame(width: 120, height: 160, alignment: .topLeading)
-            .padding(6)
+            .frame(height: 160, alignment: .topLeading)
+            .padding(8)
             .background(
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Theme.canvasDeep)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+                            .stroke(Theme.borderSage, lineWidth: 0.5)
                     )
             )
         }
