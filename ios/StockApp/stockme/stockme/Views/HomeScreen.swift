@@ -787,7 +787,7 @@ struct HomeScreen: View {
                                                 CompactNewsCell(article: article) { ticker in
                                                     navigationPath.append(ticker)
                                                 }
-                                                .frame(width: 150)
+                                                .frame(width: 220)
                                             }
                                         }
                                         .padding(.horizontal, Theme.screenPadding)
@@ -1970,13 +1970,13 @@ struct CompactNewsCell: View {
                             image
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
-                                .frame(width: 120, height: 72)
+                                .frame(height: 72)
                                 .clipped()
                                 .cornerRadius(6)
                         case .failure(_), .empty:
                             Rectangle()
                                 .fill(Color.primary.opacity(0.06))
-                                .frame(width: 120, height: 72)
+                                .frame(height: 72)
                                 .cornerRadius(6)
                                 .overlay(
                                     Image(systemName: "newspaper")
@@ -1990,7 +1990,7 @@ struct CompactNewsCell: View {
                 } else {
                     Rectangle()
                         .fill(Color.primary.opacity(0.06))
-                        .frame(width: 120, height: 72)
+                        .frame(height: 72)
                         .cornerRadius(6)
                         .overlay(
                             Image(systemName: "newspaper")
