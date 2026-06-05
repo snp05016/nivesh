@@ -101,7 +101,7 @@ struct MicroTextStrip: View {
         let text = "NIVESH ₹ RBI भारत NIVESH ₹ RBI भारत NIVESH ₹ RBI भारत NIVESH ₹ RBI भारत NIVESH ₹ RBI भारत "
         Text(text + text)
             .font(.system(size: 7, weight: .medium, design: .monospaced))
-            .foregroundColor(.primary.opacity(0.06))
+            .foregroundColor(.primary.opacity(0.10))
             .lineLimit(1)
             .frame(maxWidth: .infinity, alignment: .leading)
             .allowsHitTesting(false)

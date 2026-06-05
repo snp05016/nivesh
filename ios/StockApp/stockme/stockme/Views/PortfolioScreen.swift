@@ -103,6 +103,7 @@ struct PortfolioScreen: View {
                 DenominationBackground(denomination: .twoThousand)
 
                 VStack(spacing: 0) {
+                    // Content anchored to safe area — fixes left-edge cutoff
                     // Bilingual header
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -1477,7 +1478,7 @@ private struct NoteEditorSheet: View {
                             }
                             .padding(.horizontal, Theme.screenPadding)
                         }
-                        .horizontalScrollFixed(height: 240)
+                        .frame(height: 240)
                     } else {
                         // Empty state — charts will populate after backend generates them
                         HStack(spacing: 8) {

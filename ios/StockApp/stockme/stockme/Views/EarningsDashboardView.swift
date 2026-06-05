@@ -693,7 +693,6 @@ struct EarningsCalendarView: View {
             .padding(.horizontal, 4)
             .padding(.vertical, 4)
         }
-        .horizontalScrollFixed(height: 80)
     }
 
     private func calendarDayCell(_ date: Date) -> some View {
