@@ -263,6 +263,29 @@ def _risk_label(score: int | None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# 0. GET /portfolio/signal-warnings  (MUST be before /portfolio/{user_id})
+# ---------------------------------------------------------------------------
+@router.get("/portfolio/signal-warnings")
+def portfolio_signal_warnings(user_id: int, authorization: str = Header(None)):
+    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
+    if token_user is None or token_user != user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    warnings = []
+    with get_session() as session:
+        holdings = session.query(Portfolio).filter(Portfolio.user_id == user_id, Portfolio.group_name == "holdings").all()
+        for h in holdings:
+            rows = session.query(AnalysisHistory).filter(AnalysisHistory.ticker == h.ticker).order_by(AnalysisHistory.created_at.desc()).limit(2).all()
+            if not rows: continue
+            latest, prev = rows[0], rows[1] if len(rows) > 1 else None
+            signal_flipped = prev is not None and prev.signal != latest.signal
+            confidence_dropped = prev is not None and latest.confidence_pct is not None and prev.confidence_pct is not None and (prev.confidence_pct - latest.confidence_pct) > 20
+            is_bearish = latest.signal in ("BEARISH", "CAUTIOUSLY BEARISH")
+            if signal_flipped or confidence_dropped or is_bearish:
+                warnings.append({"ticker": h.ticker, "current_signal": latest.signal, "previous_signal": prev.signal if prev else None, "signal_flipped": signal_flipped, "confidence_dropped": confidence_dropped, "is_bearish": is_bearish, "analysis_date": latest.analysis_date})
+    return {"warnings": warnings}
+
+
+# ---------------------------------------------------------------------------
 # 1. GET /portfolio/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/{user_id}")
@@ -764,60 +787,6 @@ def portfolio_update_endpoint(req: PortfolioUpdateRequest, authorization: str = 
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# ---------------------------------------------------------------------------
-# 9. GET /portfolio/signal-warnings
-# ---------------------------------------------------------------------------
-@router.get("/portfolio/signal-warnings")
-def portfolio_signal_warnings(user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    """Return tickers where signal flipped or is BEARISH/CAUTIOUSLY BEARISH for held stocks."""
-    warnings = []
-    with get_session() as session:
-        holdings = session.query(Portfolio).filter(
-            Portfolio.user_id == user_id,
-            Portfolio.group_name == "holdings"
-        ).all()
-
-        for h in holdings:
-            rows = (
-                session.query(AnalysisHistory)
-                .filter(AnalysisHistory.ticker == h.ticker)
-                .order_by(AnalysisHistory.created_at.desc())
-                .limit(2)
-                .all()
-            )
-
-            if not rows:
-                continue
-
-            latest = rows[0]
-            prev = rows[1] if len(rows) > 1 else None
-
-            signal_flipped = prev is not None and prev.signal != latest.signal
-            confidence_dropped = (
-                prev is not None
-                and latest.confidence_pct is not None
-                and prev.confidence_pct is not None
-                and (prev.confidence_pct - latest.confidence_pct) > 20
-            )
-            is_bearish = latest.signal in ("BEARISH", "CAUTIOUSLY BEARISH")
-
-            if signal_flipped or confidence_dropped or is_bearish:
-                warnings.append({
-                    "ticker": h.ticker,
-                    "current_signal": latest.signal,
-                    "previous_signal": prev.signal if prev else None,
-                    "signal_flipped": signal_flipped,
-                    "confidence_dropped": confidence_dropped,
-                    "is_bearish": is_bearish,
-                    "analysis_date": latest.analysis_date,
-                })
-
-    return {"warnings": warnings}
 
 
 # ---------------------------------------------------------------------------
