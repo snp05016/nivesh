@@ -103,7 +103,6 @@ struct PortfolioScreen: View {
                 DenominationBackground(denomination: .twoThousand)
 
                 VStack(spacing: 0) {
-                    // Content anchored to safe area — fixes left-edge cutoff
                     // Bilingual header
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -178,7 +177,7 @@ struct PortfolioScreen: View {
                                         ForEach(viewModel.holdings) { holding in
                                             NavigationLink(value: HoldingNavValue(ticker: holding.stock.ticker, userNote: holding.notes, purchaseDateStr: holding.purchaseDate, holding: holding)) {
                                                 HoldingNoteRow(holding: holding, signalWarning: signalWarnings[holding.stock.ticker])
-                                                    .frame(width: 300)
+                                                    .frame(width: UIScreen.main.bounds.width * 0.78)
                                             }
                                             .ekPress()
                                             .contextMenu {
@@ -209,7 +208,7 @@ struct PortfolioScreen: View {
                                                     guard let user = authManager.currentUser else { return }
                                                     Task { await viewModel.removeFromWatchlist(ticker: item.ticker, userId: user.userId) }
                                                 }
-                                                .frame(width: 300)
+                                                .frame(width: UIScreen.main.bounds.width * 0.78)
                                             }
                                             .buttonStyle(.plain)
                                         }
