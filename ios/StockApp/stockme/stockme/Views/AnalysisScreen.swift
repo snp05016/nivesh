@@ -240,772 +240,457 @@ struct AnalysisScreen: View {
         }
     }
 
+    // MARK: - Loading State (Redesigned)
+
     @ViewBuilder
     private func renderLoadingState() -> some View {
         ScrollView {
-            VStack(spacing: Theme.sectionSpacing) {
+            VStack(spacing: Theme.Spacing.sectionGap) {
                 if let info = viewModel.quickInfo {
-                    VStack(spacing: Theme.Spacing.large) {
-                        HStack(spacing: Theme.Spacing.card) {
-                            StockIcon(ticker: info.ticker, signal: info.signal)
-                            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                                Text(info.ticker)
-                                    .font(Theme.serialNumberFont(size: 24))
-                                    .foregroundStyle(Theme.inkPrimary)
-                                Text("OFFICIAL QUOTATION")
-                                    .font(Theme.officialStampFont(size: 9))
-                                    .foregroundStyle(Theme.inkSecondary)
-                            }
-                            Spacer()
-                        }
-
-                        GuillocheDivider()
-
-                        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
-                                Text("₹")
-                                    .font(Theme.engravedSerif(size: 24, weight: .bold))
-                                    .foregroundStyle(Theme.securityGold)
-                                Text(info.price.inrFormatted.replacingOccurrences(of: "₹", with: ""))
-                                    .font(Theme.serialNumberFont(size: 44))
-                                    .foregroundStyle(Theme.inkPrimary)
-                            }
-
-                            HStack(spacing: Theme.Spacing.medium) {
-                                Text(info.change >= 0 ? "+" : "") + Text(info.change.inrFormatted)
-                                Text("(\(info.changePercent.percentFormatted))")
-                            }
-                            .font(Theme.serialNumberFont(size: 16))
-                            .foregroundStyle(info.change >= 0 ? Theme.bullGreen : Theme.bearRed)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(Theme.Spacing.large)
-                        .banknoteCard()
-                    }
-                    .padding(.top, 20)
+                    stockHeaderCard(info: info)
                 }
-
-                // Personal note card (loading state)
-                if let note = userNote, !note.isEmpty {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                        Text("आपका नोट / YOUR NOTE")
-                            .font(Theme.officialStampFont(size: 9))
-                            .foregroundStyle(Theme.inkSecondary)
-                        Text(note)
-                            .font(Theme.hindiFont(size: 14))
-                            .foregroundStyle(Theme.inkPrimary)
-                            .lineSpacing(4)
-                    }
-                    .padding(Theme.Spacing.screen)
-                    .background(Theme.holdAmber.opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.securityGold.opacity(0.4), lineWidth: 1))
-                }
-
                 VStack(spacing: Theme.Spacing.screen) {
                     if deepScanEnabled {
                         HStack(spacing: Theme.Spacing.tight) {
                             Image(systemName: "waveform.badge.magnifyingglass")
-                                .font(.caption.weight(.medium))
+                                .font(Theme.microLabel())
                             Text("DEEP SCAN ACTIVE")
-                                .font(Theme.officialStampFont(size: 8))
+                                .font(Theme.sectionCapsLabel(size: 8))
                                 .tracking(1.5)
                         }
-                        .foregroundStyle(Theme.securityGold)
-                        .padding(.horizontal, 12)
+                        .foregroundStyle(Theme.goldPrimary)
+                        .padding(.horizontal, Theme.Spacing.standard)
                         .padding(.vertical, Theme.Spacing.tight)
-                        .background(Theme.securityGold.opacity(0.08))
+                        .background(Theme.goldMuted.opacity(0.5))
                         .clipShape(Capsule())
-                        .overlay(Capsule().stroke(Theme.securityGold.opacity(0.25), lineWidth: 0.5))
+                        .overlay(Capsule().stroke(Theme.goldMuted, lineWidth: 0.5))
                     }
-
                     DialecticProgressView(
                         userId: authManager.currentUser?.userId,
                         ticker: ticker
                     )
-
                     Button(action: {
                         HapticManager.impact(.rigid)
                         viewModel.cancelAnalysis()
                         dismiss()
                     }) {
                         Text("ABORT PROCESS")
-                            .font(Theme.officialStampFont(size: 9))
-                            .foregroundStyle(Theme.bearRed)
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 20)
-                            .overlay(RoundedRectangle(cornerRadius: 2).stroke(Theme.bearRed.opacity(0.3), lineWidth: 1))
+                            .font(Theme.sectionCapsLabel(size: 9))
+                            .foregroundStyle(Theme.dataNegative)
+                            .padding(.vertical, Theme.Spacing.medium)
+                            .padding(.horizontal, Theme.Spacing.screen)
+                            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.dataNegative.opacity(0.3), lineWidth: 1))
                     }
                 }
-                .padding(.top, 20)
-
+                .padding(.top, Theme.Spacing.screen)
                 if let info = viewModel.quickInfo {
                     VStack(alignment: .leading, spacing: Theme.Spacing.screen) {
-                        Text("संस्था का विवरण / COMPANY PROFILE")
-                            .font(Theme.officialStampFont(size: 9))
-                            .foregroundStyle(Theme.inkPrimary)
-
+                        SectionHeaderView(title: "COMPANY PROFILE")
                         if let desc = info.description {
                             Text(desc)
-                                .font(.subheadline.weight(.medium))
+                                .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
                                 .foregroundStyle(Theme.inkSecondary)
                                 .lineSpacing(6)
                         }
-
                         GuillocheDivider()
-
                         if let officers = info.officers, !officers.isEmpty {
                             VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                                 Text("KEY EXECUTIVES")
-                                    .font(Theme.officialStampFont(size: 8))
+                                    .font(Theme.sectionCapsLabel(size: 8))
                                     .foregroundStyle(Theme.inkSecondary)
-
                                 ForEach(officers, id: \.self) { officer in
                                     Text("• \(officer.uppercased())")
-                                        .font(Theme.serialNumberFont(size: 13))
+                                        .font(Theme.monoTabular(size: 13))
                                         .foregroundStyle(Theme.inkPrimary)
                                 }
                             }
                         }
                     }
-                    .padding(Theme.Spacing.large)
-                    .banknoteCard()
-
-                    if let news = info.recentNews, !news.isEmpty {
-                        VStack(alignment: .leading, spacing: Theme.Spacing.card) {
-                            Text("ताज़ा समाचार / LATEST BULLETINS")
-                                .font(Theme.officialStampFont(size: 9))
-                                .foregroundStyle(Theme.inkPrimary)
-                                .padding(.horizontal, Theme.Spacing.small)
-
-                            LazyVStack(spacing: Theme.Spacing.standard) {
-                                ForEach(news) { item in
-                                    NewsItemCard(item: item)
-                                        .banknoteCard()
-                                }
-                            }
-                        }
-                        .padding(.top, Theme.Spacing.card)
-                    }
+                    .padding(Theme.Spacing.card)
+                    .background(Theme.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderSubtle, lineWidth: 0.5))
                 }
-
-                Spacer(minLength: 100)
             }
             .padding(.horizontal, Theme.screenPadding)
+            .padding(.bottom, 100)
         }
     }
+
+    // MARK: - Full Analysis (Redesigned)
 
     @ViewBuilder
     private func renderFullAnalysis(_ analysis: StockAnalysis) -> some View {
-        VStack(spacing: 0) {
-            // ── Sticky header ──────────────────────────────────────────
-            VStack(spacing: 0) {
-                HStack(alignment: .top, spacing: Theme.Spacing.standard) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(analysis.companyName.uppercased())
-                            .font(Theme.engravedSerif(size: 17, weight: .bold))
-                            .foregroundStyle(Theme.inkPrimary)
-                            .lineLimit(1)
-                        Text("\(analysis.ticker) • \(analysis.exchange ?? "NSE")")
-                            .font(Theme.serialNumberFont(size: 10))
-                            .foregroundStyle(Theme.inkSecondary)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 3) {
-                        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
-                            Text("₹")
-                                .font(Theme.engravedSerif(size: 14, weight: .bold))
-                                .foregroundStyle(Theme.securityGold)
-                            Text((livePrice ?? analysis.currentPriceInr).inrFormatted.replacingOccurrences(of: "₹", with: ""))
-                                .font(Theme.serialNumberFont(size: 22))
-                                .foregroundStyle(Theme.inkPrimary)
-                                .contentTransition(.numericText())
-                                .animation(.easeInOut(duration: 0.3), value: livePrice)
-                            if livePrice != nil {
-                                Text("LIVE")
-                                    .font(.caption2.weight(.bold))
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 4)
-                                    .padding(.vertical, 2)
-                                    .background(Theme.bullGreen)
-                                    .cornerRadius(3)
-                            }
-                        }
-                        BanknoteSignalBadge(signal: analysis.signal, rotation: -3)
-                            .stampAppear()
-                    }
-                }
-                .padding(.horizontal, Theme.screenPadding)
-                .padding(.top, 12)
-                .padding(.bottom, 10)
-
-                GuillocheDivider()
-                    .padding(.horizontal, Theme.screenPadding)
-
-                // Tab bar
-                ScrollView(.horizontal) {
-                    HStack(spacing: 0) {
-                        ForEach(tabs.indices, id: \.self) { i in
-                            Button {
-                                HapticManager.selection()
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                    activeTab = i
-                                }
-                            } label: {
-                                VStack(spacing: Theme.Spacing.tight) {
-                                    Text(tabs[i])
-                                        .font(Theme.officialStampFont(size: 9))
-                                        .foregroundStyle(activeTab == i ? Theme.inkPrimary : Theme.inkTertiary)
-                                        .padding(.horizontal, 16)
-                                        .padding(.top, 10)
-
-                                    Rectangle()
-                                        .fill(activeTab == i ? Theme.securityGold : Color.clear)
-                                        .frame(height: 2)
-                                }
-                            }
-                        }
-                    }
-                }
-                .scrollIndicators(.hidden)
-                .padding(.horizontal, Theme.screenPadding)
+        ScrollView {
+            VStack(spacing: Theme.Spacing.sectionGap) {
+                stockHeaderSection(analysis)
+                aiVerdictCard(analysis)
+                dialecticDebateSection(analysis)
+                timeHorizonSection(analysis)
+                riskFactorsSection(analysis)
+                fundamentalsSection(analysis)
+                whatToWatchSection(analysis)
+                disclaimerSection(analysis)
+                Spacer(minLength: 100)
             }
-            .background(Theme.canvasDeep.opacity(1.0))
-
-            // ── Tab pages ──────────────────────────────────────────────
-            TabView(selection: $activeTab) {
-                tabOverview(analysis).tag(0)
-                tabAnalysis(analysis).tag(1)
-                tabCharts(analysis).tag(2)
-                tabFundamentals(analysis).tag(3)
-                tabNews(analysis).tag(4)
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: activeTab)
+            .padding(.horizontal, Theme.screenPadding)
+            .padding(.top, Theme.Spacing.standard)
         }
     }
 
-    // MARK: - Tab 0: Overview
+    // MARK: -- Stock Header
 
-    @ViewBuilder
-    private func tabOverview(_ analysis: StockAnalysis) -> some View {
-        ScrollView {
-            VStack(spacing: Theme.Spacing.screen) {
-
-                // ── Earnings banner ────────────────────────────────────
-                if let event = viewModel.earningsEvents.first(where: { $0.ticker.uppercased() == ticker.uppercased() }) {
-                    HStack(spacing: Theme.Spacing.standard) {
-                        Image(systemName: "calendar.badge.exclamationmark")
-                            .foregroundStyle(Theme.holdAmber).font(.body)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("EARNINGS DUE")
-                                .font(Theme.officialStampFont(size: 8))
-                                .foregroundStyle(Theme.inkSecondary)
-                            Text(event.daysAway == 0 ? "Results today" :
-                                 event.daysAway < 0 ? "Results \(-event.daysAway) days ago" :
-                                 "Results in \(event.daysAway) days — \(event.earningsDate)")
-                                .font(Theme.serialNumberFont(size: 12))
-                                .foregroundStyle(Theme.inkPrimary)
+    private func stockHeaderSection(_ analysis: StockAnalysis) -> some View {
+        VStack(spacing: Theme.Spacing.standard) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                    Text(analysis.companyName)
+                        .font(Theme.engravedSerif(size: 22, weight: .bold, relativeTo: .title2))
+                        .foregroundStyle(Theme.inkPrimary).lineLimit(2)
+                    HStack(spacing: Theme.Spacing.tight) {
+                        Text(analysis.exchange ?? "NSE")
+                            .font(Theme.monoTabular(size: 9, relativeTo: .caption2))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
+                            .background(Theme.surfaceElevated).clipShape(Capsule())
+                            .overlay(Capsule().stroke(Theme.goldMuted, lineWidth: 0.5))
+                        Text(analysis.ticker)
+                            .font(Theme.monoTabular(size: 9, relativeTo: .caption2))
+                            .foregroundStyle(Theme.goldPrimary)
+                            .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
+                            .background(Theme.goldMuted).clipShape(Capsule())
+                    }
+                }
+                Spacer()
+            }
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.medium) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
+                        Text("₹")
+                            .font(Theme.dataXL(size: 28, relativeTo: .title))
+                            .foregroundStyle(Theme.goldPrimary)
+                        Text((livePrice ?? analysis.currentPriceInr).inrFormatted.replacingOccurrences(of: "₹", with: ""))
+                            .font(Theme.dataXL(size: 38, relativeTo: .largeTitle))
+                            .foregroundStyle(Theme.inkPrimary)
+                            .contentTransition(.numericText())
+                    }
+                    if let info = viewModel.quickInfo {
+                        HStack(spacing: Theme.Spacing.tight) {
+                            Image(systemName: info.change >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
+                                .font(.caption2)
+                            Text("\(info.change >= 0 ? "+" : "")\(info.change.inrFormatted)")
+                            Text("(\(info.changePercent.percentFormatted))")
                         }
+                        .font(Theme.monoTabular(size: 14, relativeTo: .footnote))
+                        .foregroundStyle(info.change >= 0 ? Theme.dataPositive : Theme.dataNegative)
+                    }
+                    if livePrice != nil {
+                        HStack(spacing: Theme.Spacing.small) {
+                            Circle().fill(Theme.dataPositive).frame(width: 6, height: 6)
+                            Text("LIVE").font(Theme.microLabel(size: 9)).foregroundStyle(Theme.dataPositive)
+                        }
+                    }
+                }
+                Spacer()
+                BanknoteSignalBadge(signal: analysis.signal, rotation: -3).stampAppear()
+            }
+            GuillocheDivider()
+        }
+    }
+
+    private func stockHeaderCard(info: QuickInfo) -> some View {
+        VStack(spacing: Theme.Spacing.standard) {
+            HStack(spacing: Theme.Spacing.card) {
+                StockIcon(ticker: info.ticker, signal: info.signal)
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                    Text(info.ticker).font(Theme.serialNumberFont(size: 24)).foregroundStyle(Theme.inkPrimary)
+                    Text(info.sector ?? info.industry ?? "").font(Theme.microLabel()).foregroundStyle(Theme.inkSecondary)
+                }
+                Spacer()
+            }
+            GuillocheDivider()
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
+                Text("₹").font(Theme.engravedSerif(size: 24, weight: .bold)).foregroundStyle(Theme.goldPrimary)
+                Text(info.price.inrFormatted.replacingOccurrences(of: "₹", with: ""))
+                    .font(Theme.dataLarge()).foregroundStyle(Theme.inkPrimary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: Theme.Spacing.medium) {
+                Text(info.change >= 0 ? "+" : "") + Text(info.change.inrFormatted)
+                Text("(\(info.changePercent.percentFormatted))")
+            }
+            .font(Theme.monoTabular(size: 16))
+            .foregroundStyle(info.change >= 0 ? Theme.dataPositive : Theme.dataNegative)
+        }
+        .padding(Theme.Spacing.card)
+        .background(Theme.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
+        .padding(.top, Theme.Spacing.screen)
+    }
+
+    // MARK: -- AI Verdict Card (Hero)
+
+    private func aiVerdictCard(_ analysis: StockAnalysis) -> some View {
+        VStack(spacing: 0) {
+            GuillocheDivider()
+            VStack(alignment: .leading, spacing: Theme.Spacing.card) {
+                HStack {
+                    Text("AI VERDICT").font(Theme.sectionCapsLabel()).tracking(1.5).foregroundStyle(Theme.inkPrimary)
+                    Spacer()
+                    Text(analysis.analysisDate).font(Theme.microLabel()).foregroundStyle(Theme.inkTertiary)
+                }
+                HStack(spacing: Theme.Spacing.standard) {
+                    Text(analysis.signal.rawValue)
+                        .font(Theme.engravedSerif(size: 18, weight: .bold))
+                        .foregroundStyle(signalBadgeTextColor(analysis.signal))
+                        .padding(.horizontal, Theme.Spacing.card).padding(.vertical, Theme.Spacing.medium)
+                        .background(signalBadgeBgColor(analysis.signal))
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.pill))
+                    Spacer()
+                    ConfidenceArcView(score: analysis.confidencePercent, size: 64)
+                }
+                VStack(spacing: Theme.Spacing.small) {
+                    Text("CONFIDENCE").font(Theme.microLabel()).foregroundStyle(Theme.inkTertiary)
+                    HStack(spacing: Theme.Spacing.xSmall) {
+                        ForEach(0..<5, id: \.self) { i in
+                            RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                .fill(i < confidenceSegments(analysis.confidencePercent) ? Theme.goldPrimary : Theme.inkTertiary.opacity(0.15))
+                                .frame(height: 6)
+                        }
+                    }
+                }
+                Text(analysis.keyFactors.fundamentalsSummary)
+                    .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
+                    .foregroundStyle(Theme.inkSecondary).lineSpacing(6).lineLimit(4)
+                VStack(spacing: Theme.Spacing.medium) {
+                    horizonRow(label: "3 MONTHS", target: analysis.targetPrices.shortTerm3m, upside: analysis.upsideDownsidePct.shortTerm)
+                    horizonRow(label: "12 MONTHS", target: analysis.targetPrices.mediumTerm12m, upside: analysis.upsideDownsidePct.mediumTerm, featured: true)
+                    horizonRow(label: "3 YEARS", target: analysis.targetPrices.longTerm36m, upside: analysis.upsideDownsidePct.longTerm)
+                }
+                Text("Analysis by Nivesh AI · Dalal Street weighted")
+                    .font(Theme.microLabel(size: 9)).foregroundStyle(Theme.inkTertiary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .padding(Theme.Spacing.cardInset)
+            .background(Theme.surfaceElevated)
+            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderStrong, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
+            GuillocheDivider()
+        }
+    }
+
+    private func horizonRow(label: String, target: Double, upside: Double, featured: Bool = false) -> some View {
+        HStack(spacing: Theme.Spacing.standard) {
+            Text(label)
+                .font(featured ? Theme.monoTabular(size: 13).weight(.bold) : Theme.monoTabular(size: 12))
+                .foregroundStyle(featured ? Theme.goldPrimary : Theme.inkSecondary)
+                .frame(width: 80, alignment: .leading)
+            Image(systemName: upside >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
+                .font(.caption2)
+                .foregroundStyle(upside >= 0 ? Theme.dataPositive : Theme.dataNegative)
+            Text(IndianFormatter.priceCompact(target))
+                .font(Theme.monoTabular(size: 14)).foregroundStyle(Theme.inkPrimary)
+            Spacer()
+            PnlBadge(value: upside, showPercentage: true)
+        }
+        .padding(.horizontal, Theme.Spacing.medium).padding(.vertical, Theme.Spacing.small)
+        .background(featured ? Theme.goldMuted.opacity(0.5) : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+    }
+
+    private func signalBadgeTextColor(_ signal: Signal) -> Color {
+        switch signal {
+        case .bullish, .cautiously_bullish: return .white
+        case .bearish, .cautiously_bearish: return .white
+        case .hold, .neutral: return Theme.goldPrimary
+        }
+    }
+
+    private func signalBadgeBgColor(_ signal: Signal) -> Color {
+        switch signal {
+        case .bullish, .cautiously_bullish: return Theme.dataPositive
+        case .bearish, .cautiously_bearish: return Theme.dataNegative
+        case .hold, .neutral: return Theme.goldMuted
+        }
+    }
+
+    private func confidenceSegments(_ pct: Int) -> Int {
+        if pct >= 80 { return 5 }
+        if pct >= 60 { return 4 }
+        if pct >= 40 { return 3 }
+        if pct >= 20 { return 2 }
+        return 1
+    }
+
+    // MARK: -- Dialectic Debate
+
+    private func dialecticDebateSection(_ analysis: StockAnalysis) -> some View {
+        VStack(spacing: Theme.Spacing.standard) {
+            SectionHeaderView(title: "DIALECTICAL ANALYSIS")
+            HStack(alignment: .top, spacing: Theme.Spacing.tight) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                    HStack(spacing: Theme.Spacing.small) {
+                        Image(systemName: "arrowtriangle.up.fill").font(.caption).foregroundStyle(Theme.dataPositive)
+                        Text("BULL CASE").font(Theme.sectionCapsLabel()).foregroundStyle(Theme.dataPositive)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    ForEach(analysis.bullCase.prefix(3), id: \.self) { point in
+                        HStack(alignment: .top, spacing: Theme.Spacing.tight) {
+                            Text("▲").font(Theme.monoTabular(size: 8)).foregroundStyle(Theme.dataPositive)
+                            Text(stripEmoji(point))
+                                .font(Theme.engravedSerif(size: 12, weight: .regular, relativeTo: .caption))
+                                .foregroundStyle(Theme.inkSecondary).lineSpacing(3)
+                        }
+                    }
+                }
+                .padding(Theme.Spacing.card).frame(maxWidth: .infinity)
+                .background(Theme.dataPositiveMuted.opacity(0.3))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+                VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                    HStack(spacing: Theme.Spacing.small) {
+                        Image(systemName: "arrowtriangle.down.fill").font(.caption).foregroundStyle(Theme.dataNegative)
+                        Text("BEAR CASE").font(Theme.sectionCapsLabel(size: 12)).foregroundStyle(Theme.dataNegative)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    ForEach(analysis.bearCase.prefix(3), id: \.self) { point in
+                        HStack(alignment: .top, spacing: Theme.Spacing.tight) {
+                            Text("▼").font(Theme.monoTabular(size: 9)).foregroundStyle(Theme.dataNegative)
+                            Text(stripEmoji(point))
+                                .font(Theme.engravedSerif(size: 13, weight: .medium, relativeTo: .caption))
+                                .foregroundStyle(Theme.inkPrimary).lineSpacing(3)
+                        }
+                    }
+                }
+                .padding(Theme.Spacing.card).frame(maxWidth: .infinity)
+                .background(Theme.dataNegativeMuted.opacity(0.3))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+            }
+        }
+    }
+
+    // MARK: -- Time Horizon
+
+    private func timeHorizonSection(_ analysis: StockAnalysis) -> some View {
+        VStack(spacing: Theme.Spacing.standard) {
+            SectionHeaderView(title: "PRICE PROJECTIONS")
+            HStack(spacing: Theme.Spacing.card) {
+                horizonCard(label: "3M", target: analysis.targetPrices.shortTerm3m, upside: analysis.upsideDownsidePct.shortTerm)
+                horizonCard(label: "12M", target: analysis.targetPrices.mediumTerm12m, upside: analysis.upsideDownsidePct.mediumTerm, featured: true)
+                horizonCard(label: "3Y", target: analysis.targetPrices.longTerm36m, upside: analysis.upsideDownsidePct.longTerm)
+            }
+        }
+    }
+
+    private func horizonCard(label: String, target: Double, upside: Double, featured: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+            Text(label)
+                .font(Theme.sectionCapsLabel(size: 9))
+                .foregroundStyle(featured ? Theme.goldPrimary : Theme.inkSecondary)
+                .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
+                .background(featured ? Theme.goldMuted : Theme.inkTertiary.opacity(0.1))
+                .clipShape(Capsule())
+            Text(IndianFormatter.priceCompact(target))
+                .font(Theme.dataLarge(size: featured ? 24 : 20, relativeTo: featured ? .title : .title2))
+                .foregroundStyle(Theme.inkPrimary)
+            PnlBadge(value: upside, showPercentage: true)
+        }
+        .padding(Theme.Spacing.card).frame(maxWidth: .infinity)
+        .background(featured ? Theme.surfaceFloat : Theme.surfaceElevated)
+        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
+            .stroke(featured ? Theme.borderStrong : Theme.borderSubtle, lineWidth: featured ? 1 : 0.5))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
+    }
+
+    // MARK: -- Risk Factors
+
+    private func riskFactorsSection(_ analysis: StockAnalysis) -> some View {
+        VStack(spacing: Theme.Spacing.standard) {
+            SectionHeaderView(title: "RISK FACTORS")
+            VStack(spacing: Theme.Spacing.tight) {
+                ForEach(Array(analysis.keyRisks.enumerated()), id: \.offset) { idx, risk in
+                    let severity: SeverityDot.Severity = idx == 0 ? .high : (idx == 1 ? .medium : .low)
+                    HStack(spacing: Theme.Spacing.medium) {
+                        SeverityDot(severity: severity)
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                            Text(severity.label).font(Theme.microLabel(size: 9)).foregroundStyle(severity.color)
+                            Text(stripEmoji(risk))
+                                .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
+                                .foregroundStyle(Theme.inkPrimary).lineSpacing(3)
+                        }
+                        Spacer()
+                    }
+                    .padding(Theme.Spacing.card)
+                    .background(Theme.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(Theme.borderSubtle, lineWidth: 0.5))
+                }
+            }
+        }
+    }
+
+    // MARK: -- Fundamentals
+
+    private func fundamentalsSection(_ analysis: StockAnalysis) -> some View {
+        VStack(spacing: Theme.Spacing.standard) {
+            SectionHeaderView(title: "FUNDAMENTALS")
+            let factors: [(String, String)] = [
+                ("MANAGEMENT QUALITY", analysis.keyFactors.managementQuality),
+                ("GEOPOLITICAL CONTEXT", analysis.keyFactors.geopoliticalContext),
+                ("PROMOTER / FII / DII", analysis.keyFactors.promoterFiiDiiActivity),
+                ("TURNAROUND STORY", analysis.keyFactors.turnaroundStory),
+                ("GLOBAL MACRO IMPACT", analysis.keyFactors.globalMacroImpact),
+                ("NEWS SENTIMENT", analysis.keyFactors.newsSentiment),
+            ]
+            VStack(spacing: Theme.Spacing.tight) {
+                ForEach(factors, id: \.0) { label, text in
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                        Text(label).font(Theme.microLabel(size: 9)).foregroundStyle(Theme.inkTertiary)
+                        Text(stripEmoji(text))
+                            .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
+                            .foregroundStyle(Theme.inkPrimary).lineSpacing(3)
+                    }
+                    .padding(Theme.Spacing.card).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(Theme.borderSubtle, lineWidth: 0.5))
+                }
+            }
+        }
+    }
+
+    // MARK: -- What to Watch + Disclaimer
+
+    private func whatToWatchSection(_ analysis: StockAnalysis) -> some View {
+        VStack(spacing: Theme.Spacing.standard) {
+            SectionHeaderView(title: "WHAT TO WATCH")
+            VStack(spacing: Theme.Spacing.tight) {
+                ForEach(analysis.whatToWatch, id: \.self) { item in
+                    HStack(alignment: .top, spacing: Theme.Spacing.medium) {
+                        Circle().fill(Theme.goldPrimary).frame(width: 6, height: 6).padding(.top, Theme.Spacing.tight)
+                        Text(stripEmoji(item))
+                            .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
+                            .foregroundStyle(Theme.inkPrimary).lineSpacing(3)
                         Spacer()
                     }
                     .padding(Theme.Spacing.standard)
-                    .background(Theme.holdAmber.opacity(0.07))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.holdAmber.opacity(0.4), lineWidth: 1))
+                    .background(Theme.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                 }
-
-                // ── "Should I be worried?" card (held stocks only) ─────
-                if let holding = portfolioHolding {
-                    let worryLevel: (label: String, color: Color, icon: String) = {
-                        switch analysis.signal {
-                        case .bullish:            return ("Low", Theme.bullGreen, "checkmark.shield.fill")
-                        case .cautiously_bullish: return ("Low", Theme.bullGreen, "checkmark.shield")
-                        case .neutral, .hold:     return ("Medium", Theme.holdAmber, "exclamationmark.triangle")
-                        case .cautiously_bearish: return ("Medium-High", Theme.bearRed.opacity(0.8), "exclamationmark.triangle.fill")
-                        case .bearish:            return ("High", Theme.bearRed, "xmark.shield.fill")
-                        }
-                    }()
-                    VStack(alignment: .leading, spacing: 14) {
-                        HStack(spacing: Theme.Spacing.standard) {
-                            Image(systemName: worryLevel.icon)
-                                .font(.title2)
-                                .foregroundStyle(worryLevel.color)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("SHOULD I BE WORRIED?")
-                                    .font(Theme.officialStampFont(size: 9))
-                                    .foregroundStyle(Theme.inkPrimary)
-                                Text("Worry level: \(worryLevel.label)")
-                                    .font(Theme.serialNumberFont(size: 13))
-                                    .foregroundStyle(worryLevel.color)
-                            }
-                            Spacer()
-                            BanknoteSignalBadge(signal: analysis.signal, rotation: -4).stampAppear()
-                        }
-                        GuillocheDivider()
-                        HStack(spacing: 0) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("YOU HOLD").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkSecondary)
-                                Text("\(Int(holding.shares)) shares @ \(holding.buyPrice.inrFormatted)").font(Theme.serialNumberFont(size: 12)).foregroundStyle(Theme.inkPrimary)
-                            }
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 3) {
-                                Text("UNREALISED P&L").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkSecondary)
-                                Text(holding.pnl.inrFormatted)
-                                    .font(Theme.serialNumberFont(size: 12))
-                                    .foregroundStyle(holding.pnl >= 0 ? Theme.bullGreen : Theme.bearRed)
-                                Text("(\(String(format: "%.1f%%", holding.pnlPercent)))")
-                                    .font(Theme.serialNumberFont(size: 11))
-                                    .foregroundStyle(holding.pnl >= 0 ? Theme.bullGreen : Theme.bearRed)
-                            }
-                        }
-                        if let target = holding.targetPrice, target > 0 {
-                            let upside = (target - holding.stock.currentPrice) / holding.stock.currentPrice * 100
-                            HStack {
-                                Text("YOUR TARGET").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkSecondary)
-                                Spacer()
-                                Text("\(target.inrFormatted)  (\(upside >= 0 ? "+" : "")\(String(format: "%.1f%%", upside)) to go)")
-                                    .font(Theme.serialNumberFont(size: 12))
-                                    .foregroundStyle(upside >= 0 ? Theme.bullGreen : Theme.bearRed)
-                            }
-                        }
-                    }
-                    .padding(18)
-                    .background(worryLevel.color.opacity(0.04))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(worryLevel.color.opacity(0.3), lineWidth: 1))
-                }
-
-                // ── Signal change diff card ─────────────────────────────
-                // Prefer API-provided signal change data; fall back to local history comparison.
-                let apiSignalChanged = analysis.signalChanged == true
-                let apiPreviousSignal = analysis.previousSignal
-                let previousReports = reportManager.savedReports.filter { $0.ticker == analysis.ticker }
-                let prevReport = previousReports.first(where: { $0.analysisDate != analysis.analysisDate })
-                let localSignalChanged = prevReport != nil && prevReport!.signal != analysis.signal
-                let showDiffCard = apiSignalChanged || localSignalChanged
-                if showDiffCard {
-                    let fromSignalText: String = apiPreviousSignal ?? prevReport?.signal.rawValue ?? ""
-                    let sinceText: String = prevReport?.analysisDate ?? ""
-                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                        HStack(spacing: Theme.Spacing.standard) {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                                .foregroundStyle(Theme.securityGold).font(.subheadline)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("SIGNAL CHANGED — WHY?")
-                                    .font(Theme.officialStampFont(size: 8))
-                                    .foregroundStyle(Theme.inkSecondary)
-                                Text("\(fromSignalText)  →  \(analysis.signal.rawValue)")
-                                    .font(Theme.serialNumberFont(size: 12))
-                                    .foregroundStyle(Theme.inkPrimary)
-                                if !sinceText.isEmpty {
-                                    Text("Since \(sinceText)")
-                                        .font(Theme.serialNumberFont(size: 10))
-                                        .foregroundStyle(Theme.inkTertiary)
-                                }
-                            }
-                            Spacer()
-                        }
-                        GuillocheDivider()
-                        let factors: [(String, String)] = [
-                            ("News/Sentiment", analysis.keyFactors.newsSentiment),
-                            ("Geopolitical", analysis.keyFactors.geopoliticalContext),
-                            ("Promoter/FII", analysis.keyFactors.promoterFiiDiiActivity),
-                        ]
-                        ForEach(factors, id: \.0) { label, text in
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(label.uppercased()).font(Theme.officialStampFont(size: 7)).foregroundStyle(Theme.inkTertiary)
-                                Text(text).font(.footnote.weight(.medium)).foregroundStyle(Theme.inkSecondary).lineSpacing(3)
-                            }
-                        }
-                    }
-                    .padding(Theme.Spacing.card)
-                    .background(Theme.securityGold.opacity(0.04))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.securityGold.opacity(0.3), lineWidth: 1))
-                }
-
-                // Confidence
-                ConfidenceCard(percent: analysis.confidencePercent)
-                if let rationale = analysis.confidenceRationale {
-                    Text(rationale)
-                        .font(Theme.officialStampFont(size: 8))
-                        .foregroundStyle(Theme.inkSecondary)
-                        .padding(.top, 2)
-                }
-
-                // Price projections
-                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                    Text("मूल्य अनुमान / PRICE PROJECTIONS")
-                        .font(Theme.officialStampFont(size: 9))
-                        .foregroundStyle(Theme.inkPrimary)
-                    ScrollView(.horizontal) {
-                        HStack(spacing: Theme.Spacing.card) {
-                            HorizonNoteCard(label: "3 Months", target: analysis.targetPrices.shortTerm3m, upside: analysis.upsideDownsidePct.shortTerm)
-                            HorizonNoteCard(label: "12 Months", target: analysis.targetPrices.mediumTerm12m, upside: analysis.upsideDownsidePct.mediumTerm, isFeatured: true)
-                            HorizonNoteCard(label: "3 Years", target: analysis.targetPrices.longTerm36m, upside: analysis.upsideDownsidePct.longTerm)
-                        }
-                    }
-                    .scrollIndicators(.hidden)
-                }
-
-                // Alert row
-                Button { showSetAlertSheet = true } label: {
-                    HStack(spacing: Theme.Spacing.standard) {
-                        Image(systemName: "bell.badge").font(.headline).foregroundStyle(Theme.securityGold)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("SET PRICE ALERT")
-                                .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
-                            Text("Alert me when \(ticker) reaches a target price")
-                                .font(Theme.serialNumberFont(size: 11)).foregroundStyle(Theme.inkSecondary)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right").foregroundStyle(Theme.inkTertiary)
-                    }
-                    .padding(Theme.Spacing.card).banknoteCard()
-                }
-                .ekPressHaptic()
-                .sheet(isPresented: $showSetAlertSheet) {
-                    AddAlertSheet(authManager: authManager, onAdded: { }, prefilledTicker: ticker, prefilledCompany: analysis.companyName)
-                }
-
-                // Personal note
-                if let note = userNote, !note.isEmpty {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                        Text("आपका नोट / YOUR NOTE")
-                            .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkSecondary)
-                        Text(note)
-                            .font(Theme.hindiFont(size: 14)).foregroundStyle(Theme.inkPrimary).lineSpacing(4)
-                    }
-                    .padding(Theme.Spacing.screen)
-                    .background(Theme.holdAmber.opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.securityGold.opacity(0.4), lineWidth: 1))
-                }
-
-                Spacer(minLength: 80)
             }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.top, 16)
         }
     }
 
-    // MARK: - Tab 1: Analysis
-
-    @ViewBuilder
-    private func tabAnalysis(_ analysis: StockAnalysis) -> some View {
-        ScrollView {
-            VStack(spacing: Theme.Spacing.screen) {
-
-                // ── Macro data strip (USD/INR · Crude · RBI · VIX) ──────────
-                if let macro = viewModel.macroStrip {
-                    HStack(spacing: 0) {
-                        MacroChip(label: "USD/INR", value: macro.usdInr.map { String(format: "₹%.2f", $0) } ?? "—", color: Theme.inkSecondary)
-                        Divider().frame(height: 28).background(Theme.borderFine)
-                        MacroChip(label: "CRUDE WTI", value: macro.crudeOilUsd.map { "$\(String(format: "%.1f", $0))" } ?? "—", color: macro.crudeOilUsd ?? 0 > 85 ? Theme.bearRed : Theme.inkSecondary)
-                        Divider().frame(height: 28).background(Theme.borderFine)
-                        MacroChip(label: "RBI RATE", value: "\(String(format: "%.2f", macro.rbiRepoRatePct))%  \(macro.rbiStance)", color: Theme.holdAmber)
-                        if let vix = macro.indiaVix {
-                            Divider().frame(height: 28).background(Theme.borderFine)
-                            MacroChip(
-                                label: "INDIA VIX",
-                                value: String(format: "%.1f", vix),
-                                color: vix > 20 ? .red : vix > 15 ? Theme.securityGold : Theme.bullGreen
-                            )
-                        }
-                    }
-                    .banknoteCard()
-                }
-
-                // ── Macro impact per holding ──────────────────────────
-                if !viewModel.macroImpacts.isEmpty {
-                    MacroImpactBanner(impacts: viewModel.macroImpacts)
-                }
-
-                // ── Geopolitical context ───────────────────────────────
-                KeyFactorCard(
-                    icon: "globe.asia.australia.fill",
-                    title: "GEOPOLITICAL / POLICY",
-                    hindiTitle: "भू-राजनीति",
-                    text: analysis.keyFactors.geopoliticalContext,
-                    color: Theme.holdAmber
-                )
-
-                // ── Global macro impact ────────────────────────────────
-                KeyFactorCard(
-                    icon: "chart.line.uptrend.xyaxis",
-                    title: "GLOBAL MACRO IMPACT",
-                    hindiTitle: "वैश्विक प्रभाव",
-                    text: analysis.keyFactors.globalMacroImpact,
-                    color: Theme.inkSecondary
-                )
-
-                // ── Indian market sentiment ────────────────────────────
-                if let sentiment = analysis.keyFactors.indianMarketSentiment {
-                    KeyFactorCard(
-                        icon: "person.3.fill",
-                        title: "INDIAN MARKET SENTIMENT",
-                        hindiTitle: "बाज़ार की भावना",
-                        text: sentiment,
-                        color: Theme.securityGold
-                    )
-                }
-
-                // ── Pattern cards ──────────────────────────────────────
-                if let patterns = analysis.patterns, !patterns.isEmpty {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                        HStack(spacing: Theme.Spacing.medium) {
-                            Image(systemName: "waveform.path.ecg").foregroundStyle(Theme.securityGold).font(.subheadline)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text("ऐतिहासिक पैटर्न").font(Theme.hindiFont(size: 9)).foregroundStyle(Theme.inkTertiary)
-                                Text("PATTERNS DETECTED").font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
-                            }
-                        }
-                        GuillocheDivider()
-                        ForEach(patterns, id: \.self) { pattern in
-                            HStack(alignment: .top, spacing: Theme.Spacing.medium) {
-                                Image(systemName: "sparkle").foregroundStyle(Theme.securityGold).font(.caption2).padding(.top, 3)
-                                Text(pattern).font(.subheadline.weight(.medium)).foregroundStyle(Theme.inkSecondary).lineSpacing(3)
-                            }
-                        }
-                    }
-                    .padding(Theme.Spacing.card).banknoteCard()
-                }
-
-                AnalysisNoteSection(title: "The Bull Case", items: analysis.bullCase, color: Theme.bullGreen)
-                AnalysisNoteSection(title: "The Bear Case", items: analysis.bearCase, color: Theme.bearRed)
-                AnalysisNoteSection(title: "Operational Risks", items: analysis.keyRisks, color: Theme.securityGold)
-
-                if !analysis.whatToWatch.isEmpty {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                        Text("नज़र रखें / WHAT TO WATCH")
-                            .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
-                        ForEach(analysis.whatToWatch, id: \.self) { point in
-                            let isCorp = point.lowercased().contains("split") || point.lowercased().contains("bonus") || point.lowercased().contains("rights") || point.lowercased().contains("dividend")
-                            HStack(alignment: .top, spacing: Theme.Spacing.standard) {
-                                Rectangle().fill(Theme.securityGold.opacity(0.4)).frame(width: 2, height: 14).padding(.top, 3)
-                                Text(point).font(.subheadline.weight(.medium)).foregroundStyle(Theme.inkSecondary).lineSpacing(3)
-                                Spacer()
-                                if isCorp { BanknoteSignalBadge(text: "CORP ACTION", color: Theme.securityGold, rotation: -2) }
-                            }
-                        }
-                    }
-                    .padding(Theme.Spacing.screen).banknoteCard()
-                }
-
-                if let ratings = viewModel.analystRatings, !ratings.ratings.isEmpty {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                        HStack {
-                            Text("BROKER CONSENSUS")
-                                .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
-                            Spacer()
-                            if let consensus = ratings.consensus {
-                                Text(consensus)
-                                    .font(Theme.officialStampFont(size: 8))
-                                    .foregroundStyle(consensus == "BUY" ? Theme.bullGreen : consensus == "SELL" ? Theme.bearRed : Theme.inkSecondary)
-                                    .padding(.horizontal, 8).padding(.vertical, 3)
-                                    .background((consensus == "BUY" ? Theme.bullGreen : consensus == "SELL" ? Theme.bearRed : Theme.inkSecondary).opacity(0.1))
-                                    .clipShape(Capsule())
-                            }
-                        }
-                        HStack(spacing: Theme.Spacing.card) {
-                            Label("\(ratings.buy) Buy", systemImage: "arrow.up.circle.fill").foregroundStyle(Theme.bullGreen)
-                            Label("\(ratings.hold) Hold", systemImage: "minus.circle.fill").foregroundStyle(Theme.inkSecondary)
-                            Label("\(ratings.sell) Sell", systemImage: "arrow.down.circle.fill").foregroundStyle(Theme.bearRed)
-                        }
-                        .font(Theme.serialNumberFont(size: 11))
-                        ScrollView(.horizontal) {
-                            HStack(spacing: Theme.Spacing.medium) {
-                                ForEach(ratings.ratings) { r in
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(r.firm).font(Theme.serialNumberFont(size: 9)).foregroundStyle(Theme.inkPrimary)
-                                        Text(r.grade).font(Theme.officialStampFont(size: 8))
-                                            .foregroundStyle(brokerGradeColor(r.grade))
-                                        Text(r.period).font(Theme.serialNumberFont(size: 8)).foregroundStyle(Theme.inkTertiary)
-                                    }
-                                    .padding(Theme.Spacing.medium).banknoteCard()
-                                }
-                            }
-                        }
-                        .scrollIndicators(.hidden)
-                    }
-                    .padding(Theme.Spacing.card).banknoteCard()
-                }
-
-                // ── Street Intelligence — Advisor Matrix ──────────────
-                AdvisoryMatrixCard(
-                    insights: analysis.advisorMatrix,
-                    ticker: analysis.ticker
-                )
-
-                Spacer(minLength: 80)
-            }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.top, 16)
+    private func disclaimerSection(_ analysis: StockAnalysis) -> some View {
+        VStack(spacing: Theme.Spacing.standard) {
+            GuillocheDivider()
+            Text(stripEmoji(analysis.disclaimer))
+                .font(Theme.microLabel(size: 9)).foregroundStyle(Theme.inkTertiary)
+                .lineSpacing(4).frame(maxWidth: .infinity, alignment: .leading)
+                .padding(Theme.Spacing.card)
+                .background(Theme.surfaceElevated.opacity(0.5))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
         }
     }
-
-    // MARK: - Tab 2: Charts
-
-    @ViewBuilder
-    private func tabCharts(_ analysis: StockAnalysis) -> some View {
-        ScrollView {
-            VStack(spacing: Theme.Spacing.card) {
-                if let qi = viewModel.quickInfo, let low = qi.week52Low, let high = qi.week52High {
-                    PriceRangeGauge(low52w: low, high52w: high, current: qi.price, target12m: analysis.targetPrices.mediumTerm12m)
-                        .padding(Theme.Spacing.screen).banknoteCard()
-                }
-
-                if let history = viewModel.quickInfo?.priceHistory90d, !history.isEmpty {
-                    PriceHistoryChart(prices: history, ticker: ticker, week52High: viewModel.quickInfo?.week52High, week52Low: viewModel.quickInfo?.week52Low)
-                        .padding(Theme.Spacing.screen).banknoteCard()
-                    RSIChart(prices: history)
-                        .padding(Theme.Spacing.screen).banknoteCard()
-                    VolumeChart(prices: history)
-                        .padding(Theme.Spacing.screen).banknoteCard()
-                } else {
-                    VStack(spacing: Theme.Spacing.standard) {
-                        Image(systemName: "chart.xyaxis.line")
-                            .font(.largeTitle).foregroundStyle(Theme.inkTertiary)
-                        Text("Charts load after quick-info fetch completes")
-                            .font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkTertiary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(40)
-                }
-
-                // ── Stock vs Nifty (only for held stocks with purchase date)
-                if let pd = parsedPurchaseDate, !viewModel.niftyPrices.isEmpty,
-                   let history = viewModel.quickInfo?.priceHistory90d, !history.isEmpty {
-                    StockVsNiftyChart(
-                        stockPrices: history,
-                        niftyPrices: viewModel.niftyPrices,
-                        purchaseDate: pd,
-                        ticker: ticker
-                    )
-                    .padding(Theme.Spacing.screen).banknoteCard()
-                }
-
-                Spacer(minLength: 80)
-            }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.top, 16)
-        }
-    }
-
-    // MARK: - Tab 3: Fundamentals
-
-    @ViewBuilder
-    private func tabFundamentals(_ analysis: StockAnalysis) -> some View {
-        ScrollView {
-            VStack(spacing: Theme.Spacing.card) {
-                // Key numbers grid
-                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                    Text("मुख्य आंकड़े / KEY NUMBERS")
-                        .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Theme.Spacing.card) {
-                        StatNoteCell(label: "P/E RATIO", value: analysis.fundamentalsSnapshot.peRatio.map { String(format: "%.1f", $0) } ?? "N/A")
-                        StatNoteCell(label: "D/E RATIO", value: (analysis.fundamentalsSnapshot.debtToEquity ?? viewModel.quickInfo?.debtToEquity).map { String(format: "%.2f", $0) } ?? "N/A")
-                        StatNoteCell(label: "PROMOTER", value: (analysis.fundamentalsSnapshot.promoterHoldingPct ?? viewModel.quickInfo?.promoterHoldingPct ?? viewModel.promoterHistory.last?.promoter).map { String(format: "%.1f%%", $0) } ?? "N/A")
-                        StatNoteCell(label: "INSTITUTION", value: analysis.fundamentalsSnapshot.fiiHoldingPct.map { String(format: "%.1f%%", $0) } ?? "N/A")
-                        StatNoteCell(label: "DII", value: analysis.fundamentalsSnapshot.diiHoldingPct.map { String(format: "%.1f%%", $0) } ?? "N/A")
-                    }
-
-                    if let pva = viewModel.quickInfo?.peVsAvg {
-                        ValuationBadge(peVsAvg: pva)
-                    }
-                }
-
-                // Promoter/FII/DII trend (if history available)
-                if !viewModel.promoterHistory.isEmpty {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                        Text("INSIDER TREND")
-                            .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
-                        ForEach(viewModel.promoterHistory) { point in
-                            HStack(spacing: 0) {
-                                Text(point.period)
-                                    .font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.inkTertiary)
-                                    .frame(minWidth: 80, alignment: .leading)
-                                TrendBar(label: "PRO", value: point.promoter, color: Theme.chartPromoter)
-                                TrendBar(label: "FII", value: point.fii, color: Theme.bullGreen)
-                                TrendBar(label: "DII", value: point.dii, color: Theme.securityGold)
-                            }
-                        }
-                    }
-                    .padding(Theme.Spacing.card).banknoteCard()
-                }
-
-                // Shareholding chart
-                let fs = analysis.fundamentalsSnapshot
-                let promoterVal = fs.promoterHoldingPct ?? 0
-                let fiiVal = fs.fiiHoldingPct ?? 0
-                let diiVal = fs.diiHoldingPct ?? 0
-                let holdingTotal = promoterVal + fiiVal + diiVal
-                if holdingTotal > 1 {
-                    ShareholdingChart(
-                        promoterPct: promoterVal,
-                        fiiPct: fiiVal,
-                        diiPct: diiVal,
-                        publicPct: max(0, 100 - holdingTotal)
-                    )
-                    .padding(Theme.Spacing.screen).banknoteCard()
-                }
-
-                // Financials chart
-                if !viewModel.quarterlyFinancials.isEmpty {
-                    FinancialsChart(quarters: viewModel.quarterlyFinancials)
-                        .padding(Theme.Spacing.screen).banknoteCard()
-                }
-
-                // Disclaimer
-                AnalysisLimitationsCard(disclaimer: analysis.disclaimer)
-
-                Spacer(minLength: 80)
-            }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.top, 16)
-        }
-    }
-
-    // MARK: - Tab 4: News
-
-    @ViewBuilder
-    private func tabNews(_ analysis: StockAnalysis) -> some View {
-        ScrollView {
-            VStack(spacing: Theme.Spacing.standard) {
-                let news = analysis.recentNews ?? viewModel.quickInfo?.recentNews ?? []
-                if news.isEmpty {
-                    VStack(spacing: Theme.Spacing.card) {
-                        Image(systemName: "newspaper")
-                            .font(.largeTitle).foregroundStyle(Theme.inkTertiary)
-                        Text("No recent news available")
-                            .font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkTertiary)
-                    }
-                    .padding(60)
-                } else {
-                    ForEach(news) { item in
-                        NewsItemCard(item: item)
-                    }
-                }
-                Spacer(minLength: 80)
-            }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.top, 16)
-        }
-    }
-
-    private func brokerGradeColor(_ grade: String) -> Color {
-        let g = grade.uppercased()
-        if g.contains("BUY") || g.contains("OUTPERFORM") || g.contains("OVERWEIGHT") || g.contains("ACCUMULATE") || g.contains("ADD") {
-            return Theme.bullGreen
-        }
-        if g.contains("SELL") || g.contains("UNDERPERFORM") || g.contains("UNDERWEIGHT") || g.contains("REDUCE") || g.contains("AVOID") {
-            return Theme.bearRed
-        }
-        return Theme.inkSecondary
-    }
-
-    @ViewBuilder
     private func renderErrorState(_ info: AnalysisErrorInfo) -> some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.screen) {
