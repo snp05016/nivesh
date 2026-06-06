@@ -403,15 +403,10 @@ init_db()
 
 
 
-EXCHANGE_SUFFIX = {"NSE": ".NS", "BSE": ".BO"}
-
 _quick_info_cache: dict[str, tuple[float, dict]] = {}  # key -> (expiry_timestamp, data)
 _QUICK_INFO_TTL = 900  # 15 minutes (extended from 5 — safe for pre/post market)
 
-# ---------------------------------------------------------------------------
-# NSE Stock Directory — in-memory, searched in <1ms, no yfinance call
-# ---------------------------------------------------------------------------
-
+# NSE Stock Directory and ticker lookups relocated to services/nse_data_provider (Phase 4+5)
 _NSE_DIRECTORY = [
     # Nifty 50 / Large Cap
     {"ticker": "RELIANCE",    "company_name": "Reliance Industries Ltd",        "sector": "Oil & Gas"},
@@ -708,22 +703,7 @@ _NSE_DIR_INDEX = [
     for e in _NSE_DIRECTORY
 ]
 
-NSE_TICKERS = {t: f"{t}.NS" for t in [
-    "BGRENERGY", "MCLEODRUSS", "CDSL", "GAUDIUMIVF",
-    "SBIN", "TATAELXSI", "OMPOWER", "AVANTEL", "ABBOTINDIA",
-    "SUZLON", "POLYCAB", "HAL", "IDEA", "APOLLO", "BSE",
-]}
-# Special cases where NSE ticker differs from yfinance symbol
-NSE_TICKER_OVERRIDES = {
-    "JITFINFRA": "JITFINFRA.NS",
-    "GAUDIUMIVF": "GAUDIUMIVF.NS",
-}
-
-
-# ---------------------------------------------------------------------------
-# Helpers — yfinance functions relocated to services/nse_data_provider (Phase 4)
-# Keep only _quick_info_cache and EXCHANGE_SUFFIX for legacy dashboard use
-# ---------------------------------------------------------------------------
+# Ticker lookups relocated to services/nse_data_provider and helpers.py (Phase 4)
 
 
 
