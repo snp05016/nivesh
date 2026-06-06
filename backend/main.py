@@ -943,108 +943,18 @@ def _to_ns(ticker: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Request models
+# Request models — imported from schemas/ namespace (Phase 1 refactor)
 # ---------------------------------------------------------------------------
 
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
-
-class AnalyzeRequest(BaseModel):
-    ticker: str
-    exchange: str = "NSE"
-    user_id: Optional[int] = None
-    deep_scan: bool = False
-
-    @validator("ticker")
-    def validate_ticker(cls, v):
-        import re
-        v = v.strip().upper()
-        if not re.match(r'^[A-Z0-9.&]{1,20}$', v):
-            raise ValueError("Invalid ticker format")
-        return v
-
-    @validator("exchange")
-    def validate_exchange(cls, v):
-        if v not in ("NSE", "BSE"):
-            raise ValueError("Exchange must be NSE or BSE")
-        return v
-
-
-class WatchlistAddRequest(BaseModel):
-    user_id: int
-    ticker: str
-    exchange: str = "NSE"
-    company_name: str
-
-
-class WatchlistRemoveRequest(BaseModel):
-    user_id: int
-    ticker: str
-
-
-class PortfolioAddRequest(BaseModel):
-    user_id: int
-    ticker: str
-    exchange: str = "NSE"
-    company_name: str
-    shares: float
-    buy_price: float
-    group_name: str = "holdings"
-
-
-class PortfolioRemoveRequest(BaseModel):
-    user_id: int
-    ticker: str
-
-
-class PortfolioUpdateRequest(BaseModel):
-    user_id: int
-    ticker: str
-    shares: float
-    buy_price: float
-
-
-class PortfolioNoteRequest(BaseModel):
-    user_id: int
-    ticker: str
-    note: str
-
-
-class AlertAddRequest(BaseModel):
-    user_id: int
-    ticker: str
-    target_price: float
-    direction: str  # "above" or "below"
-    company_name: str = ""
-
-
-class AlertRemoveRequest(BaseModel):
-    user_id: int
-    alert_id: int
-
-
-class BatchAnalyzeRequest(BaseModel):
-    tickers: list[str]
-    exchange: str = "NSE"
-    user_id: int | None = None
-
-
-class TradeJournalAddRequest(BaseModel):
-    user_id: int
-    ticker: str
-    action: str  # BUY / SELL / HOLD / WATCH
-    price_at_time: float
-    reason_text: str
-    outcome_text: Optional[str] = None
-    company_name: Optional[str] = None
-    mood: Optional[str] = None
-
-
-class TradeJournalUpdateRequest(BaseModel):
-    outcome_text: str
-    mood: Optional[str] = None
+from schemas import (
+    LoginRequest, AnalyzeRequest,
+    WatchlistAddRequest, WatchlistRemoveRequest,
+    PortfolioAddRequest, PortfolioRemoveRequest,
+    PortfolioUpdateRequest, PortfolioNoteRequest,
+    AlertAddRequest, AlertRemoveRequest,
+    BatchAnalyzeRequest,
+    TradeJournalAddRequest, TradeJournalUpdateRequest,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -2150,56 +2060,13 @@ async def _run_youtube_harvest_bg():
 from fastapi import Depends as _Depends
 
 
-# ── Pydantic response schemas ────────────────────────────────────────────────
+# ── Pydantic response schemas — imported from schemas/ namespace ─────────────
 
-class IndexSnapshot(_BaseModel):
-    name: str
-    value: _Optional[float]
-    change_pct: _Optional[float]
-    change_abs: _Optional[float]
-
-class BreadthData(_BaseModel):
-    advances: _Optional[int]
-    declines: _Optional[int]
-    unchanged: _Optional[int]
-    ad_ratio: _Optional[float]
-
-class MomentumSignal(_BaseModel):
-    ticker: str
-    signal: str          # "GOLDEN_CROSS" | "DEATH_CROSS"
-    dma_50: _Optional[float]
-    dma_200: _Optional[float]
-    score: _Optional[float]
-
-class DashboardPulseResponse(_BaseModel):
-    indices: _List[IndexSnapshot]
-    breadth: _Optional[BreadthData]
-    momentum_signals: _List[MomentumSignal]
-    fetched_at: str
-
-class MutualFundEntry(_BaseModel):
-    fund_name: str
-    amc: _Optional[str]
-    return_1y_pct: _Optional[float]
-    return_3y_pct: _Optional[float]
-    aum_crores: _Optional[float]
-    category: _Optional[str]
-
-class InstitutionalLeaderboardResponse(_BaseModel):
-    top_funds: _List[MutualFundEntry]
-    fetched_at: str
-
-class NetWorthSnapshotResponse(_BaseModel):
-    user_id: int
-    snapshot_date: str
-    total_value_formatted: str          # e.g. "₹12.50 Crores"
-    daily_delta_formatted: _Optional[str]
-    daily_delta_pct: _Optional[float]
-    peak_value_formatted: _Optional[str]
-    top_gainer_ticker: _Optional[str]
-    top_gainer_pct: _Optional[float]
-    top_loser_ticker: _Optional[str]
-    top_loser_pct: _Optional[float]
+from schemas import (
+    IndexSnapshot, BreadthData, MomentumSignal,
+    DashboardPulseResponse, MutualFundEntry,
+    InstitutionalLeaderboardResponse, NetWorthSnapshotResponse,
+)
 
 
 # ── DB session dependency (thread-safe SQLAlchemy) ───────────────────────────

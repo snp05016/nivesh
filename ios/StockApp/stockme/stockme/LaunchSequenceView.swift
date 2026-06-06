@@ -71,13 +71,15 @@ struct LaunchSequenceView: View {
 private struct Banknote: View {
     let index: Int
     private let denominations = [10, 50, 100, 200, 500]
-    private let colors: [Color] = [
-        Color(hex: "8B5E3C"),
-        Color(hex: "4A6B5A"),
-        Color(hex: "7A6BA0"),
-        Color(hex: "D4782A"),
-        Color(hex: "B040A0"),
-    ]
+    private var colors: [Color] {
+        [
+            Color(hex: "8B5E3C"),
+            Color(hex: "4A6B5A"),
+            Color(hex: "7A6BA0"),
+            Color(hex: "D4782A"),
+            Color(hex: "B040A0"),
+        ]
+    }
 
     var body: some View {
         RoundedRectangle(cornerRadius: 10)

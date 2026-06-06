@@ -105,7 +105,7 @@ struct SearchScreen: View {
                         )
                     }
                     .padding(.horizontal, Theme.screenPadding)
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 12)
 
                     // Discover screener pills — glass capsule strip
                     if searchText.isEmpty {
@@ -154,7 +154,7 @@ struct SearchScreen: View {
                     }
 
                     // Results section
-                    VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 12) {
                         SectionHeader(
                             title: {
                                 if !searchText.isEmpty { return "Search Results" }
@@ -251,6 +251,7 @@ struct SearchScreen: View {
                         )
                     }
                 }
+                .frame(maxHeight: .infinity, alignment: .top)
             }
             .onAppear {
                 guard !trendingLoaded else { return }

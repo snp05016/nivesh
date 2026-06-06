@@ -3,7 +3,7 @@
 > **Authority:** This is the definitive technical blueprint and "System DNA" of the Nivesh ecosystem.
 > **Scope:** Full-stack analysis covering SwiftUI (iOS), FastAPI (Backend), LangGraph (AI Pipeline), and TradingAgents (Multi-Agent Framework).
 > **Last Updated:** June 6, 2026.
-> **Total Files Indexed:** 259 source files (GitNexus: 11,614 symbols, 24,375 relationships, 179 execution flows)
+> **Total Files Indexed:** 260 source files (GitNexus: 11,614 symbols, 24,375 relationships, 179 execution flows)
 > **Documentation Target:** 3000-4000 Lines (Density: Maximum)
 
 ---
@@ -235,7 +235,7 @@ To handle complex Indian market rules without prohibitive latency or cost, the s
 |   |   |   |-- stockmeApp.swift           # App entry: @main, env objects, onboarding/disclaimer/biometric/content
 |   |   |   |-- AppDelegate.swift          # APNs push notification bridge, deep-link handling
 |   |   |   |-- ContentView.swift          # Auth gate: login or 5-tab navigation shell
-|   |   |   |-- LaunchSequenceView.swift   # Animated Rs medallion + guilloche launch splash (167 lines)
+|   |   |   |-- LaunchSequenceView.swift   # Animated Rs medallion + guilloche launch splash (106 lines)
 |   |   |   |-- AuthManager.swift          # Login/register/logout, token management, biometric check
 |   |   |   |-- NetworkManager.swift        # Singleton async HTTP client (981 lines) -- GOD NODE
 |   |   |   |-- NetworkManager+Sidebar.swift # Extended market data fetchers (354 lines)
@@ -254,7 +254,7 @@ To handle complex Indian market rules without prohibitive latency or cost, the s
 |   |   |   |-- PortfolioScreen.swift       # Holdings, P&L, watchlist, risk analysis, export (1650 lines)
 |   |   |   |-- MarketsView.swift           # Markets hub with 5 sub-tabs
 |   |   |   |-- EarningsDashboardView.swift # Earnings feed + calendar + progress (1769 lines)
-|   |   |   |-- SearchScreen.swift          # Stock search + 5 screener presets
+|   |   |   |-- SearchScreen.swift          # Stock search + 8 screener presets (504 lines)
 |   |   |   |-- AlertsScreen.swift          # Price alert management
 |   |   |   |-- TradeJournalScreen.swift    # Trading journal with stats
 |   |   |   |-- ExpertNetworkView.swift     # Advisor intelligence, expert posts
@@ -296,6 +296,7 @@ To handle complex Indian market rules without prohibitive latency or cost, the s
 |   |
 |   |-- HOW_THE_ANALYSIS_WORKS.md           # User-facing explanation (non-technical)
 |   |-- NIVESH_FULL_CONTEXT.md              # Full app context for LLM ingestion (93 lines)
+|   |-- LLM_CREDITS_USAGE.md                # Exhaustive LLM API credit usage audit
 |   |-- backend_nivesh_context.md           # Backend context for iOS developers
 |   |-- frontend_nivesh_context.md          # Frontend context for iOS developers
 |   |-- generate_icons.py                   # App icon generation script (Pillow)
@@ -392,7 +393,7 @@ To handle complex Indian market rules without prohibitive latency or cost, the s
 ```
 ## 4. Backend Architecture (FastAPI)
 
-### 4.1. Entry Point: `backend/main.py` (3042 lines -- GOD NODE)
+### 4.1. Entry Point: `backend/main.py` (2221 lines -- GOD NODE)
 
 This is the **central orchestrator** of the entire backend. It manages:
 
@@ -421,18 +422,46 @@ This is the **central orchestrator** of the entire backend. It manages:
 - `_nse_session`: requests.Session with Chrome UA for NSE APIs
 
 **Key Functions Defined Here:**
-- `analyze(ticker, exchange, user_id, deep_scan)` -- The core AI analysis function (stages 1-7)
-- `run_trading_agents(full_ticker, analysis_date)` -- Invokes TradingAgentsGraph
-- `build_ta_config()` -- Builds two-tier AI provider configuration
-- `reformat_with_claude(raw_output, ticker, exchange, prior_analyses)` -- Reformatter pipeline
-- `_normalize_response(result)` -- Sanitizes JSON for iOS consumption
-- `_deepseek_chat(messages, ...)` -- DeepSeek API client with retry logic
+- `format_indian_currency(value)` -- Indian number format (lakhs/crores)
+- `_ban_western_scale(text)` -- Guard: rejects Million/Billion in output
+- `_dash_update_harvest(key, status, result)` -- Dashboard SSE harvest status push
+- `_dash_start_job(job_id, ticker, exchange, user_id)` -- Dashboard SSE job start
+- `_dash_end_job(job_id, result, error, killed)` -- Dashboard SSE job end
+- `_dash_log_request(method, path, params, status, duration_ms)` -- Dashboard SSE request log
+- `_log_token_usage(endpoint, usage)` -- Token audit logging to `token_log.jsonl`
+- `_check_rate_limit(client_ip)` -- IP-based rate limiting (120/min)
+- `get_current_user_id(authorization)` -- Optional JWT auth (dev bypass: "admin" -> user_id=1)
+- `require_auth(authorization)` -- Mandatory JWT auth -> 401
+- `require_admin(authorization)` -- Admin check (saumya, nirav) -> 403
+- `_resolve_ticker(ticker, exchange)` -- NSE/BSE ticker suffix resolution
+- `_yf_fetch_info(sym)` -- yfinance info fetch with ticker validation
+- `_yf_price(ticker_sym)` -- Current price fetch (yfinance, tuple of (price, change))
+- `health_endpoint()` -- GET /health (liveness probe)
+- `liveness_probe()` -- GET /api/v1/liveness (detailed health check)
+- `dashboard_html()` -- Admin dashboard HTML page
+- `dashboard_data()` -- Admin dashboard JSON (analyses, harvest, tokens)
+- `admin_harvest_youtube()` -- POST /admin/harvest/youtube (background task trigger)
+- `admin_harvest_advisors()` -- POST /admin/harvest/advisors (background task trigger)
+- `admin_harvest_news()` -- POST /admin/harvest/news (background task trigger)
+- `_run_youtube_harvest_bg()`, `_run_advisor_harvest_bg()`, `_run_news_harvest_bg()` -- Background runners
+- `_start_advisor_scheduler()`, `_stop_advisor_scheduler()` -- APScheduler lifecycle
+
+**Note:** The core AI analysis pipeline (`analyze()`, `run_trading_agents()`, `reformat_with_claude()`, `_normalize_response()`, `build_ta_config()` etc.) has been **extracted** to `services/orchestrator.py` (1093 lines). See Section 5 for the full pipeline architecture.
+
+### 4.1a. AI Orchestrator: `backend/services/orchestrator.py` (1093 lines)
+
+The **AI analysis engine** formerly in main.py, extracted to its own service module:
+
+**Key Functions:**
+- `analyze(ticker, exchange, user_id, deep_scan)` -- The core AI analysis function (stages 1-7), orchestrates multi-agent debate + reformatting + normalization
+- `run_trading_agents(full_ticker, analysis_date)` -- Invokes TradingAgentsGraph LangGraph workflow (12-agent debate)
+- `build_ta_config()` -- Builds two-tier AI provider configuration (DeepSeek Flash + Claude Haiku)
+- `reformat_with_claude(raw_output, ticker, exchange, prior_analyses)` -- 3-phase reformatter pipeline (Claude Sonnet -> DeepSeek -> fallback)
+- `_normalize_response(result)` -- Sanitizes JSON for iOS consumption (signal map, field coercion, defaults)
 - `_extract_json_from_text(text)` -- Multi-strategy JSON extraction from LLM output
-- `_log_token_usage(endpoint, input, output, ...)` -- Token audit logging to `token_log.jsonl`
-- `_get_indices_data()` -- Market indices fetcher with triple fallback
-- `harvest_news()`, `harvest_youtube_metadata()`, `harvest_portfolio_videos()` -- Scheduled job handlers
-- `harvest_all_advisors()`, `evaluate_analysis_outcomes()`, `snapshot_all_users()` -- More job handlers
-- `run_nightly_screen()`, `harvest_filings()` -- Technical screener + filings jobs
+- `_deepseek_chat(messages, ...)` -- DeepSeek API client with retry logic
+- `create_optimized_analyst_node(llm, persona, report_key, tools)` -- LangGraph node factory
+- `_get_deepseek_client()` -- Client singleton with auto-reconnect
 
 ### 4.2. Authentication System
 
@@ -460,7 +489,7 @@ This is the **central orchestrator** of the entire backend. It manages:
 | `/login` | POST | Per-IP | Login with username/password, returns JWT + user profile |
 | `/register` | POST | Per-IP | Register new user (rate-limited to prevent spam) |
 
-#### `routers/analysis.py` -- Analysis Router (CRITICAL -- 600+ lines)
+#### `routers/analysis.py` -- Analysis Router (CRITICAL -- 1460 lines)
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
@@ -472,6 +501,7 @@ This is the **central orchestrator** of the entire backend. It manages:
 | `/api/v1/home-feed` | GET | Auth | Personalized home feed (news, red flags, YouTube) |
 | `/screener` | GET | None | Stock screener presets (quality_value, promoter_conviction, fii_accumulation, turnaround, 52w_low_bullish) |
 | `/daily-action/{user_id}` | GET | Auth | Daily action items (signal warnings + timeframe conflicts) |
+| `/token-stats` | GET | Admin | Cumulative token usage stats (input/output/cost per endpoint) |
 
 **The `/analyze` Endpoint -- Detailed Execution Flow:**
 
@@ -505,7 +535,7 @@ GET /quick-info?ticker=X&exchange=NSE
   - Return QuickInfo JSON
 - Error: Return empty/safe defaults (price=0, no crash)
 
-#### `routers/portfolio.py` -- Portfolio Router (2490 lines -- LARGEST router)
+#### `routers/portfolio.py` -- Portfolio Router (2566 lines -- LARGEST router)
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
@@ -527,7 +557,8 @@ GET /quick-info?ticker=X&exchange=NSE
 | `/api/v1/portfolio/advisor-consensus` | GET | Optional | Advisor consensus from YouTube harvest |
 | `/api/v1/portfolio/charts/{user_id}` | GET | Auth | Portfolio chart images |
 | `/api/v1/portfolio/valuation-history` | GET | Auth | Valuation history with summary stats |
-| `/portfolio/timeframe-conflicts/{user_id}` | GET | Auth | ST vs LT target conflicts |
+| `/macro-impact/{user_id}` | GET | Auth | Macro sensitivity analysis for portfolio holdings |
+| `/api/v1/market/net-worth-ledger/{user_id}` | GET | Auth | Latest net worth snapshot with delta/peak/trough |
 | `/trade-journal/{user_id}` | GET | Auth | Trade journal entries |
 | `/trade-journal` | POST | Auth | Add trade entry |
 | `/trade-journal/{entry_id}` | PUT | Auth | Update trade entry |
@@ -608,7 +639,10 @@ GET /portfolio/red-flags/{user_id}
 | `/api/v1/market/institutional-flow` | GET | 15min | Top 10 mutual funds |
 | `/api/v1/market/dashboard` | GET | 15min | All 4 feeds combined (parallel fetch) |
 | `/api/v1/market/dashboard-pulse` | GET | 15min | Extended dashboard (pulse + momentum + sync + YoY + cap index) |
+| `/api/v1/market/institutional-leaderboard` | GET | 15min | Top FII/DII holdings leaderboard |
 | `/api/v1/earnings/progress` | GET | None | Earnings declaration progress |
+| `/api/v1/earnings/sync-ratio` | GET | None | Earnings sync ratio between NSE and DB |
+| `/api/v1/earnings/yoy-aggregate` | GET | None | YoY earnings aggregate statistics |
 | `/api/v1/earnings/feed` | GET | None | Ranked earnings feed (3 sort modes) |
 | `/api/v1/earnings/calendar` | GET | None | Earnings calendar with sparklines |
 | `/api/v1/earnings/estimates` | GET | None | Forward EPS/revenue estimates |
@@ -620,7 +654,6 @@ GET /portfolio/red-flags/{user_id}
 | `/api/v1/admin/error-logs` | GET | None | Market error logs (admin) |
 | `/api/v1/admin/earnings-errors` | GET | None | Earnings error logs (admin) |
 | `/api/v1/admin/ideas-errors` | GET | None | Ideas error logs (admin) |
-| `/api/v1/market/net-worth-ledger/{user_id}` | GET | Auth | Latest net worth snapshot |
 
 #### `routers/alerts.py` -- Alerts Router
 
@@ -660,7 +693,7 @@ data: {"active_analyses": [...], "recent_analyses": [...], "harvest_status": {..
 | `/api/v1/dev/push-mock` | POST | Admin | Send mock push notification (logs only, no real APNs) |
 | `/api/v1/admin/notification-errors` | GET | Admin | Fetch 50 most recent notification errors |
 
-### 4.4. Database Schema (SQLAlchemy, 19 Models)
+### 4.4. Database Schema (SQLAlchemy, 21 Models)
 
 **Table: `users`** -- id (PK), username (UNIQUE), password_hash, display_name, created_at
 
@@ -686,7 +719,7 @@ data: {"active_analyses": [...], "recent_analyses": [...], "harvest_status": {..
 
 **Table: `pkscreener_signals`** -- id (PK), ticker (INDEXED), signal_date, screen_result, breakout, consolidating, rsi, macd_signal, ma_signal, volume_signal, pattern, technical_score (0.0-1.0), created_at. UNIQUE(ticker, signal_date)
 
-**Additional Tables (8 more):**
+**Additional Tables (9 more):**
 - `macro_events`: Economic calendar events (title, date, impact level, consensus, actual, prior)
 - `net_worth_ledger`: Daily net worth snapshots (user_id, snapshot_date, total_value, daily_delta, peak/trough, top_gainer/loser)
 - `market_error_logs`: Error telemetry (timestamp, component, error_message, context_ticker)
@@ -697,7 +730,7 @@ data: {"active_analyses": [...], "recent_analyses": [...], "harvest_status": {..
 - `text_advisory_insights`: Text-based advisory (advisor_id, timestamp, content_text, target_ticker, extracted_sentiment)
 - `ideas_error_logs`: Ideas workspace telemetry (timestamp, module, error_trace, context_ticker)
 
-### 4.5. Services Subsystem (20 Files)
+### 4.5. Services Subsystem (20 Files + orchestrator.py)
 
 | Service | File | Lines | Dependencies | Purpose |
 |---------|------|-------|--------------|---------|
@@ -708,24 +741,24 @@ data: {"active_analyses": [...], "recent_analyses": [...], "harvest_status": {..
 | advisor_harvester | services/advisor_harvester.py | ~700 | yt-dlp, DeepSeek API, database | Advisor stance extraction + outcome evaluation |
 | transcript_engine | services/transcript_engine.py | 295 | youtube-transcript-api, faster-whisper | Transcript fetching (API + local Whisper) |
 | ticker_matcher | services/ticker_matcher.py | 316 | rapidfuzz, sqlite3, database | Fuzzy Hinglish ticker matching |
-| options_scraper | services/options_scraper.py | ~180 | requests, disk_cache | NSE option chain, PCR, Max Pain |
+| options_scraper | services/options_scraper.py | 192 | requests, disk_cache | NSE option chain, PCR, Max Pain |
 | scraper | services/scraper.py | 743 | firecrawl-py, requests, bs4, lxml, yfinance | Web scraping (Firecrawl + BS4 fallback) |
 | nse_data_provider | services/nse_data_provider.py | 148 | jugaad-data, yfinance, disk_cache | NSE price history + fundamentals |
 | piotroski | services/piotroski.py | ~100 | yfinance, numpy | Piotroski F-Score (9 criteria) |
 | pkscreener_runner | services/pkscreener_runner.py | 190 | subprocess, database | PKScreener CLI wrapper |
-| feedback_injector | services/feedback_injector.py | ~200 | yfinance, database | Epistemic feedback loop |
-| staleness | services/staleness.py | ~100 | None (pure functions) | Analysis staleness scoring |
+| feedback_injector | services/feedback_injector.py | 133 | yfinance, database | Epistemic feedback loop |
+| staleness | services/staleness.py | 70 | None (pure functions) | Analysis staleness scoring |
 | portfolio_snapshot | services/portfolio_snapshot.py | 97 | yfinance, database | Daily portfolio valuation snapshots |
 | disk_cache | services/disk_cache.py | 110 | gzip, json, hashlib, pathlib | L2 persistent filesystem cache |
 | error_telemetry | services/error_telemetry.py | 211 | database, starlette | Correlation ID middleware + diagnostic logging |
-| filings_extractor | services/filings_extractor.py | ~100 | requests, bs4, database | NSE corporate filings extraction |
+| filings_extractor | services/filings_extractor.py | 142 | requests, bs4, database | NSE corporate filings extraction |
 ## 5. AI ANALYSIS PIPELINE -- THE COMPLETE ARCHITECTURE
 
 This is the **core differentiator** of the Nivesh system. The pipeline transforms a raw stock ticker into a structured, risk-weighted investment thesis through 8 sequential stages, spanning ~15-90 seconds of wall-clock time depending on cache state.
 
 ### 5.1. Stage 0: Pre-flight and Cache Check
 
-**Entry:** `main.py:analyze()` -> `def analyze(ticker, exchange, user_id=None, deep_scan=False)`
+**Entry:** `services/orchestrator.py:analyze()` -> `def analyze(ticker, exchange, user_id=None, deep_scan=False)`
 
 **Guard Rails (applied in router before stage entry):**
 1. Duplicate analysis guard (same user, same ticker -> HTTP 429)
@@ -888,7 +921,7 @@ Confidence: >=8 checks available = HIGH, >=5 = MEDIUM, <5 = LOW
 
 ### 5.4. Stage 3: Multi-Agent Orchestration (TradingAgentsGraph)
 
-**Entry:** `main.py:run_trading_agents()` -> creates `OptimizedTradingAgentsGraph`
+**Entry:** `services/orchestrator.py:run_trading_agents()` -> creates `OptimizedTradingAgentsGraph`
 
 **Two-Tier AI Provider Architecture:**
 ```python
@@ -981,7 +1014,7 @@ START
 
 ### 5.5. Stage 4: The Reformatter Pipeline (3-Phase Fallback)
 
-**File:** `main.py:reformat_with_claude()` (lines 1259-1387)
+**File:** `services/orchestrator.py:reformat_with_claude()`
 
 **Phase 1: Primary -- Claude Sonnet 3.5**
 - model: claude-3-5-sonnet-latest, max_tokens=4000, temperature=0
@@ -2386,14 +2419,16 @@ Parameters: index=equities, symbol={ticker}
 
 ### 15.6. SearchScreen.swift
 
-**File:** ios/StockApp/stockme/stockme/Views/SearchScreen.swift (~200 lines)
+**File:** ios/StockApp/stockme/stockme/Views/SearchScreen.swift (~504 lines)
 
 **Features:**
-- Search bar with in-memory filtering (~290 stocks)
+- Search bar with in-memory filtering (~290 stocks) + debounced backend merge (350ms)
 - Prefix-match priority: ticker matches first, then company name, then sector
-- 5 Screener presets: Quality Value, Promoter Conviction, FII Accumulation, Turnaround, 52W Low Bullish
+- 8 Screener presets: Quality Value, Ghar Ghar Modi, Earnings Pioneers, Inst. Capitulation, Promoter Conviction, FII Accumulation, Turnaround, 52W Low Bullish
 - Each preset calls /screener?preset={name} endpoint
-- Trending fallback: if no query, shows recent tickers
+- Screener results: fetches from backend, renders ScreenerResultRow (signal, confidence%, F-Score, PE, RSI, PCR)
+- Trending stocks: from morning brief movers or fallback list
+- Direct "Analyse anyway" NavigationLink for unmatched tickers
 
 ### 15.7. AlertsScreen.swift
 

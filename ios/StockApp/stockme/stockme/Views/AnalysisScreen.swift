@@ -243,12 +243,12 @@ struct AnalysisScreen: View {
     @ViewBuilder
     private func renderLoadingState() -> some View {
         ScrollView {
-            VStack(spacing: 32) {
+            VStack(spacing: Theme.sectionSpacing) {
                 if let info = viewModel.quickInfo {
-                    VStack(spacing: 24) {
-                        HStack(spacing: 16) {
+                    VStack(spacing: Theme.Spacing.large) {
+                        HStack(spacing: Theme.Spacing.card) {
                             StockIcon(ticker: info.ticker, signal: info.signal)
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                                 Text(info.ticker)
                                     .font(Theme.serialNumberFont(size: 24))
                                     .foregroundStyle(Theme.inkPrimary)
@@ -261,8 +261,8 @@ struct AnalysisScreen: View {
 
                         GuillocheDivider()
 
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                                 Text("₹")
                                     .font(Theme.engravedSerif(size: 24, weight: .bold))
                                     .foregroundStyle(Theme.securityGold)
@@ -271,7 +271,7 @@ struct AnalysisScreen: View {
                                     .foregroundStyle(Theme.inkPrimary)
                             }
 
-                            HStack(spacing: 8) {
+                            HStack(spacing: Theme.Spacing.medium) {
                                 Text(info.change >= 0 ? "+" : "") + Text(info.change.inrFormatted)
                                 Text("(\(info.changePercent.percentFormatted))")
                             }
@@ -287,7 +287,7 @@ struct AnalysisScreen: View {
 
                 // Personal note card (loading state)
                 if let note = userNote, !note.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                         Text("आपका नोट / YOUR NOTE")
                             .font(Theme.officialStampFont(size: 9))
                             .foregroundStyle(Theme.inkSecondary)
@@ -302,9 +302,9 @@ struct AnalysisScreen: View {
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.securityGold.opacity(0.4), lineWidth: 1))
                 }
 
-                VStack(spacing: 20) {
+                VStack(spacing: Theme.Spacing.screen) {
                     if deepScanEnabled {
-                        HStack(spacing: 6) {
+                        HStack(spacing: Theme.Spacing.tight) {
                             Image(systemName: "waveform.badge.magnifyingglass")
                                 .font(.caption.weight(.medium))
                             Text("DEEP SCAN ACTIVE")
@@ -340,7 +340,7 @@ struct AnalysisScreen: View {
                 .padding(.top, 20)
 
                 if let info = viewModel.quickInfo {
-                    VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.screen) {
                         Text("संस्था का विवरण / COMPANY PROFILE")
                             .font(Theme.officialStampFont(size: 9))
                             .foregroundStyle(Theme.inkPrimary)
@@ -355,7 +355,7 @@ struct AnalysisScreen: View {
                         GuillocheDivider()
 
                         if let officers = info.officers, !officers.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                                 Text("KEY EXECUTIVES")
                                     .font(Theme.officialStampFont(size: 8))
                                     .foregroundStyle(Theme.inkSecondary)
@@ -372,19 +372,20 @@ struct AnalysisScreen: View {
                     .banknoteCard()
 
                     if let news = info.recentNews, !news.isEmpty {
-                        VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.card) {
                             Text("ताज़ा समाचार / LATEST BULLETINS")
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.inkPrimary)
-                                .padding(.horizontal, 4)
+                                .padding(.horizontal, Theme.Spacing.small)
 
-                            VStack(spacing: 12) {
+                            LazyVStack(spacing: Theme.Spacing.standard) {
                                 ForEach(news) { item in
                                     NewsItemCard(item: item)
+                                        .banknoteCard()
                                 }
                             }
                         }
-                        .padding(.top, 16)
+                        .padding(.top, Theme.Spacing.card)
                     }
                 }
 
@@ -399,7 +400,7 @@ struct AnalysisScreen: View {
         VStack(spacing: 0) {
             // ── Sticky header ──────────────────────────────────────────
             VStack(spacing: 0) {
-                HStack(alignment: .top, spacing: 12) {
+                HStack(alignment: .top, spacing: Theme.Spacing.standard) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(analysis.companyName.uppercased())
                             .font(Theme.engravedSerif(size: 17, weight: .bold))
@@ -411,7 +412,7 @@ struct AnalysisScreen: View {
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 3) {
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                             Text("₹")
                                 .font(Theme.engravedSerif(size: 14, weight: .bold))
                                 .foregroundStyle(Theme.securityGold)
@@ -451,7 +452,7 @@ struct AnalysisScreen: View {
                                     activeTab = i
                                 }
                             } label: {
-                                VStack(spacing: 6) {
+                                VStack(spacing: Theme.Spacing.tight) {
                                     Text(tabs[i])
                                         .font(Theme.officialStampFont(size: 9))
                                         .foregroundStyle(activeTab == i ? Theme.inkPrimary : Theme.inkTertiary)
@@ -489,11 +490,11 @@ struct AnalysisScreen: View {
     @ViewBuilder
     private func tabOverview(_ analysis: StockAnalysis) -> some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: Theme.Spacing.screen) {
 
                 // ── Earnings banner ────────────────────────────────────
                 if let event = viewModel.earningsEvents.first(where: { $0.ticker.uppercased() == ticker.uppercased() }) {
-                    HStack(spacing: 10) {
+                    HStack(spacing: Theme.Spacing.standard) {
                         Image(systemName: "calendar.badge.exclamationmark")
                             .foregroundStyle(Theme.holdAmber).font(.body)
                         VStack(alignment: .leading, spacing: 2) {
@@ -526,7 +527,7 @@ struct AnalysisScreen: View {
                         }
                     }()
                     VStack(alignment: .leading, spacing: 14) {
-                        HStack(spacing: 10) {
+                        HStack(spacing: Theme.Spacing.standard) {
                             Image(systemName: worryLevel.icon)
                                 .font(.title2)
                                 .foregroundStyle(worryLevel.color)
@@ -586,8 +587,8 @@ struct AnalysisScreen: View {
                 if showDiffCard {
                     let fromSignalText: String = apiPreviousSignal ?? prevReport?.signal.rawValue ?? ""
                     let sinceText: String = prevReport?.analysisDate ?? ""
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                        HStack(spacing: Theme.Spacing.standard) {
                             Image(systemName: "arrow.triangle.2.circlepath")
                                 .foregroundStyle(Theme.securityGold).font(.subheadline)
                             VStack(alignment: .leading, spacing: 2) {
@@ -634,12 +635,12 @@ struct AnalysisScreen: View {
                 }
 
                 // Price projections
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                     Text("मूल्य अनुमान / PRICE PROJECTIONS")
                         .font(Theme.officialStampFont(size: 9))
                         .foregroundStyle(Theme.inkPrimary)
                     ScrollView(.horizontal) {
-                        HStack(spacing: 16) {
+                        HStack(spacing: Theme.Spacing.card) {
                             HorizonNoteCard(label: "3 Months", target: analysis.targetPrices.shortTerm3m, upside: analysis.upsideDownsidePct.shortTerm)
                             HorizonNoteCard(label: "12 Months", target: analysis.targetPrices.mediumTerm12m, upside: analysis.upsideDownsidePct.mediumTerm, isFeatured: true)
                             HorizonNoteCard(label: "3 Years", target: analysis.targetPrices.longTerm36m, upside: analysis.upsideDownsidePct.longTerm)
@@ -650,7 +651,7 @@ struct AnalysisScreen: View {
 
                 // Alert row
                 Button { showSetAlertSheet = true } label: {
-                    HStack(spacing: 12) {
+                    HStack(spacing: Theme.Spacing.standard) {
                         Image(systemName: "bell.badge").font(.headline).foregroundStyle(Theme.securityGold)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("SET PRICE ALERT")
@@ -670,7 +671,7 @@ struct AnalysisScreen: View {
 
                 // Personal note
                 if let note = userNote, !note.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                         Text("आपका नोट / YOUR NOTE")
                             .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkSecondary)
                         Text(note)
@@ -694,7 +695,7 @@ struct AnalysisScreen: View {
     @ViewBuilder
     private func tabAnalysis(_ analysis: StockAnalysis) -> some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: Theme.Spacing.screen) {
 
                 // ── Macro data strip (USD/INR · Crude · RBI · VIX) ──────────
                 if let macro = viewModel.macroStrip {
@@ -752,8 +753,8 @@ struct AnalysisScreen: View {
 
                 // ── Pattern cards ──────────────────────────────────────
                 if let patterns = analysis.patterns, !patterns.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                        HStack(spacing: Theme.Spacing.medium) {
                             Image(systemName: "waveform.path.ecg").foregroundStyle(Theme.securityGold).font(.subheadline)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text("ऐतिहासिक पैटर्न").font(Theme.hindiFont(size: 9)).foregroundStyle(Theme.inkTertiary)
@@ -762,7 +763,7 @@ struct AnalysisScreen: View {
                         }
                         GuillocheDivider()
                         ForEach(patterns, id: \.self) { pattern in
-                            HStack(alignment: .top, spacing: 8) {
+                            HStack(alignment: .top, spacing: Theme.Spacing.medium) {
                                 Image(systemName: "sparkle").foregroundStyle(Theme.securityGold).font(.caption2).padding(.top, 3)
                                 Text(pattern).font(.subheadline.weight(.medium)).foregroundStyle(Theme.inkSecondary).lineSpacing(3)
                             }
@@ -776,12 +777,12 @@ struct AnalysisScreen: View {
                 AnalysisNoteSection(title: "Operational Risks", items: analysis.keyRisks, color: Theme.securityGold)
 
                 if !analysis.whatToWatch.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                         Text("नज़र रखें / WHAT TO WATCH")
                             .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
                         ForEach(analysis.whatToWatch, id: \.self) { point in
                             let isCorp = point.lowercased().contains("split") || point.lowercased().contains("bonus") || point.lowercased().contains("rights") || point.lowercased().contains("dividend")
-                            HStack(alignment: .top, spacing: 10) {
+                            HStack(alignment: .top, spacing: Theme.Spacing.standard) {
                                 Rectangle().fill(Theme.securityGold.opacity(0.4)).frame(width: 2, height: 14).padding(.top, 3)
                                 Text(point).font(.subheadline.weight(.medium)).foregroundStyle(Theme.inkSecondary).lineSpacing(3)
                                 Spacer()
@@ -793,7 +794,7 @@ struct AnalysisScreen: View {
                 }
 
                 if let ratings = viewModel.analystRatings, !ratings.ratings.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                         HStack {
                             Text("BROKER CONSENSUS")
                                 .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
@@ -807,14 +808,14 @@ struct AnalysisScreen: View {
                                     .clipShape(Capsule())
                             }
                         }
-                        HStack(spacing: 16) {
+                        HStack(spacing: Theme.Spacing.card) {
                             Label("\(ratings.buy) Buy", systemImage: "arrow.up.circle.fill").foregroundStyle(Theme.bullGreen)
                             Label("\(ratings.hold) Hold", systemImage: "minus.circle.fill").foregroundStyle(Theme.inkSecondary)
                             Label("\(ratings.sell) Sell", systemImage: "arrow.down.circle.fill").foregroundStyle(Theme.bearRed)
                         }
                         .font(Theme.serialNumberFont(size: 11))
                         ScrollView(.horizontal) {
-                            HStack(spacing: 8) {
+                            HStack(spacing: Theme.Spacing.medium) {
                                 ForEach(ratings.ratings) { r in
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(r.firm).font(Theme.serialNumberFont(size: 9)).foregroundStyle(Theme.inkPrimary)
@@ -849,7 +850,7 @@ struct AnalysisScreen: View {
     @ViewBuilder
     private func tabCharts(_ analysis: StockAnalysis) -> some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: Theme.Spacing.card) {
                 if let qi = viewModel.quickInfo, let low = qi.week52Low, let high = qi.week52High {
                     PriceRangeGauge(low52w: low, high52w: high, current: qi.price, target12m: analysis.targetPrices.mediumTerm12m)
                         .padding(Theme.Spacing.screen).banknoteCard()
@@ -863,7 +864,7 @@ struct AnalysisScreen: View {
                     VolumeChart(prices: history)
                         .padding(Theme.Spacing.screen).banknoteCard()
                 } else {
-                    VStack(spacing: 12) {
+                    VStack(spacing: Theme.Spacing.standard) {
                         Image(systemName: "chart.xyaxis.line")
                             .font(.largeTitle).foregroundStyle(Theme.inkTertiary)
                         Text("Charts load after quick-info fetch completes")
@@ -897,12 +898,12 @@ struct AnalysisScreen: View {
     @ViewBuilder
     private func tabFundamentals(_ analysis: StockAnalysis) -> some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: Theme.Spacing.card) {
                 // Key numbers grid
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                     Text("मुख्य आंकड़े / KEY NUMBERS")
                         .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Theme.Spacing.card) {
                         StatNoteCell(label: "P/E RATIO", value: analysis.fundamentalsSnapshot.peRatio.map { String(format: "%.1f", $0) } ?? "N/A")
                         StatNoteCell(label: "D/E RATIO", value: (analysis.fundamentalsSnapshot.debtToEquity ?? viewModel.quickInfo?.debtToEquity).map { String(format: "%.2f", $0) } ?? "N/A")
                         StatNoteCell(label: "PROMOTER", value: (analysis.fundamentalsSnapshot.promoterHoldingPct ?? viewModel.quickInfo?.promoterHoldingPct ?? viewModel.promoterHistory.last?.promoter).map { String(format: "%.1f%%", $0) } ?? "N/A")
@@ -917,7 +918,7 @@ struct AnalysisScreen: View {
 
                 // Promoter/FII/DII trend (if history available)
                 if !viewModel.promoterHistory.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                         Text("INSIDER TREND")
                             .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
                         ForEach(viewModel.promoterHistory) { point in
@@ -971,10 +972,10 @@ struct AnalysisScreen: View {
     @ViewBuilder
     private func tabNews(_ analysis: StockAnalysis) -> some View {
         ScrollView {
-            VStack(spacing: 12) {
+            VStack(spacing: Theme.Spacing.standard) {
                 let news = analysis.recentNews ?? viewModel.quickInfo?.recentNews ?? []
                 if news.isEmpty {
-                    VStack(spacing: 16) {
+                    VStack(spacing: Theme.Spacing.card) {
                         Image(systemName: "newspaper")
                             .font(.largeTitle).foregroundStyle(Theme.inkTertiary)
                         Text("No recent news available")
@@ -1007,13 +1008,13 @@ struct AnalysisScreen: View {
     @ViewBuilder
     private func renderErrorState(_ info: AnalysisErrorInfo) -> some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: Theme.Spacing.screen) {
                 // ── Stock Header Card ──────────────────────────────────
                 if let qi = viewModel.quickInfo {
-                    VStack(spacing: 16) {
-                        HStack(spacing: 16) {
+                    VStack(spacing: Theme.Spacing.card) {
+                        HStack(spacing: Theme.Spacing.card) {
                             StockIcon(ticker: qi.ticker, signal: qi.signal)
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                                 Text(qi.ticker)
                                     .font(Theme.serialNumberFont(size: 24))
                                     .foregroundStyle(Theme.inkPrimary)
@@ -1024,8 +1025,8 @@ struct AnalysisScreen: View {
                             Spacer()
                         }
                         GuillocheDivider()
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                                 Text("₹")
                                     .font(Theme.engravedSerif(size: 24, weight: .bold))
                                     .foregroundStyle(Theme.securityGold)
@@ -1033,7 +1034,7 @@ struct AnalysisScreen: View {
                                     .font(Theme.serialNumberFont(size: 44))
                                     .foregroundStyle(Theme.inkPrimary)
                             }
-                            HStack(spacing: 8) {
+                            HStack(spacing: Theme.Spacing.medium) {
                                 Text(qi.change >= 0 ? "+" : "") + Text(qi.change.inrFormatted)
                                 Text("(\(qi.changePercent.percentFormatted))")
                             }
@@ -1048,12 +1049,12 @@ struct AnalysisScreen: View {
                 }
 
                 // ── Error Summary Card ─────────────────────────────────
-                VStack(spacing: 16) {
-                    HStack(spacing: 12) {
+                VStack(spacing: Theme.Spacing.card) {
+                    HStack(spacing: Theme.Spacing.standard) {
                         Image(systemName: info.iconName)
                             .font(.title)
                             .foregroundStyle(info.isRateLimit ? Theme.holdAmber : Theme.bearRed)
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                             Text(info.displayTitle)
                                 .font(Theme.engravedSerif(size: 16, weight: .bold))
                                 .foregroundStyle(Theme.inkPrimary)
@@ -1082,7 +1083,7 @@ struct AnalysisScreen: View {
                 .banknoteCard()
 
                 // ── What Went Wrong ────────────────────────────────────
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                     Label {
                         Text("WHAT WENT WRONG")
                             .font(Theme.officialStampFont(size: 9))
@@ -1099,7 +1100,7 @@ struct AnalysisScreen: View {
                         .lineSpacing(5)
 
                     if let phase = info.diagnostic?.phaseFailed {
-                        HStack(spacing: 6) {
+                        HStack(spacing: Theme.Spacing.tight) {
                             Text("FAILED PHASE:")
                                 .font(Theme.officialStampFont(size: 8))
                                 .foregroundStyle(Theme.inkTertiary)
@@ -1113,7 +1114,7 @@ struct AnalysisScreen: View {
                 .banknoteCard()
 
                 // ── Performance Trace ──────────────────────────────────
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                     Label {
                         Text("PERFORMANCE TRACE")
                             .font(Theme.officialStampFont(size: 9))
@@ -1124,7 +1125,7 @@ struct AnalysisScreen: View {
                             .font(.footnote)
                     }
 
-                    VStack(spacing: 8) {
+                    VStack(spacing: Theme.Spacing.medium) {
                         HStack {
                             Text("Total elapsed:")
                                 .font(Theme.serialNumberFont(size: 11))
@@ -1174,7 +1175,7 @@ struct AnalysisScreen: View {
                 .banknoteCard()
 
                 // ── Network Trace ──────────────────────────────────────
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                     Label {
                         Text("NETWORK TRACE")
                             .font(Theme.officialStampFont(size: 9))
@@ -1185,7 +1186,7 @@ struct AnalysisScreen: View {
                             .font(.footnote)
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                         TraceRow(label: "URL", value: info.requestUrl)
                         TraceRow(label: "Method", value: "POST")
                         TraceRow(label: "HTTP Status", value: "\(info.httpStatusCode)")
@@ -1212,7 +1213,7 @@ struct AnalysisScreen: View {
 
                 // ── Backend Diagnostic ─────────────────────────────────
                 if let diagInfo = info.diagnostic?.diagnosticInfo, !diagInfo.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                         Label {
                             Text("BACKEND DIAGNOSTIC")
                                 .font(Theme.officialStampFont(size: 9))
@@ -1235,7 +1236,7 @@ struct AnalysisScreen: View {
                 }
 
                 // ── Client Context ─────────────────────────────────────
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                     Label {
                         Text("CLIENT CONTEXT")
                             .font(Theme.officialStampFont(size: 9))
@@ -1246,7 +1247,7 @@ struct AnalysisScreen: View {
                             .font(.footnote)
                     }
 
-                    VStack(spacing: 6) {
+                    VStack(spacing: Theme.Spacing.tight) {
                         TraceRow(label: "App", value: "StockMe v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?.?.?")")
                         TraceRow(label: "Mock Mode", value: info.isMockMode ? "ON" : "OFF")
                         TraceRow(label: "Deep Scan", value: info.isDeepScan ? "ON" : "OFF")
@@ -1257,12 +1258,12 @@ struct AnalysisScreen: View {
                 .banknoteCard()
 
                 // ── Action Buttons ─────────────────────────────────────
-                VStack(spacing: 12) {
+                VStack(spacing: Theme.Spacing.standard) {
                     Button(action: {
                         HapticManager.impact(.medium)
                         viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: deepScanEnabled)
                     }) {
-                        HStack(spacing: 8) {
+                        HStack(spacing: Theme.Spacing.medium) {
                             Image(systemName: "arrow.clockwise")
                             Text("RETRY ANALYSIS")
                         }
@@ -1289,7 +1290,7 @@ private struct MacroImpactBanner: View {
 
     var body: some View {
         ScrollView(.horizontal) {
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.Spacing.medium) {
                 ForEach(impacts) { item in
                     MacroImpactChip(item: item)
                 }
@@ -1382,8 +1383,8 @@ private struct KeyFactorCard: View {
     let text: String
     let color: Color
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            HStack(spacing: Theme.Spacing.medium) {
                 Image(systemName: icon)
                     .font(.subheadline)
                     .foregroundStyle(color)
@@ -1437,38 +1438,36 @@ private struct NewsItemCard: View {
             HapticManager.impact(.light)
             showingReader = true
         } label: {
-            GeometryReader { geo in
-                HStack(spacing: 16) {
-                    if let urlStr = item.imageUrl, let url = URL(string: urlStr) {
-                        AsyncImage(url: url) { image in
-                            image.resizable().aspectRatio(contentMode: .fill)
-                        } placeholder: {
-                            Rectangle().fill(Theme.inkSecondary.opacity(0.1))
-                        }
-                        .frame(width: geo.size.width * 0.20, height: geo.size.width * 0.20)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+            HStack(spacing: Theme.Spacing.card) {
+                if let urlStr = item.imageUrl, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { image in
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Rectangle().fill(Theme.inkSecondary.opacity(0.1))
                     }
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(item.title)
-                            .font(Theme.engravedSerif(size: 15, weight: .bold))
-                            .foregroundStyle(Theme.inkPrimary)
-                            .lineLimit(3)
-                            .multilineTextAlignment(.leading)
-                        
-                        HStack {
-                            Text(item.publisher.uppercased())
-                                .font(Theme.officialStampFont(size: 8))
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption2)
-                        }
-                        .foregroundStyle(Theme.inkSecondary)
-                    }
+                    .frame(width: UIScreen.main.bounds.width * 0.20, height: UIScreen.main.bounds.width * 0.20)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
-                .padding(Theme.Spacing.standard)
-                .banknoteCard()
+
+                VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                    Text(item.title)
+                        .font(Theme.engravedSerif(size: 15, weight: .bold))
+                        .foregroundStyle(Theme.inkPrimary)
+                        .lineLimit(3)
+                        .multilineTextAlignment(.leading)
+
+                    HStack {
+                        Text(item.publisher.uppercased())
+                            .font(Theme.officialStampFont(size: 8))
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption2)
+                    }
+                    .foregroundStyle(Theme.inkSecondary)
+                }
             }
+            .padding(Theme.Spacing.standard)
+            .banknoteCard()
         }
         .buttonStyle(.plain)
         .fullScreenCover(isPresented: $showingReader) {
@@ -1487,7 +1486,7 @@ private struct HorizonNoteCard: View {
 
     var body: some View {
         GeometryReader { geo in
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                 Text(label.uppercased())
                     .font(Theme.officialStampFont(size: 8))
                     .foregroundStyle(Theme.inkSecondary)
@@ -1496,7 +1495,7 @@ private struct HorizonNoteCard: View {
                     .font(Theme.serialNumberFont(size: 18))
                     .foregroundStyle(Theme.inkPrimary)
 
-                HStack(spacing: 4) {
+                HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: upside >= 0 ? "arrow.up.right" : "arrow.down.right")
                     Text("\(upside.percentFormatted)")
                 }
@@ -1526,14 +1525,14 @@ private struct AnalysisNoteSection: View {
     let color: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.card) {
             Text(title.uppercased())
                 .font(Theme.officialStampFont(size: 9))
                 .foregroundStyle(Theme.inkPrimary)
 
             VStack(alignment: .leading, spacing: 14) {
                 ForEach(items, id: \.self) { item in
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(alignment: .top, spacing: Theme.Spacing.standard) {
                         Rectangle()
                             .fill(color.opacity(0.5))
                             .frame(width: 2, height: 14)
@@ -1568,8 +1567,8 @@ private struct StatNoteCell: View {
     @State private var showGlossary = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+            HStack(spacing: Theme.Spacing.small) {
                 Text(label)
                     .font(Theme.officialStampFont(size: 8))
                     .foregroundStyle(Theme.inkSecondary)
@@ -1616,7 +1615,7 @@ private struct ConfidenceCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("CONFIDENCE SCORE")
@@ -1630,7 +1629,7 @@ private struct ConfidenceCard: View {
             }
             PerforationBar(percent: percent)
             if percent < 50 {
-                HStack(spacing: 6) {
+                HStack(spacing: Theme.Spacing.tight) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.caption2).foregroundStyle(Theme.holdAmber)
                     Text("Uncertainty is high. Cross-check before acting.")
@@ -1677,7 +1676,7 @@ private struct ValuationBadge: View {
     private var badgeColor: Color { isAbove ? Theme.bearRed : Theme.bullGreen }
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Theme.Spacing.standard) {
             Image(systemName: isAbove ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
                 .foregroundStyle(badgeColor)
                 .font(.body)
@@ -1727,7 +1726,7 @@ private struct GlossarySheet: View {
         NavigationStack {
             ZStack {
                 Theme.canvasDeep.ignoresSafeArea()
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.screen) {
                     Text(term)
                         .font(Theme.engravedSerif(size: 22, weight: .bold))
                         .foregroundStyle(Theme.inkPrimary)
@@ -1757,7 +1756,7 @@ struct AnalysisLimitationsCard: View {
     @AppStorage("analysisLimitationsShownBefore") private var shownBefore = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.25)) { expanded.toggle() }
             }) {
@@ -1774,7 +1773,7 @@ struct AnalysisLimitationsCard: View {
             .buttonStyle(.plain)
 
             if expanded || !shownBefore {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                     Text("⚠️ AI cannot predict black swan events. Geopolitical shocks — wars, sanctions, pandemics — are outside this model's scope. These have caused real losses for investors in the past.")
                         .font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.bearRed.opacity(0.9))
 
@@ -1803,7 +1802,7 @@ struct NewsReaderView: View {
         GeometryReader { geo in
             NavigationStack {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.screen) {
                         // Hero Image
                         if let urlStr = item.imageUrl, let url = URL(string: urlStr) {
                             AsyncImage(url: url) { image in
@@ -1816,7 +1815,7 @@ struct NewsReaderView: View {
                             .padding(.horizontal, Theme.screenPadding)
                         }
 
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                         Text(item.title)
                             .font(Theme.engravedSerif(size: 24, weight: .bold))
                             .foregroundStyle(Theme.inkPrimary)
@@ -1892,7 +1891,7 @@ private struct TraceRow: View {
     let value: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: Theme.Spacing.medium) {
             Text(label)
                 .font(Theme.serialNumberFont(size: 10))
                 .foregroundStyle(Theme.inkTertiary)
@@ -1912,11 +1911,11 @@ private struct CollapsibleSection<Content: View>: View {
     @State private var expanded = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
             }) {
-                HStack(spacing: 6) {
+                HStack(spacing: Theme.Spacing.tight) {
                     Image(systemName: expanded ? "chevron.down" : "chevron.right")
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(Theme.securityGold)
@@ -1929,7 +1928,7 @@ private struct CollapsibleSection<Content: View>: View {
             .buttonStyle(.plain)
 
             if expanded {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     content()
                 }
                 .padding(.leading, 16)
