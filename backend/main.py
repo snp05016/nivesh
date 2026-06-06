@@ -271,35 +271,10 @@ def _check_rate_limit(client_ip: str) -> bool:
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# JWT Auth Dependencies
+# JWT Auth Dependencies — imported from core.security (Phase 2 refactor)
 # ---------------------------------------------------------------------------
 from fastapi import Header, Depends
-
-def get_current_user_id(authorization: str = Header(None)) -> Optional[int]:
-    if not authorization or not authorization.startswith("Bearer "):
-        return None
-    token = authorization.split(" ", 1)[1]
-    return verify_access_token(token)
-
-def require_auth(authorization: str = Header(None)) -> int:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
-    token = authorization.split(" ", 1)[1]
-    
-    # Dev bypass for admin dashboard
-    if token == "admin":
-        return 1
-
-    user_id = verify_access_token(token)
-    if user_id is None:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    return user_id
-
-def require_admin(authorization: str = Header(None)) -> int:
-    user_id = require_auth(authorization)
-    if not is_admin(user_id):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return user_id
+from core.security import get_current_user_id, require_auth, require_admin
 
 # ---------------------------------------------------------------------------
 # Custom exception classes — Financial Error Boundaries
