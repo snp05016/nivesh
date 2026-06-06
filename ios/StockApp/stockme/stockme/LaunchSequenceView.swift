@@ -3,164 +3,102 @@ import SwiftUI
 struct LaunchSequenceView: View {
     let onComplete: () -> Void
 
-    @State private var medallionVisible = false
-    @State private var innerRingVisible = false
-    @State private var hindiVisible = false
-    @State private var titleVisible = false
-    @State private var subtitleVisible = false
-    @State private var guillocheProgress: CGFloat = 0
-    @State private var fadingOut = false
+    @State private var notesOut = false
+    @State private var logoScaled = false
+    @State private var logoVisible = false
 
-    @Environment(\.colorScheme) var colorScheme
-    private let guillocheHeight: CGFloat = 20
+    private let noteCount = 5
 
     var body: some View {
         ZStack {
-            PaperTexture()
+            Color(hex: "121212").ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                Spacer()
-
-                // ₹ Medallion — springs in first
-                GeometryReader { geo in
-                    ZStack {
-                        // Outer ring
-                        Circle()
-                            .stroke(Theme.borderSage, lineWidth: 0.5)
-                            .frame(width: geo.size.width * 0.25, height: geo.size.width * 0.25)
-                            .scaleEffect(medallionVisible ? 1 : 0.5)
-                            .opacity(medallionVisible ? 1 : 0)
-
-                        // Inner ring
-                        Circle()
-                            .stroke(Theme.borderSage.opacity(0.5), lineWidth: 0.5)
-                            .frame(width: geo.size.width * 0.20, height: geo.size.width * 0.20)
-                            .scaleEffect(innerRingVisible ? 1 : 0.6)
-                            .opacity(innerRingVisible ? 1 : 0)
-
-                        // ₹ symbol
-                        Text("₹")
-                            .font(Theme.engravedSerif(size: 44, weight: .bold, relativeTo: .largeTitle))
-                            .foregroundStyle(Theme.inkPrimary)
-                            .scaleEffect(medallionVisible ? 1 : 0.4)
-                            .opacity(medallionVisible ? 1 : 0)
-                    }
-                    .frame(maxWidth: .infinity)
+            // ── Banknote stack ──────────────────────────────────────
+            ZStack {
+                ForEach(0..<noteCount, id: \.self) { i in
+                    Banknote(index: i)
+                        .offset(x: notesOut ? CGFloat((i - 2) * 80 + (i % 2 == 0 ? 200 : -200)) : 0)
+                        .rotationEffect(.degrees(notesOut ? Double((i - 2) * 10) : 0))
+                        .opacity(notesOut ? 0 : 1)
+                        .animation(.easeInOut(duration: 0.7).delay(Double(i) * 0.10), value: notesOut)
                 }
-                .aspectRatio(1, contentMode: .fit)
-
-                Spacer().frame(height: Theme.Spacing.xLarge)
-
-                // Text stack
-                VStack(spacing: Theme.Spacing.standard) {
-                    // Hindi above
-                    Text("निवेश")
-                        .font(Theme.hindiFont(size: 14, relativeTo: .subheadline))
-                        .foregroundStyle(Theme.inkSecondary)
-                        .opacity(hindiVisible ? 1 : 0)
-                        .offset(y: hindiVisible ? 0 : 5)
-
-                    // Main title
-                    Text("NIVESH")
-                        .font(Theme.engravedSerif(size: 42, weight: .bold, relativeTo: .largeTitle))
-                        .foregroundStyle(Theme.inkPrimary)
-                        .tracking(4)
-                        .opacity(titleVisible ? 1 : 0)
-                        .offset(y: titleVisible ? 0 : 8)
-
-                    // Subtitle
-                    Text("RESERVE BANK OF INTELLIGENCE")
-                        .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
-                        .tracking(2)
-                        .foregroundStyle(Theme.inkSecondary)
-                        .opacity(subtitleVisible ? 1 : 0)
-                }
-
-                Spacer().frame(height: Theme.Spacing.xLarge)
-
-                // Guilloché line draws itself in
-                ZStack {
-                    AnimatedGuilloche(progress: guillocheProgress)
-                        .opacity(guillocheProgress > 0 ? 1 : 0)
-                }
-                .frame(height: guillocheHeight)
-                .padding(.horizontal, Theme.Spacing.xLarge)
-
-                Spacer()
             }
+
+            // ── Logo ────────────────────────────────────────────────
+            VStack(spacing: 12) {
+                Text("₹")
+                    .font(.system(size: 80, weight: .bold, design: .serif))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color(hex: "D9A63C"), Color(hex: "B8860B")],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .shadow(color: Color(hex: "D9A63C").opacity(0.5), radius: 16, x: 0, y: 0)
+
+                Text("निवेश")
+                    .font(.system(size: 20, design: .serif).italic())
+                    .foregroundColor(Color(hex: "B8860B").opacity(0.85))
+            }
+            .scaleEffect(logoScaled ? 1 : 0.5)
+            .opacity(logoVisible ? 1 : 0)
+            .animation(.easeInOut(duration: 0.6), value: logoScaled)
+            .animation(.easeInOut(duration: 0.4), value: logoVisible)
         }
-        .opacity(fadingOut ? 0 : 1)
-        .scaleEffect(fadingOut ? 0.97 : 1)
         .onAppear {
-            startSequence()
-        }
-    }
+            // 1. Notes slide out (0 → 1.0s)
+            withAnimation { notesOut = true }
 
-    private func startSequence() {
-        // Phase 1: Medallion springs in (Emil Kowalski spring — bouncy feel)
-        withAnimation(.spring(response: 0.7, dampingFraction: 0.62)) {
-            medallionVisible = true
-        }
-        withAnimation(.spring(response: 0.8, dampingFraction: 0.65).delay(0.12)) {
-            innerRingVisible = true
-        }
-
-        // Phase 2: Hindi + title fade in
-        withAnimation(.easeOut(duration: 0.35).delay(0.42)) {
-            hindiVisible = true
-        }
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.5)) {
-            titleVisible = true
-        }
-
-        // Phase 3: Subtitle + guilloché
-        withAnimation(.easeOut(duration: 0.3).delay(0.72)) {
-            subtitleVisible = true
-        }
-        withAnimation(.easeInOut(duration: 0.5).delay(0.85)) {
-            guillocheProgress = 1.0
-        }
-
-        // Phase 4: Exit
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.55) {
-            withAnimation(.easeIn(duration: 0.28)) {
-                fadingOut = true
+            // 2. Logo fades in + scales up (1.0 → 2.0s)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                logoVisible = true
+                withAnimation(.easeInOut(duration: 0.8)) {
+                    logoScaled = true
+                }
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+
+            // 3. Exit (5.0s)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
                 onComplete()
             }
         }
     }
 }
 
-// MARK: - Animated Guilloché (draws itself in via trim)
+// MARK: - Banknote Card
 
-private struct AnimatedGuilloche: View {
-    let progress: CGFloat
+private struct Banknote: View {
+    let index: Int
+    private let denominations = [10, 50, 100, 200, 500]
+    private let colors: [Color] = [
+        Color(hex: "8B5E3C"),
+        Color(hex: "4A6B5A"),
+        Color(hex: "7A6BA0"),
+        Color(hex: "D4782A"),
+        Color(hex: "B040A0"),
+    ]
 
     var body: some View {
-        ZStack {
-            GeometryReader { geo in
-                let w = geo.size.width
-
-                Path { path in
-                    path.move(to: .zero)
-                    for x in stride(from: 0, through: w, by: 4) {
-                        path.addLine(to: CGPoint(x: x, y: sin(x / 4.0) * 2))
-                    }
+        RoundedRectangle(cornerRadius: 10)
+            .fill(colors[index])
+            .frame(width: 140, height: 70)
+            .overlay(
+                VStack(spacing: 2) {
+                    Text("₹\(denominations[index])")
+                        .font(.system(.title3, design: .serif).weight(.bold))
+                        .foregroundColor(.white)
+                    Text("RESERVE BANK")
+                        .font(.system(size: 7, weight: .medium).monospaced())
+                        .foregroundColor(.white.opacity(0.7))
                 }
-                .trim(from: 0, to: progress)
-                .stroke(Theme.inkSecondary.opacity(0.25), lineWidth: 0.5)
-
-                Path { path in
-                    path.move(to: CGPoint(x: 0, y: 4))
-                    for x in stride(from: 0, through: w, by: 4) {
-                        path.addLine(to: CGPoint(x: x, y: cos(x / 4.0) * 2 + 4))
-                    }
-                }
-                .trim(from: 0, to: progress)
-                .stroke(Theme.inkSecondary.opacity(0.10), lineWidth: 0.5)
-            }
-        }
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+            )
+            .shadow(color: colors[index].opacity(0.5), radius: 10, x: 0, y: 3)
     }
 }
+
+

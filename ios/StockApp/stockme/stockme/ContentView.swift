@@ -4,10 +4,18 @@ struct ContentView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var tutorialManager: TutorialManager
     @State private var selectedTab = 0
-    @State private var showLaunch = true
+
+    /// When true, the App-level launch handles the splash screen.
+    /// ContentView renders immediately with no internal launch overlay.
+    var bypassLaunch: Bool = false
+
+    @State private var showLaunch: Bool
     private let launchOffset: CGFloat = 24
 
-    init() {
+    init(bypassLaunch: Bool = false) {
+        self.bypassLaunch = bypassLaunch
+        _showLaunch = State(initialValue: !bypassLaunch)
+
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = UIColor(Theme.canvasDeep)

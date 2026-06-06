@@ -136,7 +136,7 @@ struct SearchScreen: View {
                                                 .padding(.vertical, Theme.Spacing.medium)
                                                 .background(
                                                     Capsule()
-                                                        .fill(activePreset == item.preset ? Theme.securityGold : .ultraThinMaterial)
+                                                        .fill(activePreset == item.preset ? Theme.securityGold : Theme.canvasShadow.opacity(0.4))
                                                 )
                                                 .shadow(
                                                     color: activePreset == item.preset ? Theme.securityGold.opacity(0.5) : .clear,

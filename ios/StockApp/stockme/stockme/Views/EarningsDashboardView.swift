@@ -1149,16 +1149,32 @@ struct ScreenerView: View {
     private var emptyStateMessage: some View {
         VStack(spacing: Theme.Spacing.card) {
             Spacer().frame(height: 20)
-            Image(systemName: "magnifyingglass.circle")
+            Image(systemName: "antenna.radiowaves.left.and.right")
                 .font(.largeTitle.weight(.light))
                 .foregroundStyle(Theme.securityGold.opacity(0.6))
 
             VStack(spacing: Theme.Spacing.tight) {
-                Text("Run analysis to populate screener data")
-                    .font(.footnote.weight(.semibold))
+                Text("SCREENER FEED STATUS")
+                    .font(.caption.weight(.bold).monospaced())
+                    .tracking(1.5)
                     .foregroundStyle(Theme.inkPrimary)
-                    .multilineTextAlignment(.center)
-                Text("Screeners scan your earnings feed for stocks matching technical, fundamental, and momentum criteria. Start by analyzing stocks in the Analysis tab.")
+
+                // Feed diagnostics
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                    ScreenDiagRow(label: "Feed items", value: "\(vm.feed.count)")
+                    ScreenDiagRow(label: "Dashboard error", value: vm.dashboardError ?? "none")
+                    ScreenDiagRow(label: "Cap index rows", value: "\(vm.capIndexAggregator.count)")
+                    ScreenDiagRow(label: "Backend endpoint", value: "/api/v1/screener?preset=<id>", color: Theme.securityGold)
+                }
+                .padding(Theme.Spacing.standard)
+                .background(Theme.canvasDeep)
+                .cornerRadius(Theme.CornerRadius.medium)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                        .stroke(Theme.borderSage, lineWidth: 0.5)
+                )
+
+                Text("No earnings feed data available. Screeners require backend data for Piotroski F-Scores, RSI, Golden Cross signals, and PE ratios. Analyze stocks via the Analysis tab or use Search → Screener for live backend presets.")
                     .font(.caption)
                     .foregroundStyle(Theme.inkTertiary)
                     .multilineTextAlignment(.center)
@@ -1183,22 +1199,83 @@ struct ScreenerView: View {
             GuillocheDivider()
                 .padding(.horizontal, 16)
 
-            HStack(spacing: Theme.Spacing.medium) {
-                Image(systemName: "info.circle")
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.holdAmber)
-                Text("This screener requires backend data not available in the current feed. Run a full analysis to populate comprehensive screening data.")
-                    .font(.caption)
-                    .foregroundStyle(Theme.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                HStack(spacing: Theme.Spacing.medium) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.holdAmber)
+                    Text("LOCAL FILTER UNAVAILABLE")
+                        .font(.caption.weight(.bold).monospaced())
+                        .foregroundStyle(Theme.inkPrimary)
+                }
+
+                if let presetId = selectedPreset,
+                   let preset = screenerPresets.first(where: { $0.id == presetId }) {
+
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                        ScreenDiagRow(label: "Selected preset", value: preset.title)
+                        ScreenDiagRow(label: "Preset ID", value: preset.id)
+                        ScreenDiagRow(label: "Has local filter", value: preset.filter != nil ? "YES" : "NO — requires backend")
+                        ScreenDiagRow(label: "Missing data",
+                            value: missingDataForPreset(preset.id),
+                            color: Theme.bearRed)
+                        ScreenDiagRow(label: "Backend call",
+                            value: "/api/v1/screener?preset=\(preset.id)",
+                            color: Theme.securityGold)
+                        ScreenDiagRow(label: "Feed available", value: "\(vm.feed.count) items")
+                    }
+                    .padding(Theme.Spacing.standard)
+                    .background(Theme.canvasDeep)
+                    .cornerRadius(Theme.CornerRadius.medium)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                            .stroke(Theme.borderSage, lineWidth: 0.5)
+                    )
+
+                    Text("This preset needs server-side computation. Use Search tab → Screener for live backend results, or run analyses on individual stocks to populate local feed data.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .padding(Theme.Spacing.standard)
             .background(Theme.canvasDeep)
             .cornerRadius(Theme.CornerRadius.medium)
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                     .stroke(Theme.borderSage, lineWidth: 0.5)
             )
+        }
+    }
+
+    private func missingDataForPreset(_ id: String) -> String {
+        switch id {
+        case "piotroski":    return "Piotroski F-Score (needs balance sheet + cash flow + income)"
+        case "oversold":     return "RSI-14 calculation (needs 14 days OHLCV history)"
+        case "golden_cross": return "50-day + 200-day MA (needs 200 days OHLCV history)"
+        case "value_picks":  return "PE ratio + sector average (needs yfinance fundamentals)"
+        default:             return "Unknown"
+        }
+    }
+
+    // MARK: - Diagnostic Row
+
+    private struct ScreenDiagRow: View {
+        let label: String
+        let value: String
+        var color: Color = Theme.inkSecondary
+
+        var body: some View {
+            HStack(alignment: .top, spacing: Theme.Spacing.tight) {
+                Text(label)
+                    .font(.caption2.weight(.semibold).monospaced())
+                    .foregroundStyle(Theme.inkTertiary)
+                    .frame(width: 100, alignment: .leading)
+                Text(value)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(color)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 

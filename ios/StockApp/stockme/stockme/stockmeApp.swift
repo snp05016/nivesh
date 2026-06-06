@@ -18,31 +18,53 @@ struct stockmeApp: App {
     @AppStorage("useBiometrics") private var useBiometrics = false
     @State private var isBiometricLocked = true
 
+    // ── Launch state machine ─────────────────────────────────────────────
+    private enum LaunchPhase { case loading, biometricGate, mainInterface }
+    @State private var launchPhase: LaunchPhase = .loading
+
+    // ── Boot sync gate ───────────────────────────────────────────────────
+    private let minimumLaunchDuration: TimeInterval = 3.0
+    @State private var bootTasksComplete = false
+
     var body: some Scene {
         WindowGroup {
-            Group {
-                if !hasCompletedOnboarding {
-                    OnboardingScreen { hasCompletedOnboarding = true }
-                } else if !hasAcceptedDisclaimer {
-                    DisclaimerScreen { hasAcceptedDisclaimer = true }
-                } else if useBiometrics && isBiometricLocked {
-                    biometricLockScreen
-                } else {
-                    ContentView()
+            ZStack {
+                // ── Main interface (hidden during launch, revealed with spring)
+                Group {
+                    if !hasCompletedOnboarding {
+                        OnboardingScreen { hasCompletedOnboarding = true }
+                    } else if !hasAcceptedDisclaimer {
+                        DisclaimerScreen { hasAcceptedDisclaimer = true }
+                    } else if useBiometrics && isBiometricLocked {
+                        biometricLockScreen
+                    } else {
+                        ContentView(bypassLaunch: true)
+                    }
+                }
+                .environmentObject(authManager)
+                .environmentObject(reportManager)
+                .environmentObject(tutorialManager)
+                .preferredColorScheme(darkMode ? .dark : nil)
+                .opacity(launchPhase == .mainInterface ? 1 : 0)
+                .scaleEffect(launchPhase == .mainInterface ? 1 : 1.02)
+
+                // ── Launch overlay ───────────────────────────────────────
+                if launchPhase == .loading {
+                    LaunchSequenceView {
+                        withAnimation(.spring(response: 0.45, dampingFraction: 0.8, blendDuration: 0)) {
+                            launchPhase = .mainInterface
+                        }
+                    }
+                    .transition(.opacity)
                 }
             }
-            .environmentObject(authManager)
-            .environmentObject(reportManager)
-            .environmentObject(tutorialManager)
-            .preferredColorScheme(darkMode ? .dark : nil)
+            .animation(.spring(response: 0.45, dampingFraction: 0.8, blendDuration: 0), value: launchPhase)
+            .task {
+                await performAsyncBoot()
+            }
             .onAppear {
-                Task {
-                    await notificationManager.requestAuthorization()
-                }
-                if useBiometrics {
-                    authenticateWithBiometrics()
-                }
-                // Dev welcome notification (triggered by toggle in Settings dev tools)
+                Task { await notificationManager.requestAuthorization() }
+                if useBiometrics { authenticateWithBiometrics() }
                 if devWelcomeNotification {
                     NotificationManager.shared.scheduleLocal(
                         title: "Welcome to Nivesh",
@@ -50,7 +72,6 @@ struct stockmeApp: App {
                         subtitle: "Environment: DEBUG"
                     )
                 }
-                // Listen for tutorial reset from Settings dev tools
                 NotificationCenter.default.addObserver(
                     forName: Notification.Name("resetTutorial"),
                     object: nil, queue: .main
@@ -60,6 +81,45 @@ struct stockmeApp: App {
                 }
             }
         }
+    }
+
+    // MARK: - Async Boot Synchronization
+
+    private func performAsyncBoot() async {
+        async let stockDB: Void = loadStockDatabase()
+        async let authCheck: Void = verifyAuthSession()
+        async let cacheWarm: Void = preWarmCaches()
+
+        _ = await (stockDB, authCheck, cacheWarm)
+        await MainActor.run { bootTasksComplete = true }
+
+        // Sync gate: ensure minimum video playback before allowing exit
+        try? await Task.sleep(nanoseconds: UInt64(minimumLaunchDuration * 1_000_000_000))
+
+        // Bay: boot done + minimum video elapsed → LaunchSequenceView exits
+        // The LaunchSequenceView's internal animation (~3.1s) aligns with this gate
+    }
+
+    private func loadStockDatabase() async {
+        await Task.detached(priority: .utility) {
+            _ = StockDatabase.all
+            print("[Boot] StockDatabase loaded: \(StockDatabase.all.count) entries")
+        }.value
+    }
+
+    private func verifyAuthSession() async {
+        // AuthManager restores session from keychain on init — token ready or guest
+        let loggedIn = authManager.isLoggedIn
+        print("[Boot] Auth session: \(loggedIn ? "token ready" : "guest mode")")
+    }
+
+    private func preWarmCaches() async {
+        await Task.detached(priority: .background) {
+            let resp = try? await NetworkManager.shared.getMarketIndices()
+            if let r = resp {
+                print("[Boot] Market indices cache warm: \(r.indices.count) indices")
+            }
+        }.value
     }
 
     // MARK: - Biometric Auth
