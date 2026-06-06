@@ -85,6 +85,25 @@ enum Theme {
             : UIColor(white: 0, alpha: 0.030)
     })
 
+    // MARK: - Surface Hierarchy (Phase 1 redesign)
+
+    static let surfaceElevated = adaptive("EDE8DC", "262318")   // cards one level above canvas
+    static let surfaceFloat    = adaptive("F0EBE0", "2E2A20")   // modal sheets, dropdowns
+
+    // MARK: - Enhanced Borders (Phase 1 redesign)
+
+    static let borderSubtle    = adaptive("2C2C2C", "3A3530", alpha: 0.60)
+    static let borderStrong    = adaptive("B8973A", "C8A84A", alpha: 0.25)  // gold-tinted important borders
+
+    // MARK: - Data Colors (Phase 1 redesign — muted financial semantics)
+
+    static let dataPositive      = adaptive("3D9B6A", "3D9B6A")   // muted forest green
+    static let dataNegative      = adaptive("C4533A", "C4533A")   // heritage brick red
+    static let dataPositiveMuted = adaptive("3D9B6A", "3D9B6A", alpha: 0.15)
+    static let dataNegativeMuted = adaptive("C4533A", "C4533A", alpha: 0.15)
+    static let goldPrimary       = adaptive("B8973A", "C8A84A")   // security gold alias
+    static let goldMuted         = adaptive("B8973A", "C8A84A", alpha: 0.30)
+
     // MARK: - Typography
 
     /// Maps SwiftUI `Font.TextStyle` to UIKit `UIFont.TextStyle` for Dynamic Type scaling.
@@ -128,6 +147,36 @@ enum Theme {
 
     static let labelStyle = Font.caption.weight(.bold).uppercaseSmallCaps()
 
+    // MARK: - Data Typography (Phase 1 redesign)
+
+    /// Large price display — Georgia Bold 28pt for live prices
+    static func dataLarge(size: CGFloat = 28, relativeTo style: Font.TextStyle = .title) -> Font {
+        Font.custom("Georgia-Bold", size: size, relativeTo: style)
+    }
+
+    /// Extra-large display — Georgia Bold 38pt for portfolio totals
+    static func dataXL(size: CGFloat = 38, relativeTo style: Font.TextStyle = .largeTitle) -> Font {
+        Font.custom("Georgia-Bold", size: size, relativeTo: style)
+    }
+
+    /// Monospaced tabular font — vertically aligned decimals for P&L numbers
+    static func monoTabular(size: CGFloat = 14, relativeTo style: Font.TextStyle = .body) -> Font {
+        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
+        return Font.system(size: scaled, weight: .medium, design: .monospaced)
+    }
+
+    /// Micro label — 10pt SF Pro medium for axis labels, timestamps
+    static func microLabel(size: CGFloat = 10, relativeTo style: Font.TextStyle = .caption2) -> Font {
+        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
+        return Font.system(size: scaled, weight: .medium, design: .default)
+    }
+
+    /// Section header label — 11pt SF Pro semibold ALL CAPS with tracking +1.2
+    static func sectionCapsLabel(size: CGFloat = 11, relativeTo style: Font.TextStyle = .caption) -> Font {
+        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
+        return Font.system(size: scaled, weight: .semibold, design: .default)
+    }
+
     // MARK: - Spacing
 
     enum Spacing {
@@ -140,6 +189,8 @@ enum Theme {
         static let screen: CGFloat = 20
         static let large: CGFloat = 24
         static let xLarge: CGFloat = 32
+        static let cardInset: CGFloat = 20   // standard card internal padding
+        static let sectionGap: CGFloat = 28  // gap between major sections
     }
 
     enum CornerRadius {
@@ -148,6 +199,8 @@ enum Theme {
         static let medium: CGFloat = 8
         static let large: CGFloat = 12
         static let card: CGFloat = 16
+        static let pill: CGFloat = 100   // for signal badges, chips
+        static let sheet: CGFloat = 24   // bottom sheets
     }
 
     static let cardPadding: CGFloat = Spacing.screen

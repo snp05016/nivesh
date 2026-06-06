@@ -11,7 +11,7 @@ struct LaunchSequenceView: View {
 
     var body: some View {
         ZStack {
-            Color(hex: "121212").ignoresSafeArea()
+            Theme.canvasDeep.ignoresSafeArea()
 
             // ── Banknote stack ──────────────────────────────────────
             ZStack {
@@ -27,19 +27,19 @@ struct LaunchSequenceView: View {
             // ── Logo ────────────────────────────────────────────────
             VStack(spacing: 12) {
                 Text("₹")
-                    .font(.system(size: 80, weight: .bold, design: .serif))
+                    .font(Theme.engravedSerif(size: 80, weight: .bold, relativeTo: .largeTitle))
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [Color(hex: "D9A63C"), Color(hex: "B8860B")],
+                        colors: [Theme.securityGoldLight, Theme.securityGold],
                             startPoint: .top,
                             endPoint: .bottom
                         )
                     )
-                    .shadow(color: Color(hex: "D9A63C").opacity(0.5), radius: 16, x: 0, y: 0)
+                    .shadow(color: Theme.securityGoldLight.opacity(0.5), radius: 16, x: 0, y: 0)
 
                 Text("निवेश")
-                    .font(.system(size: 20, design: .serif).italic())
-                    .foregroundColor(Color(hex: "B8860B").opacity(0.85))
+                    .font(Theme.hindiFont(size: 20, relativeTo: .title3))
+                    .foregroundStyle(Theme.securityGold.opacity(0.85))
             }
             .scaleEffect(logoScaled ? 1 : 0.5)
             .opacity(logoVisible ? 1 : 0)
@@ -73,11 +73,11 @@ private struct Banknote: View {
     private let denominations = [10, 50, 100, 200, 500]
     private var colors: [Color] {
         [
-            Color(hex: "8B5E3C"),
-            Color(hex: "4A6B5A"),
-            Color(hex: "7A6BA0"),
-            Color(hex: "D4782A"),
-            Color(hex: "B040A0"),
+            Theme.NoteTint.ten,
+            Theme.NoteTint.fifty,
+            Theme.NoteTint.hundred,
+            Theme.NoteTint.twoHundred,
+            Theme.NoteTint.fiveHundred,
         ]
     }
 
@@ -88,10 +88,10 @@ private struct Banknote: View {
             .overlay(
                 VStack(spacing: 2) {
                     Text("₹\(denominations[index])")
-                        .font(.system(.title3, design: .serif).weight(.bold))
+                        .font(Theme.engravedSerif(size: 20, weight: .bold, relativeTo: .title3))
                         .foregroundColor(.white)
                     Text("RESERVE BANK")
-                        .font(.system(size: 7, weight: .medium).monospaced())
+                        .font(Theme.monoTabular(size: 7, relativeTo: .caption2))
                         .foregroundColor(.white.opacity(0.7))
                 }
             )

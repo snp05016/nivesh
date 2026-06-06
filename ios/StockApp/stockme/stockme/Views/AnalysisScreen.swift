@@ -1336,13 +1336,13 @@ private struct MacroImpactChip: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 3) {
                 Text(item.ticker)
-                    .font(.system(.caption2, design: .monospaced).weight(.bold))
+                    .font(Theme.monoTabular(size: 11, relativeTo: .caption2).weight(.bold))
                 Text(directionArrow)
                     .font(.caption2)
             }
             .foregroundStyle(textColor)
             Text(shortImpact)
-                .font(.system(.caption2, design: .serif))
+                .font(Theme.engravedSerif(size: 11, relativeTo: .caption2))
                 .foregroundStyle(textColor.opacity(0.85))
                 .lineLimit(1)
         }
@@ -1838,7 +1838,7 @@ struct NewsReaderView: View {
 
                         if let summary = item.summary, !summary.isEmpty {
                             Text(summary)
-                                .font(.system(.headline, design: .serif).weight(.medium))
+                                .font(Theme.engravedSerif(size: 17, weight: .medium, relativeTo: .headline))
                                 .foregroundStyle(Theme.inkSecondary)
                                 .lineSpacing(8)
                         } else {

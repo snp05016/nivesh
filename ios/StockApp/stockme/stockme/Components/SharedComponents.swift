@@ -5,44 +5,41 @@ import SwiftUI
 struct AppHeader: View {
     let name: String
     let initials: String
+    var isScrolled: Bool = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("भारतीय वित्तीय विश्लेषण")
-                        .font(Theme.hindiFont(size: 11, relativeTo: .caption))
-                        .foregroundStyle(Theme.inkSecondary)
-                    Text("RESERVE BANK OF INTELLIGENCE")
-                        .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
-                        .foregroundStyle(Theme.inkPrimary)
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            HStack(alignment: .center) {
+                // Left: Bilingual brand
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                    Text("निवेश")
+                        .font(Theme.hindiFont(size: 18, relativeTo: .title3))
+                        .foregroundStyle(Theme.goldPrimary)
+                    Text("NIVESH")
+                        .font(Theme.monoTabular(size: 9, relativeTo: .caption2))
+                        .foregroundStyle(Theme.inkTertiary)
                 }
+
                 Spacer()
-                ZStack {
-                    Circle()
-                        .stroke(Theme.borderSage, lineWidth: 0.5)
-                        .frame(width: 38, height: 38)
-                    Text("₹")
-                        .font(Theme.engravedSerif(size: 20, weight: .bold, relativeTo: .title3))
-                        .foregroundStyle(Theme.inkPrimary)
+
+                // Right: notification + avatar
+                HStack(spacing: Theme.Spacing.standard) {
+                    Image(systemName: "bell.fill")
+                        .font(.footnote)
+                        .foregroundStyle(Theme.inkSecondary)
+                        .frame(width: 32, height: 32)
+                        .background(Theme.surfaceElevated)
+                        .clipShape(Circle())
+
+                    GovernorSealAvatar(initials: initials)
                 }
             }
 
             GuillocheDivider()
-
-            HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("खाता धारक / ACCOUNT HOLDER")
-                        .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
-                        .foregroundStyle(Theme.inkSecondary)
-                    Text(name.uppercased())
-                        .font(Theme.engravedSerif(size: 24, weight: .bold, relativeTo: .title2))
-                        .foregroundStyle(Theme.inkPrimary)
-                }
-                Spacer()
-                GovernorSealAvatar(initials: initials)
-            }
         }
+        .padding(.horizontal, Theme.screenPadding)
+        .padding(.top, Theme.Spacing.standard)
+        .background(.ultraThinMaterial.opacity(isScrolled ? 1.0 : 0.0))
     }
 }
 
@@ -81,21 +78,15 @@ private struct StockPreviewCard: View {
 
                 GuillocheDivider()
 
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                     Text("₹")
                         .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
-                        .foregroundStyle(Theme.securityGold)
+                        .foregroundStyle(Theme.goldPrimary)
                     Text(stock.currentPrice.inrFormatted.replacingOccurrences(of: "₹", with: ""))
-                        .font(Theme.serialNumberFont(size: 28, relativeTo: .title))
+                        .font(Theme.dataLarge(size: 24, relativeTo: .title2))
                         .foregroundStyle(Theme.inkPrimary)
                     Spacer()
-                    Text((stock.changePercent >= 0 ? "+" : "") + stock.changePercent.percentFormatted)
-                        .font(Theme.serialNumberFont(size: 16, relativeTo: .callout))
-                        .foregroundStyle(stock.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed)
-                        .padding(.horizontal, Theme.Spacing.medium)
-                        .padding(.vertical, Theme.Spacing.small)
-                        .background((stock.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed).opacity(0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
+                    PnlBadge(value: stock.changePercent, showPercentage: true)
                 }
 
                 Text("LONG PRESS · TAP TO ANALYSE")
@@ -123,85 +114,92 @@ struct StockRow: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            // Left border stripe — 3pt, colored by return direction
             Rectangle()
-                .fill(Theme.inkSecondary.opacity(0.35))
-                .frame(width: 1)
+                .fill(stock.changePercent >= 0 ? Theme.dataPositive : Theme.dataNegative)
+                .frame(width: 3)
                 .padding(.vertical, Theme.Spacing.standard)
 
-            HStack(spacing: 16) {
+            HStack(spacing: Theme.Spacing.card) {
+                // Stock icon
                 ZStack {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Theme.inkSecondary.opacity(0.05))
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                        .fill(Theme.inkSecondary.opacity(0.08))
                         .frame(width: 44, height: 44)
                     Text(String(stock.ticker.prefix(2)))
                         .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
                         .foregroundStyle(Theme.inkPrimary)
                 }
-                .overlay(RoundedRectangle(cornerRadius: 2).stroke(Theme.borderFine, lineWidth: 0.5))
+                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.borderFine, lineWidth: 0.5))
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text(stock.companyName)
-                        .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
+                        .font(Theme.engravedSerif(size: 15, weight: .bold, relativeTo: .subheadline))
                         .foregroundStyle(Theme.inkPrimary)
                     Text(stock.ticker)
-                        .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
+                        .font(Theme.monoTabular(size: 10, relativeTo: .caption2))
                         .foregroundStyle(Theme.inkSecondary)
 
                     // ASM/GSM status chip
                     if let status = asmGsmStatus, status == "ASM" || status == "GSM" {
                         Text("⚠ \(status)")
-                            .font(.caption2.weight(.semibold))
+                            .font(Theme.microLabel(size: 9).weight(.semibold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
-                            .background(Theme.signalRuby)
-                            .cornerRadius(Theme.CornerRadius.small)
+                            .background(Theme.dataNegative)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
                     }
 
                     // Last signal badge
                     if let signal = lastSignal {
                         Text(signal.uppercased())
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(Theme.securityGold)
+                            .font(Theme.microLabel(size: 9))
+                            .foregroundStyle(Theme.goldPrimary)
                             .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
-                            .background(Theme.securityGold.opacity(0.12))
-                            .cornerRadius(Theme.CornerRadius.small)
+                            .background(Theme.goldMuted)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
                     }
 
                     // Upcoming event pill
                     if let days = daysUntilEvent, days <= 14 {
                         Text("Results in \(days)d")
-                            .font(.caption2.weight(.medium))
+                            .font(Theme.microLabel(size: 9))
                             .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
-                            .background(days <= 3 ? Theme.signalRuby : Theme.securityGold)
-                            .cornerRadius(Theme.CornerRadius.small)
+                            .background(days <= 3 ? Theme.dataNegative : Theme.goldPrimary)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
                     }
                 }
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 4) {
+                // Price + Change
+                VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                     Text(stock.currentPrice.inrFormatted)
-                        .font(Theme.serialNumberFont(size: 14, relativeTo: .footnote))
+                        .font(Theme.monoTabular(size: 15, relativeTo: .subheadline))
                         .foregroundStyle(Theme.inkPrimary)
                         .contentTransition(.numericText())
-                    Text((stock.changePercent >= 0 ? "+" : "") + stock.changePercent.percentFormatted)
-                        .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
-                        .foregroundStyle(stock.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed)
-                        .contentTransition(.numericText())
+
+                    PnlBadge(value: stock.changePercent, showPercentage: true)
                 }
 
                 if let signal = stock.signal {
                     BanknoteSignalBadge(signal: signal)
                         .stampAppear()
-                        .padding(.trailing, 4)
+                        .padding(.trailing, Theme.Spacing.small)
                 }
             }
             .padding(.vertical, Theme.Spacing.standard)
             .padding(.leading, Theme.Spacing.standard)
             .padding(.trailing, Theme.Spacing.card)
         }
-        .banknoteCard()
+        .frame(minHeight: 64)
+        .background(Theme.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                .stroke(Theme.borderSubtle, lineWidth: 0.5)
+        )
         .contextMenu {
             Button {
                 HapticManager.selection()
@@ -232,26 +230,35 @@ struct IndexChip: View {
     @State private var pressed = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        HStack(spacing: Theme.Spacing.tight) {
             Text(name)
-                .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
+                .font(Theme.serialNumberFont(size: 13, relativeTo: .footnote).weight(.bold))
+                .foregroundStyle(Theme.inkPrimary)
+
+            Text(value)
+                .font(Theme.monoTabular(size: 12, relativeTo: .caption))
                 .foregroundStyle(Theme.inkSecondary)
-            HStack(spacing: 8) {
-                Text(value)
-                    .font(Theme.serialNumberFont(size: 13, relativeTo: .footnote))
-                    .foregroundStyle(Theme.inkPrimary)
-                    .contentTransition(.numericText())
-                Text(change)
-                    .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
-                    .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
-                    .contentTransition(.numericText())
-            }
+                .contentTransition(.numericText())
+
+            Text(change)
+                .font(Theme.monoTabular(size: 11, relativeTo: .caption2))
+                .foregroundStyle(isPositive ? Theme.dataPositive : Theme.dataNegative)
+                .padding(.horizontal, Theme.Spacing.tight)
+                .padding(.vertical, Theme.Spacing.xSmall)
+                .background((isPositive ? Theme.dataPositive : Theme.dataNegative).opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
+                .contentTransition(.numericText())
         }
-        .padding(.horizontal, Theme.Spacing.card)
-        .padding(.vertical, Theme.Spacing.standard)
-        .banknoteCard()
-        .scaleEffect(pressed ? 0.95 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.7), value: pressed)
+        .padding(.horizontal, Theme.Spacing.standard)
+        .padding(.vertical, Theme.Spacing.medium)
+        .background(Theme.surfaceElevated)
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.pill)
+                .stroke(Theme.goldMuted.opacity(0.6), lineWidth: 0.5)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.pill))
+        .scaleEffect(pressed ? 0.97 : 1.0)
+        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: pressed)
         .onLongPressGesture(minimumDuration: 0.3, pressing: { isPressing in
             pressed = isPressing
             if isPressing { HapticManager.impact(.soft) }
@@ -270,31 +277,37 @@ struct SectionHeader: View {
     var action: (() -> Void)? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
             HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     if let hindi = hindiTitle {
                         Text(hindi)
-                            .font(Theme.hindiFont(size: 11, relativeTo: .caption))
+                            .font(Theme.hindiFont(size: 10, relativeTo: .caption2))
                             .foregroundStyle(Theme.inkSecondary)
                     }
                     Text(title.uppercased())
-                        .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
+                        .font(Theme.sectionCapsLabel())
+                        .tracking(1.2)
                         .foregroundStyle(Theme.inkPrimary)
                 }
                 Spacer()
                 if let label = actionLabel, let action = action {
                     Button(action: {
-                        HapticManager.light()
+                        HapticManager.selection()
                         action()
                     }) {
                         Text(label)
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(Theme.securityGold)
+                            .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
+                            .foregroundStyle(Theme.goldPrimary)
                     }
+                    .buttonStyle(EKPressStyle())
                 }
             }
-            GuillocheDivider()
+
+            // Gold underline — 2pt × 24pt, left-aligned
+            Rectangle()
+                .fill(Theme.goldPrimary.opacity(0.6))
+                .frame(width: 24, height: 2)
         }
         .padding(.horizontal, Theme.screenPadding)
     }

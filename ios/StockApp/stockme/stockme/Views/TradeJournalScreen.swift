@@ -95,7 +95,7 @@ struct TradeJournalScreen: View {
                         .font(.caption2).tracking(1).foregroundStyle(Theme.inkSecondary)
                     TextField("e.g. RELIANCE", text: $newTicker)
                         .textFieldStyle(.plain)
-                        .font(.system(.body, design: .monospaced))
+                        .font(Theme.monoTabular(size: 14))
                         .foregroundStyle(Theme.inkPrimary)
                         .autocapitalization(.allCharacters)
                         .padding(Theme.Spacing.standard)
@@ -130,7 +130,7 @@ struct TradeJournalScreen: View {
                     TextField("0.00", text: $newPrice)
                         .textFieldStyle(.plain)
                         .keyboardType(.decimalPad)
-                        .font(.system(.body, design: .monospaced))
+                        .font(Theme.monoTabular(size: 14))
                         .foregroundStyle(Theme.inkPrimary)
                         .padding(Theme.Spacing.standard)
                         .background(Theme.canvasDeep)
@@ -179,7 +179,7 @@ struct TradeJournalScreen: View {
                             ProgressView().tint(.black).scaleEffect(0.7)
                         }
                         Text("STAMP ENTRY")
-                            .font(.system(.subheadline, design: .default).weight(.semibold))
+                            .font(Theme.sectionCapsLabel(size: 15, relativeTo: .subheadline))
                             .tracking(1.5)
                     }
                     .foregroundStyle(.black)
@@ -248,7 +248,7 @@ private struct JournalEntryCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             HStack {
                 Text(entry.ticker)
-                    .font(.system(.subheadline, design: .monospaced).weight(.bold))
+                    .font(Theme.monoTabular(size: 15, relativeTo: .subheadline).weight(.bold))
                     .foregroundStyle(Theme.inkPrimary)
                 Text(entry.action)
                     .font(.caption.weight(.bold))
@@ -259,7 +259,7 @@ private struct JournalEntryCard: View {
                 Spacer()
                 if let price = entry.priceAtTime {
                     Text("₹\(String(format: "%.2f", price))")
-                        .font(.system(.caption, design: .monospaced))
+                        .font(Theme.monoTabular(size: 12, relativeTo: .caption))
                         .foregroundStyle(Theme.inkSecondary)
                 }
             }

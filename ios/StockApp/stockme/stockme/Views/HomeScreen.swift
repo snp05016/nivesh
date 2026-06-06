@@ -11,19 +11,19 @@ func stripEmoji(_ text: String) -> String {
         .trimmingCharacters(in: .whitespaces)
 }
 
-// MARK: - Design System Constants
+// MARK: - Design System Constants (Phase 1 redesign — all Theme.* tokens)
 
-private let cardHPad: CGFloat = 16
-private let cardVPad: CGFloat = 14
-private let rowSpacing: CGFloat = 10
-private let sectionGap: CGFloat = 6
+private let cardHPad: CGFloat = Theme.Spacing.card
+private let cardVPad: CGFloat = Theme.Spacing.standard
+private let rowSpacing: CGFloat = Theme.Spacing.medium
+private let sectionGap: CGFloat = Theme.Spacing.tight
 
-private let bullGreen  = Color(red: 0.10, green: 0.53, blue: 0.24)
-private let bearRed    = Color(red: 0.72, green: 0.09, blue: 0.09)
-private let neutralAmber = Color(red: 0.80, green: 0.55, blue: 0.05)
-private let goldAccent = Color(red: 0.78, green: 0.64, blue: 0.25)
-private let dimText    = Color.secondary
-private let subtleText = Color(uiColor: .tertiaryLabel)
+private let bullGreen  = Theme.dataPositive
+private let bearRed    = Theme.dataNegative
+private let neutralAmber = Theme.holdAmber
+private let goldAccent = Theme.goldPrimary
+private let dimText    = Theme.inkSecondary
+private let subtleText = Theme.inkTertiary
 
 // MARK: - NiveshBulletRow
 
@@ -1350,7 +1350,7 @@ private struct TimeframeConflictsBanner: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             Text("TIMING INSIGHTS")
-                .font(.system(.caption, design: .default).weight(.medium))
+                .font(Theme.sectionCapsLabel())
                 .tracking(1.5)
                 .foregroundStyle(Theme.securityGold)
                 .padding(.horizontal, Theme.screenPadding)
@@ -1381,11 +1381,11 @@ private struct TimeframeConflictCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
             HStack {
                 Text(conflict.ticker)
-                    .font(.system(.subheadline, design: .monospaced).weight(.bold))
+                    .font(Theme.monoTabular(size: 15, relativeTo: .subheadline).weight(.bold))
                     .foregroundStyle(Theme.inkPrimary)
                 Spacer()
                 Text(isBottomFishing ? "BUY THE DIP" : "TAKE PROFITS")
-                    .font(.system(.caption2, design: .default).weight(.bold))
+                    .font(Theme.microLabel(size: 10).weight(.bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                     .background(isBottomFishing ? Theme.signalEmerald : Theme.signalRuby)
@@ -1917,7 +1917,7 @@ struct CompactNewsCell: View {
     let article: NewsArticleItem
     var onTickerTap: ((String) -> Void)? = nil
 
-    private let goldAccent = Color(red: 0.78, green: 0.64, blue: 0.25)
+    private let goldAccent = Theme.goldPrimary
 
     var sourceLabel: String {
         switch article.source {

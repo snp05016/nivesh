@@ -186,3 +186,220 @@ struct GovernorSealAvatar: View {
         .frame(width: 52, height: 52)
     }
 }
+
+// MARK: - Section Header (Phase 1 redesign)
+
+struct SectionHeaderView: View {
+    let title: String
+    var actionLabel: String? = nil
+    var onAction: (() -> Void)? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+            HStack {
+                Text(title)
+                    .font(Theme.sectionCapsLabel())
+                    .tracking(1.2)
+                    .foregroundStyle(Theme.inkPrimary)
+
+                Spacer()
+
+                if let label = actionLabel, let action = onAction {
+                    Button(action: {
+                        HapticManager.selection()
+                        action()
+                    }) {
+                        Text(label)
+                            .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
+                            .foregroundStyle(Theme.goldPrimary)
+                    }
+                    .buttonStyle(EKPressStyle())
+                }
+            }
+            .padding(.horizontal, Theme.screenPadding)
+
+            // Gold underline — 2pt × 24pt, left-aligned
+            Rectangle()
+                .fill(Theme.goldPrimary.opacity(0.6))
+                .frame(width: 24, height: 2)
+                .padding(.leading, Theme.screenPadding)
+        }
+    }
+}
+
+// MARK: - Index Chip (Phase 1 redesign)
+
+struct IndexChipView: View {
+    let abbreviation: String
+    let value: String
+    let changePercent: Double
+    var onTap: (() -> Void)? = nil
+
+    private var changeColor: Color {
+        changePercent >= 0 ? Theme.dataPositive : Theme.dataNegative
+    }
+
+    private var changeText: String {
+        let sign = changePercent >= 0 ? "+" : ""
+        return "\(sign)\(String(format: "%.2f", changePercent))%"
+    }
+
+    var body: some View {
+        Button(action: {
+            HapticManager.selection()
+            onTap?()
+        }) {
+            HStack(spacing: Theme.Spacing.tight) {
+                Text(abbreviation)
+                    .font(Theme.serialNumberFont(size: 13, relativeTo: .footnote).weight(.bold))
+                    .foregroundStyle(Theme.inkPrimary)
+
+                Text(value)
+                    .font(Theme.monoTabular(size: 12, relativeTo: .caption))
+                    .foregroundStyle(Theme.inkSecondary)
+
+                Text(changeText)
+                    .font(Theme.monoTabular(size: 11, relativeTo: .caption2))
+                    .foregroundStyle(changeColor)
+                    .padding(.horizontal, Theme.Spacing.tight)
+                    .padding(.vertical, Theme.Spacing.xSmall)
+                    .background(changeColor.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
+            }
+            .padding(.horizontal, Theme.Spacing.standard)
+            .padding(.vertical, Theme.Spacing.medium)
+            .background(Theme.surfaceElevated)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.pill)
+                    .stroke(Theme.goldMuted.opacity(0.6), lineWidth: 0.5)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.pill))
+        }
+        .buttonStyle(EKPressStyle())
+    }
+}
+
+// MARK: - P&L Badge (Phase 1 redesign)
+
+struct PnlBadge: View {
+    let value: Double
+    var showPercentage: Bool = true
+
+    private var isPositive: Bool { value >= 0 }
+    private var color: Color { isPositive ? Theme.dataPositive : Theme.dataNegative }
+    private var bgColor: Color { isPositive ? Theme.dataPositiveMuted : Theme.dataNegativeMuted }
+    private var prefix: String { isPositive ? "▲" : "▼" }
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.xSmall) {
+            Text(prefix)
+                .font(Theme.monoTabular(size: 11, relativeTo: .caption2))
+                .foregroundStyle(color)
+
+            if showPercentage {
+                Text("\(String(format: "%.2f", abs(value)))%")
+                    .font(Theme.monoTabular(size: 13, relativeTo: .footnote))
+                    .foregroundStyle(color)
+            } else {
+                Text(IndianFormatter.priceCompact(abs(value)))
+                    .font(Theme.monoTabular(size: 13, relativeTo: .footnote))
+                    .foregroundStyle(color)
+            }
+        }
+        .padding(.horizontal, Theme.Spacing.medium)
+        .padding(.vertical, Theme.Spacing.small)
+        .background(bgColor)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.pill))
+    }
+}
+
+// MARK: - Gold Vertical Bar (Phase 1 redesign)
+
+struct GoldVerticalBar: View {
+    var body: some View {
+        Rectangle()
+            .fill(Theme.goldPrimary.opacity(0.7))
+            .frame(width: 4)
+    }
+}
+
+// MARK: - Confidence Arc View (Phase 1 redesign)
+
+struct ConfidenceArcView: View {
+    let score: Int // 0-100
+    var size: CGFloat = 56
+
+    private var normalizedScore: Double {
+        Double(max(0, min(100, score))) / 100.0
+    }
+
+    var body: some View {
+        ZStack {
+            // Background arc
+            Circle()
+                .trim(from: 0, to: 1)
+                .stroke(Theme.inkTertiary.opacity(0.2), lineWidth: 4)
+                .frame(width: size, height: size)
+                .rotationEffect(.degrees(-90))
+
+            // Score arc
+            Circle()
+                .trim(from: 0, to: normalizedScore)
+                .stroke(Theme.goldPrimary, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                .frame(width: size, height: size)
+                .rotationEffect(.degrees(-90))
+                .animation(.easeOut(duration: 1.0), value: score)
+
+            // Center number
+            Text("\(score)")
+                .font(Theme.monoTabular(size: 16, relativeTo: .headline))
+                .foregroundStyle(Theme.goldPrimary)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+// MARK: - Severity Dot (Phase 1 redesign)
+
+struct SeverityDot: View {
+    enum Severity {
+        case high, medium, low
+
+        var color: Color {
+            switch self {
+            case .high: return Theme.dataNegative
+            case .medium: return Theme.holdAmber
+            case .low: return Theme.dataPositive
+            }
+        }
+
+        var label: String {
+            switch self {
+            case .high: return "HIGH"
+            case .medium: return "MEDIUM"
+            case .low: return "LOW"
+            }
+        }
+    }
+
+    let severity: Severity
+
+    @State private var isPulsing = false
+
+    var body: some View {
+        Circle()
+            .fill(severity.color)
+            .frame(width: 8, height: 8)
+            .scaleEffect(isPulsing && severity == .high ? 1.4 : 1.0)
+            .opacity(isPulsing && severity == .high ? 0.6 : 1.0)
+            .animation(
+                severity == .high
+                    ? .easeInOut(duration: 1.0).repeatForever(autoreverses: true)
+                    : .default,
+                value: isPulsing
+            )
+            .onAppear {
+                if severity == .high { isPulsing = true }
+            }
+    }
+}

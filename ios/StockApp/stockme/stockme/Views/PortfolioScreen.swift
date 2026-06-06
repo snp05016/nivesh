@@ -466,7 +466,7 @@ private struct PortfolioRiskCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             HStack {
                 Text("PORTFOLIO RISK")
-                    .font(.system(.caption, design: .default).weight(.medium))
+                    .font(Theme.sectionCapsLabel())
                     .tracking(1.5)
                     .foregroundStyle(Theme.securityGold)
                 Spacer()
@@ -494,7 +494,7 @@ private struct PortfolioRiskCard: View {
             // Beta
             if let beta = riskAnalysis?.portfolioBeta {
                 Text("β \(String(format: "%.2f", beta))")
-                    .font(.system(.caption, design: .monospaced))
+                    .font(Theme.monoTabular(size: 12, relativeTo: .caption))
                     .foregroundStyle(Theme.inkSecondary)
             }
 
@@ -549,7 +549,7 @@ private struct RedFlagsSection: View {
                         Text("⚠")
                             .font(.caption)
                         Text("RED FLAGS")
-                            .font(.system(.caption, design: .default).weight(.medium))
+                            .font(Theme.sectionCapsLabel())
                             .tracking(1.5)
                             .foregroundStyle(Theme.signalRuby)
                         Text("\(rf.totalFlags)")
@@ -575,7 +575,7 @@ private struct RedFlagsSection: View {
                                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                     HStack {
                                         Text(flag.ticker)
-                                            .font(.system(.caption, design: .monospaced).weight(.bold))
+                                            .font(Theme.monoTabular(size: 12, relativeTo: .caption).weight(.bold))
                                             .foregroundStyle(Theme.inkPrimary)
                                         Text(flag.flagType.replacingOccurrences(of: "_", with: " "))
                                             .font(.caption2)
