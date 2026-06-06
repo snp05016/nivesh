@@ -118,7 +118,6 @@ def _ban_western_scale(text: str) -> str:
 
 import logging
 import threading
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 _token_log_lock = threading.Lock()
 TOKEN_LOG_PATH = Path(__file__).parent / "token_log.jsonl"
@@ -376,147 +375,21 @@ _os.makedirs(_charts_dir, exist_ok=True)
 app.mount("/charts", StaticFiles(directory=_charts_dir), name="charts")
 
 # ---------------------------------------------------------------------------
-# Admin Harvest Endpoints (trigger on demand)
+# Admin Harvest Endpoints & Scheduler — imported from harvest_worker (Phase 3)
 # ---------------------------------------------------------------------------
-async def _run_youtube_harvest_bg():
-    _dash_update_harvest("youtube", "running")
-    try:
-        from services.youtube_harvester import harvest_youtube_metadata, harvest_portfolio_videos
-        res1 = await harvest_youtube_metadata()
-        res2 = await harvest_portfolio_videos()
-        _dash_update_harvest("youtube", "idle", {"channels": res1, "portfolio": res2})
-    except Exception as e:
-        _dash_update_harvest("youtube", "error", {"error": str(e)})
+from services.harvest_worker import router as harvest_router, start_scheduler, stop_scheduler
 
+app.include_router(harvest_router)
 
-@app.post("/api/v1/admin/harvest-youtube")
-async def admin_harvest_youtube(bg_tasks: BackgroundTasks, authorization: str = Header(None)):
-    """Trigger both YouTube harvests on demand. Admin-only. Dev mode use."""
-    require_admin(authorization)
-    
-    with _dash_lock:
-        if _harvest_status["youtube"]["status"] == "running":
-            return {"status": "already running"}
-            
-    bg_tasks.add_task(_run_youtube_harvest_bg)
-    return {"status": "started in background"}
-
-
-async def _run_advisor_harvest_bg():
-    _dash_update_harvest("advisor", "running")
-    try:
-        from services.advisor_harvester import harvest_all_advisors
-        res = await harvest_all_advisors()
-        _dash_update_harvest("advisor", "idle", {"result": res})
-    except Exception as e:
-        _dash_update_harvest("advisor", "error", {"error": str(e)})
-
-
-@app.post("/api/v1/admin/harvest-advisors")
-async def admin_harvest_advisors(bg_tasks: BackgroundTasks, authorization: str = Header(None)):
-    """Trigger advisor harvest on demand. Admin-only."""
-    require_admin(authorization)
-    with _dash_lock:
-        if _harvest_status["advisor"]["status"] == "running":
-            return {"status": "already running"}
-    bg_tasks.add_task(_run_advisor_harvest_bg)
-    return {"status": "started in background"}
-
-
-async def _run_news_harvest_bg():
-    _dash_update_harvest("news", "running")
-    try:
-        from services.news_harvester import harvest_news
-        res = await harvest_news()
-        _dash_update_harvest("news", "idle", {"added": res})
-    except Exception as e:
-        _dash_update_harvest("news", "error", {"error": str(e)})
-
-
-@app.post("/api/v1/admin/harvest-news")
-async def admin_harvest_news(bg_tasks: BackgroundTasks, authorization: str = Header(None)):
-    """Trigger news harvest on demand. Admin-only."""
-    require_admin(authorization)
-    with _dash_lock:
-        if _harvest_status["news"]["status"] == "running":
-            return {"status": "already running"}
-    bg_tasks.add_task(_run_news_harvest_bg)
-    return {"status": "started in background"}
-
-
-# ---------------------------------------------------------------------------
-# Advisor harvest scheduler (APScheduler — 1:30 AM IST daily)
-# ---------------------------------------------------------------------------
-_advisor_scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
 
 @app.on_event("startup")
-async def _start_advisor_scheduler():
-    from services.advisor_harvester import harvest_all_advisors, evaluate_analysis_outcomes
-    from services.news_harvester import harvest_news
-    from services.youtube_harvester import harvest_youtube_metadata, harvest_portfolio_videos
-    from services.portfolio_snapshot import snapshot_all_users
-    from services.pkscreener_runner import run_nightly_screen
-    from services.filings_extractor import harvest_filings
+async def _on_startup():
+    start_scheduler()
 
-    async def _run_harvest_all_advisors():
-        _dash_update_harvest("advisor", "running")
-        try:
-            res = await harvest_all_advisors()
-            _dash_update_harvest("advisor", "idle", {"result": res})
-        except Exception as e:
-            _dash_update_harvest("advisor", "error", {"error": str(e)})
-
-    async def _run_harvest_news():
-        _dash_update_harvest("news", "running")
-        try:
-            res = await harvest_news()
-            _dash_update_harvest("news", "idle", {"added": res})
-        except Exception as e:
-            _dash_update_harvest("news", "error", {"error": str(e)})
-
-    async def _run_harvest_youtube_metadata():
-        _dash_update_harvest("youtube", "running")
-        try:
-            res = await harvest_youtube_metadata()
-            _dash_update_harvest("youtube", "idle", {"metadata": res})
-        except Exception as e:
-            _dash_update_harvest("youtube", "error", {"error": str(e)})
-
-    async def _run_harvest_portfolio_videos():
-        _dash_update_harvest("youtube", "running")
-        try:
-            res = await harvest_portfolio_videos()
-            _dash_update_harvest("youtube", "idle", {"portfolio": res})
-        except Exception as e:
-            _dash_update_harvest("youtube", "error", {"error": str(e)})
-
-    async def _run_harvest_filings():
-        _dash_update_harvest("filings", "running")
-        try:
-            res = harvest_filings()
-            _dash_update_harvest("filings", "idle", {"result": res})
-        except Exception as e:
-            _dash_update_harvest("filings", "error", {"error": str(e)})
-
-    def _run_evaluate_analysis_outcomes():
-        with get_session() as db:
-            evaluate_analysis_outcomes(db)
-
-    _advisor_scheduler.add_job(_run_harvest_all_advisors, "cron", hour=1, minute=30)
-    _advisor_scheduler.add_job(_run_harvest_news, "cron", hour=0, minute=30)           # 12:30 AM IST
-    _advisor_scheduler.add_job(_run_harvest_youtube_metadata, "cron", hour=1, minute=0) # 1:00 AM IST — channel sweep
-    _advisor_scheduler.add_job(_run_harvest_portfolio_videos, "cron", hour=1, minute=15) # 1:15 AM IST — ticker search
-    _advisor_scheduler.add_job(snapshot_all_users, "cron", hour=11, minute=0)      # 4:30 PM IST (11:00 UTC)
-    _advisor_scheduler.add_job(run_nightly_screen, "cron", hour=11, minute=15)     # 4:45 PM IST (11:15 UTC)
-    _advisor_scheduler.add_job(_run_evaluate_analysis_outcomes, "cron", hour=2, minute=0)  # 2:00 AM IST
-    _advisor_scheduler.add_job(_run_harvest_filings, "interval", minutes=15)            # corporate filings every 15 min
-    _advisor_scheduler.start()
-    promote_initial_admins()
-    logging.info("All schedulers started (advisor 1:30, news 12:30, youtube-channel 1:00, youtube-portfolio 1:15, snapshot 4:30, pkscreener 4:45, outcome-eval 2:00 AM IST, filings 15min)")
 
 @app.on_event("shutdown")
-async def _stop_advisor_scheduler():
-    _advisor_scheduler.shutdown(wait=False)
+async def _on_shutdown():
+    stop_scheduler()
 
 
 @app.get("/ping")
@@ -2011,21 +1884,6 @@ from services.scraper import (
 
 from datetime import datetime as _dt
 import concurrent.futures as _cf
-
-# ---------------------------------------------------------------------------
-# Admin: Manual YouTube harvest trigger (dev mode)
-# ---------------------------------------------------------------------------
-
-async def _run_youtube_harvest_bg():
-    _dash_update_harvest("youtube", "running")
-    try:
-        from services.youtube_harvester import harvest_youtube_metadata, harvest_portfolio_videos
-        res1 = await harvest_youtube_metadata()
-        res2 = await harvest_portfolio_videos()
-        _dash_update_harvest("youtube", "idle", {"channels": res1, "portfolio": res2})
-    except Exception as e:
-        _dash_update_harvest("youtube", "error", {"error": str(e)})
-
 
 # ---------------------------------------------------------------------------
 # Section 12: FastAPI Routing Layer — new unified endpoints
