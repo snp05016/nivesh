@@ -23,7 +23,7 @@ from helpers import (
     MacroEvent, NetWorthLedger, AdvisorInsight,
     PortfolioAddRequest, PortfolioRemoveRequest, PortfolioUpdateRequest,
     PortfolioNoteRequest, TradeJournalAddRequest, TradeJournalUpdateRequest,
-    _check_rate_limit, _get_analyze_semaphore, _running_analyses,
+    _check_rate_limit, _get_analyze_semaphore, _acquire_analysis_slot, _release_analysis_slot,
     _dash_start_job, _dash_end_job, _dash_update_harvest,
     _extract_json_from_text, _log_token_usage,
     require_auth,

@@ -21,8 +21,8 @@ from helpers import (
     get_session, EXCHANGE_SUFFIX, NSE_TICKERS, NSE_TICKER_OVERRIDES,
     _resolve_ticker, _to_ns, _yf_price, _yf_fetch_info,
     _quick_info_cache, _QUICK_INFO_TTL,
-    _get_analyze_semaphore, _running_analyses,
-    _ANALYZE_MAX_CONCURRENT,
+    _get_analyze_semaphore, _acquire_analysis_slot, _release_analysis_slot,
+    _ANALYZE_MAX_CONCURRENT, _RUNNING_ANALYSES_STALENESS_SEC,
     _dash_start_job, _dash_end_job,
     _log_token_usage, TOKEN_LOG_PATH,
     AnalyzeRequest, BatchAnalyzeRequest,
@@ -450,25 +450,36 @@ def _build_analysis_error(
     return _JSONResponse(status_code=http_status, content=body)
 
 
+def _save_analysis_result(user_id: int | None, ticker: str, result: dict) -> None:
+    """Persist completed analysis to AnalysisHistory for dashboard visibility."""
+    try:
+        from database import save_analysis
+        with get_session() as session:
+            save_analysis(session, user_id, ticker.upper(), result)
+    except Exception as e:
+        print(f"[dash] Failed to persist analysis for {ticker}: {e}")
+
+
 @router.post("/analyze")
 async def analyze_endpoint(req: AnalyzeRequest, request: Request):
     user_id = req.user_id
     ticker = req.ticker.upper()
-    if user_id and user_id in _running_analyses:
-        return _build_analysis_error(
-            error_code="ALREADY_RUNNING",
-            error_title="Analysis Already Running",
-            error_detail=f"You already have an active analysis in progress for {ticker} (or another stock). Please wait for it to complete before starting a new one. This limit exists to prevent AI API credit waste.",
-            error_type="rate_limit",
-            phase_failed="duplicate_guard",
-            ticker=ticker,
-            suggested_action="WAIT",
-            diagnostic_info=f"User {user_id} already has entry in _running_analyses set.",
-            http_status=429,
-        )
     if user_id:
+        if not _acquire_analysis_slot(user_id):
+            return _build_analysis_error(
+                error_code="ALREADY_RUNNING",
+                error_title="Analysis Already Running",
+                error_detail=f"You already have an active analysis in progress for {ticker} (or another stock). Please wait for it to complete before starting a new one. This limit exists to prevent AI API credit waste. If you believe this is an error (e.g., server was restarted), the slot will auto-clear after 10 minutes.",
+                error_type="rate_limit",
+                phase_failed="duplicate_guard",
+                ticker=ticker,
+                suggested_action="WAIT",
+                diagnostic_info=f"User {user_id} already has entry in _running_analyses dict. Auto-clears after {_RUNNING_ANALYSES_STALENESS_SEC // 60} minutes of staleness.",
+                http_status=429,
+            )
         sem = _get_analyze_semaphore(user_id)
         if not sem.acquire(blocking=False):
+            _release_analysis_slot(user_id)
             return _build_analysis_error(
                 error_code="CONCURRENCY_LIMITED",
                 error_title="Too Many Concurrent Analyses",
@@ -480,7 +491,6 @@ async def analyze_endpoint(req: AnalyzeRequest, request: Request):
                 diagnostic_info=f"Per-user semaphore ({_ANALYZE_MAX_CONCURRENT} max) exhausted for user {user_id}.",
                 http_status=429,
             )
-        _running_analyses.add(user_id)
     try:
         job_id = str(uuid.uuid4())[:12]
         _dash_start_job(job_id, req.ticker, req.exchange, req.user_id)
@@ -513,8 +523,11 @@ async def analyze_endpoint(req: AnalyzeRequest, request: Request):
                 if not queue.empty():
                     res = queue.get()
                     if res["status"] == "ok":
-                        _dash_end_job(job_id, result=res["result"])
-                        return res["result"]
+                        result = res["result"]
+                        _dash_end_job(job_id, result=result)
+                        # Persist to DB so dashboard shows completed analysis
+                        _save_analysis_result(user_id, ticker, result)
+                        return result
                     else:
                         worker_error = res.get("error", "Unknown worker error")
                         worker_phase = res.get("phase", "worker_execution")
@@ -537,8 +550,10 @@ async def analyze_endpoint(req: AnalyzeRequest, request: Request):
             if not queue.empty():
                 res = queue.get()
                 if res["status"] == "ok":
-                    _dash_end_job(job_id, result=res["result"])
-                    return res["result"]
+                    result = res["result"]
+                    _dash_end_job(job_id, result=result)
+                    _save_analysis_result(user_id, ticker, result)
+                    return result
                 else:
                     worker_error = res.get("error", "Unknown worker error")
                     worker_phase = res.get("phase", "worker_execution")
@@ -577,9 +592,54 @@ async def analyze_endpoint(req: AnalyzeRequest, request: Request):
                     p.join(timeout=2)
     finally:
         if user_id:
-            _running_analyses.discard(user_id)
-            sem = _get_analyze_semaphore(user_id)
-            sem.release()
+            _release_analysis_slot(user_id)
+
+
+# ---------------------------------------------------------------------------
+# GET /analyze/slots — admin endpoint to inspect/clear stuck analysis slots
+# ---------------------------------------------------------------------------
+@router.get("/analyze/slots")
+async def inspect_analysis_slots(authorization: str = Header(None)):
+    require_admin(authorization)
+    from helpers import _get_stuck_analyses, _force_clear_analysis_slot
+    stuck = _get_stuck_analyses()
+    return {
+        "total": len(stuck),
+        "slots": stuck,
+        "staleness_timeout_sec": _RUNNING_ANALYSES_STALENESS_SEC,
+    }
+
+
+# ---------------------------------------------------------------------------
+# DELETE /analyze/slots — admin endpoint to force-clear stuck slots
+# ---------------------------------------------------------------------------
+@router.delete("/analyze/slots")
+async def clear_analysis_slots(
+    user_id: int | None = None,
+    authorization: str = Header(None),
+):
+    require_admin(authorization)
+    from helpers import _force_clear_analysis_slot, _get_stuck_analyses
+
+    if user_id is not None:
+        cleared = _force_clear_analysis_slot(user_id)
+        return {
+            "cleared": cleared,
+            "user_id": user_id,
+            "message": "Slot force-cleared." if cleared else "No slot found for this user.",
+        }
+
+    # Clear all
+    stuck = _get_stuck_analyses()
+    cleared_count = 0
+    for slot in stuck:
+        if _force_clear_analysis_slot(slot["user_id"]):
+            cleared_count += 1
+    return {
+        "cleared": cleared_count,
+        "total_stuck": len(stuck),
+        "message": f"Cleared {cleared_count} of {len(stuck)} stuck analysis slots.",
+    }
 
 
 # ---------------------------------------------------------------------------
