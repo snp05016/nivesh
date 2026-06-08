@@ -828,28 +828,38 @@ struct HomeScreen: View {
                                 if let feed = feedVM.feed {
                                     // Horizontal scrolling news strip — all news in one scroll
                                     ScrollView(.horizontal) {
-                                        HStack(spacing: Theme.Spacing.standard) {
-                                            ForEach(feed.news.prefix(10)) { article in
+                                        HStack(alignment: .top, spacing: Theme.Spacing.card) {
+                                            ForEach(Array((feed.news + feed.redFlagAlerts).prefix(20).enumerated()), id: \.element.id) { idx, article in
                                                 CompactNewsCell(article: article) { ticker in
                                                     navigationPath.append(ticker)
                                                 }
                                                 .frame(
-                                                    width: UIScreen.main.bounds.width * 0.62,
-                                                    height: UIScreen.main.bounds.width * 0.44
+                                                    width: UIScreen.main.bounds.width * 0.68,
+                                                    height: UIScreen.main.bounds.width * 0.92
                                                 )
+                                            }
+                                        }
+                                        .padding(.horizontal, Theme.screenPadding)
+                                        .padding(.vertical, Theme.Spacing.small)
+                                    }
+                                    .scrollIndicators(.hidden)
+                                } else if feedVM.isLoading {
+                                    // Skeleton shimmer while loading
+                                    ScrollView(.horizontal) {
+                                        HStack(spacing: Theme.Spacing.card) {
+                                            ForEach(0..<4, id: \.self) { _ in
+                                                RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                                                    .fill(Theme.inkTertiary.opacity(0.08))
+                                                    .frame(
+                                                        width: UIScreen.main.bounds.width * 0.68,
+                                                        height: UIScreen.main.bounds.width * 0.92
+                                                    )
+                                                    .shimmerPlaceholder(isLoading: true)
                                             }
                                         }
                                         .padding(.horizontal, Theme.screenPadding)
                                     }
                                     .scrollIndicators(.hidden)
-                                } else if feedVM.isLoading {
-                                    // Skeleton shimmer while loading
-                                    ForEach(0..<3, id: \.self) { _ in
-                                        RoundedRectangle(cornerRadius: 14)
-                                            .fill(Color.primary.opacity(0.05))
-                                            .frame(height: UIScreen.main.bounds.width * 0.24)
-                                            .padding(.horizontal, Theme.screenPadding)
-                                    }
                                 }
                             }
                             .id(HomeSectionID.news.rawValue)
@@ -2006,6 +2016,19 @@ struct CompactNewsCell: View {
         return Theme.holdAmber
     }
 
+    /// Freshness: ≤ 2h = HOT, ≤ 6h = TRENDING, red flag = RED FLAG
+    private var signalBadge: (label: String, icon: String, color: Color)? {
+        if article.isRedFlag { return ("RED FLAG", "exclamationmark.triangle.fill", Theme.bearRed) }
+        let f = ISO8601DateFormatter()
+        if let date = f.date(from: article.publishedAt) {
+            let age = Date().timeIntervalSince(date)
+            if age < 2 * 3600 { return ("HOT", "flame.fill", Color(hue: 0.05, saturation: 0.9, brightness: 0.95)) }
+            if age < 6 * 3600 { return ("TRENDING", "chart.line.uptrend.xyaxis", Theme.securityGold) }
+            if age < 12 * 3600 { return ("BREAKING", "dot.radiowaves.left.and.right", Theme.bullGreen) }
+        }
+        return nil
+    }
+
     var body: some View {
         Button(action: {
             HapticManager.selection()
@@ -2013,7 +2036,7 @@ struct CompactNewsCell: View {
         }) {
             VStack(alignment: .leading, spacing: 0) {
                 // ── Image / Hero ─────────────────────────────────────────
-                ZStack(alignment: .bottomLeading) {
+                ZStack(alignment: .bottom) {
                     if let imageUrl = article.imageUrl, let url = URL(string: imageUrl) {
                         AsyncImage(url: url) { phase in
                             switch phase {
@@ -2021,7 +2044,8 @@ struct CompactNewsCell: View {
                                 image
                                     .resizable()
                                     .aspectRatio(contentMode: .fill)
-                                    .frame(height: 110)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 148)
                                     .clipped()
                             case .failure(_), .empty:
                                 newsFallbackImage
@@ -2033,7 +2057,15 @@ struct CompactNewsCell: View {
                         newsFallbackImage
                     }
 
-                    // Source + time strip over image
+                    // Gradient scrim at bottom
+                    LinearGradient(
+                        colors: [Color.black.opacity(0.0), Color.black.opacity(0.6)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 56)
+
+                    // Bottom overlay row: source + time
                     HStack(spacing: Theme.Spacing.tight) {
                         Text(sourceLabel)
                             .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
@@ -2047,52 +2079,105 @@ struct CompactNewsCell: View {
                         if !timeLabel.isEmpty {
                             Text(timeLabel)
                                 .font(.caption2.monospaced())
-                                .foregroundStyle(.white.opacity(0.8))
+                                .foregroundStyle(.white.opacity(0.9))
                                 .padding(.horizontal, Theme.Spacing.tight)
                                 .padding(.vertical, 2)
-                                .background(Color.black.opacity(0.40))
+                                .background(Color.black.opacity(0.45))
                                 .cornerRadius(Theme.CornerRadius.small)
                         }
+
+                        Spacer()
+
+                        // Signal badge (HOT / TRENDING / BREAKING / RED FLAG)
+                        if let badge = signalBadge {
+                            HStack(spacing: Theme.Spacing.xSmall) {
+                                Image(systemName: badge.icon)
+                                    .font(.system(size: 8, weight: .bold))
+                                Text(badge.label)
+                                    .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
+                                    .tracking(0.8)
+                            }
+                            .foregroundStyle(badge.color)
+                            .padding(.horizontal, Theme.Spacing.tight)
+                            .padding(.vertical, 2)
+                            .background(badge.color.opacity(0.18))
+                            .cornerRadius(Theme.CornerRadius.small)
+                        }
                     }
-                    .padding(Theme.Spacing.tight)
+                    .padding(.horizontal, Theme.Spacing.medium)
+                    .padding(.bottom, Theme.Spacing.medium)
                 }
-                .frame(height: 110)
+                .frame(height: 148)
                 .clipped()
                 .cornerRadius(Theme.CornerRadius.tight)
 
                 // ── Body ─────────────────────────────────────────────────
-                VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                    // Sentiment badge
-                    if let sentiment = article.sentiment, !sentiment.isEmpty {
-                        Text(sentiment.uppercased())
-                            .font(.caption2.weight(.bold).monospaced())
-                            .tracking(0.8)
-                            .foregroundStyle(sentimentColor)
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                    // Signal row: sentiment + ticker chip
+                    HStack(spacing: Theme.Spacing.tight) {
+                        if let sentiment = article.sentiment, !sentiment.isEmpty {
+                            HStack(spacing: Theme.Spacing.xSmall) {
+                                Circle()
+                                    .fill(sentimentColor)
+                                    .frame(width: 6, height: 6)
+                                Text(sentiment.uppercased())
+                                    .font(.caption2.weight(.bold).monospaced())
+                                    .tracking(0.6)
+                                    .foregroundStyle(sentimentColor)
+                            }
                             .padding(.horizontal, Theme.Spacing.small)
                             .padding(.vertical, Theme.Spacing.xSmall)
                             .background(sentimentColor.opacity(0.10))
                             .cornerRadius(Theme.CornerRadius.small)
+                        }
+
+                        if let ticker = article.ticker, !ticker.isEmpty {
+                            HStack(spacing: 2) {
+                                Image(systemName: "chart.line.uptrend.xyaxis")
+                                    .font(.system(size: 7))
+                                Text(ticker)
+                                    .font(Theme.serialNumberFont(size: 9, relativeTo: .caption2))
+                            }
+                            .foregroundStyle(Theme.bullGreen)
+                            .padding(.horizontal, Theme.Spacing.small)
+                            .padding(.vertical, Theme.Spacing.xSmall)
+                            .background(Theme.bullGreen.opacity(0.10))
+                            .cornerRadius(Theme.CornerRadius.small)
+                        }
+
+                        Spacer()
                     }
 
                     // Headline
                     Text(stripEmoji(article.headline))
-                        .font(Theme.engravedSerif(size: 12, weight: .semibold, relativeTo: .caption))
+                        .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .footnote))
                         .foregroundStyle(Theme.inkPrimary)
-                        .lineLimit(3)
-                        .lineSpacing(2)
+                        .lineLimit(4)
+                        .lineSpacing(2.5)
                         .fixedSize(horizontal: false, vertical: true)
 
                     // Summary snippet
                     if let summary = article.summary, !summary.isEmpty {
                         Text(stripEmoji(summary))
-                            .font(.caption2)
+                            .font(.caption)
                             .foregroundStyle(Theme.inkSecondary)
-                            .lineLimit(2)
-                            .lineSpacing(1.5)
+                            .lineLimit(3)
+                            .lineSpacing(2)
                     }
 
-                    // Read more hint
-                    HStack {
+                    Spacer(minLength: 0)
+
+                    // Footer: Read more + red-flag indicator
+                    HStack(spacing: Theme.Spacing.tight) {
+                        if article.isRedFlag {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.bearRed)
+                            Text("RED FLAG")
+                                .font(Theme.officialStampFont(size: 7, relativeTo: .caption2))
+                                .tracking(1.0)
+                                .foregroundStyle(Theme.bearRed)
+                        }
                         Spacer()
                         Text("TAP TO READ")
                             .font(Theme.officialStampFont(size: 7, relativeTo: .caption2))
@@ -2104,9 +2189,10 @@ struct CompactNewsCell: View {
                     }
                 }
                 .padding(.horizontal, Theme.Spacing.medium)
-                .padding(.vertical, Theme.Spacing.standard)
+                .padding(.top, Theme.Spacing.standard)
+                .padding(.bottom, Theme.Spacing.medium)
             }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .banknoteCard()
         }
         .buttonStyle(EKPressStyle())
@@ -2117,15 +2203,22 @@ struct CompactNewsCell: View {
 
     private var newsFallbackImage: some View {
         Rectangle()
-            .fill(Theme.canvasDeep)
-            .frame(height: 110)
+            .fill(
+                LinearGradient(
+                    colors: [Theme.canvasDeep, Theme.canvasShadow],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .frame(maxWidth: .infinity)
+            .frame(height: 148)
             .overlay(
                 VStack(spacing: Theme.Spacing.tight) {
                     Image(systemName: "newspaper.fill")
-                        .font(.title2)
-                        .foregroundStyle(Theme.inkTertiary.opacity(0.4))
+                        .font(.title)
+                        .foregroundStyle(Theme.inkTertiary.opacity(0.35))
                     Text(sourceLabel)
-                        .font(Theme.officialStampFont(size: 9))
+                        .font(Theme.officialStampFont(size: 10))
                         .foregroundStyle(Theme.inkTertiary.opacity(0.5))
                         .tracking(1.5)
                 }

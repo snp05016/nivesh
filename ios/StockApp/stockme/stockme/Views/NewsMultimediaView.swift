@@ -65,11 +65,11 @@ struct NewsMultimediaView: View {
             SectionHeader(title: "MACRO UPDATES", hindiTitle: "व्यापक आर्थिक अपडेट")
 
             ScrollView(.horizontal) {
-                HStack(spacing: 12) {
+                HStack(alignment: .top, spacing: Theme.Spacing.card) {
                     if isLoading && articles.isEmpty {
-                        ForEach(0..<4, id: \.self) { _ in newsCardPlaceholder }
+                        ForEach(0..<5, id: \.self) { _ in newsCardPlaceholder }
                     } else {
-                        ForEach(articles.prefix(10)) { article in
+                        ForEach(articles.prefix(20)) { article in
                             NewsCarouselCard(article: article)
                         }
                     }
@@ -137,10 +137,10 @@ struct NewsMultimediaView: View {
             SectionHeader(title: "ALL MARKET NEWS", hindiTitle: "सभी बाज़ार समाचार")
 
             if isLoading && articles.isEmpty {
-                ForEach(0..<4, id: \.self) { _ in
+                ForEach(0..<5, id: \.self) { _ in
                     RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                         .fill(Theme.inkTertiary.opacity(0.08))
-                        .frame(height: 90)
+                        .frame(height: 100)
                         .padding(.horizontal, Theme.screenPadding)
                         .shimmerPlaceholder(isLoading: true)
                 }
@@ -279,7 +279,20 @@ struct NewsCarouselCard: View {
         return Theme.holdAmber
     }
 
-    private let cardWidth: CGFloat = UIScreen.main.bounds.width * 0.62
+    /// Freshness badge: ≤ 2h = HOT, ≤ 6h = TRENDING, red flag = RED FLAG
+    private var signalBadge: (label: String, icon: String, color: Color)? {
+        if article.isRedFlag { return ("RED FLAG", "exclamationmark.triangle.fill", Theme.bearRed) }
+        let f = ISO8601DateFormatter()
+        if let date = f.date(from: article.publishedAt) {
+            let age = Date().timeIntervalSince(date)
+            if age < 2 * 3600 { return ("HOT", "flame.fill", Color(hue: 0.05, saturation: 0.9, brightness: 0.95)) }
+            if age < 6 * 3600 { return ("TRENDING", "chart.line.uptrend.xyaxis", Theme.securityGold) }
+            if age < 12 * 3600 { return ("BREAKING", "dot.radiowaves.left.and.right", Theme.bullGreen) }
+        }
+        return nil
+    }
+
+    private let cardWidth: CGFloat = UIScreen.main.bounds.width * 0.68
 
     var body: some View {
         Button(action: {
@@ -288,19 +301,25 @@ struct NewsCarouselCard: View {
         }) {
             VStack(alignment: .leading, spacing: 0) {
                 // Hero image at top of card
-                ZStack(alignment: .bottomLeading) {
+                ZStack(alignment: .bottom) {
                     if let imageUrl = article.imageUrl, let url = URL(string: imageUrl) {
                         AsyncImage(url: url) { phase in
                             switch phase {
                             case .success(let image):
                                 image.resizable()
                                     .aspectRatio(contentMode: .fill)
-                                    .frame(width: cardWidth, height: 90)
+                                    .frame(width: cardWidth, height: 140)
                                     .clipped()
                             case .failure(_), .empty:
                                 Rectangle()
-                                    .fill(Theme.canvasDeep)
-                                    .frame(width: cardWidth, height: 90)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Theme.canvasDeep, Theme.canvasShadow],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(width: cardWidth, height: 140)
                                     .overlay(
                                         Image(systemName: "newspaper.fill")
                                             .foregroundStyle(Theme.inkTertiary.opacity(0.3))
@@ -311,8 +330,14 @@ struct NewsCarouselCard: View {
                         }
                     } else {
                         Rectangle()
-                            .fill(Theme.canvasDeep)
-                            .frame(width: cardWidth, height: 90)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Theme.canvasDeep, Theme.canvasShadow],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: cardWidth, height: 140)
                             .overlay(
                                 Image(systemName: "newspaper.fill")
                                     .foregroundStyle(Theme.inkTertiary.opacity(0.3))
@@ -320,38 +345,98 @@ struct NewsCarouselCard: View {
                             )
                     }
 
-                    // Time badge over image
-                    if !timeLabel.isEmpty {
-                        Text(timeLabel)
-                            .font(.caption2.monospaced())
-                            .foregroundStyle(.white.opacity(0.9))
+                    // Gradient scrim
+                    LinearGradient(
+                        colors: [Color.black.opacity(0.0), Color.black.opacity(0.65)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 60)
+
+                    // Time badge + signal badge row
+                    HStack(spacing: Theme.Spacing.tight) {
+                        if !timeLabel.isEmpty {
+                            Text(timeLabel)
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(.white.opacity(0.9))
+                                .padding(.horizontal, Theme.Spacing.tight)
+                                .padding(.vertical, 2)
+                                .background(Color.black.opacity(0.5))
+                                .cornerRadius(Theme.CornerRadius.small)
+                        }
+
+                        Spacer()
+
+                        if let badge = signalBadge {
+                            HStack(spacing: Theme.Spacing.xSmall) {
+                                Image(systemName: badge.icon)
+                                    .font(.system(size: 8, weight: .bold))
+                                Text(badge.label)
+                                    .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
+                                    .tracking(0.8)
+                            }
+                            .foregroundStyle(badge.color)
                             .padding(.horizontal, Theme.Spacing.tight)
                             .padding(.vertical, 2)
-                            .background(Color.black.opacity(0.5))
+                            .background(badge.color.opacity(0.2))
                             .cornerRadius(Theme.CornerRadius.small)
-                            .padding(Theme.Spacing.tight)
+                        }
                     }
+                    .padding(.horizontal, Theme.Spacing.medium)
+                    .padding(.bottom, Theme.Spacing.medium)
                 }
+                .frame(height: 140)
                 .cornerRadius(Theme.CornerRadius.tight)
 
-                VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                    // Sentiment badge
-                    if let sentiment = article.sentiment, !sentiment.isEmpty {
-                        Text(sentiment.uppercased())
-                            .font(.caption2.weight(.bold).monospaced())
-                            .tracking(0.8)
-                            .foregroundStyle(sentimentColor)
-                            .padding(.horizontal, Theme.Spacing.tight)
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                    // Sentiment + ticker row
+                    HStack(spacing: Theme.Spacing.tight) {
+                        if let sentiment = article.sentiment, !sentiment.isEmpty {
+                            HStack(spacing: Theme.Spacing.xSmall) {
+                                Circle()
+                                    .fill(sentimentColor)
+                                    .frame(width: 6, height: 6)
+                                Text(sentiment.uppercased())
+                                    .font(.caption2.weight(.bold).monospaced())
+                                    .tracking(0.6)
+                                    .foregroundStyle(sentimentColor)
+                            }
+                            .padding(.horizontal, Theme.Spacing.small)
                             .padding(.vertical, Theme.Spacing.xSmall)
                             .background(sentimentColor.opacity(0.10))
                             .cornerRadius(Theme.CornerRadius.small)
+                        }
+
+                        if let ticker = article.ticker, !ticker.isEmpty {
+                            HStack(spacing: 2) {
+                                Image(systemName: "chart.line.uptrend.xyaxis")
+                                    .font(.system(size: 7))
+                                Text(ticker)
+                                    .font(Theme.serialNumberFont(size: 9, relativeTo: .caption2))
+                            }
+                            .foregroundStyle(Theme.bullGreen)
+                            .padding(.horizontal, Theme.Spacing.small)
+                            .padding(.vertical, Theme.Spacing.xSmall)
+                            .background(Theme.bullGreen.opacity(0.10))
+                            .cornerRadius(Theme.CornerRadius.small)
+                        }
+
+                        Spacer()
                     }
 
                     Text(stripEmoji(article.headline))
-                        .font(Theme.engravedSerif(size: 12, weight: .semibold, relativeTo: .caption))
+                        .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .footnote))
                         .foregroundStyle(Theme.inkPrimary)
-                        .lineLimit(3)
-                        .lineSpacing(2)
+                        .lineLimit(4)
+                        .lineSpacing(2.5)
+
+                    if let summary = article.summary, !summary.isEmpty {
+                        Text(stripEmoji(summary))
+                            .font(.caption)
+                            .foregroundStyle(Theme.inkSecondary)
+                            .lineLimit(2)
+                            .lineSpacing(1.5)
+                    }
 
                     Spacer(minLength: 0)
 
@@ -368,7 +453,7 @@ struct NewsCarouselCard: View {
                 }
                 .padding(Theme.Spacing.standard)
             }
-            .frame(width: cardWidth, height: UIScreen.main.bounds.height * 0.24)
+            .frame(width: cardWidth, height: UIScreen.main.bounds.height * 0.28)
             .banknoteCard()
         }
         .buttonStyle(EKPressStyle())
@@ -616,6 +701,19 @@ struct NewsListRow: View {
         return Theme.holdAmber
     }
 
+    /// Freshness badge
+    private var signalBadge: (label: String, icon: String, color: Color)? {
+        if article.isRedFlag { return ("RED FLAG", "exclamationmark.triangle.fill", Theme.bearRed) }
+        let f = ISO8601DateFormatter()
+        if let date = f.date(from: article.publishedAt) {
+            let age = Date().timeIntervalSince(date)
+            if age < 2 * 3600 { return ("HOT", "flame.fill", Color(hue: 0.05, saturation: 0.9, brightness: 0.95)) }
+            if age < 6 * 3600 { return ("TRENDING", "chart.line.uptrend.xyaxis", Theme.securityGold) }
+            if age < 12 * 3600 { return ("BREAKING", "dot.radiowaves.left.and.right", Theme.bullGreen) }
+        }
+        return nil
+    }
+
     var body: some View {
         Button(action: {
             HapticManager.selection()
@@ -623,34 +721,58 @@ struct NewsListRow: View {
         }) {
             HStack(alignment: .top, spacing: Theme.Spacing.standard) {
                 // Thumbnail (square)
-                if let imageUrl = article.imageUrl, let url = URL(string: imageUrl) {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let img):
-                            img.resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 76, height: 76)
-                                .clipped()
-                                .cornerRadius(Theme.CornerRadius.tight)
-                        case .failure(_), .empty:
-                            fallbackThumb
-                        @unknown default: EmptyView()
+                ZStack(alignment: .topTrailing) {
+                    if let imageUrl = article.imageUrl, let url = URL(string: imageUrl) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let img):
+                                img.resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 84, height: 84)
+                                    .clipped()
+                                    .cornerRadius(Theme.CornerRadius.tight)
+                            case .failure(_), .empty:
+                                fallbackThumb
+                            @unknown default: EmptyView()
+                            }
                         }
+                    } else {
+                        fallbackThumb
                     }
-                } else {
-                    fallbackThumb
+
+                    // HOT/TRENDING indicator dot
+                    if let badge = signalBadge {
+                        Circle()
+                            .fill(badge.color)
+                            .frame(width: 10, height: 10)
+                            .overlay(Circle().stroke(Theme.canvasDeep, lineWidth: 1.5))
+                            .offset(x: 3, y: -3)
+                    }
                 }
 
                 // Text content
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                    // Source + sentiment + time
+                    // Source + signal badge + time
                     HStack(spacing: Theme.Spacing.tight) {
                         Text(article.source.replacingOccurrences(of: "_", with: " ").uppercased())
                             .font(Theme.officialStampFont(size: 7, relativeTo: .caption2))
                             .tracking(1.0)
                             .foregroundStyle(Theme.securityGold)
 
-                        if let sentiment = article.sentiment, !sentiment.isEmpty {
+                        if let badge = signalBadge {
+                            HStack(spacing: Theme.Spacing.xSmall) {
+                                Image(systemName: badge.icon)
+                                    .font(.system(size: 7, weight: .bold))
+                                Text(badge.label)
+                                    .font(Theme.officialStampFont(size: 7, relativeTo: .caption2))
+                                    .tracking(0.6)
+                            }
+                            .foregroundStyle(badge.color)
+                            .padding(.horizontal, Theme.Spacing.tight)
+                            .padding(.vertical, 1)
+                            .background(badge.color.opacity(0.12))
+                            .cornerRadius(Theme.CornerRadius.small)
+                        } else if let sentiment = article.sentiment, !sentiment.isEmpty {
                             Text("·")
                                 .foregroundStyle(Theme.inkTertiary)
                             Text(sentiment.prefix(3).uppercased())
@@ -678,6 +800,21 @@ struct NewsListRow: View {
                             .lineLimit(2)
                             .lineSpacing(1.5)
                     }
+
+                    // Ticker chip if available
+                    if let ticker = article.ticker, !ticker.isEmpty {
+                        HStack(spacing: 2) {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                                .font(.system(size: 7))
+                            Text(ticker)
+                                .font(Theme.serialNumberFont(size: 9, relativeTo: .caption2))
+                        }
+                        .foregroundStyle(Theme.bullGreen)
+                        .padding(.horizontal, Theme.Spacing.small)
+                        .padding(.vertical, Theme.Spacing.xSmall)
+                        .background(Theme.bullGreen.opacity(0.08))
+                        .cornerRadius(Theme.CornerRadius.small)
+                    }
                 }
             }
             .padding(Theme.Spacing.standard)
@@ -692,7 +829,7 @@ struct NewsListRow: View {
     private var fallbackThumb: some View {
         Rectangle()
             .fill(Theme.canvasDeep)
-            .frame(width: 76, height: 76)
+            .frame(width: 84, height: 84)
             .cornerRadius(Theme.CornerRadius.tight)
             .overlay(
                 Image(systemName: "newspaper.fill")
