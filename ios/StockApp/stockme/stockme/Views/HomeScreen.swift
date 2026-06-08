@@ -5,8 +5,10 @@ import SafariServices
 // MARK: - Emoji Stripper (global fix for AI-generated text)
 
 func stripEmoji(_ text: String) -> String {
+    // Use only isEmojiPresentation — isEmoji is true for digits 0-9 (keycap sequences)
+    // which would strip all numbers from financial text.
     text.unicodeScalars
-        .filter { !$0.properties.isEmojiPresentation && !$0.properties.isEmoji }
+        .filter { !$0.properties.isEmojiPresentation }
         .map { String($0) }
         .joined()
         .trimmingCharacters(in: .whitespaces)
@@ -944,11 +946,20 @@ private struct MorningDecreeCard: View {
     }
 
     private var bulletPoints: [String] {
-        briefData.summary
+        // Try newline-separated bullets first (ideal format)
+        let newlineBullets = briefData.summary
             .components(separatedBy: "\n")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { $0.hasPrefix("•") }
             .map { String($0.dropFirst()).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        if !newlineBullets.isEmpty { return newlineBullets }
+
+        // Fall back: AI returned inline "• Point 1 • Point 2 • Point 3"
+        return briefData.summary
+            .components(separatedBy: "•")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
     }
 
     private var leadSentence: String {

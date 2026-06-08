@@ -39,6 +39,10 @@ def market_indices_endpoint():
 
 @router.get("/nifty-history")
 def nifty_history_endpoint(days: int = 365):
+    cache_key = f"nifty_history_{days}"
+    cached = _dcache_get("market", cache_key)
+    if cached is not None:
+        return cached
     try:
         import time
         import random
@@ -63,7 +67,9 @@ def nifty_history_endpoint(days: int = 365):
                 "date": date.strftime("%Y-%m-%d"),
                 "close": round(float(row["Close"]), 2)
             })
-        return {"prices": result}
+        payload = {"prices": result}
+        _dcache_set("market", cache_key, payload, ttl=1800)
+        return payload
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -245,6 +251,10 @@ def _get_quarterly_fin(full_ticker: str):
 
 @router.get("/quarterly-financials")
 def quarterly_financials_endpoint(ticker: str, exchange: str = "NSE"):
+    cache_key = f"quarterly_{ticker.upper()}_{exchange.upper()}"
+    cached = _dcache_get("market", cache_key)
+    if cached is not None:
+        return cached
     try:
         exchange = exchange.upper()
         full_ticker = _resolve_ticker(ticker, exchange)
@@ -295,7 +305,9 @@ def quarterly_financials_endpoint(ticker: str, exchange: str = "NSE"):
         except Exception:
             pass
 
-        return {"quarters": result, "promoter_history": promoter_history}
+        payload = {"quarters": result, "promoter_history": promoter_history}
+        _dcache_set("market", cache_key, payload, ttl=3600)
+        return payload
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -372,6 +384,9 @@ def macro_strip_endpoint():
 @router.get("/earnings-calendar")
 def earnings_calendar_endpoint():
     """Returns upcoming earnings dates for NSE portfolio stocks."""
+    cached = _dcache_get("market", "earnings_calendar")
+    if cached is not None:
+        return cached
     try:
         from database import get_session, Portfolio
         with get_session() as session:
@@ -413,13 +428,19 @@ def earnings_calendar_endpoint():
                 pass
 
         results.sort(key=lambda x: x["days_away"])
-        return {"events": results}
+        payload = {"events": results}
+        _dcache_set("market", "earnings_calendar", payload, ttl=900)
+        return payload
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/analyst-ratings")
 def analyst_ratings_endpoint(ticker: str, exchange: str = "NSE"):
+    cache_key = f"analyst_ratings_{ticker.upper()}_{exchange.upper()}"
+    cached = _dcache_get("market", cache_key)
+    if cached is not None:
+        return cached
     try:
         full_ticker = _resolve_ticker(ticker, exchange)
 
@@ -459,7 +480,9 @@ def analyst_ratings_endpoint(ticker: str, exchange: str = "NSE"):
         elif len(ratings) > 0: consensus = "HOLD"
         else: consensus = None
 
-        return {"ratings": ratings[-6:], "consensus": consensus, "buy": buys, "hold": holds, "sell": sells}
+        payload = {"ratings": ratings[-6:], "consensus": consensus, "buy": buys, "hold": holds, "sell": sells}
+        _dcache_set("market", cache_key, payload, ttl=3600)
+        return payload
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
