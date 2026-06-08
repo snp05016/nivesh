@@ -52,6 +52,23 @@ To handle complex Indian market rules without prohibitive latency or cost, the s
 
 ---
 
+
+## 1.5. Recent Architectural Evolution (June 2026)
+
+### Backend Updates
+- **Caching**: Replaced `_dcache` with `services/cache_service.py` (using `redis.asyncio` with in-memory fallback).
+- **Scheduling**: Added `APScheduler` in `main.py` for automated cron jobs (harvesting news, youtube, block deals, portfolio snapshot).
+- **Alerts**: Replaced client-side polling for price alerts with a background APNs Webhook task.
+- **Models**: Added new SQLAlchemy models: `BlockDeal` and `FIIDIIFlow`.
+- **Telemetry**: Added `CorrelationIDMiddleware` to thread `X-Request-ID` across logs.
+- **Rate Limiting**: Upgraded rate limiter to use a sliding window deque per endpoint in `helpers.py`.
+
+### iOS & Frontend Updates
+- **WidgetKit**: Added `NiveshWidgetExtension` for home screen widgets.
+- **New Screens**: Added `AnalysisHistoryScreen`, `InteractiveTutorialScreen`, `HomeLayoutEditorSheet`.
+- **Managers**: Added `WatchlistTagsManager` and `SpeechRecognizerManager`.
+- **Adaptation**: Enhanced iPad experience with `NavigationSplitView`.
+
 ## 2. Complete Directory Structure
 
 ```
@@ -80,10 +97,10 @@ To handle complex Indian market rules without prohibitive latency or cost, the s
 |
 |   ### BACKEND (Python FastAPI)
 |-- backend/
-|   |-- main.py                      # FastAPI app entrypoint (3042 lines) -- GOD NODE
+|   |-- main.py                      # FastAPI app entrypoint, APScheduler, CorrelationIDMiddleware -- GOD NODE
 |   |-- main_legacy_backup.py        # Previous monolithic version (archive)
 |   |-- main_old_monolithic.py       # Original monolithic version (archive)
-|   |-- helpers.py                   # Shared helpers, ticker constants, auth deps (593 lines)
+|   |-- helpers.py                   # Shared helpers, sliding window deque rate limiting, auth deps (593 lines)
 |   |-- database.py                  # SQLAlchemy models, engine, session (800 lines)
 |   |-- prompts.py                   # INDIAN_MARKET_SYSTEM_PROMPT + all agent personas (127 lines)
 |   |-- requirements.txt             # Python dependency specification
