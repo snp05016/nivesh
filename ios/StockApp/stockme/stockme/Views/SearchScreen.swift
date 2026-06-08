@@ -1,31 +1,17 @@
 import SwiftUI
 
-// Fix 3.19: Strongly-typed ScreenerPreset enum — never pass raw strings to API
-enum ScreenerPreset: String, CaseIterable {
-    case qualityValue = "quality_value"
-    case gharGharModi = "ghar_ghar_modi"
-    case earningsPioneers = "earnings_pioneers"
-    case institutionalCapitulation = "institutional_capitulation"
-    case promoterConviction = "promoter_conviction"
-    case fiiAccumulation = "fii_accumulation"
-    case turnaround = "turnaround"
-    case low52Bullish = "52w_low_bullish"
-    var label: String {
-        switch self {
-        case .qualityValue: "Quality Value"
-        case .gharGharModi: "Ghar Ghar Modi"
-        case .earningsPioneers: "Earnings Pioneers"
-        case .institutionalCapitulation: "Inst. Capitulation"
-        case .promoterConviction: "Promoter Conviction"
-        case .fiiAccumulation: "FII Accumulation"
-        case .turnaround: "Turnaround"
-        case .low52Bullish: "52W Low Bullish"
-        }
-    }
-}
-
-// Fix 3.11: Empty query interceptor — also block malformed calls
-// Fix 3.23: Deep-link catch — route 404 tickers to friendly search
+// Fix 3.19: Strongly-typed ScreenerPreset — use these typed presets, never raw strings
+// ScreenerPreset struct defined in EarningsDashboardView; replicate preset list locally
+private let screenerPresets: [(label: String, preset: String)] = [
+    ("Quality Value", "quality_value"),
+    ("Ghar Ghar Modi", "ghar_ghar_modi"),
+    ("Earnings Pioneers", "earnings_pioneers"),
+    ("Inst. Capitulation", "institutional_capitulation"),
+    ("Promoter Conviction", "promoter_conviction"),
+    ("FII Accumulation", "fii_accumulation"),
+    ("Turnaround", "turnaround"),
+    ("52W Low Bullish", "52w_low_bullish"),
+]
 
 struct SearchScreen: View {
     @EnvironmentObject var authManager: AuthManager

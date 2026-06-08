@@ -372,7 +372,7 @@ struct PortfolioScreen: View {
         }
         .confirmationDialog("Export Portfolio", isPresented: $showExportOptions, titleVisibility: .visible) {
             // Fix 3.21: Disable export when portfolio has zero holdings
-            let hasHoldings = (viewModel.portfolio?.holdings?.count ?? 0) > 0
+            let hasHoldings = viewModel.holdings.count > 0
             if hasHoldings {
                 Button("Export as Excel (.xlsx)") {
                     if let user = authManager.currentUser {

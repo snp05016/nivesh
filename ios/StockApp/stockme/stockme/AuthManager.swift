@@ -58,9 +58,7 @@ class AuthManager: ObservableObject {
     }
 
     func logout() {
-        // Fix 3.30: Destructive cleanup — cancel ALL active network polling,
-        // timers, and data loops before clearing credentials.
-        HomeFeedViewModel.shared?.suspendAllPolling()
+        // Fix 3.30: Destructive cleanup — cancel network session and clear state
         URLSession.shared.invalidateAndCancel()
         currentUser = nil
         NetworkManager.shared.authToken = nil
