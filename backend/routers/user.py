@@ -49,10 +49,20 @@ def _deliver_apns(user_id: int, payload: dict) -> bool:
 
 
 @router.get("/users")
-def list_users():
+def list_users(authorization: str = Header(None)):
+    from core.security import require_admin
+    require_admin(authorization)
     with get_session() as session:
-        users = session.query(User).all()
-        return [{"id": u.id, "name": u.name} for u in users]
+        users = session.query(User).order_by(User.id).all()
+        return [
+            {
+                "id": u.id,
+                "username": u.username,
+                "display_name": u.display_name,
+                "created_at": u.created_at.isoformat() if u.created_at else None,
+            }
+            for u in users
+        ]
 
 
 @router.post("/watchlist/add")

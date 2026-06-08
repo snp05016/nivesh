@@ -95,10 +95,7 @@ struct ContentView: View {
         .overlay(
             Group {
                 if tutorialManager.isShowingTutorial {
-                    ZStack {
-                        Theme.canvas.ignoresSafeArea()
-                        TutorialOverlayView()
-                    }
+                    TutorialOverlayView()
                 }
             }
         )
@@ -106,11 +103,11 @@ struct ContentView: View {
             guard tutorialManager.isShowingTutorial else { return }
             let tab: Int
             switch step {
-            case 2, 3:    tab = 0  // Home
-            case 4:       tab = 1  // Markets
-            case 5, 6, 7: tab = 4  // Portfolio
-            case 8:       tab = 3  // News
-            case 9:       tab = 2  // Ideas
+            case 2, 3:    tab = 0  // Home tab
+            case 4:       tab = 1  // Markets tab (Search/Discover)
+            case 5, 6, 7: tab = 4  // Portfolio tab (holdings, red flags, analysis)
+            case 8:       tab = 1  // Markets tab (Alerts lives in Markets sub-tab)
+            case 9:       tab = 4  // Portfolio tab (Trade Journal is a segment here)
             default:      tab = 0
             }
             selectedTab = tab
@@ -144,7 +141,9 @@ struct MarketsView: View {
                         ForEach(Array(marketTabs.enumerated()), id: \.offset) { idx, name in
                             Button(action: { selectedMarketTab = idx }) {
                                 Text(name)
-                                    .font(.caption.weight(selectedMarketTab == idx ? .bold : .regular))
+                                    .font(Theme.officialStampFont(size: 11, relativeTo: .caption))
+                                    .tracking(1.5)
+                                    .fontWeight(selectedMarketTab == idx ? .bold : .regular)
                                     .foregroundStyle(selectedMarketTab == idx ? Theme.securityGold : Theme.inkTertiary)
                                     .padding(.horizontal, Theme.Spacing.standard)
                                     .padding(.vertical, Theme.Spacing.medium)

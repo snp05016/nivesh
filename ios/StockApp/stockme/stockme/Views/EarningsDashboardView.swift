@@ -1044,6 +1044,8 @@ struct ScreenerPreset: Identifiable {
     let description: String
     /// Filter function: returns matching EarningsResult items (nil = filter not available locally)
     let filter: (([EarningsResult]) -> [EarningsResult])?
+    /// Backend preset key for server-side screening (used when filter is nil)
+    let backendPreset: String?
 }
 
 fileprivate let screenerPresets: [ScreenerPreset] = [
@@ -1052,42 +1054,48 @@ fileprivate let screenerPresets: [ScreenerPreset] = [
         title: "Piotroski High Score",
         icon: "checklist",
         description: "Stocks with strong fundamentals based on Piotroski F-Score criteria",
-        filter: nil  // Requires backend computation
+        filter: nil,
+        backendPreset: "quality_value"
     ),
     ScreenerPreset(
         id: "breakout",
         title: "Breakout Candidates",
         icon: "arrow.up.forward",
         description: "Stocks showing price breakouts above key resistance levels",
-        filter: { feed in feed.filter { $0.changePercent > 5.0 } }
+        filter: { feed in feed.filter { $0.changePercent > 5.0 } },
+        backendPreset: nil
     ),
     ScreenerPreset(
         id: "oversold",
         title: "Oversold (RSI < 30)",
         icon: "arrow.down.heart",
         description: "Stocks in oversold territory with potential for mean reversion",
-        filter: nil  // Requires RSI data
+        filter: nil,
+        backendPreset: "institutional_capitulation"
     ),
     ScreenerPreset(
         id: "golden_cross",
         title: "Golden Cross",
         icon: "arrow.triangle.swap",
         description: "50-day MA crossing above 200-day MA — classic bullish signal",
-        filter: nil  // Requires MA data
+        filter: nil,
+        backendPreset: "earnings_pioneers"
     ),
     ScreenerPreset(
         id: "high_momentum",
         title: "High Momentum",
         icon: "speedometer",
         description: "Stocks with strong upward price and earnings momentum",
-        filter: { feed in feed.filter { $0.changePercent > 3.0 || $0.netProfitGrowthPct > 25.0 } }
+        filter: { feed in feed.filter { $0.changePercent > 3.0 || $0.netProfitGrowthPct > 25.0 } },
+        backendPreset: nil
     ),
     ScreenerPreset(
         id: "value_picks",
         title: "Value Picks (Low PE)",
         icon: "tag",
         description: "Undervalued stocks trading at low price-to-earnings multiples",
-        filter: nil  // Requires PE data from fundamentals
+        filter: nil,
+        backendPreset: "turnaround"
     ),
 ]
 
@@ -1095,53 +1103,62 @@ struct ScreenerView: View {
     @ObservedObject var vm: EarningsDashboardViewModel
     @State private var selectedPreset: String? = nil
     @State private var filteredResults: [EarningsResult] = []
+    @State private var screenerBackendResults: [ScreenerResult] = []
     @State private var isLoading = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Spacing.card) {
-                // Header
-                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                    Text("स्क्रीनर सूची")
-                        .font(.caption)
-                        .foregroundStyle(Theme.inkSecondary)
-                    Text("STOCK SCREENERS")
-                        .font(.caption.weight(.bold).monospaced())
-                        .tracking(2)
-                        .foregroundStyle(Theme.inkPrimary)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Spacing.card) {
+                    // Header
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                        Text("स्क्रीनर सूची")
+                            .font(.caption)
+                            .foregroundStyle(Theme.inkSecondary)
+                        Text("STOCK SCREENERS")
+                            .font(.caption.weight(.bold).monospaced())
+                            .tracking(2)
+                            .foregroundStyle(Theme.inkPrimary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
 
-                // Info hint
-                if vm.feed.isEmpty && !vm.isLoading {
-                    emptyStateMessage
-                        .padding(.horizontal, 16)
-                }
+                    // Info hint
+                    if vm.feed.isEmpty && !vm.isLoading {
+                        emptyStateMessage
+                            .padding(.horizontal, 16)
+                    }
 
-                // Screener preset cards — banknote aesthetic grid
-                LazyVGrid(
-                    columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.standard), count: 2),
-                    spacing: Theme.Spacing.standard
-                ) {
-                    ForEach(screenerPresets) { preset in
-                        screenerPresetCard(preset)
+                    // Screener preset cards — banknote aesthetic grid
+                    LazyVGrid(
+                        columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.standard), count: 2),
+                        spacing: Theme.Spacing.standard
+                    ) {
+                        ForEach(screenerPresets) { preset in
+                            screenerPresetCard(preset)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+
+                    // Filtered results section
+                    if let selected = selectedPreset, !filteredResults.isEmpty {
+                        screenerResultsSection(presetId: selected)
+                            .padding(.horizontal, 16)
+                    } else if let selected = selectedPreset, !screenerBackendResults.isEmpty {
+                        screenerBackendResultsSection(presetId: selected)
+                            .padding(.horizontal, 16)
+                    } else if selectedPreset != nil && filteredResults.isEmpty && screenerBackendResults.isEmpty && !isLoading {
+                        noResultsForPreset
+                            .padding(.horizontal, 16)
                     }
                 }
-                .padding(.horizontal, 16)
-
-                // Filtered results section
-                if let selected = selectedPreset, !filteredResults.isEmpty {
-                    screenerResultsSection(presetId: selected)
-                        .padding(.horizontal, 16)
-                } else if selectedPreset != nil && filteredResults.isEmpty && !isLoading {
-                    noResultsForPreset
-                        .padding(.horizontal, 16)
-                }
+                .padding(.bottom, 20)
             }
-            .padding(.bottom, 20)
+            .background(Theme.canvas)
+            .navigationDestination(for: String.self) { ticker in
+                AnalysisScreen(ticker: ticker)
+            }
         }
-        .background(Theme.canvas)
     }
 
     // MARK: - Empty State (no feed data at all)
@@ -1285,31 +1302,42 @@ struct ScreenerView: View {
         let isSelected = selectedPreset == preset.id
         let isBookmarked = vm.bookmarkedScreeners.contains(preset.id)
 
-        // Compute match count: use local filter if available, else show "—"
+        // Compute match count: use local filter if available, else indicate backend
         let matchCount: String = {
             if let filter = preset.filter {
                 let matches = filter(vm.feed)
                 return "\(matches.count)"
+            }
+            if preset.backendPreset != nil {
+                return "LIVE"
             }
             return "—"
         }()
 
         return Button(action: {
             HapticManager.selection()
+            if isSelected {
+                selectedPreset = nil
+                filteredResults = []
+                screenerBackendResults = []
+                return
+            }
             selectedPreset = preset.id
+            filteredResults = []
+            screenerBackendResults = []
             isLoading = true
 
             if let filter = preset.filter {
                 filteredResults = filter(vm.feed)
+                isLoading = false
+            } else if let backendKey = preset.backendPreset {
+                Task {
+                    let results = (try? await NetworkManager.shared.fetchScreener(preset: backendKey)) ?? []
+                    screenerBackendResults = results
+                    isLoading = false
+                }
             } else {
-                filteredResults = []
-            }
-            isLoading = false
-
-            // Toggle off if tapped again
-            if isSelected {
-                selectedPreset = nil
-                filteredResults = []
+                isLoading = false
             }
         }) {
             VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
@@ -1471,6 +1499,118 @@ struct ScreenerView: View {
             )
         }
     )
+    }
+
+    // MARK: - Backend Results Section
+
+    private func screenerBackendResultsSection(presetId: String) -> some View {
+        guard let preset = screenerPresets.first(where: { $0.id == presetId }) else {
+            return AnyView(EmptyView())
+        }
+        return AnyView(
+            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                GuillocheDivider()
+
+                HStack {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                        Text("SCREENER RESULTS")
+                            .font(.caption2.weight(.bold).monospaced())
+                            .tracking(2)
+                            .foregroundStyle(Theme.inkSecondary)
+                        Text(preset.title)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Theme.inkPrimary)
+                    }
+                    Spacer()
+                    Text("\(screenerBackendResults.count) matches")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(Theme.securityGold)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Theme.securityGold.opacity(0.10))
+                        .cornerRadius(Theme.CornerRadius.tight)
+                }
+
+                ForEach(Array(screenerBackendResults.enumerated()), id: \.element.id) { idx, result in
+                    NavigationLink(value: result.ticker) {
+                        screenerBackendResultRow(result: result)
+                    }
+                    .ekPressHaptic()
+                    .staggerAppear(delay: Double(idx) * 0.05)
+                }
+            }
+        )
+    }
+
+    private func screenerBackendResultRow(result: ScreenerResult) -> some View {
+        HStack(spacing: 0) {
+            Rectangle()
+                .fill(Theme.securityGold.opacity(0.4))
+                .frame(width: 1)
+                .padding(.vertical, Theme.Spacing.standard)
+
+            HStack(spacing: Theme.Spacing.card) {
+                StockIcon(ticker: result.ticker, signal: nil)
+
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                    Text(result.ticker.uppercased())
+                        .font(Theme.engravedSerif(size: 14, weight: .bold))
+                        .foregroundStyle(Theme.inkPrimary)
+                    if let company = result.companyName {
+                        Text(company)
+                            .font(Theme.serialNumberFont(size: 10))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .lineLimit(1)
+                    }
+                    if let reason = result.reason {
+                        Text(reason)
+                            .font(.caption2)
+                            .foregroundStyle(Theme.inkTertiary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
+                    if let conf = result.confidencePct {
+                        Text("\(conf)%")
+                            .font(Theme.serialNumberFont(size: 11))
+                            .contentTransition(.numericText())
+                            .foregroundStyle(Theme.securityGold)
+                    }
+                    if let fs = result.fScore {
+                        Text("F:\(fs)/9")
+                            .font(Theme.serialNumberFont(size: 10))
+                            .contentTransition(.numericText())
+                            .foregroundStyle(Theme.bullGreen)
+                    }
+                    if let pe = result.peRatio {
+                        Text("PE:\(String(format: "%.1f", pe))")
+                            .font(Theme.serialNumberFont(size: 10))
+                            .foregroundStyle(Theme.inkSecondary)
+                    }
+                    if let pg = result.profitGrowthPct {
+                        Text("+\(String(format: "%.0f", pg))%")
+                            .font(Theme.serialNumberFont(size: 10))
+                            .contentTransition(.numericText())
+                            .foregroundStyle(Theme.bullGreen)
+                    }
+                    if let r = result.rsi {
+                        Text("RSI:\(String(format: "%.0f", r))")
+                            .font(Theme.serialNumberFont(size: 10))
+                            .foregroundStyle(Theme.bearRed)
+                    }
+                }
+                Image(systemName: "arrow.right")
+                    .foregroundStyle(Theme.inkSecondary.opacity(0.3))
+                    .font(.footnote.weight(.bold))
+            }
+            .padding(.vertical, Theme.Spacing.standard)
+            .padding(.leading, Theme.Spacing.standard)
+            .padding(.trailing, Theme.Spacing.card)
+        }
+        .glassCard()
+        .banknoteCard()
     }
 }
 

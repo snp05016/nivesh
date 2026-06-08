@@ -54,11 +54,12 @@ struct TutorialOverlayView: View {
         let w = geo.size.width
         let safeBottom = geo.safeAreaInsets.bottom
         let tabItemHeight: CGFloat = 49
-        let tabWidth = w / 8.0
+        // 5 tabs in ContentView: Home(0), Markets(1), Ideas(2), News(3), Portfolio(4)
+        let tabWidth = w / 5.0
         let centerX = tabWidth * (CGFloat(index) + 0.5)
-        let spotWidth: CGFloat = tabWidth - 4
+        let spotWidth: CGFloat = tabWidth - 8
         let x = max(0, min(centerX - spotWidth / 2, w - spotWidth))
-        // tab items sit above the safe area, at the top 49pt of the tab bar
+        // Tab items sit above the safe area at the top 49pt of the tab bar
         let y = geo.size.height - safeBottom - tabItemHeight
         return CGRect(x: x, y: y, width: spotWidth, height: tabItemHeight)
     }
@@ -74,25 +75,25 @@ struct TutorialOverlayView: View {
                 spotlightRect: tabRect(index: 0, geo: geo)),
             TutorialStep(number: 3,  title: "Your Morning Brief",
                 body: "A personalised summary generated every morning. It tells you what changed overnight, which stocks need attention, and the market mood.",
-                spotlightRect: CGRect(x: 16, y: geo.size.height * 0.35, width: geo.size.width - 32, height: geo.size.height * 0.15)),
+                spotlightRect: CGRect(x: Theme.screenPadding, y: geo.size.height * 0.35, width: geo.size.width - Theme.screenPadding * 2, height: geo.size.height * 0.15)),
             TutorialStep(number: 4,  title: "Search & Discover",
                 body: "Search any NSE or BSE stock by name or ticker. Long-press any result for a quick preview. Use Discover presets to find new investment ideas.",
                 spotlightRect: tabRect(index: 1, geo: geo)),
             TutorialStep(number: 5,  title: "Your Portfolio",
                 body: "See all your holdings with live profit and loss. The Risk Card tells you if your portfolio is too concentrated in one sector.",
-                spotlightRect: tabRect(index: 2, geo: geo)),
+                spotlightRect: tabRect(index: 4, geo: geo)),
             TutorialStep(number: 6,  title: "Red Flags",
                 body: "Watches your holdings for danger signs — SEBI surveillance, bearish signal flips, or promoters pledging too many shares. Check this weekly.",
-                spotlightRect: CGRect(x: 16, y: geo.size.height * 0.52, width: geo.size.width - 32, height: geo.size.height * 0.125)),
+                spotlightRect: CGRect(x: Theme.screenPadding, y: geo.size.height * 0.52, width: geo.size.width - Theme.screenPadding * 2, height: geo.size.height * 0.125)),
             TutorialStep(number: 7,  title: "The Main Analysis",
                 body: "Tap any stock to run a full AI analysis. It takes 30–90 seconds and analyses fundamentals, news, promoter activity, global macro, and Indian market sentiment together.",
                 spotlightRect: CGRect(x: geo.size.width * 0.20, y: geo.size.height * 0.37, width: geo.size.width * 0.60, height: geo.size.width * 0.60)),
             TutorialStep(number: 8,  title: "Price Alerts",
                 body: "Set a target price for any stock. The app tells you immediately when a stock crosses your target — every time you open the app.",
-                spotlightRect: tabRect(index: 3, geo: geo)),
+                spotlightRect: tabRect(index: 1, geo: geo)),
             TutorialStep(number: 9,  title: "Your Trade Journal",
                 body: "Log every buy and sell with your reason. Over time you'll see your own patterns — which reasons led to profits, which didn't.",
-                spotlightRect: tabRect(index: 7, geo: geo)),
+                spotlightRect: tabRect(index: 4, geo: geo)),
             TutorialStep(number: 10, title: "You're all set\(authManager.currentUser.map { ", \($0.displayName)" } ?? "").",
                 body: "Check the app every morning and run an analysis before any buy or sell decision. Happy investing.",
                 spotlightRect: nil),

@@ -246,12 +246,12 @@ struct SearchScreen: View {
                                 }
                             }
                             .padding(.horizontal, Theme.screenPadding)
-                            .padding(.bottom, 100)
                         }
                         .simultaneousGesture(
                             DragGesture().onChanged { _ in hideKeyboard() }
                         )
                     }
+                    .frame(maxHeight: .infinity)
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
             }

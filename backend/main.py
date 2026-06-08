@@ -1768,8 +1768,11 @@ async function populateUserDropdown(){
   if(_usersPopulated)return;
   try{
     const r=await fetch('/users',{headers:{'Authorization':'Bearer admin'}});
-    if(!r.ok)return;
+    if(!r.ok){console.warn('Could not load user list: HTTP '+r.status);return;}
     const users=await r.json();
+    if(!Array.isArray(users)||users.length===0){
+      console.warn('No users returned from /users');return;
+    }
     const sel=document.getElementById('user-select');
     sel.innerHTML='<option value="">-- select user --</option>'+users.map(u=>`<option value="${u.id}">#${u.id} ${u.display_name||u.username} (${u.username})</option>`).join('');
     _usersPopulated=true;

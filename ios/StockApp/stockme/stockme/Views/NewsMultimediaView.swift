@@ -24,10 +24,12 @@ struct NewsMultimediaView: View {
                     podcastSection
                     // 8.3 Behind-the-News Editorial
                     editorialSection
-                    // 8.4 Expert Execution Panel
+                    // 8.4 All News — full vertical list
+                    allNewsSection
+                    // 8.5 Expert Execution Panel
                     expertPanel
                 }
-                .padding(.bottom, Theme.Spacing.large)
+                .padding(.bottom, Theme.Spacing.xLarge)
             }
         }
         .task { await loadFeed() }
@@ -111,8 +113,8 @@ struct NewsMultimediaView: View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "DEEP STRUCTURAL ANALYSIS", hindiTitle: "गहन संरचनात्मक विश्लेषण")
 
-            // Long-horizon socioeconomic columns
-            let editorials = articles.filter { ($0.summary?.count ?? 0) > 100 }.prefix(4)
+            // Long-horizon socioeconomic columns — now expandable
+            let editorials = articles.filter { ($0.summary?.count ?? 0) > 100 }.prefix(6)
             ForEach(Array(editorials)) { article in
                 EditorialRow(article: article)
                     .padding(.horizontal, Theme.Spacing.card)
@@ -128,7 +130,36 @@ struct NewsMultimediaView: View {
         }
     }
 
-    // MARK: 8.4 Expert Execution Panel
+    // MARK: 8.4 All News — full vertical list
+
+    private var allNewsSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            SectionHeader(title: "ALL MARKET NEWS", hindiTitle: "सभी बाज़ार समाचार")
+
+            if isLoading && articles.isEmpty {
+                ForEach(0..<4, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                        .fill(Theme.inkTertiary.opacity(0.08))
+                        .frame(height: 90)
+                        .padding(.horizontal, Theme.screenPadding)
+                        .shimmerPlaceholder(isLoading: true)
+                }
+            } else {
+                ForEach(articles) { article in
+                    NewsListRow(article: article)
+                        .padding(.horizontal, Theme.screenPadding)
+                }
+                if articles.isEmpty {
+                    Text("No news available at this time.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkTertiary)
+                        .padding(.horizontal, Theme.screenPadding)
+                }
+            }
+        }
+    }
+
+    // MARK: 8.5 Expert Execution Panel
 
     private var expertPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -227,10 +258,11 @@ struct NewsMultimediaView: View {
     }
 }
 
-// MARK: - 8.1 News Carousel Card
+// MARK: - 8.1 News Carousel Card (tappable → detail sheet)
 
 struct NewsCarouselCard: View {
     let article: NewsArticleItem
+    @State private var showDetail = false
 
     private var timeLabel: String {
         let f = ISO8601DateFormatter()
@@ -240,44 +272,109 @@ struct NewsCarouselCard: View {
         return article.publishedAt
     }
 
-    private let cardWidth: CGFloat = UIScreen.main.bounds.width * 0.58
+    private var sentimentColor: Color {
+        guard let s = article.sentiment?.lowercased() else { return Theme.holdAmber }
+        if s.contains("positive") || s.contains("bullish") { return Theme.bullGreen }
+        if s.contains("negative") || s.contains("bearish") { return Theme.bearRed }
+        return Theme.holdAmber
+    }
+
+    private let cardWidth: CGFloat = UIScreen.main.bounds.width * 0.62
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let sentiment = article.sentiment {
-                let color: Color = sentiment.lowercased().contains("positive") ? Theme.bullGreen :
-                                   sentiment.lowercased().contains("negative") ? Theme.bearRed : Theme.holdAmber
-                Text(sentiment.uppercased())
-                    .font(.caption2.weight(.bold).monospaced())
-                    .tracking(1)
-                    .foregroundStyle(color)
-                    .padding(.horizontal, Theme.Spacing.tight)
-                    .padding(.vertical, Theme.Spacing.xSmall)
-                    .background(color.opacity(0.10))
-                    .cornerRadius(Theme.CornerRadius.small)
+        Button(action: {
+            HapticManager.selection()
+            showDetail = true
+        }) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Hero image at top of card
+                ZStack(alignment: .bottomLeading) {
+                    if let imageUrl = article.imageUrl, let url = URL(string: imageUrl) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image.resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: cardWidth, height: 90)
+                                    .clipped()
+                            case .failure(_), .empty:
+                                Rectangle()
+                                    .fill(Theme.canvasDeep)
+                                    .frame(width: cardWidth, height: 90)
+                                    .overlay(
+                                        Image(systemName: "newspaper.fill")
+                                            .foregroundStyle(Theme.inkTertiary.opacity(0.3))
+                                            .font(.title2)
+                                    )
+                            @unknown default: EmptyView()
+                            }
+                        }
+                    } else {
+                        Rectangle()
+                            .fill(Theme.canvasDeep)
+                            .frame(width: cardWidth, height: 90)
+                            .overlay(
+                                Image(systemName: "newspaper.fill")
+                                    .foregroundStyle(Theme.inkTertiary.opacity(0.3))
+                                    .font(.title2)
+                            )
+                    }
+
+                    // Time badge over image
+                    if !timeLabel.isEmpty {
+                        Text(timeLabel)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.white.opacity(0.9))
+                            .padding(.horizontal, Theme.Spacing.tight)
+                            .padding(.vertical, 2)
+                            .background(Color.black.opacity(0.5))
+                            .cornerRadius(Theme.CornerRadius.small)
+                            .padding(Theme.Spacing.tight)
+                    }
+                }
+                .cornerRadius(Theme.CornerRadius.tight)
+
+                VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                    // Sentiment badge
+                    if let sentiment = article.sentiment, !sentiment.isEmpty {
+                        Text(sentiment.uppercased())
+                            .font(.caption2.weight(.bold).monospaced())
+                            .tracking(0.8)
+                            .foregroundStyle(sentimentColor)
+                            .padding(.horizontal, Theme.Spacing.tight)
+                            .padding(.vertical, Theme.Spacing.xSmall)
+                            .background(sentimentColor.opacity(0.10))
+                            .cornerRadius(Theme.CornerRadius.small)
+                    }
+
+                    Text(stripEmoji(article.headline))
+                        .font(Theme.engravedSerif(size: 12, weight: .semibold, relativeTo: .caption))
+                        .foregroundStyle(Theme.inkPrimary)
+                        .lineLimit(3)
+                        .lineSpacing(2)
+
+                    Spacer(minLength: 0)
+
+                    HStack {
+                        Text(article.source.replacingOccurrences(of: "_", with: " ").uppercased())
+                            .font(Theme.officialStampFont(size: 7, relativeTo: .caption2))
+                            .tracking(1.0)
+                            .foregroundStyle(Theme.inkTertiary)
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.securityGold.opacity(0.7))
+                    }
+                }
+                .padding(Theme.Spacing.standard)
             }
-
-            Text(article.headline)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Theme.inkPrimary)
-                .lineLimit(3)
-                .lineSpacing(2)
-
-            Spacer(minLength: 0)
-
-            HStack {
-                Text(article.source)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(Theme.inkTertiary)
-                Spacer()
-                Text(timeLabel)
-                    .font(.caption2)
-                    .foregroundStyle(Theme.inkTertiary)
-            }
+            .frame(width: cardWidth, height: UIScreen.main.bounds.height * 0.24)
+            .banknoteCard()
         }
-        .padding(Theme.Spacing.standard)
-        .frame(width: cardWidth, height: UIScreen.main.bounds.height * 0.16)
-        .banknoteCard()
+        .buttonStyle(EKPressStyle())
+        .sheet(isPresented: $showDetail) {
+            NewsDetailSheet(article: article)
+        }
     }
 }
 
@@ -374,10 +471,12 @@ struct VideoCard: View {
     }
 }
 
-// MARK: - 8.3 Editorial Row
+// MARK: - 8.3 Editorial Row — expandable inline
 
 struct EditorialRow: View {
     let article: NewsArticleItem
+    @State private var expanded = false
+    @State private var showSafari = false
 
     private var timeLabel: String {
         let f = ISO8601DateFormatter()
@@ -387,34 +486,219 @@ struct EditorialRow: View {
         return article.publishedAt
     }
 
+    private var sourceLabel: String {
+        article.source.replacingOccurrences(of: "_", with: " ").uppercased()
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(article.headline)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Theme.inkPrimary)
-                .lineSpacing(2)
+        VStack(alignment: .leading, spacing: 0) {
+            // ── Always-visible header (tap to expand) ───────────────────
+            Button(action: {
+                HapticManager.selection()
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
+                    expanded.toggle()
+                }
+            }) {
+                HStack(alignment: .top, spacing: Theme.Spacing.medium) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                        // Source + time row
+                        HStack(spacing: Theme.Spacing.small) {
+                            Text(sourceLabel)
+                                .font(Theme.officialStampFont(size: 7, relativeTo: .caption2))
+                                .tracking(1.2)
+                                .foregroundStyle(Theme.securityGold)
+                                .padding(.horizontal, Theme.Spacing.tight)
+                                .padding(.vertical, 2)
+                                .background(Theme.securityGold.opacity(0.10))
+                                .cornerRadius(Theme.CornerRadius.small)
 
-            if let summary = article.summary {
-                Text(summary)
-                    .font(.caption)
-                    .foregroundStyle(Theme.inkSecondary)
-                    .lineLimit(3)
-                    .lineSpacing(3)
+                            Text(timeLabel)
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(Theme.inkTertiary)
+                        }
+
+                        Text(stripEmoji(article.headline))
+                            .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .footnote))
+                            .foregroundStyle(Theme.inkPrimary)
+                            .lineSpacing(2)
+                            .multilineTextAlignment(.leading)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.inkTertiary)
+                        .padding(.top, Theme.Spacing.xSmall)
+                }
             }
+            .buttonStyle(.plain)
 
-            HStack {
-                Text(article.source)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(Theme.inkTertiary)
-                Spacer()
-                // 8.3 time-elapsed publication marker
-                Text(timeLabel)
-                    .font(.caption2)
-                    .foregroundStyle(Theme.inkTertiary)
+            // ── Expandable content ───────────────────────────────────────
+            if expanded {
+                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                    GuillocheDivider()
+                        .padding(.top, Theme.Spacing.medium)
+
+                    if let summary = article.summary, !summary.isEmpty {
+                        Text(stripEmoji(summary))
+                            .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
+                            .foregroundStyle(Theme.inkPrimary.opacity(0.88))
+                            .lineSpacing(5)
+                    }
+
+                    // Ticker chip
+                    if let ticker = article.ticker, !ticker.isEmpty {
+                        HStack(spacing: Theme.Spacing.tight) {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                                .font(.caption2)
+                            Text(ticker)
+                                .font(Theme.serialNumberFont(size: 11, relativeTo: .caption2))
+                        }
+                        .foregroundStyle(Theme.bullGreen)
+                        .padding(.horizontal, Theme.Spacing.medium)
+                        .padding(.vertical, Theme.Spacing.small)
+                        .background(Theme.bullGreen.opacity(0.08))
+                        .cornerRadius(Theme.CornerRadius.medium)
+                    }
+
+                    Button(action: {
+                        HapticManager.impact(.medium)
+                        showSafari = true
+                    }) {
+                        HStack {
+                            Image(systemName: "safari")
+                            Text("READ FULL ARTICLE")
+                                .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
+                                .tracking(1.2)
+                        }
+                        .foregroundStyle(Theme.canvas)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Theme.Spacing.medium)
+                        .background(Theme.inkPrimary)
+                        .cornerRadius(Theme.CornerRadius.medium)
+                    }
+                    .buttonStyle(EKPressStyle())
+                }
+                .padding(.top, Theme.Spacing.standard)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+                .sheet(isPresented: $showSafari) {
+                    if let url = URL(string: article.articleUrl) {
+                        SafariSheetView(url: url)
+                    }
+                }
             }
         }
         .padding(Theme.Spacing.standard)
         .banknoteCard()
+        .animation(.spring(response: 0.3, dampingFraction: 0.82), value: expanded)
+    }
+}
+
+// MARK: - 8.4 News List Row — full vertical list item
+
+struct NewsListRow: View {
+    let article: NewsArticleItem
+    @State private var showDetail = false
+
+    private var timeLabel: String {
+        let f = ISO8601DateFormatter()
+        if let date = f.date(from: article.publishedAt) {
+            return IndianFormatter.elapsed(from: date)
+        }
+        return article.publishedAt
+    }
+
+    private var sentimentColor: Color {
+        guard let s = article.sentiment?.lowercased() else { return Theme.holdAmber }
+        if s.contains("positive") || s.contains("bullish") { return Theme.bullGreen }
+        if s.contains("negative") || s.contains("bearish") { return Theme.bearRed }
+        return Theme.holdAmber
+    }
+
+    var body: some View {
+        Button(action: {
+            HapticManager.selection()
+            showDetail = true
+        }) {
+            HStack(alignment: .top, spacing: Theme.Spacing.standard) {
+                // Thumbnail (square)
+                if let imageUrl = article.imageUrl, let url = URL(string: imageUrl) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let img):
+                            img.resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 76, height: 76)
+                                .clipped()
+                                .cornerRadius(Theme.CornerRadius.tight)
+                        case .failure(_), .empty:
+                            fallbackThumb
+                        @unknown default: EmptyView()
+                        }
+                    }
+                } else {
+                    fallbackThumb
+                }
+
+                // Text content
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                    // Source + sentiment + time
+                    HStack(spacing: Theme.Spacing.tight) {
+                        Text(article.source.replacingOccurrences(of: "_", with: " ").uppercased())
+                            .font(Theme.officialStampFont(size: 7, relativeTo: .caption2))
+                            .tracking(1.0)
+                            .foregroundStyle(Theme.securityGold)
+
+                        if let sentiment = article.sentiment, !sentiment.isEmpty {
+                            Text("·")
+                                .foregroundStyle(Theme.inkTertiary)
+                            Text(sentiment.prefix(3).uppercased())
+                                .font(.caption2.weight(.bold).monospaced())
+                                .foregroundStyle(sentimentColor)
+                        }
+
+                        Spacer()
+
+                        Text(timeLabel)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
+
+                    Text(stripEmoji(article.headline))
+                        .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .footnote))
+                        .foregroundStyle(Theme.inkPrimary)
+                        .lineLimit(3)
+                        .lineSpacing(2)
+
+                    if let summary = article.summary, !summary.isEmpty {
+                        Text(stripEmoji(summary))
+                            .font(.caption)
+                            .foregroundStyle(Theme.inkSecondary)
+                            .lineLimit(2)
+                            .lineSpacing(1.5)
+                    }
+                }
+            }
+            .padding(Theme.Spacing.standard)
+            .banknoteCard()
+        }
+        .buttonStyle(EKPressStyle())
+        .sheet(isPresented: $showDetail) {
+            NewsDetailSheet(article: article)
+        }
+    }
+
+    private var fallbackThumb: some View {
+        Rectangle()
+            .fill(Theme.canvasDeep)
+            .frame(width: 76, height: 76)
+            .cornerRadius(Theme.CornerRadius.tight)
+            .overlay(
+                Image(systemName: "newspaper.fill")
+                    .foregroundStyle(Theme.inkTertiary.opacity(0.3))
+                    .font(.title3)
+            )
     }
 }
 
