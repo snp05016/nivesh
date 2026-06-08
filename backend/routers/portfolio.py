@@ -503,7 +503,7 @@ def portfolio_signal_warnings(user_id: int, authorization: str = Header(None)):
 # 1. GET /portfolio/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/{user_id}")
-def portfolio_endpoint(user_id: int, authorization: str = Header(None)):
+async def portfolio_endpoint(user_id: int, authorization: str = Header(None)):
     # Auth optional — personal app, user_id scoping is sufficient
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
     if token_user is not None and token_user != user_id:
@@ -532,13 +532,26 @@ def portfolio_endpoint(user_id: int, authorization: str = Header(None)):
                     last_analyses[row.ticker] = row.created_at
                     last_signals[row.ticker] = row.signal or "HOLD"
 
+        # Fetch all prices in parallel — 10x faster than sequential yfinance calls
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor(max_workers=min(len(holdings), 10)) as pool:
+            price_results = await asyncio.gather(
+                *[loop.run_in_executor(pool, _yf_price, _to_ns(h.ticker)) for h in holdings],
+                return_exceptions=True
+            )
+        prices = {
+            h.ticker: (r if not isinstance(r, Exception) else (None, None))
+            for h, r in zip(holdings, price_results)
+        }
+
         rows = []
         total_invested = 0.0
         total_current = 0.0
 
         for h in holdings:
-            ns = _to_ns(h.ticker)
-            current_price, prev_close = _yf_price(ns)
+            current_price, prev_close = prices.get(h.ticker, (None, None))
 
             invested = h.shares * h.buy_price
             current_value = h.shares * current_price if current_price else 0.0
@@ -795,8 +808,14 @@ mood must be exactly: "positive", "cautious", or "negative"
             print(f"[ERROR] Failed to parse morning summary JSON: {e}")
             parsed = fallback
 
+        raw_summary = parsed.get("summary", fallback["summary"])
+        # Normalize inline bullets ("• A • B • C") to newline-separated ("• A\n• B\n• C")
+        if raw_summary and "\n" not in raw_summary and raw_summary.count("•") > 1:
+            parts = [p.strip() for p in raw_summary.split("•") if p.strip()]
+            raw_summary = "\n".join(f"• {p}" for p in parts)
+
         result = {
-            "summary": parsed.get("summary", fallback["summary"]),
+            "summary": raw_summary,
             "movers": parsed.get("movers", mover_tickers),
             "mood": parsed.get("mood", "cautious"),
             "generated_at": generated_at,

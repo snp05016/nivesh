@@ -387,6 +387,16 @@ async def _on_startup():
     from routers.alerts import _price_alert_poller
     import asyncio
     asyncio.create_task(_price_alert_poller())
+
+    # Pre-warm FinBERT so first user request doesn't pay the 3-5s model load cost
+    def _prewarm_finbert():
+        try:
+            from services.sentiment_engine import get_classifier
+            get_classifier()
+            logging.info("FinBERT pre-warmed successfully")
+        except Exception as e:
+            logging.warning(f"FinBERT pre-warm failed (non-fatal): {e}")
+    threading.Thread(target=_prewarm_finbert, daemon=True).start()
     
     import os
     import logging
