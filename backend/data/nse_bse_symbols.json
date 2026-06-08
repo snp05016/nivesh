@@ -1,26 +1,200 @@
 [
   {
-    "ticker": "HDFCBANK",
-    "name": "HDFC Bank Ltd",
+    "ticker": "AARTIIND",
+    "name": "Aarti Industries Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AAVAS",
+    "name": "Aavas Financiers Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ABB",
+    "name": "ABB India Ltd",
+    "sector": "Engineering",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ABBOTINDIA",
+    "name": "Abbott India Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ACC",
+    "name": "ACC Ltd",
+    "sector": "Cement",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ADANIENT",
+    "name": "Adani Enterprises Ltd",
+    "sector": "Infrastructure",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ADANIGREEN",
+    "name": "Adani Green Energy Ltd",
+    "sector": "Renewable Energy",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ADANIPORTS",
+    "name": "Adani Ports & SEZ Ltd",
+    "sector": "Infrastructure",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ADANIPOWER",
+    "name": "Adani Power Ltd",
+    "sector": "Power",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AIAENG",
+    "name": "AIA Engineering Ltd",
+    "sector": "Engineering",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AJANTPHARM",
+    "name": "Ajanta Pharma Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALKEM",
+    "name": "Alkem Laboratories Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALKYLAMINE",
+    "name": "Alkyl Amines Chemicals Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALLCARGO",
+    "name": "Allcargo Logistics Ltd",
+    "sector": "Logistics",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AMBER",
+    "name": "Amber Enterprises India Ltd",
+    "sector": "Consumer Durables",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AMBUJACEM",
+    "name": "Ambuja Cements Ltd",
+    "sector": "Cement",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ANANTRAJ",
+    "name": "Anant Raj Ltd",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "APCOTEXIND",
+    "name": "Apcotex Industries Ltd",
+    "sector": "Electricals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "APLAPOLLO",
+    "name": "APL Apollo Tubes Ltd",
+    "sector": "Infrastructure",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "APOLLOHOSP",
+    "name": "Apollo Hospitals Enterprise Ltd",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "APOLLOTYRE",
+    "name": "Apollo Tyres Ltd",
+    "sector": "Auto Ancillary",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "APTUS",
+    "name": "Aptus Value Housing Finance",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARVIND",
+    "name": "Arvind Ltd",
+    "sector": "Textiles",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASAHIINDIA",
+    "name": "Asahi India Glass Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASHOKLEY",
+    "name": "Ashok Leyland Ltd",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASIANPAINT",
+    "name": "Asian Paints Ltd",
+    "sector": "Paints",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASTRAL",
+    "name": "Astral Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASTRAMICRO",
+    "name": "Astra Microwave Products Ltd",
+    "sector": "Defence",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ATUL",
+    "name": "Atul Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AUBANK",
+    "name": "AU Small Finance Bank",
     "sector": "Banking",
     "exchange": "NSE"
   },
   {
-    "ticker": "ICICIBANK",
-    "name": "ICICI Bank Ltd",
-    "sector": "Banking",
+    "ticker": "AUROPHARMA",
+    "name": "Aurobindo Pharma Ltd",
+    "sector": "Pharma",
     "exchange": "NSE"
   },
   {
-    "ticker": "SBIN",
-    "name": "State Bank of India",
-    "sector": "Banking",
+    "ticker": "AVANTEL",
+    "name": "Avantel Ltd",
+    "sector": "Defence",
     "exchange": "NSE"
   },
   {
-    "ticker": "KOTAKBANK",
-    "name": "Kotak Mahindra Bank Ltd",
-    "sector": "Banking",
+    "ticker": "AWL",
+    "name": "Adani Wilmar Ltd",
+    "sector": "FMCG",
     "exchange": "NSE"
   },
   {
@@ -30,50 +204,50 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "INDUSINDBK",
-    "name": "IndusInd Bank Ltd",
-    "sector": "Banking",
+    "ticker": "BAJAJ-AUTO",
+    "name": "Bajaj Auto Ltd",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BAJAJELEC",
+    "name": "Bajaj Electricals Ltd",
+    "sector": "Consumer Durables",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BAJAJFINSV",
+    "name": "Bajaj Finserv Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BAJAJHIND",
+    "name": "Bajaj Hindusthan Sugar Ltd",
+    "sector": "Sugar",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BAJFINANCE",
+    "name": "Bajaj Finance Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BALKRISIND",
+    "name": "Balkrishna Industries Ltd",
+    "sector": "Auto Ancillary",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BALRAMCHIN",
+    "name": "Balrampur Chini Mills Ltd",
+    "sector": "Sugar",
     "exchange": "NSE"
   },
   {
     "ticker": "BANDHANBNK",
     "name": "Bandhan Bank Ltd",
-    "sector": "Banking",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "FEDERALBNK",
-    "name": "Federal Bank Ltd",
-    "sector": "Banking",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "IDFCFIRSTB",
-    "name": "IDFC First Bank Ltd",
-    "sector": "Banking",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "RBLBANK",
-    "name": "RBL Bank Ltd",
-    "sector": "Banking",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "YESBANK",
-    "name": "Yes Bank Ltd",
-    "sector": "Banking",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "PNB",
-    "name": "Punjab National Bank",
-    "sector": "Banking",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CANBK",
-    "name": "Canara Bank",
     "sector": "Banking",
     "exchange": "NSE"
   },
@@ -84,8 +258,1466 @@
     "exchange": "NSE"
   },
   {
+    "ticker": "BASF",
+    "name": "BASF India Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BATAINDIA",
+    "name": "Bata India Ltd",
+    "sector": "Retail",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BDL",
+    "name": "Bharat Dynamics Ltd",
+    "sector": "Defence",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BEL",
+    "name": "Bharat Electronics Ltd",
+    "sector": "Defence",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BEML",
+    "name": "BEML Ltd",
+    "sector": "Defence",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BIKAJI",
+    "name": "Bikaji Foods International Ltd",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BIOCON",
+    "name": "Biocon Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BIRLACORPN",
+    "name": "Birla Corporation Ltd",
+    "sector": "Cement",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BLUEDART",
+    "name": "Blue Dart Express Ltd",
+    "sector": "Logistics",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BLUESTARCO",
+    "name": "Blue Star Ltd",
+    "sector": "Consumer Durables",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BOSCHLTD",
+    "name": "Bosch Ltd",
+    "sector": "Auto Ancillary",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BPCL",
+    "name": "Bharat Petroleum Corporation Ltd",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BRIGADE",
+    "name": "Brigade Enterprises Ltd",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BRITANNIA",
+    "name": "Britannia Industries Ltd",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BSE",
+    "name": "BSE Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BSOFT",
+    "name": "BSOFT Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CAMPUS",
+    "name": "Campus Activewear Ltd",
+    "sector": "Retail",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CAMS",
+    "name": "Computer Age Management Services",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CANBK",
+    "name": "Canara Bank",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CANFINHOME",
+    "name": "Can Fin Homes Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CARTRADE",
+    "name": "CarTrade Tech Ltd",
+    "sector": "Consumer Tech",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CASTROLIND",
+    "name": "Castrol India Ltd",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CDSL",
+    "name": "Central Depository Services (India) Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CEATLTD",
+    "name": "CEAT Ltd",
+    "sector": "Auto Ancillary",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CENTRALBK",
+    "name": "Central Bank of India",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CENTURYPLY",
+    "name": "Century Plyboards India Ltd",
+    "sector": "Building Materials",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CERA",
+    "name": "Cera Sanitaryware Ltd",
+    "sector": "Building Materials",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CESC",
+    "name": "CESC Ltd",
+    "sector": "Power",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CHALET",
+    "name": "Chalet Hotels Ltd",
+    "sector": "Hotels",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CHAMBLFERT",
+    "name": "Chambal Fertilizers and Chemicals",
+    "sector": "Fertilizers",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CHOLAFIN",
+    "name": "Cholamandalam Investment and Finance",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CIPLA",
+    "name": "Cipla Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CLEAN",
+    "name": "Clean Science and Technology Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "COALINDIA",
+    "name": "Coal India Ltd",
+    "sector": "Mining",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "COCHINSHIP",
+    "name": "Cochin Shipyard Ltd",
+    "sector": "Defence",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "COFORGE",
+    "name": "Coforge Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "COLPAL",
+    "name": "Colgate-Palmolive (India) Ltd",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CONCOR",
+    "name": "Container Corporation of India",
+    "sector": "Infrastructure",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "COROMANDEL",
+    "name": "Coromandel International Ltd",
+    "sector": "Fertilizers",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CRAFTSMAN",
+    "name": "Craftsman Automation Ltd",
+    "sector": "Auto Ancillary",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CREDITACC",
+    "name": "CreditAccess Grameen",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CRISIL",
+    "name": "CRISIL Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CROMPTON",
+    "name": "Crompton Greaves Consumer Electricals",
+    "sector": "Consumer Durables",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CUMMINSIND",
+    "name": "Cummins India Ltd",
+    "sector": "Engineering",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CYIENT",
+    "name": "Cyient Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DABUR",
+    "name": "Dabur India Ltd",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DALBHARAT",
+    "name": "Dalmia Bharat Ltd",
+    "sector": "Cement",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DATAPATTNS",
+    "name": "Data Patterns India Ltd",
+    "sector": "Defence",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DCBBANK",
+    "name": "DCB Bank Ltd",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DEEPAKFERT",
+    "name": "Deepak Fertilisers and Petrochemicals",
+    "sector": "Fertilizers",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DEEPAKNTR",
+    "name": "Deepak Nitrite Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DELHIVERY",
+    "name": "Delhivery Ltd",
+    "sector": "Logistics",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DEVYANI",
+    "name": "Devyani International Ltd",
+    "sector": "Retail",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DHANUKA",
+    "name": "Dhanuka Agritech Ltd",
+    "sector": "Agriculture",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DIVISLAB",
+    "name": "Divi's Laboratories Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DIXON",
+    "name": "Dixon Technologies India Ltd",
+    "sector": "Consumer Durables",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DLF",
+    "name": "DLF Ltd",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DMART",
+    "name": "Avenue Supermarts Ltd",
+    "sector": "Retail",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DOMS",
+    "name": "DOMS Industries Ltd",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DRREDDY",
+    "name": "Dr. Reddy's Laboratories Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "EASEMYTRIP",
+    "name": "Easy Trip Planners Ltd",
+    "sector": "Travel",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "EICHERMOT",
+    "name": "Eicher Motors Ltd",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "EIHOTEL",
+    "name": "EIH Ltd",
+    "sector": "Hotels",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "EMAMILTD",
+    "name": "Emami Ltd",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "EMCURE",
+    "name": "Emcure Pharmaceuticals Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ENDURANCE",
+    "name": "Endurance Technologies Ltd",
+    "sector": "Auto Ancillary",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "EQUITASBNK",
+    "name": "Equitas Small Finance Bank",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ERIS",
+    "name": "Eris Lifesciences Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ESAFSFB",
+    "name": "ESAF Small Finance Bank",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ESCORTS",
+    "name": "Escorts Kubota Ltd",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "EXIDEIND",
+    "name": "Exide Industries Ltd",
+    "sector": "Auto Ancillary",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "FINCABLES",
+    "name": "Finolex Cables Ltd",
+    "sector": "Electricals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "FINEORG",
+    "name": "Fine Organic Industries Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "FINPIPE",
+    "name": "Finolex Industries Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "FIVESTAR",
+    "name": "Five-Star Business Finance",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "FACT",
+    "name": "Fertilisers and Chemicals Travancore",
+    "sector": "Fertilizers",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "FEDERALBNK",
+    "name": "Federal Bank Ltd",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GABRIEL",
+    "name": "Gabriel India Ltd",
+    "sector": "Auto Ancillary",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GAIL",
+    "name": "GAIL (India) Ltd",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GALAXYSURF",
+    "name": "Galaxy Surfactants Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GARFIBRES",
+    "name": "Garware Technical Fibres Ltd",
+    "sector": "Textiles",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GICRE",
+    "name": "General Insurance Corporation of India",
+    "sector": "Insurance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GILLETTE",
+    "name": "Gillette India Ltd",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GLAXO",
+    "name": "GlaxoSmithKline Pharmaceuticals",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GLENMARK",
+    "name": "Glenmark Pharmaceuticals Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GNFC",
+    "name": "Gujarat Narmada Valley Fertilizers",
+    "sector": "Fertilizers",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GODREJCP",
+    "name": "Godrej Consumer Products Ltd",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GODREJIND",
+    "name": "Godrej Industries Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GODREJPROP",
+    "name": "Godrej Properties Ltd",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GRANULES",
+    "name": "Granules India Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GRASIM",
+    "name": "Grasim Industries Ltd",
+    "sector": "Cement",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GREENPANEL",
+    "name": "Greenpanel Industries Ltd",
+    "sector": "Renewable Energy",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GREENPLY",
+    "name": "Greenply Industries Ltd",
+    "sector": "Building Materials",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HCLTECH",
+    "name": "HCL Technologies Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HDFCAMC",
+    "name": "HDFC Asset Management Company",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HDFCBANK",
+    "name": "HDFC Bank Ltd",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HDFCLIFE",
+    "name": "HDFC Life Insurance Company",
+    "sector": "Insurance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HEROMOTOCO",
+    "name": "Hero MotoCorp Ltd",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HFCL",
+    "name": "HFCL Ltd",
+    "sector": "Telecom",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HINDCOPPER",
+    "name": "Hindustan Copper Ltd",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HINDPETRO",
+    "name": "Hindustan Petroleum Corporation Ltd",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HINDUNILVR",
+    "name": "Hindustan Unilever Ltd",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HUDCO",
+    "name": "HUDCO Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ICICIBANK",
+    "name": "ICICI Bank Ltd",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ICICIPRULI",
+    "name": "ICICI Prudential Life Insurance",
+    "sector": "Insurance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "IDFCFIRSTB",
+    "name": "IDFC First Bank Ltd",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "IGL",
+    "name": "Indraprastha Gas Ltd",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "IIFL",
+    "name": "IIFL Finance Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "INDIGOPNTS",
+    "name": "Indigo Paints Ltd",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "INDIGO",
+    "name": "InterGlobe Aviation Ltd (IndiGo)",
+    "sector": "Aviation",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "INDIAMART",
+    "name": "IndiaMART InterMESH Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "INFY",
+    "name": "Infosys Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "INTELLECT",
+    "name": "Intellect Design Arena Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "IOC",
+    "name": "Indian Oil Corporation Ltd",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "IRCTC",
+    "name": "Indian Railway Catering and Tourism Corp",
+    "sector": "Travel",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "IRFC",
+    "name": "Indian Railway Finance Corporation",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ITC",
+    "name": "ITC Ltd",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ITDCEM",
+    "name": "ITD Cementation India Ltd",
+    "sector": "Infrastructure",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JBCHEPHARM",
+    "name": "JB Chemicals and Pharmaceuticals",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JKCEMENT",
+    "name": "JK Cement Ltd",
+    "sector": "Cement",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JKLAKSHMI",
+    "name": "JK Lakshmi Cement Ltd",
+    "sector": "Cement",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JMFINANCIL",
+    "name": "JM Financial Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JSWENERGY",
+    "name": "JSW Energy Ltd",
+    "sector": "Power",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JSWINFRA",
+    "name": "JSW Infrastructure Ltd",
+    "sector": "Infrastructure",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JSWSTEEL",
+    "name": "JSW Steel Ltd",
+    "sector": "Steel",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JUBLFOOD",
+    "name": "Jubilant Foodworks Ltd",
+    "sector": "Retail",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KALYANKJIL",
+    "name": "Kalyan Jewellers India Ltd",
+    "sector": "Retail",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KANSAINER",
+    "name": "Kansai Nerolac Paints Ltd",
+    "sector": "Paints",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KAYNES",
+    "name": "Kaynes Technology India Ltd",
+    "sector": "Consumer Durables",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KFINTECH",
+    "name": "KFin Technologies Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KNRCON",
+    "name": "KNR Constructions Ltd",
+    "sector": "Infrastructure",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KRBL",
+    "name": "KRBL Ltd",
+    "sector": "Agriculture",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "L&TFH",
+    "name": "L&T Finance Holdings Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LALPATHLAB",
+    "name": "Dr Lal PathLabs Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LICI",
+    "name": "Life Insurance Corporation of India",
+    "sector": "Insurance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LT",
+    "name": "Larsen & Toubro Ltd",
+    "sector": "Infrastructure",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LTIM",
+    "name": "LTIMindtree Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LTTS",
+    "name": "L&T Technology Services",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LUPIN",
+    "name": "Lupin Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "M&M",
+    "name": "Mahindra & Mahindra Ltd",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "M&MFIN",
+    "name": "Mahindra & Mahindra Financial Services",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MAHABANK",
+    "name": "Bank of Maharashtra",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MAHLIFE",
+    "name": "Mahindra Lifespace Developers",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MANAPPURAM",
+    "name": "Manappuram Finance Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MARICO",
+    "name": "Marico Ltd",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MARUTI",
+    "name": "Maruti Suzuki India Ltd",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MAXHEALTH",
+    "name": "Max Healthcare Institute Ltd",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MAZDOCK",
+    "name": "Mazagon Dock Shipbuilders Ltd",
+    "sector": "Defence",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MFSL",
+    "name": "Max Financial Services Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MGL",
+    "name": "Mahanagar Gas Ltd",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MOIL",
+    "name": "MOIL Ltd",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MOTHERSON",
+    "name": "Samvardhana Motherson International",
+    "sector": "Auto Ancillary",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MPHASIS",
+    "name": "Mphasis Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MUTHOOTFIN",
+    "name": "Muthoot Finance Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NATCOPHARM",
+    "name": "Natco Pharma Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NATIONALUM",
+    "name": "National Aluminium Company",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NAUKRI",
+    "name": "Info Edge India Ltd (Naukri)",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NAVINFLUOR",
+    "name": "Navin Fluorine International Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NBCC",
+    "name": "NBCC (India) Ltd",
+    "sector": "Infrastructure",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NCC",
+    "name": "NCC Ltd",
+    "sector": "Infrastructure",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NESTLEIND",
+    "name": "Nestle India Ltd",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NIACL",
+    "name": "New India Assurance Company",
+    "sector": "Insurance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NMDC",
+    "name": "NMDC Ltd",
+    "sector": "Mining",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NSLNISP",
+    "name": "NMDC Steel Ltd",
+    "sector": "Steel",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NTPC",
+    "name": "NTPC Ltd",
+    "sector": "Power",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NUVOCO",
+    "name": "Nuvoco Vistas Corporation Ltd",
+    "sector": "Cement",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "OIL",
+    "name": "Oil India Ltd",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ONGC",
+    "name": "Oil and Natural Gas Corporation Ltd",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ORIENTELEC",
+    "name": "Orient Electric Ltd",
+    "sector": "Consumer Durables",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PAYTM",
+    "name": "One 97 Communications Ltd (Paytm)",
+    "sector": "Consumer Tech",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PERSISTENT",
+    "name": "Persistent Systems Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PETRONET",
+    "name": "Petronet LNG Ltd",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PFC",
+    "name": "Power Finance Corporation Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PFIZER",
+    "name": "Pfizer Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PIDILITIND",
+    "name": "Pidilite Industries Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PIIND",
+    "name": "PI Industries Ltd",
+    "sector": "Agriculture",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "POLYCAB",
+    "name": "Polycab India Ltd",
+    "sector": "Electricals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "POWERGRID",
+    "name": "Power Grid Corporation of India",
+    "sector": "Power",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PRESTIGE",
+    "name": "Prestige Estates Projects Ltd",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PNB",
+    "name": "Punjab National Bank",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PAGEIND",
+    "name": "Page Industries Ltd",
+    "sector": "Textiles",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "RELAXO",
+    "name": "Relaxo Footwears Ltd",
+    "sector": "Retail",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "RELIANCE",
+    "name": "Reliance Industries Ltd",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "RBLBANK",
+    "name": "RBL Bank Ltd",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ROUTE",
+    "name": "Route Mobile Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SANOFI",
+    "name": "Sanofi India Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SAPPHIRE",
+    "name": "Sapphire Foods India Ltd",
+    "sector": "Retail",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SBICARD",
+    "name": "SBI Cards and Payment Services",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SBILIFE",
+    "name": "SBI Life Insurance Company",
+    "sector": "Insurance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SBIN",
+    "name": "State Bank of India",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SCHAEFFLER",
+    "name": "Schaeffler India Ltd",
+    "sector": "Engineering",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SEQUENT",
+    "name": "SeQuent Scientific Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SHREECEM",
+    "name": "Shree Cement Ltd",
+    "sector": "Cement",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SHRIRAMFIN",
+    "name": "Shriram Finance Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SIGNATURE",
+    "name": "Signature Global (India) Ltd",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SIEMENS",
+    "name": "Siemens Ltd",
+    "sector": "Engineering",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SJVN",
+    "name": "SJVN Ltd",
+    "sector": "Power",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SKFINDIA",
+    "name": "SKF India Ltd",
+    "sector": "Engineering",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SOBHA",
+    "name": "Sobha Ltd",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SOLARINDS",
+    "name": "Solar Industries India Ltd",
+    "sector": "Defence",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SONACOMS",
+    "name": "Sona BLW Precision Forgings",
+    "sector": "Auto Ancillary",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "STARHEALTH",
+    "name": "Star Health and Allied Insurance",
+    "sector": "Insurance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "STLTECH",
+    "name": "Sterlite Technologies Ltd",
+    "sector": "Telecom",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SUDARSCHEM",
+    "name": "Sudarshan Chemical Industries",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SUNPHARMA",
+    "name": "Sun Pharmaceutical Industries Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SUNTV",
+    "name": "Sun TV Network Ltd",
+    "sector": "Media",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SUZLON",
+    "name": "Suzlon Energy Ltd",
+    "sector": "Renewable Energy",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SYMPHONY",
+    "name": "Symphony Ltd",
+    "sector": "Consumer Durables",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TATACHEM",
+    "name": "Tata Chemicals Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TATACOMM",
+    "name": "Tata Communications Ltd",
+    "sector": "Telecom",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TATACONSUM",
+    "name": "Tata Consumer Products Ltd",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TATAELXSI",
+    "name": "Tata Elxsi Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TATAMOTORS",
+    "name": "Tata Motors Ltd",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TATAPOWER",
+    "name": "Tata Power Company Ltd",
+    "sector": "Power",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TATASTEEL",
+    "name": "Tata Steel Ltd",
+    "sector": "Steel",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TCS",
+    "name": "Tata Consultancy Services Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TECHM",
+    "name": "Tech Mahindra Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TITAN",
+    "name": "Titan Company Ltd",
+    "sector": "Consumer",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TORNTPHARM",
+    "name": "Torrent Pharmaceuticals Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TORNTPOWER",
+    "name": "Torrent Power Ltd",
+    "sector": "Power",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TRENT",
+    "name": "Trent Ltd",
+    "sector": "Retail",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TRIDENT",
+    "name": "Trident Ltd",
+    "sector": "Textiles",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TRIVENI",
+    "name": "Triveni Engineering & Industries",
+    "sector": "Sugar",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TVSMOTOR",
+    "name": "TVS Motor Company Ltd",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "UBL",
+    "name": "United Breweries Ltd",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "UJJIVANSFB",
+    "name": "Ujjivan Small Finance Bank",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
     "ticker": "UNIONBANK",
     "name": "Union Bank of India",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "UPL",
+    "name": "UPL Ltd",
+    "sector": "Agriculture",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "UTIAMC",
+    "name": "UTI Asset Management Company",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "VBL",
+    "name": "Varun Beverages Ltd",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "VEDL",
+    "name": "Vedanta Ltd",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "VINATIORGA",
+    "name": "Vinati Organics Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "VOLTAS",
+    "name": "Voltas Ltd",
+    "sector": "Consumer Durables",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "WELCORP",
+    "name": "Welspun Corp Ltd",
+    "sector": "Textiles",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "WELSPUNLIV",
+    "name": "Welspun Living Ltd",
+    "sector": "Textiles",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "WHIRLPOOL",
+    "name": "Whirlpool of India Ltd",
+    "sector": "Consumer Durables",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "WIPRO",
+    "name": "Wipro Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "WOCKPHARMA",
+    "name": "Wockhardt Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "YESBANK",
+    "name": "Yes Bank Ltd",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ZEEL",
+    "name": "Zee Entertainment Enterprises Ltd",
+    "sector": "Media",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ZOMATO",
+    "name": "Zomato Ltd",
+    "sector": "Consumer Tech",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ZYDUSLIFE",
+    "name": "Zydus Lifesciences Ltd",
+    "sector": "Pharma",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KOTAKBANK",
+    "name": "Kotak Mahindra Bank Ltd",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "INDUSINDBK",
+    "name": "IndusInd Bank Ltd",
     "sector": "Banking",
     "exchange": "NSE"
   },
@@ -96,26 +1728,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "CENTRALBK",
-    "name": "Central Bank of India",
-    "sector": "Banking",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "MAHABANK",
-    "name": "Bank of Maharashtra",
-    "sector": "Banking",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "J&KBANK",
     "name": "Jammu & Kashmir Bank",
-    "sector": "Banking",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "DCBBANK",
-    "name": "DCB Bank Ltd",
     "sector": "Banking",
     "exchange": "NSE"
   },
@@ -132,32 +1746,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "UJJIVANSFB",
-    "name": "Ujjivan Small Finance Bank",
-    "sector": "Banking",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "AUBANK",
-    "name": "AU Small Finance Bank",
-    "sector": "Banking",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "EQUITASBNK",
-    "name": "Equitas Small Finance Bank",
-    "sector": "Banking",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "UTKARSHBNK",
     "name": "Utkarsh Small Finance Bank",
-    "sector": "Banking",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ESAFSFB",
-    "name": "ESAF Small Finance Bank",
     "sector": "Banking",
     "exchange": "NSE"
   },
@@ -210,12 +1800,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "NAINITAL",
-    "name": "Nainital Bank Ltd",
-    "sector": "Banking",
-    "exchange": "BSE"
-  },
-  {
     "ticker": "TMVL",
     "name": "Tamilnad Mercantile Bank",
     "sector": "Banking",
@@ -225,48 +1809,6 @@
     "ticker": "SBFC",
     "name": "SBFC Finance Ltd",
     "sector": "Banking",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BAJFINANCE",
-    "name": "Bajaj Finance Ltd",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BAJAJFINSV",
-    "name": "Bajaj Finserv Ltd",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "MUTHOOTFIN",
-    "name": "Muthoot Finance Ltd",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "MANAPPURAM",
-    "name": "Manappuram Finance Ltd",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CHOLAFIN",
-    "name": "Cholamandalam Investment and Finance",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "M&MFIN",
-    "name": "Mahindra & Mahindra Financial Services",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SHRIRAMFIN",
-    "name": "Shriram Finance Ltd",
-    "sector": "Finance",
     "exchange": "NSE"
   },
   {
@@ -282,50 +1824,14 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "HDFCAMC",
-    "name": "HDFC Asset Management Company",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "NIPPONLIFE",
     "name": "Nippon Life India Asset Management",
     "sector": "Finance",
     "exchange": "NSE"
   },
   {
-    "ticker": "UTIAMC",
-    "name": "UTI Asset Management Company",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "ICICIPRUL",
     "name": "ICICI Prudential Life Insurance",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SBICARD",
-    "name": "SBI Cards and Payment Services",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "JMFINANCIL",
-    "name": "JM Financial Ltd",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "L&TFH",
-    "name": "L&T Finance Holdings Ltd",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "IIFL",
-    "name": "IIFL Finance Ltd",
     "sector": "Finance",
     "exchange": "NSE"
   },
@@ -348,18 +1854,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "FIVESTAR",
-    "name": "Five-Star Business Finance",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CREDITACC",
-    "name": "CreditAccess Grameen",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "ARMAN",
     "name": "Arman Financial Services",
     "sector": "Finance",
@@ -378,32 +1872,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "PFC",
-    "name": "Power Finance Corporation Ltd",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "IRFC",
-    "name": "Indian Railway Finance Corporation",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "IREDA",
     "name": "Indian Renewable Energy Development Agency",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "HUDCO",
-    "name": "HUDCO Ltd",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CANFINHOME",
-    "name": "Can Fin Homes Ltd",
     "sector": "Finance",
     "exchange": "NSE"
   },
@@ -420,62 +1890,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "AAVAS",
-    "name": "Aavas Financiers Ltd",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "APTUS",
-    "name": "Aptus Value Housing Finance",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SBILIFE",
-    "name": "SBI Life Insurance Company",
-    "sector": "Insurance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "HDFCLIFE",
-    "name": "HDFC Life Insurance Company",
-    "sector": "Insurance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "LICI",
-    "name": "Life Insurance Corporation of India",
-    "sector": "Insurance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "GICRE",
-    "name": "General Insurance Corporation of India",
-    "sector": "Insurance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "NIACL",
-    "name": "New India Assurance Company",
-    "sector": "Insurance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "STARHEALTH",
-    "name": "Star Health and Allied Insurance",
-    "sector": "Insurance",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "POLICYBZR",
     "name": "PB Fintech Ltd (PolicyBazaar)",
-    "sector": "Insurance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ICICIPRULI",
-    "name": "ICICI Prudential Life Insurance",
     "sector": "Insurance",
     "exchange": "NSE"
   },
@@ -483,60 +1899,6 @@
     "ticker": "MAXFINSERV",
     "name": "Max Financial Services",
     "sector": "Insurance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "TCS",
-    "name": "Tata Consultancy Services Ltd",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "INFY",
-    "name": "Infosys Ltd",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "WIPRO",
-    "name": "Wipro Ltd",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "HCLTECH",
-    "name": "HCL Technologies Ltd",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "TECHM",
-    "name": "Tech Mahindra Ltd",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "LTIM",
-    "name": "LTIMindtree Ltd",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "PERSISTENT",
-    "name": "Persistent Systems Ltd",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "COFORGE",
-    "name": "Coforge Ltd",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "MPHASIS",
-    "name": "Mphasis Ltd",
-    "sector": "IT",
     "exchange": "NSE"
   },
   {
@@ -548,30 +1910,6 @@
   {
     "ticker": "KPIT",
     "name": "KPIT Technologies Ltd",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "TATAELXSI",
-    "name": "Tata Elxsi Ltd",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "LTTS",
-    "name": "L&T Technology Services",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ROUTE",
-    "name": "Route Mobile Ltd",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CYIENT",
-    "name": "Cyient Ltd",
     "sector": "IT",
     "exchange": "NSE"
   },
@@ -606,26 +1944,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "INTELLECT",
-    "name": "Intellect Design Arena Ltd",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "NEWGEN",
     "name": "Newgen Software Technologies",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "NAUKRI",
-    "name": "Info Edge India Ltd (Naukri)",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "INDIAMART",
-    "name": "IndiaMART InterMESH Ltd",
     "sector": "IT",
     "exchange": "NSE"
   },
@@ -656,18 +1976,6 @@
   {
     "ticker": "NIITTECH",
     "name": "NIIT Technologies Ltd",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "MFSL",
-    "name": "Max Financial Services Ltd",
-    "sector": "IT",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BSOFT",
-    "name": "BSOFT Ltd",
     "sector": "IT",
     "exchange": "NSE"
   },
@@ -708,92 +2016,14 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "HFCL",
-    "name": "HFCL Ltd",
-    "sector": "Telecom",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "STLTECH",
-    "name": "Sterlite Technologies Ltd",
-    "sector": "Telecom",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "TEJAS",
     "name": "Tejas Networks Ltd",
     "sector": "Telecom",
     "exchange": "NSE"
   },
   {
-    "ticker": "RELIANCE",
-    "name": "Reliance Industries Ltd",
-    "sector": "Oil & Gas",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ONGC",
-    "name": "Oil and Natural Gas Corporation Ltd",
-    "sector": "Oil & Gas",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BPCL",
-    "name": "Bharat Petroleum Corporation Ltd",
-    "sector": "Oil & Gas",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "HINDPETRO",
-    "name": "Hindustan Petroleum Corporation Ltd",
-    "sector": "Oil & Gas",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "IOC",
-    "name": "Indian Oil Corporation Ltd",
-    "sector": "Oil & Gas",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "GAIL",
-    "name": "GAIL (India) Ltd",
-    "sector": "Oil & Gas",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "OIL",
-    "name": "Oil India Ltd",
-    "sector": "Oil & Gas",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "MGL",
-    "name": "Mahanagar Gas Ltd",
-    "sector": "Oil & Gas",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "IGL",
-    "name": "Indraprastha Gas Ltd",
-    "sector": "Oil & Gas",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "GUJARATGAS",
     "name": "Gujarat Gas Ltd",
-    "sector": "Oil & Gas",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "PETRONET",
-    "name": "Petronet LNG Ltd",
-    "sector": "Oil & Gas",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CASTROLIND",
-    "name": "Castrol India Ltd",
     "sector": "Oil & Gas",
     "exchange": "NSE"
   },
@@ -804,56 +2034,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "NTPC",
-    "name": "NTPC Ltd",
-    "sector": "Power",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "POWERGRID",
-    "name": "Power Grid Corporation of India",
-    "sector": "Power",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ADANIPOWER",
-    "name": "Adani Power Ltd",
-    "sector": "Power",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "TATAPOWER",
-    "name": "Tata Power Company Ltd",
-    "sector": "Power",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "TORNTPOWER",
-    "name": "Torrent Power Ltd",
-    "sector": "Power",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CESC",
-    "name": "CESC Ltd",
-    "sector": "Power",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "NHPC",
     "name": "NHPC Ltd",
-    "sector": "Power",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SJVN",
-    "name": "SJVN Ltd",
-    "sector": "Power",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "JSWENERGY",
-    "name": "JSW Energy Ltd",
     "sector": "Power",
     "exchange": "NSE"
   },
@@ -867,12 +2049,6 @@
     "ticker": "INDIAGRID",
     "name": "India Grid Trust",
     "sector": "Power",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SUZLON",
-    "name": "Suzlon Energy Ltd",
-    "sector": "Renewable Energy",
     "exchange": "NSE"
   },
   {
@@ -906,72 +2082,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "ADANIGREEN",
-    "name": "Adani Green Energy Ltd",
-    "sector": "Renewable Energy",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "GREENPANEL",
-    "name": "Greenpanel Industries Ltd",
-    "sector": "Renewable Energy",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "TATAMOTORS",
-    "name": "Tata Motors Ltd",
-    "sector": "Auto",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "MARUTI",
-    "name": "Maruti Suzuki India Ltd",
-    "sector": "Auto",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "M&M",
-    "name": "Mahindra & Mahindra Ltd",
-    "sector": "Auto",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BAJAJ-AUTO",
-    "name": "Bajaj Auto Ltd",
-    "sector": "Auto",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "HEROMOTOCO",
-    "name": "Hero MotoCorp Ltd",
-    "sector": "Auto",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "EICHERMOT",
-    "name": "Eicher Motors Ltd",
-    "sector": "Auto",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "TVSMOTOR",
-    "name": "TVS Motor Company Ltd",
-    "sector": "Auto",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ASHOKLEY",
-    "name": "Ashok Leyland Ltd",
-    "sector": "Auto",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ESCORTS",
-    "name": "Escorts Kubota Ltd",
-    "sector": "Auto",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "FORCEMOT",
     "name": "Force Motors Ltd",
     "sector": "Auto",
@@ -1002,44 +2112,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "APOLLOTYRE",
-    "name": "Apollo Tyres Ltd",
-    "sector": "Auto Ancillary",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BALKRISIND",
-    "name": "Balkrishna Industries Ltd",
-    "sector": "Auto Ancillary",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CEATLTD",
-    "name": "CEAT Ltd",
-    "sector": "Auto Ancillary",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "BHARATFORG",
     "name": "Bharat Forge Ltd",
-    "sector": "Auto Ancillary",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BOSCHLTD",
-    "name": "Bosch Ltd",
-    "sector": "Auto Ancillary",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "MOTHERSON",
-    "name": "Samvardhana Motherson International",
-    "sector": "Auto Ancillary",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SONACOMS",
-    "name": "Sona BLW Precision Forgings",
     "sector": "Auto Ancillary",
     "exchange": "NSE"
   },
@@ -1050,20 +2124,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "ENDURANCE",
-    "name": "Endurance Technologies Ltd",
-    "sector": "Auto Ancillary",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "SUPRAJIT",
     "name": "Suprajit Engineering Ltd",
-    "sector": "Auto Ancillary",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "EXIDEIND",
-    "name": "Exide Industries Ltd",
     "sector": "Auto Ancillary",
     "exchange": "NSE"
   },
@@ -1074,20 +2136,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "GABRIEL",
-    "name": "Gabriel India Ltd",
-    "sector": "Auto Ancillary",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "HAPPYFORGE",
     "name": "Happy Forgings Ltd",
-    "sector": "Auto Ancillary",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CRAFTSMAN",
-    "name": "Craftsman Automation Ltd",
     "sector": "Auto Ancillary",
     "exchange": "NSE"
   },
@@ -1098,116 +2148,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "SUNPHARMA",
-    "name": "Sun Pharmaceutical Industries Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "DRREDDY",
-    "name": "Dr. Reddy's Laboratories Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CIPLA",
-    "name": "Cipla Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "DIVISLAB",
-    "name": "Divi's Laboratories Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BIOCON",
-    "name": "Biocon Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "LUPIN",
-    "name": "Lupin Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "AUROPHARMA",
-    "name": "Aurobindo Pharma Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "TORNTPHARM",
-    "name": "Torrent Pharmaceuticals Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ALKEM",
-    "name": "Alkem Laboratories Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ZYDUSLIFE",
-    "name": "Zydus Lifesciences Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ABBOTINDIA",
-    "name": "Abbott India Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "GLAXO",
-    "name": "GlaxoSmithKline Pharmaceuticals",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "PFIZER",
-    "name": "Pfizer Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SANOFI",
-    "name": "Sanofi India Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "NATCOPHARM",
-    "name": "Natco Pharma Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "IPCALAB",
     "name": "IPCA Laboratories Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "GLENMARK",
-    "name": "Glenmark Pharmaceuticals Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "GRANULES",
-    "name": "Granules India Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "LALPATHLAB",
-    "name": "Dr Lal PathLabs Ltd",
     "sector": "Pharma",
     "exchange": "NSE"
   },
@@ -1224,38 +2166,14 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "ERIS",
-    "name": "Eris Lifesciences Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "SOLARA",
     "name": "Solara Active Pharma Sciences",
     "sector": "Pharma",
     "exchange": "NSE"
   },
   {
-    "ticker": "SEQUENT",
-    "name": "SeQuent Scientific Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "APOLLOHOSP",
-    "name": "Apollo Hospitals Enterprise Ltd",
-    "sector": "Healthcare",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "FORTIS",
     "name": "Fortis Healthcare Ltd",
-    "sector": "Healthcare",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "MAXHEALTH",
-    "name": "Max Healthcare Institute Ltd",
     "sector": "Healthcare",
     "exchange": "NSE"
   },
@@ -1284,72 +2202,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "HINDUNILVR",
-    "name": "Hindustan Unilever Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ITC",
-    "name": "ITC Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "NESTLEIND",
-    "name": "Nestle India Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BRITANNIA",
-    "name": "Britannia Industries Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "DABUR",
-    "name": "Dabur India Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "MARICO",
-    "name": "Marico Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "COLPAL",
-    "name": "Colgate-Palmolive (India) Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "GODREJCP",
-    "name": "Godrej Consumer Products Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "VBL",
-    "name": "Varun Beverages Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "AWL",
-    "name": "Adani Wilmar Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "UBL",
-    "name": "United Breweries Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "MCDOWELL-N",
     "name": "United Spirits Ltd",
     "sector": "FMCG",
@@ -1358,24 +2210,6 @@
   {
     "ticker": "RADICO",
     "name": "Radico Khaitan Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "TATACONSUM",
-    "name": "Tata Consumer Products Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "EMAMILTD",
-    "name": "Emami Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "GILLETTE",
-    "name": "Gillette India Ltd",
     "sector": "FMCG",
     "exchange": "NSE"
   },
@@ -1392,12 +2226,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "BIKAJI",
-    "name": "Bikaji Foods International Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "PRATAAP",
     "name": "Prataap Snacks Ltd",
     "sector": "FMCG",
@@ -1410,50 +2238,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "DOMS",
-    "name": "DOMS Industries Ltd",
-    "sector": "FMCG",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "ULTRACEMCO",
     "name": "UltraTech Cement Ltd",
-    "sector": "Cement",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SHREECEM",
-    "name": "Shree Cement Ltd",
-    "sector": "Cement",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ACC",
-    "name": "ACC Ltd",
-    "sector": "Cement",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "AMBUJACEM",
-    "name": "Ambuja Cements Ltd",
-    "sector": "Cement",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "GRASIM",
-    "name": "Grasim Industries Ltd",
-    "sector": "Cement",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "DALBHARAT",
-    "name": "Dalmia Bharat Ltd",
-    "sector": "Cement",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "JKCEMENT",
-    "name": "JK Cement Ltd",
     "sector": "Cement",
     "exchange": "NSE"
   },
@@ -1470,39 +2256,9 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "BIRLACORPN",
-    "name": "Birla Corporation Ltd",
-    "sector": "Cement",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "ORIENTCEM",
     "name": "Orient Cement Ltd",
     "sector": "Cement",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "JKLAKSHMI",
-    "name": "JK Lakshmi Cement Ltd",
-    "sector": "Cement",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "NUVOCO",
-    "name": "Nuvoco Vistas Corporation Ltd",
-    "sector": "Cement",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "TATASTEEL",
-    "name": "Tata Steel Ltd",
-    "sector": "Steel",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "JSWSTEEL",
-    "name": "JSW Steel Ltd",
-    "sector": "Steel",
     "exchange": "NSE"
   },
   {
@@ -1518,32 +2274,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "VEDL",
-    "name": "Vedanta Ltd",
-    "sector": "Metals",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "HINDZINC",
     "name": "Hindustan Zinc Ltd",
-    "sector": "Metals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "NMDC",
-    "name": "NMDC Ltd",
-    "sector": "Mining",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "COALINDIA",
-    "name": "Coal India Ltd",
-    "sector": "Mining",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "NATIONALUM",
-    "name": "National Aluminium Company",
     "sector": "Metals",
     "exchange": "NSE"
   },
@@ -1566,42 +2298,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "NSLNISP",
-    "name": "NMDC Steel Ltd",
-    "sector": "Steel",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "MOIL",
-    "name": "MOIL Ltd",
-    "sector": "Metals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "GALLANTT",
-    "name": "Gallantt Ispat Ltd",
-    "sector": "Steel",
-    "exchange": "BSE"
-  },
-  {
-    "ticker": "LT",
-    "name": "Larsen & Toubro Ltd",
-    "sector": "Infrastructure",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ADANIENT",
-    "name": "Adani Enterprises Ltd",
-    "sector": "Infrastructure",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ADANIPORTS",
-    "name": "Adani Ports & SEZ Ltd",
-    "sector": "Infrastructure",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "RVNL",
     "name": "Rail Vikas Nigam Ltd",
     "sector": "Infrastructure",
@@ -1610,24 +2306,6 @@
   {
     "ticker": "IRCON",
     "name": "Ircon International Ltd",
-    "sector": "Infrastructure",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "NBCC",
-    "name": "NBCC (India) Ltd",
-    "sector": "Infrastructure",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "NCC",
-    "name": "NCC Ltd",
-    "sector": "Infrastructure",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "KNRCON",
-    "name": "KNR Constructions Ltd",
     "sector": "Infrastructure",
     "exchange": "NSE"
   },
@@ -1650,12 +2328,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "CONCOR",
-    "name": "Container Corporation of India",
-    "sector": "Infrastructure",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "GMRINFRA",
     "name": "GMR Airports Infrastructure Ltd",
     "sector": "Infrastructure",
@@ -1664,12 +2336,6 @@
   {
     "ticker": "GVK",
     "name": "GVK Power & Infrastructure",
-    "sector": "Infrastructure",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "APLAPOLLO",
-    "name": "APL Apollo Tubes Ltd",
     "sector": "Infrastructure",
     "exchange": "NSE"
   },
@@ -1686,18 +2352,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "DLF",
-    "name": "DLF Ltd",
-    "sector": "Real Estate",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "GODREJPROP",
-    "name": "Godrej Properties Ltd",
-    "sector": "Real Estate",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "OBEROIRLTY",
     "name": "Oberoi Realty Ltd",
     "sector": "Real Estate",
@@ -1710,26 +2364,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "PRESTIGE",
-    "name": "Prestige Estates Projects Ltd",
-    "sector": "Real Estate",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "PHOENIXLTD",
     "name": "Phoenix Mills Ltd",
-    "sector": "Real Estate",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BRIGADE",
-    "name": "Brigade Enterprises Ltd",
-    "sector": "Real Estate",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SOBHA",
-    "name": "Sobha Ltd",
     "sector": "Real Estate",
     "exchange": "NSE"
   },
@@ -1746,50 +2382,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "MAHLIFE",
-    "name": "Mahindra Lifespace Developers",
-    "sector": "Real Estate",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "INDIGOPNTS",
-    "name": "Indigo Paints Ltd",
-    "sector": "Real Estate",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ANANTRAJ",
-    "name": "Anant Raj Ltd",
-    "sector": "Real Estate",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SIGNATURE",
-    "name": "Signature Global (India) Ltd",
-    "sector": "Real Estate",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "TITAN",
-    "name": "Titan Company Ltd",
-    "sector": "Consumer",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ASIANPAINT",
-    "name": "Asian Paints Ltd",
-    "sector": "Paints",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "BERGER",
     "name": "Berger Paints India Ltd",
-    "sector": "Paints",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "KANSAINER",
-    "name": "Kansai Nerolac Paints Ltd",
     "sector": "Paints",
     "exchange": "NSE"
   },
@@ -1806,56 +2400,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "VOLTAS",
-    "name": "Voltas Ltd",
-    "sector": "Consumer Durables",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "DIXON",
-    "name": "Dixon Technologies India Ltd",
-    "sector": "Consumer Durables",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BLUESTARCO",
-    "name": "Blue Star Ltd",
-    "sector": "Consumer Durables",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "WHIRLPOOL",
-    "name": "Whirlpool of India Ltd",
-    "sector": "Consumer Durables",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "VGUARD",
     "name": "V-Guard Industries Ltd",
-    "sector": "Consumer Durables",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CROMPTON",
-    "name": "Crompton Greaves Consumer Electricals",
-    "sector": "Consumer Durables",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ORIENTELEC",
-    "name": "Orient Electric Ltd",
-    "sector": "Consumer Durables",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "AMBER",
-    "name": "Amber Enterprises India Ltd",
-    "sector": "Consumer Durables",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "KAYNES",
-    "name": "Kaynes Technology India Ltd",
     "sector": "Consumer Durables",
     "exchange": "NSE"
   },
@@ -1869,24 +2415,6 @@
     "ticker": "PGHL",
     "name": "Procter & Gamble Hygiene & Health Care",
     "sector": "Consumer Durables",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "DMART",
-    "name": "Avenue Supermarts Ltd",
-    "sector": "Retail",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "TRENT",
-    "name": "Trent Ltd",
-    "sector": "Retail",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "KALYANKJIL",
-    "name": "Kalyan Jewellers India Ltd",
-    "sector": "Retail",
     "exchange": "NSE"
   },
   {
@@ -1914,24 +2442,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "BATAINDIA",
-    "name": "Bata India Ltd",
-    "sector": "Retail",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "RELAXO",
-    "name": "Relaxo Footwears Ltd",
-    "sector": "Retail",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CAMPUS",
-    "name": "Campus Activewear Ltd",
-    "sector": "Retail",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "SENCO",
     "name": "Senco Gold Ltd",
     "sector": "Retail",
@@ -1950,18 +2460,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "ZOMATO",
-    "name": "Zomato Ltd",
-    "sector": "Consumer Tech",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "PAYTM",
-    "name": "One 97 Communications Ltd (Paytm)",
-    "sector": "Consumer Tech",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "NYKAA",
     "name": "FSN E-Commerce Ventures Ltd (Nykaa)",
     "sector": "Consumer Tech",
@@ -1971,12 +2469,6 @@
     "ticker": "SWIGGY",
     "name": "Bundl Technologies Ltd (Swiggy)",
     "sector": "Consumer Tech",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "DELHIVERY",
-    "name": "Delhivery Ltd",
-    "sector": "Logistics",
     "exchange": "NSE"
   },
   {
@@ -1992,12 +2484,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "CARTRADE",
-    "name": "CarTrade Tech Ltd",
-    "sector": "Consumer Tech",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "JUSTDIAL",
     "name": "Just Dial Ltd",
     "sector": "Consumer Tech",
@@ -2007,12 +2493,6 @@
     "ticker": "INDIGRID",
     "name": "IndiGrid Infrastructure Investment Trust",
     "sector": "Consumer Tech",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BLUEDART",
-    "name": "Blue Dart Express Ltd",
-    "sector": "Logistics",
     "exchange": "NSE"
   },
   {
@@ -2034,12 +2514,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "ALLCARGO",
-    "name": "Allcargo Logistics Ltd",
-    "sector": "Logistics",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "SPANDANA",
     "name": "Spandana Sphoorty Financial",
     "sector": "Logistics",
@@ -2052,44 +2526,14 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "BEL",
-    "name": "Bharat Electronics Ltd",
-    "sector": "Defence",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "BHEL",
     "name": "Bharat Heavy Electricals Ltd",
     "sector": "Engineering",
     "exchange": "NSE"
   },
   {
-    "ticker": "BDL",
-    "name": "Bharat Dynamics Ltd",
-    "sector": "Defence",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "MAZDOCK",
-    "name": "Mazagon Dock Shipbuilders Ltd",
-    "sector": "Defence",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "GRSE",
     "name": "Garden Reach Shipbuilders & Engineers",
-    "sector": "Defence",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "COCHINSHIP",
-    "name": "Cochin Shipyard Ltd",
-    "sector": "Defence",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BEML",
-    "name": "BEML Ltd",
     "sector": "Defence",
     "exchange": "NSE"
   },
@@ -2106,18 +2550,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "DCTINDIA",
-    "name": "DCT India Ltd",
-    "sector": "Defence",
-    "exchange": "BSE"
-  },
-  {
-    "ticker": "AVANTEL",
-    "name": "Avantel Ltd",
-    "sector": "Defence",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "MTAR",
     "name": "MTAR Technologies Ltd",
     "sector": "Defence",
@@ -2130,52 +2562,10 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "DATAPATTNS",
-    "name": "Data Patterns India Ltd",
-    "sector": "Defence",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SOLARINDS",
-    "name": "Solar Industries India Ltd",
-    "sector": "Defence",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ASTRAMICRO",
-    "name": "Astra Microwave Products Ltd",
-    "sector": "Defence",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ELID",
-    "name": "Electronics & Instr Ltd",
-    "sector": "Defence",
-    "exchange": "BSE"
-  },
-  {
-    "ticker": "IRCTC",
-    "name": "Indian Railway Catering and Tourism Corp",
-    "sector": "Travel",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "INDIGO",
-    "name": "InterGlobe Aviation Ltd (IndiGo)",
-    "sector": "Aviation",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "SPICEJET",
     "name": "SpiceJet Ltd",
     "sector": "Aviation",
     "exchange": "NSE"
-  },
-  {
-    "ticker": "AIRINDIA",
-    "name": "AIX Connect Ltd",
-    "sector": "Aviation",
-    "exchange": "BSE"
   },
   {
     "ticker": "INDHOTEL",
@@ -2184,20 +2574,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "EIHOTEL",
-    "name": "EIH Ltd",
-    "sector": "Hotels",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "LEMONTREE",
     "name": "Lemon Tree Hotels Ltd",
-    "sector": "Hotels",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CHALET",
-    "name": "Chalet Hotels Ltd",
     "sector": "Hotels",
     "exchange": "NSE"
   },
@@ -2211,18 +2589,6 @@
     "ticker": "MAHINDRAHOLIDAYSRESORTS",
     "name": "Mahindra Holidays & Resorts India",
     "sector": "Hotels",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ZEEL",
-    "name": "Zee Entertainment Enterprises Ltd",
-    "sector": "Media",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SUNTV",
-    "name": "Sun TV Network Ltd",
-    "sector": "Media",
     "exchange": "NSE"
   },
   {
@@ -2262,50 +2628,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "PIDILITIND",
-    "name": "Pidilite Industries Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "TATACHEM",
-    "name": "Tata Chemicals Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "DEEPAKNTR",
-    "name": "Deepak Nitrite Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "NAVINFLUOR",
-    "name": "Navin Fluorine International Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ATUL",
-    "name": "Atul Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "VINDHYATEL",
     "name": "Vindhya Telelinks Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CLEAN",
-    "name": "Clean Science and Technology Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ASAHIINDIA",
-    "name": "Asahi India Glass Ltd",
     "sector": "Chemicals",
     "exchange": "NSE"
   },
@@ -2316,32 +2640,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "GALAXYSURF",
-    "name": "Galaxy Surfactants Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "FINEORG",
-    "name": "Fine Organic Industries Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ALKYLAMINE",
-    "name": "Alkyl Amines Chemicals Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "NOCIL",
     "name": "NOCIL Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "VINATIORGA",
-    "name": "Vinati Organics Ltd",
     "sector": "Chemicals",
     "exchange": "NSE"
   },
@@ -2349,54 +2649,6 @@
     "ticker": "GUJALKALI",
     "name": "Gujarat Alkalies and Chemicals",
     "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BASF",
-    "name": "BASF India Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SUDARSCHEM",
-    "name": "Sudarshan Chemical Industries",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "GODREJIND",
-    "name": "Godrej Industries Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "COROMANDEL",
-    "name": "Coromandel International Ltd",
-    "sector": "Fertilizers",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CHAMBLFERT",
-    "name": "Chambal Fertilizers and Chemicals",
-    "sector": "Fertilizers",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "DEEPAKFERT",
-    "name": "Deepak Fertilisers and Petrochemicals",
-    "sector": "Fertilizers",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "GNFC",
-    "name": "Gujarat Narmada Valley Fertilizers",
-    "sector": "Fertilizers",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "FACT",
-    "name": "Fertilisers and Chemicals Travancore",
-    "sector": "Fertilizers",
     "exchange": "NSE"
   },
   {
@@ -2424,30 +2676,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "DHANUKA",
-    "name": "Dhanuka Agritech Ltd",
-    "sector": "Agriculture",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "PIIND",
-    "name": "PI Industries Ltd",
-    "sector": "Agriculture",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "UPL",
-    "name": "UPL Ltd",
-    "sector": "Agriculture",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "POLYCAB",
-    "name": "Polycab India Ltd",
-    "sector": "Electricals",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "KEI",
     "name": "KEI Industries Ltd",
     "sector": "Electricals",
@@ -2460,39 +2688,9 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "FINCABLES",
-    "name": "Finolex Cables Ltd",
-    "sector": "Electricals",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "HBLPOWER",
     "name": "HBL Power Systems Ltd",
     "sector": "Electricals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "APCOTEXIND",
-    "name": "Apcotex Industries Ltd",
-    "sector": "Electricals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "PAGEIND",
-    "name": "Page Industries Ltd",
-    "sector": "Textiles",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ARVIND",
-    "name": "Arvind Ltd",
-    "sector": "Textiles",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "WELCORP",
-    "name": "Welspun Corp Ltd",
-    "sector": "Textiles",
     "exchange": "NSE"
   },
   {
@@ -2504,12 +2702,6 @@
   {
     "ticker": "VARDHACRL",
     "name": "Vardhman Textiles Ltd",
-    "sector": "Textiles",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "TRIDENT",
-    "name": "Trident Ltd",
     "sector": "Textiles",
     "exchange": "NSE"
   },
@@ -2538,44 +2730,14 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "TATACOMM",
-    "name": "Tata Communications Ltd",
-    "sector": "Telecom",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "TATAINVEST",
     "name": "Tata Investment Corporation",
     "sector": "Finance",
     "exchange": "NSE"
   },
   {
-    "ticker": "CDSL",
-    "name": "Central Depository Services (India) Ltd",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BSE",
-    "name": "BSE Ltd",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "MCX",
     "name": "Multi Commodity Exchange of India",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CAMS",
-    "name": "Computer Age Management Services",
-    "sector": "Finance",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "KFINTECH",
-    "name": "KFin Technologies Ltd",
     "sector": "Finance",
     "exchange": "NSE"
   },
@@ -2598,38 +2760,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "CUMMINSIND",
-    "name": "Cummins India Ltd",
-    "sector": "Engineering",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "TIMKENSLD",
     "name": "Timken India Ltd",
-    "sector": "Engineering",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SCHAEFFLER",
-    "name": "Schaeffler India Ltd",
-    "sector": "Engineering",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SKFINDIA",
-    "name": "SKF India Ltd",
-    "sector": "Engineering",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ABB",
-    "name": "ABB India Ltd",
-    "sector": "Engineering",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SIEMENS",
-    "name": "Siemens Ltd",
     "sector": "Engineering",
     "exchange": "NSE"
   },
@@ -2640,33 +2772,9 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "AIAENG",
-    "name": "AIA Engineering Ltd",
-    "sector": "Engineering",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "KPRMILL",
     "name": "K.P.R. Mill Ltd",
     "sector": "Textiles",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "SYMPHONY",
-    "name": "Symphony Ltd",
-    "sector": "Consumer Durables",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ASTRAL",
-    "name": "Astral Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BAJAJELEC",
-    "name": "Bajaj Electricals Ltd",
-    "sector": "Consumer Durables",
     "exchange": "NSE"
   },
   {
@@ -2712,12 +2820,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "AARTIIND",
-    "name": "Aarti Industries Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "LXCHEM",
     "name": "Laxmi Organic Industries Ltd",
     "sector": "Chemicals",
@@ -2736,26 +2838,8 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "WOCKPHARMA",
-    "name": "Wockhardt Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "STRIDES",
     "name": "Strides Pharma Science Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "AJANTPHARM",
-    "name": "Ajanta Pharma Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "JBCHEPHARM",
-    "name": "JB Chemicals and Pharmaceuticals",
     "sector": "Pharma",
     "exchange": "NSE"
   },
@@ -2784,45 +2868,15 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "SAPPHIRE",
-    "name": "Sapphire Foods India Ltd",
-    "sector": "Retail",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "DEVYANI",
-    "name": "Devyani International Ltd",
-    "sector": "Retail",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "WESTLIFE",
     "name": "Westlife Foodworld Ltd",
     "sector": "Retail",
     "exchange": "NSE"
   },
   {
-    "ticker": "JUBLFOOD",
-    "name": "Jubilant Foodworks Ltd",
-    "sector": "Retail",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "EASEMYTRIP",
-    "name": "Easy Trip Planners Ltd",
-    "sector": "Travel",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "MAKEMYTRIP",
     "name": "MakeMyTrip Ltd",
     "sector": "Travel",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "CRISIL",
-    "name": "CRISIL Ltd",
-    "sector": "Finance",
     "exchange": "NSE"
   },
   {
@@ -2838,12 +2892,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "JSWINFRA",
-    "name": "JSW Infrastructure Ltd",
-    "sector": "Infrastructure",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "RAILTEL",
     "name": "RailTel Corporation of India",
     "sector": "Telecom",
@@ -2856,50 +2904,14 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "DIGI",
-    "name": "Digit Insurance Ltd",
-    "sector": "Insurance",
-    "exchange": "BSE"
-  },
-  {
-    "ticker": "RKEC",
-    "name": "RKEC Projects Ltd",
-    "sector": "Infrastructure",
-    "exchange": "BSE"
-  },
-  {
     "ticker": "JUBLPHARMA",
     "name": "Jubilant Pharmova Ltd",
     "sector": "Pharma",
     "exchange": "NSE"
   },
   {
-    "ticker": "FINPIPE",
-    "name": "Finolex Industries Ltd",
-    "sector": "Chemicals",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "WELSPUNLIV",
-    "name": "Welspun Living Ltd",
-    "sector": "Textiles",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "GARFIBRES",
-    "name": "Garware Technical Fibres Ltd",
-    "sector": "Textiles",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "RPGLIFE",
     "name": "RPG Life Sciences Ltd",
-    "sector": "Pharma",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "EMCURE",
-    "name": "Emcure Pharmaceuticals Ltd",
     "sector": "Pharma",
     "exchange": "NSE"
   },
@@ -2916,21 +2928,9 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "HINDCOPPER",
-    "name": "Hindustan Copper Ltd",
-    "sector": "Metals",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "TEJASNET",
     "name": "Tejas Networks Ltd",
     "sector": "Telecom",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ITDCEM",
-    "name": "ITD Cementation India Ltd",
-    "sector": "Infrastructure",
     "exchange": "NSE"
   },
   {
@@ -2952,44 +2952,14 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "CENTURYPLY",
-    "name": "Century Plyboards India Ltd",
-    "sector": "Building Materials",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "GREENPLY",
-    "name": "Greenply Industries Ltd",
-    "sector": "Building Materials",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "CENTURYTEX",
     "name": "Century Textiles and Industries",
     "sector": "Textiles",
     "exchange": "NSE"
   },
   {
-    "ticker": "BALRAMCHIN",
-    "name": "Balrampur Chini Mills Ltd",
-    "sector": "Sugar",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "BAJAJHIND",
-    "name": "Bajaj Hindusthan Sugar Ltd",
-    "sector": "Sugar",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "RENUKA",
     "name": "Shree Renuka Sugars Ltd",
-    "sector": "Sugar",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "TRIVENI",
-    "name": "Triveni Engineering & Industries",
     "sector": "Sugar",
     "exchange": "NSE"
   },
@@ -3012,12 +2982,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "CERA",
-    "name": "Cera Sanitaryware Ltd",
-    "sector": "Building Materials",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "ORIENTBELL",
     "name": "Orient Bell Ltd",
     "sector": "Building Materials",
@@ -3036,10 +3000,3700 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "KRBL",
-    "name": "KRBL Ltd",
-    "sector": "Agriculture",
+    "ticker": "20MICRONS",
+    "name": "20 Microns Limited",
+    "sector": "Diversified",
     "exchange": "NSE"
+  },
+  {
+    "ticker": "21STCENMGM",
+    "name": "21st Century Management Services Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "360ONE",
+    "name": "360 ONE WAM LIMITED",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "3BBLACKBIO",
+    "name": "3B Blackbio Dx Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "3IINFOLTD",
+    "name": "3i Infotech Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "3MINDIA",
+    "name": "3M India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "3PLAND",
+    "name": "3P Land Holdings Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "5PAISA",
+    "name": "5Paisa Capital Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "63MOONS",
+    "name": "63 moons technologies limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AAATECH",
+    "name": "AAA Technologies Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AADHARHFC",
+    "name": "Aadhar Housing Finance Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AARNAV",
+    "name": "Aarnav Fashions Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AARON",
+    "name": "Aaron Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AARTECH",
+    "name": "Aartech Solonics Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AARTIDRUGS",
+    "name": "Aarti Drugs Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AARTIPHARM",
+    "name": "Aarti Pharmalabs Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AARTISURF",
+    "name": "Aarti Surfactants Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AARVI",
+    "name": "Aarvi Encon Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ABCAPITAL",
+    "name": "Aditya Birla Capital Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ABCOTS",
+    "name": "A B Cotspin India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ABDL",
+    "name": "Allied Blenders and Distillers Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ABFRL",
+    "name": "Aditya Birla Fashion and Retail Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ABINFRA",
+    "name": "A B Infrabuild Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ABLBL",
+    "name": "Aditya Birla Lifestyle Brands Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ABMKNO",
+    "name": "ABM Knowledgeware Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ABREL",
+    "name": "Aditya Birla Real Estate Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ABSLAMC",
+    "name": "Aditya Birla Sun Life AMC Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ACCELYA",
+    "name": "Accelya Solutions India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ACE",
+    "name": "Action Construction Equipment Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ACEINTEG",
+    "name": "Ace Integrated Solutions Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ACI",
+    "name": "Archean Chemical Industries Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ACL",
+    "name": "Andhra Cements Limited",
+    "sector": "Cement",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ACMESOLAR",
+    "name": "Acme Solar Holdings Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ACSTECH",
+    "name": "ACS Technologies Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ACUTAAS",
+    "name": "Acutaas Chemicals Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ADANIENSOL",
+    "name": "Adani Energy Solutions Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ADFFOODS",
+    "name": "ADF Foods Limited",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ADL",
+    "name": "Archidply Decor Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ADOR",
+    "name": "Ador Welding Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ADROITINFO",
+    "name": "Adroit Infotech Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ADSL",
+    "name": "Allied Digital Services Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ADVAIT",
+    "name": "Advait Energy Transitions Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ADVANCE",
+    "name": "Advance Agrolife Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ADVANIHOTR",
+    "name": "Advani Hotels & Resorts (India) Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ADVENZYMES",
+    "name": "Advanced Enzyme Technologies Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AEGISLOG",
+    "name": "Aegis Logistics Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AEGISVOPAK",
+    "name": "Aegis Vopak Terminals Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AEQUS",
+    "name": "Aequs Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AEROENTER",
+    "name": "Aeroflex Enterprises Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AEROFLEX",
+    "name": "Aeroflex Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AERONEU",
+    "name": "Aeroflex Neu Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AETHER",
+    "name": "Aether Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AFCONS",
+    "name": "Afcons Infrastructure Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AFFLE",
+    "name": "Affle 3i Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AFSL",
+    "name": "Abans Financial Services Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AGARIND",
+    "name": "Agarwal Industrial Corporation Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AGARWALEYE",
+    "name": "Dr. Agarwal's Health Care Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AGI",
+    "name": "AGI Greenpac Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AGIIL",
+    "name": "Agi Infra Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AGRITECH",
+    "name": "Agri-Tech (India) Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AGROPHOS",
+    "name": "Agro Phos India Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AHCL",
+    "name": "Anlon Healthcare Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AHLADA",
+    "name": "Ahlada Engineers Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AHLEAST",
+    "name": "Asian Hotels (East) Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AHLUCONT",
+    "name": "Ahluwalia Contracts (India) Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AIIL",
+    "name": "Authum Investment & Infrastructure Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AIRAN",
+    "name": "Airan Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AIROLAM",
+    "name": "Airo Lam limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AJAXENGG",
+    "name": "Ajax Engineering Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AJMERA",
+    "name": "Ajmera Realty & Infra India Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AJOONI",
+    "name": "Ajooni Biotech Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AKASH",
+    "name": "Akash Infra-Projects Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AKG",
+    "name": "Akg Exim Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AKI",
+    "name": "AKI India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AKSHAR",
+    "name": "Akshar Spintex Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AKSHARCHEM",
+    "name": "AksharChem India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AKUMS",
+    "name": "Akums Drugs and Pharmaceuticals Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALANKIT",
+    "name": "Alankit Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALBERTDAVD",
+    "name": "Albert David Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALEMBICLTD",
+    "name": "Alembic Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALGOQUANT",
+    "name": "Algoquant Fintech Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALICON",
+    "name": "Alicon Castalloy Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALIVUS",
+    "name": "Alivus Life Sciences Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALKALI",
+    "name": "Alkali Metals Limited",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALLDIGI",
+    "name": "Alldigi Tech Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALLTIME",
+    "name": "All Time Plastics Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALMONDZ",
+    "name": "Almondz Global Securities Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALOKINDS",
+    "name": "Alok Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALPA",
+    "name": "Alpa Laboratories Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALPHAGEO",
+    "name": "Alphageo (India) Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AMAGI",
+    "name": "Amagi Media Labs Limited",
+    "sector": "Media",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AMANTA",
+    "name": "Amanta Healthcare Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AMBIKCO",
+    "name": "Ambika Cotton Mills Limited",
+    "sector": "Textiles",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AMDIND",
+    "name": "AMD Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AMJLAND",
+    "name": "Amj Land Holdings Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AMNPLST",
+    "name": "Amines & Plasticizers Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AMRUTANJAN",
+    "name": "Amrutanjan Health Care Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ANANDRATHI",
+    "name": "Anand Rathi Wealth Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ANDHRAPAP",
+    "name": "ANDHRA PAPER LIMITED",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ANDHRSUGAR",
+    "name": "The Andhra Sugars Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ANGELONE",
+    "name": "Angel One Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ANMOL",
+    "name": "Anmol India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ANTHEM",
+    "name": "Anthem Biosciences Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ANUHPHR",
+    "name": "Anuh Pharma Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ANUP",
+    "name": "The Anup Engineering Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ANURAS",
+    "name": "Anupam Rasayan India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "APARINDS",
+    "name": "Apar Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "APCL",
+    "name": "Anjani Portland Cement Limited",
+    "sector": "Cement",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "APEX",
+    "name": "Apex Frozen Foods Limited",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "APLLTD",
+    "name": "Alembic Pharmaceuticals Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "APOLLO",
+    "name": "Apollo Micro Systems Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "APOLLOPIPE",
+    "name": "Apollo Pipes Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "APOLSINHOT",
+    "name": "Apollo Sindoori Hotels Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "APTECHT",
+    "name": "Aptech Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AQYLON",
+    "name": "Aqylon Nexus Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARCHIDPLY",
+    "name": "Archidply Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARCHIES",
+    "name": "Archies Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARE&M",
+    "name": "Amara Raja Energy & Mobility Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARFIN",
+    "name": "Arfin India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARIES",
+    "name": "Aries Agro Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARIHANTCAP",
+    "name": "Arihant Capital Markets Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARIHANTSUP",
+    "name": "Arihant Superstructures Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARIS",
+    "name": "Arisinfra Solutions Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARKADE",
+    "name": "Arkade Developers Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARMANFIN",
+    "name": "Arman Financial Services Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AROGRANITE",
+    "name": "Aro Granite Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARROWGREEN",
+    "name": "Arrow Greentech Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARSSBL",
+    "name": "Anand Rathi Share and Stock Brokers Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARTEMISMED",
+    "name": "Artemis Medicare Services Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARVEE",
+    "name": "Arvee Laboratories (India) Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARVINDFASN",
+    "name": "Arvind Fashions Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARVSMART",
+    "name": "Arvind SmartSpaces Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASAHISONG",
+    "name": "Asahi Songwon Colors Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASAL",
+    "name": "Automotive Stampings and Assemblies Limited",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASALCBR",
+    "name": "Associated Alcohols & Breweries Ltd.",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASHAPURMIN",
+    "name": "Ashapura Minechem Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASHIANA",
+    "name": "Ashiana Housing Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASHOKA",
+    "name": "Ashoka Buildcon Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASHOKAMET",
+    "name": "Ashoka Metcast Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASIANENE",
+    "name": "Asian Energy Services Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASIANHOTNR",
+    "name": "Asian Hotels (North) Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASIANTILES",
+    "name": "Asian Granito India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASKAUTOLTD",
+    "name": "ASK Automotive Limited",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASPINWALL",
+    "name": "Aspinwall and Company Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASTEC",
+    "name": "Astec LifeSciences Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASTERDM",
+    "name": "Aster DM Healthcare Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASTRAZEN",
+    "name": "AstraZeneca Pharma India Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ATGL",
+    "name": "Adani Total Gas Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ATHERENERG",
+    "name": "Ather Energy Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ATL",
+    "name": "Allcargo Terminals Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ATULAUTO",
+    "name": "Atul Auto Limited",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AURIONPRO",
+    "name": "Aurionpro Solutions Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AURUM",
+    "name": "Aurum PropTech Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AUTOAXLES",
+    "name": "Automotive Axles Limited",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AVALON",
+    "name": "Avalon Technologies Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AVANTIFEED",
+    "name": "Avanti Feeds Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AWFIS",
+    "name": "Awfis Space Solutions Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AWHCL",
+    "name": "Antony Waste Handling Cell Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AXISCADES",
+    "name": "AXISCADES Technologies Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AYE",
+    "name": "Aye Finance Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AYMSYNTEX",
+    "name": "AYM Syntex Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AZAD",
+    "name": "Azad Engineering Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BAJAJCON",
+    "name": "Bajaj Consumer Care Limited",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BAJAJHCARE",
+    "name": "Bajaj Healthcare Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BAJAJHFL",
+    "name": "Bajaj Housing Finance Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BAJAJHLDNG",
+    "name": "Bajaj Holdings & Investment Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BAJAJST",
+    "name": "Bajaj Steel Industries Limited",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BALAMINES",
+    "name": "Balaji Amines Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BALMLAWRIE",
+    "name": "Balmer Lawrie & Company Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BALPHARMA",
+    "name": "Bal Pharma Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BALUFORGE",
+    "name": "Balu Forge Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BANARISUG",
+    "name": "Bannari Amman Sugars Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BANCOINDIA",
+    "name": "Banco Products (I) Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BANKINDIA",
+    "name": "Bank of India",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BANSALWIRE",
+    "name": "Bansal Wire Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BANSWRAS",
+    "name": "Banswara Syntex Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BASML",
+    "name": "Bannari Amman Spinning Mills Limited",
+    "sector": "Textiles",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BAYERCROP",
+    "name": "Bayer Cropscience Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BBL",
+    "name": "Bharat Bijlee Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BBOX",
+    "name": "Black Box Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BBTC",
+    "name": "The Bombay Burmah Trading Corporation Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BEARDSELL",
+    "name": "Beardsell Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BECTORFOOD",
+    "name": "Mrs. Bectors Food Specialities Limited",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BEPL",
+    "name": "Bhansali Engineering Polymers Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BERGEPAINT",
+    "name": "Berger Paints (I) Limited",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BESTAGRO",
+    "name": "Best Agrolife Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BIGBLOC",
+    "name": "Bigbloc Construction Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BIL",
+    "name": "Bhartiya International Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BIRLAMONEY",
+    "name": "Aditya Birla Money Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BLACKBUCK",
+    "name": "BLACKBUCK LIMITED",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BLISSGVS",
+    "name": "Bliss GVS Pharma Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BLKASHYAP",
+    "name": "B. L. Kashyap and Sons Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BLS",
+    "name": "BLS International Services Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BLSE",
+    "name": "BLS E-Services Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BLUEJET",
+    "name": "Blue Jet Healthcare Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BODALCHEM",
+    "name": "Bodal Chemicals Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BOMDYEING",
+    "name": "Bombay Dyeing & Mfg Company Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BOROLTD",
+    "name": "Borosil Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BORORENEW",
+    "name": "BOROSIL RENEWABLES LIMITED",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BUTTERFLY",
+    "name": "Butterfly Gandhimathi Appliances Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CAMLINFINE",
+    "name": "Camlin Fine Sciences Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CANTABIL",
+    "name": "Cantabil Retail India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CARBORUNIV",
+    "name": "Carborundum Universal Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CARERATING",
+    "name": "CARE Ratings Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CCAVENUE",
+    "name": "AvenuesAI Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CCL",
+    "name": "CCL Products (India) Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CEIGALL",
+    "name": "Ceigall India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CELLO",
+    "name": "Cello World Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CENTENKA",
+    "name": "Century Enka Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CENTUM",
+    "name": "Centum Electronics Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CGCL",
+    "name": "Capri Global Capital Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CGPOWER",
+    "name": "CG Power and Industrial Solutions Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CHEMCON",
+    "name": "Chemcon Speciality Chemicals Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CHEMPLASTS",
+    "name": "Chemplast Sanmar Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CHENNPETRO",
+    "name": "Chennai Petroleum Corporation Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CHOICEIN",
+    "name": "Choice International Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CHOLAHLDNG",
+    "name": "Cholamandalam Financial Holdings Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CIEINDIA",
+    "name": "CIE Automotive India Limited",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CLSEL",
+    "name": "Chaman Lal Setia Exports Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CMSINFO",
+    "name": "CMS Info Systems Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CONCORDBIO",
+    "name": "Concord Biotech Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CONTROLPR",
+    "name": "Control Print Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "COSMOFIRST",
+    "name": "COSMO FIRST LIMITED",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CSBBANK",
+    "name": "CSB Bank Limited",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CUB",
+    "name": "City Union Bank Limited",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CYIENTDLM",
+    "name": "Cyient DLM Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DALMIASUG",
+    "name": "Dalmia Bharat Sugar and Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DATAMATICS",
+    "name": "Datamatics Global Services Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DBCORP",
+    "name": "D.B.Corp Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DBL",
+    "name": "Dilip Buildcon Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DCAL",
+    "name": "Dishman Carbogen Amcis Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DCMSHRIRAM",
+    "name": "DCM Shriram Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DELTACORP",
+    "name": "Delta Corp Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DHAMPURSUG",
+    "name": "Dhampur Sugar Mills Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DHANBANK",
+    "name": "Dhanlaxmi Bank Limited",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DODLA",
+    "name": "Dodla Dairy Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DOLLAR",
+    "name": "Dollar Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DONEAR",
+    "name": "Donear Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DREAMFOLKS",
+    "name": "Dreamfolks Services Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DREDGECORP",
+    "name": "Dredging Corporation of India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ECLERX",
+    "name": "eClerx Services Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "EDELWEISS",
+    "name": "Edelweiss Financial Services Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "EIDPARRY",
+    "name": "EID Parry India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ELECON",
+    "name": "Elecon Engineering Company Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ELGIEQUIP",
+    "name": "Elgi Equipments Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "EMKAY",
+    "name": "Emkay Global Financial Services Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ENGINERSIN",
+    "name": "Engineers India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ESABINDIA",
+    "name": "Esab India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ETHOSLTD",
+    "name": "Ethos Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "EVEREADY",
+    "name": "Eveready Industries India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "EVERESTIND",
+    "name": "Everest Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "EXCELINDUS",
+    "name": "Excel Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "FCL",
+    "name": "Fineotex Chemical Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "FDC",
+    "name": "FDC Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "FINOPB",
+    "name": "Fino Payments Bank Limited",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "FLUOROCHEM",
+    "name": "Gujarat Fluorochemicals Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GAEL",
+    "name": "Gujarat Ambuja Exports Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GANECOS",
+    "name": "Ganesha Ecosphere Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GATEWAY",
+    "name": "Gateway Distriparks Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GEECEE",
+    "name": "GeeCee Ventures Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GENESYS",
+    "name": "Genesys International Corporation Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GENUSPAPER",
+    "name": "Genus Paper & Boards Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GENUSPOWER",
+    "name": "Genus Power Infrastructures Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GEOJITFSL",
+    "name": "Geojit Financial Services Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GESHIP",
+    "name": "The Great Eastern Shipping Company Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GFLLIMITED",
+    "name": "GFL Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GHCL",
+    "name": "GHCL Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GICHSGFIN",
+    "name": "GIC Housing Finance Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GIPCL",
+    "name": "Gujarat Industries Power Company Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GLAND",
+    "name": "Gland Pharma Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GLOBUSSPR",
+    "name": "Globus Spirits Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GMDCLTD",
+    "name": "Gujarat Mineral Development Corporation Limited",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GMMPFAUDLR",
+    "name": "GMM Pfaudler Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GMRAIRPORT",
+    "name": "GMR AIRPORTS LIMITED",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GOACARBON",
+    "name": "Goa Carbon Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GODFRYPHLP",
+    "name": "Godfrey Phillips India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GODIGIT",
+    "name": "Go Digit General Insurance Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GODREJAGRO",
+    "name": "Godrej Agrovet Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GOKEX",
+    "name": "Gokaldas Exports Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GRAPHITE",
+    "name": "Graphite India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GRAVITA",
+    "name": "Gravita India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GREAVESCOT",
+    "name": "Greaves Cotton Limited",
+    "sector": "Textiles",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GREENLAM",
+    "name": "Greenlam Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GRINDWELL",
+    "name": "Grindwell Norton Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GRINFRA",
+    "name": "G R Infraprojects Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HEG",
+    "name": "HEG Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HIKAL",
+    "name": "Hikal Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HINDWARE",
+    "name": "Hindware Home Innovation Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HONASA",
+    "name": "Honasa Consumer Limited",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "IBREALEST",
+    "name": "Indiabulls Real Estate Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ICICIGI",
+    "name": "ICICI Lombard General Insurance Company Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "IEX",
+    "name": "Indian Energy Exchange Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "IIFLTRUST",
+    "name": "IIFL Wealth Management Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "INDIACEM",
+    "name": "The India Cements Limited",
+    "sector": "Cement",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "INDSINGH",
+    "name": "Indo Singer International Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "INDUSTOWER",
+    "name": "Indus Towers Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "INGERRAND",
+    "name": "Ingersoll-Rand (India) Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "IRB",
+    "name": "IRB Infrastructure Developers Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ISEC",
+    "name": "ICICI Securities Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JAMNAAUTO",
+    "name": "Jamna Auto Industries Limited",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JKPAPER",
+    "name": "JK Paper Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JKTYRE",
+    "name": "JK Tyre & Industries Limited",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JLHL",
+    "name": "Jupiter Life Line Hospitals Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JUBILPHARMA",
+    "name": "Jubilant Pharmova Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JUBLINGREA",
+    "name": "Jubilant Ingrevia Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KAJARIACER",
+    "name": "Kajaria Ceramics Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KALPATPOWR",
+    "name": "Kalpataru Projects International Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KAMAHOLD",
+    "name": "Kama Holdings Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KAMASUTRA",
+    "name": "Kama Sutra Company Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KEC",
+    "name": "KEC International Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KIRIINDUS",
+    "name": "Kiri Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KIRLFER",
+    "name": "Kirloskar Ferrous Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KIRLPNU",
+    "name": "Kirloskar Pneumatic Company Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KPITTECH",
+    "name": "KPIT Technologies Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LAURUSLABS",
+    "name": "Laurus Labs Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LICHSGFIN",
+    "name": "LIC Housing Finance Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LINDEINDIA",
+    "name": "Linde India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LUXIND",
+    "name": "Lux Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MGLCORP",
+    "name": "Mahanagar Gas Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MHRIL",
+    "name": "Mahindra Holidays & Resorts India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MIDCPNIFTY",
+    "name": "N/A",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MINDA",
+    "name": "Minda Corporation Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MINDAIND",
+    "name": "Minda Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MIRZAINT",
+    "name": "Mirza International Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MITCON",
+    "name": "MITCON Consultancy & Engineering Services Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MMTC",
+    "name": "MMTC Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MRFLTD",
+    "name": "MRF Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MSTCLTD",
+    "name": "MSTC Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NETWORK18",
+    "name": "Network18 Media & Investments Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NH",
+    "name": "Narayana Hrudayalaya Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NIITLTD",
+    "name": "NIIT Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NLCINDIA",
+    "name": "NLC India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PEL",
+    "name": "Piramal Enterprises Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PGEL",
+    "name": "PG Electroplast Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PNBGILTS",
+    "name": "PNB Gilts Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PNBHOUSING",
+    "name": "PNB Housing Finance Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "POLYMED",
+    "name": "Poly Medicure Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PPLPHARMA",
+    "name": "Piramal Pharma Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PRINCEPIPE",
+    "name": "Prince Pipes and Fittings Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "RITES",
+    "name": "RITES Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SCHNEIDER",
+    "name": "Schneider Electric Infrastructure Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SHREEPAINT",
+    "name": "Shree Renuka Sugars Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SRFLTD",
+    "name": "SRF Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SUNDARMFIN",
+    "name": "Sundaram Finance Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SUPREMEIND",
+    "name": "Supreme Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SWSOLAR",
+    "name": "Sterling and Wilson Renewable Energy Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TATATISC",
+    "name": "Tata Steel Long Products Limited",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TEAMLEASE",
+    "name": "TeamLease Services Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TIINDIA",
+    "name": "Tube Investments of India Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TIMKEN",
+    "name": "Timken India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TITAGARH",
+    "name": "Titagarh Rail Systems Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "UFLEX",
+    "name": "Uflex Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "UFLML",
+    "name": "UPL Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "VARDHACRLC",
+    "name": "Vardhaman Acrylics Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "VBLLTD",
+    "name": "Varun Beverages Limited",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "VENKEYS",
+    "name": "Venky's (India) Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "VIJAYABANK",
+    "name": "Vijaya Bank",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "VLSFINANCE",
+    "name": "VLS Finance Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "VSTIND",
+    "name": "VST Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "WABCOINDIA",
+    "name": "Wabco India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "WELENT",
+    "name": "Welspun Enterprises Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "XCHANGING",
+    "name": "Xchanging Solutions Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "XENOTECH",
+    "name": "Xenotech Engineers Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ZENSARTECH",
+    "name": "Zensar Technologies Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ZFCVINDIA",
+    "name": "ZF Commercial Vehicle Control Systems India Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ZUARI",
+    "name": "Zuari Agro Chemicals Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ZYDUSWEL",
+    "name": "Zydus Wellness Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ALCEM",
+    "name": "Alcem Cement Company Limited",
+    "sector": "Cement",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HITACHIIND",
+    "name": "Hitachi Energy India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HLEGLASS",
+    "name": "HLE Glascoat Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HMVL",
+    "name": "Hindustan Media Ventures Limited",
+    "sector": "Media",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HOEC",
+    "name": "Hindustan Oil Exploration Company Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HONEYWELL",
+    "name": "Honeywell Automation India Limited",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HPAL",
+    "name": "HP Adhesives Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HSCL",
+    "name": "Himadri Speciality Chemical Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HYUNDAI",
+    "name": "Hyundai Motor India Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ITI",
+    "name": "ITI Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JAYNECOIND",
+    "name": "Jayaswal Neco Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JINDALSAW",
+    "name": "Jindal Saw Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JINDALSTEL",
+    "name": "Jindal Steel & Power Limited",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JSL",
+    "name": "Jindal Stainless Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JTEKTINDIA",
+    "name": "JTEKT India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KIRLOSBROS",
+    "name": "Kirloskar Brothers Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KOTAKMAHINDRA",
+    "name": "Kotak Mahindra Bank Limited",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KSB",
+    "name": "KSB Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LPDC",
+    "name": "Laxmi Polyester and Dyeing Company Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MFIN",
+    "name": "Motilal Oswal Financial Services Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MOTILALOFS",
+    "name": "Motilal Oswal Financial Services Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NSE",
+    "name": "National Stock Exchange of India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PRAJIND",
+    "name": "Praj Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "QUESS",
+    "name": "Quess Corp Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "RAIN",
+    "name": "Rain Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "RAJESHEXPO",
+    "name": "Rajesh Exports Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "REDINGTON",
+    "name": "Redington Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "REDTAPE",
+    "name": "Red Tape Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "RRKABEL",
+    "name": "RR Kabel Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SYNGENE",
+    "name": "Syngene International Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TVSSCS",
+    "name": "TVS Supply Chain Solutions Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "USHAMART",
+    "name": "Usha Martin Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "VARDHMAN",
+    "name": "Vardhman Textiles Limited",
+    "sector": "Textiles",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "VTL",
+    "name": "Vardhman Textiles Limited",
+    "sector": "Textiles",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AAKASH",
+    "name": "Aakash Education Services Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ABAN",
+    "name": "Aban Offshore Limited",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ABANSENT",
+    "name": "Abans Enterprises Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ABMINTLLTD",
+    "name": "ABM International Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ADAN",
+    "name": "Adani Total Gas Limited",
+    "sector": "Oil & Gas",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AFIL",
+    "name": "Akme Fintrade (India) Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ANTELOPUS",
+    "name": "Antelopus Selan Energy Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "APAR",
+    "name": "Apar Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "APLHPL",
+    "name": "Alpa Laboratories Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ARENTERP",
+    "name": "Rajdarshan Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ASHIMASYN",
+    "name": "Ashima Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AURIGROW",
+    "name": "Auri Grow India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AUSOMENT",
+    "name": "Ausom Enterprise Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AUTOIND",
+    "name": "Autoline Industries Limited",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AVONMORE",
+    "name": "Avonmore Capital & Management Services Limited",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AVTNPL",
+    "name": "AVT Natural Products Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "AXITA",
+    "name": "Axita Cotton Limited",
+    "sector": "Textiles",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BAGFILMS",
+    "name": "B.A.G Films and Media Limited",
+    "sector": "Media",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BAIDFIN",
+    "name": "Baid Finserv Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BALKRISHNA",
+    "name": "Balkrishna Paper Mills Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BANARBEADS",
+    "name": "Banaras Beads Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BANG",
+    "name": "Bang Overseas Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BATLIBOI",
+    "name": "Batliboi Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BEEKAY",
+    "name": "Beekay Steel Industries Limited",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BENGALASM",
+    "name": "Bengal & Assam Company Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BESTADV",
+    "name": "Best Agrolife Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BFINVEST",
+    "name": "BF Investment Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BHAGCHEM",
+    "name": "Bhagiradha Chemicals & Industries Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BHAGERIA",
+    "name": "Bhageria Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BHARATCOAL",
+    "name": "Bharat Coking Coal Limited",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BHARATGEAR",
+    "name": "Bharat Gears Limited",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BHARATRAS",
+    "name": "Bharat Rasayan Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BHARATWIRE",
+    "name": "Bharat Wire Ropes Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BHARTIHEXA",
+    "name": "Bharti Hexacom Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BIRLACABLE",
+    "name": "Birla Cable Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BIRLANU",
+    "name": "BirlaNu Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BIRLAPREC",
+    "name": "Birla Precision Technologies Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BLACKROSE",
+    "name": "Black Rose Inds. Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BLAL",
+    "name": "BEML Land Assets Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BLIL",
+    "name": "Balmer Lawrie Investments Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BLUECHIP",
+    "name": "Blue Chip India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BLUESTONE",
+    "name": "BlueStone Jewellery and Lifestyle Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BONLON",
+    "name": "Bonlon Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BOROSCI",
+    "name": "Borosil Scientific Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BPL",
+    "name": "BPL Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BRIGHOTEL",
+    "name": "Brigade Hotel Ventures Limited",
+    "sector": "Consumer Services",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BRNL",
+    "name": "Bharat Road Network Limited",
+    "sector": "Infrastructure",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BVCL",
+    "name": "Barak Valley Cements Limited",
+    "sector": "Cement",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HARSCHEI",
+    "name": "Harsh Chemical Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HARSHA",
+    "name": "Harsha Engineers International Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HARTEX",
+    "name": "Hartex Rubber Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HATSUN",
+    "name": "Hatsun Agro Products Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HAWKINCOOK",
+    "name": "Hawkins Cookers Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HCL-INSYS",
+    "name": "HCL Infosystems Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HDFC",
+    "name": "HDFC Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HDFCWMO",
+    "name": "HDFC AMC",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HEADLINESE",
+    "name": "Headlines Experience Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HECPROJECT",
+    "name": "HEC Infra Projects Limited",
+    "sector": "Infrastructure",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HGS",
+    "name": "Hinduja Global Solutions Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HNDFCBANK",
+    "name": "HDFC Bank Limited",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HNGSNGBEES",
+    "name": "Hang Seng BeES",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "INDBANK",
+    "name": "Indian Bank",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "INDGN",
+    "name": "Indiabulls Housing Finance Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "INDIAINFRA",
+    "name": "India Infrastructure Finance Company Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ISGEC",
+    "name": "Isgec Heavy Engineering Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ISMT",
+    "name": "ISMT Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ITDC",
+    "name": "India Tourism Development Corporation Limited",
+    "sector": "Consumer Services",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JAYAGROGN",
+    "name": "Jay Agro Industries Limited",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JAYBEIND",
+    "name": "Jayaswal Neco Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JIMBL",
+    "name": "JI Metal Limited",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JIOFINANCE",
+    "name": "Jio Financial Services Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JNKINDIA",
+    "name": "JNK India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JSWGSOLAR",
+    "name": "JSW Green Energy Limited",
+    "sector": "Power",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JSWHL",
+    "name": "JSW Holdings Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JYOTHYLAB",
+    "name": "Jyothy Labs Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KALRA",
+    "name": "Kalra Cycles Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KAMDHENU",
+    "name": "Kamdhenu Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KELTECH",
+    "name": "Keltech Energies Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KHAITAN",
+    "name": "Khaitan Electricals Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KHANSABANK",
+    "name": "Khansaheb Civil Engg Ltd",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KITECHLABS",
+    "name": "Kites Medical Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KRISHANA",
+    "name": "Krishana Phoschem Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "KRISHIVAL",
+    "name": "Krishival Foods Limited",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LAKSHVIEW",
+    "name": "Lakshmi Vilas Bank Limited",
+    "sector": "Banking",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LASA",
+    "name": "Lasa Supergenerics Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LATENTVIEW",
+    "name": "Latent View Analytics Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LCC",
+    "name": "LCC Infotech Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LIKHITHA",
+    "name": "Likhitha Infrastructure Limited",
+    "sector": "Infrastructure",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LLOYDSENGG",
+    "name": "Lloyds Engineering Works Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LOTOSL",
+    "name": "Lotus Chocolate Company Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LTGLOBAL",
+    "name": "LT Foods Limited",
+    "sector": "FMCG",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MAANAVEEYA",
+    "name": "Maanaveeya Development & Finance Private Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MACPOWER",
+    "name": "Macpower CNC Machines Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MADHAV",
+    "name": "Madhav Copper Limited",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MAFANG",
+    "name": "Ma Fang Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MAHADHAN",
+    "name": "Mahadhan AgriTech Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MAHAPEX",
+    "name": "Maha Engineering Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MAHESHWARI",
+    "name": "Maheshwari Logistics Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MALUPAPER",
+    "name": "Malupaper Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MEDPLUS",
+    "name": "Medplus Health Services Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MINDSPACE",
+    "name": "Mindspace Business Parks REIT",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NDGL",
+    "name": "Naga Dhunseri Group Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NDTV",
+    "name": "New Delhi Television Limited",
+    "sector": "Media",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PAISALO",
+    "name": "Paisalo Digital Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PDSL",
+    "name": "PDS Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "POWERIND",
+    "name": "Powermech Projects Limited",
+    "sector": "Infrastructure",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PTC",
+    "name": "PTC India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PTCIL",
+    "name": "PTC India Financial Services Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "QUICKHEAL",
+    "name": "Quick Heal Technologies Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SAKAR",
+    "name": "Sakar Healthcare Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SAKHTHI",
+    "name": "Sakthi Sugars Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SAKSOFT",
+    "name": "Saksoft Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SALZERELEC",
+    "name": "Salzer Electronics Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SANDHAR",
+    "name": "Sandhar Technologies Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SANGAMIND",
+    "name": "Sangam (India) Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SANSERA",
+    "name": "Sansera Engineering Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SAREGAMA",
+    "name": "Saregama India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SARLA",
+    "name": "Sarla Performance Fibers Limited",
+    "sector": "Textiles",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SATIA",
+    "name": "Satia Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SEPC",
+    "name": "SEPC Limited",
+    "sector": "Infrastructure",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SEPOWER",
+    "name": "SE Power Limited",
+    "sector": "Power",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SFL",
+    "name": "Sheela Foam Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SHANKARA",
+    "name": "Shankara Building Products Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SHARDACROP",
+    "name": "Sharda Cropchem Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SHEETAL",
+    "name": "Sheetal Cool Products Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SHILPAMED",
+    "name": "Shilpa Medicare Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SHIRPUR-G",
+    "name": "Shirpur Power Retail Limited",
+    "sector": "Power",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SHIVNADAR",
+    "name": "Shiv Nadar Foundation Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SHREDIGCEM",
+    "name": "Shree Digvijay Cement Company Limited",
+    "sector": "Cement",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SHYAMMETL",
+    "name": "Shyam Metalics And Energy Limited",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SICAGEN",
+    "name": "Sicagen India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SKIPPER",
+    "name": "Skipper Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SKYGOLD",
+    "name": "Sky Gold Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SMARTLINK",
+    "name": "Smartlink Holdings Limited",
+    "sector": "Consumer Services",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SOLENT",
+    "name": "SOLENT CORP LIMITED",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SOLEX",
+    "name": "Solex Energy Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SOLONA",
+    "name": "Solona Technologies Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SONATASOFT",
+    "name": "Sonata Software Limited",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SPARC",
+    "name": "Sun Pharma Advanced Research Company Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SPCENET",
+    "name": "Spacenet Enterprises India Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SRCOM",
+    "name": "Scoda Tubes Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SRESTHA",
+    "name": "Srestha Finvest Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SSWL",
+    "name": "Steel Strips Wheels Limited",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "STYRENIX",
+    "name": "Styrenix Performance Materials Limited",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SUBEXLTD",
+    "name": "Subex Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SUBODHIND",
+    "name": "Subodh Industries Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SULAGP",
+    "name": "Sulabh Engineers & Services Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SUNDARAMFIN",
+    "name": "Sundaram Finance Limited",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SUNDRMBRAK",
+    "name": "Sundaram Brake Linings Limited",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SUNFLAG",
+    "name": "Sunflag Iron And Steel Company Limited",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SUNLINK",
+    "name": "Sunlink Pharma Limited",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SURAJEST",
+    "name": "Suraj Estate Developers Limited",
+    "sector": "Real Estate",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SURYALAXMI",
+    "name": "Suryalaxmi Cotton Mills Limited",
+    "sector": "Textiles",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SUSHEELA",
+    "name": "Susheela Industrial Group",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SWADESHI",
+    "name": "Swadeshi Polytex Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SWASTIK",
+    "name": "Swastik Rubber Products Limited",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GROWW",
+    "name": "Billionbrains Garage Ventures Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MEESHO",
+    "name": "Meesho Ltd",
+    "sector": "Consumer Services",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "OLAELEC",
+    "name": "Ola Electric Mobility Ltd",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LENSKART",
+    "name": "Lenskart Solutions Ltd",
+    "sector": "Consumer Services",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "COHANCE",
+    "name": "Cohance Lifesciences Ltd",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PWRL",
+    "name": "Physicswallah Ltd",
+    "sector": "Consumer Services",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PWL",
+    "name": "Physicswallah Ltd",
+    "sector": "Consumer Services",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "PINELABS",
+    "name": "Pine Labs Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TATACAP",
+    "name": "Tata Capital Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HDBFS",
+    "name": "HDB Financial Services Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CANHLIFE",
+    "name": "Canara HSBC Life Insurance Company Ltd",
+    "sector": "Finance",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NTPCGREEN",
+    "name": "NTPC Green Energy Ltd",
+    "sector": "Power",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LTM",
+    "name": "LTM Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JAINREC",
+    "name": "Jain Resource Recycling Ltd",
+    "sector": "Metals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "BELRISE",
+    "name": "Belrise Industries Ltd",
+    "sector": "Auto",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "EMMVEE",
+    "name": "Emmvee Photovoltaic Power Ltd",
+    "sector": "Capital Goods",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "IGIL",
+    "name": "International Gemmological Institute India Ltd",
+    "sector": "Services",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TRAVELFOOD",
+    "name": "Travel Food Services Ltd",
+    "sector": "Consumer Services",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TBOTEK",
+    "name": "TBO Tek Ltd",
+    "sector": "Consumer Services",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "VENTIVE",
+    "name": "Ventive Hospitality Ltd",
+    "sector": "Consumer Services",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "THELEELA",
+    "name": "Leela Palaces Hotels and Resorts Ltd",
+    "sector": "Consumer Services",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "DBREALTY",
+    "name": "Valor Estate Ltd",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "IKS",
+    "name": "Inventurus Knowledge Solutions Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SAGILITY",
+    "name": "Sagility Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "HEXT",
+    "name": "Hexaware Technologies Ltd",
+    "sector": "IT",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TMPV",
+    "name": "Tata Motors Passenger Vehicles Ltd",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "TMCV",
+    "name": "Tata Motors Commercial Vehicles Ltd",
+    "sector": "Capital Goods",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "JSWDULUX",
+    "name": "JSW Dulux Ltd",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "GVT&D",
+    "name": "GE Vernova T&D India Ltd",
+    "sector": "Capital Goods",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ENRIN",
+    "name": "Siemens Energy India Ltd",
+    "sector": "Capital Goods",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "LGEINDIA",
+    "name": "LG Electronics India Ltd",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ITCHOTELS",
+    "name": "ITC Hotels Ltd",
+    "sector": "Consumer Services",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ETERNAL",
+    "name": "Eternal Ltd",
+    "sector": "Consumer Services",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MSUMI",
+    "name": "Motherson Sumi Wiring India Ltd",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "CEMPRO",
+    "name": "Afcons Infrastructure Ltd",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "INOXINDIA",
+    "name": "INOX India Ltd",
+    "sector": "Capital Goods",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MAHSEAMLES",
+    "name": "Maharashtra Seamless Ltd",
+    "sector": "Capital Goods",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "RCF",
+    "name": "Rashtriya Chemicals and Fertilizers Ltd",
+    "sector": "Chemicals",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "RELINFRA",
+    "name": "Reliance Infrastructure Ltd",
+    "sector": "Power",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SUNDRMFAST",
+    "name": "Sundram Fasteners Ltd",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NETWEB",
+    "name": "Netweb Technologies India Ltd",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ZENTEC",
+    "name": "Zen Technologies Ltd",
+    "sector": "Capital Goods",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ICICIAMC",
+    "name": "ICICI Prudential Asset Management Company Ltd",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NAM-INDIA",
+    "name": "Nippon Life India Asset Management Ltd",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NUVAMA",
+    "name": "Nuvama Wealth Management Ltd",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NIVABUPA",
+    "name": "Niva Bupa Health Insurance Company Ltd",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SAMMAANCAP",
+    "name": "Sammaan Capital Ltd",
+    "sector": "Diversified",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "SAILIFE",
+    "name": "Sai Life Sciences Ltd",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "ONESOURCE",
+    "name": "Onesource Specialty Pharma Ltd",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NEULANDLAB",
+    "name": "Neuland Laboratories Ltd",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "VIJAYA",
+    "name": "Vijaya Diagnostic Centre Ltd",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "MANKIND",
+    "name": "Mankind Pharma Ltd",
+    "sector": "Healthcare",
+    "exchange": "NSE"
+  },
+  {
+    "ticker": "NAINITAL",
+    "name": "Nainital Bank Ltd",
+    "sector": "Banking",
+    "exchange": "BSE"
+  },
+  {
+    "ticker": "GALLANTT",
+    "name": "Gallantt Ispat Ltd",
+    "sector": "Steel",
+    "exchange": "BSE"
+  },
+  {
+    "ticker": "DCTINDIA",
+    "name": "DCT India Ltd",
+    "sector": "Defence",
+    "exchange": "BSE"
+  },
+  {
+    "ticker": "ELID",
+    "name": "Electronics & Instr Ltd",
+    "sector": "Defence",
+    "exchange": "BSE"
+  },
+  {
+    "ticker": "AIRINDIA",
+    "name": "AIX Connect Ltd",
+    "sector": "Aviation",
+    "exchange": "BSE"
+  },
+  {
+    "ticker": "DIGI",
+    "name": "Digit Insurance Ltd",
+    "sector": "Insurance",
+    "exchange": "BSE"
+  },
+  {
+    "ticker": "RKEC",
+    "name": "RKEC Projects Ltd",
+    "sector": "Infrastructure",
+    "exchange": "BSE"
   },
   {
     "ticker": "500003",

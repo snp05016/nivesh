@@ -854,6 +854,47 @@ def market_institutional_flow_endpoint():
         raise HTTPException(status_code=502, detail=f"Institutional flow unavailable: {e}")
 
 
+@router.get("/api/v1/market/stock-history")
+def stock_history_endpoint(ticker: str, exchange: str = "NSE", period: str = "1y"):
+    """OHLCV price history for a stock. period: 1mo,3mo,6mo,1y,2y,5y"""
+    try:
+        cache_key = f"{ticker}_{exchange}_{period}"
+        cached = _dcache_get("stock_history", cache_key)
+        if cached:
+            return cached
+        suffix = EXCHANGE_SUFFIX.get(exchange.upper(), ".NS")
+        full_ticker = ticker.upper() + suffix
+        t = yf.Ticker(full_ticker)
+        hist = None
+        for attempt in range(3):
+            try:
+                hist = t.history(period=period)
+                if not hist.empty:
+                    break
+            except Exception as e:
+                print(f"[YF] stock-history attempt {attempt+1} failed: {e}")
+                if attempt < 2:
+                    import time as _time_mod
+                    _time_mod.sleep(1.5 * (2 ** attempt))
+        if hist is None or hist.empty:
+            return {"ticker": ticker, "exchange": exchange, "period": period, "prices": []}
+        prices = []
+        for dt, row in hist.iterrows():
+            prices.append({
+                "date": dt.strftime("%Y-%m-%d"),
+                "open": round(float(row["Open"]), 2),
+                "high": round(float(row["High"]), 2),
+                "low": round(float(row["Low"]), 2),
+                "close": round(float(row["Close"]), 2),
+                "volume": float(row.get("Volume", 0) or 0),
+            })
+        result = {"ticker": ticker, "exchange": exchange, "period": period, "prices": prices}
+        _dcache_set("stock_history", cache_key, result)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ── Pydantic response schemas (must precede endpoints that reference them) ────
 from pydantic import BaseModel as _BaseModel
 from typing import List as _List, Optional as _Optional

@@ -672,6 +672,30 @@ class NetworkManager: ObservableObject {
         return try? JSONDecoder().decode(QuickInfo.self, from: data)
     }
 
+    // MARK: - Stock OHLCV History
+
+    func fetchStockHistory(ticker: String, exchange: String = "NSE", period: String = "1y") async -> StockHistoryResponse? {
+        guard let encoded = ticker.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "\(baseURL)/api/v1/market/stock-history?ticker=\(encoded)&exchange=\(exchange)&period=\(period)") else { return nil }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        guard let (data, resp) = try? await session.data(for: request),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+        return try? JSONDecoder().decode(StockHistoryResponse.self, from: data)
+    }
+
+    // MARK: - Piotroski F-Score
+
+    func fetchPiotroski(ticker: String) async -> PiotroskiData? {
+        guard let encoded = ticker.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+              let url = URL(string: "\(baseURL)/fundamentals/piotroski/\(encoded)") else { return nil }
+        var request = authRequest(url)
+        request.timeoutInterval = 12
+        guard let (data, resp) = try? await session.data(for: request),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+        return try? JSONDecoder().decode(PiotroskiData.self, from: data)
+    }
+
     // MARK: - Search
 
     func searchStocks(q: String) async -> [StockEntry] {

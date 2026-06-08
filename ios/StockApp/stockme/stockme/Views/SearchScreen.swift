@@ -126,6 +126,11 @@ class CustomPresetsManager: ObservableObject {
     }
 }
 
+struct StockProfileDest: Hashable {
+    let ticker: String
+    let exchange: String
+}
+
 struct SearchScreen: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var searchText = ""
@@ -146,6 +151,13 @@ struct SearchScreen: View {
     @State private var showFilterSheet = false
     @StateObject private var customPresetsManager = CustomPresetsManager()
 
+    // Navigation path for programmatic push
+    @State private var navPath = NavigationPath()
+
+    // Screener action sheet
+    @State private var screenerActionResult: ScreenerResult? = nil
+    @State private var showScreenerAction = false
+
     // Fallback trending if no movers data available
     private let fallbackTrending = [
         Stock(ticker: "RELIANCE", companyName: "Reliance Industries", exchange: "NSE", currentPrice: 0, changePercent: 0, signal: nil),
@@ -156,7 +168,7 @@ struct SearchScreen: View {
     ]
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navPath) {
             ZStack {
                 DenominationBackground(denomination: .twoHundred)
 
@@ -364,9 +376,14 @@ struct SearchScreen: View {
                                     .padding(.top, 40)
                                 } else if activePreset != nil {
                                     ForEach(Array(screenerResults.enumerated()), id: \.element.id) { index, result in
-                                        NavigationLink(value: result.ticker) {
+                                        Button {
+                                            HapticManager.selection()
+                                            screenerActionResult = result
+                                            showScreenerAction = true
+                                        } label: {
                                             ScreenerResultRow(result: result)
                                         }
+                                        .buttonStyle(EKPressStyle())
                                         .staggerAppear(delay: Double(index) * 0.06)
                                     }
                                 } else if searchText.isEmpty {
@@ -477,6 +494,26 @@ struct SearchScreen: View {
             }
             .navigationDestination(for: String.self) { ticker in
                 AnalysisScreen(ticker: ticker)
+            }
+            .navigationDestination(for: StockProfileDest.self) { dest in
+                StockProfileView(ticker: dest.ticker, exchange: dest.exchange)
+            }
+            .confirmationDialog(
+                screenerActionResult.map { "\($0.companyName ?? $0.ticker)" } ?? "",
+                isPresented: $showScreenerAction,
+                titleVisibility: .visible
+            ) {
+                if let result = screenerActionResult {
+                    Button("✦ Generate AI Analysis") {
+                        HapticManager.impact(.medium)
+                        navPath.append(result.ticker)
+                    }
+                    Button("◉ Stock Profile") {
+                        HapticManager.impact(.medium)
+                        navPath.append(StockProfileDest(ticker: result.ticker, exchange: "NSE"))
+                    }
+                    Button("Cancel", role: .cancel) {}
+                }
             }
             .sheet(isPresented: $showFilterSheet) {
                 FilterSheet(customPresetsManager: customPresetsManager) { preset in

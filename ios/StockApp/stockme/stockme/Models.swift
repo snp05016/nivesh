@@ -304,6 +304,39 @@ struct NiftyPricePoint: Codable, Identifiable {
     }
 }
 
+struct OHLCVPoint: Codable, Identifiable {
+    var id: String { date }
+    let date: String
+    let open: Double
+    let high: Double
+    let low: Double
+    let close: Double
+    let volume: Double
+
+    var parsedDate: Date {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f.date(from: date) ?? Date()
+    }
+}
+
+struct StockHistoryResponse: Codable {
+    let ticker: String
+    let exchange: String
+    let period: String
+    let prices: [OHLCVPoint]
+}
+
+struct PiotroskiData: Codable {
+    let ticker: String?
+    let score: Int?
+    let components: [String: Int]?
+
+    enum CodingKeys: String, CodingKey {
+        case ticker, score, components
+    }
+}
+
 struct QuarterlyFinancial: Codable, Identifiable {
     var id: String { label }
     let label: String
