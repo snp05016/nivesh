@@ -13,9 +13,9 @@ Nivesh is a full-stack Indian stock market intelligence platform. It combines a 
 |-------|-----------|
 | Backend | Python 3.14, FastAPI, SQLAlchemy, PostgreSQL |
 | AI Pipeline | LangGraph, Claude Sonnet/Haiku, DeepSeek V4 Flash |
-| iOS | SwiftUI, AVFoundation, Charts |
+| iOS | SwiftUI, AVFoundation, Charts, WidgetKit |
 | Data | yfinance, PKScreener, FinBERT, matplotlib |
-| Infra | DigitalOcean, multiprocessing, SSE streaming |
+| Infra | DigitalOcean, multiprocessing, SSE streaming, Redis, APNs |
 
 ---
 
@@ -24,7 +24,7 @@ Nivesh is a full-stack Indian stock market intelligence platform. It combines a 
 ```mermaid
 graph TB
     subgraph Backend["Backend (401 symbols)"]
-        main["main.py — App entry, middleware, lifecycle"]
+        main["main.py — App entry, CorrelationIDMiddleware, APScheduler cron jobs"]
         orchestrator["services/orchestrator.py — AI pipeline"]
         routers["routers/ (9 files) — HTTP controllers"]
         services["services/ (20 files) — Business logic"]
@@ -150,7 +150,7 @@ iOS requests charts
 ```
 ┌─────────────────────────────────────────────────┐
 │  CONTROLLERS (routers/)                          │
-│  • HTTP validation, rate limiting, auth          │
+│  • HTTP validation, sliding window rate limiting (helpers.py deque), auth          │
 │  • Spawn multiprocessing.Process for AI tasks    │
 │  • 9 routers: analysis, portfolio, auth,         │
 │    market, alerts, user, dashboard,              │
@@ -158,14 +158,14 @@ iOS requests charts
 ├─────────────────────────────────────────────────┤
 │  SERVICES (services/)                             │
 │  • All business logic, LLM orchestration         │
-│  • 20 services: orchestrator, sentiment_engine,   │
+│  • 21 services: orchestrator, cache_service (Redis + in-memory), sentiment_engine,   │
 │    piotroski, pkscreener_runner, factor_engine,  │
 │    options_scraper, portfolio_snapshot, etc.      │
 ├─────────────────────────────────────────────────┤
 │  REPOSITORY (database.py)                        │
 │  • SQLAlchemy ORM with get_session() context mgr │
 │  • Models: Portfolio, AnalysisHistory, User,      │
-│    SignalEvent, PriceTarget, TradeJournal, etc.   │
+│    SignalEvent, PriceTarget, TradeJournal, BlockDeal, FIIDIIFlow, etc.   │
 │  • Auto rollback on exception                    │
 │  • NOT picklable — no cross-process sessions      │
 └─────────────────────────────────────────────────┘
@@ -183,6 +183,15 @@ TabView (5 primary tabs)
   ├── ExpertNetworkView — Research, analyst ratings
   ├── NewsMultimediaView — News carousel, video podcasts
   └── PortfolioScreen — Holdings, watchlist, charts, calendar
+```
+
+
+### New Components & Extensions
+```
+• NiveshWidgetExtension (WidgetKit)
+• AnalysisHistoryScreen, InteractiveTutorialScreen
+• HomeLayoutEditorSheet, WatchlistTagsManager
+• SpeechRecognizerManager, iPad NavigationSplitView adaptation
 ```
 
 ### Design System (Theme.swift)
@@ -215,6 +224,12 @@ Theme.*
 4. **SSE Fallback**: DialecticProgressView connects to SSE for real-time agent progress. If endpoint unreachable, falls back to pre-defined 6-stage sequential animation.
 
 5. **Chart Caching**: matplotlib charts are generated async in ThreadPoolExecutor, cached 24h on disk with metadata JSON. Subsequent requests serve instantly.
+
+6. **Background Tasks over Polling**: Client-side polling for price alerts replaced with an APNs Webhook background task to conserve battery and reduce server load.
+
+7. **Resilient Caching**: `_dcache` replaced with `services/cache_service.py` featuring `redis.asyncio` with an automatic in-memory fallback.
+
+8. **Telemetry & Limits**: `CorrelationIDMiddleware` threads `X-Request-ID` through logs, and rate limiting upgraded to a sliding window deque per endpoint in `helpers.py`.
 
 ---
 

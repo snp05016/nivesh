@@ -193,6 +193,47 @@
 - **Auth Required:** Yes
 - **Bridge Status:** 🔴 Missing frontend
 
+### [NEW] SIP Calculator
+- **Swift Caller:** **(No direct Swift caller)**
+- **Backend Receiver:** `routers/portfolio.py → sip_calculator()`
+- **HTTP Method & Route:** `POST /portfolio/sip-calculator`
+- **Backend Request Schema:** `SIPCalculatorRequest`
+- **Backend Response:** `dict`
+- **Auth Required:** No
+- **Bridge Status:** 🔴 Missing frontend
+
+### [NEW] Portfolio Benchmark
+- **Swift Caller:** **(No direct Swift caller)**
+- **Backend Receiver:** `routers/portfolio.py → portfolio_benchmark()`
+- **HTTP Method & Route:** `GET /portfolio/benchmark`
+- **Backend Response:** `dict`
+- **Auth Required:** Yes
+- **Bridge Status:** 🔴 Missing frontend
+
+### [NEW] Portfolio Stress Test
+- **Swift Caller:** **(No direct Swift caller)**
+- **Backend Receiver:** `routers/portfolio.py → portfolio_stress_test()`
+- **HTTP Method & Route:** `GET /portfolio/stress-test`
+- **Backend Response:** `list`
+- **Auth Required:** Yes
+- **Bridge Status:** 🔴 Missing frontend
+
+### [NEW] Portfolio Attribution
+- **Swift Caller:** **(No direct Swift caller)**
+- **Backend Receiver:** `routers/portfolio.py → portfolio_attribution_endpoint()`
+- **HTTP Method & Route:** `GET /attribution/{user_id}`
+- **Backend Response:** `dict`
+- **Auth Required:** Yes
+- **Bridge Status:** 🔴 Missing frontend
+
+### [NEW] Signal Accuracy
+- **Swift Caller:** **(No direct Swift caller)**
+- **Backend Receiver:** `routers/portfolio.py → get_signal_accuracy()`
+- **HTTP Method & Route:** `GET /signal-accuracy`
+- **Backend Response:** `dict`
+- **Auth Required:** No
+- **Bridge Status:** 🔴 Missing frontend
+
 ---
 
 ## Domain: Market Data
@@ -364,6 +405,46 @@
 - **Auth Required:** Yes
 - **Bridge Status:** 🔴 Missing frontend
 
+### [NEW] Dividends
+- **Swift Caller:** **(No direct Swift caller)**
+- **Backend Receiver:** `routers/market.py → dividend_history_endpoint()`
+- **HTTP Method & Route:** `GET /dividends/{ticker}`
+- **Backend Response:** `dict`
+- **Auth Required:** No
+- **Bridge Status:** 🔴 Missing frontend
+
+### [NEW] Mutual Fund NAV
+- **Swift Caller:** **(No direct Swift caller)**
+- **Backend Receiver:** `routers/market.py → mutual_fund_nav_endpoint()`
+- **HTTP Method & Route:** `GET /mf/{scheme_code}`
+- **Backend Response:** `dict`
+- **Auth Required:** No
+- **Bridge Status:** 🔴 Missing frontend
+
+### [NEW] Block Deals
+- **Swift Caller:** **(No direct Swift caller)**
+- **Backend Receiver:** `routers/market.py → block_deals_endpoint()`
+- **HTTP Method & Route:** `GET /block-deals/{ticker}`
+- **Backend Response:** `dict`
+- **Auth Required:** No
+- **Bridge Status:** 🔴 Missing frontend
+
+### [NEW] FII / DII Flow
+- **Swift Caller:** **(No direct Swift caller)**
+- **Backend Receiver:** `routers/market.py → fii_dii_flow_endpoint()`
+- **HTTP Method & Route:** `GET /fii-dii-flow`
+- **Backend Response:** `dict`
+- **Auth Required:** No
+- **Bridge Status:** 🔴 Missing frontend
+
+### [NEW] Sentiment Trend
+- **Swift Caller:** **(No direct Swift caller)**
+- **Backend Receiver:** `routers/market.py → sentiment_trend()`
+- **HTTP Method & Route:** `GET /market/sentiment-trend/{ticker}`
+- **Backend Response:** `dict`
+- **Auth Required:** No
+- **Bridge Status:** 🔴 Missing frontend
+
 ---
 
 ## Domain: AI Analysis
@@ -395,6 +476,15 @@
 - **HTTP Method & Route:** `GET /analyze/batch/{batch_id}`
 - **Backend Response:** `dict`
 - **Auth Required:** Yes
+- **Bridge Status:** 🔴 Missing frontend
+
+### [NEW] Batch Analysis
+- **Swift Caller:** **(No direct Swift caller)**
+- **Backend Receiver:** `routers/analysis.py → batch_analysis()`
+- **HTTP Method & Route:** `POST /batch`
+- **Backend Request Schema:** `BatchAnalyzeRequest`
+- **Backend Response:** `list`
+- **Auth Required:** No
 - **Bridge Status:** 🔴 Missing frontend
 
 ---
@@ -838,6 +928,14 @@
 - **Auth Required:** Yes (admin)
 - **Bridge Status:** 🔴 Missing frontend
 
+### [NEW] Admin Error Telemetry
+- **Swift Caller:** **(No direct Swift caller)**
+- **Backend Receiver:** `routers/user.py → get_error_telemetry()`
+- **HTTP Method & Route:** `GET /api/v1/admin/error-telemetry`
+- **Backend Response:** `dict`
+- **Auth Required:** Yes (admin)
+- **Bridge Status:** 🔴 Missing frontend
+
 ---
 
 ## Domain: Users
@@ -857,9 +955,9 @@
 | Category | Total | ✅ Matched | ⚠️ Mismatch | 🔴 No Frontend | ❌ No Backend |
 |----------|-------|-----------|------------|---------------|--------------|
 | Auth | 2 | 2 | 0 | 0 | 0 |
-| Portfolio | 18 | 10 | 0 | 8 | 0 |
-| Market Data | 19 | 13 | 0 | 6 | 0 |
-| AI Analysis | 3 | 1 | 0 | 2 | 0 |
+| Portfolio | 23 | 10 | 0 | 13 | 0 |
+| Market Data | 24 | 13 | 0 | 11 | 0 |
+| AI Analysis | 4 | 1 | 0 | 3 | 0 |
 | Watchlist | 3 | 3 | 0 | 0 | 0 |
 | Alerts | 4 | 4 | 0 | 0 | 0 |
 | Dashboard/Health | 6 | 2 | 0 | 4 | 0 |
@@ -869,9 +967,9 @@
 | Ideas/Advisors | 5 | 2 | 0 | 3 | 0 |
 | Search/Discovery | 3 | 1 | 0 | 2 | 0 |
 | Home Feed | 1 | 1 | 0 | 0 | 0 |
-| Admin/Errors | 8 | 2 | 0 | 6 | 0 |
+| Admin/Errors | 9 | 2 | 0 | 7 | 0 |
 | Users | 1 | 0 | 0 | 1 | 0 |
-| **TOTAL** | **90** | **47** | **0** | **43** | **0** |
+| **TOTAL** | **102** | **47** | **0** | **55** | **0** |
 
 ## Critical Findings
 
@@ -881,7 +979,7 @@
 
 3. **🔴 Trade Journal backend exists but NO Swift NetworkManager methods.** The `TradeJournalResponse`, `TradeJournalStatsResponse` models exist in Swift but no `URLSession` calls reference `/trade-journal` paths.
 
-4. **🔴 43 backend endpoints with no corresponding Swift caller.** Either:
+4. **🔴 55 backend endpoints with no corresponding Swift caller.** Either:
    - Used by browser/admin dashboard only (harvest triggers, /dashboard-data)
    - Infrastructure endpoints (/ping, /health/live)
    - Legacy endpoints pending iOS implementation (IPO calendar, options chain, trade journal CRUD)
