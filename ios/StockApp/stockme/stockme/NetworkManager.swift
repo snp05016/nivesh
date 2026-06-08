@@ -140,11 +140,10 @@ class NetworkManager: ObservableObject {
     private func authRequest(_ url: URL) -> URLRequest {
         var req = URLRequest(url: url)
         if let token = authToken {
-            if isJWTFormatValid(token) {
-                req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            } else {
-                print("[NetworkManager] WARNING: Invalid JWT format — skipping auth header")
+            if !isJWTFormatValid(token) {
+                print("[NetworkManager] WARNING: JWT format suspicious — attaching anyway")
             }
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         let corrId = generateCorrelationID(subsystem: "ios")
         req.setValue(corrId, forHTTPHeaderField: "X-Correlation-ID")
