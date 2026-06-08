@@ -68,6 +68,41 @@ def _adjust_for_splits(ticker: str, buy_price: float, quantity: float, buy_date:
     except Exception:
         return buy_price, quantity, 1.0
 
+def _adjust_for_bonus(ticker: str, buy_price: float, quantity: float, buy_date: str) -> tuple:
+    """Adjust historical buy_price and quantity for corporate bonus issues.
+    Uses yfinance actions DataFrame (Dividends & Stock Splits)."""
+    import yfinance as yf
+    import pandas as pd
+    try:
+        t = yf.Ticker(f"{ticker}.NS" if not ticker.endswith((".NS", ".BO")) else ticker)
+        actions = t.actions
+        if actions is None or actions.empty or "Stock Splits" not in actions.columns:
+            return buy_price, quantity, 1.0
+        
+        buy_dt = pd.to_datetime(buy_date[:10]).tz_localize(None)
+        cumulative_ratio = 1.0
+        
+        for action_date, row in actions.iterrows():
+            dt = action_date
+            if hasattr(dt, "tz_localize") and dt.tzinfo is not None:
+                dt = dt.tz_localize(None)
+            if dt > buy_dt:
+                split = float(row.get("Stock Splits", 0.0))
+                if split > 0:
+                    cumulative_ratio *= split
+        
+        if cumulative_ratio != 1.0:
+            return buy_price / cumulative_ratio, quantity * cumulative_ratio, cumulative_ratio
+        return buy_price, quantity, 1.0
+    except Exception:
+        return buy_price, quantity, 1.0
+
+def _apply_corporate_actions(ticker: str, buy_price: float, quantity: float, buy_date: str) -> tuple:
+    """Adjustment pipeline that applies both splits and bonus issues."""
+    bp1, q1, _ = _adjust_for_splits(ticker, buy_price, quantity, buy_date)
+    bp2, q2, _ = _adjust_for_bonus(ticker, bp1, q1, buy_date)
+    return bp2, q2, (quantity / q2) if q2 > 0 else 1.0
+
 from services.llm_utils import deepseek_chat as _deepseek_chat
 
 
@@ -165,6 +200,206 @@ def _get_indices_data() -> dict:
 
 
 router = APIRouter(tags=["Portfolio"])
+
+# ── Item 35: SIP Calculator ───────────────────────────────────────────
+class SIPCalculatorRequest(_BaseModel):
+    monthly_amount: float
+    expected_return_pct: float
+    years: int
+    step_up_pct: float = 0.0
+
+@router.post("/portfolio/sip-calculator")
+def sip_calculator(req: SIPCalculatorRequest):
+    monthly_rate = req.expected_return_pct / 100.0 / 12.0
+    months = req.years * 12
+    
+    total_invested = 0.0
+    current_corpus = 0.0
+    current_sip = req.monthly_amount
+    
+    yearly_projections = []
+    
+    for month in range(1, months + 1):
+        total_invested += current_sip
+        current_corpus = (current_corpus + current_sip) * (1 + monthly_rate)
+        
+        if month % 12 == 0:
+            year = month // 12
+            yearly_projections.append({
+                "year": year,
+                "invested_lakhs": round(total_invested / 100000.0, 2),
+                "corpus_lakhs": round(current_corpus / 100000.0, 2),
+                "gain_lakhs": round((current_corpus - total_invested) / 100000.0, 2)
+            })
+            current_sip = current_sip * (1 + req.step_up_pct / 100.0)
+            
+    summary = {
+        "total_invested_lakhs": round(total_invested / 100000.0, 2),
+        "total_corpus_lakhs": round(current_corpus / 100000.0, 2),
+        "total_gain_lakhs": round((current_corpus - total_invested) / 100000.0, 2)
+    }
+    
+    return {
+        "inputs": req.dict(),
+        "summary": summary,
+        "yearly_projections": yearly_projections
+    }
+
+# ── Item 44: Portfolio vs Nifty CAGR ──────────────────────────────────
+@router.get("/portfolio/benchmark")
+def portfolio_benchmark(user_id: int):
+    with get_session() as db:
+        holdings = db.query(Portfolio).filter(Portfolio.user_id == user_id).all()
+        
+    if not holdings:
+        return {"error": "No holdings to benchmark"}
+        
+    earliest_date = None
+    for h in holdings:
+        # Fallback to current date if missing
+        h_date = getattr(h, "created_at", None)
+        if h_date is None:
+            continue
+        if earliest_date is None or h_date < earliest_date:
+            earliest_date = h_date
+            
+    if earliest_date is None:
+        earliest_date = datetime.now() - timedelta(days=365) # fallback 1 year
+        
+    # period in days
+    period_days = (datetime.now() - earliest_date).days
+    if period_days < 1:
+        period_days = 1
+        
+    years = period_days / 365.25
+    
+    # Get Nifty price
+    try:
+        t = yf.Ticker("^NSEI")
+        hist = t.history(start=earliest_date.strftime("%Y-%m-%d"))
+        if not hist.empty:
+            nifty_start = float(hist["Close"].iloc[0])
+            nifty_end = float(hist["Close"].iloc[-1])
+        else:
+            nifty_start, nifty_end = 1.0, 1.0
+    except Exception:
+        nifty_start, nifty_end = 1.0, 1.0
+        
+    nifty_cagr_pct = (((nifty_end / nifty_start) ** (1 / years)) - 1) * 100 if nifty_start > 0 and years > 0 else 0.0
+    
+    # Portfolio value
+    total_invested = 0.0
+    total_current = 0.0
+    for h in holdings:
+        total_invested += h.buy_price * h.shares
+        try:
+            ht = yf.Ticker(h.ticker)
+            cp = getattr(ht.fast_info, "last_price", h.buy_price)
+            if math.isnan(cp): cp = h.buy_price
+        except:
+            cp = h.buy_price
+        total_current += cp * h.shares
+        
+    port_cagr_pct = (((total_current / total_invested) ** (1 / years)) - 1) * 100 if total_invested > 0 and years > 0 else 0.0
+    
+    return {
+        "portfolio_cagr_pct": round(port_cagr_pct, 2),
+        "nifty_cagr_pct": round(nifty_cagr_pct, 2),
+        "alpha_pct": round(port_cagr_pct - nifty_cagr_pct, 2),
+        "period_days": period_days,
+        "earliest_holding_date": earliest_date.isoformat(),
+        "current_portfolio_value": total_current
+    }
+
+# ── Item 50: Portfolio Stress Test ────────────────────────────────────
+@router.get("/portfolio/stress-test")
+def portfolio_stress_test(user_id: int):
+    with get_session() as db:
+        holdings = db.query(Portfolio).filter(Portfolio.user_id == user_id).all()
+        
+    if not holdings:
+        return []
+        
+    def get_sector(company_name: str) -> str:
+        if not company_name: return 'Other'
+        name = company_name.lower()
+        if any(x in name for x in ['infosys', 'tcs', 'wipro', 'tech', 'software', 'hcl']): return 'IT'
+        if any(x in name for x in ['bank', 'hdfc', 'icici', 'kotak', 'sbi']): return 'Banking'
+        if any(x in name for x in ['fmcg', 'itc', 'nestle', 'brit', 'hindustan unilever', 'hul']): return 'FMCG'
+        if any(x in name for x in ['auto', 'tata motors', 'maruti', 'mahindra', 'bajaj auto']): return 'Auto'
+        if any(x in name for x in ['pharma', 'sun', 'cipla', 'dr reddy', 'lupin']): return 'Pharma'
+        if any(x in name for x in ['oil', 'gas', 'ongc', 'reliance', 'bpcl']): return 'Oil/Gas'
+        if any(x in name for x in ['air', 'aviation', 'indigo']): return 'Aviation'
+        if any(x in name for x in ['paint', 'asian', 'berger']): return 'Paints'
+        if any(x in name for x in ['tyre', 'mrf', 'apolo']): return 'Tyres'
+        return 'Other'
+
+    scenarios = [
+        {
+            "name": "Nifty -20% Correction",
+            "desc": "Market crash scenario",
+            "logic": lambda sector: -20.0 * {"IT": 1.2, "Banking": 1.4, "FMCG": 0.6, "Auto": 1.1, "Pharma": 0.7}.get(sector, 1.0)
+        },
+        {
+            "name": "INR Depreciates 10% vs USD",
+            "desc": "Weak rupee scenario",
+            "logic": lambda sector: +5.0 if sector in ["IT", "Pharma"] else (-8.0 if sector == "Oil/Gas" else -1.0)
+        },
+        {
+            "name": "Crude Oil Spikes to $120/bbl",
+            "desc": "Energy shock scenario",
+            "logic": lambda sector: -15.0 if sector in ["Aviation", "Paints", "Tyres"] else (+8.0 if sector == "Oil/Gas" else -2.0)
+        }
+    ]
+    
+    total_portfolio_value = 0.0
+    holding_data = []
+    
+    for h in holdings:
+        try:
+            t = yf.Ticker(h.ticker)
+            cp = getattr(t.fast_info, "last_price", h.buy_price)
+            if math.isnan(cp): cp = h.buy_price
+        except:
+            cp = h.buy_price
+            
+        val = cp * h.shares
+        total_portfolio_value += val
+        holding_data.append({
+            "ticker": h.ticker,
+            "sector": get_sector(h.company_name),
+            "value": val
+        })
+
+    results = []
+    for scen in scenarios:
+        total_impact_inr = 0.0
+        most_exposed = None
+        max_impact_pct = 0.0
+        
+        for hd in holding_data:
+            impact_pct = scen["logic"](hd["sector"])
+            impact_inr = hd["value"] * (impact_pct / 100.0)
+            total_impact_inr += impact_inr
+            
+            if abs(impact_pct) > abs(max_impact_pct):
+                max_impact_pct = impact_pct
+                most_exposed = hd["ticker"]
+                
+        portfolio_impact_pct = (total_impact_inr / total_portfolio_value * 100) if total_portfolio_value > 0 else 0
+        
+        results.append({
+            "scenario_name": scen["name"],
+            "scenario_description": scen["desc"],
+            "estimated_portfolio_impact_pct": round(portfolio_impact_pct, 2),
+            "estimated_pnl_impact_inr": round(total_impact_inr, 2),
+            "most_exposed_holding": {
+                "ticker": most_exposed,
+                "estimated_impact_pct": round(max_impact_pct, 2)
+            }
+        })
+        
+    return results
 
 # ---------------------------------------------------------------------------
 # Local caches & helpers needed by endpoints
@@ -2555,3 +2790,104 @@ async def net_worth_ledger_endpoint(
         top_loser_ticker=row.top_loser_ticker,
         top_loser_pct=row.top_loser_pct,
     )
+
+@router.get("/attribution/{user_id}")
+async def portfolio_attribution_endpoint(
+    user_id: int,
+    authorization: str = Header(None)
+):
+    authed_user_id = require_auth(authorization)
+    if authed_user_id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    with get_session() as session:
+        holdings = session.query(Portfolio).filter(
+            Portfolio.user_id == user_id,
+            Portfolio.group_name == "holdings"
+        ).all()
+
+    if not holdings:
+        return {"sectors": []}
+
+    sector_data = defaultdict(lambda: {"total_value": 0.0, "total_pnl": 0.0, "invested": 0.0})
+    portfolio_total_value = 0.0
+    portfolio_total_pnl = 0.0
+
+    for h in holdings:
+        try:
+            t = yf.Ticker(_resolve_ticker(h.ticker, "NSE"))
+            info = t.fast_info
+            current_price = getattr(info, "last_price", None)
+            info_dict = {}
+            if current_price is None or math.isnan(current_price):
+                info_dict = t.info
+                current_price = info_dict.get("currentPrice") or info_dict.get("regularMarketPrice") or h.buy_price
+            else:
+                info_dict = t.info
+            
+            sector = info_dict.get("sector", "Unknown")
+        except Exception:
+            current_price = h.buy_price
+            sector = "Unknown"
+        
+        invested = h.shares * h.buy_price
+        val = h.shares * current_price
+        pnl = val - invested
+        
+        sector_data[sector]["total_value"] += val
+        sector_data[sector]["invested"] += invested
+        sector_data[sector]["total_pnl"] += pnl
+        
+        portfolio_total_value += val
+        portfolio_total_pnl += pnl
+
+    results = []
+    for sector, data in sector_data.items():
+        val = data["total_value"]
+        pnl = data["total_pnl"]
+        weight = (val / portfolio_total_value * 100) if portfolio_total_value > 0 else 0.0
+        contrib = (pnl / portfolio_total_pnl * 100) if portfolio_total_pnl != 0 else 0.0
+        
+        results.append({
+            "sector": sector,
+            "weight_pct": round(weight, 2),
+            "total_value": round(val, 2),
+            "total_pnl": round(pnl, 2),
+            "contribution_to_total_pnl_pct": round(contrib, 2)
+        })
+
+    results.sort(key=lambda x: abs(x["contribution_to_total_pnl_pct"]), reverse=True)
+    
+    return {"sectors": results}
+
+@router.get("/signal-accuracy")
+def get_signal_accuracy():
+    """Returns accuracy % by signal type."""
+    try:
+        from database import AnalysisHistory, get_session
+        with get_session() as db:
+            rows = db.query(AnalysisHistory.signal, AnalysisHistory.was_correct).filter(AnalysisHistory.was_correct != None).all()
+            stats = {}
+            for row in rows:
+                sig = row.signal.upper() if row.signal else "HOLD"
+                if sig not in stats:
+                    stats[sig] = {"total": 0, "correct": 0}
+                stats[sig]["total"] += 1
+                if row.was_correct:
+                    stats[sig]["correct"] += 1
+            
+            resp = []
+            for sig, data in stats.items():
+                total = data["total"]
+                correct = data["correct"]
+                accuracy_pct = (correct / total * 100) if total > 0 else 0
+                resp.append({
+                    "signal": sig,
+                    "total": total,
+                    "correct": correct,
+                    "accuracy_pct": round(accuracy_pct, 2)
+                })
+            return resp
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))

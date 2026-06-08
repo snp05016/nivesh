@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Depends
 from datetime import datetime
 import time
 from pydantic import BaseModel
@@ -353,3 +353,39 @@ def get_expert_posts(limit: int = 30):
     except Exception as e:
         print(f"[EXPERT-POSTS] {e}")
         return {"posts": [], "fetched_at": now_iso}
+
+@router.get("/api/v1/admin/error-telemetry")
+def get_error_telemetry(current_user: User = Depends(verify_access_token)):
+    """Admin endpoint to get recent error logs."""
+    from database import get_session, MarketErrorLog, is_admin
+    import json
+    from fastapi import HTTPException
+
+    
+    with get_session() as db:
+        if not is_admin(db, current_user.id):
+            raise HTTPException(status_code=403, detail="Admin access required")
+            
+        logs = db.query(MarketErrorLog).order_by(MarketErrorLog.timestamp.desc()).limit(100).all()
+        results = []
+        for log in logs:
+            try:
+                # payload_json might contain the full JSON telemetry
+                payload = json.loads(log.error_message)
+                results.append({
+                    "error_type": payload.get("classification", log.component),
+                    "endpoint": payload.get("telemetry", {}).get("request_route", ""),
+                    "timestamp": log.timestamp.isoformat() if log.timestamp else payload.get("timestamp"),
+                    "message": payload.get("exception", {}).get("message", "Unknown"),
+                    "stack_summary": payload.get("exception", {}).get("cleaned_traceback", [])
+                })
+            except Exception:
+                # fallback for plain string errors
+                results.append({
+                    "error_type": log.component,
+                    "endpoint": "",
+                    "timestamp": log.timestamp.isoformat() if log.timestamp else "",
+                    "message": log.error_message,
+                    "stack_summary": []
+                })
+        return {"errors": results}

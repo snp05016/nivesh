@@ -69,7 +69,7 @@ struct NewsMultimediaView: View {
                     if isLoading && articles.isEmpty {
                         ForEach(0..<5, id: \.self) { _ in newsCardPlaceholder }
                     } else {
-                        ForEach(articles.prefix(20)) { article in
+                        ForEach(articles.prefix(50)) { article in
                             NewsCarouselCard(article: article)
                         }
                     }
@@ -292,7 +292,7 @@ struct NewsCarouselCard: View {
         return nil
     }
 
-    private let cardWidth: CGFloat = UIScreen.main.bounds.width * 0.68
+    private let cardWidth: CGFloat = UIScreen.main.bounds.width * 0.75
 
     var body: some View {
         Button(action: {

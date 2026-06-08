@@ -3,6 +3,37 @@ import Combine
 import UserNotifications
 import LocalAuthentication
 
+// MARK: - Biometric Timeout Options
+
+enum BiometricTimeout: String, CaseIterable {
+    case immediately = "immediately"
+    case oneMin      = "1min"
+    case fiveMin     = "5min"
+    case fifteenMin  = "15min"
+    case never       = "never"
+
+    var label: String {
+        switch self {
+        case .immediately: return "Immediately"
+        case .oneMin:      return "After 1 min"
+        case .fiveMin:     return "After 5 min"
+        case .fifteenMin:  return "After 15 min"
+        case .never:       return "Never"
+        }
+    }
+
+    /// Seconds before re-lock; nil means never re-lock
+    var seconds: TimeInterval? {
+        switch self {
+        case .immediately: return 0
+        case .oneMin:      return 60
+        case .fiveMin:     return 300
+        case .fifteenMin:  return 900
+        case .never:       return nil
+        }
+    }
+}
+
 @main
 struct stockmeApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
@@ -13,10 +44,20 @@ struct stockmeApp: App {
     @StateObject private var notificationManager = NotificationManager.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("hasAcceptedDisclaimer") private var hasAcceptedDisclaimer = false
+    @AppStorage("hasSeenTutorial") private var hasSeenTutorial = false
     @AppStorage("darkMode") private var darkMode = false
     @AppStorage("dev_welcome_notification") private var devWelcomeNotification = false
-    @AppStorage("useBiometrics") private var useBiometrics = false
-    @State private var isBiometricLocked = true
+
+    // Item 5 + 28: Configurable biometric timeout
+    // "immediately" | "1min" | "5min" | "15min" | "never"
+    @AppStorage("biometricTimeout") private var biometricTimeoutRaw = BiometricTimeout.immediately.rawValue
+    @AppStorage("lastActiveTimestamp") private var lastActiveTimestamp: Double = 0
+
+    @State private var isBiometricLocked = false
+    @State private var isAuthenticating = false
+    @State private var wentToBackground = false
+    @Environment(\.scenePhase) private var scenePhase
+
     // Fix 3.23: Deep-link 404 routing — catch delisted ticker deep links
     @State private var deepLinkTicker: String? = nil
     @State private var deepLinkError: String? = nil
@@ -29,16 +70,36 @@ struct stockmeApp: App {
     private let minimumLaunchDuration: TimeInterval = 3.0
     @State private var bootTasksComplete = false
 
+    private var biometricTimeout: BiometricTimeout {
+        BiometricTimeout(rawValue: biometricTimeoutRaw) ?? .immediately
+    }
+
+    /// True when biometrics are enabled (timeout != "never")
+    private var biometricsEnabled: Bool {
+        biometricTimeout != .never
+    }
+
+    /// True when the timeout has elapsed since last active timestamp
+    private var timeoutHasElapsed: Bool {
+        guard biometricsEnabled else { return false }
+        guard let secs = biometricTimeout.seconds else { return false }
+        if secs == 0 { return true }   // "immediately" → always re-lock on background
+        let elapsed = Date().timeIntervalSince1970 - lastActiveTimestamp
+        return elapsed >= secs
+    }
+
     var body: some Scene {
         WindowGroup {
             ZStack {
                 // ── Main interface (hidden during launch, revealed with spring)
                 Group {
-                    if !hasCompletedOnboarding {
+                    if !hasSeenTutorial {
+                        InteractiveTutorialScreen { hasSeenTutorial = true }
+                    } else if !hasCompletedOnboarding {
                         OnboardingScreen { hasCompletedOnboarding = true }
                     } else if !hasAcceptedDisclaimer {
                         DisclaimerScreen { hasAcceptedDisclaimer = true }
-                    } else if useBiometrics && isBiometricLocked {
+                    } else if biometricsEnabled && isBiometricLocked {
                         biometricLockScreen
                     } else {
                         ContentView(bypassLaunch: true)
@@ -67,7 +128,11 @@ struct stockmeApp: App {
             }
             .onAppear {
                 Task { await notificationManager.requestAuthorization() }
-                if useBiometrics { authenticateWithBiometrics() }
+                // Initial lock on cold launch — only if biometrics enabled
+                if biometricsEnabled && !isAuthenticating {
+                    isBiometricLocked = true
+                    authenticateWithBiometrics()
+                }
                 if devWelcomeNotification {
                     NotificationManager.shared.scheduleLocal(
                         title: "Welcome to Nivesh",
@@ -83,6 +148,50 @@ struct stockmeApp: App {
                     tutorialManager.isShowingTutorial = true
                 }
             }
+            // Item 5 + 28: Scene phase tracking for timeout-based lock.
+            // Only .background (not .inactive) counts as "left the app" —
+            // .inactive fires during Face ID itself, which would cause an infinite re-auth loop.
+            .onChange(of: scenePhase) { _, newPhase in
+                switch newPhase {
+                case .background:
+                    if biometricsEnabled {
+                        lastActiveTimestamp = Date().timeIntervalSince1970
+                        wentToBackground = true
+                    }
+                case .inactive:
+                    break  // Face ID causes .inactive — ignore to avoid loop
+                case .active:
+                    if biometricsEnabled && wentToBackground && timeoutHasElapsed && !isAuthenticating {
+                        wentToBackground = false
+                        isBiometricLocked = true
+                        authenticateWithBiometrics()
+                    } else if !biometricsEnabled {
+                        isBiometricLocked = false
+                        wentToBackground = false
+                    } else {
+                        wentToBackground = false
+                    }
+                @unknown default:
+                    break
+                }
+            }
+            .onOpenURL { url in
+                handleDeepLink(url)
+            }
+        }
+    }
+
+    private func handleDeepLink(_ url: URL) {
+        guard url.scheme == "nivesh" else { return }
+        
+        let path = url.path
+        let components = path.split(separator: "/").map(String.init)
+        
+        if url.host == "analyze", let ticker = components.first {
+            NotificationCenter.default.post(name: Notification.Name("DeepLinkAnalyze"), object: ticker.uppercased())
+        } else if url.host == "watchlist", components.first == "add", components.count > 1 {
+            let ticker = components[1]
+            NotificationCenter.default.post(name: Notification.Name("DeepLinkWatchlistAdd"), object: ticker.uppercased())
         }
     }
 
@@ -139,6 +248,7 @@ struct stockmeApp: App {
                 .font(.subheadline)
                 .foregroundStyle(Theme.inkSecondary)
             Button {
+                HapticManager.selection()
                 authenticateWithBiometrics()
             } label: {
                 HStack(spacing: Theme.Spacing.medium) {
@@ -151,30 +261,123 @@ struct stockmeApp: App {
                 .background(Theme.securityGold)
                 .cornerRadius(Theme.CornerRadius.large)
             }
+            .buttonStyle(EKPressStyle())
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.canvas)
     }
 
     private func authenticateWithBiometrics() {
+        guard !isAuthenticating else { return }
+        isAuthenticating = true
+
         let context = LAContext()
         var error: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
             print("[Nivesh/Biometrics] Not available: \(error?.localizedDescription ?? "unknown")")
+            isAuthenticating = false
             isBiometricLocked = false  // fallback — skip biometrics if not available
             return
         }
         context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics,
                                localizedReason: "Unlock Nivesh to access your portfolio") { success, authError in
             DispatchQueue.main.async {
+                self.isAuthenticating = false
                 if success {
-                    isBiometricLocked = false
+                    self.isBiometricLocked = false
+                    self.lastActiveTimestamp = Date().timeIntervalSince1970
                     print("[Nivesh/Biometrics] Authenticated successfully")
                 } else {
                     print("[Nivesh/Biometrics] Failed: \(authError?.localizedDescription ?? "unknown")")
-                    // Stay locked — user can tap button to retry
+                    // Stay locked — user can tap the button to retry
                 }
             }
+        }
+    }
+}
+
+// MARK: - Interactive Tutorial
+
+struct InteractiveTutorialScreen: View {
+    let onFinish: () -> Void
+    @State private var currentPage = 0
+
+    var body: some View {
+        ZStack {
+            Theme.canvas.ignoresSafeArea()
+
+            TabView(selection: $currentPage) {
+                TutorialPageView(
+                    title: "Banknote Aesthetic",
+                    subtitle: "Crafted for clarity. Every element feels like a secure, tactile piece of currency.",
+                    iconName: "banknote"
+                )
+                .tag(0)
+
+                TutorialPageView(
+                    title: "AI Analysis",
+                    subtitle: "Deep semantic understanding of market movements, news, and earnings.",
+                    iconName: "brain.head.profile"
+                )
+                .tag(1)
+
+                TutorialPageView(
+                    title: "Portfolio Management",
+                    subtitle: "Track your wealth with precision and actionable insights.",
+                    iconName: "chart.pie.fill"
+                )
+                .tag(2)
+            }
+            .tabViewStyle(.page(indexDisplayMode: .always))
+
+            VStack {
+                Spacer()
+                Button(action: {
+                    if currentPage < 2 {
+                        withAnimation { currentPage += 1 }
+                    } else {
+                        onFinish()
+                    }
+                }) {
+                    Text(currentPage < 2 ? "Next" : "Get Started")
+                        .font(Theme.officialStampFont(size: 14))
+                        .foregroundStyle(Theme.canvasDeep)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Theme.securityGold)
+                        .cornerRadius(Theme.CornerRadius.medium)
+                }
+                .buttonStyle(EKPressStyle())
+                .padding(Theme.Spacing.screen)
+            }
+        }
+    }
+}
+
+struct TutorialPageView: View {
+    let title: String
+    let subtitle: String
+    let iconName: String
+
+    var body: some View {
+        VStack(spacing: Theme.Spacing.large) {
+            Image(systemName: iconName)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 80, height: 80)
+                .foregroundStyle(Theme.securityGold)
+                .padding(.bottom, 20)
+
+            Text(title.uppercased())
+                .font(Theme.engravedSerif(size: 24, weight: .bold))
+                .foregroundStyle(Theme.inkPrimary)
+                .multilineTextAlignment(.center)
+
+            Text(subtitle)
+                .font(.body)
+                .foregroundStyle(Theme.inkSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
         }
     }
 }

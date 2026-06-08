@@ -14,7 +14,20 @@ import json
 import traceback
 import uuid
 import sys
+import contextvars
+import logging
 from datetime import datetime, timezone
+
+request_id_context_var = contextvars.ContextVar("request_id", default="-")
+
+class RequestIDLogFilter(logging.Filter):
+    def filter(self, record):
+        record.request_id = request_id_context_var.get()
+        return True
+
+# Ensure root logger uses this filter and formats request_id
+for handler in logging.getLogger().handlers:
+    handler.addFilter(RequestIDLogFilter())
 
 from fastapi import Request
 from fastapi.responses import Response
@@ -261,19 +274,28 @@ class CorrelationIDMiddleware(BaseHTTPMiddleware):
     FastAPI middleware that reads or generates a correlation ID for every
     incoming HTTP request.
 
-    - Reads the ``X-Correlation-ID`` header from the request.
-    - If missing, generates ``nivesh_srv_{uuid4()[:8]}``.
-    - Stores the value in ``request.state.correlation_id``.
-    - Echoes ``X-Correlation-ID`` on the response headers.
+    - Reads the ``X-Request-ID`` or ``X-Correlation-ID`` header from the request.
+    - If missing, generates a UUID.
+    - Stores the value in ``request.state.request_id`` and ``request.state.correlation_id``.
+    - Echoes ``X-Request-ID`` on the response headers.
+    - Threads it into the logging context via contextvars.
     """
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        correlation_id = request.headers.get("X-Correlation-ID")
-        if not correlation_id:
-            correlation_id = f"nivesh_srv_{uuid.uuid4().hex[:8]}"
+        req_id = request.headers.get("X-Request-ID") or request.headers.get("X-Correlation-ID")
+        if not req_id:
+            req_id = str(uuid.uuid4())
 
-        request.state.correlation_id = correlation_id
+        request.state.request_id = req_id
+        request.state.correlation_id = req_id
+        
+        # Thread through logging
+        token = request_id_context_var.set(req_id)
 
-        response: Response = await call_next(request)
-        response.headers["X-Correlation-ID"] = correlation_id
-        return response
+        try:
+            response: Response = await call_next(request)
+            response.headers["X-Request-ID"] = req_id
+            response.headers["X-Correlation-ID"] = req_id
+            return response
+        finally:
+            request_id_context_var.reset(token)

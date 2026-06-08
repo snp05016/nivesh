@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import UserNotifications
+import EventKit
 
 // MARK: - Earnings Dashboard ViewModel
 
@@ -645,6 +646,43 @@ struct EarningsCalendarView: View {
     @State private var alertSetFor: String? = nil
 
     private let calendar = Calendar.current
+    
+    private func addEventToCalendar(title: String, dateStr: String) {
+        let eventStore = EKEventStore()
+        
+        let completion: EKEventStoreRequestAccessCompletionHandler = { (granted, error) in
+            if granted && error == nil {
+                let event = EKEvent(eventStore: eventStore)
+                event.title = title
+                
+                let df = DateFormatter()
+                df.dateFormat = "yyyy-MM-dd"
+                if let date = df.date(from: dateStr) {
+                    event.startDate = date
+                    event.endDate = date.addingTimeInterval(60 * 60)
+                    event.notes = "Earnings report"
+                    event.calendar = eventStore.defaultCalendarForNewEvents
+                    
+                    do {
+                        try eventStore.save(event, span: .thisEvent)
+                        DispatchQueue.main.async {
+                            HapticManager.notification(.success)
+                        }
+                    } catch {
+                        DispatchQueue.main.async {
+                            HapticManager.notification(.error)
+                        }
+                    }
+                }
+            }
+        }
+        
+        if #available(iOS 17.0, *) {
+            eventStore.requestWriteOnlyAccessToEvents(completion: completion)
+        } else {
+            eventStore.requestAccess(to: .event, completion: completion)
+        }
+    }
 
     // Generate 14 days window centred on today
     private var calendarDays: [Date] {
@@ -817,30 +855,51 @@ struct EarningsCalendarView: View {
             }
             Spacer()
             // 1.4 Embedded Alert Trigger
-            Button(action: {
-                Task {
-                    do {
-                        try await NetworkManager.shared.setEarningsAlert(userId: userId, ticker: r.ticker, date: r.resultDate)
-                        alertSetFor = r.ticker
-                        HapticManager.notification(.success)
-                    } catch {
-                        vm.alertError = (error as? NetworkError)?.displayDetail ?? error.localizedDescription
-                        HapticManager.notification(.error)
+            VStack(spacing: Theme.Spacing.small) {
+                Button(action: {
+                    Task {
+                        do {
+                            try await NetworkManager.shared.setEarningsAlert(userId: userId, ticker: r.ticker, date: r.resultDate)
+                            alertSetFor = r.ticker
+                            HapticManager.notification(.success)
+                        } catch {
+                            vm.alertError = (error as? NetworkError)?.displayDetail ?? error.localizedDescription
+                            HapticManager.notification(.error)
+                        }
                     }
+                }) {
+                    HStack(spacing: Theme.Spacing.small) {
+                        Image(systemName: alertSetFor == r.ticker ? "bell.fill" : "bell")
+                            .font(.caption)
+                        Text("Alert")
+                            .font(.caption.weight(.medium))
+                    }
+                    .frame(width: 60)
+                    .foregroundStyle(alertSetFor == r.ticker ? Theme.securityGold : Theme.inkSecondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(alertSetFor == r.ticker ? Theme.securityGold.opacity(0.10) : Theme.canvasDeep)
+                    .cornerRadius(Theme.CornerRadius.tight)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.borderSage, lineWidth: 0.5))
                 }
-            }) {
-                HStack(spacing: Theme.Spacing.small) {
-                    Image(systemName: alertSetFor == r.ticker ? "bell.fill" : "bell")
-                        .font(.caption)
-                    Text("Alert")
-                        .font(.caption.weight(.medium))
+                
+                Button(action: {
+                    addEventToCalendar(title: "\(r.ticker) Earnings", dateStr: r.resultDate)
+                }) {
+                    HStack(spacing: Theme.Spacing.small) {
+                        Image(systemName: "calendar.badge.plus")
+                            .font(.caption)
+                        Text("iCal")
+                            .font(.caption.weight(.medium))
+                    }
+                    .frame(width: 60)
+                    .foregroundStyle(Theme.inkSecondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Theme.canvasDeep)
+                    .cornerRadius(Theme.CornerRadius.tight)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.borderSage, lineWidth: 0.5))
                 }
-                .foregroundStyle(alertSetFor == r.ticker ? Theme.securityGold : Theme.inkSecondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(alertSetFor == r.ticker ? Theme.securityGold.opacity(0.10) : Theme.canvasDeep)
-                .cornerRadius(Theme.CornerRadius.tight)
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.borderSage, lineWidth: 0.5))
             }
         }
         .padding(.vertical, 8)

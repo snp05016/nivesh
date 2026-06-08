@@ -12,6 +12,48 @@ private struct HoldingNavValue: Hashable {
     static func == (l: Self, r: Self) -> Bool { l.ticker == r.ticker }
 }
 
+class WatchlistTagsManager: ObservableObject {
+    @Published var tags: [String: [String]] = [:] {
+        didSet {
+            if let encoded = try? JSONEncoder().encode(tags) {
+                UserDefaults.standard.set(encoded, forKey: "watchlistTags")
+            }
+        }
+    }
+    
+    init() {
+        if let data = UserDefaults.standard.data(forKey: "watchlistTags"),
+           let decoded = try? JSONDecoder().decode([String: [String]].self, from: data) {
+            tags = decoded
+        }
+    }
+
+    func addTag(_ tag: String, to ticker: String) {
+        let cleanTag = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTag.isEmpty else { return }
+        var current = tags[ticker] ?? []
+        if !current.contains(cleanTag) {
+            current.append(cleanTag)
+            tags[ticker] = current
+        }
+    }
+
+    func removeTag(_ tag: String, from ticker: String) {
+        var current = tags[ticker] ?? []
+        current.removeAll { $0 == tag }
+        if current.isEmpty {
+            tags.removeValue(forKey: ticker)
+        } else {
+            tags[ticker] = current
+        }
+    }
+
+    var allUniqueTags: [String] {
+        let all = tags.values.flatMap { $0 }
+        return Array(Set(all)).sorted()
+    }
+}
+
 @MainActor
 class PortfolioViewModel: ObservableObject {
     @Published var holdings: [PortfolioHolding] = []
@@ -97,6 +139,11 @@ struct PortfolioScreen: View {
     @State private var riskAnalysis: RiskAnalysis? = nil
     @State private var redFlags: RedFlagsResponse? = nil
 
+    @StateObject private var tagsManager = WatchlistTagsManager()
+    @State private var activeWatchlistTag: String? = nil
+    @State private var showTagSheet = false
+    @State private var taggingTicker = ""
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -120,6 +167,12 @@ struct PortfolioScreen: View {
                                     .foregroundStyle(Theme.inkSecondary)
                                     .padding(Theme.Spacing.medium)
                             }
+                            Button { shareToWhatsApp() } label: {
+                                Image(systemName: "message")
+                                    .foregroundStyle(Theme.inkSecondary)
+                                    .padding(Theme.Spacing.medium)
+                            }
+                            .buttonStyle(EKPressStyle())
                             ZStack {
                                 Circle().stroke(Theme.borderSage, lineWidth: 0.5).frame(width: 44, height: 44)
                                 Text("₹").font(Theme.engravedSerif(size: 18, weight: .bold)).foregroundStyle(Theme.inkPrimary)
@@ -201,14 +254,40 @@ struct PortfolioScreen: View {
                                 .scrollIndicators(.hidden)
                             }
                             } else if selectedTab == 1 {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: Theme.Spacing.medium) {
+                                        Button { activeWatchlistTag = nil } label: {
+                                            Text("All")
+                                                .font(Theme.officialStampFont(size: 9))
+                                                .foregroundStyle(activeWatchlistTag == nil ? Theme.canvasDeep : Theme.inkPrimary)
+                                                .padding(.horizontal, 12).padding(.vertical, 6)
+                                                .background(Capsule().fill(activeWatchlistTag == nil ? Theme.securityGold : Theme.canvasDeep))
+                                        }
+                                        ForEach(tagsManager.allUniqueTags, id: \.self) { tag in
+                                            Button { activeWatchlistTag = activeWatchlistTag == tag ? nil : tag } label: {
+                                                Text(tag.uppercased())
+                                                    .font(Theme.officialStampFont(size: 9))
+                                                    .foregroundStyle(activeWatchlistTag == tag ? Theme.canvasDeep : Theme.inkPrimary)
+                                                    .padding(.horizontal, 12).padding(.vertical, 6)
+                                                    .background(Capsule().fill(activeWatchlistTag == tag ? Theme.securityGold : Theme.canvasDeep))
+                                            }
+                                        }
+                                    }
+                                    .padding(.horizontal, Theme.screenPadding)
+                                }
                                 ScrollView(.horizontal) {
                                     HStack(spacing: Theme.Spacing.standard) {
-                                        ForEach(viewModel.watchlistItems) { item in
+                                        ForEach(viewModel.watchlistItems.filter { item in
+                                            activeWatchlistTag == nil || (tagsManager.tags[item.ticker]?.contains(activeWatchlistTag!) ?? false)
+                                        }) { item in
                                             NavigationLink(value: item.ticker) {
-                                                WatchlistRowView(item: item) {
+                                                WatchlistRowView(item: item, tags: tagsManager.tags[item.ticker] ?? [], onRemove: {
                                                     guard let user = authManager.currentUser else { return }
                                                     Task { await viewModel.removeFromWatchlist(ticker: item.ticker, userId: user.userId) }
-                                                }
+                                                }, onTag: {
+                                                    taggingTicker = item.ticker
+                                                    showTagSheet = true
+                                                })
                                                 .frame(width: UIScreen.main.bounds.width * 0.78)
                                             }
                                             .buttonStyle(.plain)
@@ -403,6 +482,27 @@ struct PortfolioScreen: View {
         }
     }
 
+    private func shareToWhatsApp() {
+        let totalVal = viewModel.totalValue.inrFormatted
+        let investedVal = viewModel.investedValue.inrFormatted
+        let rawPnl = viewModel.totalValue - viewModel.investedValue
+        let pnl = rawPnl.inrFormatted
+        
+        let text = """
+        My Nivesh Portfolio 📈
+        Total Value: ₹\(totalVal)
+        Invested: ₹\(investedVal)
+        P&L: \(rawPnl >= 0 ? "+" : "")\(pnl)
+        """
+        
+        if let encoded = text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+           let url = URL(string: "whatsapp://send?text=\(encoded)") {
+            if UIApplication.shared.canOpenURL(url) {
+                UIApplication.shared.open(url)
+            }
+        }
+    }
+
     @ViewBuilder
     private var watchlistTabContent: some View {
         if viewModel.watchlistLoading {
@@ -438,17 +538,127 @@ struct PortfolioScreen: View {
             .padding(.top, 40)
         } else {
             VStack(spacing: Theme.Spacing.standard) {
-                ForEach(viewModel.watchlistItems) { item in
+                // Filter Chips
+                let allTags = tagsManager.allUniqueTags
+                if !allTags.isEmpty {
+                    ScrollView(.horizontal) {
+                        HStack(spacing: Theme.Spacing.medium) {
+                            Button { activeWatchlistTag = nil } label: {
+                                Text("All")
+                                    .font(Theme.officialStampFont(size: 9))
+                                    .foregroundStyle(activeWatchlistTag == nil ? Theme.canvasDeep : Theme.inkPrimary)
+                                    .padding(.horizontal, 12).padding(.vertical, 6)
+                                    .background(Capsule().fill(activeWatchlistTag == nil ? Theme.securityGold : Theme.canvasDeep))
+                            }
+                            ForEach(allTags, id: \.self) { tag in
+                                Button {
+                                    activeWatchlistTag = activeWatchlistTag == tag ? nil : tag
+                                } label: {
+                                    Text(tag.uppercased())
+                                        .font(Theme.officialStampFont(size: 9))
+                                        .foregroundStyle(activeWatchlistTag == tag ? Theme.canvasDeep : Theme.inkPrimary)
+                                        .padding(.horizontal, 12).padding(.vertical, 6)
+                                        .background(Capsule().fill(activeWatchlistTag == tag ? Theme.securityGold : Theme.canvasDeep))
+                                }
+                            }
+                        }
+                        .padding(.horizontal, Theme.screenPadding)
+                    }
+                    .scrollIndicators(.hidden)
+                }
+
+                let filteredWatchlist = activeWatchlistTag == nil 
+                    ? viewModel.watchlistItems 
+                    : viewModel.watchlistItems.filter { tagsManager.tags[$0.ticker]?.contains(activeWatchlistTag!) == true }
+
+                if filteredWatchlist.isEmpty && activeWatchlistTag != nil {
+                    VStack {
+                        Text("No stocks found with tag '\(activeWatchlistTag!)'")
+                            .font(Theme.serialNumberFont(size: 13))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .padding(.top, 20)
+                    }
+                }
+
+                ForEach(filteredWatchlist) { item in
                     NavigationLink(value: item.ticker) {
-                        WatchlistRowView(item: item) {
+                        WatchlistRowView(item: item, tags: tagsManager.tags[item.ticker] ?? [], onRemove: {
                             guard let user = authManager.currentUser else { return }
                             Task { await viewModel.removeFromWatchlist(ticker: item.ticker, userId: user.userId) }
-                        }
+                        }, onTag: {
+                            taggingTicker = item.ticker
+                            showTagSheet = true
+                        })
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, Theme.screenPadding)
+            .padding(.horizontal, activeWatchlistTag == nil || tagsManager.allUniqueTags.isEmpty ? Theme.screenPadding : 0) // adjusted padding since scrollview needs full width
+            .sheet(isPresented: $showTagSheet) {
+                TaggingSheet(ticker: taggingTicker, tagsManager: tagsManager)
+            }
+        }
+    }
+}
+
+private struct TaggingSheet: View {
+    let ticker: String
+    @ObservedObject var tagsManager: WatchlistTagsManager
+    @Environment(\.dismiss) var dismiss
+    @State private var newTag = ""
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Theme.canvas.ignoresSafeArea()
+                VStack(alignment: .leading, spacing: Theme.Spacing.large) {
+                    Text("TAG \(ticker)")
+                        .font(Theme.officialStampFont(size: 9))
+                        .foregroundStyle(Theme.inkSecondary)
+                    
+                    HStack {
+                        TextField("New Tag (e.g. Tech)", text: $newTag)
+                            .font(Theme.serialNumberFont(size: 14))
+                            .foregroundStyle(Theme.inkPrimary)
+                        Button("Add") {
+                            tagsManager.addTag(newTag, to: ticker)
+                            newTag = ""
+                        }
+                        .disabled(newTag.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .foregroundStyle(Theme.securityGold)
+                    }
+                    .padding(Theme.Spacing.card)
+                    .banknoteCard()
+                    
+                    let currentTags = tagsManager.tags[ticker] ?? []
+                    if !currentTags.isEmpty {
+                        Text("CURRENT TAGS")
+                            .font(Theme.officialStampFont(size: 9))
+                            .foregroundStyle(Theme.inkSecondary)
+                        
+                        ForEach(currentTags, id: \.self) { tag in
+                            HStack {
+                                Text(tag).font(Theme.serialNumberFont(size: 14)).foregroundStyle(Theme.inkPrimary)
+                                Spacer()
+                                Button(action: { tagsManager.removeTag(tag, from: ticker) }) {
+                                    Image(systemName: "minus.circle.fill").foregroundStyle(Theme.bearRed)
+                                }
+                            }
+                            .padding(Theme.Spacing.standard)
+                            .banknoteCard()
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(Theme.Spacing.screen)
+            }
+            .navigationTitle("Tags")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
         }
     }
 }
@@ -667,6 +877,18 @@ private struct HoldingNoteRow: View {
                     Text("\(Int(holding.shares)) SHARES • AVG ₹\(holding.buyPrice.inrFormatted)")
                         .font(Theme.serialNumberFont(size: 9))
                         .foregroundStyle(Theme.inkSecondary)
+                    if let target = holding.targetPrice {
+                        let progress = holding.stock.currentPrice / target
+                        HStack(spacing: Theme.Spacing.small) {
+                            Text("TGT ₹\(target.inrFormatted)")
+                                .font(Theme.serialNumberFont(size: 8))
+                                .foregroundStyle(Theme.inkSecondary)
+                            ProgressView(value: min(max(progress, 0), 1))
+                                .progressViewStyle(LinearProgressViewStyle(tint: progress >= 1 ? Theme.bullGreen : Theme.securityGold))
+                                .frame(height: 4)
+                        }
+                        .padding(.top, 2)
+                    }
                     if let note = holding.notes, !note.isEmpty {
                         Text(note)
                             .font(Font.custom("Georgia", size: 12, relativeTo: .caption).italic())
@@ -809,7 +1031,9 @@ private struct StatNoteBlock: View {
 
 private struct WatchlistRowView: View {
     let item: WatchlistItem
+    var tags: [String] = []
     let onRemove: () -> Void
+    let onTag: () -> Void
 
     var body: some View {
         HStack(spacing: 0) {
@@ -827,9 +1051,16 @@ private struct WatchlistRowView: View {
                         .font(Theme.engravedSerif(size: 14, weight: .bold))
                         .foregroundStyle(Theme.inkPrimary)
                         .lineLimit(1)
-                    Text(item.ticker)
-                        .font(Theme.serialNumberFont(size: 9))
-                        .foregroundStyle(Theme.inkSecondary)
+                    HStack {
+                        Text(item.ticker)
+                            .font(Theme.serialNumberFont(size: 9))
+                            .foregroundStyle(Theme.inkSecondary)
+                        if !tags.isEmpty {
+                            Text(tags.joined(separator: ", "))
+                                .font(Theme.serialNumberFont(size: 8))
+                                .foregroundStyle(Theme.securityGold)
+                        }
+                    }
                 }
 
                 Spacer()
@@ -856,6 +1087,12 @@ private struct WatchlistRowView: View {
                 Label("Remove", systemImage: "trash")
             }
             .tint(Theme.bearRed)
+        }
+        .swipeActions(edge: .leading) {
+            Button(action: onTag) {
+                Label("Tag", systemImage: "tag")
+            }
+            .tint(Theme.securityGold)
         }
     }
 }
@@ -1412,6 +1649,88 @@ private struct NoteEditorSheet: View {
             }
         }
         
+        private struct SectorAllocationPieChart: View {
+            let holdings: [PortfolioHolding]
+            
+            private func pseudoSector(for ticker: String) -> String {
+                let t = ticker.uppercased()
+                if t.contains("BANK") || t.contains("FIN") || t.contains("HDFC") || t.contains("ICICI") { return "Financials" }
+                if t.contains("TECH") || t.contains("INFY") || t.contains("TCS") || t.contains("WIPRO") { return "IT" }
+                if t.contains("PHARMA") || t.contains("SUN") || t.contains("CIPLA") { return "Healthcare" }
+                if t.contains("AUTO") || t.contains("MOTORS") || t.contains("MARUTI") { return "Auto" }
+                if t.contains("ENERGY") || t.contains("POW") || t.contains("REL") { return "Energy" }
+                return "Others"
+            }
+
+            private var sectorGroups: [(sector: String, value: Double, color: Color)] {
+                var groups: [String: Double] = [:]
+                for h in holdings {
+                    let s = pseudoSector(for: h.stock.ticker)
+                    groups[s, default: 0] += h.currentValue
+                }
+                let colors: [Color] = [Theme.bullGreen, Theme.bearRed, Theme.holdAmber, Theme.securityGold, Theme.inkSecondary, Theme.inkPrimary]
+                return groups.sorted(by: { $0.value > $1.value }).enumerated().map { index, element in
+                    (sector: element.key, value: element.value, color: colors[index % colors.count])
+                }
+            }
+
+            private var totalValue: Double {
+                holdings.reduce(0) { $0 + $1.currentValue }
+            }
+
+            var body: some View {
+                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                    Text("SECTOR ALLOCATION")
+                        .font(Theme.officialStampFont(size: 10))
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.inkSecondary)
+                        
+                    if holdings.isEmpty {
+                        Text("No holdings")
+                            .font(Theme.serialNumberFont(size: 13))
+                            .foregroundStyle(Theme.inkTertiary)
+                            .frame(maxWidth: .infinity, minHeight: 200)
+                    } else {
+                        let data = sectorGroups
+                        ZStack {
+                            Chart(data, id: \.sector) { item in
+                                SectorMark(
+                                    angle: .value("Value", item.value),
+                                    innerRadius: .ratio(0.55),
+                                    angularInset: 1.5
+                                )
+                                .foregroundStyle(item.color)
+                                .annotation(position: .overlay) {
+                                    let pct = totalValue > 0 ? (item.value / totalValue) * 100 : 0
+                                    if pct > 5 {
+                                        VStack(spacing: 2) {
+                                            Text(item.sector)
+                                                .font(Theme.officialStampFont(size: 8))
+                                                .foregroundStyle(.white)
+                                                .lineLimit(1)
+                                            Text(String(format: "%.0f%%", pct))
+                                                .font(Theme.serialNumberFont(size: 8))
+                                                .foregroundStyle(.white.opacity(0.9))
+                                        }
+                                    }
+                                }
+                            }
+                            .frame(height: 220)
+                            
+                            VStack(spacing: 2) {
+                                Text("₹")
+                                    .font(Theme.engravedSerif(size: 14, weight: .bold))
+                                    .foregroundStyle(Theme.inkTertiary)
+                                Text(totalValue.inrFormatted)
+                                    .font(Theme.serialNumberFont(size: 12))
+                                    .foregroundStyle(Theme.inkPrimary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // MARK: - Portfolio Charts Carousel
         
         private struct PortfolioChartsCarousel: View {
@@ -1442,6 +1761,13 @@ private struct NoteEditorSheet: View {
                         }
                         .banknoteCard()
                         .tag(2)
+
+                        ScrollView {
+                            SectorAllocationPieChart(holdings: holdings)
+                                .padding(Theme.Spacing.screen)
+                        }
+                        .banknoteCard()
+                        .tag(3)
                     }
                     .tabViewStyle(.page(indexDisplayMode: .always))
                     .frame(height: UIScreen.main.bounds.height * 0.65)

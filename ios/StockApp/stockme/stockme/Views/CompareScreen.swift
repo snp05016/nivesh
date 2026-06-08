@@ -8,11 +8,14 @@ struct CompareScreen: View {
     @State private var tickerB = ""
     @State private var infoA: QuickInfo? = nil
     @State private var infoB: QuickInfo? = nil
+    @State private var infoC: QuickInfo? = nil
     @State private var loading = false
     @State private var searchTextA = ""
     @State private var searchTextB = ""
+    @State private var searchTextC = ""
     @State private var selectedA: StockEntry? = nil
     @State private var selectedB: StockEntry? = nil
+    @State private var selectedC: StockEntry? = nil
 
     var body: some View {
         NavigationStack {
@@ -22,17 +25,26 @@ struct CompareScreen: View {
                 ScrollView {
                     VStack(spacing: 20) {
                         // Picker row
-                        HStack(spacing: 12) {
+                        HStack(spacing: Theme.Spacing.small) {
                             StockPickerButton(label: "Stock A", selected: selectedA, searchText: $searchTextA) { entry in
                                 selectedA = entry
                                 searchTextA = ""
                             }
                             Image(systemName: "arrow.left.arrow.right")
                                 .foregroundStyle(Theme.securityGold)
-                                .font(.headline.weight(.bold))
+                                .font(.caption.weight(.bold))
                             StockPickerButton(label: "Stock B", selected: selectedB, searchText: $searchTextB) { entry in
                                 selectedB = entry
                                 searchTextB = ""
+                            }
+                            if selectedB != nil || selectedC != nil {
+                                Image(systemName: "arrow.left.arrow.right")
+                                    .foregroundStyle(Theme.securityGold)
+                                    .font(.caption.weight(.bold))
+                                StockPickerButton(label: "Stock C", selected: selectedC, searchText: $searchTextC) { entry in
+                                    selectedC = entry
+                                    searchTextC = ""
+                                }
                             }
                         }
                         .padding(.horizontal, Theme.screenPadding)
@@ -46,7 +58,7 @@ struct CompareScreen: View {
                             }
                             .padding(40)
                         } else if let a = infoA, let b = infoB {
-                            compareGrid(a: a, b: b)
+                            compareGrid(a: a, b: b, c: infoC)
                         } else {
                             VStack(spacing: 10) {
                                 Image(systemName: "chart.bar.xaxis.ascending")
@@ -77,28 +89,44 @@ struct CompareScreen: View {
             }
             .onChange(of: selectedA) { _, _ in fetchBoth() }
             .onChange(of: selectedB) { _, _ in fetchBoth() }
+            .onChange(of: selectedC) { _, _ in fetchBoth() }
         }
     }
 
     private func fetchBoth() {
         guard let a = selectedA, let b = selectedB else { return }
         loading = true
-        infoA = nil; infoB = nil
+        infoA = nil; infoB = nil; infoC = nil
         Task {
             async let qa = NetworkManager.shared.quickInfo(ticker: a.ticker)
             async let qb = NetworkManager.shared.quickInfo(ticker: b.ticker)
             infoA = await qa
             infoB = await qb
+            if let c = selectedC {
+                infoC = try? await NetworkManager.shared.quickInfo(ticker: c.ticker)
+            }
             loading = false
         }
     }
 
     @ViewBuilder
-    private func compareGrid(a: QuickInfo, b: QuickInfo) -> some View {
-        let aUp = (a.changePercent ?? 0) >= 0
-        let bUp = (b.changePercent ?? 0) >= 0
-        let a52 = a.week52High.map { h in a.week52Low.map { l in (a.price - l) / (h - l) * 100 } ?? 0 } ?? 0
-        let b52 = b.week52High.map { h in b.week52Low.map { l in (b.price - l) / (h - l) * 100 } ?? 0 } ?? 0
+    private func compareGrid(a: QuickInfo, b: QuickInfo, c: QuickInfo?) -> some View {
+        let aUp = a.changePercent >= 0
+        let bUp = b.changePercent >= 0
+        let cUp = (c?.changePercent ?? 0) >= 0
+        
+        let a52: Double = {
+            guard let h = a.week52High, let l = a.week52Low, (h - l) != 0 else { return 0 }
+            return (a.price - l) / (h - l) * 100
+        }()
+        let b52: Double = {
+            guard let h = b.week52High, let l = b.week52Low, (h - l) != 0 else { return 0 }
+            return (b.price - l) / (h - l) * 100
+        }()
+        let c52: Double = {
+            guard let c = c, let h = c.week52High, let l = c.week52Low, (h - l) != 0 else { return 0 }
+            return (c.price - l) / (h - l) * 100
+        }()
 
         VStack(spacing: 0) {
             // Header row
@@ -106,6 +134,9 @@ struct CompareScreen: View {
                 Text("").frame(maxWidth: .infinity)
                 CompareHeaderCell(text: a.ticker)
                 CompareHeaderCell(text: b.ticker)
+                if let c = c {
+                    CompareHeaderCell(text: c.ticker)
+                }
             }
             .padding(.horizontal, Theme.screenPadding)
 
@@ -113,22 +144,24 @@ struct CompareScreen: View {
 
             // Rows
             Group {
-                CompareRow(label: "PRICE", valA: a.price.inrFormatted, valB: b.price.inrFormatted)
-                CompareRow(label: "TODAY", valA: (a.changePercent ?? 0).percentFormatted, valB: (b.changePercent ?? 0).percentFormatted,
-                           colorA: aUp ? Theme.bullGreen : Theme.bearRed, colorB: bUp ? Theme.bullGreen : Theme.bearRed)
+                CompareRow(label: "PRICE", valA: a.price.inrFormatted, valB: b.price.inrFormatted, valC: c?.price.inrFormatted)
+                CompareRow(label: "TODAY", valA: a.changePercent.percentFormatted, valB: b.changePercent.percentFormatted, valC: c?.changePercent.percentFormatted,
+                           colorA: aUp ? Theme.bullGreen : Theme.bearRed, colorB: bUp ? Theme.bullGreen : Theme.bearRed, colorC: cUp ? Theme.bullGreen : Theme.bearRed)
                 CompareRow(label: "P/E RATIO",
                            valA: a.peRatio.map { String(format: "%.1f", $0) } ?? "—",
-                           valB: b.peRatio.map { String(format: "%.1f", $0) } ?? "—")
+                           valB: b.peRatio.map { String(format: "%.1f", $0) } ?? "—",
+                           valC: c?.peRatio.map { String(format: "%.1f", $0) })
                 CompareRow(label: "52W POSITION",
                            valA: String(format: "%.0f%%", a52),
-                           valB: String(format: "%.0f%%", b52))
-                CompareRow(label: "52W HIGH", valA: a.week52High?.inrFormatted ?? "—", valB: b.week52High?.inrFormatted ?? "—")
-                CompareRow(label: "52W LOW",  valA: a.week52Low?.inrFormatted ?? "—",  valB: b.week52Low?.inrFormatted ?? "—")
-                CompareRow(label: "SECTOR",   valA: a.sector ?? "—", valB: b.sector ?? "—")
+                           valB: String(format: "%.0f%%", b52),
+                           valC: c != nil ? String(format: "%.0f%%", c52) : nil)
+                CompareRow(label: "52W HIGH", valA: a.week52High?.inrFormatted ?? "—", valB: b.week52High?.inrFormatted ?? "—", valC: c?.week52High?.inrFormatted)
+                CompareRow(label: "52W LOW",  valA: a.week52Low?.inrFormatted ?? "—",  valB: b.week52Low?.inrFormatted ?? "—", valC: c?.week52Low?.inrFormatted)
+                CompareRow(label: "SECTOR",   valA: a.sector ?? "—", valB: b.sector ?? "—", valC: c?.sector)
                 if let sigA = a.signal, let sigB = b.signal {
                     CompareRow(label: "AI SIGNAL",
-                               valA: sigA.rawValue, valB: sigB.rawValue,
-                               colorA: sigA.color, colorB: sigB.color)
+                               valA: sigA.rawValue, valB: sigB.rawValue, valC: c?.signal?.rawValue,
+                               colorA: sigA.color, colorB: sigB.color, colorC: c?.signal?.color ?? Theme.inkPrimary)
                 }
             }
             .padding(.horizontal, Theme.screenPadding)
@@ -155,8 +188,10 @@ private struct CompareRow: View {
     let label: String
     let valA: String
     let valB: String
+    var valC: String? = nil
     var colorA: Color = Theme.inkPrimary
     var colorB: Color = Theme.inkPrimary
+    var colorC: Color = Theme.inkPrimary
 
     var body: some View {
         HStack(spacing: 0) {
@@ -165,15 +200,22 @@ private struct CompareRow: View {
                 .foregroundStyle(Theme.inkSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text(valA)
-                .font(Theme.serialNumberFont(size: 12))
+                .font(Theme.serialNumberFont(size: 11))
                 .foregroundStyle(colorA)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .multilineTextAlignment(.center)
             Text(valB)
-                .font(Theme.serialNumberFont(size: 12))
+                .font(Theme.serialNumberFont(size: 11))
                 .foregroundStyle(colorB)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .multilineTextAlignment(.center)
+            if let vc = valC {
+                Text(vc)
+                    .font(Theme.serialNumberFont(size: 11))
+                    .foregroundStyle(colorC)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .multilineTextAlignment(.center)
+            }
         }
         .padding(.vertical, 10)
         .overlay(Rectangle().fill(Theme.borderFine).frame(height: 0.5), alignment: .bottom)

@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import SafariServices
 
 // MARK: - Emoji Stripper (global fix for AI-generated text)
 
@@ -534,25 +535,27 @@ class HomeViewModel: ObservableObject {
         isLoading = false
     }
 
-    func fetchIndices() {
-        Task {
-            indicesLoading = indices.isEmpty
-            do {
-                let resp = try await NetworkManager.shared.getMarketIndices()
-                indices = resp.indices
-                indicesFetchFailed = false
-            } catch {
-                print("Indices fetch error: \(error)")
-                indicesFetchFailed = true
-            }
-            indicesLoading = false
+    /// Awaitable version — safe to call from .task {} and .refreshable {}
+    @MainActor
+    func fetchIndices() async {
+        indicesLoading = indices.isEmpty
+        do {
+            let resp = try await NetworkManager.shared.getMarketIndices()
+            indices = resp.indices
+            indicesFetchFailed = false
+        } catch {
+            print("Indices fetch error: \(error)")
+            indicesFetchFailed = indices.isEmpty   // only mark failed if we have no data at all
         }
+        indicesLoading = false
     }
 
     func startIndicesTimer() {
         indicesTimer?.invalidate()
         indicesTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-            self?.fetchIndices()
+            Task { @MainActor [weak self] in
+                await self?.fetchIndices()
+            }
         }
     }
 
@@ -583,9 +586,26 @@ struct HomeScreen: View {
     @State private var dailyAction: DailyActionResponse? = nil
     @State private var scrollTarget: String?
     @State private var navigationPath = NavigationPath()
+    @AppStorage("homeSectionOrderData") private var sectionOrderData: Data = Data()
+    @State private var showingEditLayout = false
+
+    private var activeSectionOrder: [HomeSectionID] {
+        if !sectionOrderData.isEmpty, let saved = try? JSONDecoder().decode([HomeSectionID].self, from: sectionOrderData) {
+            // Merge any missing ones
+            var merged = saved
+            for sec in HomeSectionID.allCases {
+                if !merged.contains(sec) { merged.append(sec) }
+            }
+            return merged
+        }
+        return HomeSectionID.allCases
+    }
+
     @State private var selectedTab = 0
     // Fix 3.3: Offline guard — block destructive watchlist ops when disconnected
     @State private var isOnline = true
+    // Item 7: YouTube channel filter
+    @State private var selectedChannel: String? = nil
     private let homeTabs = ["Market Pulse", "My Holdings", "Advisory"]
 
     var body: some View {
@@ -621,365 +641,25 @@ struct HomeScreen: View {
                             .background(Theme.canvasDeep.opacity(0.95))
                             .overlay(Divider().opacity(0.3), alignment: .bottom)
 
-                            // ── Section 1: Header + Daily Action ─────────────
-                            Group {
-                                if let user = authManager.currentUser {
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text("भारतीय वित्तीय विश्लेषण")
-                                                .font(Theme.hindiFont(size: 11))
-                                                .foregroundStyle(Theme.inkSecondary)
-                                            Text("RESERVE BANK OF INTELLIGENCE")
-                                                .font(Theme.officialStampFont(size: 9))
-                                                .foregroundStyle(Theme.inkPrimary)
-                                        }
-                                        Spacer()
-                                        NavigationLink(destination: SettingsScreen()) {
-                                            ZStack {
-                                                Circle()
-                                                    .fill(Theme.securityGold.opacity(0.15))
-                                                    .frame(width: 40, height: 40)
-                                                Text(String(user.displayName.prefix(1)).uppercased())
-                                                    .font(.headline.weight(.bold))
-                                                    .foregroundStyle(Theme.securityGold)
-                                            }
-                                            .overlay(Circle().stroke(Theme.securityGold.opacity(0.4), lineWidth: 1))
-                                        }
-                                    }
-                                    .padding(.horizontal, Theme.screenPadding)
-                                    .padding(.top, Theme.Spacing.standard)
-                                }
-                                
-                                // NEW: Horizontal Quick Nav Bar
-                                ScrollView(.horizontal) {
-                                    HStack(spacing: Theme.Spacing.medium) {
-                                        ForEach(HomeSectionID.allCases) { section in
-                                            if section != .top {
-                                                Button(action: {
-                                                    HapticManager.selection()
-                                                    scrollTarget = section.rawValue
-                                                }) {
-                                                    HStack(spacing: Theme.Spacing.small) {
-                                                        Image(systemName: section.icon)
-                                                            .font(.caption2)
-                                                        Text(section.title.uppercased())
-                                                            .font(Theme.officialStampFont(size: 9))
-                                                    }
-                                                    .foregroundStyle(Theme.inkPrimary)
-                                                    .padding(.horizontal, Theme.Spacing.standard)
-                                                    .padding(.vertical, Theme.Spacing.medium)
-                                                    .background(Theme.securityGold.opacity(0.12))
-                                                    .cornerRadius(Theme.CornerRadius.card)
-                                                    .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
-                                                }
-                                                .buttonStyle(EKPressStyle())
-                                            }
-                                        }
-                                    }
-                                    .padding(.horizontal, Theme.screenPadding)
-                                    .padding(.bottom, Theme.Spacing.small)
-                                }
-                                .scrollIndicators(.hidden)
-
-                                if let action = dailyAction {
-                                    DailyActionCard(response: action)
-                                        .padding(.horizontal, Theme.screenPadding)
-                                }
-                            }
-                            .id(HomeSectionID.top.rawValue)
-
-                            // ── Section 2: Portfolio ──────────────────────────
-                            PortfolioNoteCard(
-                                value: viewModel.portfolioValue,
-                                totalPnL: viewModel.totalPnL,
-                                invested: viewModel.investedValue,
-                                todayPnL: viewModel.todayPnL,
-                                count: viewModel.stockCount,
-                                isLoading: viewModel.isLoading
-                            )
-                            .padding(.horizontal, Theme.screenPadding)
-                            .id(HomeSectionID.portfolio.rawValue)
-
-                            // ── Section 3: Market Indices ─────────────────────
-                            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                                HStack(alignment: .center, spacing: Theme.Spacing.medium) {
-                                    SectionHeader(title: "Market Indices", hindiTitle: "बाजार सूचकांक")
-                                    if viewModel.indicesFetchFailed {
-                                        Text("DELAYED")
-                                            .font(Theme.officialStampFont(size: 8))
-                                            .foregroundStyle(Theme.bearRed)
-                                            .padding(.horizontal, Theme.Spacing.tight)
-                                            .padding(.vertical, Theme.Spacing.xSmall)
-                                            .overlay(RoundedRectangle(cornerRadius: 3).stroke(Theme.bearRed, lineWidth: 0.5))
-                                    }
-                                }
-                                ScrollView(.horizontal) {
-                                    HStack(spacing: Theme.Spacing.standard) {
-                                        ForEach(viewModel.indices) { index in
-                                            let valueStr: String = {
-                                                if index.ticker == "USDINR=X" {
-                                                    return String(format: "%.2f", index.value)
-                                                } else {
-                                                    return IndianFormatter.price(index.value)
-                                                }
-                                            }()
-                                            let changeStr = (index.changePct >= 0 ? "+" : "") + String(format: "%.2f%%", index.changePct)
-                                            IndexChip(
-                                                name: index.name,
-                                                value: valueStr,
-                                                change: changeStr,
-                                                isPositive: index.changePct >= 0
-                                            )
-                                            .shimmerPlaceholder(isLoading: viewModel.indicesLoading)
-                                        }
-                                        if viewModel.indices.isEmpty && viewModel.indicesLoading {
-                                            ForEach(0..<4, id: \.self) { _ in
-                                                IndexChip(name: "——", value: "——", change: "——", isPositive: true)
-                                                    .shimmerPlaceholder(isLoading: true)
-                                            }
-                                        }
-                                    }
-                                    .padding(.horizontal, Theme.screenPadding)
-                                }
-                                .scrollIndicators(.hidden)
-                            }
-                            .id(HomeSectionID.indices.rawValue)
-
-                            // ── Section 4: Watchlist ──────────────────────────
-                            VStack(spacing: Theme.Spacing.card) {
-                                SectionHeader(title: "Watchlist", hindiTitle: "बाज़ार की निगरानी", actionLabel: "SEE ALL →") {
-                                    // Switch to Portfolio tab (tab 4) to show full holdings
-                                    HapticManager.selection()
-                                    NotificationCenter.default.post(
-                                        name: Notification.Name("switchToTab"),
-                                        object: nil,
-                                        userInfo: ["tab": 4]
-                                    )
-                                }
-                                if viewModel.watchlist.isEmpty && !viewModel.isLoading {
-                                    Text("Add stocks to your watchlist to see them here")
-                                        .font(Theme.serialNumberFont(size: 13))
-                                        .foregroundStyle(Theme.inkTertiary)
-                                        .multilineTextAlignment(.center)
-                                        .padding(.horizontal, Theme.screenPadding)
-                                        .padding(.vertical, Theme.Spacing.screen)
-                                } else {
-                                    VStack(spacing: Theme.Spacing.standard) {
-                                        ForEach(viewModel.watchlist) { stock in
-                                            NavigationLink(value: stock.ticker) {
-                                                StockRow(stock: stock)
-                                            }
-                                            .ekPressHaptic()
-                                        }
-                                    }
-                                    .padding(.horizontal, Theme.screenPadding)
-                                }
-                            }
-                            .id(HomeSectionID.watchlist.rawValue)
-
-                            // Timeframe Conflicts Banner (between watchlist + sectors)
-                            if !timeframeConflicts.isEmpty {
-                                TimeframeConflictsBanner(conflicts: timeframeConflicts)
+                            ForEach(activeSectionOrder, id: \.self) { sectionId in
+                                renderSection(id: sectionId)
                             }
 
-                            // ── Section 5: Sector Pulse ───────────────────────
-                            VStack(spacing: Theme.Spacing.standard) {
-                                SectionHeader(title: "Sector Pulse", hindiTitle: "क्षेत्र प्रदर्शन")
-                                if !viewModel.sectorData.isEmpty {
-                                    SectorHeatmapView(sectors: viewModel.sectorData)
-                                        .padding(.horizontal, Theme.screenPadding)
-                                } else {
-                                    DashboardLoadingCard(label: "Sector Pulse", isLoading: viewModel.isLoading)
+
+                            Button(action: { showingEditLayout = true }) {
+                                HStack(spacing: Theme.Spacing.medium) {
+                                    Image(systemName: "slider.horizontal.3")
+                                    Text("CUSTOMIZE LAYOUT")
+                                        .font(Theme.officialStampFont(size: 11))
                                 }
-                            }
-                            .id(HomeSectionID.sectors.rawValue)
-
-                            // ── Section 6: Morning Brief ──────────────────────
-                            VStack(spacing: Theme.Spacing.card) {
-                                SectionHeader(title: "Morning Brief", hindiTitle: "प्रातःकालीन सारांश")
-                                if let briefData = viewModel.morningBriefData {
-                                    MorningDecreeCard(briefData: briefData)
-                                        .padding(.horizontal, Theme.screenPadding)
-                                } else {
-                                    DashboardLoadingCard(label: "Morning Brief", isLoading: viewModel.isLoading)
-                                }
-                            }
-                            .id(HomeSectionID.morning.rawValue)
-
-                            // ── Section 6a: NEWS FEED ─────────────────────────
-                            VStack(alignment: .leading, spacing: 0) {
-                                // Section header (bilingual, matches existing pattern)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("ताज़ा समाचार")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                    Text("MARKET NEWS")
-                                        .font(.caption.weight(.semibold)).monospaced()
-                                        .tracking(2.0)
-                                        .foregroundStyle(.secondary)
-                                }
-                                .padding(.bottom, Theme.Spacing.standard)
-                                .padding(.horizontal, Theme.screenPadding)
-
-                                GuillocheDivider()
-                                    .padding(.horizontal, Theme.screenPadding)
-                                    .padding(.bottom, Theme.Spacing.standard)
-
-                                if let feed = feedVM.feed {
-                                    // Horizontal scrolling news strip — all news in one scroll
-                                    ScrollView(.horizontal) {
-                                        HStack(alignment: .top, spacing: Theme.Spacing.card) {
-                                            ForEach(Array((feed.news + feed.redFlagAlerts).prefix(20).enumerated()), id: \.element.id) { idx, article in
-                                                CompactNewsCell(article: article) { ticker in
-                                                    navigationPath.append(ticker)
-                                                }
-                                                .frame(
-                                                    width: UIScreen.main.bounds.width * 0.68,
-                                                    height: UIScreen.main.bounds.width * 0.92
-                                                )
-                                            }
-                                        }
-                                        .padding(.horizontal, Theme.screenPadding)
-                                        .padding(.vertical, Theme.Spacing.small)
-                                    }
-                                    .scrollIndicators(.hidden)
-                                } else if feedVM.isLoading {
-                                    // Skeleton shimmer while loading
-                                    ScrollView(.horizontal) {
-                                        HStack(spacing: Theme.Spacing.card) {
-                                            ForEach(0..<4, id: \.self) { _ in
-                                                RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                                                    .fill(Theme.inkTertiary.opacity(0.08))
-                                                    .frame(
-                                                        width: UIScreen.main.bounds.width * 0.68,
-                                                        height: UIScreen.main.bounds.width * 0.92
-                                                    )
-                                                    .shimmerPlaceholder(isLoading: true)
-                                            }
-                                        }
-                                        .padding(.horizontal, Theme.screenPadding)
-                                    }
-                                    .scrollIndicators(.hidden)
-                                }
-                            }
-                            .id(HomeSectionID.news.rawValue)
-
-                            // ── Section 6b: Dalal Street Consensus ───────────────
-                            DalalStreetConsensusCard(viewModel: consensusVM) { ticker in
-                                // Navigate to analysis for this ticker using the same
-                                // pattern as watchlist/earnings NavigationLink(value:)
-                                navigationPath.append(ticker)
+                                .foregroundStyle(Theme.inkPrimary)
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Theme.canvasDeep)
+                                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+                                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(Theme.borderSage, lineWidth: 1))
                             }
                             .padding(.horizontal, Theme.screenPadding)
-                            .padding(.top, Theme.sectionSpacing)
-
-                            // ── Section 6c: YOUTUBE FEED ─────────────────────────
-                            if let feed = feedVM.feed, !feed.youtubeVideos.isEmpty {
-                                let videos = Array(feed.youtubeVideos.prefix(15))
-
-                                VStack(alignment: .leading, spacing: 0) {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("विशेषज्ञ विश्लेषण")
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                        Text("EXPERT VIDEOS")
-                                            .font(.caption.weight(.semibold)).monospaced()
-                                            .tracking(2.0)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .padding(.bottom, Theme.Spacing.standard)
-                                    .padding(.horizontal, Theme.screenPadding)
-
-                                    GuillocheDivider()
-                                        .padding(.horizontal, Theme.screenPadding)
-                                        .padding(.bottom, Theme.Spacing.standard)
-
-                                    ScrollView(.horizontal) {
-                                        HStack(alignment: .top, spacing: Theme.Spacing.card) {
-                                            ForEach(videos) { video in
-                                                YouTubeCompactCard(video: video) { ticker in
-                                                    navigationPath.append(ticker)
-                                                }
-                                                .frame(width: UIScreen.main.bounds.width * 0.62)
-                                            }
-                                        }
-                                        .padding(.horizontal, Theme.screenPadding)
-                                    }
-                                    .scrollIndicators(.hidden)
-                                }
-                                .id(HomeSectionID.youtube.rawValue)
-                            }
-
-                            // ── Section 7: Upcoming Results ───────────────────
-                            VStack(spacing: Theme.Spacing.standard) {
-                                SectionHeader(title: "This Week's Results", hindiTitle: "आगामी परिणाम")
-                                let upcoming = viewModel.earningsEvents.filter { $0.daysAway >= 0 && $0.daysAway <= 14 }
-                                if !upcoming.isEmpty {
-                                    VStack(spacing: Theme.Spacing.medium) {
-                                        ForEach(upcoming) { event in
-                                            NavigationLink(value: event.ticker) {
-                                                HStack {
-                                                    Text(event.ticker)
-                                                        .font(Theme.serialNumberFont(size: 13))
-                                                        .foregroundStyle(Theme.inkPrimary)
-                                                    Spacer()
-                                                    Text(event.daysAway == 0 ? "Today" : "In \(event.daysAway) days")
-                                                        .font(Theme.officialStampFont(size: 9))
-                                                        .foregroundStyle(event.daysAway <= 3 ? Theme.holdAmber : Theme.inkSecondary)
-                                                    Text("· \(event.earningsDate)")
-                                                        .font(Theme.serialNumberFont(size: 10))
-                                                        .foregroundStyle(Theme.inkTertiary)
-                                                    Image(systemName: "chevron.right")
-                                                        .font(.caption2)
-                                                        .foregroundStyle(Theme.inkTertiary)
-                                                }
-                                                .padding(.horizontal, Theme.screenPadding)
-                                            }
-                                            .buttonStyle(.plain)
-                                            .ekPressHaptic()
-                                        }
-                                    }
-                                } else {
-                                    DashboardLoadingCard(label: "Upcoming Results", isLoading: viewModel.isLoading)
-                                }
-                            }
-                            .id(HomeSectionID.earnings.rawValue)
-
-                            // ── Section 8: Market Pulse ───────────────────────
-                            DashboardSection(id: HomeSectionID.marketPulse.rawValue, title: "Market Pulse", hindi: "बाजार की नब्ज", icon: "waveform.path.ecg") {
-                                if let pulse = viewModel.dashboard?.pulse {
-                                    MarketPulseDashCard(pulse: pulse)
-                                } else {
-                                    DashboardLoadingCard(label: "Market Pulse", isLoading: viewModel.dashboardLoading)
-                                }
-                            }
-
-                            // ── Section 9: Momentum ───────────────────────────
-                            DashboardSection(id: HomeSectionID.momentum.rawValue, title: "Momentum Scan", hindi: "गति विश्लेषण", icon: "arrow.up.right.circle.fill") {
-                                if let momentum = viewModel.dashboard?.momentum {
-                                    MomentumDashCard(momentum: momentum)
-                                } else {
-                                    DashboardLoadingCard(label: "Momentum Scan", isLoading: viewModel.dashboardLoading)
-                                }
-                            }
-
-                            // ── Section 10: Macro & Alternatives ─────────────
-                            DashboardSection(id: HomeSectionID.macroAlt.rawValue, title: "Macro & Alternatives", hindi: "वृहद अर्थव्यवस्था", icon: "globe.asia.australia.fill") {
-                                if let macro = viewModel.dashboard?.macro {
-                                    MacroDashCard(macro: macro)
-                                } else {
-                                    DashboardLoadingCard(label: "Macro Data", isLoading: viewModel.dashboardLoading)
-                                }
-                            }
-
-                            // ── Section 11: Institutional Flow ───────────────
-                            DashboardSection(id: HomeSectionID.institutional.rawValue, title: "Institutional Allocation", hindi: "संस्थागत प्रवाह", icon: "building.columns.fill") {
-                                if let inst = viewModel.dashboard?.institutional {
-                                    InstitutionalDashCard(flow: inst)
-                                } else {
-                                    DashboardLoadingCard(label: "Institutional Flow", isLoading: viewModel.dashboardLoading)
-                                }
-                            }
 
                             Spacer(minLength: 100)
                         }
@@ -988,7 +668,7 @@ struct HomeScreen: View {
                         HapticManager.impact(.medium)
                         if let user = authManager.currentUser {
                             await viewModel.fetchData(userId: user.userId)
-                            viewModel.fetchIndices()
+                            await viewModel.fetchIndices()
                             viewModel.fetchSectors()
                             feedVM.fetch(userId: user.userId, forceRefresh: true)
                         }
@@ -1010,26 +690,51 @@ struct HomeScreen: View {
                 AnalysisScreen(ticker: ticker)
             }
         }
-        .onAppear {
-            if let user = authManager.currentUser, viewModel.stockCount == 0 && !viewModel.isLoading {
-                Task { await viewModel.fetchData(userId: user.userId) }
+
+        .sheet(isPresented: $showingEditLayout) {
+            HomeLayoutEditorSheet(activeOrder: activeSectionOrder) { newOrder in
+                if let data = try? JSONEncoder().encode(newOrder) {
+                    sectionOrderData = data
+                }
             }
-            viewModel.fetchIndices()
+        }
+        .task {
+            // 1. Indices — awaited first so loading state resolves before render
+            await viewModel.fetchIndices()
+
+            // 2. Non-blocking background fetches
             viewModel.fetchSectors()
             viewModel.fetchEarnings()
             viewModel.fetchDashboard()
             viewModel.startIndicesTimer()
+
+            // 3. User-dependent fetches — guard on currentUser
             if let user = authManager.currentUser {
+                if viewModel.stockCount == 0 && !viewModel.isLoading {
+                    await viewModel.fetchData(userId: user.userId)
+                }
                 consensusVM.fetch(userId: user.userId)
                 feedVM.fetch(userId: user.userId)
-                Task {
-                    if let resp = try? await NetworkManager.shared.fetchTimeframeConflicts(userId: user.userId) {
-                        timeframeConflicts = resp.conflicts
-                    }
+                if let resp = try? await NetworkManager.shared.fetchTimeframeConflicts(userId: user.userId) {
+                    timeframeConflicts = resp.conflicts
                 }
-                Task {
-                    dailyAction = await NetworkManager.shared.fetchDailyAction(userId: user.userId)
+                dailyAction = await NetworkManager.shared.fetchDailyAction(userId: user.userId)
+            }
+        }
+        // Late-auth guard: if token restores from keychain AFTER the view appears,
+        // retry all user-dependent fetches that would have been skipped.
+        .onChange(of: authManager.currentUser?.userId) { uid in
+            guard let uid = uid else { return }
+            if viewModel.stockCount == 0 && !viewModel.isLoading {
+                Task { await viewModel.fetchData(userId: uid) }
+            }
+            consensusVM.fetch(userId: uid)
+            feedVM.fetch(userId: uid)
+            Task {
+                if let resp = try? await NetworkManager.shared.fetchTimeframeConflicts(userId: uid) {
+                    timeframeConflicts = resp.conflicts
                 }
+                dailyAction = await NetworkManager.shared.fetchDailyAction(userId: uid)
             }
         }
         .onDisappear {
@@ -2199,6 +1904,29 @@ struct CompactNewsCell: View {
         .sheet(isPresented: $showDetail) {
             NewsDetailSheet(article: article, onTickerTap: onTickerTap)
         }
+        // Item 20: Long-press context menu — Save to Reading List
+        .contextMenu {
+            if let url = URL(string: article.articleUrl) {
+                Button {
+                    try? SSReadingList.default()?.addItem(
+                        with: url,
+                        title: article.headline,
+                        previewText: article.summary
+                    )
+                    HapticManager.success()
+                } label: {
+                    Label("Save to Reading List", systemImage: "bookmark")
+                }
+            }
+            if let url = URL(string: article.articleUrl) {
+                Button {
+                    UIPasteboard.general.string = url.absoluteString
+                    HapticManager.selection()
+                } label: {
+                    Label("Copy Link", systemImage: "link")
+                }
+            }
+        }
     }
 
     private var newsFallbackImage: some View {
@@ -2513,5 +2241,477 @@ private struct InstitutionalDashCard: View {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Theme.borderFine, lineWidth: 0.5)
         )
+    }
+}
+
+// MARK: - HomeScreen renderSection
+extension HomeScreen {
+    @ViewBuilder
+    func renderSection(id: HomeSectionID) -> some View {
+        switch id {
+        case .top:
+// ── Section 1: Header + Daily Action ─────────────
+                Group {
+                    if let user = authManager.currentUser {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("भारतीय वित्तीय विश्लेषण")
+                                    .font(Theme.hindiFont(size: 11))
+                                    .foregroundStyle(Theme.inkSecondary)
+                                Text("RESERVE BANK OF INTELLIGENCE")
+                                    .font(Theme.officialStampFont(size: 9))
+                                    .foregroundStyle(Theme.inkPrimary)
+                            }
+                            Spacer()
+                            NavigationLink(destination: SettingsScreen()) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Theme.securityGold.opacity(0.15))
+                                        .frame(width: 40, height: 40)
+                                    Text(String(user.displayName.prefix(1)).uppercased())
+                                        .font(.headline.weight(.bold))
+                                        .foregroundStyle(Theme.securityGold)
+                                }
+                                .overlay(Circle().stroke(Theme.securityGold.opacity(0.4), lineWidth: 1))
+                            }
+                        }
+                        .padding(.horizontal, Theme.screenPadding)
+                        .padding(.top, Theme.Spacing.standard)
+                    }
+                    
+                    // NEW: Horizontal Quick Nav Bar
+                    ScrollView(.horizontal) {
+                        HStack(spacing: Theme.Spacing.medium) {
+                            ForEach(HomeSectionID.allCases) { section in
+                                if section != .top {
+                                    Button(action: {
+                                        HapticManager.selection()
+                                        scrollTarget = section.rawValue
+                                    }) {
+                                        HStack(spacing: Theme.Spacing.small) {
+                                            Image(systemName: section.icon)
+                                                .font(.caption2)
+                                            Text(section.title.uppercased())
+                                                .font(Theme.officialStampFont(size: 9))
+                                        }
+                                        .foregroundStyle(Theme.inkPrimary)
+                                        .padding(.horizontal, Theme.Spacing.standard)
+                                        .padding(.vertical, Theme.Spacing.medium)
+                                        .background(Theme.securityGold.opacity(0.12))
+                                        .cornerRadius(Theme.CornerRadius.card)
+                                        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
+                                    }
+                                    .buttonStyle(EKPressStyle())
+                                }
+                            }
+                        }
+                        .padding(.horizontal, Theme.screenPadding)
+                        .padding(.bottom, Theme.Spacing.small)
+                    }
+                    .scrollIndicators(.hidden)
+
+                    if let action = dailyAction {
+                        DailyActionCard(response: action)
+                            .padding(.horizontal, Theme.screenPadding)
+                    }
+                }
+                .id(HomeSectionID.top.rawValue)
+        case .portfolio:
+// ── Section 2: Portfolio ──────────────────────────
+                PortfolioNoteCard(
+                    value: viewModel.portfolioValue,
+                    totalPnL: viewModel.totalPnL,
+                    invested: viewModel.investedValue,
+                    todayPnL: viewModel.todayPnL,
+                    count: viewModel.stockCount,
+                    isLoading: viewModel.isLoading
+                )
+                .padding(.horizontal, Theme.screenPadding)
+                .id(HomeSectionID.portfolio.rawValue)
+        case .indices:
+// ── Section 3: Market Indices ─────────────────────
+                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                    HStack(alignment: .center, spacing: Theme.Spacing.medium) {
+                        SectionHeader(title: "Market Indices", hindiTitle: "बाजार सूचकांक")
+                        if viewModel.indicesFetchFailed {
+                            Text("DELAYED")
+                                .font(Theme.officialStampFont(size: 8))
+                                .foregroundStyle(Theme.bearRed)
+                                .padding(.horizontal, Theme.Spacing.tight)
+                                .padding(.vertical, Theme.Spacing.xSmall)
+                                .overlay(RoundedRectangle(cornerRadius: 3).stroke(Theme.bearRed, lineWidth: 0.5))
+                        }
+                    }
+                    ScrollView(.horizontal) {
+                        HStack(spacing: Theme.Spacing.standard) {
+                            ForEach(viewModel.indices) { index in
+                                let valueStr: String = {
+                                    if index.ticker == "USDINR=X" {
+                                        return String(format: "%.2f", index.value)
+                                    } else {
+                                        return IndianFormatter.price(index.value)
+                                    }
+                                }()
+                                let changeStr = (index.changePct >= 0 ? "+" : "") + String(format: "%.2f%%", index.changePct)
+                                IndexChip(
+                                    name: index.name,
+                                    value: valueStr,
+                                    change: changeStr,
+                                    isPositive: index.changePct >= 0
+                                )
+                                .shimmerPlaceholder(isLoading: viewModel.indicesLoading)
+                            }
+                            if viewModel.indices.isEmpty && viewModel.indicesLoading {
+                                ForEach(0..<4, id: \.self) { _ in
+                                    IndexChip(name: "——", value: "——", change: "——", isPositive: true)
+                                        .shimmerPlaceholder(isLoading: true)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, Theme.screenPadding)
+                    }
+                    .scrollIndicators(.hidden)
+                }
+                .id(HomeSectionID.indices.rawValue)
+        case .watchlist:
+// ── Section 4: Watchlist ──────────────────────────
+                VStack(spacing: Theme.Spacing.card) {
+                    SectionHeader(title: "Watchlist", hindiTitle: "बाज़ार की निगरानी", actionLabel: "SEE ALL →") {
+                        // Switch to Portfolio tab (tab 4) to show full holdings
+                        HapticManager.selection()
+                        NotificationCenter.default.post(
+                            name: Notification.Name("switchToTab"),
+                            object: nil,
+                            userInfo: ["tab": 4]
+                        )
+                    }
+                    if viewModel.watchlist.isEmpty && !viewModel.isLoading {
+                        Text("Add stocks to your watchlist to see them here")
+                            .font(Theme.serialNumberFont(size: 13))
+                            .foregroundStyle(Theme.inkTertiary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, Theme.screenPadding)
+                            .padding(.vertical, Theme.Spacing.screen)
+                    } else {
+                        VStack(spacing: Theme.Spacing.standard) {
+                            ForEach(viewModel.watchlist) { stock in
+                                NavigationLink(value: stock.ticker) {
+                                    StockRow(stock: stock)
+                                }
+                                .ekPressHaptic()
+                            }
+                        }
+                        .padding(.horizontal, Theme.screenPadding)
+                    }
+                }
+                .id(HomeSectionID.watchlist.rawValue)
+
+                // Timeframe Conflicts Banner (between watchlist + sectors)
+                if !timeframeConflicts.isEmpty {
+                    TimeframeConflictsBanner(conflicts: timeframeConflicts)
+                }
+        case .sectors:
+// ── Section 5: Sector Pulse ───────────────────────
+                VStack(spacing: Theme.Spacing.standard) {
+                    SectionHeader(title: "Sector Pulse", hindiTitle: "क्षेत्र प्रदर्शन")
+                    if !viewModel.sectorData.isEmpty {
+                        SectorHeatmapView(sectors: viewModel.sectorData)
+                            .padding(.horizontal, Theme.screenPadding)
+                    } else {
+                        DashboardLoadingCard(label: "Sector Pulse", isLoading: viewModel.isLoading)
+                    }
+                }
+                .id(HomeSectionID.sectors.rawValue)
+        case .morning:
+// ── Section 6: Morning Brief ──────────────────────
+                VStack(spacing: Theme.Spacing.card) {
+                    SectionHeader(title: "Morning Brief", hindiTitle: "प्रातःकालीन सारांश")
+                    if let briefData = viewModel.morningBriefData {
+                        MorningDecreeCard(briefData: briefData)
+                            .padding(.horizontal, Theme.screenPadding)
+                    } else {
+                        DashboardLoadingCard(label: "Morning Brief", isLoading: viewModel.isLoading)
+                    }
+                }
+                .id(HomeSectionID.morning.rawValue)
+        case .news:
+// ── Section 6a: NEWS FEED ─────────────────────────
+                VStack(alignment: .leading, spacing: 0) {
+                    // Section header (bilingual, matches existing pattern)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("ताज़ा समाचार")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text("MARKET NEWS")
+                            .font(.caption.weight(.semibold)).monospaced()
+                            .tracking(2.0)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.bottom, Theme.Spacing.standard)
+                    .padding(.horizontal, Theme.screenPadding)
+
+                    GuillocheDivider()
+                        .padding(.horizontal, Theme.screenPadding)
+                        .padding(.bottom, Theme.Spacing.standard)
+
+                    if let feed = feedVM.feed {
+                        // Horizontal scrolling news strip — all news in one scroll
+                        ScrollView(.horizontal) {
+                            HStack(alignment: .top, spacing: Theme.Spacing.card) {
+                                ForEach(Array((feed.news + feed.redFlagAlerts).prefix(50).enumerated()), id: \.element.id) { idx, article in
+                                    CompactNewsCell(article: article) { ticker in
+                                        navigationPath.append(ticker)
+                                    }
+                                    .frame(
+                                        width: UIScreen.main.bounds.width * 0.75,
+                                        height: 280
+                                    )
+                                }
+                            }
+                            .padding(.horizontal, Theme.screenPadding)
+                            .padding(.vertical, Theme.Spacing.small)
+                        }
+                        .scrollIndicators(.hidden)
+                    } else if feedVM.isLoading {
+                        // Skeleton shimmer while loading
+                        ScrollView(.horizontal) {
+                            HStack(spacing: Theme.Spacing.card) {
+                                ForEach(0..<4, id: \.self) { _ in
+                                    RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                                        .fill(Theme.inkTertiary.opacity(0.08))
+                                        .frame(
+                                            width: UIScreen.main.bounds.width * 0.68,
+                                            height: UIScreen.main.bounds.width * 0.92
+                                        )
+                                        .shimmerPlaceholder(isLoading: true)
+                                }
+                            }
+                            .padding(.horizontal, Theme.screenPadding)
+                        }
+                        .scrollIndicators(.hidden)
+                    }
+                }
+                .id(HomeSectionID.news.rawValue)
+        case .youtube:
+// ── Section 6c: YOUTUBE FEED ─────────────────────────
+                 if let feed = feedVM.feed, !feed.youtubeVideos.isEmpty {
+                    let allVideos = Array(feed.youtubeVideos.prefix(15))
+                    // Unique channel names for filter chips
+                    let channelNames: [String] = Array(
+                        NSOrderedSet(array: allVideos.map { $0.channelName })
+                        .array as? [String] ?? []
+                    )
+                    // Apply channel filter
+                    let videos: [YouTubeVideoItem] = {
+                        if let ch = selectedChannel {
+                            return allVideos.filter { $0.channelName == ch }
+                        }
+                        return allVideos
+                    }()
+
+                    VStack(alignment: .leading, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("विशेषज्ञ विश्लेषण")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Text("EXPERT VIDEOS")
+                                .font(.caption.weight(.semibold)).monospaced()
+                                .tracking(2.0)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.bottom, Theme.Spacing.standard)
+                        .padding(.horizontal, Theme.screenPadding)
+
+                        GuillocheDivider()
+                            .padding(.horizontal, Theme.screenPadding)
+                            .padding(.bottom, Theme.Spacing.standard)
+
+                        // ── Channel filter chip bar ───────────────
+                        if channelNames.count > 1 {
+                            ScrollView(.horizontal) {
+                                HStack(spacing: Theme.Spacing.medium) {
+                                    // "All" chip
+                                    Button {
+                                        HapticManager.selection()
+                                        selectedChannel = nil
+                                    } label: {
+                                        Text("ALL")
+                                            .font(Theme.officialStampFont(size: 9))
+                                            .tracking(1.0)
+                                            .foregroundStyle(selectedChannel == nil ? Theme.canvas : Theme.inkTertiary)
+                                            .padding(.horizontal, Theme.Spacing.standard)
+                                            .padding(.vertical, Theme.Spacing.medium)
+                                            .background(selectedChannel == nil ? Theme.securityGold : Theme.inkTertiary.opacity(0.12))
+                                            .clipShape(Capsule())
+                                            .overlay(Capsule().stroke(selectedChannel == nil ? Theme.securityGold : Theme.inkTertiary.opacity(0.3), lineWidth: 0.5))
+                                    }
+                                    .buttonStyle(EKPressStyle())
+
+                                    ForEach(channelNames, id: \.self) { channel in
+                                        Button {
+                                            HapticManager.selection()
+                                            selectedChannel = channel
+                                        } label: {
+                                            Text(channel.uppercased())
+                                                .font(Theme.officialStampFont(size: 9))
+                                                .tracking(1.0)
+                                                .foregroundStyle(selectedChannel == channel ? Theme.canvas : Theme.inkTertiary)
+                                                .padding(.horizontal, Theme.Spacing.standard)
+                                                .padding(.vertical, Theme.Spacing.medium)
+                                                .background(selectedChannel == channel ? Theme.securityGold : Theme.inkTertiary.opacity(0.12))
+                                                .clipShape(Capsule())
+                                                .overlay(Capsule().stroke(selectedChannel == channel ? Theme.securityGold : Theme.inkTertiary.opacity(0.3), lineWidth: 0.5))
+                                        }
+                                        .buttonStyle(EKPressStyle())
+                                    }
+                                }
+                                .padding(.horizontal, Theme.screenPadding)
+                                .padding(.bottom, Theme.Spacing.medium)
+                            }
+                            .scrollIndicators(.hidden)
+                        }
+
+                        ScrollView(.horizontal) {
+                            HStack(alignment: .top, spacing: Theme.Spacing.card) {
+                                ForEach(videos) { video in
+                                    YouTubeCompactCard(video: video) { ticker in
+                                        navigationPath.append(ticker)
+                                    }
+                                    .frame(width: UIScreen.main.bounds.width * 0.62)
+                                }
+                            }
+                            .padding(.horizontal, Theme.screenPadding)
+                        }
+                        .scrollIndicators(.hidden)
+                    }
+                    .id(HomeSectionID.youtube.rawValue)
+                }
+        case .earnings:
+// ── Section 7: Upcoming Results ───────────────────
+                VStack(spacing: Theme.Spacing.standard) {
+                    SectionHeader(title: "This Week's Results", hindiTitle: "आगामी परिणाम")
+                    let upcoming = viewModel.earningsEvents.filter { $0.daysAway >= 0 && $0.daysAway <= 14 }
+                    if !upcoming.isEmpty {
+                        VStack(spacing: Theme.Spacing.medium) {
+                            ForEach(upcoming) { event in
+                                NavigationLink(value: event.ticker) {
+                                    HStack {
+                                        Text(event.ticker)
+                                            .font(Theme.serialNumberFont(size: 13))
+                                            .foregroundStyle(Theme.inkPrimary)
+                                        Spacer()
+                                        Text(event.daysAway == 0 ? "Today" : "In \(event.daysAway) days")
+                                            .font(Theme.officialStampFont(size: 9))
+                                            .foregroundStyle(event.daysAway <= 3 ? Theme.holdAmber : Theme.inkSecondary)
+                                        Text("· \(event.earningsDate)")
+                                            .font(Theme.serialNumberFont(size: 10))
+                                            .foregroundStyle(Theme.inkTertiary)
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption2)
+                                            .foregroundStyle(Theme.inkTertiary)
+                                    }
+                                    .padding(.horizontal, Theme.screenPadding)
+                                }
+                                .buttonStyle(.plain)
+                                .ekPressHaptic()
+                            }
+                        }
+                    } else {
+                        DashboardLoadingCard(label: "Upcoming Results", isLoading: viewModel.isLoading)
+                    }
+                }
+                .id(HomeSectionID.earnings.rawValue)
+        case .marketPulse:
+// ── Section 8: Market Pulse ───────────────────────
+                DashboardSection(id: HomeSectionID.marketPulse.rawValue, title: "Market Pulse", hindi: "बाजार की नब्ज", icon: "waveform.path.ecg") {
+                    if let pulse = viewModel.dashboard?.pulse {
+                        MarketPulseDashCard(pulse: pulse)
+                    } else {
+                        DashboardLoadingCard(label: "Market Pulse", isLoading: viewModel.dashboardLoading)
+                    }
+                }
+        case .momentum:
+// ── Section 9: Momentum ───────────────────────────
+                DashboardSection(id: HomeSectionID.momentum.rawValue, title: "Momentum Scan", hindi: "गति विश्लेषण", icon: "arrow.up.right.circle.fill") {
+                    if let momentum = viewModel.dashboard?.momentum {
+                        MomentumDashCard(momentum: momentum)
+                    } else {
+                        DashboardLoadingCard(label: "Momentum Scan", isLoading: viewModel.dashboardLoading)
+                    }
+                }
+        case .macroAlt:
+// ── Section 10: Macro & Alternatives ─────────────
+                DashboardSection(id: HomeSectionID.macroAlt.rawValue, title: "Macro & Alternatives", hindi: "वृहद अर्थव्यवस्था", icon: "globe.asia.australia.fill") {
+                    if let macro = viewModel.dashboard?.macro {
+                        MacroDashCard(macro: macro)
+                    } else {
+                        DashboardLoadingCard(label: "Macro Data", isLoading: viewModel.dashboardLoading)
+                    }
+                }
+        case .institutional:
+// ── Section 11: Institutional Flow ───────────────
+                DashboardSection(id: HomeSectionID.institutional.rawValue, title: "Institutional Allocation", hindi: "संस्थागत प्रवाह", icon: "building.columns.fill") {
+                    if let inst = viewModel.dashboard?.institutional {
+                        InstitutionalDashCard(flow: inst)
+                    } else {
+                        DashboardLoadingCard(label: "Institutional Flow", isLoading: viewModel.dashboardLoading)
+                    }
+                }
+        }
+    }
+}
+
+// MARK: - Home Layout Editor
+
+struct HomeLayoutEditorSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @State var currentOrder: [HomeSectionID]
+    var onSave: ([HomeSectionID]) -> Void
+    
+    init(activeOrder: [HomeSectionID], onSave: @escaping ([HomeSectionID]) -> Void) {
+        self._currentOrder = State(initialValue: activeOrder)
+        self.onSave = onSave
+    }
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(currentOrder) { section in
+                    HStack(spacing: Theme.Spacing.standard) {
+                        Image(systemName: section.icon)
+                            .foregroundStyle(Theme.securityGold)
+                            .frame(width: 24)
+                        Text(section.title)
+                            .font(Theme.engravedSerif(size: 16, weight: .medium))
+                            .foregroundStyle(Theme.inkPrimary)
+                        Spacer()
+                        Image(systemName: "line.3.horizontal")
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
+                    .listRowBackground(Theme.canvasDeep)
+                }
+                .onMove { indices, newOffset in
+                    currentOrder.move(fromOffsets: indices, toOffset: newOffset)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Theme.canvas)
+            .navigationTitle("Edit Layout")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(Theme.inkSecondary)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        onSave(currentOrder)
+                        dismiss()
+                    }
+                    .font(.headline)
+                    .foregroundStyle(Theme.securityGold)
+                }
+            }
+        }
     }
 }

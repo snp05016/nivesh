@@ -5,14 +5,16 @@ struct SettingsScreen: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var reportManager: LocalReportManager
 
-    @AppStorage("useBiometrics") private var useBiometrics = false
+    @AppStorage("biometricTimeout") private var biometricTimeoutRaw = "immediately"
     @AppStorage("darkMode") private var darkMode = false
     @AppStorage("pushNotifications") private var pushNotifications = true
+    @AppStorage("morningBriefTime") private var morningBriefTime: Double = 0 // storing seconds from midnight
     @AppStorage("defaultDeepScan") private var defaultDeepScan = false
     @AppStorage("dataRefreshRate") private var dataRefreshRate = "Real-time"
     @AppStorage("currencyDisplay") private var currencyDisplay = "Lakhs/Crores"
     @AppStorage("ipoAlerts") private var ipoAlerts = false
     @AppStorage("dev_welcome_notification") private var devWelcomeNotification = false
+    @AppStorage("notificationSound") private var notificationSound = "Default"
 
     @StateObject private var notificationManager = NotificationManager.shared
 
@@ -31,6 +33,23 @@ struct SettingsScreen: View {
     @State private var notifToastMessage: String? = nil
     @State private var notifPermissionStatus: String = "Not Asked"
     @State private var youtubeHarvestLoading = false
+
+    private var morningBriefDate: Binding<Date> {
+        Binding(
+            get: {
+                let calendar = Calendar.current
+                let startOfDay = calendar.startOfDay(for: Date())
+                return startOfDay.addingTimeInterval(morningBriefTime)
+            },
+            set: { newDate in
+                let calendar = Calendar.current
+                let components = calendar.dateComponents([.hour, .minute], from: newDate)
+                let hours = components.hour ?? 0
+                let minutes = components.minute ?? 0
+                morningBriefTime = Double(hours * 3600 + minutes * 60)
+            }
+        )
+    }
 
     var body: some View {
         NavigationStack {
@@ -82,8 +101,10 @@ struct SettingsScreen: View {
                         VStack(spacing: Theme.Spacing.large) {
                             SettingsNoteGroup(title: "App Preferences", hindi: "ऐप प्राथमिकताएं") {
                                 ToggleNoteRow(icon: "moon.fill", color: .indigo, title: "Dark Inks", isOn: $darkMode)
-                                ToggleNoteRow(icon: "faceid", color: Theme.bullGreen, title: "Security Threads (Face ID)", isOn: $useBiometrics)
+                                PickerNoteRow(icon: "faceid", color: Theme.bullGreen, title: "Security Threads (Face ID)", selection: $biometricTimeoutRaw, options: ["immediately", "1min", "5min", "15min", "never"])
                                 ToggleNoteRow(icon: "waveform.badge.magnifyingglass", color: Theme.securityGold, title: "Deep Scan by Default", isOn: $defaultDeepScan)
+                                DatePickerNoteRow(icon: "clock.fill", color: Theme.securityGold, title: "Morning Brief Time", selection: morningBriefDate)
+                                PickerNoteRow(icon: "bell.fill", color: Theme.bearRed, title: "Notification Sound", selection: $notificationSound, options: ["Default", "rupee_rustle.mp3"])
                             }
 
                             SettingsNoteGroup(title: "Data Registry", hindi: "डेटा रजिस्ट्री") {
@@ -636,6 +657,28 @@ private struct PickerNoteRow: View {
                 }
             }
             .tint(Theme.inkSecondary)
+        }
+        .padding(.vertical, Theme.Spacing.standard)
+        Divider().background(Theme.inkSecondary.opacity(0.05))
+    }
+}
+
+private struct DatePickerNoteRow: View {
+    let icon: String
+    let color: Color
+    let title: String
+    @Binding var selection: Date
+
+    var body: some View {
+        HStack {
+            SettingIcon(icon: icon, color: color)
+            Text(title.uppercased())
+                .font(Theme.officialStampFont(size: 9))
+                .foregroundStyle(Theme.inkPrimary)
+            Spacer()
+            DatePicker("", selection: $selection, displayedComponents: .hourAndMinute)
+                .labelsHidden()
+                .tint(Theme.securityGold)
         }
         .padding(.vertical, Theme.Spacing.standard)
         Divider().background(Theme.inkSecondary.opacity(0.05))

@@ -28,8 +28,7 @@ def login_endpoint(req: LoginRequest):
 def register_endpoint(req: RegisterRequest, request: Request):
     client_ip = request.client.host if request.client else "unknown"
     reg_key = f"reg_{client_ip}"
-    if not _check_rate_limit(reg_key):
-        raise HTTPException(status_code=429, detail="Too many registration attempts. Try again later.")
+    _check_rate_limit(reg_key, "/auth/register")
     with get_session() as session:
         existing = session.query(User).filter_by(username=req.username.lower()).first()
         if existing:

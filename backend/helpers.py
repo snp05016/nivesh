@@ -99,19 +99,55 @@ TOKEN_LOG_PATH = os.path.join(os.path.dirname(__file__), "token_log.jsonl")
 # ---------------------------------------------------------------------------
 # Rate Limiter
 # ---------------------------------------------------------------------------
-_rate_limit_store: dict[str, list[float]] = defaultdict(list)
-_rate_limit_lock = threading.Lock()
-_RATE_LIMIT_WINDOW = 60
-_RATE_LIMIT_MAX = 120    # increased from 30 — earnings dashboard fires 15+ parallel requests per load
+from collections import defaultdict, deque
+import threading
+import time
+from fastapi import HTTPException
 
-def _check_rate_limit(client_ip: str) -> bool:
+# nested dict: store[client_id][endpoint] = deque()
+_rate_limit_store: dict[str, dict[str, deque[float]]] = defaultdict(lambda: defaultdict(deque))
+_rate_limit_lock = threading.Lock()
+
+_RATE_LIMITS = {
+    "/analyze": {"window": 3600, "max_requests": 10},
+    "/market/quick-info": {"window": 60, "max_requests": 60},
+    "/auth/login": {"window": 60, "max_requests": 5},
+    "default": {"window": 60, "max_requests": 120}
+}
+
+def _check_rate_limit(client_id: str, endpoint: str = "default") -> bool:
+    """
+    Checks the sliding window rate limit for the given client_id and endpoint.
+    Limits: /analyze 10/hour, /market/quick-info 60/minute, /auth/login 5/minute.
+    Raises HTTPException 429 with Retry-After header if exceeded.
+    Returns True if allowed.
+    """
     now = time.time()
+    
+    matched_limit = _RATE_LIMITS["default"]
+    for prefix, limits in _RATE_LIMITS.items():
+        if prefix != "default" and endpoint.startswith(prefix):
+            matched_limit = limits
+            break
+
+    window = matched_limit["window"]
+    max_reqs = matched_limit["max_requests"]
+    
     with _rate_limit_lock:
-        timestamps = _rate_limit_store[client_ip]
-        _rate_limit_store[client_ip] = [t for t in timestamps if now - t < _RATE_LIMIT_WINDOW]
-        if len(_rate_limit_store[client_ip]) >= _RATE_LIMIT_MAX:
-            return False
-        _rate_limit_store[client_ip].append(now)
+        dq = _rate_limit_store[client_id][endpoint]
+        
+        while dq and now - dq[0] > window:
+            dq.popleft()
+            
+        if len(dq) >= max_reqs:
+            retry_after = int(window - (now - dq[0]))
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. Try again later.",
+                headers={"Retry-After": str(max(1, retry_after))}
+            )
+            
+        dq.append(now)
         return True
 
 # ---------------------------------------------------------------------------
@@ -287,11 +323,54 @@ def _yf_price(ticker_sym: str) -> tuple[float | None, float | None]:
         current, prev = _fetch(ns_sym)
     return current, prev
 
+_ticker_resolution_cache: dict[str, str] = {}
+_ticker_resolution_lock = threading.Lock()
+
+def _resolve_with_fallback(base_ticker: str, preferred_suffix: str) -> str:
+    cache_key = f"{base_ticker}{preferred_suffix}"
+    with _ticker_resolution_lock:
+        if cache_key in _ticker_resolution_cache:
+            return _ticker_resolution_cache[cache_key]
+
+    t1 = f"{base_ticker}{preferred_suffix}"
+    fallback_suffix = ".BO" if preferred_suffix == ".NS" else ".NS"
+    t2 = f"{base_ticker}{fallback_suffix}"
+    
+    # Try preferred first
+    try:
+        fast = yf.Ticker(t1).fast_info
+        if getattr(fast, "last_price", None) is not None:
+            with _ticker_resolution_lock:
+                _ticker_resolution_cache[cache_key] = t1
+            return t1
+    except Exception:
+        pass
+        
+    # Try fallback
+    try:
+        fast = yf.Ticker(t2).fast_info
+        if getattr(fast, "last_price", None) is not None:
+            with _ticker_resolution_lock:
+                _ticker_resolution_cache[cache_key] = t2
+            return t2
+    except Exception:
+        pass
+        
+    with _ticker_resolution_lock:
+        _ticker_resolution_cache[cache_key] = t1
+    return t1
+
 def _to_ns(ticker: str) -> str:
     t = ticker.upper()
     if "." in t:
         return t
-    return NSE_TICKERS.get(t, f"{t}.NS")
+    
+    # Check manual overrides first
+    if t in NSE_TICKER_OVERRIDES:
+        return NSE_TICKER_OVERRIDES[t]
+        
+    base_t = t
+    return _resolve_with_fallback(base_t, ".NS")
 
 def _resolve_ticker(ticker: str, exchange: str) -> str:
     suffix = EXCHANGE_SUFFIX[exchange]
@@ -305,7 +384,8 @@ def _resolve_ticker(ticker: str, exchange: str) -> str:
     if t == "GIFT" or t == "JITFINFRA": return "JITFINFRA.NS"
     if t == "GAUDIUM" or t == "GAUDIUMIVF": return "GAUDIUMIVF.NS"
     if t in NSE_TICKER_OVERRIDES: return NSE_TICKER_OVERRIDES[t]
-    return NSE_TICKERS.get(t, f"{t}{suffix}")
+    
+    return _resolve_with_fallback(t, suffix)
 
 def _extract_json_from_text(text: str) -> str:
     if "```json" in text:

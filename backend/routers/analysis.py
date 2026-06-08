@@ -102,6 +102,31 @@ def _yf_circuit_record_success():
     global _yf_circuit_failures
     _yf_circuit_failures = 0
 
+# ── Item 47: Batch Analysis ───────────────────────────────────────────
+@router.post("/batch")
+def batch_analysis(req: BatchAnalyzeRequest):
+    if len(req.tickers) > 20:
+        raise HTTPException(status_code=400, detail="Max 20 tickers allowed per batch")
+    
+    results = []
+    with get_session() as db:
+        for ticker in req.tickers:
+            # Query the latest AnalysisHistory for this ticker
+            db_analysis = (db.query(AnalysisHistory)
+                           .filter(AnalysisHistory.ticker == ticker, AnalysisHistory.user_id == req.user_id)
+                           .order_by(AnalysisHistory.analysis_date.desc())
+                           .first())
+            if db_analysis and db_analysis.full_json:
+                try:
+                    data = json.loads(db_analysis.full_json)
+                    results.append({"ticker": ticker, "status": "cached", "data": data})
+                except Exception:
+                    results.append({"ticker": ticker, "status": "not_cached"})
+            else:
+                results.append({"ticker": ticker, "status": "not_cached"})
+                
+    return {"results": results}
+
 # ---------------------------------------------------------------------------
 # NSE session + ASM/GSM helpers
 # ---------------------------------------------------------------------------
@@ -201,22 +226,10 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
             raise HTTPException(status_code=400, detail=f"Unsupported exchange: {exchange}")
 
         cache_key = f"{ticker.upper()}_{exchange.upper()}"
-        _now = _time.time()
-        with _quick_info_lock:
-            if cache_key in _quick_info_cache:
-                expiry, cached_data = _quick_info_cache[cache_key]
-                l1_hit = _now < expiry
-            else:
-                l1_hit = False
-        if l1_hit:
-            print(f"[QUICK-INFO L1 HIT] {cache_key}")
-            return cached_data
         from services.disk_cache import get as _dcache_get, set as _dcache_set
-        _disk_hit = _dcache_get("yfinance", f"quick_info_{cache_key}")
+        _disk_hit = _dcache_get("quick-info", cache_key)
         if _disk_hit:
-            print(f"[QUICK-INFO L2 DISK HIT] {cache_key}")
-            with _quick_info_lock:
-                _quick_info_cache[cache_key] = (_time.time() + _QUICK_INFO_TTL, _disk_hit)
+            print(f"[QUICK-INFO CACHE HIT] {cache_key}")
             return _disk_hit
 
         full_ticker = _resolve_ticker(ticker, exchange)
@@ -374,9 +387,7 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
             "dividends": dividends,
             "corporate_actions": corporate_actions,
         }
-        with _quick_info_lock:
-            _quick_info_cache[cache_key] = (_time.time() + _QUICK_INFO_TTL, result)
-        _dcache_set("yfinance", f"quick_info_{cache_key}", result)
+        _dcache_set("quick-info", cache_key, result)
         return result
     except HTTPException:
         raise

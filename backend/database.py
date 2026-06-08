@@ -463,6 +463,31 @@ def log_earnings_error(module: str, error_trace: str, failed_ticker: str | None 
         pass  # telemetry must never cascade
 
 
+class BlockDeal(Base):
+    __tablename__ = "block_deals"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(String(20), nullable=False, index=True)
+    ticker = Column(String(30), nullable=False, index=True)
+    client_name = Column(String(200), nullable=False)
+    deal_type = Column(String(20), nullable=False) # "BUY" or "SELL"
+    quantity = Column(Integer, nullable=False)
+    price = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class FIIDIIFlow(Base):
+    __tablename__ = "fii_dii_flow"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(String(20), nullable=False, unique=True, index=True)
+    fii_buy = Column(Float, nullable=False)
+    fii_sell = Column(Float, nullable=False)
+    fii_net = Column(Float, nullable=False)
+    dii_buy = Column(Float, nullable=False)
+    dii_sell = Column(Float, nullable=False)
+    dii_net = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 # ─────────────────────────────────────────────────────────────────────────────
 # TABLE: notification_error_logs
 # Telemetry for push notification pipeline failures.

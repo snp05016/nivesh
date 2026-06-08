@@ -39,6 +39,21 @@ RSS_FEEDS = [
         "url": "https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms",
         "category": "stocks",
     },
+    {
+        "source": "business_standard",
+        "url": "https://www.business-standard.com/rss/markets-106.rss",
+        "category": "market",
+    },
+    {
+        "source": "livemint",
+        "url": "https://www.livemint.com/rss/markets",
+        "category": "market",
+    },
+    {
+        "source": "ndtv_profit",
+        "url": "https://feeds.feedburner.com/ndtvprofit-latest",
+        "category": "market",
+    },
 ]
 
 # Keywords that mark an article as a red flag

@@ -145,3 +145,48 @@ async def backfill_existing_articles():
 
     logger.info(f"Backfill complete. {updated} articles scored.")
     return updated
+
+def get_sentiment_trend(ticker: str, days: int = 30):
+    from database import get_session, NewsArticle
+    from datetime import datetime, timedelta
+    from sqlalchemy import and_, or_, func, cast, Date
+
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    
+    with get_session() as db:
+        # SQLite datetime casting workaround: substr(published_at, 1, 10)
+        date_expr = func.substr(NewsArticle.published_at, 1, 10)
+        
+        results = db.query(
+            date_expr.label('date_str'),
+            func.avg(NewsArticle.sentiment_score).label('avg_score'),
+            func.count(NewsArticle.id).label('article_count')
+        ).filter(
+            NewsArticle.published_at >= cutoff.isoformat(),
+            or_(
+                NewsArticle.related_tickers.like(f"%{ticker}%"),
+                NewsArticle.headline.like(f"%{ticker}%")
+            )
+        ).group_by(
+            date_expr
+        ).order_by(
+            date_expr
+        ).all()
+        
+        trend = []
+        for r in results:
+            avg_score = float(r.avg_score) if r.avg_score else 0.0
+            label = 'Neutral'
+            if avg_score > 0.1:
+                label = 'Positive'
+            elif avg_score < -0.1:
+                label = 'Negative'
+                
+            trend.append({
+                "date": r.date_str,
+                "avg_score": round(avg_score, 4),
+                "article_count": r.article_count,
+                "label": label
+            })
+            
+        return trend

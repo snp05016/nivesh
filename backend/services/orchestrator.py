@@ -722,6 +722,15 @@ def _normalize_response(result: dict) -> dict:
 # Main Analysis Orchestrator
 # ═════════════════════════════════════════════════════════════════════════════
 
+def _inject_piotroski(result: dict, ticker: str):
+    try:
+        from services.piotroski import compute_piotroski
+        pio = compute_piotroski(ticker.upper())
+        result["piotroski_score"] = pio.get("f_score")
+        result["piotroski_flags"] = pio.get("checks", {})
+    except Exception:
+        result["piotroski_score"] = None
+        result["piotroski_flags"] = {}
 
 def analyze(
     ticker: str,
@@ -806,6 +815,7 @@ def analyze(
             ]
             cached_today["deep_scan_used"] = False
             cached_today["pkscreener_signals"] = None
+            _inject_piotroski(cached_today, ticker)
             return cached_today
 
         # 2. Fetch deep history for AI context
@@ -1098,4 +1108,5 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
     else:
         result["pkscreener_signals"] = None
 
+    _inject_piotroski(result, ticker)
     return result

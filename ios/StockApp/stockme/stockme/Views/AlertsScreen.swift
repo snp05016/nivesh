@@ -279,13 +279,30 @@ struct AddAlertSheet: View {
     @State private var direction = "above"
     @State private var isAdding = false
     @State private var errorText = ""
+    @State private var inputMode = "fixed" // "fixed" or "percentage"
+    @State private var percentageText = ""
+    @State private var currentPrice: Double? = nil
+    @State private var priceLoading = false
 
     var searchResults: [StockEntry] {
         searchText.isEmpty ? [] : StockDatabase.search(searchText)
     }
     // Fix 3.12: Disable Save if target price is invalid or zero
+    var calculatedTargetPrice: Double? {
+        if inputMode == "fixed" {
+            return Double(targetPriceText)
+        } else {
+            guard let pct = Double(percentageText), let current = currentPrice else { return nil }
+            if direction == "above" {
+                return current * (1 + pct / 100.0)
+            } else {
+                return current * (1 - pct / 100.0)
+            }
+        }
+    }
+
     var canAdd: Bool {
-        guard !selectedTicker.isEmpty, let target = Double(targetPriceText), target > 0 else { return false }
+        guard !selectedTicker.isEmpty, let target = calculatedTargetPrice, target > 0 else { return false }
         return true
     }
 
@@ -316,6 +333,12 @@ struct AddAlertSheet: View {
                                                 selectedTicker = entry.ticker
                                                 selectedCompany = entry.companyName
                                                 searchText = ""
+                                                priceLoading = true
+                                                Task {
+                                                    let info = await NetworkManager.shared.quickInfo(ticker: entry.ticker)
+                                                    currentPrice = info?.price
+                                                    priceLoading = false
+                                                }
                                             } label: {
                                                 HStack {
                                                     VStack(alignment: .leading, spacing: 2) {
@@ -339,9 +362,14 @@ struct AddAlertSheet: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(selectedTicker).font(Theme.engravedSerif(size: 16, weight: .bold)).foregroundStyle(Theme.inkPrimary)
                                     Text(selectedCompany).font(.caption).foregroundStyle(Theme.inkSecondary)
+                                    if priceLoading {
+                                        ProgressView().scaleEffect(0.5)
+                                    } else if let price = currentPrice {
+                                        Text("Current: ₹\(String(format: "%.2f", price))").font(Theme.serialNumberFont(size: 11)).foregroundStyle(Theme.inkTertiary)
+                                    }
                                 }
                                 Spacer()
-                                Button { selectedTicker = ""; selectedCompany = "" } label: {
+                                Button { selectedTicker = ""; selectedCompany = ""; currentPrice = nil } label: {
                                     Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.inkTertiary)
                                 }
                             }
@@ -374,17 +402,41 @@ struct AddAlertSheet: View {
                             .banknoteCard()
                         }
 
-                        // Target price
+                        // Input Mode Toggle
+                        Picker("Input Mode", selection: $inputMode) {
+                            Text("Fixed Price").tag("fixed")
+                            Text("Percentage").tag("percentage")
+                        }
+                        .pickerStyle(.segmented)
+
+                        // Target value
                         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                            Text("TARGET PRICE (₹)")
-                                .font(Theme.officialStampFont(size: 9))
-                                .foregroundStyle(Theme.inkSecondary)
-                            TextField("e.g. 72.00", text: $targetPriceText)
-                                .keyboardType(.decimalPad)
-                                .font(Theme.serialNumberFont(size: 18))
-                                .foregroundStyle(Theme.inkPrimary)
-                                .padding(Theme.Spacing.card)
-                                .banknoteCard()
+                            if inputMode == "fixed" {
+                                Text("TARGET PRICE (₹)")
+                                    .font(Theme.officialStampFont(size: 9))
+                                    .foregroundStyle(Theme.inkSecondary)
+                                TextField("e.g. 72.00", text: $targetPriceText)
+                                    .keyboardType(.decimalPad)
+                                    .font(Theme.serialNumberFont(size: 18))
+                                    .foregroundStyle(Theme.inkPrimary)
+                                    .padding(Theme.Spacing.card)
+                                    .banknoteCard()
+                            } else {
+                                Text("PERCENTAGE MOVE (%)")
+                                    .font(Theme.officialStampFont(size: 9))
+                                    .foregroundStyle(Theme.inkSecondary)
+                                TextField("e.g. 5 for 5%", text: $percentageText)
+                                    .keyboardType(.decimalPad)
+                                    .font(Theme.serialNumberFont(size: 18))
+                                    .foregroundStyle(Theme.inkPrimary)
+                                    .padding(Theme.Spacing.card)
+                                    .banknoteCard()
+                                if let target = calculatedTargetPrice {
+                                    Text("Implied target price: ₹\(String(format: "%.2f", target))")
+                                        .font(Theme.serialNumberFont(size: 11))
+                                        .foregroundStyle(Theme.securityGold)
+                                }
+                            }
                         }
 
                         if !errorText.isEmpty {
@@ -392,7 +444,7 @@ struct AddAlertSheet: View {
                         }
 
                         Button {
-                            guard let price = Double(targetPriceText), canAdd else { return }
+                            guard let price = calculatedTargetPrice, canAdd else { return }
                             isAdding = true
                             Task {
                                 if let user = authManager.currentUser {
@@ -434,6 +486,12 @@ struct AddAlertSheet: View {
             if !prefilledTicker.isEmpty {
                 selectedTicker = prefilledTicker
                 selectedCompany = prefilledCompany
+                priceLoading = true
+                Task {
+                    let info = await NetworkManager.shared.quickInfo(ticker: prefilledTicker)
+                    currentPrice = info?.price
+                    priceLoading = false
+                }
             }
         }
     }

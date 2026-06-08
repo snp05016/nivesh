@@ -12,6 +12,7 @@ from helpers import (
 )
 
 import json
+import os
 import time
 import asyncio
 import random
@@ -66,6 +67,153 @@ def nifty_history_endpoint(days: int = 365):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/dividends/{ticker}")
+def dividend_history_endpoint(ticker: str, exchange: str = "NSE"):
+    try:
+        try:
+            from main import format_indian_currency
+        except ImportError:
+            def format_indian_currency(value, symbol="₹"):
+                if value is None: return "N/A"
+                abs_val = abs(value)
+                sign = "-" if value < 0 else ""
+                if abs_val >= 10000000:
+                    return f"{sign}{symbol}{abs_val/10000000:,.2f} Crores"
+                elif abs_val >= 100000:
+                    return f"{sign}{symbol}{abs_val/100000:,.2f} Lakhs"
+                else:
+                    return f"{sign}{symbol}{abs_val:,.2f}"
+
+        resolved_ticker = _resolve_ticker(ticker, exchange)
+        t = yf.Ticker(resolved_ticker)
+        divs = t.dividends
+        
+        current_price = None
+        try:
+            fast = t.fast_info
+            current_price = getattr(fast, "last_price", None)
+        except Exception:
+            pass
+
+        history = []
+        if divs is not None and not divs.empty:
+            last_8 = divs.tail(8).sort_index(ascending=False)
+            for d_date, amt in last_8.items():
+                yield_pct = 0.0
+                if current_price and current_price > 0:
+                    yield_pct = round((amt / current_price) * 100, 2)
+                
+                dt_str = d_date.strftime("%Y-%m-%d") if hasattr(d_date, "strftime") else str(d_date)
+                history.append({
+                    "date": dt_str,
+                    "amount": float(amt),
+                    "amount_formatted": format_indian_currency(amt),
+                    "yield_pct": yield_pct
+                })
+                
+        next_ex_date = None
+        cal = t.calendar
+        if cal is not None and not cal.empty:
+            # yfinance calendar can vary in format, we look for 'Dividend Date'
+            if "Dividend Date" in cal:
+                div_date = cal.get("Dividend Date")
+                if isinstance(div_date, list) and div_date:
+                    div_date = div_date[0]
+                if str(div_date).strip() and str(div_date) != "NaT":
+                    try:
+                        next_ex_date = div_date.strftime("%Y-%m-%d")
+                    except Exception:
+                        next_ex_date = str(div_date)
+                        
+        return {
+            "ticker": ticker,
+            "next_ex_date": next_ex_date,
+            "dividends": history
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch dividend data: {str(e)}")
+
+@router.get("/mf/{scheme_code}")
+def mutual_fund_nav_endpoint(scheme_code: str):
+    try:
+        import requests
+        resp = requests.get(f"https://api.mfapi.in/mf/{scheme_code}", timeout=10)
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail="Failed to fetch MF data")
+        
+        data = resp.json()
+        meta = data.get("meta", {})
+        nav_data = data.get("data", [])
+        
+        scheme_name = meta.get("scheme_name", "Unknown Scheme")
+        
+        nav_history = []
+        for point in nav_data[:365]:
+            nav_history.append({
+                "date": point["date"],
+                "nav": float(point["nav"])
+            })
+            
+        current_nav = nav_history[0]["nav"] if nav_history else 0.0
+        
+        return_1y = 0.0
+        if len(nav_history) >= 2:
+            past_nav = nav_history[-1]["nav"]
+            if past_nav > 0:
+                return_1y = round(((current_nav - past_nav) / past_nav) * 100, 2)
+                
+        return {
+            "scheme_name": scheme_name,
+            "current_nav": current_nav,
+            "return_1y_pct": return_1y,
+            "nav_history": nav_history
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/block-deals/{ticker}")
+def block_deals_endpoint(ticker: str):
+    from database import BlockDeal
+    try:
+        with get_session() as db:
+            deals = db.query(BlockDeal).filter(BlockDeal.ticker == ticker.upper()).order_by(BlockDeal.date.desc()).limit(20).all()
+            return {
+                "ticker": ticker,
+                "deals": [
+                    {
+                        "date": d.date,
+                        "client_name": d.client_name,
+                        "deal_type": d.deal_type,
+                        "quantity": d.quantity,
+                        "price": d.price
+                    } for d in deals
+                ]
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/fii-dii-flow")
+def fii_dii_flow_endpoint():
+    from database import FIIDIIFlow
+    try:
+        with get_session() as db:
+            flows = db.query(FIIDIIFlow).order_by(FIIDIIFlow.date.desc()).limit(30).all()
+            # Try to parse dates properly if needed or just return them
+            return {
+                "flows": [
+                    {
+                        "date": f.date,
+                        "fii_buy": f.fii_buy,
+                        "fii_sell": f.fii_sell,
+                        "fii_net": f.fii_net,
+                        "dii_buy": f.dii_buy,
+                        "dii_sell": f.dii_sell,
+                        "dii_net": f.dii_net
+                    } for f in flows
+                ]
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 def _get_quarterly_fin(full_ticker: str):
     """Fetch quarterly financials with retry, falling back to .BO if .NS returns empty."""
@@ -397,8 +545,22 @@ def sector_weekly_endpoint():
 # Stock Directory Search
 # ---------------------------------------------------------------------------
 
-# NSE Directory for fast search
-_NSE_DIRECTORY = [
+# Load NSE/BSE directory from JSON — falls back to empty list if file missing
+_DATA_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "nse_bse_symbols.json")
+try:
+    with open(_DATA_FILE, "r", encoding="utf-8") as _f:
+        _raw = json.load(_f)
+    _NSE_DIRECTORY = [
+        {"ticker": e["ticker"], "company_name": e["name"], "sector": e["sector"], "exchange": e.get("exchange", "NSE")}
+        for e in _raw
+    ]
+except Exception as _e:
+    import logging as _logging
+    _logging.getLogger(__name__).warning("market.py: failed to load %s: %s", _DATA_FILE, _e)
+    _NSE_DIRECTORY = []
+
+# Legacy inline fallback entry (kept so the variable always has at least one entry for tests)
+_NSE_DIRECTORY = _NSE_DIRECTORY or [
     {"ticker": "RELIANCE",    "company_name": "Reliance Industries Ltd",        "sector": "Oil & Gas"},
     {"ticker": "TCS",         "company_name": "Tata Consultancy Services",      "sector": "IT"},
     {"ticker": "HDFCBANK",    "company_name": "HDFC Bank Ltd",                  "sector": "Banking"},
@@ -536,18 +698,24 @@ _NSE_DIRECTORY = [
 ]
 
 # Pre-process for fast search: lowercase index
-_NSE_DIR_INDEX = [
-    {
-        "ticker": e["ticker"],
+# Deduplicate by ticker (JSON load may have no dupes, but legacy fallback might)
+_seen_tickers: set = set()
+_NSE_DIR_INDEX = []
+for e in _NSE_DIRECTORY:
+    _tk = e["ticker"]
+    if _tk in _seen_tickers:
+        continue
+    _seen_tickers.add(_tk)
+    _NSE_DIR_INDEX.append({
+        "ticker": _tk,
         "company_name": e["company_name"],
         "sector": e["sector"],
-        "exchange": "NSE",
-        "_t": e["ticker"].lower(),
+        "exchange": e.get("exchange", "NSE"),
+        "_t": _tk.lower(),
         "_n": e["company_name"].lower(),
         "_s": e["sector"].lower(),
-    }
-    for e in _NSE_DIRECTORY
-]
+    })
+del _seen_tickers
 
 
 @router.get("/search")
@@ -2261,3 +2429,53 @@ async def top_movers_endpoint():
     except Exception as exc:
         log_market_error("top_movers", str(exc))
         raise HTTPException(status_code=500, detail=f"Top movers fetch failed: {exc}")
+
+@router.get("/market/sentiment-trend/{ticker}")
+def sentiment_trend(ticker: str, days: int = 30):
+    """30-Day Rolling News Sentiment Chart per Ticker."""
+    try:
+        from services.sentiment_engine import get_sentiment_trend
+        trend = get_sentiment_trend(ticker, days)
+        return {"ticker": ticker, "trend": trend}
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/market/screener")
+def run_screener(preset: str = "52w_breakout"):
+    """Screener endpoint."""
+    try:
+        import yfinance as yf
+        if preset == "52w_breakout":
+            # Just a minimal set of top NSE tickers to avoid rate limiting
+            tickers = ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "ITC.NS", "SBI.NS", "BHARTIARTL.NS"]
+            results = []
+            for t in tickers:
+                try:
+                    info = yf.Ticker(t).info
+                    current_price = info.get("currentPrice") or info.get("regularMarketPrice")
+                    high_52w = info.get("fiftyTwoWeekHigh")
+                    volume = info.get("volume")
+                    avg_volume = info.get("averageVolume")
+                    name = info.get("shortName", t)
+                    
+                    if current_price and high_52w and volume and avg_volume:
+                        if current_price > 0.98 * high_52w and volume > avg_volume * 1.2:
+                            pct_from_high = (high_52w - current_price) / high_52w * 100
+                            volume_ratio = volume / avg_volume
+                            results.append({
+                                "ticker": t,
+                                "name": name,
+                                "current_price": round(current_price, 2),
+                                "week52_high": round(high_52w, 2),
+                                "pct_from_high": round(pct_from_high, 2),
+                                "volume_ratio": round(volume_ratio, 2)
+                            })
+                except Exception:
+                    continue
+            return {"preset": preset, "results": results}
+        else:
+            return {"preset": preset, "results": []}
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))

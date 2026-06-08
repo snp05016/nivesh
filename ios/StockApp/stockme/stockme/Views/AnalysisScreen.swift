@@ -125,6 +125,7 @@ struct AnalysisScreen: View {
 
     @State private var livePrice: Double? = nil
     @State private var pricePollingTask: Task<Void, Never>? = nil
+    @State private var previousAnalysis: StockAnalysis? = nil
 
     private static let deepScanDisabledTickers: Set<String> = [
         "NIFTY", "SENSEX", "BANKNIFTY", "NIFTYBANK", "INDIAVIX",
@@ -181,24 +182,27 @@ struct AnalysisScreen: View {
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                ShareLink(
-                    item: PDFGenerator.generatePDFURL(for: viewModel.analysis),
-                    preview: SharePreview("\(ticker) Analysis", image: Image(systemName: "doc.text"))
-                ) {
+                Button {
+                    shareAsImage()
+                } label: {
                     Image(systemName: "square.and.arrow.up")
                         .foregroundStyle(viewModel.analysis != nil ? Theme.inkPrimary : Theme.inkSecondary.opacity(0.3))
                 }
                 .disabled(viewModel.analysis == nil)
+                .accessibilityLabel("Share as Image")
             }
         }
         .onAppear {
             activeTab = savedLastTab
             deepScanEnabled = defaultDeepScan
             if viewModel.analysis == nil && !viewModel.isLoading {
-                if forceCached, let cached = reportManager.getReport(for: ticker) {
+                if let cached = reportManager.getReport(for: ticker) {
+                    previousAnalysis = cached
+                }
+                
+                if forceCached, let cached = previousAnalysis {
                     viewModel.analysis = cached
-                } else if let cached = reportManager.getReport(for: ticker) {
-                    _ = cached
+                } else if previousAnalysis != nil {
                     showingRegenerateAlert = true
                 } else {
                     viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: deepScanEnabled)
@@ -248,6 +252,46 @@ struct AnalysisScreen: View {
                 if let info = await NetworkManager.shared.quickInfo(ticker: ticker, exchange: exchange) {
                     livePrice = info.price
                 }
+            }
+        }
+    }
+
+    // MARK: - Share as Image
+
+    private func shareAsImage() {
+        guard let analysis = viewModel.analysis else { return }
+        
+        let viewToRender = ZStack {
+            Theme.canvas.ignoresSafeArea()
+            DenominationBackground(denomination: .hundred)
+            BanknoteWatermark(text: "CONFIDENTIAL", size: 100, opacity: 0.018, alignment: .center)
+            
+            VStack(spacing: Theme.Spacing.sectionGap) {
+                stockHeaderSection(analysis)
+                aiVerdictCard(analysis)
+                dialecticDebateSection(analysis)
+                timeHorizonSection(analysis)
+                riskFactorsSection(analysis)
+                fundamentalsSection(analysis)
+                whatToWatchSection(analysis)
+                disclaimerSection(analysis)
+            }
+            .padding(.horizontal, Theme.screenPadding)
+            .padding(.top, Theme.Spacing.standard)
+            .padding(.bottom, Theme.Spacing.large)
+        }
+        .frame(width: UIScreen.main.bounds.width)
+        
+        let renderer = ImageRenderer(content: viewToRender)
+        renderer.scale = UIScreen.main.scale
+        
+        if let uiImage = renderer.uiImage {
+            let avc = UIActivityViewController(activityItems: [uiImage], applicationActivities: nil)
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let rootVC = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController {
+                avc.popoverPresentationController?.sourceView = rootVC.view
+                avc.popoverPresentationController?.sourceRect = CGRect(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY, width: 0, height: 0)
+                rootVC.present(avc, animated: true)
             }
         }
     }
@@ -337,6 +381,10 @@ struct AnalysisScreen: View {
             VStack(spacing: Theme.Spacing.sectionGap) {
                 stockHeaderSection(analysis)
                 aiVerdictCard(analysis)
+                if let prev = previousAnalysis, prev.analysisDate != analysis.analysisDate {
+                    whatChangedSection(analysis, previous: prev)
+                }
+                signalTimelineSection(analysis)
                 dialecticDebateSection(analysis)
                 timeHorizonSection(analysis)
                 riskFactorsSection(analysis)
@@ -347,6 +395,17 @@ struct AnalysisScreen: View {
             }
             .padding(.horizontal, Theme.screenPadding)
             .padding(.top, Theme.Spacing.standard)
+        }
+    }
+
+    // MARK: -- Signal Timeline Section
+    @ViewBuilder
+    private func signalTimelineSection(_ analysis: StockAnalysis) -> some View {
+        if let prices = viewModel.quickInfo?.priceHistory90d, !prices.isEmpty {
+            VStack(spacing: Theme.Spacing.standard) {
+                SectionHeaderView(title: "SIGNAL ACCURACY TIMELINE")
+                AnalysisHistoryTimelineView(ticker: ticker, priceHistory: prices)
+            }
         }
     }
 
@@ -703,6 +762,53 @@ struct AnalysisScreen: View {
                 .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
         }
     }
+    // MARK: -- What Changed (Diff View)
+    @ViewBuilder
+    private func whatChangedSection(_ analysis: StockAnalysis, previous: StockAnalysis) -> some View {
+        VStack(spacing: Theme.Spacing.standard) {
+            SectionHeaderView(title: "WHAT CHANGED SINCE LAST ANALYSIS")
+            
+            VStack(spacing: Theme.Spacing.medium) {
+                // Signal change
+                if analysis.signal != previous.signal {
+                    diffRow(label: "AI SIGNAL", oldVal: previous.signal.rawValue, newVal: analysis.signal.rawValue, isPositive: analysis.signal == .bullish)
+                }
+                
+                // Price change
+                if analysis.currentPriceInr != previous.currentPriceInr {
+                    let pctChange = ((analysis.currentPriceInr - previous.currentPriceInr) / previous.currentPriceInr) * 100
+                    diffRow(label: "PRICE", oldVal: IndianFormatter.priceCompact(previous.currentPriceInr), newVal: IndianFormatter.priceCompact(analysis.currentPriceInr), isPositive: pctChange > 0)
+                }
+                
+                // Confidence change
+                if analysis.confidencePercent != previous.confidencePercent {
+                    let diff = analysis.confidencePercent - previous.confidencePercent
+                    diffRow(label: "CONFIDENCE", oldVal: "\(previous.confidencePercent)%", newVal: "\(analysis.confidencePercent)%", isPositive: diff > 0)
+                }
+                
+                // 12M Target change
+                if analysis.targetPrices.mediumTerm12m != previous.targetPrices.mediumTerm12m {
+                    let diff = analysis.targetPrices.mediumTerm12m - previous.targetPrices.mediumTerm12m
+                    diffRow(label: "12M TARGET", oldVal: IndianFormatter.priceCompact(previous.targetPrices.mediumTerm12m), newVal: IndianFormatter.priceCompact(analysis.targetPrices.mediumTerm12m), isPositive: diff > 0)
+                }
+            }
+            .padding(Theme.Spacing.card)
+            .background(Theme.surfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
+            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderSubtle, lineWidth: 0.5))
+        }
+    }
+    
+    private func diffRow(label: String, oldVal: String, newVal: String, isPositive: Bool) -> some View {
+        HStack(spacing: Theme.Spacing.medium) {
+            Text(label).font(Theme.microLabel()).foregroundStyle(Theme.inkSecondary).frame(width: 80, alignment: .leading)
+            Text(oldVal).font(Theme.monoTabular(size: 13)).foregroundStyle(Theme.inkTertiary).strikethrough()
+            Image(systemName: "arrow.right").font(.caption2).foregroundStyle(Theme.inkTertiary)
+            Text(newVal).font(Theme.monoTabular(size: 13).weight(.bold)).foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
+            Spacer()
+        }
+    }
+
     private func renderErrorState(_ info: AnalysisErrorInfo) -> some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.screen) {
@@ -1636,3 +1742,4 @@ private struct CollapsibleSection<Content: View>: View {
         }
     }
 }
+// Item 14: MagnificationGesture added in StockCharts.swift

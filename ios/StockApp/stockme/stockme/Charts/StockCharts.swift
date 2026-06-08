@@ -46,6 +46,7 @@ private struct ChartSectionHeader: View {
 // MARK: - A: Price History Chart
 
 struct PriceHistoryChart: View {
+    @State private var xDomainScale: Double = 1.0
     let prices: [PricePoint]
     let ticker: String
     let week52High: Double?

@@ -1,4 +1,95 @@
 import SwiftUI
+import Combine
+import Speech
+import AVFoundation
+
+class SpeechRecognizerManager: ObservableObject {
+    @Published var isRecording = false
+    @Published var transcribedText = ""
+
+    private var speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-IN"))
+    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var recognitionTask: SFSpeechRecognitionTask?
+    private let audioEngine = AVAudioEngine()
+
+    func toggleRecording() {
+        if isRecording {
+            stopRecording()
+        } else {
+            startRecording()
+        }
+    }
+
+    private func startRecording() {
+        SFSpeechRecognizer.requestAuthorization { authStatus in
+            DispatchQueue.main.async {
+                if authStatus == .authorized {
+                    self.startEngine()
+                }
+            }
+        }
+    }
+
+    private func startEngine() {
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            recognitionRequest?.endAudio()
+            isRecording = false
+            return
+        }
+
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            return
+        }
+
+        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+        guard let recognitionRequest = recognitionRequest else { return }
+        recognitionRequest.shouldReportPartialResults = true
+
+        let inputNode = audioEngine.inputNode
+        let recordingFormat = inputNode.outputFormat(forBus: 0)
+        
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
+            self.recognitionRequest?.append(buffer)
+        }
+
+        audioEngine.prepare()
+        do {
+            try audioEngine.start()
+            isRecording = true
+            transcribedText = ""
+        } catch {
+            return
+        }
+
+        recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { result, error in
+            if let result = result {
+                DispatchQueue.main.async {
+                    self.transcribedText = result.bestTranscription.formattedString
+                }
+            }
+            if error != nil || result?.isFinal == true {
+                self.stopRecording()
+            }
+        }
+    }
+
+    func stopRecording() {
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        recognitionRequest?.endAudio()
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest = nil
+        isRecording = false
+    }
+}
 
 // Fix 3.19: Strongly-typed ScreenerPreset — use these typed presets, never raw strings
 // ScreenerPreset struct defined in EarningsDashboardView; replicate preset list locally
@@ -13,6 +104,28 @@ private let screenerPresets: [(label: String, preset: String)] = [
     ("52W Low Bullish", "52w_low_bullish"),
 ]
 
+struct CustomFilter: Codable, Identifiable, Hashable {
+    var id: String { name }
+    var name: String
+    var sectors: [String]
+}
+
+class CustomPresetsManager: ObservableObject {
+    @Published var presets: [CustomFilter] = [] {
+        didSet {
+            if let data = try? JSONEncoder().encode(presets) {
+                UserDefaults.standard.set(data, forKey: "customScreenerPresets")
+            }
+        }
+    }
+    init() {
+        if let data = UserDefaults.standard.data(forKey: "customScreenerPresets"),
+           let decoded = try? JSONDecoder().decode([CustomFilter].self, from: data) {
+            presets = decoded
+        }
+    }
+}
+
 struct SearchScreen: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var searchText = ""
@@ -23,11 +136,15 @@ struct SearchScreen: View {
     @State private var searchTask: Task<Void, Never>? = nil
     @State private var searchResultsTotalCount: Int = 0
     @FocusState private var isSearchFocused: Bool
+    @StateObject private var speechManager = SpeechRecognizerManager()
 
     // Discover / Screener
     @State private var activePreset: String? = nil
+    @State private var activeCustomPreset: CustomFilter? = nil
     @State private var screenerResults: [ScreenerResult] = []
     @State private var screenerLoading = false
+    @State private var showFilterSheet = false
+    @StateObject private var customPresetsManager = CustomPresetsManager()
 
     // Fallback trending if no movers data available
     private let fallbackTrending = [
@@ -98,6 +215,21 @@ struct SearchScreen: View {
                                 }
                                 .accessibilityLabel("Clear search")
                             }
+
+                            Button(action: {
+                                speechManager.toggleRecording()
+                                HapticManager.selection()
+                            }) {
+                                Image(systemName: speechManager.isRecording ? "mic.fill" : "mic")
+                                    .foregroundStyle(speechManager.isRecording ? Theme.bearRed : Theme.securityGold)
+                            }
+
+                            Button(action: {
+                                showFilterSheet = true
+                            }) {
+                                Image(systemName: "line.3.horizontal.decrease.circle")
+                                    .foregroundStyle(Theme.securityGold)
+                            }
                         }
                         .padding(Theme.Spacing.card)
                         .background(Theme.canvasDeep)
@@ -122,6 +254,7 @@ struct SearchScreen: View {
                                     ForEach(screenerPresets, id: \.preset) { item in
                                         Button {
                                             HapticManager.light()
+                                            activeCustomPreset = nil
                                             if activePreset == item.preset {
                                                 activePreset = nil
                                                 screenerResults = []
@@ -146,6 +279,46 @@ struct SearchScreen: View {
                                                 )
                                         }
                                         .buttonStyle(.plain)
+                                    }
+
+                                    ForEach(customPresetsManager.presets) { preset in
+                                        Button {
+                                            HapticManager.light()
+                                            activePreset = nil
+                                            if activeCustomPreset == preset {
+                                                activeCustomPreset = nil
+                                                screenerResults = []
+                                            } else {
+                                                activeCustomPreset = preset
+                                                applyCustomPreset(preset)
+                                            }
+                                        } label: {
+                                            Text(preset.name)
+                                                .font(Theme.officialStampFont(size: 9))
+                                                .foregroundStyle(activeCustomPreset == preset ? Theme.canvasDeep : Theme.inkPrimary)
+                                                .padding(.horizontal, Theme.Spacing.standard)
+                                                .padding(.vertical, Theme.Spacing.medium)
+                                                .background(
+                                                    Capsule()
+                                                        .fill(activeCustomPreset == preset ? Theme.securityGold : Theme.canvasShadow.opacity(0.4))
+                                                )
+                                                .shadow(
+                                                    color: activeCustomPreset == preset ? Theme.securityGold.opacity(0.5) : .clear,
+                                                    radius: activeCustomPreset == preset ? 8 : 0
+                                                )
+                                        }
+                                        .buttonStyle(.plain)
+                                        .contextMenu {
+                                            Button(role: .destructive) {
+                                                customPresetsManager.presets.removeAll { $0.id == preset.id }
+                                                if activeCustomPreset == preset {
+                                                    activeCustomPreset = nil
+                                                    screenerResults = []
+                                                }
+                                            } label: {
+                                                Label("Delete Preset", systemImage: "trash")
+                                            }
+                                        }
                                     }
                                 }
                                 .padding(.horizontal, Theme.screenPadding)
@@ -305,6 +478,18 @@ struct SearchScreen: View {
             .navigationDestination(for: String.self) { ticker in
                 AnalysisScreen(ticker: ticker)
             }
+            .sheet(isPresented: $showFilterSheet) {
+                FilterSheet(customPresetsManager: customPresetsManager) { preset in
+                    activeCustomPreset = preset
+                    activePreset = nil
+                    applyCustomPreset(preset)
+                }
+            }
+            .onChange(of: speechManager.transcribedText) { _, newText in
+                if !newText.isEmpty {
+                    searchText = newText
+                }
+            }
         }
     }
 
@@ -313,7 +498,35 @@ struct SearchScreen: View {
     private func runScreener(preset: String) async {
         screenerLoading = true
         screenerResults = []
-        screenerResults = (try? await NetworkManager.shared.fetchScreener(preset: preset)) ?? []
+        do {
+            let results = try await NetworkManager.shared.fetchScreener(preset: preset)
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                screenerResults = results
+            }
+        } catch {
+            print("Screener failed: \(error)")
+        }
+        screenerLoading = false
+    }
+
+    private func applyCustomPreset(_ preset: CustomFilter) {
+        screenerLoading = true
+        let filtered = StockDatabase.all.filter { preset.sectors.isEmpty || preset.sectors.contains($0.sector) }
+        let mapped = filtered.map { entry in
+            ScreenerResult(
+                ticker: entry.ticker,
+                companyName: entry.companyName,
+                signal: "HOLD",
+                confidencePct: nil,
+                reason: nil,
+                fScore: nil,
+                peRatio: nil,
+                profitGrowthPct: nil,
+                rsi: nil,
+                pcr: nil
+            )
+        }
+        screenerResults = Array(mapped.prefix(20))
         screenerLoading = false
     }
 
@@ -502,5 +715,93 @@ private struct SearchSkeletonRow: View {
         }
         .banknoteCard()
         .shimmerPlaceholder(isLoading: true)
+    }
+}
+
+// MARK: - Filter Sheet
+
+private struct FilterSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @ObservedObject var customPresetsManager: CustomPresetsManager
+    var onSelect: (CustomFilter) -> Void
+
+    @State private var newPresetName = ""
+    @State private var selectedSectors: Set<String> = []
+
+    private let allSectors = ["IT", "Banking", "FMCG", "Pharma", "Auto", "Oil & Gas",
+                               "Steel", "Power", "Telecom", "Finance", "Cement", "Consumer",
+                               "Engineering", "Metals", "Paints", "Renewable Energy"]
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Saved Presets") {
+                    if customPresetsManager.presets.isEmpty {
+                        Text("No saved presets").foregroundStyle(Theme.inkTertiary)
+                            .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
+                    } else {
+                        ForEach(customPresetsManager.presets) { preset in
+                            Button {
+                                onSelect(preset)
+                                dismiss()
+                            } label: {
+                                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                                    Text(preset.name)
+                                        .font(Theme.engravedSerif(size: 14, weight: .semibold, relativeTo: .body))
+                                        .foregroundStyle(Theme.inkPrimary)
+                                    Text(preset.sectors.isEmpty ? "All sectors" : preset.sectors.joined(separator: ", "))
+                                        .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
+                                        .foregroundStyle(Theme.inkSecondary)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .onDelete { indexSet in
+                            customPresetsManager.presets.remove(atOffsets: indexSet)
+                        }
+                    }
+                }
+
+                Section("New Preset") {
+                    TextField("Preset name", text: $newPresetName)
+                        .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
+                    ForEach(allSectors, id: \.self) { sector in
+                        Button {
+                            if selectedSectors.contains(sector) {
+                                selectedSectors.remove(sector)
+                            } else {
+                                selectedSectors.insert(sector)
+                            }
+                        } label: {
+                            HStack {
+                                Text(sector)
+                                    .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
+                                    .foregroundStyle(Theme.inkPrimary)
+                                Spacer()
+                                if selectedSectors.contains(sector) {
+                                    Image(systemName: "checkmark").foregroundStyle(Theme.securityGold)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    Button("Save Preset") {
+                        guard !newPresetName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+                        let preset = CustomFilter(name: newPresetName, sectors: Array(selectedSectors))
+                        customPresetsManager.presets.append(preset)
+                        onSelect(preset)
+                        dismiss()
+                    }
+                    .disabled(newPresetName.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+            .navigationTitle("Sector Filters")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
     }
 }

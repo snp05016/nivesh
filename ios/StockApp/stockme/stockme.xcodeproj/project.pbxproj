@@ -7,7 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0B08CD9C5FBD77946B86D77D /* NiveshWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 12FC18E9E1B9881E188E2E9D /* NiveshWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		13CED51F040DBB935891021B /* IndianFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4021A9831FC4097703433E8C /* IndianFormatter.swift */; };
+		414F3F7BF28273CCF8BC1DAE /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6CE9566D846F57F1621D95D5 /* Foundation.framework */; };
+		470FBA23C5B5B6039A44CDFC /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A94200CABF549F3814BE454 /* SwiftUI.framework */; };
+		67F9769B9AFF81876A3046B6 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB11A87B4A3C0D1298C98C71 /* Theme.swift */; };
+		AF10CE3D5F89DBA50C664FAD /* NiveshWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D822F29E492E020F7F3666CF /* NiveshWidget.swift */; };
 		C52789692FD37E75001449A9 /* launch_animated.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = C52789682FD37E75001449A9 /* launch_animated.mp4 */; };
+		E34E73D25AF01C38AA811E1F /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE68747565E218B524BDA777 /* WidgetKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,28 +32,65 @@
 			remoteGlobalIDString = C5C19BDB2FCC8C6A0041471A;
 			remoteInfo = stockme;
 		};
+		FB31142B821F16F221A0B154 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C5C19BD42FCC8C6A0041471A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2781C6EA42A8C5D6B5540534;
+			remoteInfo = NiveshWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		BB998E931BEC7EF1D35717A4 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				0B08CD9C5FBD77946B86D77D /* NiveshWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		12FC18E9E1B9881E188E2E9D /* NiveshWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NiveshWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		231D89A09B8CC2A3D61AD48B /* Extensions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Extensions.swift; path = stockme/Utilities/Extensions.swift; sourceTree = "<group>"; };
+		4021A9831FC4097703433E8C /* IndianFormatter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IndianFormatter.swift; path = stockme/Utilities/IndianFormatter.swift; sourceTree = "<group>"; };
+		54F2671B228E864260B8D939 /* HapticManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HapticManager.swift; path = stockme/Utilities/HapticManager.swift; sourceTree = "<group>"; };
+		6CE9566D846F57F1621D95D5 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		7A94200CABF549F3814BE454 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		C52789682FD37E75001449A9 /* launch_animated.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = launch_animated.mp4; sourceTree = "<group>"; };
 		C5C19BDC2FCC8C6A0041471A /* stockme.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = stockme.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C5C19BEB2FCC8C6B0041471A /* stockmeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = stockmeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C5C19BF52FCC8C6B0041471A /* stockmeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = stockmeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CB11A87B4A3C0D1298C98C71 /* Theme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Theme.swift; path = stockme/Utilities/Theme.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A1B2C3D4E5F6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D822F29E492E020F7F3666CF /* NiveshWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NiveshWidget.swift; sourceTree = "<group>"; };
+		FE68747565E218B524BDA777 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C5C19BDE2FCC8C6A0041471A /* stockme */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = stockme;
 			sourceTree = "<group>";
 		};
 		C5C19BEE2FCC8C6B0041471A /* stockmeTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = stockmeTests;
 			sourceTree = "<group>";
 		};
 		C5C19BF82FCC8C6B0041471A /* stockmeUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = stockmeUITests;
 			sourceTree = "<group>";
 		};
@@ -74,9 +118,37 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		EB7D300ECB34EB030D8E41B4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				414F3F7BF28273CCF8BC1DAE /* Foundation.framework in Frameworks */,
+				E34E73D25AF01C38AA811E1F /* WidgetKit.framework in Frameworks */,
+				470FBA23C5B5B6039A44CDFC /* SwiftUI.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0678BB29058FB29663D39FB4 /* NiveshWidget */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F6A1B2C3D4E5F6 /* Info.plist */,
+				D822F29E492E020F7F3666CF /* NiveshWidget.swift */,
+			);
+			name = NiveshWidget;
+			path = NiveshWidget;
+			sourceTree = "<group>";
+		};
+		410EC26943197944629D34F6 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				6CE9566D846F57F1621D95D5 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
 		C5C19BD32FCC8C6A0041471A = {
 			isa = PBXGroup;
 			children = (
@@ -85,6 +157,12 @@
 				C5C19BF82FCC8C6B0041471A /* stockmeUITests */,
 				C5C19BDD2FCC8C6A0041471A /* Products */,
 				C52789682FD37E75001449A9 /* launch_animated.mp4 */,
+				EAC19C91DC8416D084E78F62 /* Frameworks */,
+				0678BB29058FB29663D39FB4 /* NiveshWidget */,
+				CB11A87B4A3C0D1298C98C71 /* Theme.swift */,
+				4021A9831FC4097703433E8C /* IndianFormatter.swift */,
+				54F2671B228E864260B8D939 /* HapticManager.swift */,
+				231D89A09B8CC2A3D61AD48B /* Extensions.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -94,13 +172,41 @@
 				C5C19BDC2FCC8C6A0041471A /* stockme.app */,
 				C5C19BEB2FCC8C6B0041471A /* stockmeTests.xctest */,
 				C5C19BF52FCC8C6B0041471A /* stockmeUITests.xctest */,
+				12FC18E9E1B9881E188E2E9D /* NiveshWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		EAC19C91DC8416D084E78F62 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				410EC26943197944629D34F6 /* iOS */,
+				FE68747565E218B524BDA777 /* WidgetKit.framework */,
+				7A94200CABF549F3814BE454 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		2781C6EA42A8C5D6B5540534 /* NiveshWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 525410FB6E41C0DAAA97DBAD /* Build configuration list for PBXNativeTarget "NiveshWidgetExtension" */;
+			buildPhases = (
+				B6CCFEBBE3FFF183110D06AF /* Sources */,
+				EB7D300ECB34EB030D8E41B4 /* Frameworks */,
+				DC3805ED713567CB851D024F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NiveshWidgetExtension;
+			productName = NiveshWidgetExtension;
+			productReference = 12FC18E9E1B9881E188E2E9D /* NiveshWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		C5C19BDB2FCC8C6A0041471A /* stockme */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = C5C19BFF2FCC8C6B0041471A /* Build configuration list for PBXNativeTarget "stockme" */;
@@ -108,17 +214,17 @@
 				C5C19BD82FCC8C6A0041471A /* Sources */,
 				C5C19BD92FCC8C6A0041471A /* Frameworks */,
 				C5C19BDA2FCC8C6A0041471A /* Resources */,
+				BB998E931BEC7EF1D35717A4 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				365261669C035ED91FB60618 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				C5C19BDE2FCC8C6A0041471A /* stockme */,
 			);
 			name = stockme;
-			packageProductDependencies = (
-			);
 			productName = stockme;
 			productReference = C5C19BDC2FCC8C6A0041471A /* stockme.app */;
 			productType = "com.apple.product-type.application";
@@ -140,8 +246,6 @@
 				C5C19BEE2FCC8C6B0041471A /* stockmeTests */,
 			);
 			name = stockmeTests;
-			packageProductDependencies = (
-			);
 			productName = stockmeTests;
 			productReference = C5C19BEB2FCC8C6B0041471A /* stockmeTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -163,8 +267,6 @@
 				C5C19BF82FCC8C6B0041471A /* stockmeUITests */,
 			);
 			name = stockmeUITests;
-			packageProductDependencies = (
-			);
 			productName = stockmeUITests;
 			productReference = C5C19BF52FCC8C6B0041471A /* stockmeUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -209,6 +311,7 @@
 				C5C19BDB2FCC8C6A0041471A /* stockme */,
 				C5C19BEA2FCC8C6B0041471A /* stockmeTests */,
 				C5C19BF42FCC8C6B0041471A /* stockmeUITests */,
+				2781C6EA42A8C5D6B5540534 /* NiveshWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -236,9 +339,26 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		DC3805ED713567CB851D024F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		B6CCFEBBE3FFF183110D06AF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AF10CE3D5F89DBA50C664FAD /* NiveshWidget.swift in Sources */,
+				67F9769B9AFF81876A3046B6 /* Theme.swift in Sources */,
+				13CED51F040DBB935891021B /* IndianFormatter.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C5C19BD82FCC8C6A0041471A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -263,6 +383,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		365261669C035ED91FB60618 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = NiveshWidgetExtension;
+			target = 2781C6EA42A8C5D6B5540534 /* NiveshWidgetExtension */;
+			targetProxy = FB31142B821F16F221A0B154 /* PBXContainerItemProxy */;
+		};
 		C5C19BED2FCC8C6B0041471A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = C5C19BDB2FCC8C6A0041471A /* stockme */;
@@ -276,6 +402,30 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		7194BDD516645FAD11BF5936 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = NiveshWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = saumypatel.stockme.NiveshWidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
 		C5C19BFD2FCC8C6B0041471A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -588,9 +738,43 @@
 			};
 			name = Release;
 		};
+		FE3D287B507A075AB2EB151B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = NiveshWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = saumypatel.stockme.NiveshWidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		525410FB6E41C0DAAA97DBAD /* Build configuration list for PBXNativeTarget "NiveshWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FE3D287B507A075AB2EB151B /* Release */,
+				7194BDD516645FAD11BF5936 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		C5C19BD72FCC8C6A0041471A /* Build configuration list for PBXProject "stockme" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

@@ -254,23 +254,7 @@ def _log_token_usage(endpoint: str, usage) -> None:
 # ---------------------------------------------------------------------------
 # Simple in-memory rate limiter
 # ---------------------------------------------------------------------------
-from collections import defaultdict
-import threading
-
-_rate_limit_store: dict[str, list[float]] = defaultdict(list)
-_rate_limit_lock = threading.Lock()
-_RATE_LIMIT_WINDOW = 60  # seconds
-_RATE_LIMIT_MAX = 120    # requests per window (increased from 30 — earnings dashboard fires 15+ parallel requests)
-
-def _check_rate_limit(client_ip: str) -> bool:
-    now = time.time()
-    with _rate_limit_lock:
-        timestamps = _rate_limit_store[client_ip]
-        _rate_limit_store[client_ip] = [t for t in timestamps if now - t < _RATE_LIMIT_WINDOW]
-        if len(_rate_limit_store[client_ip]) >= _RATE_LIMIT_MAX:
-            return False
-        _rate_limit_store[client_ip].append(now)
-        return True
+# The _check_rate_limit function is now imported from helpers.py
 
 # ---------------------------------------------------------------------------
 
@@ -329,9 +313,19 @@ app.add_middleware(_RequestLogMiddleware)
 class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         client_ip = request.client.host if request.client else "unknown"
-        if not _check_rate_limit(client_ip):
-            from fastapi.responses import JSONResponse
-            return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Try again later."})
+        endpoint = request.url.path
+        from helpers import _check_rate_limit
+        from fastapi import HTTPException
+        from fastapi.responses import JSONResponse
+        
+        try:
+            _check_rate_limit(client_ip, endpoint)
+        except HTTPException as e:
+            return JSONResponse(
+                status_code=e.status_code, 
+                content={"detail": e.detail},
+                headers=e.headers
+            )
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
@@ -390,6 +384,27 @@ app.include_router(harvest_router)
 @app.on_event("startup")
 async def _on_startup():
     start_scheduler()
+    from routers.alerts import _price_alert_poller
+    import asyncio
+    asyncio.create_task(_price_alert_poller())
+    
+    import os
+    import logging
+    if os.getenv("ENABLE_SCHEDULER", "false").lower() == "true":
+        try:
+            from apscheduler.schedulers.asyncio import AsyncIOScheduler
+            from services.harvest_worker import harvest_youtube_metadata, harvest_news
+            from services.portfolio_snapshot import snapshot_all_users
+            
+            scheduler = AsyncIOScheduler()
+            scheduler.add_job(harvest_youtube_metadata, "cron", hour=0, minute=30)
+            scheduler.add_job(harvest_news, "cron", hour=1, minute=30)
+            scheduler.add_job(snapshot_all_users, "cron", hour=16, minute=30)
+            scheduler.start()
+            logging.info("Main APScheduler started.")
+        except ImportError:
+            # needs pip install apscheduler
+            logging.warning("apscheduler not installed, please run: pip install apscheduler. Skipping scheduler startup.")
 
 
 @app.on_event("shutdown")

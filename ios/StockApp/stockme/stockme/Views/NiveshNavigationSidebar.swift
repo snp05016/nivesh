@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - Section IDs (shared with HomeScreen)
 
-enum HomeSectionID: String, CaseIterable, Identifiable {
+enum HomeSectionID: String, CaseIterable, Identifiable, Codable {
     var id: String { rawValue }
     case top           = "home.top"
     case portfolio     = "home.portfolio"

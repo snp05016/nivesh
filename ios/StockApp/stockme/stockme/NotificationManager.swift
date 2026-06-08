@@ -86,7 +86,13 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
         content.title = title
         content.body = body
         if !subtitle.isEmpty { content.subtitle = subtitle }
-        content.sound = .default
+        
+        let customSound = UserDefaults.standard.string(forKey: "notificationSound") ?? "Default"
+        if customSound == "Default" {
+            content.sound = .default
+        } else {
+            content.sound = UNNotificationSound(named: UNNotificationSoundName(customSound))
+        }
 
         let request = UNNotificationRequest(
             identifier: "nivesh_local_\(UUID().uuidString.prefix(8))",

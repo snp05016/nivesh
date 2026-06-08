@@ -228,9 +228,30 @@ struct TradeJournalScreen: View {
               let price = Double(newPrice), price > 0 else { return }
         isSubmitting = true
         let ticker = newTicker.uppercased().trimmingCharacters(in: .whitespaces)
+        
+        var finalReason = newReason
+        if newAction == "SELL" {
+            if let lastBuy = entries.first(where: { $0.ticker.uppercased() == ticker && $0.action == "BUY" }),
+               let buyPrice = lastBuy.priceAtTime, buyPrice > 0 {
+                let pnl = price - buyPrice
+                let pnlPct = (pnl / buyPrice) * 100
+                let sign = pnl >= 0 ? "+" : ""
+                let pnlStr = String(format: "Auto P&L: %@₹%.2f (%@%.2f%%)", sign, abs(pnl), sign, pnlPct)
+                finalReason = finalReason.isEmpty ? pnlStr : "\(finalReason)\n\(pnlStr)"
+                
+                // Update the prior BUY entry with the outcome
+                try? await NetworkManager.shared.updateTradeJournalOutcome(
+                    entryId: lastBuy.id,
+                    userId: userId,
+                    outcomeText: "Closed at ₹\(price). \(pnlStr)",
+                    mood: lastBuy.mood
+                )
+            }
+        }
+        
         if let _ = try? await NetworkManager.shared.addTradeJournalEntry(
             userId: userId, ticker: ticker, companyName: nil,
-            action: newAction, price: price, reason: newReason, mood: newMood
+            action: newAction, price: price, reason: finalReason, mood: newMood
         ) {
             await loadEntries()
             newTicker = ""; newPrice = ""; newReason = ""; newMood = nil; newAction = "BUY"
