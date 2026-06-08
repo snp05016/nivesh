@@ -115,6 +115,13 @@ struct ContentView: View {
             }
             selectedTab = tab
         }
+        // Global tab-switch handler — used by HomeScreen "SEE ALL →" and any
+        // child view that needs to jump to a top-level tab without a Binding
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("switchToTab"))) { notif in
+            if let tab = notif.userInfo?["tab"] as? Int {
+                withAnimation(.easeInOut(duration: 0.25)) { selectedTab = tab }
+            }
+        }
     }
 }
 

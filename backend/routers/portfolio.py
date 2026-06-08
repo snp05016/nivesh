@@ -413,10 +413,16 @@ def morning_summary_endpoint(user_id: int, authorization: str = Header(None)):
         raise HTTPException(status_code=401, detail="Unauthorized")
     now = time.time()
 
-    # Check cache
+    # Check in-memory cache first
     cached = _morning_cache.get(user_id)
     if cached and (now - cached["ts"]) < _MORNING_CACHE_TTL:
         return cached["data"]
+
+    # Check disk_cache for a pre-generated brief (populated by 6:30 AM nightly job)
+    pregen = _dcache_get("morning_brief", str(user_id))
+    if pregen and isinstance(pregen, dict):
+        _morning_cache[user_id] = {"data": pregen, "ts": now}
+        return pregen
 
     generated_at = datetime.utcnow().strftime("%H:%M")
 

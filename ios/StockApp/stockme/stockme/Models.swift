@@ -1693,3 +1693,35 @@ struct IdeasFeedResponse: Codable {
         case fetchedAt = "fetched_at"
     }
 }
+
+// MARK: - Top Movers (Section 9 — Technical Momentum sub-tabs 3/4/5/6)
+
+struct TopMover: Codable, Identifiable {
+    var id: String { ticker }
+    let ticker: String
+    let name: String
+    let price: Double
+    let changePct: Double
+    let changeAbs: Double
+    let volume: Int
+    let value: Double
+    enum CodingKeys: String, CodingKey {
+        case ticker, name, price, volume, value
+        case changePct = "change_pct"
+        case changeAbs = "change_abs"
+    }
+}
+
+struct TopMoversResponse: Codable {
+    let gainers: [TopMover]
+    let losers: [TopMover]
+    let activeByValue: [TopMover]
+    let activeByVolume: [TopMover]
+    let fetchedAt: String
+    enum CodingKeys: String, CodingKey {
+        case gainers, losers
+        case activeByValue = "active_by_value"
+        case activeByVolume = "active_by_volume"
+        case fetchedAt = "fetched_at"
+    }
+}

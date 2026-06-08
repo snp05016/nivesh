@@ -95,6 +95,45 @@ def invalidate(namespace: str, key: str) -> None:
     path.unlink(missing_ok=True)
 
 
+def purge_expired() -> dict:
+    """
+    Sweep every namespace and delete files whose mtime exceeds their TTL.
+    Safe to call from a nightly cron — never raises.
+    Returns a summary dict: {namespace: {"deleted": int, "kept": int, "freed_mb": float}}.
+    """
+    summary: dict = {}
+    for namespace, ttl in TTL_SECONDS.items():
+        ns_path = CACHE_ROOT / namespace
+        deleted = 0
+        kept = 0
+        freed_bytes = 0
+        if not ns_path.exists():
+            summary[namespace] = {"deleted": 0, "kept": 0, "freed_mb": 0.0}
+            continue
+        for path in ns_path.glob("*.json.gz"):
+            try:
+                age = time.time() - path.stat().st_mtime
+                if age > ttl:
+                    size = path.stat().st_size
+                    path.unlink(missing_ok=True)
+                    deleted += 1
+                    freed_bytes += size
+                else:
+                    kept += 1
+            except Exception as e:
+                logger.warning(f"[disk_cache] purge error on {path.name}: {e}")
+        summary[namespace] = {
+            "deleted": deleted,
+            "kept": kept,
+            "freed_mb": round(freed_bytes / 1e6, 3),
+        }
+        logger.info(
+            f"[disk_cache] purge {namespace}: deleted={deleted} kept={kept} "
+            f"freed={summary[namespace]['freed_mb']} MB"
+        )
+    return summary
+
+
 def stats() -> dict:
     """Return cache utilization stats for the /health endpoint."""
     result = {}

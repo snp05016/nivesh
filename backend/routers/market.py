@@ -2160,3 +2160,104 @@ def admin_ideas_errors_endpoint(limit: int = 50, authorization: str = Header(Non
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ideas error log query failed: {e}")
+
+
+# ── /api/v1/market/top-movers ─────────────────────────────────────────────────
+
+# NIFTY 50 tickers — well-covered by yfinance, fast enough for a single request
+_NIFTY50_TICKERS = [
+    "RELIANCE", "TCS", "HDFCBANK", "ICICIBANK", "INFY", "HINDUNILVR", "ITC",
+    "SBIN", "BAJFINANCE", "BHARTIARTL", "KOTAKBANK", "AXISBANK", "ASIANPAINT",
+    "MARUTI", "SUNPHARMA", "TITAN", "ULTRACEMCO", "WIPRO", "HCLTECH", "TECHM",
+    "ONGC", "POWERGRID", "NTPC", "COALINDIA", "JSWSTEEL", "TATASTEEL", "HINDALCO",
+    "GRASIM", "ADANIENT", "ADANIPORTS", "BAJAJ-AUTO", "BAJAJFINSV", "BPCL",
+    "BRITANNIA", "CIPLA", "DIVISLAB", "DRREDDY", "EICHERMOT", "HDFCLIFE",
+    "HEROMOTOCO", "INDUSINDBK", "LT", "M&M", "NESTLEIND", "SBILIFE",
+    "SHRIRAMFIN", "TATACONSUM", "TATAMOTORS", "TRENT", "UPL",
+]
+
+
+@router.get("/api/v1/market/top-movers")
+async def top_movers_endpoint():
+    """
+    Returns top gainers, losers, active-by-value, active-by-volume from NIFTY 50.
+    Each list is capped at 10 entries. Uses yfinance batch download (fast).
+    Response: {
+        "gainers": [...], "losers": [...],
+        "active_by_value": [...], "active_by_volume": [...],
+        "fetched_at": str
+    }
+    """
+    from services.disk_cache import get as _dc_get, set as _dc_set
+    cache_key = "top_movers_today"
+    cached = _dc_get("market_pulse", cache_key)
+    if cached:
+        return cached
+
+    try:
+        symbols = [f"{t}.NS" for t in _NIFTY50_TICKERS]
+        raw = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: yf.download(
+                symbols,
+                period="2d",
+                interval="1d",
+                group_by="ticker",
+                auto_adjust=True,
+                progress=False,
+                threads=True,
+            ),
+        )
+
+        movers = []
+        for sym in symbols:
+            try:
+                ticker_base = sym.replace(".NS", "")
+                if sym in raw.columns.get_level_values(0):
+                    df = raw[sym].dropna()
+                else:
+                    continue
+                if len(df) < 2:
+                    continue
+                close_today = float(df["Close"].iloc[-1])
+                close_prev = float(df["Close"].iloc[-2])
+                vol_today = float(df["Volume"].iloc[-1]) if "Volume" in df.columns else 0.0
+                change_abs = close_today - close_prev
+                change_pct = (change_abs / close_prev * 100) if close_prev else 0.0
+                value = close_today * vol_today  # traded value in INR
+
+                # Fetch name from yfinance info (best effort)
+                movers.append({
+                    "ticker": ticker_base,
+                    "name": ticker_base,
+                    "price": round(close_today, 2),
+                    "change_pct": round(change_pct, 2),
+                    "change_abs": round(change_abs, 2),
+                    "volume": int(vol_today),
+                    "value": round(value, 0),
+                })
+            except Exception:
+                continue
+
+        if not movers:
+            raise ValueError("No mover data returned from yfinance")
+
+        gainers = sorted(movers, key=lambda x: x["change_pct"], reverse=True)[:10]
+        losers = sorted(movers, key=lambda x: x["change_pct"])[:10]
+        active_by_value = sorted(movers, key=lambda x: x["value"], reverse=True)[:10]
+        active_by_volume = sorted(movers, key=lambda x: x["volume"], reverse=True)[:10]
+
+        result = {
+            "gainers": gainers,
+            "losers": losers,
+            "active_by_value": active_by_value,
+            "active_by_volume": active_by_volume,
+            "fetched_at": _dt.utcnow().isoformat(),
+        }
+        # Cache for 15 minutes (market data refreshes frequently)
+        _dc_set("market_pulse", cache_key, result)
+        return result
+
+    except Exception as exc:
+        log_market_error("top_movers", str(exc))
+        raise HTTPException(status_code=500, detail=f"Top movers fetch failed: {exc}")

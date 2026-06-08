@@ -727,7 +727,15 @@ struct HomeScreen: View {
 
                             // ── Section 4: Watchlist ──────────────────────────
                             VStack(spacing: Theme.Spacing.card) {
-                                SectionHeader(title: "Watchlist", hindiTitle: "बाज़ार की निगरानी", actionLabel: "SEE ALL →") { }
+                                SectionHeader(title: "Watchlist", hindiTitle: "बाज़ार की निगरानी", actionLabel: "SEE ALL →") {
+                                    // Switch to Portfolio tab (tab 4) to show full holdings
+                                    HapticManager.selection()
+                                    NotificationCenter.default.post(
+                                        name: Notification.Name("switchToTab"),
+                                        object: nil,
+                                        userInfo: ["tab": 4]
+                                    )
+                                }
                                 if viewModel.watchlist.isEmpty && !viewModel.isLoading {
                                     Text("Add stocks to your watchlist to see them here")
                                         .font(Theme.serialNumberFont(size: 13))

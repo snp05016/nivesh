@@ -236,3 +236,101 @@ def to_ns(ticker: str) -> str:
     if "." in t:
         return t
     return _NSE_TICKERS.get(t, f"{t}.NS")
+
+
+# ── Bhavcopy EOD downloader ────────────────────────────────────────────────────
+
+def download_bhavcopy(target_date: date | None = None) -> dict:
+    """
+    Download NSE EQ Bhavcopy (End-of-Day data) for a given date.
+    Defaults to today. Stores result in disk_cache under 'bhavcopy' namespace.
+    Returns a summary dict: {"date", "rows", "cached", "source", "error"}.
+
+    Run nightly after 6:30 PM IST (NSE closes 3:30 PM, data published ~6 PM).
+    Tries jugaad_data first; falls back to direct NSE CSV URL.
+    """
+    import io
+    import csv
+    import requests
+    from services.disk_cache import get as cache_get, set as cache_set
+
+    if target_date is None:
+        target_date = date.today()
+
+    date_str = target_date.strftime("%Y-%m-%d")
+    cache_key = f"bhavcopy_{date_str}"
+
+    # Return immediately if already cached
+    cached = cache_get("bhavcopy", cache_key)
+    if cached:
+        logger.info(f"[bhavcopy] HIT cache for {date_str}")
+        return {"date": date_str, "rows": cached.get("rows", 0), "cached": True, "source": "disk_cache"}
+
+    rows_data = None
+    source = "unknown"
+
+    # ── Attempt 1: jugaad_data ────────────────────────────────────────────────
+    if _JUGAAD_AVAILABLE:
+        try:
+            from jugaad_data.nse import NSEArchives
+            import tempfile, os
+            with tempfile.TemporaryDirectory() as tmpdir:
+                NSEArchives.bhavcopy_save(target_date, tmpdir)
+                csv_files = [f for f in os.listdir(tmpdir) if f.endswith(".csv")]
+                if csv_files:
+                    csv_path = os.path.join(tmpdir, csv_files[0])
+                    with open(csv_path, "r") as f:
+                        reader = csv.DictReader(f)
+                        rows_data = [row for row in reader]
+                    source = "jugaad_data"
+                    logger.info(f"[bhavcopy] jugaad_data: {len(rows_data)} rows for {date_str}")
+        except Exception as e:
+            logger.warning(f"[bhavcopy] jugaad_data failed: {e}")
+
+    # ── Attempt 2: NSE direct URL ─────────────────────────────────────────────
+    if rows_data is None:
+        try:
+            # NSE Bhavcopy URL format (EQ segment)
+            dd = target_date.strftime("%d")
+            mmm = target_date.strftime("%b").upper()
+            yyyy = target_date.strftime("%Y")
+            url = (
+                f"https://nsearchives.nseindia.com/content/historical/EQUITIES/"
+                f"{yyyy}/{mmm}/cm{dd}{mmm}{yyyy}bhav.csv.zip"
+            )
+            headers = {
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+                "Referer": "https://www.nseindia.com",
+            }
+            resp = requests.get(url, headers=headers, timeout=30)
+            if resp.status_code == 200:
+                import zipfile
+                with zipfile.ZipFile(io.BytesIO(resp.content)) as z:
+                    csv_name = z.namelist()[0]
+                    with z.open(csv_name) as f:
+                        content = f.read().decode("utf-8")
+                reader = csv.DictReader(io.StringIO(content))
+                rows_data = [row for row in reader]
+                source = "nse_direct"
+                logger.info(f"[bhavcopy] NSE direct: {len(rows_data)} rows for {date_str}")
+            else:
+                logger.warning(f"[bhavcopy] NSE direct HTTP {resp.status_code} for {date_str}")
+        except Exception as e:
+            logger.warning(f"[bhavcopy] NSE direct URL failed: {e}")
+
+    if rows_data is None:
+        error_msg = f"All Bhavcopy sources failed for {date_str}"
+        logger.error(f"[bhavcopy] {error_msg}")
+        return {"date": date_str, "rows": 0, "cached": False, "source": "none", "error": error_msg}
+
+    # Trim rows to only EQ series to keep cache size manageable
+    eq_rows = [r for r in rows_data if r.get("SERIES", "").strip() == "EQ"]
+    payload = {
+        "date": date_str,
+        "rows": len(eq_rows),
+        "source": source,
+        "data": eq_rows,
+    }
+    cache_set("bhavcopy", cache_key, payload)
+    logger.info(f"[bhavcopy] Cached {len(eq_rows)} EQ rows for {date_str} (source={source})")
+    return {"date": date_str, "rows": len(eq_rows), "cached": False, "source": source}

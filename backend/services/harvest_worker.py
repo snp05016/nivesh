@@ -103,9 +103,13 @@ def start_scheduler():
     from services.advisor_harvester import harvest_all_advisors, evaluate_analysis_outcomes
     from services.news_harvester import harvest_news
     from services.youtube_harvester import harvest_youtube_metadata, harvest_portfolio_videos
-    from services.portfolio_snapshot import snapshot_all_users
+    from services.portfolio_snapshot import snapshot_all_users, pregen_morning_briefs_all_users
     from services.pkscreener_runner import run_nightly_screen
     from services.filings_extractor import harvest_filings
+    from services.disk_cache import purge_expired as cache_purge_expired
+    from services.nse_data_provider import download_bhavcopy
+    from services.piotroski import batch_refresh_piotroski
+    from services.error_telemetry import generate_daily_digest
     from database import promote_initial_admins
 
     async def _run_harvest_all_advisors():
@@ -152,17 +156,115 @@ def start_scheduler():
         with get_session() as db:
             evaluate_analysis_outcomes(db)
 
-    _scheduler.add_job(_run_harvest_all_advisors, "cron", hour=1, minute=30)
-    _scheduler.add_job(_run_harvest_news, "cron", hour=0, minute=30)           # 12:30 AM IST
-    _scheduler.add_job(_run_harvest_youtube_metadata, "cron", hour=1, minute=0) # 1:00 AM IST — channel sweep
-    _scheduler.add_job(_run_harvest_portfolio_videos, "cron", hour=1, minute=15) # 1:15 AM IST — ticker search
-    _scheduler.add_job(snapshot_all_users, "cron", hour=11, minute=0)      # 4:30 PM IST (11:00 UTC)
-    _scheduler.add_job(run_nightly_screen, "cron", hour=11, minute=15)     # 4:45 PM IST (11:15 UTC)
-    _scheduler.add_job(_run_evaluate_analysis_outcomes, "cron", hour=2, minute=0)  # 2:00 AM IST
-    _scheduler.add_job(_run_harvest_filings, "interval", minutes=15)            # corporate filings every 15 min
+    # ── NEW JOB 1: Disk cache purge — 3:00 AM IST ────────────────────────────
+    async def _run_cache_purge():
+        _dash_update_harvest("cache_purge", "running")
+        try:
+            result = cache_purge_expired()
+            total_freed = sum(v.get("freed_mb", 0) for v in result.values())
+            _dash_update_harvest("cache_purge", "idle", {"namespaces": result, "total_freed_mb": round(total_freed, 3)})
+            logging.info(f"[cache_purge] Complete. Freed {total_freed:.2f} MB")
+        except Exception as e:
+            _dash_update_harvest("cache_purge", "error", {"error": str(e)})
+            logging.error(f"[cache_purge] Error: {e}")
+
+    # ── NEW JOB 2: Bhavcopy download — 7:00 PM IST (13:30 UTC) ──────────────
+    async def _run_bhavcopy_download():
+        _dash_update_harvest("bhavcopy", "running")
+        try:
+            result = download_bhavcopy()
+            _dash_update_harvest("bhavcopy", "idle", result)
+            logging.info(f"[bhavcopy] Downloaded {result.get('rows', 0)} EQ rows (source={result.get('source')})")
+        except Exception as e:
+            _dash_update_harvest("bhavcopy", "error", {"error": str(e)})
+            logging.error(f"[bhavcopy] Download error: {e}")
+
+    # ── NEW JOB 3: Morning brief pre-generation — 6:30 AM IST (1:00 UTC) ────
+    async def _run_pregen_morning_briefs():
+        _dash_update_harvest("morning_brief", "running")
+        try:
+            result = await pregen_morning_briefs_all_users()
+            _dash_update_harvest("morning_brief", "idle", result)
+            logging.info(f"[morning_brief] Pre-gen done: {result}")
+        except Exception as e:
+            _dash_update_harvest("morning_brief", "error", {"error": str(e)})
+            logging.error(f"[morning_brief] Pre-gen error: {e}")
+
+    # ── NEW JOB 4: Piotroski weekly refresh — Sunday 11:00 PM IST (17:30 UTC)
+    def _run_piotroski_batch():
+        _dash_update_harvest("piotroski_batch", "running")
+        try:
+            result = batch_refresh_piotroski()
+            _dash_update_harvest("piotroski_batch", "idle", result)
+            logging.info(f"[piotroski_batch] Weekly refresh done: {result}")
+        except Exception as e:
+            _dash_update_harvest("piotroski_batch", "error", {"error": str(e)})
+            logging.error(f"[piotroski_batch] Error: {e}")
+
+    # ── NEW JOB 5: Pre-market cache warm — 9:00 AM IST (3:30 UTC) ───────────
+    async def _run_premarket_cache_warm():
+        """Invalidate yesterday's stale analyses so users get fresh data at open."""
+        _dash_update_harvest("premarket_warm", "running")
+        try:
+            from services.disk_cache import invalidate as cache_invalidate, CACHE_ROOT
+            from datetime import date as _date
+            import time as _time
+            warmed = 0
+            # Evict yfinance entries older than 8h to force fresh fetch at market open
+            ns_path = CACHE_ROOT / "yfinance"
+            if ns_path.exists():
+                for path in ns_path.glob("*.json.gz"):
+                    try:
+                        age = _time.time() - path.stat().st_mtime
+                        if age > 8 * 3600:
+                            path.unlink(missing_ok=True)
+                            warmed += 1
+                    except Exception:
+                        pass
+            _dash_update_harvest("premarket_warm", "idle", {"evicted_entries": warmed})
+            logging.info(f"[premarket_warm] Evicted {warmed} stale yfinance cache entries")
+        except Exception as e:
+            _dash_update_harvest("premarket_warm", "error", {"error": str(e)})
+            logging.error(f"[premarket_warm] Error: {e}")
+
+    # ── NEW JOB 6: Error telemetry digest — 7:00 AM IST (1:30 UTC) ──────────
+    def _run_error_digest():
+        _dash_update_harvest("error_digest", "running")
+        try:
+            digest = generate_daily_digest()
+            _dash_update_harvest("error_digest", "idle", {"lines": digest.count("\n")})
+            logging.info("[error_digest] Daily digest written")
+        except Exception as e:
+            _dash_update_harvest("error_digest", "error", {"error": str(e)})
+            logging.error(f"[error_digest] Error: {e}")
+
+    # ── Wire all jobs ─────────────────────────────────────────────────────────
+
+    _scheduler.add_job(_run_harvest_all_advisors,     "cron", hour=1,  minute=30)  # 1:30 AM IST
+    _scheduler.add_job(_run_harvest_news,             "cron", hour=0,  minute=30)  # 12:30 AM IST
+    _scheduler.add_job(_run_harvest_youtube_metadata, "cron", hour=1,  minute=0)   # 1:00 AM IST
+    _scheduler.add_job(_run_harvest_portfolio_videos, "cron", hour=1,  minute=15)  # 1:15 AM IST
+    _scheduler.add_job(snapshot_all_users,            "cron", hour=11, minute=0)   # 4:30 PM IST (11:00 UTC)
+    _scheduler.add_job(run_nightly_screen,            "cron", hour=11, minute=15)  # 4:45 PM IST (11:15 UTC)
+    _scheduler.add_job(_run_evaluate_analysis_outcomes,"cron", hour=2, minute=0)   # 2:00 AM IST
+    _scheduler.add_job(_run_harvest_filings,          "interval", minutes=15)      # corporate filings every 15 min
+
+    # ── NEW jobs ──────────────────────────────────────────────────────────────
+    _scheduler.add_job(_run_cache_purge,          "cron", hour=3,  minute=0)              # 3:00 AM IST
+    _scheduler.add_job(_run_bhavcopy_download,    "cron", hour=13, minute=30)             # 7:00 PM IST
+    _scheduler.add_job(_run_pregen_morning_briefs,"cron", hour=1,  minute=0)              # 6:30 AM IST
+    _scheduler.add_job(_run_piotroski_batch,      "cron", day_of_week="sun", hour=17, minute=30)  # Sun 11 PM IST
+    _scheduler.add_job(_run_premarket_cache_warm, "cron", hour=3,  minute=30)             # 9:00 AM IST
+    _scheduler.add_job(_run_error_digest,         "cron", hour=1,  minute=30)             # 7:00 AM IST
+
     _scheduler.start()
     promote_initial_admins()
-    logging.info("All schedulers started (advisor 1:30, news 12:30, youtube-channel 1:00, youtube-portfolio 1:15, snapshot 4:30, pkscreener 4:45, outcome-eval 2:00 AM IST, filings 15min)")
+    logging.info(
+        "All schedulers started — existing: (advisor 1:30, news 12:30, yt-channel 1:00, "
+        "yt-portfolio 1:15, snapshot 4:30 PM, pkscreener 4:45 PM, outcome-eval 2:00 AM, filings 15min) | "
+        "new: (cache-purge 3:00 AM, bhavcopy 7:00 PM, morning-brief-pregen 6:30 AM, "
+        "piotroski-weekly Sun 11 PM, premarket-warm 9:00 AM, error-digest 7:00 AM) [all IST]"
+    )
 
 
 def stop_scheduler():

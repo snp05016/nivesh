@@ -2,8 +2,13 @@
 Piotroski F-Score calculator for NSE stocks.
 9-point fundamental health check from yfinance balance sheet data.
 No AI calls. Score 0-3=WEAK, 4-6=NEUTRAL, 7-9=STRONG.
+
+Also provides batch_refresh_piotroski() for the weekly nightly cron job.
 """
+import logging
 import yfinance as yf
+
+logger = logging.getLogger(__name__)
 
 
 def compute_piotroski(ticker: str) -> dict:
@@ -112,3 +117,49 @@ def compute_piotroski(ticker: str) -> dict:
         "confidence": confidence,
         "checks": {k: ("PASS" if v else "FAIL") for k, v in checks.items()},
     }
+
+
+def batch_refresh_piotroski() -> dict:
+    """
+    Weekly Piotroski F-score refresh for all tickers on all user watchlists/holdings.
+    Writes results to disk_cache so the /piotroski endpoint is instant on Monday morning.
+    Capped at 50 tickers per run to avoid yfinance rate limits.
+
+    Returns {"refreshed": int, "failed": int, "skipped": int}.
+    """
+    import sys, os
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+    from database import SessionLocal, Portfolio
+    from services.disk_cache import set as cache_set
+
+    db = SessionLocal()
+    refreshed = 0
+    failed = 0
+    skipped = 0
+    MAX_TICKERS = 50
+
+    try:
+        # Collect unique tickers from all user holdings + watchlists
+        rows = db.query(Portfolio.ticker).distinct().all()
+        tickers = list({r.ticker for r in rows})
+
+        if len(tickers) > MAX_TICKERS:
+            logger.info(f"[piotroski_batch] Capping {len(tickers)} tickers to {MAX_TICKERS}")
+            tickers = tickers[:MAX_TICKERS]
+
+        for ticker in tickers:
+            try:
+                result = compute_piotroski(ticker)
+                result["ticker"] = ticker
+                cache_set("piotroski", ticker, result)
+                refreshed += 1
+                logger.info(f"[piotroski_batch] {ticker}: {result.get('grade', 'N/A')} (f={result.get('f_score')})")
+            except Exception as e:
+                failed += 1
+                logger.warning(f"[piotroski_batch] {ticker} failed: {e}")
+
+    finally:
+        db.close()
+
+    logger.info(f"[piotroski_batch] Done: refreshed={refreshed} failed={failed} skipped={skipped}")
+    return {"refreshed": refreshed, "failed": failed, "skipped": skipped}

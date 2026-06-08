@@ -188,6 +188,74 @@ def log_diagnostic_error(
 # ---------------------------------------------------------------------------
 
 
+def generate_daily_digest() -> str:
+    """
+    Summarize all errors logged in the last 24 hours from market_error_logs.
+    Writes a human-readable digest to backend/logs/nightly_digest_<date>.txt.
+    Returns the digest text (also logged at INFO level).
+
+    Called at 7:00 AM IST each morning so you wake up to a summary of overnight issues.
+    """
+    import os
+    from datetime import datetime, timezone, timedelta
+    from pathlib import Path
+    from collections import Counter
+
+    digest_lines: list[str] = []
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+
+    try:
+        from database import get_session, MarketErrorLog
+
+        with get_session() as session:
+            rows = (
+                session.query(MarketErrorLog)
+                .filter(MarketErrorLog.created_at >= since)
+                .order_by(MarketErrorLog.created_at.desc())
+                .all()
+            )
+    except Exception as e:
+        rows = []
+        digest_lines.append(f"[DIGEST] Could not query market_error_logs: {e}")
+
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    digest_lines.append(f"╔══ NIVESH NIGHTLY DIGEST — {now_str} ══╗")
+    digest_lines.append(f"  Errors in last 24h: {len(rows)}")
+
+    if rows:
+        # Count by component
+        component_counts = Counter(r.component for r in rows)
+        digest_lines.append("\n  ── Errors by subsystem ──")
+        for component, count in component_counts.most_common():
+            digest_lines.append(f"    {component}: {count}")
+
+        # Most recent 10 errors
+        digest_lines.append("\n  ── Most recent 10 errors ──")
+        for r in rows[:10]:
+            ts = r.created_at.strftime("%H:%M") if r.created_at else "??"
+            ticker = f" [{r.context_ticker}]" if r.context_ticker else ""
+            msg_preview = (r.error_message or "")[:120].replace("\n", " ")
+            digest_lines.append(f"    {ts}  {r.component}{ticker}: {msg_preview}")
+    else:
+        digest_lines.append("  ✅ No errors logged — clean run!")
+
+    digest_lines.append("╚══════════════════════════════════════════╝")
+    digest_text = "\n".join(digest_lines)
+
+    # Write to logs dir
+    try:
+        logs_dir = Path(__file__).parent.parent / "logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        digest_path = logs_dir / f"nightly_digest_{date_str}.txt"
+        digest_path.write_text(digest_text, encoding="utf-8")
+    except Exception as e:
+        digest_lines.append(f"  [WARN] Could not write digest file: {e}")
+
+    print(digest_text)
+    return digest_text
+
+
 class CorrelationIDMiddleware(BaseHTTPMiddleware):
     """
     FastAPI middleware that reads or generates a correlation ID for every
