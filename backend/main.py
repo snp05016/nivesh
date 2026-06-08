@@ -403,6 +403,12 @@ def ping():
     return {"pong": True}
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    from fastapi.responses import Response
+    return Response(status_code=204)
+
+
 # Init DB and seed on startup
 init_db()
 
@@ -777,15 +783,14 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nivesh Backend Dashboard</title>
+  <title>Nivesh Admin Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{background:#0a0a0a;color:#c9d1d9;font-family:'SF Mono','Cascadia Code','Fira Code',monospace;font-size:13px;line-height:1.5}
     ::-webkit-scrollbar{width:6px;height:6px}
     ::-webkit-scrollbar-track{background:#0d1117}
     ::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px}
-
-    /* ── Header ── */
     header{background:#111111;border-bottom:2px solid #c9a84c33;padding:14px 28px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100}
     .brand{display:flex;align-items:center;gap:12px}
     .brand-icon{font-size:22px}
@@ -797,23 +802,26 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
     .dot{width:7px;height:7px;border-radius:50%;background:#3fb950;animation:pulse 2s infinite}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
     #lu{color:#484f58;font-size:11px}
-
-    /* ── Layout ── */
-    main{padding:24px 28px;display:grid;gap:24px;max-width:1600px;margin:0 auto}
+    /* Nav tabs */
+    .main-nav{background:#0d0d0d;border-bottom:1px solid #21262d;padding:0 28px;display:flex;gap:4px;overflow-x:auto}
+    .nav-tab{background:none;border:none;color:#6e7681;padding:10px 16px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;border-bottom:2px solid transparent;transition:.15s}
+    .nav-tab:hover{color:#c9d1d9}
+    .nav-tab.active{color:#c9a84c;border-bottom-color:#c9a84c}
+    .page{display:none;padding:24px 28px;max-width:1600px;margin:0 auto}
+    .page.active{display:block}
+    /* Layout */
     .section-label{font-size:10px;font-weight:700;color:#c9a84c;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
     .section-label::after{content:'';flex:1;height:1px;background:#c9a84c22}
     .row2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
     .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
     .row4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
-
-    /* ── Cards ── */
-    .card{background:#111111;border:1px solid #21262d;border-radius:10px;overflow:hidden}
+    /* Cards */
+    .card{background:#111111;border:1px solid #21262d;border-radius:10px;overflow:hidden;margin-bottom:20px}
     .card-header{padding:11px 16px;border-bottom:1px solid #21262d;display:flex;justify-content:space-between;align-items:center;background:#0d0d0d}
     .card-title{font-size:11px;font-weight:700;color:#8b949e;text-transform:uppercase;letter-spacing:1.2px}
     .card-body{padding:16px}
     .empty{color:#484f58;font-style:italic;text-align:center;padding:20px;font-size:12px}
-
-    /* ── Stat tiles ── */
+    /* Stats */
     .stat-grid{display:grid;gap:10px}
     .stat-grid-4{grid-template-columns:repeat(4,1fr)}
     .stat-grid-2{grid-template-columns:1fr 1fr}
@@ -822,14 +830,8 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
     .stat-tile .val{font-size:22px;font-weight:700;line-height:1}
     .stat-tile .lbl{font-size:10px;color:#8b949e;margin-top:5px;text-transform:uppercase;letter-spacing:.6px}
     .tile-dark{background:#0d1117;border:1px solid #21262d}
-    .val-gold{color:#c9a84c}
-    .val-red{color:#f85149}
-    .val-green{color:#3fb950}
-    .val-blue{color:#58a6ff}
-    .val-purple{color:#bc8cff}
-    .val-dim{color:#8b949e}
-
-    /* ── AI Model Cards ── */
+    .val-gold{color:#c9a84c} .val-red{color:#f85149} .val-green{color:#3fb950} .val-blue{color:#58a6ff} .val-purple{color:#bc8cff} .val-dim{color:#8b949e} .val-amber{color:#d29922}
+    /* AI model cards */
     .ai-model-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
     .model-card{border-radius:10px;overflow:hidden}
     .model-card.claude{background:#0a0e1f;border:1px solid #1d3a7a}
@@ -846,14 +848,11 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
     .model-stat{background:#0a0a0a;border-radius:6px;padding:12px 8px;text-align:center}
     .model-stat .mv{font-size:18px;font-weight:700;line-height:1}
     .model-stat .ml{font-size:9px;color:#6e7681;margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
-    .claude-val{color:#58a6ff}
-    .deepseek-val{color:#bc8cff}
-    .cost-val{color:#c9a84c}
+    .claude-val{color:#58a6ff} .deepseek-val{color:#bc8cff} .cost-val{color:#c9a84c}
     .model-footer{padding:10px 16px;border-top:1px solid;font-size:11px;color:#6e7681;display:flex;justify-content:space-between}
     .model-card.claude .model-footer{border-color:#1d3a7a}
     .model-card.deepseek .model-footer{border-color:#4a1d7a}
-
-    /* ── Feature error section ── */
+    /* Feature cards */
     .feature-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
     .feature-card{border-radius:8px;overflow:hidden;border:1px solid}
     .feature-card.clean{border-color:#238636;background:#0f2110}
@@ -873,8 +872,7 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
     .feat-err-item:last-child{margin-bottom:0}
     .feat-err-path{font-size:10px;color:#f85149;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .feat-err-meta{font-size:10px;color:#484f58;margin-top:2px}
-
-    /* ── Analysis monitor ── */
+    /* Analysis items */
     .analysis-item{background:#0d1117;border:1px solid #21262d;border-radius:7px;padding:12px;margin-bottom:10px}
     .analysis-item:last-child{margin-bottom:0}
     .analysis-item.active{border-color:#1d3a7a;background:#0a0e1f}
@@ -882,8 +880,7 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
     .a-meta{color:#6e7681;font-size:11px;margin-top:3px}
     .a-stage{margin-top:8px;color:#58a6ff;font-size:12px}
     .s-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#58a6ff;margin-right:6px;animation:pulse 1s infinite}
-
-    /* ── Tables ── */
+    /* Tables */
     table{width:100%;border-collapse:collapse}
     th{text-align:left;padding:8px 12px;font-size:10px;color:#6e7681;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid #21262d;font-weight:700}
     td{padding:7px 12px;border-bottom:1px solid #161b22;font-size:12px;vertical-align:middle}
@@ -891,8 +888,7 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
     tr:hover td{background:#0d1117}
     .ts{color:#6e7681;font-size:11px}
     .path{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-
-    /* ── Badges ── */
+    /* Badges */
     .badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:600}
     .bull{background:rgba(63,185,80,.15);color:#3fb950}
     .bear{background:rgba(248,81,73,.15);color:#f85149}
@@ -906,18 +902,63 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
     .mPOST{background:rgba(63,185,80,.08);color:#3fb950}
     .mDELETE{background:rgba(248,81,73,.08);color:#f85149}
     .mPUT{background:rgba(210,153,34,.08);color:#d29922}
-    .mPATCH{background:rgba(188,140,255,.08);color:#bc8cff}
-
-    /* ── Archive ── */
+    .positive{background:rgba(63,185,80,.15);color:#3fb950}
+    .negative{background:rgba(248,81,73,.15);color:#f85149}
+    .neutral{background:rgba(139,148,158,.15);color:#8b949e}
+    /* Archive / expand */
     .archive-details{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:12px;margin-top:8px;display:none}
     .json-box{background:#0a0a0a;padding:10px;border-radius:4px;overflow:auto;max-height:280px;font-size:11px;color:#8b949e;border:1px solid #21262d;white-space:pre-wrap;margin-top:8px}
     .btn-view{background:#1f4b2e;color:#3fb950;border:1px solid #238636;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-family:inherit}
     .btn-view:hover{background:#238636;color:#fff}
+    .btn-blue{background:#0d2a4a;color:#58a6ff;border:1px solid #1d3a7a;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-family:inherit}
+    .btn-blue:hover{background:#1d3a7a;color:#fff}
     .tab-btn{background:#161b22;color:#8b949e;border:1px solid #30363d;padding:4px 10px;border-radius:4px 4px 0 0;cursor:pointer;font-size:10px;margin-right:2px;font-family:inherit}
     .tab-btn.active{background:#21262d;color:#f0f6fc;border-bottom:none}
-
-    /* ── Divider ── */
     .divider{height:1px;background:linear-gradient(90deg,transparent,#c9a84c44,transparent);margin:4px 0}
+    /* User selector */
+    .user-selector-bar{background:#111;border:1px solid #21262d;border-radius:10px;padding:16px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+    .user-selector-bar label{font-size:11px;color:#8b949e;font-weight:700;text-transform:uppercase;letter-spacing:.8px}
+    select.user-select{background:#0d1117;color:#f0f6fc;border:1px solid #30363d;border-radius:6px;padding:6px 12px;font-family:inherit;font-size:12px;cursor:pointer;min-width:220px}
+    select.user-select:focus{outline:none;border-color:#c9a84c}
+    .user-stat-row{display:flex;gap:20px;flex-wrap:wrap;margin-top:4px}
+    .user-stat-chip{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:4px 10px;font-size:11px}
+    .user-stat-chip .chip-val{color:#c9a84c;font-weight:700}
+    /* Analysis report cards */
+    .analysis-report{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:14px;margin-bottom:12px}
+    .report-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+    .report-ticker{font-size:16px;font-weight:700;color:#f0f6fc}
+    .report-company{font-size:11px;color:#6e7681;margin-top:2px}
+    .report-meta{text-align:right;font-size:11px;color:#6e7681}
+    .report-body{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+    .report-col h4{font-size:10px;font-weight:700;color:#c9a84c;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+    .report-list{list-style:none;padding:0}
+    .report-list li{font-size:11px;color:#8b949e;padding:3px 0;border-bottom:1px solid #161b22;padding-left:10px;position:relative}
+    .report-list li::before{content:'•';position:absolute;left:0;color:#c9a84c}
+    .report-list li:last-child{border-bottom:none}
+    .target-prices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+    .target-chip{background:#111;border:1px solid #21262d;border-radius:6px;padding:8px;text-align:center}
+    .target-chip .tv{font-size:13px;font-weight:700;color:#c9a84c}
+    .target-chip .tl{font-size:9px;color:#484f58;text-transform:uppercase;margin-top:2px}
+    .key-factors{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+    .kf-item{background:#111;border:1px solid #21262d;border-radius:4px;padding:6px 8px}
+    .kf-label{font-size:9px;color:#484f58;text-transform:uppercase;letter-spacing:.5px}
+    .kf-val{font-size:11px;color:#8b949e;margin-top:2px}
+    /* Charts */
+    .chart-container{position:relative;width:100%;height:220px;padding:10px 0}
+    .chart-container-lg{position:relative;width:100%;height:300px;padding:10px 0}
+    /* Holdings table badges */
+    .pnl-pos{color:#3fb950;font-weight:700}
+    .pnl-neg{color:#f85149;font-weight:700}
+    /* Journal */
+    .journal-entry{background:#0d1117;border:1px solid #21262d;border-radius:7px;padding:12px;margin-bottom:10px}
+    .journal-action-buy{border-left:3px solid #3fb950}
+    .journal-action-sell{border-left:3px solid #f85149}
+    .journal-action-hold{border-left:3px solid #d29922}
+    .journal-action-watch{border-left:3px solid #58a6ff}
+    /* Alert items */
+    .alert-item{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #161b22}
+    .alert-item:last-child{border-bottom:none}
+    .alert-triggered{opacity:.5;text-decoration:line-through}
   </style>
 </head>
 <body>
@@ -926,417 +967,687 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
     <div class="brand-icon">&#x20B9;</div>
     <div class="brand-text">
       <h1>Nivesh Admin Dashboard</h1>
-      <div class="sub" id="uptime">Loading server uptime...</div>
+      <div class="sub" id="uptime">Loading...</div>
     </div>
   </div>
   <div class="hdr-right">
-    <button class="btn-view" onclick="refresh()" style="margin-right:10px">Refresh Now</button>
+    <button class="btn-view" onclick="refreshAll()">Refresh</button>
     <div class="uptime-pill" id="lu">Connecting...</div>
-    <div class="live-pill"><div class="dot"></div>Live &bull; 30s refresh</div>
+    <div class="live-pill"><div class="dot"></div>Live &bull; 30s</div>
   </div>
 </header>
 
-<main>
+<nav class="main-nav">
+  <button class="nav-tab active" onclick="showPage('overview')">&#x1F4CA; Overview</button>
+  <button class="nav-tab" onclick="showPage('users')">&#x1F465; Users</button>
+  <button class="nav-tab" onclick="showPage('ai')">&#x1F916; AI Engine</button>
+  <button class="nav-tab" onclick="showPage('harvesters')">&#x1F33E; Harvesters</button>
+  <button class="nav-tab" onclick="showPage('archive')">&#x1F4DC; Archive</button>
+  <button class="nav-tab" onclick="showPage('requests')">&#x1F310; Requests</button>
+</nav>
 
-  <!-- ══ SECTION: System Overview ══ -->
-  <div>
-    <div class="section-label">System Overview</div>
-    <div class="row2">
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Database Statistics</span>
-        </div>
-        <div class="card-body">
-          <div class="stat-grid stat-grid-4">
-            <div class="stat-tile tile-dark"><div class="val val-red" id="db_u">-</div><div class="lbl">Users</div></div>
-            <div class="stat-tile tile-dark"><div class="val val-green" id="db_h">-</div><div class="lbl">Holdings</div></div>
-            <div class="stat-tile tile-dark"><div class="val val-blue" id="db_a">-</div><div class="lbl">Analyses</div></div>
-            <div class="stat-tile tile-dark"><div class="val val-gold" id="db_s">-</div><div class="lbl">Signals</div></div>
-          </div>
-          <div style="margin-top:10px" class="stat-grid stat-grid-4">
-            <div class="stat-tile tile-dark"><div class="val val-dim" id="c_q">-</div><div class="lbl">QuickInfo Cache</div></div>
-            <div class="stat-tile tile-dark"><div class="val val-dim" id="c_m">-</div><div class="lbl">Morning Cache</div></div>
-            <div class="stat-tile tile-dark"><div class="val val-dim" id="c_sec">-</div><div class="lbl">Sector Cache</div></div>
-            <div class="stat-tile tile-dark"><div class="val val-dim" id="c_asm">-</div><div class="lbl">ASM/GSM Cache</div></div>
-          </div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Scraper Engine Status</span>
-        </div>
-        <div class="card-body">
-          <div class="stat-grid stat-grid-4" id="scraper_status_grid">
-            <div class="empty" style="grid-column:1/-1">Loading scraper cache...</div>
-          </div>
-        </div>
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE: OVERVIEW
+═══════════════════════════════════════════════════════════ -->
+<div class="page active" id="page-overview">
+
+  <div class="section-label" style="margin-top:24px">System Overview</div>
+  <div class="row4" style="margin-bottom:20px">
+    <div class="stat-tile tile-dark"><div class="val val-red" id="db_u">-</div><div class="lbl">Total Users</div></div>
+    <div class="stat-tile tile-dark"><div class="val val-green" id="db_h">-</div><div class="lbl">Holdings</div></div>
+    <div class="stat-tile tile-dark"><div class="val val-blue" id="db_a">-</div><div class="lbl">Analyses</div></div>
+    <div class="stat-tile tile-dark"><div class="val val-gold" id="db_s">-</div><div class="lbl">Signal Events</div></div>
+  </div>
+  <div class="row4" style="margin-bottom:20px">
+    <div class="stat-tile tile-dark"><div class="val val-dim" id="db_tj">-</div><div class="lbl">Journal Entries</div></div>
+    <div class="stat-tile tile-dark"><div class="val val-dim" id="db_news">-</div><div class="lbl">News Articles</div></div>
+    <div class="stat-tile tile-dark"><div class="val val-dim" id="db_yt">-</div><div class="lbl">YouTube Videos</div></div>
+    <div class="stat-tile tile-dark"><div class="val val-dim" id="c_q">-</div><div class="lbl">QuickInfo Cache</div></div>
+  </div>
+
+  <div class="section-label">AI Provider Health</div>
+  <div class="row3" style="margin-bottom:20px">
+    <div class="stat-tile tile-dark"><div class="val" id="h_ant">-</div><div class="lbl">Anthropic</div></div>
+    <div class="stat-tile tile-dark"><div class="val" id="h_ds">-</div><div class="lbl">DeepSeek</div></div>
+    <div class="stat-tile tile-dark"><div class="val" id="h_goog">-</div><div class="lbl">Google</div></div>
+  </div>
+
+  <div class="section-label">Per-Feature Health</div>
+  <div class="feature-grid" id="feature-error-grid" style="margin-bottom:20px">
+    <div class="empty" style="grid-column:1/-1">Loading...</div>
+  </div>
+
+  <div class="section-label">Live Analysis Monitor</div>
+  <div class="row2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Currently Running</span><span class="ts" id="ac"></span></div>
+      <div class="card-body" id="ab"><div class="empty">No active analyses</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Recently Completed</span><span class="ts" id="anc"></span></div>
+      <div style="overflow-x:auto">
+        <table><thead><tr><th>Time</th><th>Ticker</th><th>Type</th><th>Signal</th><th>Dur</th><th>Status</th></tr></thead>
+        <tbody id="at"><tr><td colspan="6" class="empty">No analyses yet</td></tr></tbody></table>
       </div>
     </div>
   </div>
 
-  <!-- ══ SECTION: AI Model Usage ══ -->
-  <div>
-    <div class="section-label">AI Model Usage & Connectivity</div>
-    <div style="margin-bottom:14px" class="card">
-        <div class="card-header"><span class="card-title">Provider Health (from .env)</span></div>
-        <div class="card-body">
-            <div class="stat-grid stat-grid-3">
-                <div class="stat-tile tile-dark"><div class="val" id="h_ant">-</div><div class="lbl">Anthropic</div></div>
-                <div class="stat-tile tile-dark"><div class="val" id="h_ds">-</div><div class="lbl">DeepSeek</div></div>
-                <div class="stat-tile tile-dark"><div class="val" id="h_goog">-</div><div class="lbl">Google</div></div>
-            </div>
-        </div>
+  <div class="section-label">Harvested Content</div>
+  <div class="row2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Latest News Articles</span><span class="ts" id="lnc"></span></div>
+      <div style="overflow-x:auto">
+        <table><thead><tr><th>Time</th><th>Ticker</th><th>Headline</th><th>Sentiment</th></tr></thead>
+        <tbody id="lnt"><tr><td colspan="4" class="empty">No news</td></tr></tbody></table>
+      </div>
     </div>
-    <div class="ai-model-grid">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Latest YouTube Videos</span><span class="ts" id="lvc"></span></div>
+      <div style="overflow-x:auto">
+        <table><thead><tr><th>Time</th><th>Ticker</th><th>Channel</th><th>Title</th></tr></thead>
+        <tbody id="lvt"><tr><td colspan="4" class="empty">No videos</td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
 
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE: USERS (per-user deep dive)
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-users">
+  <div style="padding-top:24px">
+    <div class="section-label">Per-User Intelligence</div>
+
+    <div class="user-selector-bar">
+      <label>Select User</label>
+      <select class="user-select" id="user-select" onchange="loadUser(this.value)">
+        <option value="">-- select user --</option>
+      </select>
+      <div class="user-stat-row" id="user-stat-chips"></div>
+    </div>
+
+    <!-- User sub-tabs -->
+    <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid #21262d">
+      <button class="tab-btn active" id="utab-portfolio" onclick="showUserTab('portfolio')">&#x1F4BC; Portfolio</button>
+      <button class="tab-btn" id="utab-analyses" onclick="showUserTab('analyses')">&#x1F9E0; AI Reports</button>
+      <button class="tab-btn" id="utab-valuation" onclick="showUserTab('valuation')">&#x1F4C8; Valuation Chart</button>
+      <button class="tab-btn" id="utab-alerts" onclick="showUserTab('alerts')">&#x1F514; Alerts</button>
+      <button class="tab-btn" id="utab-journal" onclick="showUserTab('journal')">&#x1F4D3; Trade Journal</button>
+      <button class="tab-btn" id="utab-networth" onclick="showUserTab('networth')">&#x1F4B0; Net Worth</button>
+    </div>
+
+    <!-- Portfolio tab -->
+    <div id="utab-content-portfolio">
+      <div class="section-label">Portfolio Holdings</div>
+      <div class="row3" style="margin-bottom:16px" id="portfolio-summary-stats">
+        <div class="stat-tile tile-dark"><div class="val val-blue" id="p-holdings">-</div><div class="lbl">Holdings</div></div>
+        <div class="stat-tile tile-dark"><div class="val val-amber" id="p-invested">-</div><div class="lbl">Total Invested</div></div>
+        <div class="stat-tile tile-dark"><div class="val val-dim" id="p-groups">-</div><div class="lbl">Groups</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Holdings Table</span></div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>#</th><th>Ticker</th><th>Company</th><th>Shares</th><th>Buy Price (₹)</th><th>Invested (₹)</th><th>Group</th><th>Notes</th><th>Added</th></tr></thead>
+          <tbody id="portfolio-table"><tr><td colspan="9" class="empty">Select a user above</td></tr></tbody></table>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Allocation by Group</span></div>
+          <div class="card-body"><div class="chart-container"><canvas id="chart-allocation"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Signal Distribution (Analyses)</span></div>
+          <div class="card-body"><div class="chart-container"><canvas id="chart-signals"></canvas></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Reports tab -->
+    <div id="utab-content-analyses" style="display:none">
+      <div class="section-label">AI Analysis Reports</div>
+      <div class="row4" style="margin-bottom:16px">
+        <div class="stat-tile tile-dark"><div class="val val-blue" id="a-total">-</div><div class="lbl">Total Analyses</div></div>
+        <div class="stat-tile tile-dark"><div class="val val-green" id="a-correct">-</div><div class="lbl">Correct Signals</div></div>
+        <div class="stat-tile tile-dark"><div class="val val-red" id="a-incorrect">-</div><div class="lbl">Incorrect</div></div>
+        <div class="stat-tile tile-dark"><div class="val val-gold" id="a-accuracy">-</div><div class="lbl">Accuracy</div></div>
+      </div>
+      <div id="analyses-list"><div class="empty">Select a user above</div></div>
+    </div>
+
+    <!-- Valuation Chart tab -->
+    <div id="utab-content-valuation" style="display:none">
+      <div class="section-label">Portfolio Valuation Over Time</div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Daily Snapshot — Total Value vs Invested vs Nifty (normalised)</span></div>
+        <div class="card-body"><div class="chart-container-lg"><canvas id="chart-valuation"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Daily P&L %</span></div>
+        <div class="card-body"><div class="chart-container"><canvas id="chart-pnl-pct"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Valuation History Table</span></div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>Date</th><th>Total Value (₹)</th><th>Invested (₹)</th><th>P&L (₹)</th><th>P&L %</th><th>Nifty Close</th></tr></thead>
+          <tbody id="valuation-table"><tr><td colspan="6" class="empty">No data</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerts tab -->
+    <div id="utab-content-alerts" style="display:none">
+      <div class="section-label">Price Alerts</div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Active &amp; Triggered Alerts</span></div>
+        <div id="alerts-list"><div class="empty">Select a user above</div></div>
+      </div>
+    </div>
+
+    <!-- Trade Journal tab -->
+    <div id="utab-content-journal" style="display:none">
+      <div class="section-label">Trade Journal</div>
+      <div id="journal-list"><div class="empty">Select a user above</div></div>
+    </div>
+
+    <!-- Net Worth tab -->
+    <div id="utab-content-networth" style="display:none">
+      <div class="section-label">Net Worth Ledger</div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Net Worth Over Time (₹)</span></div>
+        <div class="card-body"><div class="chart-container-lg"><canvas id="chart-networth"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Daily Ledger</span></div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>Date</th><th>Value (₹)</th><th>Day Δ (₹)</th><th>Day Δ %</th><th>Peak (₹)</th><th>Top Gainer</th><th>Top Loser</th></tr></thead>
+          <tbody id="networth-table"><tr><td colspan="7" class="empty">No data</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE: AI ENGINE
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-ai">
+  <div style="padding-top:24px">
+    <div class="section-label">AI Model Usage &amp; Cost</div>
+    <div class="ai-model-grid" style="margin-bottom:20px">
       <div class="model-card claude">
-        <div class="model-card-header">
-          <div class="model-icon">&#x1F916;</div>
-          <div>
-            <div class="model-name">Claude (Anthropic)</div>
-            <div class="model-sub">Sonnet / Haiku — from token_log.jsonl</div>
-          </div>
+        <div class="model-card-header"><div class="model-icon">&#x1F916;</div>
+          <div><div class="model-name">Claude (Anthropic)</div><div class="model-sub">Sonnet / Haiku — token_log.jsonl</div></div>
         </div>
         <div class="model-body">
-          <div class="model-stat">
-            <div class="mv claude-val" id="cl_calls">-</div>
-            <div class="ml">Total Calls</div>
-          </div>
-          <div class="model-stat">
-            <div class="mv claude-val" id="cl_in">-</div>
-            <div class="ml">Input Tokens</div>
-          </div>
-          <div class="model-stat">
-            <div class="mv claude-val" id="cl_out">-</div>
-            <div class="ml">Output Tokens</div>
-          </div>
+          <div class="model-stat"><div class="mv claude-val" id="cl_calls">-</div><div class="ml">Calls</div></div>
+          <div class="model-stat"><div class="mv claude-val" id="cl_in">-</div><div class="ml">Input Tokens</div></div>
+          <div class="model-stat"><div class="mv claude-val" id="cl_out">-</div><div class="ml">Output Tokens</div></div>
         </div>
         <div class="model-footer">
-          <span>Session cost: <span id="cl_cost" style="color:#c9a84c">$-.--</span></span>
-          <span>Cache hit rate: <span id="cl_cache_hit" style="color:#3fb950">-</span></span>
+          <span>Cost: <span id="cl_cost" style="color:#c9a84c">$-.--</span></span>
+          <span>Cache hit: <span id="cl_cache_hit" style="color:#3fb950">-</span></span>
         </div>
       </div>
-
       <div class="model-card deepseek">
-        <div class="model-card-header">
-          <div class="model-icon">&#x26A1;</div>
-          <div>
-            <div class="model-name">DeepSeek</div>
-            <div class="model-sub">DeepSeek-R1 / V3 — from token_log.jsonl</div>
-          </div>
+        <div class="model-card-header"><div class="model-icon">&#x26A1;</div>
+          <div><div class="model-name">DeepSeek</div><div class="model-sub">deepseek-chat — token_log.jsonl</div></div>
         </div>
         <div class="model-body">
-          <div class="model-stat">
-            <div class="mv deepseek-val" id="ds_calls">-</div>
-            <div class="ml">Total Calls</div>
-          </div>
-          <div class="model-stat">
-            <div class="mv deepseek-val" id="ds_in">-</div>
-            <div class="ml">Input Tokens</div>
-          </div>
-          <div class="model-stat">
-            <div class="mv deepseek-val" id="ds_out">-</div>
-            <div class="ml">Output Tokens</div>
-          </div>
+          <div class="model-stat"><div class="mv deepseek-val" id="ds_calls">-</div><div class="ml">Calls</div></div>
+          <div class="model-stat"><div class="mv deepseek-val" id="ds_in">-</div><div class="ml">Input Tokens</div></div>
+          <div class="model-stat"><div class="mv deepseek-val" id="ds_out">-</div><div class="ml">Output Tokens</div></div>
         </div>
         <div class="model-footer">
-          <span>Total cost: <span id="ds_cost" style="color:#c9a84c">$-.--</span></span>
-          <span>vs Claude: <span id="ds_ratio" style="color:#bc8cff">-</span></span>
+          <span>Cost: <span id="ds_cost" style="color:#c9a84c">$-.--</span></span>
+          <span>Share: <span id="ds_ratio" style="color:#bc8cff">-</span></span>
         </div>
       </div>
-
     </div>
 
-    <!-- Session token breakdown (in-memory) -->
-    <div style="margin-top:14px" class="card">
-      <div class="card-header">
-        <span class="card-title">Session Token Totals (In-Memory)</span>
-        <span class="ts" id="tc"></span>
-      </div>
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header"><span class="card-title">Session Token Totals (In-Memory)</span><span class="ts" id="tc"></span></div>
       <div class="card-body">
         <div class="stat-grid stat-grid-4">
-          <div class="stat-tile tile-dark"><div class="val val-red" id="ti">-</div><div class="lbl">Input Tokens</div></div>
-          <div class="stat-tile tile-dark"><div class="val val-green" id="to">-</div><div class="lbl">Output Tokens</div></div>
+          <div class="stat-tile tile-dark"><div class="val val-red" id="ti">-</div><div class="lbl">Input</div></div>
+          <div class="stat-tile tile-dark"><div class="val val-green" id="to">-</div><div class="lbl">Output</div></div>
           <div class="stat-tile tile-dark"><div class="val val-blue" id="tr">-</div><div class="lbl">Cache Read</div></div>
           <div class="stat-tile tile-dark"><div class="val val-gold" id="tw">-</div><div class="lbl">Cache Write</div></div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- ══ SECTION: Background Harvesters ══ -->
-  <div>
-    <div class="section-label">Background Harvesters</div>
-    <div class="row2">
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Current Status & Controls</span>
-          <div style="display:flex;gap:10px">
-            <button class="btn-view" onclick="triggerHarvest('youtube')" id="btn-yt-harvest">Trigger YouTube</button>
-            <button class="btn-view" onclick="triggerHarvest('advisor')" id="btn-adv-harvest">Trigger Advisor</button>
-            <button class="btn-view" onclick="triggerHarvest('news')"    id="btn-news-harvest">Trigger News</button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="stat-grid stat-grid-4" id="harvest-status-grid">
-            <div class="empty" style="grid-column:1/-1">Loading harvester states...</div>
-          </div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Recent Harvester Results</span>
-          <span class="ts" id="hrc"></span>
-        </div>
-        <div style="overflow-x:auto">
-          <table>
-            <thead><tr>
-              <th>Time</th><th>Harvester</th><th>Result</th>
-            </tr></thead>
-            <tbody id="hrt"><tr><td colspan="3" class="empty">No results yet</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ SECTION: Per-Feature Error Log ══ -->
-  <div>
-    <div class="section-label">Per-Feature Error Log</div>
-    <div class="feature-grid" id="feature-error-grid">
-      <div class="empty" style="grid-column:1/-1">Loading feature health...</div>
-    </div>
-  </div>
-
-  <!-- ══ SECTION: Live Analysis Monitor ══ -->
-  <div>
-    <div class="section-label">Live Analysis Monitor</div>
-    <div class="row2">
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Currently Running</span>
-          <span class="ts" id="ac"></span>
-        </div>
-        <div class="card-body" id="ab"><div class="empty">No active analyses</div></div>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Recently Completed</span>
-          <span class="ts" id="anc"></span>
-        </div>
-        <div style="overflow-x:auto">
-          <table>
-            <thead><tr>
-              <th>Time</th><th>Ticker</th><th>Type</th><th>Signal</th><th>Dur</th><th>Status</th>
-            </tr></thead>
-            <tbody id="at"><tr><td colspan="6" class="empty">No analyses yet</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ SECTION: Recent API Calls (AI) ══ -->
-  <div>
     <div class="section-label">Recent AI API Calls</div>
     <div class="card">
-      <div class="card-header">
-        <span class="card-title">Recent Claude / AI Calls</span>
-        <span class="ts" id="clc"></span>
-      </div>
+      <div class="card-header"><span class="card-title">Recent Claude / AI Calls</span><span class="ts" id="clc"></span></div>
       <div style="overflow-x:auto">
-        <table>
-          <thead><tr>
-            <th>Time</th><th>Endpoint</th><th>Input</th><th>Output</th><th>Cache Read</th><th>Cache Write</th>
-          </tr></thead>
-          <tbody id="ct"><tr><td colspan="6" class="empty">No AI calls yet</td></tr></tbody>
-        </table>
+        <table><thead><tr><th>Time</th><th>Endpoint</th><th>Input</th><th>Output</th><th>Cache Read</th><th>Cache Write</th></tr></thead>
+        <tbody id="ct"><tr><td colspan="6" class="empty">No AI calls yet</td></tr></tbody></table>
       </div>
     </div>
-  </div>
 
-  <!-- ══ SECTION: Harvested Content ══ -->
-  <div>
-    <div class="section-label">Harvested Content</div>
+    <div class="section-label">Scraper Engine</div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Scraper Cache Age</span></div>
+      <div class="card-body"><div class="stat-grid stat-grid-4" id="scraper_status_grid"><div class="empty" style="grid-column:1/-1">Loading...</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE: HARVESTERS
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-harvesters">
+  <div style="padding-top:24px">
+    <div class="section-label">Background Harvesters</div>
+    <div class="row2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Status &amp; Controls</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn-view" onclick="triggerHarvest('youtube')" id="btn-yt-harvest">&#x1F3A5; YouTube</button>
+            <button class="btn-view" onclick="triggerHarvest('advisor')" id="btn-adv-harvest">&#x1F4BC; Advisor</button>
+            <button class="btn-view" onclick="triggerHarvest('news')" id="btn-news-harvest">&#x1F4F0; News</button>
+          </div>
+        </div>
+        <div class="card-body"><div class="stat-grid stat-grid-4" id="harvest-status-grid"><div class="empty" style="grid-column:1/-1">Loading...</div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Harvester Logs</span><span class="ts" id="hrc"></span></div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>Time</th><th>Harvester</th><th>Result</th></tr></thead>
+          <tbody id="hrt"><tr><td colspan="3" class="empty">No logs</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">Latest Harvested Content</div>
     <div class="row2">
       <div class="card">
-        <div class="card-header">
-          <span class="card-title">Latest News Articles</span>
-          <span class="ts" id="lnc"></span>
-        </div>
+        <div class="card-header"><span class="card-title">News Articles (last 20)</span></div>
         <div style="overflow-x:auto">
-          <table>
-            <thead><tr>
-              <th>Time</th><th>Ticker</th><th>Headline</th><th>Sent</th>
-            </tr></thead>
-            <tbody id="lnt"><tr><td colspan="4" class="empty">No news yet</td></tr></tbody>
-          </table>
+          <table><thead><tr><th>Time</th><th>Ticker</th><th>Headline</th><th>Sent</th></tr></thead>
+          <tbody id="lnt2"><tr><td colspan="4" class="empty">No news</td></tr></tbody></table>
         </div>
       </div>
       <div class="card">
-        <div class="card-header">
-          <span class="card-title">Latest YouTube Videos</span>
-          <span class="ts" id="lvc"></span>
-        </div>
+        <div class="card-header"><span class="card-title">YouTube Videos (last 20)</span></div>
         <div style="overflow-x:auto">
-          <table>
-            <thead><tr>
-              <th>Time</th><th>Ticker</th><th>Channel</th><th>Title</th>
-            </tr></thead>
-            <tbody id="lvt"><tr><td colspan="4" class="empty">No videos yet</td></tr></tbody>
-          </table>
+          <table><thead><tr><th>Time</th><th>Ticker</th><th>Channel</th><th>Title</th></tr></thead>
+          <tbody id="lvt2"><tr><td colspan="4" class="empty">No videos</td></tr></tbody></table>
         </div>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- ══ SECTION: API Request Log ══ -->
-  <div>
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE: ARCHIVE
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-archive">
+  <div style="padding-top:24px">
+    <div class="section-label">Historical Analysis Archive (All Users)</div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">All Analyses (DB)</span><span class="ts" id="hnc"></span></div>
+      <div style="overflow-x:auto">
+        <table><thead><tr><th>Created</th><th>Ticker</th><th>Date</th><th>Signal</th><th>Conf</th><th>User</th><th>Correct</th><th>Details</th></tr></thead>
+        <tbody id="ht"><tr><td colspan="8" class="empty">No data</td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE: REQUESTS
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-requests">
+  <div style="padding-top:24px">
     <div class="section-label">API Request Log</div>
     <div class="card">
-      <div class="card-header">
-        <span class="card-title">Last 20 Requests</span>
-        <span class="ts" id="rc"></span>
-      </div>
+      <div class="card-header"><span class="card-title">Last 50 Requests</span><span class="ts" id="rc"></span></div>
       <div style="overflow-x:auto">
-        <table>
-          <thead><tr>
-            <th>Time</th><th>Method</th><th>Path</th><th>Params</th><th>Status</th><th>Duration</th>
-          </tr></thead>
-          <tbody id="rt"><tr><td colspan="6" class="empty">No requests yet</td></tr></tbody>
-        </table>
+        <table><thead><tr><th>Time</th><th>Method</th><th>Path</th><th>Params</th><th>Status</th><th>Duration</th></tr></thead>
+        <tbody id="rt"><tr><td colspan="6" class="empty">No requests</td></tr></tbody></table>
       </div>
     </div>
   </div>
-
-  <!-- ══ SECTION: Historical Archive ══ -->
-  <div>
-    <div class="section-label">Historical Analysis Archive</div>
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">All Analyses (Database)</span>
-        <span class="ts" id="hnc"></span>
-      </div>
-      <div style="overflow-x:auto">
-        <table>
-          <thead><tr>
-            <th>Created At</th><th>Ticker</th><th>Date</th><th>Signal</th><th>Conf</th><th>User</th><th>Details</th>
-          </tr></thead>
-          <tbody id="ht"><tr><td colspan="7" class="empty">No historical data</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-</main>
+</div>
 
 <script>
-const expandedIds = new Set();
-const activeTabs = {};
+// ─── Charts ─────────────────────────────────────────────────
+let chartAlloc=null, chartSigs=null, chartVal=null, chartPnl=null, chartNw=null;
 
+function destroyChart(c){if(c){c.destroy();return null;}return null;}
+
+const expandedIds=new Set();
+const activeTabs2={};
+let currentUserData=null;
+let currentUserTab='portfolio';
+
+// ─── Formatting ──────────────────────────────────────────────
 function fmt(n){if(n==null)return'-';if(n>=1e9)return(n/1e9).toFixed(2)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return''+n}
+function fmtINR(n){if(n==null||isNaN(n))return'-';const abs=Math.abs(n);let s;if(abs>=1e7)s=(n/1e7).toFixed(2)+' Cr';else if(abs>=1e5)s=(n/1e5).toFixed(2)+' L';else s=n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',');return(n<0?'-₹':'₹')+s.replace('-','')}
 function fmtCost(c){if(c==null)return'$-.--';return'$'+c.toFixed(4)}
 function ts(iso){if(!iso)return'-';return new Date(iso).toLocaleTimeString('en-IN',{hour12:false})}
 function dts(iso){if(!iso)return'-';const d=new Date(iso);return d.toLocaleDateString('en-IN')+' '+d.toLocaleTimeString('en-IN',{hour12:false})}
 function ela(iso){if(!iso)return'';const s=Math.floor((Date.now()-new Date(iso))/1000);if(s<60)return s+'s';if(s<3600)return Math.floor(s/60)+'m '+s%60+'s';return Math.floor(s/3600)+'h'}
-function sig(s){if(!s)return'-';const u=s.toUpperCase();if(u.includes('BULL'))return`<span class="badge bull">${s}</span>`;if(u.includes('BEAR'))return`<span class="badge bear">${s}</span>`;return`<span class="badge hold">${s}</span>`}
-function ctype(t){if(!t)return'-';const u=(t||'').toUpperCase();if(u==='CACHE HIT')return`<span class="badge cache">CACHE HIT</span>`;if(u==='SMART CACHE')return`<span class="badge smart">SMART CACHE</span>`;if(u==='FULL AI')return`<span class="badge full">FULL AI</span>`;return`<span class="badge hold">${t}</span>`}
-function stbadge(s){if(!s)return'-';const l=s.toLowerCase();if(l==='completed')return`<span class="badge ok">&#x2713; done</span>`;if(l==='error')return`<span class="badge err">&#x2717; error</span>`;if(l==='disconnected')return`<span class="badge err">&#x2717; killed</span>`;return`<span class="badge hold">${s}</span>`}
+function sig(s){if(!s)return'-';const u=s.toUpperCase();if(u.includes('BUY')||u==='STRONG_BUY'||u==='BULL')return`<span class="badge bull">${s}</span>`;if(u.includes('SELL')||u==='STRONG_SELL'||u==='BEAR')return`<span class="badge bear">${s}</span>`;return`<span class="badge hold">${s}</span>`}
+function ctype(t){if(!t)return'-';const u=(t||'').toUpperCase();if(u==='CACHE HIT')return`<span class="badge cache">CACHE</span>`;if(u==='SMART CACHE')return`<span class="badge smart">SMART</span>`;if(u==='FULL AI')return`<span class="badge full">FULL AI</span>`;return`<span class="badge hold">${t}</span>`}
+function stbadge(s){if(!s)return'-';const l=s.toLowerCase();if(l==='completed')return`<span class="badge ok">&#x2713; done</span>`;if(l==='error')return`<span class="badge err">&#x2717; error</span>`;return`<span class="badge hold">${s}</span>`}
 function mbadge(m){return`<span class="badge m${m||'GET'}">${m}</span>`}
 function hbadge(c){if(!c)return'-';const cls=c<300?'ok':c<400?'cache':'err';return`<span class="badge ${cls}">${c}</span>`}
 function fmtParams(p){if(!p||!Object.keys(p).length)return'';const s=JSON.stringify(p).replace(/[{}"]/g,'');return s.length>40?s.slice(0,40)+'...':s}
 function pct(a,b){if(!b)return'0%';return Math.round(a/b*100)+'%'}
+function pnlClass(v){return v>=0?'pnl-pos':'pnl-neg'}
+function actionClass(a){const m={'BUY':'journal-action-buy','SELL':'journal-action-sell','HOLD':'journal-action-hold','WATCH':'journal-action-watch'};return m[a]||'';}
+
+// ─── Navigation ──────────────────────────────────────────────
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t=>{if(t.textContent.toLowerCase().includes(name.substring(0,4)))t.classList.add('active');});
+  // Fix: match nav tab more precisely
+  const navMap={overview:0,users:1,ai:2,harvesters:3,archive:4,requests:5};
+  const tabs=document.querySelectorAll('.nav-tab');
+  if(navMap[name]!==undefined)tabs[navMap[name]].classList.add('active');
+}
+function showUserTab(name){
+  currentUserTab=name;
+  document.querySelectorAll('[id^="utab-content-"]').forEach(el=>el.style.display='none');
+  document.querySelectorAll('[id^="utab-"]').forEach(btn=>{if(btn.tagName==='BUTTON')btn.classList.remove('active');});
+  document.getElementById('utab-content-'+name).style.display='';
+  document.getElementById('utab-'+name).classList.add('active');
+  if(currentUserData) renderUserTab(currentUserData, name);
+}
+
+// ─── Feature errors ──────────────────────────────────────────
+function renderFeatureErrors(featureErrors){
+  const grid=document.getElementById('feature-error-grid');
+  if(!featureErrors||!Object.keys(featureErrors).length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">No data</div>';return;}
+  const icons={'News Feed':'&#x1F4F0;','Tech Momentum':'&#x1F4C8;','Screener':'&#x1F50D;','Alerts':'&#x1F514;','Portfolio Calendar':'&#x1F4C5;','Earnings Dashboard':'&#x1F4B0;','Analysis Engine':'&#x1F9E0;','YouTube Harvester':'&#x1F3A5;','Advisor Harvester':'&#x1F4BC;','Macro Impact':'&#x1F30D;','Sector Performance':'&#x1F3D7;'};
+  grid.innerHTML=Object.entries(featureErrors).map(([name,errs])=>{
+    const hasErrs=errs&&errs.length>0;
+    const icon=icons[name]||'&#x1F534;';
+    const body=hasErrs?errs.map(e=>`<div class="feat-err-item"><div class="feat-err-path">${e.path||'-'}</div><div class="feat-err-meta">${hbadge(e.status)} &bull; ${ts(e.ts)}</div></div>`).join(''):`<div class="feat-clean-msg">&#x2714; No errors</div>`;
+    return`<div class="feature-card ${hasErrs?'has-errors':'clean'}"><div class="feature-header"><span class="feature-name">${icon} ${name}</span><div class="feat-status-dot"></div></div><div class="feature-body">${body}</div></div>`;
+  }).join('');
+}
+
+// ─── Harvest ─────────────────────────────────────────────────
+function renderHarvestStatus(harvests){
+  const grid=document.getElementById('harvest-status-grid');
+  if(!harvests){grid.innerHTML='<div class="empty">No data</div>';return;}
+  grid.innerHTML=Object.entries(harvests).map(([name,h])=>{
+    let color='val-dim',val=h.status||'idle';
+    if(h.status==='running'){color='val-blue';val='RUNNING...';}
+    else if(h.status==='error'){color='val-red';val='ERROR';}
+    else if(h.status==='idle'&&h.last_run){color='val-green';val='IDLE';}
+    return`<div class="stat-tile tile-dark"><div class="val ${color}">${val}</div><div class="lbl">${name.toUpperCase()}</div><div class="ts" style="margin-top:4px">${h.last_run?ts(h.last_run):'Never'}</div></div>`;
+  }).join('');
+  const map={youtube:'btn-yt-harvest',advisor:'btn-adv-harvest',news:'btn-news-harvest'};
+  Object.entries(map).forEach(([key,id])=>{
+    const btn=document.getElementById(id);if(!btn)return;
+    const h=harvests[key];
+    if(h&&h.status==='running'){btn.textContent=key+' Running...';btn.disabled=true;btn.style.opacity='.5';}
+    else{btn.textContent=['youtube','advisor','news'].includes(key)?{youtube:'&#x1F3A5; YouTube',advisor:'&#x1F4BC; Advisor',news:'&#x1F4F0; News'}[key]:key;btn.disabled=false;btn.style.opacity='1';}
+  });
+}
+
+async function triggerHarvest(type){
+  const ep={youtube:'harvest-youtube',advisor:'harvest-advisors',news:'harvest-news'};
+  const r=await fetch('/api/v1/admin/'+ep[type],{method:'POST',headers:{'Authorization':'Bearer admin'}});
+  if(r.ok)refreshAll();else alert('Failed: '+r.status);
+}
 
 function toggleDetails(id){
   const el=document.getElementById('details-'+id);
   if(expandedIds.has(id)){expandedIds.delete(id);el.style.display='none';}
   else{expandedIds.add(id);el.style.display='table-row';}
 }
-function showTab(id,tab){
-  const raw=document.getElementById('raw-'+id);
-  const full=document.getElementById('full-'+id);
-  const bRaw=document.getElementById('bt-raw-'+id);
-  const bFull=document.getElementById('bt-full-'+id);
-  activeTabs[id]=tab;
-  if(tab==='raw'){raw.style.display='block';full.style.display='none';bRaw.classList.add('active');bFull.classList.remove('active');}
-  else{raw.style.display='none';full.style.display='block';bRaw.classList.remove('active');bFull.classList.add('active');}
+
+// ─── User selector population ────────────────────────────────
+function populateUserList(db_stats_users, analyses){
+  // We'll populate from /users endpoint via dashboard-data users list
 }
 
-function renderFeatureErrors(featureErrors){
-  const grid=document.getElementById('feature-error-grid');
-  if(!featureErrors||!Object.keys(featureErrors).length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">No feature data</div>';return;}
-  const featureIcons={
-    'News Feed':'&#x1F4F0;',
-    'Tech Momentum':'&#x1F4C8;',
-    'Screener':'&#x1F50D;',
-    'Alerts':'&#x1F514;',
-    'Portfolio Calendar':'&#x1F4C5;',
-    'Earnings Dashboard':'&#x1F4B0;',
-    'Analysis Engine':'&#x1F9E0;',
-    'YouTube Harvester':'&#x1F3A5;',
-    'Advisor Harvester':'&#x1F4BC;',
-    'Macro Impact':'&#x1F30D;',
-    'Sector Performance':'&#x1F3D7;'
-  };
-  grid.innerHTML=Object.entries(featureErrors).map(([name,errs])=>{
-    const hasErrs=errs&&errs.length>0;
-    const icon=featureIcons[name]||'&#x1F534;';
-    const body=hasErrs
-      ?errs.map(e=>`<div class="feat-err-item"><div class="feat-err-path">${e.path||'-'}</div><div class="feat-err-meta">${hbadge(e.status)} &bull; ${ts(e.ts)} &bull; ${e.duration_ms!=null?e.duration_ms+'ms':'-'}</div></div>`).join('')
-      :`<div class="feat-clean-msg">&#x2714; No errors</div>`;
-    return`<div class="feature-card ${hasErrs?'has-errors':'clean'}">
-      <div class="feature-header">
-        <span class="feature-name">${icon} ${name}</span>
-        <div class="feat-status-dot"></div>
+// ─── Load per-user data ──────────────────────────────────────
+async function loadUser(userId){
+  if(!userId){document.getElementById('user-stat-chips').innerHTML='';currentUserData=null;return;}
+  document.getElementById('user-stat-chips').innerHTML='<span style="color:#484f58;font-size:11px">Loading...</span>';
+  try{
+    const r=await fetch('/dashboard-user-data?user_id='+userId,{headers:{'Authorization':'Bearer admin'}});
+    const d=await r.json();
+    if(d.error){document.getElementById('user-stat-chips').innerHTML='<span class="badge err">'+d.error+'</span>';return;}
+    currentUserData=d;
+    // Stat chips
+    const u=d.user||{};
+    const ps=d.portfolio_summary||{};
+    const acc=d.accuracy||{};
+    document.getElementById('user-stat-chips').innerHTML=`
+      <div class="user-stat-chip">&#x1F464; <span class="chip-val">${u.display_name||u.username}</span></div>
+      <div class="user-stat-chip">Holdings: <span class="chip-val">${ps.holdings_count||0}</span></div>
+      <div class="user-stat-chip">Invested: <span class="chip-val">${fmtINR(ps.total_invested||0)}</span></div>
+      <div class="user-stat-chip">Analyses: <span class="chip-val">${(d.analyses||[]).length}</span></div>
+      <div class="user-stat-chip">Accuracy: <span class="chip-val">${acc.accuracy_pct!=null?acc.accuracy_pct+'%':'N/A'}</span></div>
+      <div class="user-stat-chip">Joined: <span class="chip-val">${u.created_at?u.created_at.slice(0,10):'-'}</span></div>
+    `;
+    renderUserTab(d, currentUserTab);
+  }catch(e){document.getElementById('user-stat-chips').innerHTML='<span class="badge err">Error: '+e.message+'</span>';}
+}
+
+function renderUserTab(d, tab){
+  if(tab==='portfolio') renderPortfolio(d);
+  else if(tab==='analyses') renderAnalyses(d);
+  else if(tab==='valuation') renderValuation(d);
+  else if(tab==='alerts') renderAlerts(d);
+  else if(tab==='journal') renderJournal(d);
+  else if(tab==='networth') renderNetWorth(d);
+}
+
+// ─── Portfolio ───────────────────────────────────────────────
+function renderPortfolio(d){
+  const rows=d.portfolio||[];
+  const ps=d.portfolio_summary||{};
+  document.getElementById('p-holdings').textContent=ps.holdings_count||0;
+  document.getElementById('p-invested').textContent=fmtINR(ps.total_invested||0);
+  const groups=[...new Set(rows.map(r=>r.group_name||'watchlist'))];
+  document.getElementById('p-groups').textContent=groups.length;
+
+  document.getElementById('portfolio-table').innerHTML=rows.length===0?'<tr><td colspan="9" class="empty">No holdings</td></tr>':rows.map((r,i)=>`<tr>
+    <td class="ts">${i+1}</td>
+    <td style="font-weight:700;color:#f0f6fc">${r.ticker}</td>
+    <td style="color:#8b949e;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.company_name}</td>
+    <td>${r.shares}</td>
+    <td>₹${r.buy_price.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+    <td style="color:#c9a84c;font-weight:700">${fmtINR(r.invested)}</td>
+    <td><span class="badge hold">${r.group_name}</span></td>
+    <td style="color:#6e7681;font-size:10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.notes||'—'}</td>
+    <td class="ts">${r.created_at?r.created_at.slice(0,10):'-'}</td>
+  </tr>`).join('');
+
+  // Allocation donut
+  chartAlloc=destroyChart(chartAlloc);
+  if(rows.length>0){
+    const groupMap={};
+    rows.forEach(r=>{const g=r.group_name||'watchlist';groupMap[g]=(groupMap[g]||0)+r.invested;});
+    const labels=Object.keys(groupMap),vals=Object.values(groupMap);
+    const colors=['#c9a84c','#3fb950','#58a6ff','#bc8cff','#f85149','#d29922'];
+    chartAlloc=new Chart(document.getElementById('chart-allocation'),{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:colors.slice(0,labels.length),borderColor:'#0a0a0a',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b949e',font:{size:11}}}}}});
+  }
+
+  // Signal distribution pie
+  chartSigs=destroyChart(chartSigs);
+  const sd=d.signal_distribution||{};
+  if(Object.keys(sd).length>0){
+    const slabels=Object.keys(sd),svals=Object.values(sd);
+    const scolors=slabels.map(l=>{const u=l.toUpperCase();if(u.includes('BUY')||u.includes('BULL'))return'#3fb950';if(u.includes('SELL')||u.includes('BEAR'))return'#f85149';return'#d29922';});
+    chartSigs=new Chart(document.getElementById('chart-signals'),{type:'bar',data:{labels:slabels,datasets:[{data:svals,backgroundColor:scolors,borderColor:'#0a0a0a',borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6e7681',font:{size:10}},grid:{color:'#161b22'}},y:{ticks:{color:'#6e7681',font:{size:10}},grid:{color:'#161b22'}}}}});
+  }
+}
+
+// ─── AI Analysis Reports ─────────────────────────────────────
+function renderAnalyses(d){
+  const analyses=d.analyses||[];
+  const acc=d.accuracy||{};
+  document.getElementById('a-total').textContent=analyses.length;
+  document.getElementById('a-correct').textContent=acc.correct??'-';
+  document.getElementById('a-incorrect').textContent=acc.incorrect??'-';
+  document.getElementById('a-accuracy').textContent=acc.accuracy_pct!=null?acc.accuracy_pct+'%':'N/A';
+
+  const container=document.getElementById('analyses-list');
+  if(analyses.length===0){container.innerHTML='<div class="empty">No analyses for this user</div>';return;}
+
+  container.innerHTML=analyses.map(a=>{
+    const bull=(a.bull_case||[]).slice(0,3);
+    const bear=(a.bear_case||[]).slice(0,3);
+    const risks=(a.key_risks||[]).slice(0,3);
+    const kf=a.key_factors||{};
+    const up=a.upside_downside_pct||{};
+    const correctBadge=a.was_correct===true?'<span class="badge ok">&#x2713; Correct</span>':a.was_correct===false?'<span class="badge err">&#x2717; Wrong</span>':'<span class="badge hold">Unverified</span>';
+    return`<div class="analysis-report">
+      <div class="report-header">
+        <div>
+          <div class="report-ticker">${a.ticker} ${sig(a.signal)}</div>
+          <div class="report-company">${a.company_name||''}</div>
+        </div>
+        <div class="report-meta">
+          ${correctBadge}<br>
+          Conf: <span style="color:#c9a84c">${a.confidence_pct!=null?a.confidence_pct+'%':'-'}</span><br>
+          Price: <span style="color:#f0f6fc">${a.current_price_inr!=null?fmtINR(a.current_price_inr):'-'}</span><br>
+          <span class="ts">${a.created_at?a.created_at.slice(0,10):'-'}</span>
+        </div>
       </div>
-      <div class="feature-body">${body}</div>
+      <div class="target-prices">
+        <div class="target-chip"><div class="tv">${a.target_short!=null?fmtINR(a.target_short):'-'}</div><div class="tl">3M Target ${up.short_term!=null?'('+up.short_term.toFixed(1)+'%)':''}</div></div>
+        <div class="target-chip"><div class="tv">${a.target_medium!=null?fmtINR(a.target_medium):'-'}</div><div class="tl">12M Target ${up.medium_term!=null?'('+up.medium_term.toFixed(1)+'%)':''}</div></div>
+        <div class="target-chip"><div class="tv">${a.target_long!=null?fmtINR(a.target_long):'-'}</div><div class="tl">36M Target ${up.long_term!=null?'('+up.long_term.toFixed(1)+'%)':''}</div></div>
+      </div>
+      <div class="report-body">
+        <div class="report-col">
+          <h4>&#x1F7E2; Bull Case</h4>
+          <ul class="report-list">${bull.length?bull.map(b=>`<li>${b}</li>`).join(''):'<li style="color:#484f58">No bull case</li>'}</ul>
+          <h4 style="margin-top:10px">&#x1F514; Key Risks</h4>
+          <ul class="report-list">${risks.length?risks.map(r=>`<li>${r}</li>`).join(''):'<li style="color:#484f58">No risks</li>'}</ul>
+        </div>
+        <div class="report-col">
+          <h4>&#x1F534; Bear Case</h4>
+          <ul class="report-list">${bear.length?bear.map(b=>`<li>${b}</li>`).join(''):'<li style="color:#484f58">No bear case</li>'}</ul>
+          <h4 style="margin-top:10px">&#x1F4CA; Key Factors</h4>
+          <div class="key-factors">
+            ${Object.entries(kf).slice(0,6).map(([k,v])=>`<div class="kf-item"><div class="kf-label">${k.replace(/_/g,' ')}</div><div class="kf-val">${(v||'').slice(0,60)}</div></div>`).join('')}
+          </div>
+        </div>
+      </div>
+      ${a.outcome_delta_pct!=null?`<div style="margin-top:8px;font-size:11px;color:#6e7681">Price moved <span class="${a.outcome_delta_pct>=0?'pnl-pos':'pnl-neg'}">${a.outcome_delta_pct>=0?'+':''}${a.outcome_delta_pct.toFixed(2)}%</span> since analysis</div>`:''}
     </div>`;
   }).join('');
 }
 
-function renderHarvestStatus(harvests){
-  const grid=document.getElementById('harvest-status-grid');
-  if(!harvests){grid.innerHTML='<div class="empty">No harvest data</div>';return;}
-  grid.innerHTML=Object.entries(harvests).map(([name,h])=>{
-    let cls='tile-dark';
-    let val=h.status;
-    let color='val-dim';
-    if(h.status==='running'){color='val-blue';val='RUNNING...';}
-    else if(h.status==='error'){color='val-red';val='ERROR';}
-    else if(h.status==='idle' && h.last_run){color='val-green';val='IDLE';}
-    
-    return`<div class="stat-tile ${cls}">
-      <div class="val ${color}">${val}</div>
-      <div class="lbl">${name.toUpperCase()}</div>
-      <div class="ts" style="margin-top:4px">${h.last_run?ts(h.last_run):'Never'}</div>
-    </div>`;
-  }).join('');
-  
-  const map={youtube:'btn-yt-harvest',advisor:'btn-adv-harvest',news:'btn-news-harvest'};
-  Object.entries(map).forEach(([key,id])=>{
-    const btn=document.getElementById(id);
-    if(!btn)return;
-    const h=harvests[key];
-    if(h && h.status==='running'){
-      btn.textContent=key.toUpperCase()+' Running...';
-      btn.disabled=true;
-      btn.style.opacity='0.5';
-    } else {
-      btn.textContent='Trigger '+key.charAt(0).toUpperCase()+key.slice(1);
-      btn.disabled=false;
-      btn.style.opacity='1';
-    }
-  });
+// ─── Valuation Chart ─────────────────────────────────────────
+function renderValuation(d){
+  const hist=d.valuation_history||[];
+  chartVal=destroyChart(chartVal);
+  chartPnl=destroyChart(chartPnl);
+
+  const table=document.getElementById('valuation-table');
+  table.innerHTML=hist.length===0?'<tr><td colspan="6" class="empty">No valuation history</td></tr>':hist.map(v=>`<tr>
+    <td class="ts">${v.snapshot_date}</td>
+    <td style="color:#c9a84c">${fmtINR(v.total_value)}</td>
+    <td>${fmtINR(v.total_invested)}</td>
+    <td class="${pnlClass(v.total_pnl)}">${fmtINR(v.total_pnl)}</td>
+    <td class="${pnlClass(v.pnl_percent)}">${v.pnl_percent!=null?v.pnl_percent.toFixed(2)+'%':'-'}</td>
+    <td class="ts">${v.nifty_close!=null?v.nifty_close.toFixed(0):'-'}</td>
+  </tr>`).join('');
+
+  if(hist.length===0)return;
+  const labels=hist.map(v=>v.snapshot_date);
+  const vals=hist.map(v=>v.total_value);
+  const invested=hist.map(v=>v.total_invested);
+  const pnlPct=hist.map(v=>v.pnl_percent);
+
+  // Normalised Nifty (to compare trend)
+  const niftyRaw=hist.map(v=>v.nifty_close);
+  const niftyBase=niftyRaw.find(x=>x!=null);
+  const valBase=vals[0]||1;
+  const niftyNorm=niftyRaw.map(x=>x!=null?(x/niftyBase)*valBase:null);
+
+  chartVal=new Chart(document.getElementById('chart-valuation'),{type:'line',data:{labels,datasets:[
+    {label:'Portfolio Value',data:vals,borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,.08)',tension:.3,pointRadius:2,fill:true},
+    {label:'Cost Basis',data:invested,borderColor:'#58a6ff',backgroundColor:'transparent',tension:.3,pointRadius:1,borderDash:[4,4]},
+    {label:'Nifty (norm)',data:niftyNorm,borderColor:'#6e7681',backgroundColor:'transparent',tension:.3,pointRadius:1,borderDash:[2,4]},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b949e',font:{size:10}}}},scales:{x:{ticks:{color:'#6e7681',font:{size:9},maxRotation:45},grid:{color:'#161b22'}},y:{ticks:{color:'#6e7681',font:{size:10},callback:v=>fmtINR(v)},grid:{color:'#161b22'}}}}});
+
+  chartPnl=new Chart(document.getElementById('chart-pnl-pct'),{type:'bar',data:{labels,datasets:[{label:'P&L %',data:pnlPct,backgroundColor:pnlPct.map(v=>v>=0?'rgba(63,185,80,.6)':'rgba(248,81,73,.6)'),borderColor:pnlPct.map(v=>v>=0?'#3fb950':'#f85149'),borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6e7681',font:{size:9},maxRotation:45},grid:{color:'#161b22'}},y:{ticks:{color:'#6e7681',font:{size:10},callback:v=>v+'%'},grid:{color:'#161b22'}}}}});
 }
 
-async function triggerHarvest(type){
-  const endpoints={youtube:'harvest-youtube',advisor:'harvest-advisors',news:'harvest-news'};
-  const r=await fetch('/api/v1/admin/'+endpoints[type],{method:'POST',headers:{'Authorization':'Bearer admin'}});
-  if(r.ok){ refresh(); }
-  else{ alert('Harvest trigger failed: '+r.status); }
+// ─── Alerts ──────────────────────────────────────────────────
+function renderAlerts(d){
+  const alerts=d.alerts||[];
+  const container=document.getElementById('alerts-list');
+  if(alerts.length===0){container.innerHTML='<div class="empty">No price alerts</div>';return;}
+  container.innerHTML=alerts.map(a=>`<div class="alert-item ${a.triggered?'alert-triggered':''}">
+    <div>
+      <span style="font-weight:700;color:#f0f6fc">${a.ticker}</span>
+      <span class="ts" style="margin-left:8px">${a.created_at?a.created_at.slice(0,10):'-'}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="color:#c9a84c">₹${a.target_price.toLocaleString('en-IN')}</span>
+      <span class="badge ${a.direction==='above'?'bull':'bear'}">${a.direction?.toUpperCase()}</span>
+      ${a.triggered?'<span class="badge ok">TRIGGERED</span>':'<span class="badge hold">ACTIVE</span>'}
+    </div>
+  </div>`).join('');
 }
 
-async function refresh(){
+// ─── Trade Journal ───────────────────────────────────────────
+function renderJournal(d){
+  const journal=d.trade_journal||[];
+  const container=document.getElementById('journal-list');
+  if(journal.length===0){container.innerHTML='<div class="empty">No journal entries</div>';return;}
+  container.innerHTML=journal.map(j=>`<div class="journal-entry ${actionClass(j.action)}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div>
+        <span style="font-weight:700;color:#f0f6fc">${j.ticker}</span>
+        ${j.company_name?`<span class="ts" style="margin-left:6px">${j.company_name}</span>`:''}
+        <span class="badge ${j.action==='BUY'?'bull':j.action==='SELL'?'bear':'hold'}" style="margin-left:8px">${j.action}</span>
+        ${j.mood?`<span class="badge hold" style="margin-left:4px">${j.mood}</span>`:''}
+      </div>
+      <div class="ts">${j.created_at?j.created_at.slice(0,10):'-'}</div>
+    </div>
+    <div style="font-size:11px;color:#8b949e;margin-bottom:4px">&#x1F4B0; Price at time: <span style="color:#c9a84c">₹${j.price_at_time.toLocaleString('en-IN')}</span></div>
+    <div style="font-size:11px;color:#8b949e"><strong style="color:#6e7681">Reason:</strong> ${j.reason_text||'—'}</div>
+    ${j.outcome_text?`<div style="font-size:11px;color:#6e7681;margin-top:4px;padding-top:4px;border-top:1px solid #21262d"><strong>Outcome:</strong> ${j.outcome_text}</div>`:''}
+  </div>`).join('');
+}
+
+// ─── Net Worth ───────────────────────────────────────────────
+function renderNetWorth(d){
+  const ledger=d.net_worth_ledger||[];
+  chartNw=destroyChart(chartNw);
+  const table=document.getElementById('networth-table');
+  table.innerHTML=ledger.length===0?'<tr><td colspan="7" class="empty">No net worth data</td></tr>':ledger.map(n=>`<tr>
+    <td class="ts">${n.snapshot_date}</td>
+    <td style="color:#c9a84c;font-weight:700">${fmtINR(n.total_value_inr)}</td>
+    <td class="${pnlClass(n.daily_delta_inr||0)}">${n.daily_delta_inr!=null?fmtINR(n.daily_delta_inr):'-'}</td>
+    <td class="${pnlClass(n.daily_delta_pct||0)}">${n.daily_delta_pct!=null?n.daily_delta_pct.toFixed(2)+'%':'-'}</td>
+    <td style="color:#6e7681">${n.peak_value_inr!=null?fmtINR(n.peak_value_inr):'-'}</td>
+    <td>${n.top_gainer_ticker?`<span class="pnl-pos">${n.top_gainer_ticker} +${n.top_gainer_pct?.toFixed(1)}%</span>`:'-'}</td>
+    <td>${n.top_loser_ticker?`<span class="pnl-neg">${n.top_loser_ticker} ${n.top_loser_pct?.toFixed(1)}%</span>`:'-'}</td>
+  </tr>`).join('');
+
+  if(ledger.length===0)return;
+  const labels=ledger.map(n=>n.snapshot_date);
+  const vals=ledger.map(n=>n.total_value_inr);
+  const peaks=ledger.map(n=>n.peak_value_inr);
+  chartNw=new Chart(document.getElementById('chart-networth'),{type:'line',data:{labels,datasets:[
+    {label:'Net Worth',data:vals,borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,.08)',tension:.3,pointRadius:2,fill:true},
+    {label:'Peak',data:peaks,borderColor:'#3fb950',backgroundColor:'transparent',tension:.3,pointRadius:1,borderDash:[3,3]},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b949e',font:{size:10}}}},scales:{x:{ticks:{color:'#6e7681',font:{size:9},maxRotation:45},grid:{color:'#161b22'}},y:{ticks:{color:'#6e7681',font:{size:10},callback:v=>fmtINR(v)},grid:{color:'#161b22'}}}}});
+}
+
+// ─── Main refresh ────────────────────────────────────────────
+async function refreshAll(){
   try{
     const r=await fetch('/dashboard-data',{headers:{'Authorization':'Bearer admin'}});
     if(!r.ok){document.getElementById('lu').textContent='Auth error '+r.status;return;}
@@ -1345,50 +1656,66 @@ async function refresh(){
     document.getElementById('lu').textContent='Updated '+new Date().toLocaleTimeString('en-IN',{hour12:false});
     if(d.uptime_s!=null){
       const h=Math.floor(d.uptime_s/3600),m=Math.floor((d.uptime_s%3600)/60),s=Math.floor(d.uptime_s%60);
-      document.getElementById('uptime').textContent=`Server up ${h}h ${m}m ${s}s`;
+      document.getElementById('uptime').textContent=`Up ${h}h ${m}m ${s}s`;
     }
 
-    // ── DB Stats ──
+    // Overview stats
     if(d.db_stats){
       document.getElementById('db_u').textContent=d.db_stats.users??0;
       document.getElementById('db_h').textContent=d.db_stats.holdings??0;
       document.getElementById('db_a').textContent=d.db_stats.analyses??0;
       document.getElementById('db_s').textContent=d.db_stats.signal_events??0;
+      document.getElementById('db_tj').textContent=d.db_stats.trade_journals??0;
+      document.getElementById('db_news').textContent=d.db_stats.news_articles??0;
+      document.getElementById('db_yt').textContent=d.db_stats.youtube_videos??0;
     }
-    
-    // ── AI Health ──
+    if(d.cache_stats){document.getElementById('c_q').textContent=d.cache_stats.quick_info??0;}
+
     if(d.ai_health){
       const ok='<span class="val-green">READY</span>',no='<span class="val-red">MISSING</span>';
       document.getElementById('h_ant').innerHTML=d.ai_health.anthropic?ok:no;
       document.getElementById('h_ds').innerHTML=d.ai_health.deepseek?ok:no;
       document.getElementById('h_goog').innerHTML=d.ai_health.google?ok:no;
     }
-    
-    if(d.cache_stats){
-      document.getElementById('c_q').textContent=d.cache_stats.quick_info??0;
-      document.getElementById('c_m').textContent=d.cache_stats.morning_brief??0;
-      document.getElementById('c_sec').textContent=d.cache_stats.sector_performance?'OK':'—';
-      document.getElementById('c_asm').textContent=d.cache_stats.asm_gsm?'OK':'—';
-      const sg=document.getElementById('scraper_status_grid');
-      const sdata=d.cache_stats.scraper||{};
-      const skeys=Object.keys(sdata);
-      if(skeys.length===0){sg.innerHTML='<div class="empty" style="grid-column:1/-1">No scraper cache entries</div>';}
-      else{
-        const colors=['val-red','val-green','val-blue','val-gold'];
-        sg.innerHTML=skeys.map((k,i)=>`<div class="stat-tile tile-dark"><div class="val ${colors[i%colors.length]}">${sdata[k].age_s}s</div><div class="lbl">${k}</div></div>`).join('');
-      }
-    }
 
-    // ── AI Model Stats ──
-    const cl=d.claude_stats||{};
-    const ds=d.deepseek_stats||{};
+    renderFeatureErrors(d.feature_errors||{});
+
+    // Active analyses
+    const active=d.active_analyses||[];
+    document.getElementById('ac').textContent=active.length+' running';
+    document.getElementById('ab').innerHTML=active.length===0?'<div class="empty">No active analyses</div>':active.map(a=>`<div class="analysis-item active"><div style="display:flex;justify-content:space-between;align-items:center"><span class="a-ticker">${a.ticker}</span><span class="ts">${ts(a.start_ts)}</span></div><div class="a-meta">${a.exchange||'NSE'} &bull; User ${a.user_id||'N/A'} &bull; running ${ela(a.start_ts)}</div><div class="a-stage"><span class="s-dot"></span>${a.stage||'Processing...'}</div></div>`).join('');
+
+    // Recent analyses
+    const an=d.recent_analyses||[];
+    document.getElementById('anc').textContent=an.length+' shown';
+    document.getElementById('at').innerHTML=an.length===0?'<tr><td colspan="6" class="empty">No activity</td></tr>':an.slice(0,15).map(a=>`<tr><td class="ts">${ts(a.start_ts||a.ts)}</td><td style="font-weight:700;color:#f0f6fc">${a.ticker}</td><td>${ctype(a.cache_type)}</td><td>${sig(a.signal)}</td><td class="ts">${a.duration_s!=null?a.duration_s+'s':'-'}</td><td>${stbadge(a.status)}</td></tr>`).join('');
+
+    // News / videos (overview & harvesters tabs)
+    const lnews=d.latest_news||[];
+    document.getElementById('lnc').textContent=lnews.length+' recent';
+    const newsHtml=lnews.length===0?'<tr><td colspan="4" class="empty">No news</td></tr>':lnews.map(n=>`<tr><td class="ts">${ts(n.ts)}</td><td style="font-weight:700;color:#f0f6fc">${n.ticker||'—'}</td><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.red_flag?'<span class="badge err">&#x1F6A9;</span> ':''}${n.headline}</td><td>${n.sentiment?`<span class="badge ${n.sentiment.toLowerCase()}">${n.sentiment}</span>`:'—'}</td></tr>`).join('');
+    document.getElementById('lnt').innerHTML=newsHtml;
+    document.getElementById('lnt2').innerHTML=newsHtml;
+
+    const lvideos=d.latest_videos||[];
+    document.getElementById('lvc').textContent=lvideos.length+' recent';
+    const vidHtml=lvideos.length===0?'<tr><td colspan="4" class="empty">No videos</td></tr>':lvideos.map(v=>`<tr><td class="ts">${ts(v.ts)}</td><td style="font-weight:700;color:#f0f6fc">${v.ticker||'—'}</td><td style="color:#bc8cff">${v.channel}</td><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.title}</td></tr>`).join('');
+    document.getElementById('lvt').innerHTML=vidHtml;
+    document.getElementById('lvt2').innerHTML=vidHtml;
+
+    // Harvesters
+    renderHarvestStatus(d.harvest_status);
+    const hlogs=d.harvest_logs||[];
+    document.getElementById('hrc').textContent=hlogs.length+' logged';
+    document.getElementById('hrt').innerHTML=hlogs.length===0?'<tr><td colspan="3" class="empty">No logs</td></tr>':hlogs.map(l=>`<tr><td class="ts">${ts(l.ts)}</td><td style="font-weight:700;color:#c9a84c">${l.key.toUpperCase()}</td><td style="font-size:10px;color:#8b949e;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${JSON.stringify(l.result)}</td></tr>`).join('');
+
+    // AI stats
+    const cl=d.claude_stats||{},ds=d.deepseek_stats||{},tok=d.token_stats||{};
     document.getElementById('cl_calls').textContent=fmt(cl.calls||0);
     document.getElementById('cl_in').textContent=fmt(cl.input_tokens||0);
     document.getElementById('cl_out').textContent=fmt(cl.output_tokens||0);
     document.getElementById('cl_cost').textContent=fmtCost(cl.cost_usd||0);
-    const tok=d.token_stats||{};
-    const totalIn=tok.total_input||0;
-    const cacheRead=tok.total_cache_read||0;
+    const totalIn=tok.total_input||0,cacheRead=tok.total_cache_read||0;
     document.getElementById('cl_cache_hit').textContent=totalIn>0?pct(cacheRead,totalIn+cacheRead):'0%';
     document.getElementById('ds_calls').textContent=fmt(ds.calls||0);
     document.getElementById('ds_in').textContent=fmt(ds.input_tokens||0);
@@ -1396,132 +1723,38 @@ async function refresh(){
     document.getElementById('ds_cost').textContent=fmtCost(ds.cost_usd||0);
     const totalCalls=(cl.calls||0)+(ds.calls||0);
     document.getElementById('ds_ratio').textContent=totalCalls>0?pct(ds.calls||0,totalCalls)+' of calls':'0%';
-
-    // ── Session tokens ──
     document.getElementById('ti').textContent=fmt(tok.total_input||0);
     document.getElementById('to').textContent=fmt(tok.total_output||0);
     document.getElementById('tr').textContent=fmt(tok.total_cache_read||0);
     document.getElementById('tw').textContent=fmt(tok.total_cache_write||0);
     document.getElementById('tc').textContent=(tok.total_calls||0)+' calls this session';
-
-    // ── Feature errors ──
-    renderFeatureErrors(d.feature_errors||{});
-
-    // ── Harvest status ──
-    renderHarvestStatus(d.harvest_status);
-    
-    const hlogs=d.harvest_logs||[];
-    document.getElementById('hrc').textContent=hlogs.length+' logged';
-    const hrt=document.getElementById('hrt');
-    hrt.innerHTML=hlogs.length===0?'<tr><td colspan="3" class="empty">No results yet</td></tr>':hlogs.map(l=>`<tr>
-      <td class="ts">${ts(l.ts)}</td>
-      <td style="font-weight:700;color:#c9a84c">${l.key.toUpperCase()}</td>
-      <td style="font-size:10px;color:#8b949e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px">${JSON.stringify(l.result)}</td>
-    </tr>`).join('');
-
-    // ── Active analyses ──
-    const active=d.active_analyses||[];
-    document.getElementById('ac').textContent=active.length+' running';
-    const ab=document.getElementById('ab');
-    ab.innerHTML=active.length===0?'<div class="empty">No active analyses</div>':active.map(a=>`
-      <div class="analysis-item active">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span class="a-ticker">${a.ticker}</span><span class="ts">${ts(a.start_ts)}</span>
-        </div>
-        <div class="a-meta">${a.exchange||'NSE'} &bull; User ${a.user_id||'N/A'} &bull; <span class="badge full">LIVE AI</span> &bull; running ${ela(a.start_ts)}</div>
-        <div class="a-stage"><span class="s-dot"></span>${a.stage||'Processing...'}</div>
-      </div>`).join('');
-
-    // ── Recent analyses ──
-    const an=d.recent_analyses||[];
-    document.getElementById('anc').textContent=an.length+' shown';
-    const at=document.getElementById('at');
-    at.innerHTML=an.length===0?'<tr><td colspan="6" class="empty">No activity yet</td></tr>':an.slice(0,15).map(a=>`<tr>
-      <td class="ts">${ts(a.start_ts||a.ts)}</td>
-      <td style="font-weight:700;color:#f0f6fc">${a.ticker}</td>
-      <td>${ctype(a.cache_type)}</td>
-      <td>${sig(a.signal)}</td>
-      <td class="ts">${a.duration_s!=null?a.duration_s+'s':'-'}</td>
-      <td>${stbadge(a.status)}</td>
-    </tr>`).join('');
-
-    // ── Recent AI calls ──
-    const cl2=(tok.recent||[]);
+    const cl2=tok.recent||[];
     document.getElementById('clc').textContent=cl2.length+' recent';
-    const ct=document.getElementById('ct');
-    ct.innerHTML=cl2.length===0?'<tr><td colspan="6" class="empty">No AI calls yet</td></tr>':cl2.map(c=>`<tr>
-      <td class="ts">${ts(c.ts)}</td>
-      <td style="color:#bc8cff;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.endpoint||'-'}</td>
-      <td style="color:#f85149">${fmt(c.input)}</td>
-      <td style="color:#3fb950">${fmt(c.output)}</td>
-      <td style="color:#58a6ff">${fmt(c.cache_read)}</td>
-      <td style="color:#d29922">${fmt(c.cache_write)}</td>
-    </tr>`).join('');
+    document.getElementById('ct').innerHTML=cl2.length===0?'<tr><td colspan="6" class="empty">No AI calls</td></tr>':cl2.map(c=>`<tr><td class="ts">${ts(c.ts)}</td><td style="color:#bc8cff;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.endpoint||'-'}</td><td style="color:#f85149">${fmt(c.input)}</td><td style="color:#3fb950">${fmt(c.output)}</td><td style="color:#58a6ff">${fmt(c.cache_read)}</td><td style="color:#d29922">${fmt(c.cache_write)}</td></tr>`).join('');
+    if(d.cache_stats){
+      const sg=document.getElementById('scraper_status_grid');
+      const sdata=d.cache_stats.scraper||{};
+      const skeys=Object.keys(sdata);
+      sg.innerHTML=skeys.length===0?'<div class="empty" style="grid-column:1/-1">No scraper cache</div>':skeys.map((k,i)=>{const colors=['val-red','val-green','val-blue','val-gold'];return`<div class="stat-tile tile-dark"><div class="val ${colors[i%4]}">${sdata[k].age_s}s</div><div class="lbl">${k}</div></div>`;}).join('');
+    }
 
-    // ── Latest news ──
-    const lnews=d.latest_news||[];
-    document.getElementById('lnc').textContent=lnews.length+' recent';
-    document.getElementById('lnt').innerHTML=lnews.length===0?'<tr><td colspan="4" class="empty">No news</td></tr>':lnews.map(n=>`<tr>
-      <td class="ts">${ts(n.ts)}</td>
-      <td style="font-weight:700;color:#f0f6fc">${n.ticker||'—'}</td>
-      <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.red_flag?'<span class="badge err">🚩</span> ':''}${n.headline}</td>
-      <td>${n.sentiment?`<span class="badge ${n.sentiment.toLowerCase()}">${n.sentiment}</span>`:'—'}</td>
-    </tr>`).join('');
-
-    // ── Latest videos ──
-    const lvideos=d.latest_videos||[];
-    document.getElementById('lvc').textContent=lvideos.length+' recent';
-    document.getElementById('lvt').innerHTML=lvideos.length===0?'<tr><td colspan="4" class="empty">No videos</td></tr>':lvideos.map(v=>`<tr>
-      <td class="ts">${ts(v.ts)}</td>
-      <td style="font-weight:700;color:#f0f6fc">${v.ticker||'—'}</td>
-      <td style="color:#bc8cff">${v.channel}</td>
-      <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.title}</td>
-    </tr>`).join('');
-
-    // ── Request log (last 20) ──
-    const reqs=(d.request_log||[]).slice(0,20);
+    // Requests
+    const reqs=(d.request_log||[]).slice(0,50);
     document.getElementById('rc').textContent=reqs.length+' shown';
-    const rt=document.getElementById('rt');
-    rt.innerHTML=reqs.length===0?'<tr><td colspan="6" class="empty">No requests yet</td></tr>':reqs.map(r=>`<tr>
-      <td class="ts">${ts(r.ts)}</td>
-      <td>${mbadge(r.method)}</td>
-      <td class="path" title="${r.path}">${r.path}</td>
-      <td class="ts">${fmtParams(r.params)}</td>
-      <td>${hbadge(r.status)}</td>
-      <td class="ts">${r.duration_ms!=null?r.duration_ms+'ms':'-'}</td>
-    </tr>`).join('');
+    document.getElementById('rt').innerHTML=reqs.length===0?'<tr><td colspan="6" class="empty">No requests</td></tr>':reqs.map(r=>`<tr><td class="ts">${ts(r.ts)}</td><td>${mbadge(r.method)}</td><td class="path" title="${r.path}">${r.path}</td><td class="ts">${fmtParams(r.params)}</td><td>${hbadge(r.status)}</td><td class="ts">${r.duration_ms!=null?r.duration_ms+'ms':'-'}</td></tr>`).join('');
 
-    // ── Historical archive ──
+    // Archive
     const hist=d.historical_analyses||[];
     document.getElementById('hnc').textContent=hist.length+' records';
-    const ht=document.getElementById('ht');
-    ht.innerHTML=hist.length===0?'<tr><td colspan="7" class="empty">No historical data</td></tr>':hist.map(h=>{
-      const isExpanded=expandedIds.has(h.id);
-      const activeTab=activeTabs[h.id]||'raw';
-      let fullParsed='';
-      try{fullParsed=JSON.stringify(JSON.parse(h.full_json),null,2);}catch(e){fullParsed=h.full_json||'';}
-      return`<tr>
-        <td class="ts">${dts(h.ts)}</td>
-        <td style="font-weight:700;color:#f0f6fc">${h.ticker}</td>
-        <td class="ts">${h.analysis_date||'-'}</td>
-        <td>${sig(h.signal)}</td>
-        <td style="color:#d29922">${h.confidence!=null?h.confidence+'%':'-'}</td>
-        <td class="ts">${h.user_id||'-'}</td>
-        <td><button class="btn-view" onclick="toggleDetails(${h.id})">View</button></td>
-      </tr>
-      <tr id="details-${h.id}" style="display:${isExpanded?'table-row':'none'}">
-        <td colspan="7">
-          <div class="archive-details" style="display:block">
-            <div style="display:flex;margin-bottom:8px">
-              <button class="tab-btn ${activeTab==='raw'?'active':''}" id="bt-raw-${h.id}" onclick="showTab(${h.id},'raw')">AI Raw Output</button>
-              <button class="tab-btn ${activeTab==='full'?'active':''}" id="bt-full-${h.id}" onclick="showTab(${h.id},'full')">API Formatted JSON</button>
-            </div>
-            <div id="raw-${h.id}" class="json-box" style="display:${activeTab==='raw'?'block':'none'}">${h.raw_output||'No raw output stored.'}</div>
-            <div id="full-${h.id}" class="json-box" style="display:${activeTab==='full'?'block':'none'}">${fullParsed}</div>
-          </div>
-        </td>
-      </tr>`;
+    document.getElementById('ht').innerHTML=hist.length===0?'<tr><td colspan="8" class="empty">No data</td></tr>':hist.map(h=>{
+      const isExp=expandedIds.has(h.id);
+      let fp='';try{fp=JSON.stringify(JSON.parse(h.full_json),null,2);}catch(e){fp=h.full_json||'';}
+      return`<tr><td class="ts">${dts(h.ts)}</td><td style="font-weight:700;color:#f0f6fc">${h.ticker}</td><td class="ts">${h.analysis_date||'-'}</td><td>${sig(h.signal)}</td><td style="color:#d29922">${h.confidence!=null?h.confidence+'%':'-'}</td><td class="ts">${h.user_id||'-'}</td><td>${h.full_json&&JSON.parse(h.full_json).was_correct===true?'<span class="badge ok">&#x2713;</span>':h.full_json&&JSON.parse(h.full_json).was_correct===false?'<span class="badge err">&#x2717;</span>':'-'}</td><td><button class="btn-view" onclick="toggleDetails(${h.id})">View</button></td></tr>
+      <tr id="details-${h.id}" style="display:${isExp?'table-row':'none'}"><td colspan="8"><div class="archive-details" style="display:block"><div class="json-box">${fp}</div></div></td></tr>`;
     }).join('');
+
+    // Populate user select on first load
+    populateUserDropdown();
 
   }catch(e){
     console.error('Dashboard error:',e);
@@ -1529,8 +1762,23 @@ async function refresh(){
   }
 }
 
-refresh();
-setInterval(refresh, 5000);  // refresh every 5 seconds for real-time AI pipeline status
+// ─── User dropdown ───────────────────────────────────────────
+let _usersPopulated=false;
+async function populateUserDropdown(){
+  if(_usersPopulated)return;
+  try{
+    const r=await fetch('/users',{headers:{'Authorization':'Bearer admin'}});
+    if(!r.ok)return;
+    const users=await r.json();
+    const sel=document.getElementById('user-select');
+    sel.innerHTML='<option value="">-- select user --</option>'+users.map(u=>`<option value="${u.id}">#${u.id} ${u.display_name||u.username} (${u.username})</option>`).join('');
+    _usersPopulated=true;
+  }catch(e){console.warn('Could not populate user list:',e);}
+}
+
+// Init
+refreshAll();
+setInterval(refreshAll, 30000);
 </script>
 </body>
 </html>"""
@@ -1569,9 +1817,9 @@ def dashboard_data(authorization: str = Header(None)):
                 "holdings": session.query(Portfolio).count(),
                 "analyses": session.query(AnalysisHistory).count(),
                 "signal_events": session.query(SignalEvent).count() if 'SignalEvent' in globals() else 0,
-                "trade_journals": session.query(TradeJournal).count() if 'TradeJournal' in globals() else 0,
-                "news_articles": session.query(NewsArticle).count() if 'NewsArticle' in globals() else 0,
-                "youtube_videos": session.query(YouTubeVideo).count() if 'YouTubeVideo' in globals() else 0,
+                "trade_journals": session.query(TradeJournal).count(),
+                "news_articles": session.query(NewsArticle).count(),
+                "youtube_videos": session.query(YouTubeVideo).count(),
             }
             # Fetch latest news and videos
             latest_news = []
@@ -1714,6 +1962,172 @@ def dashboard_data(authorization: str = Header(None)):
         "latest_videos":   latest_videos if 'latest_videos' in locals() else [],
         "ai_health":       ai_health,
     }
+
+
+@app.get("/dashboard-user-data")
+def dashboard_user_data(user_id: int, authorization: str = Header(None)):
+    """Per-user deep data for admin dashboard: portfolio, analyses, watchlist, journal, net worth."""
+    require_admin(authorization)
+    result: dict = {"user_id": user_id}
+    try:
+        with get_session() as session:
+            # ── User info ──
+            user = session.query(User).filter(User.id == user_id).first()
+            if not user:
+                return {"error": "User not found"}
+            result["user"] = {
+                "id": user.id,
+                "username": user.username,
+                "display_name": user.display_name,
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+            }
+
+            # ── Portfolio ──
+            holdings = session.query(Portfolio).filter(Portfolio.user_id == user_id).all()
+            portfolio_rows = []
+            total_invested = 0.0
+            for h in holdings:
+                invested = h.shares * h.buy_price
+                total_invested += invested
+                portfolio_rows.append({
+                    "id": h.id,
+                    "ticker": h.ticker,
+                    "company_name": h.company_name,
+                    "shares": h.shares,
+                    "buy_price": h.buy_price,
+                    "group_name": h.group_name or "watchlist",
+                    "notes": h.notes or "",
+                    "invested": round(invested, 2),
+                    "created_at": h.created_at.isoformat() if h.created_at else None,
+                })
+            result["portfolio"] = portfolio_rows
+            result["portfolio_summary"] = {"total_invested": round(total_invested, 2), "holdings_count": len(portfolio_rows)}
+
+            # ── Analysis History ──
+            analyses = session.query(AnalysisHistory).filter(
+                AnalysisHistory.user_id == user_id
+            ).order_by(AnalysisHistory.created_at.desc()).limit(50).all()
+            analysis_rows = []
+            for a in analyses:
+                parsed_json = {}
+                try:
+                    parsed_json = json.loads(a.full_json) if a.full_json else {}
+                except Exception:
+                    pass
+                analysis_rows.append({
+                    "id": a.id,
+                    "ticker": a.ticker,
+                    "analysis_date": a.analysis_date,
+                    "signal": a.signal,
+                    "confidence_pct": a.confidence_pct,
+                    "target_short": a.target_short,
+                    "target_medium": a.target_medium,
+                    "target_long": a.target_long,
+                    "promoter_pledged_pct": a.promoter_pledged_pct,
+                    "outcome_delta_pct": a.outcome_delta_pct,
+                    "was_correct": a.was_correct,
+                    "created_at": a.created_at.isoformat() if a.created_at else None,
+                    # Key fields from full_json
+                    "company_name": parsed_json.get("company_name", ""),
+                    "bull_case": parsed_json.get("bull_case", []),
+                    "bear_case": parsed_json.get("bear_case", []),
+                    "key_risks": parsed_json.get("key_risks", []),
+                    "key_factors": parsed_json.get("key_factors", {}),
+                    "current_price_inr": parsed_json.get("current_price_inr"),
+                    "upside_downside_pct": parsed_json.get("upside_downside_pct", {}),
+                    "management_quality": parsed_json.get("management_quality", ""),
+                    "technical_trend": parsed_json.get("technical_trend", ""),
+                    "fundamental_score": parsed_json.get("fundamental_score", ""),
+                    "disclaimer": parsed_json.get("disclaimer", ""),
+                    "raw_output": a.raw_output or "",
+                })
+            result["analyses"] = analysis_rows
+
+            # Signal distribution
+            from collections import Counter
+            sig_counts = Counter(a["signal"] for a in analysis_rows)
+            result["signal_distribution"] = dict(sig_counts)
+
+            # ── Watchlist / Price Alerts ──
+            alerts = session.query(PriceTarget).filter(PriceTarget.user_id == user_id).order_by(PriceTarget.created_at.desc()).all()
+            result["alerts"] = [{
+                "id": a.id,
+                "ticker": a.ticker,
+                "target_price": a.target_price,
+                "direction": a.direction,
+                "triggered": a.triggered,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+            } for a in alerts]
+
+            # ── Trade Journal ──
+            journal = session.query(TradeJournal).filter(TradeJournal.user_id == user_id).order_by(TradeJournal.created_at.desc()).all()
+            result["trade_journal"] = [{
+                "id": j.id,
+                "ticker": j.ticker,
+                "company_name": j.company_name or "",
+                "action": j.action,
+                "price_at_time": j.price_at_time,
+                "reason_text": j.reason_text,
+                "outcome_text": j.outcome_text or "",
+                "mood": j.mood or "",
+                "created_at": j.created_at.isoformat() if j.created_at else None,
+                "updated_at": j.updated_at.isoformat() if j.updated_at else None,
+            } for j in journal]
+
+            # ── Portfolio Valuation History ──
+            val_hist = session.query(PortfolioValuationHistory).filter(
+                PortfolioValuationHistory.user_id == user_id
+            ).order_by(PortfolioValuationHistory.snapshot_date.asc()).all()
+            result["valuation_history"] = [{
+                "snapshot_date": v.snapshot_date,
+                "total_value": v.total_value,
+                "total_invested": v.total_invested,
+                "total_pnl": v.total_pnl,
+                "pnl_percent": v.pnl_percent,
+                "nifty_close": v.nifty_close,
+            } for v in val_hist]
+
+            # ── Net Worth Ledger ──
+            nw_rows = session.query(NetWorthLedger).filter(
+                NetWorthLedger.user_id == user_id
+            ).order_by(NetWorthLedger.snapshot_date.asc()).all()
+            result["net_worth_ledger"] = [{
+                "snapshot_date": n.snapshot_date,
+                "total_value_inr": n.total_value_inr,
+                "daily_delta_inr": n.daily_delta_inr,
+                "daily_delta_pct": n.daily_delta_pct,
+                "peak_value_inr": n.peak_value_inr,
+                "top_gainer_ticker": n.top_gainer_ticker,
+                "top_gainer_pct": n.top_gainer_pct,
+                "top_loser_ticker": n.top_loser_ticker,
+                "top_loser_pct": n.top_loser_pct,
+            } for n in nw_rows]
+
+            # ── Device Tokens ──
+            tokens = session.query(DeviceToken).filter(DeviceToken.user_id == user_id).all()
+            result["device_tokens"] = [{
+                "platform": t.platform,
+                "token_preview": t.device_token[:20] + "..." if t.device_token else "",
+                "updated_at": t.updated_at.isoformat() if t.updated_at else None,
+            } for t in tokens]
+
+            # ── Analysis accuracy stats ──
+            correct = sum(1 for a in analysis_rows if a["was_correct"] is True)
+            incorrect = sum(1 for a in analysis_rows if a["was_correct"] is False)
+            checked = correct + incorrect
+            result["accuracy"] = {
+                "correct": correct,
+                "incorrect": incorrect,
+                "checked": checked,
+                "accuracy_pct": round(correct / checked * 100, 1) if checked > 0 else None,
+            }
+
+    except Exception as e:
+        result["error"] = str(e)
+        import traceback
+        result["traceback"] = traceback.format_exc()[:500]
+
+    return result
 
 
 # ---------------------------------------------------------------------------

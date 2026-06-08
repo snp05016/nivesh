@@ -471,6 +471,7 @@ class HomeViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var dashboard: MarketDashboardResponse? = nil
     @Published var dashboardLoading = false
+    @Published var sessionExpired = false
 
     private var indicesTimer: Timer?
 
@@ -493,9 +494,18 @@ class HomeViewModel: ObservableObject {
             totalPnL = portfolioValue - investedValue
             stockCount = holdings.count
 
-            morningBriefData = try? await NetworkManager.shared.getMorningSummary(userId: userId)
+            do {
+                morningBriefData = try await NetworkManager.shared.getMorningSummary(userId: userId)
+            } catch NetworkError.unauthorized {
+                sessionExpired = true
+                isLoading = false
+                return
+            } catch {
+                morningBriefData = nil
+            }
 
-            if let watchlistItems = try? await NetworkManager.shared.getWatchlist(userId: userId) {
+            do {
+                let watchlistItems = try await NetworkManager.shared.getWatchlist(userId: userId)
                 watchlist = watchlistItems.map { item in
                     Stock(
                         ticker: item.ticker,
@@ -506,8 +516,18 @@ class HomeViewModel: ObservableObject {
                         signal: nil
                     )
                 }
+            } catch NetworkError.unauthorized {
+                sessionExpired = true
+                isLoading = false
+                return
+            } catch {
+                // watchlist unavailable — non-fatal
             }
 
+        } catch NetworkError.unauthorized {
+            sessionExpired = true
+            isLoading = false
+            return
         } catch {
             print("Home fetch error: \(error)")
         }
@@ -1004,6 +1024,11 @@ struct HomeScreen: View {
         }
         .onDisappear {
             viewModel.stopIndicesTimer()
+        }
+        .onChange(of: viewModel.sessionExpired) { expired in
+            if expired {
+                authManager.logout()
+            }
         }
     }
 }

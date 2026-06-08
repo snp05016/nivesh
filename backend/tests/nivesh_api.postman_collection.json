@@ -1,0 +1,2195 @@
+{
+  "info": {
+    "name": "Nivesh API \u2014 Full Suite",
+    "_postman_id": "b7fec3c6-e85f-4ba6-91d3-9e1a864e470c",
+    "description": "All 84 Nivesh backend endpoints. Set base_url, auth_token, admin_token, user_id in the environment before running.\n\nTo get auth_token: POST /login \u2192 copy access_token \u2192 set as auth_token env var.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"saumya\",\n  \"password\": \"123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "62ac3090-1a6e-476d-983b-10dfaa46e76e"
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"new_user\",\n  \"password\": \"pass123\",\n  \"display_name\": \"New User\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "97e24030-050c-4ed3-bf9e-b02a207416b2"
+        }
+      ],
+      "_postman_id": "bab6874c-a085-40e3-a0f5-ae8382062d02"
+    },
+    {
+      "name": "Health & Root",
+      "item": [
+        {
+          "name": "Ping",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ping",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "ping"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "4e56c6ef-6491-4c47-a91b-1c8291706490"
+        },
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "be822381-154a-4637-87be-d832eaf71468"
+        },
+        {
+          "name": "Health Live",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health/live",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health",
+                "live"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "b4ed8ab9-8152-45f8-b5b4-cb9137b6cff6"
+        },
+        {
+          "name": "Root",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": []
+            }
+          },
+          "response": [],
+          "_postman_id": "f853764e-6809-40b4-b8bc-b6229e17382f"
+        },
+        {
+          "name": "Dashboard Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard-data",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "dashboard-data"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "d3dff90f-1bad-4d11-bd67-bfeff7b2c301"
+        }
+      ],
+      "_postman_id": "0e5d0b00-beb7-4b20-a454-1cc0c17693b3"
+    },
+    {
+      "name": "Analysis",
+      "item": [
+        {
+          "name": "Quick Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/quick-info?ticker=RELIANCE&exchange=NSE",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "quick-info"
+              ],
+              "query": [
+                {
+                  "key": "ticker",
+                  "value": "RELIANCE"
+                },
+                {
+                  "key": "exchange",
+                  "value": "NSE"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "d9bb42e3-8e0d-4cdb-b989-3582260381ae"
+        },
+        {
+          "name": "Analyze (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/analyze",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "analyze"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticker\": \"RELIANCE\",\n  \"exchange\": \"NSE\",\n  \"user_id\": \"{{user_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "765278af-80bd-4fd5-98ee-6695f4511c06"
+        },
+        {
+          "name": "Batch Analyze (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/analyze/batch",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "analyze",
+                "batch"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tickers\": [\n    \"RELIANCE\",\n    \"TCS\"\n  ],\n  \"exchange\": \"NSE\",\n  \"user_id\": \"{{user_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "86fee702-3624-4fda-a97d-cb242ed07576"
+        },
+        {
+          "name": "Batch Status (GET)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/analyze/batch/{{batch_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "analyze",
+                "batch",
+                "{{batch_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "bf7ee592-defb-40a5-84f1-3315c2e8665f"
+        },
+        {
+          "name": "Technical Signals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/technical-signals?ticker=RELIANCE",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "technical-signals"
+              ],
+              "query": [
+                {
+                  "key": "ticker",
+                  "value": "RELIANCE"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "493a04bd-65db-48e6-bae4-e0468b8fbeae"
+        },
+        {
+          "name": "Screener",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/screener?preset=momentum&exchange=NSE",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "screener"
+              ],
+              "query": [
+                {
+                  "key": "preset",
+                  "value": "momentum"
+                },
+                {
+                  "key": "exchange",
+                  "value": "NSE"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "0710253b-c834-43ad-b42b-d9a7b124b4e2"
+        },
+        {
+          "name": "Home Feed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/home-feed?user_id={{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "home-feed"
+              ],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "{{user_id}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "d384a17b-64a4-4a1c-a359-3f5e84e6f091"
+        }
+      ],
+      "_postman_id": "c6ef095d-7d5f-4928-b04d-f3cffc4ecd2a"
+    },
+    {
+      "name": "Market Data",
+      "item": [
+        {
+          "name": "Market Indices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/market-indices",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "market-indices"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "2e3e882c-ad36-4477-9852-e057d0a02408"
+        },
+        {
+          "name": "NIFTY History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/nifty-history?period=1y",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "nifty-history"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "1y"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "0d004853-e6d2-4871-9ef3-684679ec9393"
+        },
+        {
+          "name": "Market Pulse",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/market/pulse",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "market",
+                "pulse"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "8eef660f-4f83-4b79-b738-d85da1199e02"
+        },
+        {
+          "name": "Market Momentum",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/market/momentum",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "market",
+                "momentum"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "33fdfb62-9a78-47e9-86c9-9813db465d7d"
+        },
+        {
+          "name": "Macro Alternatives",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/market/macro-alternatives",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "market",
+                "macro-alternatives"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "74813892-ff70-4045-97a5-0e1da2a45f2e"
+        },
+        {
+          "name": "Institutional Flow",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/market/institutional-flow",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "market",
+                "institutional-flow"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "40ca2ba4-2c34-4d18-be35-86c70057272c"
+        },
+        {
+          "name": "Market Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/market/dashboard",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "market",
+                "dashboard"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "2025a4c6-4b23-4518-822e-34b14499d1a3"
+        },
+        {
+          "name": "Dashboard Pulse",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/market/dashboard-pulse",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "market",
+                "dashboard-pulse"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "f10948a2-4eaa-4020-83a2-570645931f86"
+        },
+        {
+          "name": "Institutional Leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/market/institutional-leaderboard",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "market",
+                "institutional-leaderboard"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "78e022ae-55bd-46b3-9b0b-eefafc081bec"
+        },
+        {
+          "name": "Top Movers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/market/top-movers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "market",
+                "top-movers"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "2a9320df-460c-443b-a344-52c3a213e64d"
+        },
+        {
+          "name": "Net Worth Ledger",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/market/net-worth-ledger/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "market",
+                "net-worth-ledger",
+                "{{user_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "946d209d-e201-443b-8b47-348cbe5b0ac6"
+        },
+        {
+          "name": "Macro Strip",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/macro-strip",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "macro-strip"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "00cc3405-97e2-404e-a3e5-9db9a8a1bcf3"
+        },
+        {
+          "name": "Sector Weekly",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/sector-weekly",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sector-weekly"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "3208bf9c-30db-4794-bbee-98570a145bc8"
+        },
+        {
+          "name": "Sector Performance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/sector-performance",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sector-performance"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "29b439f8-ea65-4c71-b699-694504189164"
+        },
+        {
+          "name": "Search",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/search?q=RELIANCE",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "RELIANCE"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "967dcfd8-05e6-444e-8b4f-bb75093c4b3f"
+        }
+      ],
+      "_postman_id": "fc3d627f-7398-42f8-b2b5-b78a3df3827d"
+    },
+    {
+      "name": "Earnings",
+      "item": [
+        {
+          "name": "Earnings Calendar (legacy)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/earnings-calendar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "earnings-calendar"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "15d7e81a-3860-455b-a169-b625e56ff956"
+        },
+        {
+          "name": "Earnings Calendar (v1)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/earnings/calendar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "earnings",
+                "calendar"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "f80d4d2d-f799-42a7-abb8-ff9ea5580138"
+        },
+        {
+          "name": "Earnings Sync Ratio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/earnings/sync-ratio",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "earnings",
+                "sync-ratio"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "63da09dc-6bd5-4a1f-ba5e-1d274e944984"
+        },
+        {
+          "name": "Earnings YoY Aggregate",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/earnings/yoy-aggregate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "earnings",
+                "yoy-aggregate"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "d879cfe2-e342-4078-b9af-d47a30c6fc7c"
+        },
+        {
+          "name": "Earnings Progress",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/earnings/progress",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "earnings",
+                "progress"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "7e7649ce-fd62-47ec-be35-80c79501c8e0"
+        },
+        {
+          "name": "Earnings Feed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/earnings/feed",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "earnings",
+                "feed"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "7d920d08-4b2e-4cf5-8636-47cb31384af8"
+        },
+        {
+          "name": "Earnings Estimates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/earnings/estimates?ticker=RELIANCE",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "earnings",
+                "estimates"
+              ],
+              "query": [
+                {
+                  "key": "ticker",
+                  "value": "RELIANCE"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "747c40e3-828e-459e-952c-9496df0fa203"
+        },
+        {
+          "name": "Post-Result Movers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/earnings/post-result-movers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "earnings",
+                "post-result-movers"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "e376bea6-be47-4d54-adc9-91431e6cc465"
+        },
+        {
+          "name": "Earnings Alerts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/earnings/alerts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "earnings",
+                "alerts"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "25d26f9d-a3cc-4262-9a8e-ff4d23141f6a"
+        }
+      ],
+      "_postman_id": "dc31c376-e2a9-4a2c-bbbf-44499f68d1ea"
+    },
+    {
+      "name": "Options",
+      "item": [
+        {
+          "name": "Option Chain \u2014 RELIANCE",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/options/chain/RELIANCE",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "options",
+                "chain",
+                "RELIANCE"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "a4264f03-22c9-4182-bf98-98d8ca830c8b"
+        },
+        {
+          "name": "Option Chain \u2014 NIFTY",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/options/chain/NIFTY",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "options",
+                "chain",
+                "NIFTY"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "3292e451-accd-42bf-bec8-10d5f4472275"
+        }
+      ],
+      "_postman_id": "60b37c91-db07-48f6-ac08-38e72ca097da"
+    },
+    {
+      "name": "Fundamentals",
+      "item": [
+        {
+          "name": "Piotroski F-Score",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/fundamentals/piotroski/RELIANCE",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "fundamentals",
+                "piotroski",
+                "RELIANCE"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "db520653-1563-47af-8615-021a8e607e29"
+        },
+        {
+          "name": "Quarterly Financials",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/quarterly-financials?ticker=RELIANCE",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "quarterly-financials"
+              ],
+              "query": [
+                {
+                  "key": "ticker",
+                  "value": "RELIANCE"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "a8008e25-ed7c-4a86-b29b-48c210ffa9c2"
+        },
+        {
+          "name": "Analyst Ratings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/analyst-ratings?ticker=RELIANCE",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "analyst-ratings"
+              ],
+              "query": [
+                {
+                  "key": "ticker",
+                  "value": "RELIANCE"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "31bab119-a014-4992-af39-0a9ebefaff09"
+        },
+        {
+          "name": "IPO Calendar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ipo-calendar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "ipo-calendar"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "b770e3dc-57b8-4a41-b819-c372c0da5548"
+        }
+      ],
+      "_postman_id": "401bff81-0ee5-4d85-9711-7fc199824db0"
+    },
+    {
+      "name": "Portfolio",
+      "item": [
+        {
+          "name": "Get Portfolio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/portfolio/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "portfolio",
+                "{{user_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "31183a2c-864d-4d92-8c38-bc728d6c95da"
+        },
+        {
+          "name": "Portfolio History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/portfolio/history/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "portfolio",
+                "history",
+                "{{user_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "c04b090f-7c23-4634-8785-2201faa55697"
+        },
+        {
+          "name": "Add Holding (POST /portfolio)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/portfolio",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "portfolio"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"ticker\": \"RELIANCE\",\n  \"exchange\": \"NSE\",\n  \"company_name\": \"Reliance Industries\",\n  \"shares\": 10,\n  \"buy_price\": 2500.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "57c3c94f-5495-4b17-a3f9-13b2f543e456"
+        },
+        {
+          "name": "Add Holding (POST /portfolio/add)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/portfolio/add",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "portfolio",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"ticker\": \"TCS\",\n  \"exchange\": \"NSE\",\n  \"company_name\": \"Tata Consultancy Services\",\n  \"shares\": 5,\n  \"buy_price\": 3800.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "41507afb-d84f-480c-a8ce-b0f27ce9a611"
+        },
+        {
+          "name": "Remove Holding",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/portfolio/remove",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "portfolio",
+                "remove"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"ticker\": \"TCS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "3e1741c1-3467-478c-a759-1a2d0928a0eb"
+        },
+        {
+          "name": "Update Holding",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/portfolio/update",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "portfolio",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"ticker\": \"RELIANCE\",\n  \"shares\": 15,\n  \"buy_price\": 2450.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "a31226ce-f5b6-46d4-92c9-d19b4a1227f5"
+        },
+        {
+          "name": "Signal Warnings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/portfolio/signal-warnings?user_id={{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "portfolio",
+                "signal-warnings"
+              ],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "{{user_id}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "30d3d41a-d0c1-49f0-bc27-70583953375d"
+        },
+        {
+          "name": "Update Note",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/portfolio/note",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "portfolio",
+                "note"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"ticker\": \"RELIANCE\",\n  \"note\": \"Long-term hold\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "3b042414-2de7-441d-94b2-9edd6ecc8158"
+        },
+        {
+          "name": "Advisor Consensus",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/portfolio/advisor-consensus?user_id={{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "portfolio",
+                "advisor-consensus"
+              ],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "{{user_id}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "717df6c2-7bd6-4c60-9388-679baeb6a27d"
+        },
+        {
+          "name": "Valuation History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/portfolio/valuation-history?user_id={{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "portfolio",
+                "valuation-history"
+              ],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "{{user_id}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "88dbe595-0d90-40dc-bba9-d3bac5eaf0b8"
+        },
+        {
+          "name": "Risk Analysis",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/portfolio/risk-analysis/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "portfolio",
+                "risk-analysis",
+                "{{user_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "e4af795b-77d6-4982-9605-dabd07c48ded"
+        },
+        {
+          "name": "Red Flags",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/portfolio/red-flags/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "portfolio",
+                "red-flags",
+                "{{user_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "b9d55106-61e0-4537-a262-0c7e26b1e437"
+        },
+        {
+          "name": "Macro Impact",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/macro-impact/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "macro-impact",
+                "{{user_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "3d4b01e8-fd96-4c3b-8a52-dc44459e66f0"
+        },
+        {
+          "name": "Timeframe Conflicts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/portfolio/timeframe-conflicts/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "portfolio",
+                "timeframe-conflicts",
+                "{{user_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "5547ad1a-14a1-4228-8f3a-09132e7ad58b"
+        },
+        {
+          "name": "Export Excel",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/portfolio/export/excel/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "portfolio",
+                "export",
+                "excel",
+                "{{user_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "00513736-c2db-4b84-a97c-a6ce3d308f72"
+        },
+        {
+          "name": "Export PDF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/portfolio/export/pdf/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "portfolio",
+                "export",
+                "pdf",
+                "{{user_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "810f4d5a-9113-428d-8187-5ed58860c6dd"
+        },
+        {
+          "name": "Morning Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/morning-summary/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "morning-summary",
+                "{{user_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "c6768658-9f17-42ad-afb7-38b9627583b8"
+        },
+        {
+          "name": "Daily Action",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/daily-action/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "daily-action",
+                "{{user_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "df8c99d5-84ce-400e-9176-59cd7c06c9b5"
+        }
+      ],
+      "_postman_id": "3c4ce7c5-d7e3-41ef-8986-32886fed1121"
+    },
+    {
+      "name": "Alerts",
+      "item": [
+        {
+          "name": "Add Alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/alerts/add",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "alerts",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"ticker\": \"RELIANCE\",\n  \"target_price\": 2800.0,\n  \"direction\": \"above\",\n  \"company_name\": \"Reliance Industries\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "7b83a3dc-9d10-46c6-98ff-98dc5c4205b7"
+        },
+        {
+          "name": "Remove Alert",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/alerts/remove",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "alerts",
+                "remove"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"alert_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "34b00dca-a8a8-4506-9076-523ed0560f27"
+        },
+        {
+          "name": "Check Alerts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/alerts/check/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "alerts",
+                "check",
+                "{{user_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "6d31b0b5-104b-4dd3-a833-a09a716eec8c"
+        },
+        {
+          "name": "List Alerts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/alerts/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "alerts",
+                "{{user_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "7ed54e3b-7f52-4e69-979e-9dfefe931910"
+        }
+      ],
+      "_postman_id": "60019685-daef-4540-b6dc-3b1289964cf2"
+    },
+    {
+      "name": "Watchlist",
+      "item": [
+        {
+          "name": "Add to Watchlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/watchlist/add",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "watchlist",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"ticker\": \"INFY\",\n  \"exchange\": \"NSE\",\n  \"company_name\": \"Infosys\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "4b7466ed-16b9-4cbb-9360-d9b92e56f667"
+        },
+        {
+          "name": "Remove from Watchlist",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/watchlist/remove",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "watchlist",
+                "remove"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"ticker\": \"INFY\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "bac4a294-ad53-44f3-8f00-382b2970a30e"
+        },
+        {
+          "name": "Get Watchlist",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/watchlist/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "watchlist",
+                "{{user_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "93c47809-9713-4482-a196-46b6a1f635d8"
+        }
+      ],
+      "_postman_id": "ed33f89f-a850-4b52-acac-14a93df15179"
+    },
+    {
+      "name": "Trade Journal",
+      "item": [
+        {
+          "name": "Add Entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/trade-journal",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "trade-journal"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"ticker\": \"RELIANCE\",\n  \"action\": \"BUY\",\n  \"price_at_time\": 2500.0,\n  \"reason_text\": \"Breakout above resistance\",\n  \"company_name\": \"Reliance Industries\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "49de87ee-4f24-49ec-9c9a-8a4d291098da"
+        },
+        {
+          "name": "Get Journal",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/trade-journal/{{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "trade-journal",
+                "{{user_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "6decc6c2-9e3a-4185-958a-24d3edf16ffe"
+        },
+        {
+          "name": "Update Entry",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/trade-journal/{{journal_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "trade-journal",
+                "{{journal_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome_text\": \"Target hit at 2700\",\n  \"mood\": \"confident\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "300ec624-0de7-4f78-ae95-c6e7211905a9"
+        },
+        {
+          "name": "Delete Entry",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/trade-journal/{{journal_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "trade-journal",
+                "{{journal_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "c4c3742a-f0c6-466c-bd89-404b62d2087f"
+        },
+        {
+          "name": "Journal Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/trade-journal/{{user_id}}/stats",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "trade-journal",
+                "{{user_id}}",
+                "stats"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "39764aa5-9905-4ad6-aa02-f427994307ce"
+        }
+      ],
+      "_postman_id": "a543a522-ccd7-443f-871f-338d33c936b7"
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Register Device",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications/register-device",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "notifications",
+                "register-device"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"token\": \"device_apns_token_here\",\n  \"platform\": \"ios\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "ce44a164-8b12-4995-8a7f-d0ea5d1764a1"
+        },
+        {
+          "name": "Test Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications/test",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "notifications",
+                "test"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "4f6da1ff-145d-426b-aed0-51bb929b6dc7"
+        },
+        {
+          "name": "Morning Summary Push",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications/morning-summary-push",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "notifications",
+                "morning-summary-push"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "_postman_id": "8ed3392e-1632-437f-9387-7d2566e6a4f3"
+        }
+      ],
+      "_postman_id": "6a98e32e-d1ed-4dda-81fa-e3e1e1575a71"
+    },
+    {
+      "name": "Experts & Ideas",
+      "item": [
+        {
+          "name": "List Experts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/experts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "experts"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "f1f1bb38-c700-4998-96c8-72deda4db806"
+        },
+        {
+          "name": "Expert Posts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/expert-posts?ticker=RELIANCE",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expert-posts"
+              ],
+              "query": [
+                {
+                  "key": "ticker",
+                  "value": "RELIANCE"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "8515a9e8-916f-4fed-84ae-da37512c1368"
+        }
+      ],
+      "_postman_id": "dda5ac12-3c14-4335-b5ae-106df604d1a3"
+    },
+    {
+      "name": "Dashboard Stream",
+      "item": [
+        {
+          "name": "SSE Stream",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/stream",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "stream"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "bea9d71a-845a-4e30-93cd-10f327b0802d"
+        }
+      ],
+      "_postman_id": "fec09a55-fa50-4cd0-87d3-ff47293ad789"
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Harvest YouTube",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/harvest-youtube",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "harvest-youtube"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "53c86412-ba0c-4a1c-9605-5ebe8cf70edd"
+        },
+        {
+          "name": "Harvest Advisors",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/harvest-advisors",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "harvest-advisors"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "822480aa-a8e4-4792-b0b6-3c5aee427a08"
+        },
+        {
+          "name": "Harvest News",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/harvest-news",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "harvest-news"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "b24c6893-05d8-4a39-bdfd-b2c6a2d58edb"
+        },
+        {
+          "name": "Token Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/token-stats",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "token-stats"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "0ad45c82-540e-48ca-b6da-e41722d679ef"
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "b084c403-262a-4c6c-b9ed-3fdb50f23d60"
+        },
+        {
+          "name": "Analyze Slots (GET)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/analyze/slots",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "analyze",
+                "slots"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "8de53cbf-9d2e-4e99-8eaa-309cc14c96b2"
+        },
+        {
+          "name": "Clear Stuck Slots (DELETE)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/analyze/slots",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "analyze",
+                "slots"
+              ]
+            }
+          },
+          "response": [],
+          "_postman_id": "09fe4ae8-f673-47fd-bc96-3bf52afcc6b8"
+        }
+      ],
+      "_postman_id": "ddc87f68-b8ab-475c-8147-a2ca82029900"
+    }
+  ]
+}

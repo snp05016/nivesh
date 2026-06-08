@@ -718,7 +718,7 @@ def save_analysis(session: Session, user_id: Optional[int], ticker: str, result:
     record = AnalysisHistory(
         user_id=user_id,
         ticker=ticker,
-        analysis_date=result.get("analysis_date", date.today().isoformat()),
+        analysis_date=date.today().isoformat(),  # always server date — never trust LLM's date field
         signal=new_signal,
         confidence_pct=result.get("confidence_pct"),
         target_short=tp.get("short_term_3m"),
@@ -804,7 +804,7 @@ import threading
 
 _JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
 _JWT_ALGORITHM = "HS256"
-_JWT_EXPIRY_HOURS = 72
+_JWT_EXPIRY_HOURS = 720  # 30 days — prevents silent 401s from expired tokens on mobile
 _admin_lock = threading.Lock()
 _admin_users: set[int] = set()
 

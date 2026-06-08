@@ -420,9 +420,9 @@ class NetworkManager: ObservableObject {
         var request = authRequest(url)
         request.timeoutInterval = 30
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw NetworkError.invalidResponse
-        }
+        guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        if http.statusCode == 401 { throw NetworkError.unauthorized }
+        guard (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
         return try JSONDecoder().decode(MorningSummaryResponse.self, from: data)
     }
 
@@ -471,7 +471,9 @@ class NetworkManager: ObservableObject {
         var req = authRequest(url)
         req.timeoutInterval = 15
         let (data, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        if http.statusCode == 401 { throw NetworkError.unauthorized }
+        guard (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
         struct Resp: Decodable { let watchlist: [WatchlistItem] }
         let decoded = try JSONDecoder().decode(Resp.self, from: data)
         return decoded.watchlist

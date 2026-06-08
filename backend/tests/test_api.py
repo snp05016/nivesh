@@ -1665,6 +1665,75 @@ class TestApiV1Market:
 # ✓ ENDPOINT COMPLETE: GET /api/v1/options/chain/{ticker} (10/10)
 
 
+class TestTopMovers:
+    """GET /api/v1/market/top-movers — no auth required"""
+
+    # test 1/8
+    def test_top_movers_returns_non_500(self, client):
+        r = client.get("/api/v1/market/top-movers")
+        assert r.status_code < 600
+
+    # test 2/8
+    def test_top_movers_no_auth_required(self, client):
+        r = client.get("/api/v1/market/top-movers")
+        assert r.status_code != 401
+
+    # test 3/8
+    def test_top_movers_response_is_json(self, client):
+        r = client.get("/api/v1/market/top-movers")
+        if r.status_code == 200:
+            data = r.json()
+            assert isinstance(data, dict)
+
+    # test 4/8
+    def test_top_movers_has_required_keys(self, client):
+        r = client.get("/api/v1/market/top-movers")
+        if r.status_code == 200:
+            data = r.json()
+            for key in ("gainers", "losers", "active_by_value", "active_by_volume"):
+                assert key in data, f"Missing key: {key}"
+
+    # test 5/8
+    def test_top_movers_lists_are_arrays(self, client):
+        r = client.get("/api/v1/market/top-movers")
+        if r.status_code == 200:
+            data = r.json()
+            assert isinstance(data.get("gainers"), list)
+            assert isinstance(data.get("losers"), list)
+            assert isinstance(data.get("active_by_value"), list)
+            assert isinstance(data.get("active_by_volume"), list)
+
+    # test 6/8
+    def test_top_movers_gainers_capped_at_10(self, client):
+        r = client.get("/api/v1/market/top-movers")
+        if r.status_code == 200:
+            data = r.json()
+            assert len(data.get("gainers", [])) <= 10
+            assert len(data.get("losers", [])) <= 10
+            assert len(data.get("active_by_value", [])) <= 10
+            assert len(data.get("active_by_volume", [])) <= 10
+
+    # test 7/8
+    def test_top_movers_mover_fields_present(self, client):
+        r = client.get("/api/v1/market/top-movers")
+        if r.status_code == 200:
+            data = r.json()
+            gainers = data.get("gainers", [])
+            if gainers:
+                m = gainers[0]
+                for field in ("ticker", "price", "change_pct", "change_abs", "volume", "value"):
+                    assert field in m, f"Mover missing field: {field}"
+
+    # test 8/8
+    def test_top_movers_has_fetched_at(self, client):
+        r = client.get("/api/v1/market/top-movers")
+        if r.status_code == 200:
+            data = r.json()
+            assert "fetched_at" in data
+
+# ✓ ENDPOINT COMPLETE: GET /api/v1/market/top-movers (8/8)
+
+
 class TestEarningsEndpoints:
     """GET /api/v1/earnings/* endpoints"""
 

@@ -1,7 +1,7 @@
 # Nivesh API — Test Inventory
 
-**Generated:** 2026-06-04  
-**Total Endpoints:** 83  
+**Generated:** 2026-06-08  
+**Total Endpoints:** 84  
 **Test File:** `tests/test_api.py`
 
 ---
@@ -91,6 +91,7 @@
 | 81 | GET | /api/v1/experts | No | — | — | — | ✅ Tested |
 | 82 | GET | /api/v1/expert-posts | No | — | `ticker?` | — | ✅ Tested |
 | 83 | GET | /api/v1/dashboard/stream | No | — | — | — | ✅ Tested |
+| 84 | GET | /api/v1/market/top-movers | No | — | — | — | ✅ Tested |
 
 ---
 
