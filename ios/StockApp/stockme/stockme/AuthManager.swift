@@ -6,6 +6,8 @@ class AuthManager: ObservableObject {
     @Published var currentUser: LoggedInUser? = nil
     @Published var isLoggingIn = false
     @Published var loginError: String? = nil
+    /// Fix 3.13: Biometric auth queue — blocks API requests during FaceID/TouchID
+    @Published var isAuthenticatingWithBiometrics = false
 
     private let key = "nivesh_user_v1"
 
@@ -56,8 +58,14 @@ class AuthManager: ObservableObject {
     }
 
     func logout() {
+        // Fix 3.30: Destructive cleanup — cancel ALL active network polling,
+        // timers, and data loops before clearing credentials.
+        HomeFeedViewModel.shared?.suspendAllPolling()
+        URLSession.shared.invalidateAndCancel()
         currentUser = nil
         NetworkManager.shared.authToken = nil
         UserDefaults.standard.removeObject(forKey: key)
+        UserDefaults.standard.removeObject(forKey: "nivesh_cached_portfolio_v1")
+        UserDefaults.standard.removeObject(forKey: "nivesh_last_refresh_v1")
     }
 }

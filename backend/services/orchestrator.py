@@ -32,7 +32,16 @@ load_dotenv(dotenv_path=_env_path, override=True)
 # ---------------------------------------------------------------------------
 import yfinance as yf
 import anthropic
-import openai as _openai_lib
+from services.llm_utils import (
+    get_deepseek_client,
+    deepseek_chat,
+    HAIKU_MODEL,
+    SONNET_MODEL,
+    DEEPSEEK_MODEL,
+)
+# backward-compat aliases for internal callers
+_get_deepseek_client = get_deepseek_client
+_deepseek_chat = deepseek_chat
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -93,77 +102,8 @@ from tradingagents.graph.setup import GraphSetup
 # ═════════════════════════════════════════════════════════════════════════════
 # Model Identifiers
 # ═════════════════════════════════════════════════════════════════════════════
-
-HAIKU_MODEL = "claude-haiku-4-5-20251001"  # updated from deprecated claude-3-5-haiku-20241022
-SONNET_MODEL = "claude-3-5-sonnet-latest"
-DEEPSEEK_MODEL = "deepseek-chat"  # Tier 1 — bulk agent tasks
-
+# LLM client and model constants — now in services.llm_utils (single source)
 # ═════════════════════════════════════════════════════════════════════════════
-# DeepSeek OpenAI-compatible client helper
-# Endpoint: https://api.deepseek.com/v1  —  uses DEEPSEEK_API_KEY
-# All calls include exponential backoff (max 3 retries, base 2 s, timeout 60 s)
-# ═════════════════════════════════════════════════════════════════════════════
-
-
-def _get_deepseek_client() -> "_openai_lib.OpenAI":
-    """Return a lazily-constructed DeepSeek OpenAI-compatible client."""
-    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-    return _openai_lib.OpenAI(
-        api_key=api_key,
-        base_url="https://api.deepseek.com/v1",
-        timeout=60.0,
-    )
-
-
-def _deepseek_chat(
-    messages: list[dict],
-    *,
-    max_tokens: int = 512,
-    temperature: float = 0.3,
-    log_endpoint: str | None = None,
-) -> str:
-    """
-    Call DeepSeek V4 Flash via OpenAI-compatible API.
-    V4 Flash is a thinking model — reasoning_content consumes max_tokens before
-    content is generated.  We inflate the requested max_tokens to leave room for
-    internal reasoning, then return content (or reasoning_content as fallback).
-    Retries up to 3 times with exponential backoff (2 s, 4 s, 8 s).
-    """
-    import time as _t
-
-    client = _get_deepseek_client()
-    last_exc: Exception | None = None
-    # Thinking models burn tokens on reasoning before producing output.
-    # Allocate 5x the requested output tokens so reasoning doesn't starve content.
-    effective_max = max(max_tokens * 5, 512)
-    for attempt in range(3):
-        try:
-            response = client.chat.completions.create(
-                model=DEEPSEEK_MODEL,
-                messages=messages,
-                max_tokens=effective_max,
-                temperature=temperature,
-            )
-
-            if log_endpoint and hasattr(response, "usage"):
-                _log_token_usage(log_endpoint, response.usage)
-
-            choice = response.choices[0]
-            content = choice.message.content or ""
-            # If content is empty (all tokens went to reasoning), fall back to
-            # reasoning_content so callers still get useful output.
-            if not content.strip():
-                reasoning = getattr(choice.message, "reasoning_content", None) or ""
-                if reasoning.strip():
-                    content = reasoning
-            return content
-        except Exception as exc:
-            last_exc = exc
-            print(f"[DeepSeek] Attempt {attempt + 1}/3 failed: {exc}")
-            if attempt < 2:
-                _t.sleep(2.0 * (2 ** attempt))
-    raise RuntimeError(f"DeepSeek call failed after 3 retries: {last_exc}") from last_exc
-
 
 # ═════════════════════════════════════════════════════════════════════════════
 # Constants: Prompt Caching Blocks
@@ -216,18 +156,25 @@ FUNDAMENTALS_ANALYST_PERSONA = (
 
 
 def _extract_json_from_text(text: str) -> str:
-    """Extract JSON from markdown code blocks, or fallback to curly braces."""
+    """Extract primary JSON envelope from LLM output.
+    Uses regex to isolate the outermost JSON object, ignoring any JSON
+    blocks embedded inside markdown explanations or conversational text.
+    """
+    import re as _re
     text = text.strip()
-    if "```json" in text:
-        return text.split("```json")[1].split("```")[0].strip()
-    elif "```" in text:
-        return text.split("```")[1].strip()
-    else:
-        # Fallback: extract substring between first { and last }
-        start = text.find("{")
-        end = text.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            return text[start : end + 1].strip()
+    # Priority 1: ```json ... ``` fenced block (lazy match for outermost)
+    m = _re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, _re.DOTALL)
+    if m:
+        return m.group(1).strip()
+    # Priority 2: outermost { ... } via regex
+    m = _re.search(r"\{.*\}", text, _re.DOTALL)
+    if m:
+        return m.group(0).strip()
+    # Priority 3: legacy split-based fallback
+    if "```" in text:
+        parts = text.split("```")
+        if len(parts) >= 2:
+            return parts[1].strip()
     return text
 
 
@@ -551,9 +498,19 @@ def reformat_with_claude(
                 )
                 break
             except Exception as e:
+                err_msg = str(e).lower()
+                is_cache_eviction = any(kw in err_msg for kw in (
+                    "cache_expired", "ephemeral", "prompt_cache",
+                    "cache_not_found", "evicted",
+                ))
                 print(f"[Anthropic] Reformat attempt {attempt + 1} failed: {e}")
                 if attempt < 2:
-                    time.sleep(1.0 * (2 ** attempt))
+                    # Fix 2.35: cache eviction errors get extended backoff
+                    # to stay under the 1200s gateway timeout while cache repopulates
+                    backoff = 4.0 * (2 ** attempt) if is_cache_eviction else 1.0 * (2 ** attempt)
+                    if is_cache_eviction:
+                        print("[Anthropic] Cache eviction detected — extended backoff")
+                    time.sleep(backoff)
 
     # ── Phase 2: DeepSeek V4 Flash fallback ──────────────────────────────
     if os.getenv("DEEPSEEK_API_KEY"):
@@ -617,14 +574,42 @@ _SIGNAL_MAP = {
     "STRONG_SELL": "BEARISH",
     "AVOID": "BEARISH",
     "CAUTIOUS": "CAUTIOUSLY BEARISH",
+    # Complex advisory ratings — preserve granularity instead of flattening to HOLD
+    "ACCUMULATE": "CAUTIOUSLY BULLISH",
+    "ACCUMULATE ON DIPS": "CAUTIOUSLY BULLISH",
+    "REDUCE": "CAUTIOUSLY BEARISH",
+    "REDUCE ON RALLIES": "CAUTIOUSLY BEARISH",
+    "BOOK PROFIT": "CAUTIOUSLY BEARISH",
+    "BOOK PROFITS": "CAUTIOUSLY BEARISH",
+    "EXIT": "BEARISH",
+    "ADD": "CAUTIOUSLY BULLISH",
+    "BUY ON DIPS": "BULLISH",
+    "SELL ON RALLIES": "BEARISH",
 }
+
+
+def _sanitize_nan_inf(obj):
+    """Recursively replace NaN/Inf/-Inf with None (JSON null) in dicts/lists.
+    Prevents Swift JSONDecoder failures from invalid float values.
+    """
+    import math as _m
+    if isinstance(obj, dict):
+        return {k: _sanitize_nan_inf(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize_nan_inf(v) for v in obj]
+    if isinstance(obj, float) and (_m.isnan(obj) or _m.isinf(obj)):
+        return None
+    return obj
 
 
 def _normalize_response(result: dict) -> dict:
     """Sanitize AI analysis response to ensure all iOS-required fields exist with correct types.
-    Handles null values, missing fields, type mismatches, and float→int coercion.
+    Handles null values, missing fields, type mismatches, NaN/Inf->null, and float->int coercion.
     """
     import math
+
+    # 0. Clean NaN/Inf values before any other processing
+    result = _sanitize_nan_inf(result)
 
     # 1. Signal normalization
     if "signal" in result:
@@ -750,6 +735,13 @@ def analyze(
     full_ticker = _resolve_ticker(ticker, exchange)
     analysis_date = date.today().strftime("%Y-%m-%d")
 
+    # Fix 2.38: Generate anonymous session hash for unauthenticated requests.
+    # Prevents duplicate LLM cycles from the same public session.
+    if user_id is None:
+        import hashlib as _hl
+        _anon_key = f"{full_ticker}|{analysis_date}|public"
+        user_id = abs(hash(_anon_key)) % (10 ** 8)
+
     with get_session() as session:
         # 1. Query Cache: Check global history for today
         cached_today = get_analysis_for_date(session, ticker, analysis_date)
@@ -836,8 +828,24 @@ def analyze(
                         [f"- {n.get('title', '')}" for n in recent_news]
                     )
 
+                    # Fix 2.19: check for special dividends/bonus/splits in headlines
+                    # before Smart Cache Gate — these are ALWAYS major fundamental shifts
+                    import re as _cache_re
+                    _force_refresh_patterns = [
+                        r"special\s+dividend",
+                        r"bonus\s+(?:issue|share)",
+                        r"stock\s+split",
+                        r"rights\s+issue",
+                        r"buyback",
+                        r"delisting",
+                    ]
+                    _force_refresh = any(
+                        _cache_re.search(p, news_text, _cache_re.IGNORECASE)
+                        for p in _force_refresh_patterns
+                    )
+
                     # Smart cache gate → DeepSeek V4 Flash (Tier 1 bulk task)
-                    if os.getenv("DEEPSEEK_API_KEY"):
+                    if os.getenv("DEEPSEEK_API_KEY") and not _force_refresh:
                         prompt = (
                             f"Stock: {full_ticker}\nLast analysis date: {last_date_str}\n"
                             f"Recent News Headlines:\n{news_text}\n\n"

@@ -51,7 +51,23 @@ def normalize_technical_score(signals: dict) -> float:
     return round(max(0.0, min(1.0, score)), 3)
 
 
+# Fix 2.2: SME platform tickers cause PKScreener to hang (30s timeout).
+# Detect and skip them before subprocess spawn.
+_SME_TICKER_PATTERNS = ["-SM", "-SME", "BSE_SME"]
+
+
+def _is_sme_ticker(ticker: str) -> bool:
+    """Check if ticker belongs to SME platform — these hang PKScreener."""
+    upper = ticker.upper().strip()
+    return any(p in upper for p in _SME_TICKER_PATTERNS)
+
+
 def run_pkscreener_for_ticker(ticker: str) -> dict:
+    # Fix 2.2: skip SME tickers — they cause silent 30s timeouts
+    if _is_sme_ticker(ticker):
+        logger.info(f"PKScreener: skipping SME ticker {ticker}")
+        return None
+
     try:
         result = subprocess.run(
             [sys.executable, "-m", "pkscreener", "-t", ticker],

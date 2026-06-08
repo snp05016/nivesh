@@ -20,7 +20,7 @@ from datetime import timezone as _timezone
 from helpers import (
     get_session, EXCHANGE_SUFFIX, NSE_TICKERS, NSE_TICKER_OVERRIDES,
     _resolve_ticker, _to_ns, _yf_price, _yf_fetch_info,
-    _quick_info_cache, _QUICK_INFO_TTL,
+    _quick_info_cache, _quick_info_lock, _QUICK_INFO_TTL,
     _get_analyze_semaphore, _acquire_analysis_slot, _release_analysis_slot,
     _ANALYZE_MAX_CONCURRENT, _RUNNING_ANALYSES_STALENESS_SEC,
     _dash_start_job, _dash_end_job,
@@ -38,9 +38,8 @@ router = APIRouter(tags=["Analysis"])
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-HAIKU_MODEL = "claude-3-5-haiku-20241022"
-SONNET_MODEL = "claude-3-5-sonnet-latest"
-DEEPSEEK_MODEL = "deepseek-chat"
+from services.llm_utils import deepseek_chat, SONNET_MODEL, DEEPSEEK_MODEL
+_deepseek_chat = deepseek_chat  # backward-compat alias
 
 SECTOR_PE_MAP = {
     "Technology": 35, "Financial Services": 18, "Energy": 12,
@@ -59,48 +58,8 @@ _YF_CIRCUIT_THRESHOLD = 3
 _YF_CIRCUIT_TIMEOUT = 300  # 5 minutes
 
 # ---------------------------------------------------------------------------
-# DeepSeek helpers (copied from main.py to avoid circular imports)
+# DeepSeek helpers — now imported from services.llm_utils (single source)
 # ---------------------------------------------------------------------------
-import openai as _openai_lib
-
-def _get_deepseek_client() -> "_openai_lib.OpenAI":
-    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-    return _openai_lib.OpenAI(
-        api_key=api_key,
-        base_url="https://api.deepseek.com/v1",
-        timeout=60.0,
-    )
-
-def _deepseek_chat(
-    messages: list[dict],
-    *,
-    max_tokens: int = 512,
-    temperature: float = 0.3,
-    log_endpoint: str | None = None,
-) -> str:
-    client = _get_deepseek_client()
-    for attempt in range(3):
-        try:
-            resp = client.chat.completions.create(
-                model=DEEPSEEK_MODEL,
-                messages=messages,
-                max_tokens=max_tokens,
-                temperature=temperature,
-            )
-            content = resp.choices[0].message.content or ""
-            # V4 Flash may put reasoning in a separate field
-            reasoning = getattr(resp.choices[0].message, "reasoning_content", None)
-            if reasoning:
-                content = reasoning + "\n\n" + content if content else reasoning
-            if log_endpoint and hasattr(resp, "usage") and resp.usage:
-                _log_token_usage(log_endpoint, resp.usage)
-            return content.strip()
-        except Exception as e:
-            print(f"[DEEPSEEK] Attempt {attempt+1} failed: {e}")
-            if attempt == 2:
-                raise
-            _time.sleep(1.5 * (2 ** attempt))
-    return ""
 
 # ---------------------------------------------------------------------------
 # Signal normalization
@@ -243,16 +202,21 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
 
         cache_key = f"{ticker.upper()}_{exchange.upper()}"
         _now = _time.time()
-        if cache_key in _quick_info_cache:
-            expiry, cached_data = _quick_info_cache[cache_key]
-            if _now < expiry:
-                print(f"[QUICK-INFO L1 HIT] {cache_key}")
-                return cached_data
+        with _quick_info_lock:
+            if cache_key in _quick_info_cache:
+                expiry, cached_data = _quick_info_cache[cache_key]
+                l1_hit = _now < expiry
+            else:
+                l1_hit = False
+        if l1_hit:
+            print(f"[QUICK-INFO L1 HIT] {cache_key}")
+            return cached_data
         from services.disk_cache import get as _dcache_get, set as _dcache_set
         _disk_hit = _dcache_get("yfinance", f"quick_info_{cache_key}")
         if _disk_hit:
             print(f"[QUICK-INFO L2 DISK HIT] {cache_key}")
-            _quick_info_cache[cache_key] = (_time.time() + _QUICK_INFO_TTL, _disk_hit)
+            with _quick_info_lock:
+                _quick_info_cache[cache_key] = (_time.time() + _QUICK_INFO_TTL, _disk_hit)
             return _disk_hit
 
         full_ticker = _resolve_ticker(ticker, exchange)
@@ -410,7 +374,8 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
             "dividends": dividends,
             "corporate_actions": corporate_actions,
         }
-        _quick_info_cache[cache_key] = (_time.time() + _QUICK_INFO_TTL, result)
+        with _quick_info_lock:
+            _quick_info_cache[cache_key] = (_time.time() + _QUICK_INFO_TTL, result)
         _dcache_set("yfinance", f"quick_info_{cache_key}", result)
         return result
     except HTTPException:

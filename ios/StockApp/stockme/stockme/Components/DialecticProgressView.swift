@@ -75,6 +75,8 @@ struct DialecticProgressView: View {
     @StateObject private var client = AgentStreamClient()
     @State private var showFallback = false
     @State private var fallbackStep = 0
+    @State private var reconnectAttempts = 0
+    @Environment(\.scenePhase) private var scenePhase
     let userId: Int?
     let ticker: String
 
@@ -173,6 +175,23 @@ struct DialecticProgressView: View {
             }
         }
         .onDisappear { client.disconnect() }
+        // Fix 3.9: SSE lifecycle — disconnect on background, reconnect on foreground
+        .onChange(of: scenePhase) { _, newPhase in
+            switch newPhase {
+            case .background:
+                client.disconnect()
+                reconnectAttempts = 0
+            case .active:
+                guard let uid = userId else { return }
+                let delay = pow(2.0, Double(min(reconnectAttempts, 4)))
+                Task {
+                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                    client.connect(userId: uid, ticker: ticker)
+                }
+                reconnectAttempts += 1
+            default: break
+            }
+        }
     }
 
     private func advanceFallback() {

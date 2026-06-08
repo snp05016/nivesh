@@ -61,6 +61,15 @@ def get(namespace: str, key: str) -> Optional[Any]:
             data = json.load(f)
         logger.debug(f"[disk_cache] HIT {namespace}/{key[:30]} (age={age:.0f}s)")
         return data
+    except (EOFError, OSError, gzip.BadGzipFile) as e:
+        # Corrupted cache file (e.g. mid-flight write termination) —
+        # delete it so next read gets a clean cache miss
+        logger.warning(f"[disk_cache] CORRUPT {namespace}/{key[:30]}: {e} — deleting")
+        try:
+            path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return None
     except Exception as e:
         logger.warning(f"[disk_cache] READ ERROR {namespace}/{key[:30]}: {e}")
         return None

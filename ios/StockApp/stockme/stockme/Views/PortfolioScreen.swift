@@ -371,10 +371,16 @@ struct PortfolioScreen: View {
             Text("This will permanently remove \(deletingTicker) from your portfolio.")
         }
         .confirmationDialog("Export Portfolio", isPresented: $showExportOptions, titleVisibility: .visible) {
-            Button("Export as Excel (.xlsx)") {
-                if let user = authManager.currentUser {
-                    Task { await exportAsExcel(userId: user.userId) }
+            // Fix 3.21: Disable export when portfolio has zero holdings
+            let hasHoldings = (viewModel.portfolio?.holdings?.count ?? 0) > 0
+            if hasHoldings {
+                Button("Export as Excel (.xlsx)") {
+                    if let user = authManager.currentUser {
+                        Task { await exportAsExcel(userId: user.userId) }
+                    }
                 }
+            } else {
+                Button("No holdings to export", action: {}).disabled(true)
             }
             Button("Cancel", role: .cancel) {}
         }
@@ -1048,6 +1054,20 @@ private struct AddHoldingSheet: View {
                         
                         Button {
                             guard let entry = selectedEntry, let user = authManager.currentUser else { return }
+                            // Fix 3.7+3.8: Validate quantity > 0 and buyPrice > 0
+                            guard shares > 0 else {
+                                errorText = "Number of shares must be greater than zero"
+                                return
+                            }
+                            guard buyPrice > 0 else {
+                                errorText = "Buy price cannot be zero"
+                                return
+                            }
+                            // Fix 3.5: Block Western number scales in notes
+                            if notes.containsWesternScale {
+                                errorText = "Use Indian numbering (Lakhs/Crores) instead of Million/Billion"
+                                return
+                            }
                             isAdding = true
                             errorText = nil
                             Task {

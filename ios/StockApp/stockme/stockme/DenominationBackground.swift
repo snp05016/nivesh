@@ -117,6 +117,13 @@ struct DenominationBackground: View {
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
 
+            // Fix 1.2: Frosted glassmorphism layer — modern material on top
+            // of banknote palette, replacing old 3% static noise grain.
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+
             // RBI seal — trailing edge, partially clipped like a real note stamp
             HStack {
                 Spacer()

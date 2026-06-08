@@ -2,7 +2,7 @@
 
 ## PHASE 0: Setup
 - [x] Create implementation ledger
-- [ ] Verify existing notification code (DeviceToken table, /notifications/* routes)
+- [x] Verify existing notification code (DeviceToken table, /notifications/* routes)
 
 ## PHASE 1: iOS Permissions & Dev Tools
 - [ ] Create `NotificationManager.swift` — UNUserNotificationCenter singleton
@@ -16,11 +16,11 @@
 ## PHASE 2: Backend Telemetry & Mock Routes
 - [ ] Add `NotificationErrorLog` table to database.py
 - [ ] Create `routers/notifications.py`
-- [ ] POST /api/v1/notifications/register — store device token
-- [ ] POST /api/v1/dev/push-mock — fire mock push notification
-- [ ] GET /api/v1/admin/notification-errors — stream error log
-- [ ] Wrap dispatch in try-except, log to NotificationErrorLog
-- [ ] Register router in main.py
+- [x] POST /api/v1/notifications/register — store device token (now uses shared `upsert_device_token()` helper)
+- [x] POST /api/v1/dev/push-mock — fire mock push notification
+- [x] GET /api/v1/admin/notification-errors — stream error log
+- [x] Wrap dispatch in try-except, log to NotificationErrorLog
+- [x] Register router in main.py
 
 ## PHASE 3: Full-Stack Integration
 - [ ] iOS sends device token to backend on successful APNs registration

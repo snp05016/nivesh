@@ -143,7 +143,9 @@ del _seen, _ALL_ALIASES_DEDUPED
 
 def extract_snippet(segments: list[dict], timestamp: float) -> str:
     """
-    Return joined text from segments within ±60 seconds of timestamp.
+    Return joined text from segments within ±90 seconds of timestamp.
+    Fix 2.20: Expanded from ±60s to ±90s to prevent sentiment inversion
+    caused by mid-sentence audio cuts in transcript parsing.
 
     Args:
         segments: list of segment dicts with keys 'start', 'end', 'text'
@@ -155,7 +157,7 @@ def extract_snippet(segments: list[dict], timestamp: float) -> str:
     window_texts = [
         seg["text"]
         for seg in segments
-        if abs(seg.get("start", 0) - timestamp) <= 60.0
+        if abs(seg.get("start", 0) - timestamp) <= 90.0
     ]
     return " ".join(window_texts).strip()
 
@@ -236,6 +238,14 @@ def find_tickers(transcript: dict) -> list[dict]:
     STEP = 3
     SCORE_CUTOFF = 82
 
+    # Fix 2.9: generic English words that should NEVER be matched as tickers
+    # even if rapidfuzz finds a high-scoring similarity
+    _GENERIC_ENGLISH_WORDS = {
+        "reliance", "idea", "true", "false", "value", "growth",
+        "market", "capital", "trust", "power", "light", "life",
+        "future", "global", "prime", "star", "gold", "silver",
+    }
+
     raw_matches: list[dict] = []
 
     for start_idx in range(0, max(1, total_words - WINDOW_SIZE + 1), STEP):
@@ -253,6 +263,10 @@ def find_tickers(transcript: dict) -> list[dict]:
             continue
 
         matched_alias, score, _ = result
+
+        # Fix 2.9: skip generic English words that rapidfuzz matched
+        if matched_alias.lower().strip() in _GENERIC_ENGLISH_WORDS:
+            continue
 
         # Resolve alias → ticker
         ticker = ALIAS_TO_TICKER.get(matched_alias.lower())

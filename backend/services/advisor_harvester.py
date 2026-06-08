@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import anthropic
-import openai as _openai_lib
+from services.llm_utils import deepseek_chat as _deepseek_chat, DEEPSEEK_MODEL as _DEEPSEEK_MODEL
 
 # ---------------------------------------------------------------------------
 # Logging — handlers configured by the caller (CRON)
@@ -64,10 +64,8 @@ ADVISOR_REGISTRY = [
 ]
 
 # ---------------------------------------------------------------------------
-# DeepSeek V4 Flash stance extraction (Tier 1 — migrated from Claude Haiku)
-# ---------------------------------------------------------------------------
-
-_DEEPSEEK_MODEL = "deepseek-chat"
+# DeepSeek V4 Flash stance extraction (Tier 1)
+# Client + chat imported from services.llm_utils (single source)
 
 HAIKU_SYSTEM = """You are a financial transcript analyst. Extract structured investment stance data from Indian financial advisor commentary. Output ONLY valid JSON. No preamble. No explanation."""
 
@@ -87,51 +85,6 @@ Rules:
 - If hedging/undecided: NEUTRAL
 - catalyst_summary must have a numeric anchor (₹ amounts in Lakhs/Crores, percentages, multiples)
 """
-
-
-def _get_deepseek_client() -> "_openai_lib.OpenAI":
-    """Lazy DeepSeek OpenAI-compatible client using DEEPSEEK_API_KEY."""
-    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-    return _openai_lib.OpenAI(
-        api_key=api_key,
-        base_url="https://api.deepseek.com/v1",
-        timeout=60.0,
-    )
-
-
-def _deepseek_chat(messages: list, *, max_tokens: int = 256, temperature: float = 0.2) -> str:
-    """
-    Call DeepSeek V4 Flash with exponential backoff (max 3 retries, base 2 s).
-    V4 Flash is a thinking model — reasoning_content consumes max_tokens before
-    content is generated.  We inflate the requested max_tokens to leave room for
-    internal reasoning, then return content (or reasoning_content as fallback).
-    Returns assistant message text.
-    """
-    import time as _t
-    client = _get_deepseek_client()
-    last_exc = None
-    effective_max = max(max_tokens * 5, 512)
-    for attempt in range(3):
-        try:
-            resp = client.chat.completions.create(
-                model=_DEEPSEEK_MODEL,
-                messages=messages,
-                max_tokens=effective_max,
-                temperature=temperature,
-            )
-            choice = resp.choices[0]
-            content = choice.message.content or ""
-            if not content.strip():
-                reasoning = getattr(choice.message, "reasoning_content", None) or ""
-                if reasoning.strip():
-                    content = reasoning
-            return content
-        except Exception as exc:
-            last_exc = exc
-            logger.warning("DeepSeek attempt %d/3 failed: %s", attempt + 1, exc)
-            if attempt < 2:
-                _t.sleep(2.0 * (2 ** attempt))
-    raise RuntimeError(f"DeepSeek call failed after 3 retries: {last_exc}") from last_exc
 
 # ---------------------------------------------------------------------------
 # Duration helpers
@@ -463,6 +416,23 @@ def _extract_stance_with_haiku(advisor_name: str, ticker: str, snippet: str) -> 
     }
 
 
+# Fix 2.50: sector-balancing normalization weights.
+# Prevents Banking/IT sectors from crowding out mid/small-cap visibility.
+_SECTOR_WEIGHTS = {
+    "BANKING": 0.7, "IT": 0.7, "FINANCIAL_SERVICES": 0.7,
+    "PHARMA": 1.0, "AUTO": 1.0, "FMCG": 1.0, "METALS": 1.0,
+    "OIL_GAS": 1.0, "POWER": 1.0, "TELECOM": 1.0,
+    "REALTY": 1.2, "MEDIA": 1.2, "TEXTILES": 1.2,
+    "CHEMICALS": 1.0, "CEMENT": 1.0, "INFRA": 1.0,
+}
+
+
+def _get_sector_weight(sector: str) -> float:
+    """Return normalization weight for a sector. Mid/small-cap sectors
+    get >1.0 boost to prevent Banking/IT crowding on consensus view."""
+    return _SECTOR_WEIGHTS.get(sector.upper(), 1.0)
+
+
 # ---------------------------------------------------------------------------
 # Core harvest logic
 # ---------------------------------------------------------------------------
@@ -577,6 +547,15 @@ async def harvest_single_advisor(advisor: dict, lookback_hours: int = 24) -> int
 
             if not ticker:
                 continue
+
+            # Fix 2.18: Positional token block indexing for multi-stock transcripts.
+            # Extract text within ±500 chars of the ticker's first mention to avoid
+            # misattributing stances across different stocks in the same video.
+            ticker_pos = snippet.lower().find(ticker.lower().replace(".ns", "").replace(".bo", ""))
+            if ticker_pos >= 0 and len(ticker_matches) > 1:
+                window_start = max(0, ticker_pos - 500)
+                window_end = min(len(snippet), ticker_pos + 800)
+                snippet = snippet[window_start:window_end]
 
             # Call Claude Haiku
             extracted = _extract_stance_with_haiku(advisor_name, ticker, snippet)

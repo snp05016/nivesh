@@ -196,16 +196,21 @@ def macro_strip_endpoint():
             result["brent_oil_usd"] = None
 
         # India VIX — fear gauge for Indian retail markets
+        # Fix 2.16: fallback to historical average (~16) when scraper fails
+        INDIA_VIX_HISTORICAL_AVG = 16.0
         try:
             t = yf.Ticker("^INDIAVIX")
             info = t.info
             vix = info.get("regularMarketPrice") or info.get("currentPrice")
             if vix and not math.isnan(float(vix)):
                 result["india_vix"] = round(float(vix), 2)
+                result["india_vix_source"] = "live"
             else:
-                result["india_vix"] = None
+                result["india_vix"] = INDIA_VIX_HISTORICAL_AVG
+                result["india_vix_source"] = "historical_avg_fallback"
         except Exception:
-            result["india_vix"] = None
+            result["india_vix"] = INDIA_VIX_HISTORICAL_AVG
+            result["india_vix_source"] = "historical_avg_fallback"
 
         # RBI repo rate — hardcoded (changes rarely, update manually)
         result["rbi_repo_rate_pct"] = 6.50

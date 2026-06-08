@@ -80,6 +80,7 @@ def compute_indicators(df: pd.DataFrame, ticker: str = "") -> dict:
         "obv": None,
         "golden_cross": False,
         "death_cross": False,
+        "corporate_action_suspected": False,
         "macd_bullish_cross": False,
         "macd_bearish_cross": False,
         "trend_regime": "NEUTRAL",
@@ -198,24 +199,39 @@ def compute_indicators(df: pd.DataFrame, ticker: str = "") -> dict:
         if len(close) >= 22:
             result["roc_21"] = round(float(((close.iloc[-1] / close.iloc[-22]) - 1) * 100), 2)
 
+        # ── Corporate Action Detection (fix 2.1) ────────────────────────────
+        if len(close) >= 2:
+            single_day_pct = float(((close.iloc[-1] / close.iloc[-2]) - 1) * 100)
+            if abs(single_day_pct) > 40:
+                result["corporate_action_suspected"] = True
+                # Override trend signals — a 40%+ move is a split/bonus, not a trend
+                result["trend_regime"] = "CORPORATE_ACTION"
+                result["golden_cross"] = False
+                result["death_cross"] = False
+
         # ── Regime Classification ─────────────────────────────────────────────
         rsi_v = result["rsi_14"] or 50.0
         roc_v = result["roc_21"] or 0.0
         hv_v  = result["hist_vol_21_annualized"] or 25.0
         pct50 = result["price_vs_sma50_pct"] or 0.0
 
-        if pct50 > 10 and roc_v > 15:
-            result["trend_regime"] = "STRONG_UPTREND"
-        elif pct50 > 3 and roc_v > 5:
-            result["trend_regime"] = "UPTREND"
-        elif pct50 < -10 and roc_v < -15:
-            result["trend_regime"] = "STRONG_DOWNTREND"
-        elif pct50 < -3 and roc_v < -5:
-            result["trend_regime"] = "DOWNTREND"
-        else:
-            result["trend_regime"] = "NEUTRAL"
+        # Skip trend classification if corporate action already detected
+        if not result.get("corporate_action_suspected"):
+            if pct50 > 10 and roc_v > 15:
+                result["trend_regime"] = "STRONG_UPTREND"
+            elif pct50 > 3 and roc_v > 5:
+                result["trend_regime"] = "UPTREND"
+            elif pct50 < -10 and roc_v < -15:
+                result["trend_regime"] = "STRONG_DOWNTREND"
+            elif pct50 < -3 and roc_v < -5:
+                result["trend_regime"] = "DOWNTREND"
+            else:
+                result["trend_regime"] = "NEUTRAL"
 
-        if hv_v > 60:
+        if hv_v == 0.0:
+            # Flat-locked on consecutive circuit limits — no trading possible
+            result["volatility_regime"] = "CRITICAL_LIQUIDITY_RISK"
+        elif hv_v > 60:
             result["volatility_regime"] = "HIGH"
         elif hv_v > 40:
             result["volatility_regime"] = "ELEVATED"

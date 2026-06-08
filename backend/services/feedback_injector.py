@@ -80,6 +80,9 @@ def get_feedback_block(ticker: str, db_session=None) -> str:
             try:
                 prev_price_f = float(prev_price)
                 delta_pct    = round(((current_price - prev_price_f) / prev_price_f) * 100, 2)
+                # Fix 2.11: cap penalty variance at ±30% to prevent macro-driven
+                # market crashes from permanently biasing individual stock ratings
+                delta_pct = max(-30.0, min(30.0, delta_pct))
                 direction    = "UP" if delta_pct > 0 else "DOWN"
                 outcome_line = (
                     f"  Actual outcome: Stock moved {direction} {abs(delta_pct):.1f}% "

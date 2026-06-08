@@ -41,55 +41,34 @@ try:
 except ImportError:
     OPENPYXL_AVAILABLE = False
 
+import os
+
 from services.staleness import compute_staleness
 from services.piotroski import compute_piotroski
 
-import os
-import openai as _openai_lib
 
-def _get_deepseek_client() -> "_openai_lib.OpenAI":
-    """Return a lazily-constructed DeepSeek OpenAI-compatible client."""
-    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-    return _openai_lib.OpenAI(
-        api_key=api_key,
-        base_url="https://api.deepseek.com/v1",
-        timeout=60.0,
-    )
+def _adjust_for_splits(ticker: str, buy_price: float, quantity: float, buy_date: str) -> tuple:
+    """Fix 2.44: Adjust historical buy_price and quantity for corporate splits.
+    Uses yfinance split history. Returns (adjusted_buy_price, adjusted_quantity, split_ratio)."""
+    import yfinance as yf
+    from datetime import datetime as _dt
+    try:
+        t = yf.Ticker(f"{ticker}.NS" if not ticker.endswith((".NS", ".BO")) else ticker)
+        splits = t.splits
+        if splits is None or len(splits) == 0:
+            return buy_price, quantity, 1.0
+        buy_dt = _dt.strptime(buy_date[:10], "%Y-%m-%d")
+        cumulative_ratio = 1.0
+        for split_date, ratio in splits.items():
+            if split_date > buy_dt:
+                cumulative_ratio *= ratio
+        if cumulative_ratio != 1.0:
+            return buy_price / cumulative_ratio, quantity * cumulative_ratio, cumulative_ratio
+        return buy_price, quantity, 1.0
+    except Exception:
+        return buy_price, quantity, 1.0
 
-
-def _deepseek_chat(
-    messages: list[dict],
-    *,
-    max_tokens: int = 512,
-    temperature: float = 0.3,
-    log_endpoint: str | None = None,
-) -> str:
-    """
-    Call DeepSeek V4 Flash via OpenAI-compatible API.
-    V4 Flash is a thinking model — reasoning_content consumes max_tokens before
-    final answer is generated, so we set max_tokens generously.
-    """
-    import time as _time
-    client = _get_deepseek_client()
-    last_err = None
-    for attempt in range(3):
-        try:
-            response = client.chat.completions.create(
-                model="deepseek-chat",
-                messages=messages,
-                max_tokens=max_tokens,
-                temperature=temperature,
-            )
-            text = response.choices[0].message.content or ""
-            if log_endpoint:
-                _log_token_usage(log_endpoint, response.usage)
-            return text
-        except Exception as exc:
-            last_err = exc
-            wait = 2 ** attempt + random.random() * 0.5
-            print(f"[DeepSeek] attempt {attempt+1} failed: {exc} — retrying in {wait:.1f}s")
-            _time.sleep(wait)
-    raise last_err
+from services.llm_utils import deepseek_chat as _deepseek_chat
 
 
 from pydantic import BaseModel as _BaseModel
@@ -587,26 +566,11 @@ mood must be exactly: "positive", "cautious", or "negative"
             result["mood"] = "cautious"
 
         # Build prioritised action list for today
+        # Fix 2.36: Signal flips (BULL→BEAR, BEAR→BULL) take TOP priority
+        # over minor percentage movement alerts. Trend changes matter more.
         priority_items = []
 
-        # Priority 1: Triggered alerts
-        try:
-            with get_session() as session:
-                triggered = session.query(PriceTarget).filter(
-                    PriceTarget.user_id == user_id,
-                    PriceTarget.triggered == True
-                ).all()
-                for a in triggered:
-                    priority_items.append({
-                        "priority": 1,
-                        "type": "alert_triggered",
-                        "ticker": a.ticker,
-                        "message": f"Price alert triggered: {a.ticker} {a.direction} ₹{a.target_price:.0f}",
-                    })
-        except Exception as e:
-            print(f"[MORNING] Alert priority check failed: {e}")
-
-        # Priority 2: Signal changes in last 24h for held stocks
+        # Priority 1: Signal flips in last 24h for held stocks
         try:
             cutoff = datetime.utcnow() - timedelta(hours=24)
             with get_session() as session:
@@ -619,14 +583,35 @@ mood must be exactly: "positive", "cautious", or "negative"
                     SignalEvent.ticker.in_(held_tickers)
                 ).all()
                 for f in flips:
+                    is_trend_flip = (
+                        (f.old_signal in ("BULLISH", "BUY") and f.new_signal in ("BEARISH", "SELL")) or
+                        (f.old_signal in ("BEARISH", "SELL") and f.new_signal in ("BULLISH", "BUY"))
+                    )
                     priority_items.append({
-                        "priority": 2,
-                        "type": "signal_change",
+                        "priority": 1 if is_trend_flip else 2,
+                        "type": "trend_flip" if is_trend_flip else "signal_change",
                         "ticker": f.ticker,
-                        "message": f"{f.ticker}: signal changed {f.from_signal} → {f.to_signal}",
+                        "message": f"Signal changed: {f.ticker} {f.old_signal} → {f.new_signal}",
                     })
         except Exception as e:
-            print(f"[MORNING] Signal change priority check failed: {e}")
+            print(f"[MORNING] Signal flip check failed: {e}")
+
+        # Priority 2: Triggered price alerts
+        try:
+            with get_session() as session:
+                triggered = session.query(PriceTarget).filter(
+                    PriceTarget.user_id == user_id,
+                    PriceTarget.triggered == True
+                ).all()
+                for a in triggered:
+                    priority_items.append({
+                        "priority": 2,
+                        "type": "alert_triggered",
+                        "ticker": a.ticker,
+                        "message": f"Price alert triggered: {a.ticker} {a.direction} ₹{a.target_price:.0f}",
+                    })
+        except Exception as e:
+            print(f"[MORNING] Alert priority check failed: {e}")
 
         priority_items.sort(key=lambda x: x["priority"])
         result["priority_items"] = priority_items

@@ -512,9 +512,21 @@ def _fetch_sync_ratio_fallback() -> dict:
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # Count result rows in the earnings table
-        rows = soup.select("table tr")
-        # Filter to data rows (skip header)
+        # Fix 2.45: Flexible CSS class hooks instead of static DOM positions.
+        # Try common Indian MF/FII/DII tracking table patterns with fallbacks.
+        table_selectors = [
+            "table.mctable1 tr",        # Moneycontrol primary
+            "table.tblporhd tr",        # Value Research
+            "table.table-condensed tr", # Trendlyne
+            "table.dataTable tr",       # Screener.in
+            "div.table-responsive table tr", # Generic responsive
+            "table tr",                 # Ultimate fallback
+        ]
+        rows = []
+        for selector in table_selectors:
+            rows = soup.select(selector)
+            if rows:
+                break
         data_rows = [r for r in rows if r.select("td") and len(r.select("td")) >= 3]
         if data_rows:
             count = len(data_rows)

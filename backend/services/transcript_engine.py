@@ -70,11 +70,35 @@ def _passes_quality_gate(full_text: str, duration_seconds: float) -> bool:
     return True
 
 
+def _normalize_western_scales(text: str) -> str:
+    """Fix 2.29: Convert Western number scales to Indian in transcript text.
+    Also flags broken Hinglish patterns (fix 2.15)."""
+    import re as _re
+    text = _re.sub(r'(\d+\.?\d*)\s*million', r'\1 million (≈\1×10 Lakhs)', text, flags=_re.IGNORECASE)
+    text = _re.sub(r'(\d+\.?\d*)\s*billion', r'\1 billion (≈\1×100 Crores)', text, flags=_re.IGNORECASE)
+    text = _re.sub(r'(\d+\.?\d*)\s*trillion', r'\1 trillion (≈\1×1 Lakh Crores)', text, flags=_re.IGNORECASE)
+    return text
+
+
+def _detect_hinglish_quality(text: str) -> dict:
+    """Fix 2.15: Detect broken Hinglish translations from Whisper.
+    Returns quality flags — high Hinglish ratio means risk of hallucination."""
+    devanagari_ratio = _devanagari_ratio(text)
+    hinglish_markers = ["matlab", "ki matlab", "aise hi", "thoda", "bahut", "kyunki"]
+    hinglish_count = sum(1 for m in hinglish_markers if m in text.lower())
+    return {
+        "hinglish_flagged": hinglish_count >= 3 or devanagari_ratio > 0.1,
+        "devanagari_ratio": round(devanagari_ratio, 3),
+        "hinglish_marker_count": hinglish_count,
+    }
+
+
 def _build_result(source: str, segments: list, duration_seconds: float) -> dict:
     """Assemble the standard output dict."""
     full_text = " ".join(seg["text"] for seg in segments)
+    full_text = _normalize_western_scales(full_text)
+    quality = _detect_hinglish_quality(full_text)
 
-    # If duration not supplied, infer from last segment end time
     if duration_seconds <= 0 and segments:
         duration_seconds = float(segments[-1].get("end", 0))
 
@@ -83,6 +107,7 @@ def _build_result(source: str, segments: list, duration_seconds: float) -> dict:
         "segments": segments,
         "full_text": full_text,
         "duration_seconds": duration_seconds,
+        "quality_flags": quality,
     }
 
 

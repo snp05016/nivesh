@@ -56,14 +56,20 @@ def is_red_flag(text: str) -> bool:
 def extract_tickers_from_text(text: str, db: Session) -> list[str]:
     """
     Use the existing ticker_matcher to find mentioned tickers.
+    Fix 2.8: Enforces exchange-aware suffix filtering — blocks US equities
+    sharing identical ticker strings (e.g., IDEA) from polluting Indian feeds.
     """
     try:
         from services.ticker_matcher import ALIAS_TO_TICKER
+        from helpers import NSE_TICKERS
         text_lower = text.lower()
         found_tickers = []
         for alias, ticker in ALIAS_TO_TICKER.items():
             if alias in text_lower and ticker not in found_tickers:
-                found_tickers.append(ticker)
+                # Only accept tickers known to be NSE/BSE listed
+                clean = ticker.replace(".NS", "").replace(".BO", "").upper()
+                if clean in NSE_TICKERS or ticker.endswith((".NS", ".BO")):
+                    found_tickers.append(ticker)
         return found_tickers[:5]
     except Exception as e:
         logger.warning(f"Ticker extraction failed: {e}")

@@ -59,6 +59,20 @@ def score_article(headline: str, summary: Optional[str] = None) -> tuple:
         else:
             signed_score = 0.0
 
+        # Fix 2.7: detect financial sarcasm and adjust score.
+        # Phrases like "Another stellar performance: debt is up 400%"
+        # confuse FinBERT into positive scoring on negative content.
+        text_lower = text.lower()
+        _sarcasm_markers = [
+            "another stellar", "yet another brilliant", "once again amazing",
+            "debt is up", "losses widened", "revenue collapsed",
+            "stock crashed", "fraud revealed", "bankruptcy",
+        ]
+        _sarcasm_hits = sum(1 for m in _sarcasm_markers if m in text_lower)
+        if _sarcasm_hits >= 2:
+            signed_score = -signed_score
+            label = "Negative" if signed_score < 0 else "Positive"
+
         return (label, signed_score)
     except Exception as e:
         logger.warning(f"FinBERT inference error: {e}")

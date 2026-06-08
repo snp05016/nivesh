@@ -393,7 +393,7 @@ To handle complex Indian market rules without prohibitive latency or cost, the s
 ```
 ## 4. Backend Architecture (FastAPI)
 
-### 4.1. Entry Point: `backend/main.py` (2221 lines -- GOD NODE)
+### 4.1. Entry Point: `backend/main.py` (1795 lines -- was 2221, reduced by extraction + simplification)
 
 This is the **central orchestrator** of the entire backend. It manages:
 
@@ -436,7 +436,7 @@ This is the **central orchestrator** of the entire backend. It manages:
 - `_resolve_ticker(ticker, exchange)` -- NSE/BSE ticker suffix resolution
 - `_yf_fetch_info(sym)` -- yfinance info fetch with ticker validation
 - `_yf_price(ticker_sym)` -- Current price fetch (yfinance, tuple of (price, change))
-- `health_endpoint()` -- GET /health (liveness probe)
+- `health_endpoint()` -- GET /health (lightweight `{"status": "ok"}` for iOS; rich diagnostics at `/health/live`)
 - `liveness_probe()` -- GET /api/v1/liveness (detailed health check)
 - `dashboard_html()` -- Admin dashboard HTML page
 - `dashboard_data()` -- Admin dashboard JSON (analyses, harvest, tokens)
@@ -459,9 +459,8 @@ The **AI analysis engine** formerly in main.py, extracted to its own service mod
 - `reformat_with_claude(raw_output, ticker, exchange, prior_analyses)` -- 3-phase reformatter pipeline (Claude Sonnet -> DeepSeek -> fallback)
 - `_normalize_response(result)` -- Sanitizes JSON for iOS consumption (signal map, field coercion, defaults)
 - `_extract_json_from_text(text)` -- Multi-strategy JSON extraction from LLM output
-- `_deepseek_chat(messages, ...)` -- DeepSeek API client with retry logic
+- `deepseek_chat()` / `get_deepseek_client()` -- **Canonical in `services/llm_utils.py`** (was triplicated across 4 files). DeepSeek API client with retry + reasoning_content fallback.
 - `create_optimized_analyst_node(llm, persona, report_key, tools)` -- LangGraph node factory
-- `_get_deepseek_client()` -- Client singleton with auto-reconnect
 
 ### 4.2. Authentication System
 
@@ -1471,11 +1470,11 @@ All charts use Swift Charts framework, themed with Theme tokens, Catmull-Rom int
 |------|------|-------|------|
 | AgentState | tradingagents/agents/utils/agent_states.py | ~45 | Typed dict flowing through every graph node |
 | INDIAN_MARKET_SYSTEM_PROMPT | backend/prompts.py | ~40 | Used by reformatter, morning summary, every Claude call |
-| _deepseek_chat() | backend/main.py (line 83) | ~35 | Used by smart cache, reformatter, macro impact, trade stats |
+| deepseek_chat() | backend/services/llm_utils.py | ~35 | Canonical single source (was 4 copies). Used by smart cache, reformatter, macro impact, trade stats, advisor harvester |
 | _get_indices_data() | backend/helpers.py | ~30 | Called by market router, portfolio, morning summary |
 | StockDatabase | ios/.../StockDatabase.swift | ~25 | Used by SearchScreen, AlertsScreen, every ticker lookup |
 | Theme | ios/.../Theme.swift | ~30 | Used by EVERY SwiftUI view (color tokens) |
-| _normalize_response() | backend/main.py (line 1390) | ~25 | Sanitizes analysis before iOS consumption |
+| _normalize_response() | backend/services/orchestrator.py | ~25 | Sanitizes analysis before iOS consumption (extracted from main.py) |
 | AnalysisHistory | backend/database.py | ~35 | Referenced by 6 routers + 4 services |
 | scraper.py (module) | backend/services/scraper.py | ~28 | Provides all 4 market dashboard feeds |
 | sentiment_engine.py | backend/services/sentiment_engine.py | ~22 | News scoring + deep scan sentiment |

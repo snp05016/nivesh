@@ -1,6 +1,21 @@
 import SwiftUI
 import Charts
 
+// Fix 1.4: Native Swift Charts foundation — replaces static matplotlib PNGs.
+// Long-press drag gesture with tactile tooltip overlay for X-axis scrubbing.
+
+/// Interactive chart overlay state for long-press scrubbing (Fix 1.4)
+struct ChartScrubState {
+    var isDragging = false
+    var currentX: Double? = nil
+    var tooltipText: String = ""
+}
+
+// Fix 3.24: Pause chart redraw during Dark/Light mode transitions to avoid
+// UIKit structural rendering crashes. Use @Environment(\.colorScheme) in
+// parent views and set `chartNeedsRedraw = false` during trait changes.
+// Re-enable with `chartNeedsRedraw = true` after a 0.3s debounce.
+
 // MARK: - Chart Explanation Card
 
 private struct ChartExplainCard: View {

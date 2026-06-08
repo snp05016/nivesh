@@ -3,24 +3,49 @@ Staleness scoring for Nivesh analysis results.
 Returns a score 0-100 for how urgently a stock should be re-analysed.
 Pure math — no AI calls, no network calls.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
+
+# IST offset — all timestamp comparisons use Indian Standard Time
+IST_OFFSET = timedelta(hours=5, minutes=30)
+# Market opens at 09:15 IST on weekdays
+_MARKET_OPEN_HOUR = 9
+_MARKET_OPEN_MINUTE = 15
+
+
+def is_pre_market(analysis_date: Optional[datetime] = None) -> bool:
+    """Check if an analysis was generated before market open (09:15 IST).
+    Pre-market analyses use stale pre-open data and should be invalidated
+    once live trading begins. Fix 2.34.
+    """
+    now_ist = datetime.utcnow() + IST_OFFSET
+    market_open = now_ist.replace(
+        hour=_MARKET_OPEN_HOUR, minute=_MARKET_OPEN_MINUTE, second=0, microsecond=0
+    )
+    if analysis_date is not None:
+        anal_time = analysis_date.hour * 60 + analysis_date.minute
+        market_open_mins = _MARKET_OPEN_HOUR * 60 + _MARKET_OPEN_MINUTE
+        if anal_time < market_open_mins and now_ist > market_open:
+            return True
+    return False
 
 
 def compute_staleness(
     last_analysis_date: Optional[datetime],
     price_change_7d_pct: float,
     signal: str = "HOLD",
+    is_ex_dividend: bool = False,
 ) -> dict:
     score = 0
     reasons = []
 
-    # Age of analysis (weight 40)
+    # Age of analysis (weight 40) — uses IST to avoid midnight false positives
     if last_analysis_date is None:
         score += 40
         reasons.append("never analysed")
     else:
-        age_days = (datetime.utcnow() - last_analysis_date).days
+        now_ist = datetime.utcnow() + IST_OFFSET
+        age_days = (now_ist - last_analysis_date).days
         if age_days > 30:
             score += 40
             reasons.append(f"analysis is {age_days}d old")
@@ -32,16 +57,21 @@ def compute_staleness(
             reasons.append(f"analysis is {age_days}d old")
 
     # Price movement (weight 35)
-    abs_chg = abs(price_change_7d_pct)
-    if abs_chg > 10:
-        score += 35
-        reasons.append(f"price moved {price_change_7d_pct:+.1f}% in 7d")
-    elif abs_chg > 5:
-        score += 20
-        reasons.append(f"price moved {price_change_7d_pct:+.1f}% in 7d")
-    elif abs_chg > 2:
-        score += 8
-        reasons.append(f"price moved {price_change_7d_pct:+.1f}% in 7d")
+    # Fix 2.51: skip price-drop penalty on ex-dividend dates —
+    # the mechanical price adjustment is NOT a fundamental decline
+    if is_ex_dividend and price_change_7d_pct < 0:
+        reasons.append(f"ex-dividend price adjustment ({price_change_7d_pct:+.1f}%) — excluded from staleness")
+    else:
+        abs_chg = abs(price_change_7d_pct)
+        if abs_chg > 10:
+            score += 35
+            reasons.append(f"price moved {price_change_7d_pct:+.1f}% in 7d")
+        elif abs_chg > 5:
+            score += 20
+            reasons.append(f"price moved {price_change_7d_pct:+.1f}% in 7d")
+        elif abs_chg > 2:
+            score += 8
+            reasons.append(f"price moved {price_change_7d_pct:+.1f}% in 7d")
 
     # Signal mismatch (weight 15)
     sig = (signal or "").upper()

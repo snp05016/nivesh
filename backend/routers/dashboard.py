@@ -21,7 +21,9 @@ async def event_generator(request: Request):
         current_state = get_dashboard_snapshot()
         
         # Send update if state changed
-        yield f"data: {json.dumps(current_state)}\n\n"
+        # Fix 2.39: ensure_ascii=False for Indian news headings with
+        # localized characters (Devanagari, Tamil, etc.)
+        yield f"data: {json.dumps(current_state, ensure_ascii=False)}\n\n"
         
         await asyncio.sleep(2)  # Update every 2 seconds
 

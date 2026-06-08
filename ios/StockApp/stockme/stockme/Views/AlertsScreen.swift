@@ -283,7 +283,11 @@ struct AddAlertSheet: View {
     var searchResults: [StockEntry] {
         searchText.isEmpty ? [] : StockDatabase.search(searchText)
     }
-    var canAdd: Bool { !selectedTicker.isEmpty && Double(targetPriceText) != nil && (Double(targetPriceText) ?? 0) > 0 }
+    // Fix 3.12: Disable Save if target price is invalid or zero
+    var canAdd: Bool {
+        guard !selectedTicker.isEmpty, let target = Double(targetPriceText), target > 0 else { return false }
+        return true
+    }
 
     var body: some View {
         NavigationStack {

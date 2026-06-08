@@ -6,9 +6,11 @@ import Combine
 final class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
 
+    /// Fix 3.22: APNs failure state — disable Send Test Alert when registration fails
     @Published var isAuthorized = false
     @Published var deviceToken: String? = nil
     @Published var registrationError: String? = nil
+    @Published var isTokenRegistrationFailed = false
 
     private override init() {
         super.init()

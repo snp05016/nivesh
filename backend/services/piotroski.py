@@ -67,7 +67,9 @@ def compute_piotroski(ticker: str) -> dict:
         shares = get(bs, "Ordinary Shares Number") or get(bs, "Share Issued")
         shares_ly = get(bs, "Ordinary Shares Number", 1) or get(bs, "Share Issued", 1)
         if shares is not None and shares_ly is not None:
-            p = shares <= shares_ly * 1.01
+            # Fix 2.49: relaxed from 1.01 to 1.05 to avoid ESOP plans
+            # triggering false dilution flags on standard employee stock grants
+            p = shares <= shares_ly * 1.05
             checks["no_dilution"] = p; score += int(p); available += 1
 
         # ── EFFICIENCY ───────────────────────────────────────────────────────
@@ -86,6 +88,19 @@ def compute_piotroski(ticker: str) -> dict:
 
     except Exception as e:
         return {"f_score": None, "grade": "UNAVAILABLE", "checks": {}, "confidence": "LOW", "error": str(e)}
+
+    # Fix 2.6: newly listed corporations often lack operating_cash_flow
+    # and other financial history rows. Below 3 available checks, the
+    # F-score is meaningless — flag as INSUFFICIENT_DATA instead of WEAK.
+    if available < 3:
+        return {
+            "f_score": None,
+            "max_possible": available,
+            "grade": "INSUFFICIENT_DATA",
+            "confidence": "LOW",
+            "checks": {k: ("PASS" if v else "FAIL") for k, v in checks.items()},
+            "reason": "Too few financial data points available for this listing",
+        }
 
     confidence = "HIGH" if available >= 8 else ("MEDIUM" if available >= 5 else "LOW")
     grade = "STRONG" if score >= 7 else ("NEUTRAL" if score >= 4 else "WEAK")

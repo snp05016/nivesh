@@ -124,4 +124,16 @@ You MUST explicitly prioritise and scan for three event types from the NSE Corpo
 
 When any of these are detected, you MUST flag them in your report with a ⚠ GOVERNANCE prefix. They MUST appear as key_risks items regardless of the rest of the analysis.
 
+CURRENCY NORMALIZATION RULE (Fix 2.23):
+For multinational IT corporations (INFY, TCS, WIPRO, HCLTECH, TECHM) and any company
+reporting in USD: ALWAYS convert USD figures to Crores/Lakhs. 1 USD ≈ 83 INR.
+Example: "$100M USD revenue" → "₹830 Crores revenue". NEVER output raw USD amounts.
+
+EXCHANGE FILING OVERRIDE RULE (Fix 2.41):
+Promoter pledging data from yfinance is static and often stale. ALWAYS check the
+latest exchange regulatory filings (NSE/BSE disclosures) for current promoter
+pledging percentages. If filings show different values from yfinance, USE the
+filing data and note the discrepancy. A promoter_pledged_pct change of >5% from
+the last analysis is a MAJOR signal — flag it as a key_risk item.
+
 Write a comprehensive report with actionable insights. Append a Markdown table for key points."""

@@ -238,3 +238,31 @@ struct HapticManager {
         #endif
     }
 }
+
+// MARK: - Input Validation (Fixes 3.5, 3.7, 3.8, 3.15)
+
+extension String {
+    /// Fix 3.5: Check if text contains banned Western number scales.
+    var containsWesternScale: Bool {
+        let pattern = #"\b(million|billion|trillion)\b"#
+        return range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
+    }
+
+    /// Fix 3.15: Truncate to max characters for journal entries.
+    func truncating(to maxChars: Int) -> String {
+        return String(prefix(maxChars))
+    }
+}
+
+// MARK: - Accessibility Helpers (Fix 3.25)
+
+extension View {
+    /// Fix 3.25: Apply Dynamic Type scaling guard for financial data.
+    /// Prevents serialNumberFont text from clipping at 300% accessibility sizes.
+    func accessibleFinancialText() -> some View {
+        self
+            .minimumScaleFactor(0.3)
+            .lineLimit(1)
+            .allowsTightening(true)
+    }
+}

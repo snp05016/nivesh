@@ -41,7 +41,7 @@
 
 | Line(s) | Endpoint | Model | Cost | What it does |
 |---------|----------|-------|------|-------------|
-| **74-103** | Helper `_deepseek_chat()` | DeepSeek V4 Flash | LOW | Shared DeepSeek client with 3x retry. Called by daily-action. |
+| — | Helper `_deepseek_chat()` | DeepSeek V4 Flash | LOW | **RESOLVED — moved to `services/llm_utils.py`** (canonical single source). Imported by analysis.py. |
 | **202-232** | `_run_analysis_worker()` | LangGraph pipeline | **HIGH** | Subprocess worker for `POST /analyze`. Calls `services.orchestrator.analyze()` — the full multi-agent pipeline. |
 | **453-582** | `POST /analyze` | DeepSeek + Haiku + Sonnet | **HIGH** (~$0.03-0.08/req) | Spawns `multiprocessing.Process` → orchestrator.analyze(). Duplicate guard + semaphore (max 2/user). Kills subprocess on client disconnect to save credits. |
 | **588-633** | `POST /analyze/batch` | Claude Sonnet | **HIGH** ($0.006-0.03/ticker) | Anthropic Message Batch. Each ticker gets full system prompt with ephemeral caching. No iOS call found. |
@@ -53,7 +53,7 @@
 
 | Line(s) | Endpoint | Model | Cost | What it does |
 |---------|----------|-------|------|-------------|
-| **60-89** | Helper `_deepseek_chat()` | DeepSeek V4 Flash | LOW | Third copy of same utility. Called by red-flags, macro-impact, trade-journal. |
+| — | Helper `_deepseek_chat()` | DeepSeek V4 Flash | LOW | **RESOLVED — now imported from `services/llm_utils.py`** (was third copy). |
 | **548-569** | `GET /morning-summary/{user_id}` | Claude Haiku 4.5 | **MEDIUM** (~$0.0004) | 4-6 bullet morning brief for user's portfolio holdings + indices. `max_tokens=400`. Cached 1h. |
 | **1890-1903** | `GET /portfolio/red-flags/{user_id}` | DeepSeek V4 Flash | **LOW** ($0.00007) | 3-sentence summary of portfolio red flags. `max_tokens=200`. |
 | **1974-1981** | `GET /macro-impact/{user_id}` | DeepSeek V4 Flash | **LOW** ($0.0005) | Per-holding macro impact statements given Brent/VIX/USDINR rates. `max_tokens=1500`. Cached 1h. |
@@ -82,9 +82,9 @@
 
 | Line(s) | Function | Model | Cost | What it does |
 |---------|----------|-------|------|-------------|
-| **118-165** | `_deepseek_chat()` | DeepSeek V4 Flash | LOW | Generic chat with 3x retry. Inflates max_tokens 5x for reasoning. |
+| — | `_deepseek_chat()` | DeepSeek V4 Flash | LOW | **RESOLVED — now imported from `services/llm_utils.py`** (canonical version). 5x token inflation + reasoning_content fallback. |
 | **439-451** | `run_trading_agents()` | DeepSeek + Haiku | **HIGH** | Instantiates `OptimizedTradingAgentsGraph` with 2-tier config. Calls `ta.propagate()` → 12 LLM invocations. |
-| **459-603** | `reformat_with_claude()` | Claude Sonnet (primary), DeepSeek (fallback) | **HIGH** (Sonnet) / LOW (DeepSeek) | Reformats raw LangGraph output to structured JSON. 3x retry per phase. Uses prompt caching. |
+| **459-603** | `reformat_with_claude()` | Claude Sonnet (primary), DeepSeek (fallback) | **HIGH** (Sonnet) / LOW (DeepSeek) | **CANONICAL** — sole active reformatter. `tradingagents/.../reformatter.py:reformat_with_sonnet()` is deprecated dead code. 3x retry per phase. Uses prompt caching. |
 | **839-857** | Smart Cache Gate | DeepSeek V4 Flash | **VERY LOW** | Checks 5 news headlines for "major fundamental shift" — if NO, reuses cached analysis. `max_tokens=10`. |
 | **741-1093** | `analyze()` | All of the above | **HIGH** | Main entry. Smart cache → trading agents → reformat → normalize. Called from router subprocess. |
 
@@ -92,7 +92,7 @@
 
 | Line(s) | Function | Model | Cost | What it does |
 |---------|----------|-------|------|-------------|
-| **102-134** | `_deepseek_chat()` | DeepSeek V4 Flash | LOW | Shared DeepSeek client for stance extraction. |
+| — | `_deepseek_chat()` | DeepSeek V4 Flash | LOW | **RESOLVED — now imported from `services/llm_utils.py`** (was 4th copy). |
 | **396-463** | `_extract_stance_with_haiku()` | DeepSeek V4 Flash (misnamed) | LOW | Extracts BULLISH/NEUTRAL/BEARISH stance + confidence from transcript snippet. Called per (advisor, ticker, video). |
 
 **Nightly cost estimate:** 5 advisors × ~5 videos × ~3 tickers = ~75 calls × $0.00005 ≈ **$0.004/night**
@@ -267,14 +267,18 @@ Layer 1: YouTube Transcript API (free). Layer 2: Local faster-whisper large-v3 (
 
 ---
 
-## 5. Appendix: Triplicated Code Smells
+## 5. Appendix: Triplicated Code Smells — ALL RESOLVED (June 7-8, 2026)
 
-These files contain duplicated helper code that should be refactored into a single shared module:
+All triplicated code consolidated into canonical single sources:
 
-| Function | Files |
-|----------|-------|
-| `_deepseek_chat()` | `services/orchestrator.py:118`, `routers/analysis.py:74`, `routers/portfolio.py:60` |
-| `_get_deepseek_client()` | Same 3 files (paired with above) |
-| Reformat JSON pipeline | `services/orchestrator.py:459` (Sonnet + DeepSeek fallback), `tradingagents/nivesh/reformatter.py:255` (Sonnet-only) |
+| Function | Status | Canonical Location |
+|----------|--------|-------------------|
+| `_deepseek_chat()` | ✅ RESOLVED | `services/llm_utils.py:deepseek_chat()` — 4 copies consolidated |
+| `_get_deepseek_client()` | ✅ RESOLVED | `services/llm_utils.py:get_deepseek_client()` — 4 copies consolidated |
+| Model constants | ✅ RESOLVED | `services/llm_utils.py` — HAIKU_MODEL, SONNET_MODEL, DEEPSEEK_MODEL |
+| Reformat JSON pipeline | ✅ RESOLVED | `services/orchestrator.py:reformat_with_claude()` is sole active reformatter. `tradingagents/.../reformatter.py:reformat_with_sonnet()` deprecated (dead code). |
 
-See AGENTS.md §3.1 Controller-Service-Repository boundary — these belong in `services/`.
+**Additional deduplication (same session):**
+- `upsert_device_token()` extracted to `helpers.py` — used by both `routers/user.py` and `routers/notifications.py`
+- `GET /health` simplified to lightweight `{"status": "ok"}` — no longer duplicates `/health/live` diagnostics
+- `_quick_info_cache` and `_asm_gsm_cache` now protected by `threading.Lock()` — thread-safe access

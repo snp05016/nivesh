@@ -1,21 +1,31 @@
 import SwiftUI
 
+// Fix 3.20: TradeJournalAction enum — strict typed cases
+enum TradeJournalAction: String, CaseIterable {
+    case buy = "BUY"
+    case sell = "SELL"
+    case hold = "HOLD"
+    case watch = "WATCH"
+}
+
 struct TradeJournalScreen: View {
     let userId: Int
     @State private var entries: [TradeJournalEntry] = []
-    @State private var selectedTab = 0  // 0=Journal, 1=Add Entry
+    @State private var selectedTab = 0
     @State private var isLoading = false
     @State private var errorMessage: String? = nil
+    // Fix 3.27: Pagination freeze state
+    @State private var currentPage = 0
+    @State private var hasMorePages = true
 
-    // Add Entry form state
     @State private var newTicker = ""
-    @State private var newAction = "BUY"
+    @State private var newAction = TradeJournalAction.buy.rawValue
     @State private var newPrice = ""
     @State private var newReason = ""
     @State private var newMood: String? = nil
     @State private var isSubmitting = false
 
-    let actions = ["BUY", "SELL", "HOLD", "WATCH"]
+    let actions = TradeJournalAction.allCases.map { $0.rawValue }
     let moods = ["Confident", "Uncertain", "FOMO", "Contrarian"]
 
     var body: some View {

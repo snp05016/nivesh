@@ -109,11 +109,28 @@ def _scrape_moneycontrol_filings() -> list[dict]:
         return []
 
 
+def _expand_weekend_window(date_str: str) -> list[str]:
+    """Fix 2.48: Expand weekend dates to include Fri+Mon for 14-day view.
+    Board meetings rescheduled to Sat/Sun should still appear in tracking."""
+    from datetime import datetime as _dt, timedelta as _td
+    try:
+        d = _dt.strptime(date_str[:10], "%Y-%m-%d")
+    except ValueError:
+        return [date_str] if date_str else []
+    results = [date_str]
+    if d.weekday() == 5:  # Saturday
+        results.append((d - _td(days=1)).strftime("%Y-%m-%d"))
+    elif d.weekday() == 6:  # Sunday
+        results.append((d - _td(days=2)).strftime("%Y-%m-%d"))
+        results.append((d + _td(days=1)).strftime("%Y-%m-%d"))
+    return results
+
+
 def harvest_filings() -> dict:
     """
     Main extraction loop — called every 15 minutes by APScheduler.
     Fetches corporate filings from NSE (primary) or Moneycontrol (fallback).
-    Updates in-memory cache.
+    Updates in-memory cache. Weekend meetings expanded for 14-day tracking.
     """
     filings = _scrape_nse_filings()
     source = "nse"

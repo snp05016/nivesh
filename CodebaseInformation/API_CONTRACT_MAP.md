@@ -476,10 +476,10 @@
 - **Swift Caller:** `NetworkManager.checkHealth()` (NetworkManager.swift:602)
 - **Backend Receiver:** `main.py → health_endpoint()` (line 730)
 - **HTTP Method & Route:** `GET /health`
-- **Swift Response Model:** `Bool` (simplified)
-- **Backend Response:** `dict` (status, yfinance, db, disk, disk_cache, etc.)
+- **Swift Response Model:** `Bool` (simplified — inspects HTTP status code only)
+- **Backend Response:** `{"status": "ok"}` (lightweight, no DB/disk/yfinance checks)
 - **Auth Required:** No
-- **Bridge Status:** ⚠️ Mismatch — Swift only checks HTTP 200; backend returns rich JSON
+- **Bridge Status:** ✅ Match — simplified to minimal 200 OK; Swift only checks HTTP status code. Rich diagnostics at `GET /health/live`.
 
 ### 51. Liveness Probe
 - **Swift Caller:** **(No direct Swift caller — used by Docker/k8s)**
@@ -527,14 +527,15 @@
 
 ### 56. Register Device Token
 - **Swift Caller:** `NetworkManager.registerDeviceToken(token:)` (NetworkManager.swift:684)
-- **Backend Receiver:** `routers/user.py → register_device_token()` (line 185)
+- **Backend Receiver:** `routers/user.py → notifications_register_device()` (line 185)
   - **Also:** `routers/notifications.py → register_device()` (line 43)
 - **HTTP Method & Route (Swift calls):** `POST /notifications/register-device`
 - **HTTP Method & Route (Backend v1):** `POST /api/v1/notifications/register`
 - **Swift Response Model:** `Void`
-- **Backend Response:** `dict`
+- **Backend Response:** `dict` (`{"success": True, "message": "..."}`)
+- **Shared Logic:** `helpers.py → upsert_device_token()` — single source of truth for both routes
 - **Auth Required:** Yes
-- **Bridge Status:** ⚠️ Mismatch — Swift hits `/notifications/register-device` (user.py), backend also has `/api/v1/notifications/register` (notifications.py). Two different endpoints.
+- **Bridge Status:** ✅ Match — both routes now delegate to shared `upsert_device_token()` in helpers.py. Swift-facing route `/notifications/register-device` preserved exactly.
 
 ### 57. Send Test Notification
 - **Swift Caller:** `NetworkManager.sendTestNotification(ticker:exchange:)` (NetworkManager.swift:702)
@@ -861,8 +862,8 @@
 | AI Analysis | 3 | 1 | 0 | 2 | 0 |
 | Watchlist | 3 | 3 | 0 | 0 | 0 |
 | Alerts | 4 | 4 | 0 | 0 | 0 |
-| Dashboard/Health | 6 | 1 | 1 | 4 | 0 |
-| Notifications | 4 | 2 | 1 | 1 | 0 |
+| Dashboard/Health | 6 | 2 | 0 | 4 | 0 |
+| Notifications | 4 | 3 | 0 | 1 | 0 |
 | Trade Journal | 5 | 0 | 0 | 5 | 0 |
 | Earnings | 8 | 3 | 0 | 5 | 0 |
 | Ideas/Advisors | 5 | 2 | 0 | 3 | 0 |
@@ -870,13 +871,13 @@
 | Home Feed | 1 | 1 | 0 | 0 | 0 |
 | Admin/Errors | 8 | 2 | 0 | 6 | 0 |
 | Users | 1 | 0 | 0 | 1 | 0 |
-| **TOTAL** | **90** | **45** | **2** | **43** | **0** |
+| **TOTAL** | **90** | **47** | **0** | **43** | **0** |
 
 ## Critical Findings
 
-1. **⚠️ Notifications double-registration:** Swift calls `POST /notifications/register-device` (user.py:185), but notifications.py also defines `POST /api/v1/notifications/register`. Two competing registration endpoints.
+1. **✅ Notifications double-registration — RESOLVED.** Both `POST /notifications/register-device` (user.py) and `POST /api/v1/notifications/register` (notifications.py) now delegate to shared `upsert_device_token()` in helpers.py. Swift-facing route preserved exactly.
 
-2. **⚠️ Health endpoint depth mismatch:** Swift `checkHealth()` only checks HTTP 200; backend returns rich JSON with yfinance status, DB counts, disk space. Swift discards all diagnostic data.
+2. **✅ Health endpoint depth mismatch — RESOLVED.** `GET /health` simplified to lightweight `{"status": "ok"}` — no yfinance, DB, or disk checks. Swift only needs HTTP 200. Rich diagnostics still available at `GET /health/live`.
 
 3. **🔴 Trade Journal backend exists but NO Swift NetworkManager methods.** The `TradeJournalResponse`, `TradeJournalStatsResponse` models exist in Swift but no `URLSession` calls reference `/trade-journal` paths.
 

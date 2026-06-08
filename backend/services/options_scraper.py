@@ -112,8 +112,20 @@ def compute_derivatives_metrics(option_data: dict, current_price: float) -> dict
 
         if total_call_oi > 0:
             result["pcr"] = round(total_put_oi / total_call_oi, 3)
+        else:
+            result["pcr"] = 0.0  # illiquid chain — no call OI, PCR undefined
 
         # Max Pain: strike minimizing total buyer payout
+        # Fix 2.5: filter out deep OTM strikes (>50% from current price) to
+        # prevent operator-manipulated anomalous OI from skewing Max Pain
+        if strike_data and current_price and current_price > 0:
+            _filtered_strikes = {
+                s: oi for s, oi in strike_data.items()
+                if abs(s - current_price) / current_price <= 0.50
+            }
+            if _filtered_strikes:
+                strike_data = _filtered_strikes
+
         if strike_data:
             pain = {}
             for target in strike_data:

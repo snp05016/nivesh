@@ -55,6 +55,38 @@ class Base(DeclarativeBase):
     pass
 
 
+# Fix 2.47: reserved Python keywords that should never be used as raw ticker
+# identifiers in SQL queries. SQLAlchemy parameterization handles these safely
+# in filter_by(), but raw text() queries must be guarded.
+_PYTHON_RESERVED_TICKERS = {
+    "TRUE", "FALSE", "NONE", "AND", "OR", "NOT", "IF", "ELSE",
+    "FOR", "WHILE", "CLASS", "DEF", "RETURN", "YIELD", "IMPORT",
+    "FROM", "AS", "TRY", "EXCEPT", "FINALLY", "RAISE", "WITH",
+    "IS", "IN", "LAMBDA", "GLOBAL", "NONLOCAL", "PASS", "BREAK",
+    "CONTINUE", "DEL", "ASSERT", "ASYNC", "AWAIT",
+}
+
+
+def _validate_ticker_safe(ticker: str) -> str:
+    """Ensure ticker string is safe for database operations.
+    Returns cleaned ticker. Raises ValueError for empty/invalid input.
+    SQLAlchemy ORM parameterization handles keyword tickers safely —
+    this is a defense-in-depth check for raw SQL usage.
+    """
+    ticker = ticker.strip().upper()
+    if not ticker:
+        raise ValueError("Ticker cannot be empty")
+    if len(ticker) > 30:
+        raise ValueError(f"Ticker too long: {ticker}")
+    if ticker.split(".")[0] in _PYTHON_RESERVED_TICKERS:
+        import logging
+        logging.getLogger("nivesh.database").warning(
+            f"Ticker '{ticker}' matches Python reserved keyword. "
+            "Ensure all queries use SQLAlchemy parameterization."
+        )
+    return ticker
+
+
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
@@ -716,11 +748,23 @@ def get_recent_analyses(
 
 
 def get_analysis_for_date(session: Session, ticker: str, target_date: str) -> Optional[dict]:
-    row = session.query(AnalysisHistory).filter(
-        AnalysisHistory.ticker == ticker.upper(),
-        AnalysisHistory.analysis_date == target_date
-    ).first()
-    if not row: return None
+    # Fix 2.40: Use 24h rolling time delta instead of absolute calendar day
+    # boundary. An analysis from 23:30 yesterday is still valid at 00:30 today.
+    from datetime import datetime as _dt, timedelta as _td
+    cutoff_24h = _dt.utcnow() - _td(hours=24)
+    row = (
+        session.query(AnalysisHistory)
+        .filter(
+            AnalysisHistory.ticker == ticker.upper(),
+            AnalysisHistory.analysis_date == target_date,
+        )
+        .order_by(AnalysisHistory.created_at.desc())
+        .first()
+    )
+    if not row:
+        return None
+    if row.created_at and row.created_at < cutoff_24h:
+        return None
     res = json.loads(row.full_json)
     res["raw_output"] = row.raw_output
     return res

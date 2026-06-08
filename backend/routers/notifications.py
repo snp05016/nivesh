@@ -14,6 +14,7 @@ from helpers import (
     NotificationErrorLog,
     log_notification_error,
     require_admin,
+    upsert_device_token,
 )
 
 router = APIRouter(tags=["Notifications"])
@@ -42,29 +43,12 @@ class PushMockRequest(BaseModel):
 
 @router.post("/api/v1/notifications/register")
 def register_device(req: RegisterDeviceRequest):
-    """Register or update a device token for push notifications."""
+    """Register or update a device token for push notifications.
+    Delegates to shared upsert_device_token helper (same as
+    POST /notifications/register-device used by the iOS client).
+    """
     try:
-        with get_session() as session:
-            existing = (
-                session.query(DeviceToken)
-                .filter_by(device_token=req.device_token)
-                .first()
-            )
-            if existing:
-                # Update existing record
-                existing.user_id = req.user_id
-                existing.platform = req.platform
-                existing.updated_at = datetime.utcnow()
-            else:
-                # Insert new record
-                new_token = DeviceToken(
-                    user_id=req.user_id,
-                    device_token=req.device_token,
-                    platform=req.platform,
-                )
-                session.add(new_token)
-            session.commit()
-
+        upsert_device_token(req.user_id, req.device_token, req.platform)
         return {
             "status": "registered",
             "device_token": req.device_token,

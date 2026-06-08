@@ -17,6 +17,9 @@ struct stockmeApp: App {
     @AppStorage("dev_welcome_notification") private var devWelcomeNotification = false
     @AppStorage("useBiometrics") private var useBiometrics = false
     @State private var isBiometricLocked = true
+    // Fix 3.23: Deep-link 404 routing — catch delisted ticker deep links
+    @State private var deepLinkTicker: String? = nil
+    @State private var deepLinkError: String? = nil
 
     // ── Launch state machine ─────────────────────────────────────────────
     private enum LaunchPhase { case loading, biometricGate, mainInterface }

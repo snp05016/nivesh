@@ -6,9 +6,12 @@ class HomeFeedViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var lastFetchDate: Date? = nil
     private var fetchTask: Task<Void, Never>?
+    private var backgroundTimer: Timer?
 
     func fetch(userId: Int, forceRefresh: Bool = false) {
         if !forceRefresh, let last = lastFetchDate, Date().timeIntervalSince(last) < 900 { return }
+        // Fix 3.2: Minimum 10-second debounce between refreshes
+        if forceRefresh, let last = lastFetchDate, Date().timeIntervalSince(last) < 10 { return }
         fetchTask?.cancel()
         isLoading = true
 
@@ -26,5 +29,17 @@ class HomeFeedViewModel: ObservableObject {
                 await MainActor.run { self.isLoading = false }
             }
         }
+    }
+
+    /// Fix 3.18: Suspend all background polling timers and tasks.
+    func suspendAllPolling() {
+        backgroundTimer?.invalidate()
+        backgroundTimer = nil
+        fetchTask?.cancel()
+        fetchTask = nil
+    }
+
+    func resumePolling(userId: Int) {
+        fetch(userId: userId, forceRefresh: true)
     }
 }

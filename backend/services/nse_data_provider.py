@@ -80,7 +80,14 @@ def get_price_history(
         except Exception as e:
             logger.warning(f"[nse_data_provider] {ticker}: jugaad-data failed: {e}")
 
+    data_source = "jugaad-data"  # primary, fresh
+    stale_data_flag = False
+
     if df is None or len(df) < 10:
+        # Fix 2.4: jugaad-data may be unavailable on market holidays —
+        # yfinance fallback data is flagged as potentially stale
+        data_source = "yfinance-fallback"
+        stale_data_flag = True
         try:
             import yfinance as yf
             suffix    = ".NS" if exchange == "NSE" else ".BO"
@@ -95,6 +102,11 @@ def get_price_history(
 
     if df is not None and len(df) > 0:
         cache_set("yfinance", cache_key, df.to_dict())
+
+    # Attach metadata for downstream stale-data awareness
+    if df is not None:
+        df.attrs["data_source"] = data_source
+        df.attrs["stale_data_flag"] = stale_data_flag
 
     return df
 

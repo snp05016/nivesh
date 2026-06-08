@@ -8,7 +8,7 @@ from helpers import (
     get_session, verify_access_token, User, Portfolio, AnalysisHistory,
     DeviceToken, AdvisorInsight, _to_ns, _yf_price, _yf_fetch_info,
     _check_rate_limit, WatchlistAddRequest, WatchlistRemoveRequest,
-    _get_asm_gsm_lists
+    _get_asm_gsm_lists, upsert_device_token,
 )
 
 router = APIRouter(tags=["User"])
@@ -184,32 +184,9 @@ def watchlist_get_endpoint(user_id: int, authorization: str = Header(None)):
 
 @router.post("/notifications/register-device")
 def notifications_register_device(req: DeviceTokenRegisterRequest):
+    """Register or update a device token. Delegates to shared upsert helper."""
     try:
-        with get_session() as session:
-            existing = session.query(DeviceToken).filter_by(device_token=req.device_token).first()
-            if existing:
-                existing.updated_at = datetime.utcnow()
-                existing.user_id = req.user_id
-                existing.platform = req.platform or existing.platform
-            else:
-                try:
-                    session.add(DeviceToken(
-                        user_id=req.user_id,
-                        device_token=req.device_token,
-                        platform=req.platform,
-                    ))
-                    session.commit()
-                except Exception:
-                    session.rollback()
-                    duplicate = session.query(DeviceToken).filter_by(device_token=req.device_token).first()
-                    if duplicate:
-                        duplicate.user_id = req.user_id
-                        duplicate.updated_at = datetime.utcnow()
-                        duplicate.platform = req.platform or duplicate.platform
-                    else:
-                        raise
-            session.commit()
-        return {"success": True, "message": "Device token registered"}
+        return upsert_device_token(req.user_id, req.device_token, req.platform or "ios")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

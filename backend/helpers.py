@@ -214,6 +214,49 @@ def _log_token_usage(endpoint: str, usage) -> None:
         })
 
 # ---------------------------------------------------------------------------
+# Notification Helpers — shared device token upsert (single source of truth)
+# Used by both routers/user.py and routers/notifications.py
+# ---------------------------------------------------------------------------
+
+def upsert_device_token(user_id: int, device_token: str, platform: str = "ios") -> dict:
+    """Register or update a device token for push notifications.
+    Returns {"success": True, "message": str} on success.
+    Raises on DB failure.
+    """
+    from datetime import datetime as _dt
+    with get_session() as session:
+        existing = session.query(DeviceToken).filter_by(
+            device_token=device_token
+        ).first()
+        if existing:
+            existing.updated_at = _dt.utcnow()
+            existing.user_id = user_id
+            existing.platform = platform or existing.platform
+        else:
+            try:
+                session.add(DeviceToken(
+                    user_id=user_id,
+                    device_token=device_token,
+                    platform=platform,
+                ))
+                session.commit()
+            except Exception:
+                session.rollback()
+                # Race condition — another request inserted same token
+                duplicate = session.query(DeviceToken).filter_by(
+                    device_token=device_token
+                ).first()
+                if duplicate:
+                    duplicate.user_id = user_id
+                    duplicate.updated_at = _dt.utcnow()
+                    duplicate.platform = platform or duplicate.platform
+                else:
+                    raise
+        session.commit()
+    return {"success": True, "message": "Device token registered"}
+
+
+# ---------------------------------------------------------------------------
 # YFinance Helpers
 # ---------------------------------------------------------------------------
 def _yf_fetch_info(sym: str) -> dict:
@@ -277,6 +320,7 @@ def _extract_json_from_text(text: str) -> str:
 from services.disk_cache import get as _dcache_get, set as _dcache_set, stats as _dcache_stats
 
 _quick_info_cache: dict[str, tuple[float, dict]] = {}
+_quick_info_lock = threading.Lock()
 _QUICK_INFO_TTL = 900
 
 # ---------------------------------------------------------------------------
@@ -302,7 +346,8 @@ _running_lock = threading.Lock()
 
 def _acquire_analysis_slot(user_id: int) -> bool:
     """Try to acquire an analysis slot for user_id. Returns True on success.
-    Auto-clears stale entries older than STALENESS_TIMEOUT_SEC."""
+    Auto-clears stale entries older than STALENESS_TIMEOUT_SEC.
+    Fix 2.32: Entire check-and-set atomic under _running_lock — no TOCTOU gap."""
     with _running_lock:
         now = time.time()
         # Purge stale entries
@@ -529,15 +574,17 @@ def _nse_session():
 
 
 _asm_gsm_cache = {"data": {}, "ts": 0}
+_asm_gsm_lock = threading.Lock()
 _ASM_GSM_CACHE_TTL = 21600  # 6 hours
 
 
 def _get_asm_gsm_lists():
-    """Fetch and cache ASM/GSM lists from NSE."""
+    """Fetch and cache ASM/GSM lists from NSE. Thread-safe."""
     global _asm_gsm_cache
     now = time.time()
-    if _asm_gsm_cache["ts"] > 0 and (now - _asm_gsm_cache["ts"]) < _ASM_GSM_CACHE_TTL:
-        return _asm_gsm_cache["data"]
+    with _asm_gsm_lock:
+        if _asm_gsm_cache["ts"] > 0 and (now - _asm_gsm_cache["ts"]) < _ASM_GSM_CACHE_TTL:
+            return _asm_gsm_cache["data"]
 
     print("[NSE] Refreshing ASM/GSM lists...")
     data = {"ASM": set(), "GSM": set()}
@@ -561,11 +608,32 @@ def _get_asm_gsm_lists():
                 sym = item.get("symbol")
                 if sym: data["GSM"].add(sym.upper())
 
-        _asm_gsm_cache = {"data": data, "ts": now}
+        with _asm_gsm_lock:
+            _asm_gsm_cache = {"data": data, "ts": now}
         return data
     except Exception as e:
         print(f"[NSE] ASM/GSM fetch failed: {e}")
         return data
+
+
+def _evict_asm_gsm_ticker(ticker: str) -> bool:
+    """Force-evict a single ticker from the ASM/GSM surveillance cache.
+    Use when a company exits regulatory watchlists and the stale flag
+    should be cleared immediately without waiting for TTL expiry.
+    Returns True if ticker was found and removed, False otherwise.
+    Thread-safe — uses _asm_gsm_lock.
+    """
+    ticker = ticker.upper().strip()
+    removed = False
+    with _asm_gsm_lock:
+        data = _asm_gsm_cache.get("data", {})
+        for section in ("ASM", "GSM"):
+            if ticker in data.get(section, set()):
+                data[section].discard(ticker)
+                removed = True
+        if removed:
+            _asm_gsm_cache["data"] = data
+    return removed
 
 
 # ---------------------------------------------------------------------------

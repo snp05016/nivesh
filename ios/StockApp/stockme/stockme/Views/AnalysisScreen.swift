@@ -121,10 +121,14 @@ struct AnalysisScreen: View {
     @AppStorage("defaultDeepScan") private var defaultDeepScan: Bool = false
     @AppStorage("analysisLastTab") private var savedLastTab: Int = 0
     @State private var deepScanEnabled: Bool = false
+    @State private var isAnalyzing = false
 
-    // Live price polling
     @State private var livePrice: Double? = nil
     @State private var pricePollingTask: Task<Void, Never>? = nil
+
+    private static let deepScanDisabledTickers: Set<String> = [
+        "NIFTY", "SENSEX", "BANKNIFTY", "NIFTYBANK", "INDIAVIX",
+    ]
 
     private let tabs = ["OVERVIEW", "ANALYSIS", "CHARTS", "FUNDAMENTS", "NEWS"]
 
@@ -207,10 +211,18 @@ struct AnalysisScreen: View {
             viewModel.cancelAnalysis()
             pricePollingTask?.cancel()
             pricePollingTask = nil
+            // Fix 3.10: Cancel active URLSession tasks when navigating back
+            URLSession.shared.getAllTasks { tasks in
+                tasks.forEach { $0.cancel() }
+            }
         }
         .alert("Cached Report Found", isPresented: $showingRegenerateAlert) {
+            // Fix 3.16: Disable Deep Scan for indices and newly listed tickers
+            let deepScanForbidden = Self.deepScanDisabledTickers.contains(ticker.uppercased())
             Toggle("Deep Scan (PKScreener + FinBERT)", isOn: $deepScanEnabled)
                 .tint(Theme.securityGold)
+                .disabled(deepScanForbidden)
+                .opacity(deepScanForbidden ? 0.4 : 1.0)
             Button("View Cached") {
                 if let cached = reportManager.getReport(for: ticker) {
                     viewModel.analysis = cached

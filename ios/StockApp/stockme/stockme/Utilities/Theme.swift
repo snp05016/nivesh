@@ -177,6 +177,18 @@ enum Theme {
         return Font.system(size: scaled, weight: .semibold, design: .default)
     }
 
+    // Fix 1.1: SF Pro Rounded for secondary typography (descriptions, timestamps, card labels).
+    // Georgia (.engravedSerif) reserved STRICTLY for hero metrics (portfolio value, ticker stamps, headers).
+    static func roundedSecondary(size: CGFloat = 14, weight: Font.Weight = .regular, relativeTo style: Font.TextStyle = .body) -> Font {
+        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
+        return Font.system(size: scaled, weight: weight, design: .rounded)
+    }
+
+    static func roundedCaption(size: CGFloat = 11, relativeTo style: Font.TextStyle = .caption) -> Font {
+        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
+        return Font.system(size: scaled, weight: .regular, design: .rounded)
+    }
+
     // MARK: - Spacing
 
     enum Spacing {

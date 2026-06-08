@@ -97,13 +97,18 @@ def format_indian_currency(value: float | int | None, *, symbol: str = "₹") ->
     return f"-{formatted}" if negative else formatted
 
 
-def _ban_western_scale(text: str) -> str:
+def _ban_western_scale(text: str, company_name: str = "") -> str:
     """
     Guard: raise ValueError if 'Million' or 'Billion' appears in output text.
+    Excludes company name from check — legally registered names may contain
+    these words (e.g., 'Million Lights Ltd', 'Billion Electric').
     Use in test harness or as a post-processing assertion.
     """
     import re
-    if re.search(r"\b(million|billion|trillion)\b", text, re.IGNORECASE):
+    check_text = text
+    if company_name:
+        check_text = check_text.replace(company_name, "[COMPANY_NAME]")
+    if re.search(r"\b(million|billion|trillion)\b", check_text, re.IGNORECASE):
         raise ValueError(
             "Western scale (Million/Billion/Trillion) detected in output — "
             "use Lakhs/Crores instead."
@@ -729,57 +734,13 @@ from schemas import (
 
 @app.get("/health")
 def health_endpoint():
-    import os
-    result = {"status": "ok", "version": "1.0", "timestamp": datetime.utcnow().isoformat()}
-
-    # Check yfinance
-    try:
-        info = yf.Ticker("SBIN.NS").info
-        result["yfinance"] = bool(info and (info.get("currentPrice") or info.get("regularMarketPrice")))
-    except Exception:
-        result["yfinance"] = False
-
-    # Check DB
-    try:
-        with get_session() as session:
-            from sqlalchemy import text
-            session.execute(text("SELECT 1"))
-        result["db"] = True
-    except Exception:
-        result["db"] = False
-
-    # Check Anthropic key (internal only — not exposed)
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
-    anthropic_ok = bool(api_key and api_key != "placeholder")
-
-    # DB row counts
-    try:
-        with get_session() as session:
-            result["db_counts"] = {
-                "users": session.query(User).count(),
-                "holdings": session.query(Portfolio).count(),
-                "analyses": session.query(AnalysisHistory).count(),
-                "youtube_videos": session.query(YouTubeVideo).count(),
-            }
-    except Exception:
-        result["db_counts"] = {}
-
-    # Disk space
-    try:
-        import shutil
-        total, used, free = shutil.disk_usage("/")
-        result["disk"] = {
-            "total_gb": round(total / 1024**3, 1),
-            "used_gb": round(used / 1024**3, 1),
-            "free_gb": round(free / 1024**3, 1),
-            "used_pct": round(used / total * 100, 1),
-        }
-    except Exception:
-        pass
-
-    result["status"] = "ok" if all([result.get("yfinance"), result.get("db"), anthropic_ok]) else "degraded"
-    result["disk_cache"] = _dcache_stats()
-    return result
+    """Lightweight health check for iOS client.
+    Swift checkHealth() only inspects HTTP status code — this returns
+    a minimal 200 to avoid unnecessary DB/disk/yfinance overhead.
+    For rich diagnostics, use GET /health/live (DB check) or
+    the admin liveness endpoint.
+    """
+    return {"status": "ok"}
 
 
 # ---------------------------------------------------------------------------
