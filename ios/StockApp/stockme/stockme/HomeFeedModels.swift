@@ -36,6 +36,22 @@ struct NewsArticleItem: Codable, Identifiable {
         case isRedFlag = "is_red_flag"
         case sentiment
     }
+
+    // Backend returns dates without "Z" timezone ("2026-06-08T21:04:26").
+    // ISO8601DateFormatter requires timezone by default — use a fallback chain.
+    var parsedDate: Date? {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = iso.date(from: publishedAt) { return d }
+        iso.formatOptions = [.withInternetDateTime]
+        if let d = iso.date(from: publishedAt) { return d }
+        let f = DateFormatter()
+        f.timeZone = TimeZone(identifier: "UTC")
+        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+        if let d = f.date(from: publishedAt) { return d }
+        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return f.date(from: publishedAt)
+    }
 }
 
 struct YouTubeVideoItem: Codable, Identifiable {
@@ -46,8 +62,8 @@ struct YouTubeVideoItem: Codable, Identifiable {
     let thumbnailUrl: String?
     let videoUrl: String
     let publishedAt: String
-    let viewCount: Int
-    let durationSeconds: Int
+    let viewCount: Int?
+    let durationSeconds: Int?
     let tickersMentioned: [String]
 
     enum CodingKeys: String, CodingKey {
@@ -64,17 +80,16 @@ struct YouTubeVideoItem: Codable, Identifiable {
     }
 
     var formattedViewCount: String {
-        if viewCount >= 1_00_000 {
-            return String(format: "%.1fL", Double(viewCount) / 1_00_000.0)
-        } else if viewCount >= 1000 {
-            return String(format: "%.1fK", Double(viewCount) / 1000.0)
-        }
-        return "\(viewCount)"
+        let v = viewCount ?? 0
+        if v >= 1_00_000 { return String(format: "%.1fL", Double(v) / 1_00_000.0) }
+        if v >= 1000 { return String(format: "%.1fK", Double(v) / 1000.0) }
+        return v > 0 ? "\(v)" : ""
     }
 
     var formattedDuration: String {
-        let m = durationSeconds / 60
-        let s = durationSeconds % 60
+        let secs = durationSeconds ?? 0
+        let m = secs / 60
+        let s = secs % 60
         return String(format: "%d:%02d", m, s)
     }
 }

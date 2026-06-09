@@ -515,7 +515,7 @@ struct VideoCard: View {
                     }
 
                     // Duration badge
-                    if video.durationSeconds > 0 {
+                    if (video.durationSeconds ?? 0) > 0 {
                         Text(video.formattedDuration)
                             .font(.caption2.weight(.semibold).monospaced())
                             .foregroundStyle(.white)

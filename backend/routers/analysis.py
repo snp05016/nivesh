@@ -193,6 +193,11 @@ def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False):
     load_dotenv(dotenv_path=env_path, override=True)
     try:
         sys.path.insert(0, str(_Path(__file__).parent.parent))
+        # Put the local tradingagents-core fork BEFORE the venv so it shadows
+        # the PyPI tradingagents package which lacks default_config.
+        _ta_core = _Path(__file__).parent.parent / "tradingagents-core"
+        if _ta_core.exists():
+            sys.path.insert(0, str(_ta_core))
         from services.orchestrator import analyze
         result = analyze(ticker, exchange, user_id, deep_scan=deep_scan)
         queue.put({"status": "ok", "result": result})
@@ -799,21 +804,43 @@ async def get_home_feed(user_id: int, ticker: str = None):
 
         holding_tickers_set = {h.ticker.upper() for h in holdings}
         cutoff_7d = datetime.utcnow() - timedelta(days=7)
+        # Quality threshold cascade: prefer SEBI registry channels, then 50k+ views,
+        # then 10k+ views so the section never silently disappears.
+        def _quality_base(q, min_views: int):
+            return q.filter(
+                (YouTubeVideo.source != "ytdlp_search") | (YouTubeVideo.view_count >= min_views)
+            )
 
-        portfolio_videos = session.query(YouTubeVideo).filter(
-            YouTubeVideo.matched_ticker.in_(holding_tickers_set),
-            YouTubeVideo.published_at >= cutoff_7d,
-        ).order_by(YouTubeVideo.published_at.desc()).limit(15).all()
+        def _fetch_portfolio_videos(min_views: int):
+            vids = _quality_base(
+                session.query(YouTubeVideo).filter(
+                    YouTubeVideo.matched_ticker.in_(holding_tickers_set),
+                    YouTubeVideo.published_at >= cutoff_7d,
+                ), min_views
+            ).order_by(YouTubeVideo.view_count.desc()).limit(15).all()
+            # Widen to 30 days if < 5 found
+            if len(vids) < 5:
+                vids = _quality_base(
+                    session.query(YouTubeVideo).filter(
+                        YouTubeVideo.matched_ticker.in_(holding_tickers_set),
+                    ), min_views
+                ).order_by(YouTubeVideo.view_count.desc()).limit(15).all()
+            return vids
+
+        portfolio_videos = _fetch_portfolio_videos(50_000)
+        if len(portfolio_videos) < 3:
+            portfolio_videos = _fetch_portfolio_videos(10_000)
 
         portfolio_vid_ids = {v.video_id for v in portfolio_videos}
-
         remaining = 15 - len(portfolio_videos)
         general_videos = []
         if remaining > 0:
-            general_videos = session.query(YouTubeVideo).filter(
-                ~YouTubeVideo.video_id.in_(portfolio_vid_ids),
-                YouTubeVideo.published_at >= cutoff_7d,
-            ).order_by(YouTubeVideo.published_at.desc()).limit(remaining).all()
+            general_videos = _quality_base(
+                session.query(YouTubeVideo).filter(
+                    ~YouTubeVideo.video_id.in_(portfolio_vid_ids),
+                    YouTubeVideo.published_at >= cutoff_7d,
+                ), 10_000
+            ).order_by(YouTubeVideo.view_count.desc()).limit(remaining).all()
 
         all_videos = portfolio_videos + general_videos
 

@@ -1704,16 +1704,29 @@ struct NewsReaderView: View {
                                 .foregroundStyle(Theme.inkTertiary)
                         }
 
-                        Link(destination: URL(string: item.link)!) {
+                        if let url = URL(string: item.link) {
+                            Link(destination: url) {
+                                HStack {
+                                    Text("READ FULL STORY ON \(item.publisher.uppercased())")
+                                    Image(systemName: "arrow.up.right")
+                                }
+                                .font(Theme.officialStampFont(size: 11))
+                                .foregroundStyle(.white)
+                                .padding(.vertical, 14)
+                                .frame(maxWidth: .infinity)
+                                .background(Theme.inkPrimary)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                        } else {
                             HStack {
                                 Text("READ FULL STORY ON \(item.publisher.uppercased())")
-                                Image(systemName: "arrow.up.right")
+                                Image(systemName: "link.badge.plus")
                             }
                             .font(Theme.officialStampFont(size: 11))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.white.opacity(0.5))
                             .padding(.vertical, 14)
                             .frame(maxWidth: .infinity)
-                            .background(Theme.inkPrimary)
+                            .background(Theme.inkPrimary.opacity(0.5))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
                         .padding(.top, 20)

@@ -732,6 +732,94 @@ def _inject_piotroski(result: dict, ticker: str):
         result["piotroski_score"] = None
         result["piotroski_flags"] = {}
 
+
+def _inject_live_data(result: dict, ticker: str) -> dict:
+    """Refresh current price, recent news, and 3M/6M/12M price performance.
+    Called on every return path so cached reports never show stale market data.
+    """
+    ns_ticker = _to_ns(ticker)
+
+    # 1. Current price — always fetch live
+    try:
+        curr_p, _ = _yf_price(ns_ticker)
+        if curr_p:
+            result["current_price_inr"] = float(curr_p)
+    except Exception as e:
+        print(f"[LIVE_DATA] Price refresh failed for {ticker}: {e}")
+
+    # 2. Recent news — DB first, yfinance fallback
+    try:
+        with get_session() as session:
+            articles = (
+                session.query(NewsArticle)
+                .filter(
+                    NewsArticle.ticker == ticker.upper(),
+                    NewsArticle.published_at >= datetime.utcnow() - timedelta(days=7),
+                )
+                .order_by(NewsArticle.published_at.desc())
+                .limit(8)
+                .all()
+            )
+            recent_news = [
+                {
+                    "title": a.headline,
+                    "publisher": a.source,
+                    "link": a.article_url,
+                    "publish_time": int(a.published_at.timestamp()) if a.published_at else 0,
+                    "summary": a.summary or "",
+                    "image_url": a.image_url,
+                }
+                for a in articles
+            ]
+
+        if not recent_news:
+            raw = (yf.Ticker(ns_ticker).news or [])[:8]
+            for item in raw:
+                content = item.get("content", {})
+                pub = content.get("pubDate") or item.get("providerPublishTime", 0)
+                if isinstance(pub, str):
+                    try:
+                        pub = int(datetime.fromisoformat(pub.replace("Z", "+00:00")).timestamp())
+                    except Exception:
+                        pub = 0
+                recent_news.append({
+                    "title": content.get("title") or item.get("title", ""),
+                    "publisher": content.get("provider", {}).get("displayName") or item.get("publisher", ""),
+                    "link": content.get("canonicalUrl", {}).get("url") or item.get("link", ""),
+                    "publish_time": int(pub) if pub else 0,
+                    "summary": content.get("summary") or "",
+                    "image_url": None,
+                })
+
+        if recent_news:
+            result["recent_news"] = recent_news
+    except Exception as e:
+        print(f"[LIVE_DATA] News refresh failed for {ticker}: {e}")
+
+    # 3. Price performance — 3M / 6M / 12M % change
+    try:
+        hist = yf.Ticker(ns_ticker).history(period="1y")
+        if not hist.empty:
+            curr_close = float(hist["Close"].iloc[-1])
+
+            def _chg(days: int):
+                cutoff = hist.index[-1] - timedelta(days=days)
+                past = hist[hist.index <= cutoff]
+                if past.empty:
+                    return None
+                p = float(past["Close"].iloc[-1])
+                return round((curr_close - p) / p * 100, 2) if p else None
+
+            result["price_performance"] = {
+                "change_3m_pct":  _chg(90),
+                "change_6m_pct":  _chg(182),
+                "change_12m_pct": _chg(365),
+            }
+    except Exception as e:
+        print(f"[LIVE_DATA] Price performance fetch failed for {ticker}: {e}")
+
+    return result
+
 def analyze(
     ticker: str,
     exchange: str,
@@ -816,6 +904,7 @@ def analyze(
             cached_today["deep_scan_used"] = False
             cached_today["pkscreener_signals"] = None
             _inject_piotroski(cached_today, ticker)
+            cached_today = _inject_live_data(cached_today, ticker)
             return cached_today
 
         # 2. Fetch deep history for AI context
@@ -882,9 +971,6 @@ def analyze(
 
                             new_analysis = copy.deepcopy(last_analysis)
                             new_analysis["analysis_date"] = analysis_date
-                            curr_p, _ = _yf_price(ns_ticker)
-                            if curr_p:
-                                new_analysis["current_price_inr"] = curr_p
 
                             new_analysis = _normalize_response(new_analysis)
                             new_analysis["ticker"] = ticker.upper()
@@ -938,6 +1024,7 @@ def analyze(
                             ]
                             new_analysis["deep_scan_used"] = False
                             new_analysis["pkscreener_signals"] = None
+                            new_analysis = _inject_live_data(new_analysis, ticker)
                             return new_analysis
                         else:
                             print(
@@ -1109,4 +1196,5 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
         result["pkscreener_signals"] = None
 
     _inject_piotroski(result, ticker)
+    result = _inject_live_data(result, ticker)
     return result
