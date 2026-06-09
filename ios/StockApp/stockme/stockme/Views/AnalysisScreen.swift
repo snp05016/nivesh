@@ -448,13 +448,13 @@ struct AnalysisScreen: View {
                     }
                     if let info = viewModel.quickInfo {
                         HStack(spacing: Theme.Spacing.tight) {
-                            Image(systemName: info.change >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
+                            Image(systemName: (info.change ?? 0.0) >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
                                 .font(.caption2)
-                            Text("\(info.change >= 0 ? "+" : "")\(info.change.inrFormatted)")
-                            Text("(\(info.changePercent.percentFormatted))")
+                            Text("\((info.change ?? 0.0) >= 0 ? "+" : "")\((info.change ?? 0.0).inrFormatted)")
+                            Text("(\((info.changePercent ?? 0.0).percentFormatted))")
                         }
                         .font(Theme.monoTabular(size: 14, relativeTo: .footnote))
-                        .foregroundStyle(info.change >= 0 ? Theme.dataPositive : Theme.dataNegative)
+                        .foregroundStyle((info.change ?? 0.0) >= 0 ? Theme.dataPositive : Theme.dataNegative)
                     }
                     if livePrice != nil {
                         HStack(spacing: Theme.Spacing.small) {
