@@ -444,7 +444,7 @@ struct AdvisoryConsensusEmptyCard: View {
 
                             Text("Advisor stances from SOIC, Basant Maheshwari, and others will appear here after the nightly run.")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.inkSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .lineSpacing(2)
                         }
@@ -1032,9 +1032,8 @@ private struct MorningDecreeCard: View {
                     .padding(.horizontal, cardHPad)
 
                     // Fine rule separator
-                    Rectangle()
-                        .fill(Color.primary.opacity(0.08))
-                        .frame(height: 0.5)
+                    Divider()
+                        .opacity(0.08)
                         .padding(.horizontal, cardHPad)
                         .padding(.vertical, Theme.Spacing.standard)
 
@@ -1050,9 +1049,8 @@ private struct MorningDecreeCard: View {
 
                     // Priority items
                     if let items = briefData.priorityItems, !items.isEmpty {
-                        Rectangle()
-                            .fill(Color.primary.opacity(0.08))
-                            .frame(height: 0.5)
+                        Divider()
+                            .opacity(0.08)
                             .padding(.horizontal, cardHPad)
                             .padding(.top, Theme.Spacing.standard)
                             .padding(.bottom, Theme.Spacing.medium)
@@ -1150,7 +1148,7 @@ private struct TimeframeConflictsBanner: View {
                 .padding(.horizontal, Theme.screenPadding)
 
             ScrollView(.horizontal) {
-                HStack(spacing: 10) {
+                HStack(spacing: Theme.Spacing.standard) {
                     ForEach(conflicts) { conflict in
                         NavigationLink(value: conflict.ticker) {
                             TimeframeConflictCard(conflict: conflict)
@@ -1212,7 +1210,7 @@ private struct DashboardSection<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Theme.Spacing.standard) {
             HStack(spacing: Theme.Spacing.tight) {
                 Image(systemName: icon)
                     .font(.caption)
@@ -1263,7 +1261,7 @@ private struct MarketPulseDashCard: View {
 
                 VStack(alignment: .leading, spacing: 0) {
                     // Header
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("बाजार की नब्ज")
                             .font(.caption2)
                             .foregroundStyle(Theme.inkSecondary)
@@ -1285,12 +1283,32 @@ private struct MarketPulseDashCard: View {
                     if pulse.advances + pulse.declines > 0 {
                         ADBreathBar(advancing: pulse.advances, declining: pulse.declines)
                             .padding(.horizontal, cardHPad)
+                        HStack {
+                            HStack(spacing: Theme.Spacing.xSmall) {
+                                Image(systemName: "arrow.up")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(Theme.bullGreen)
+                                Text("\(pulse.advances) Advancing")
+                                    .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
+                                    .foregroundStyle(Theme.bullGreen)
+                            }
+                            Spacer()
+                            HStack(spacing: Theme.Spacing.xSmall) {
+                                Text("\(pulse.declines) Declining")
+                                    .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
+                                    .foregroundStyle(Theme.bearRed)
+                                Image(systemName: "arrow.down")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(Theme.bearRed)
+                            }
+                        }
+                        .padding(.horizontal, cardHPad)
+                        .padding(.top, Theme.Spacing.xSmall)
+                        .padding(.bottom, Theme.Spacing.small)
                     }
 
                     // Fine rule
-                    Rectangle()
-                        .fill(Color.primary.opacity(0.08))
-                        .frame(height: 0.5)
+                    Divider().opacity(0.08)
                         .padding(.horizontal, cardHPad)
                         .padding(.vertical, Theme.Spacing.standard)
 
@@ -1347,7 +1365,7 @@ private struct MomentumDashCard: View {
 
                 VStack(alignment: .leading, spacing: 0) {
                     // Header
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("गति विश्लेषण")
                             .font(.caption2)
                             .foregroundStyle(Theme.inkSecondary)
@@ -1375,7 +1393,7 @@ private struct MomentumDashCard: View {
                     }
 
                     if !momentum.bullish.isEmpty && !momentum.bearish.isEmpty {
-                        Spacer().frame(height: 10)
+                        Spacer().frame(height: Theme.Spacing.standard)
                     }
 
                     // Bearish section
@@ -1459,9 +1477,7 @@ private struct MacroDashCard: View {
                                 MacroGroupView(groupTitle: group.title, rows: items)
 
                                 if group.title != macroGroups.last?.title || !ungroupedItems.isEmpty {
-                                    Rectangle()
-                                        .fill(Color.primary.opacity(0.08))
-                                        .frame(height: 0.5)
+                                    Divider().opacity(0.08)
                                         .padding(.vertical, Theme.Spacing.small)
                                 }
                             }
@@ -1512,7 +1528,7 @@ struct MarketMoodGauge: View {
     }
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Theme.Spacing.standard) {
             Text("MARKET MOOD GAUGE")
                 .font(.caption2.weight(.bold)).monospaced()
                 .tracking(2)
@@ -1551,7 +1567,7 @@ struct MarketMoodGauge: View {
                         .position(x: cx, y: cy)
                 }
             }
-            .aspectRatio(0.22, contentMode: .fit)
+            .aspectRatio(2.0, contentMode: .fit)
             .clipped()
 
             VStack(spacing: Theme.Spacing.small) {
@@ -1603,34 +1619,32 @@ struct IndexCardView: View {
     }
 
     var body: some View {
-        GeometryReader { idxGeo in
-            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                Text(index.name)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(Theme.inkSecondary)
-                    .lineLimit(1)
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+            Text(index.name)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Theme.inkSecondary)
+                .lineLimit(1)
 
-                Text(valueStr)
+            Text(valueStr)
+                .contentTransition(.numericText())
+                .font(.headline.weight(.bold)).monospaced()
+                .foregroundStyle(Theme.inkPrimary)
+                .monospacedDigit()
+
+            HStack(spacing: Theme.Spacing.small) {
+                Image(systemName: isPositive ? "arrow.up.right" : "arrow.down.right")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
+                Text(changeStr)
                     .contentTransition(.numericText())
-                    .font(.headline.weight(.bold)).monospaced()
-                    .foregroundStyle(Theme.inkPrimary)
-                    .monospacedDigit()
-
-                HStack(spacing: Theme.Spacing.small) {
-                    Image(systemName: isPositive ? "arrow.up.right" : "arrow.down.right")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
-                    Text(changeStr)
-                        .contentTransition(.numericText())
-                        .sensoryFeedback(isPositive ? .increase : .decrease, trigger: index.changePct)
-                        .font(.caption.weight(.bold)).monospaced()
-                        .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
-                }
+                    .sensoryFeedback(isPositive ? .increase : .decrease, trigger: index.changePct)
+                    .font(.caption.weight(.bold)).monospaced()
+                    .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
             }
-            .padding(Theme.Spacing.standard)
-            .frame(width: idxGeo.size.width * 0.35)
-            .banknoteCard()
         }
+        .padding(Theme.Spacing.standard)
+        .frame(width: UIScreen.main.bounds.width * 0.32)
+        .banknoteCard()
     }
 }
 
@@ -1650,47 +1664,45 @@ struct MomentumRowView: View {
     }
 
     var body: some View {
-        GeometryReader { momGeo in
-            HStack(spacing: Theme.Spacing.standard) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                    HStack(spacing: Theme.Spacing.tight) {
-                        Text(ticker.ticker)
-                            .font(.footnote.weight(.bold)).monospaced()
-                            .foregroundStyle(Theme.inkPrimary)
-                        Text(crossoverLabel.uppercased())
-                            .font(.caption2.weight(.bold)).monospaced()
-                            .tracking(0.8)
-                            .foregroundStyle(signalColor)
-                            .padding(.horizontal, Theme.Spacing.tight)
-                            .padding(.vertical, Theme.Spacing.xSmall)
-                            .background(signalColor.opacity(0.10))
-                            .cornerRadius(3)
-                    }
-                    HStack(spacing: 10) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("LTP").font(.caption2).foregroundStyle(Theme.inkTertiary)
-                            Text(IndianFormatter.price(ticker.lastPrice))
-                                .font(.caption.weight(.semibold)).monospaced()
-                                .foregroundStyle(Theme.inkPrimary)
-                        }
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("SINCE").font(.caption2).foregroundStyle(Theme.inkTertiary)
-                            Text(ticker.trendDate)
-                                .font(.caption2).monospaced()
-                                .foregroundStyle(Theme.inkSecondary)
-                        }
-                    }
+        HStack(spacing: Theme.Spacing.standard) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                HStack(spacing: Theme.Spacing.tight) {
+                    Text(ticker.ticker)
+                        .font(.footnote.weight(.bold)).monospaced()
+                        .foregroundStyle(Theme.inkPrimary)
+                    Text(crossoverLabel.uppercased())
+                        .font(.caption2.weight(.bold)).monospaced()
+                        .tracking(0.8)
+                        .foregroundStyle(signalColor)
+                        .padding(.horizontal, Theme.Spacing.tight)
+                        .padding(.vertical, Theme.Spacing.xSmall)
+                        .background(signalColor.opacity(0.10))
+                        .cornerRadius(3)
                 }
-                Spacer()
-                // Native Swift Charts trend sparkline
-                if !ticker.sparkline.isEmpty {
-                    SparklineView(values: ticker.sparkline, color: signalColor)
-                        .frame(width: momGeo.size.width * 0.14, height: momGeo.size.width * 0.08)
+                HStack(spacing: Theme.Spacing.standard) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("LTP").font(.caption2).foregroundStyle(Theme.inkTertiary)
+                        Text(IndianFormatter.price(ticker.lastPrice))
+                            .font(.caption.weight(.semibold)).monospaced()
+                            .foregroundStyle(Theme.inkPrimary)
+                    }
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("SINCE").font(.caption2).foregroundStyle(Theme.inkTertiary)
+                        Text(ticker.trendDate)
+                            .font(.caption2).monospaced()
+                            .foregroundStyle(Theme.inkSecondary)
+                    }
                 }
             }
-            .padding(.horizontal, Theme.Spacing.standard)
-            .padding(.vertical, Theme.Spacing.standard)
+            Spacer()
+            // Native Swift Charts trend sparkline
+            if !ticker.sparkline.isEmpty {
+                SparklineView(values: ticker.sparkline, color: signalColor)
+                    .frame(width: 48, height: 28)
+            }
         }
+        .padding(.horizontal, Theme.Spacing.standard)
+        .padding(.vertical, Theme.Spacing.standard)
     }
 }
 
@@ -1725,8 +1737,7 @@ struct CompactNewsCell: View {
     }
 
     private var timeLabel: String {
-        let f = ISO8601DateFormatter()
-        if let date = f.date(from: article.publishedAt) {
+        if let date = article.parsedDate {
             return IndianFormatter.elapsed(from: date)
         }
         return ""
@@ -1742,10 +1753,9 @@ struct CompactNewsCell: View {
     /// Freshness: ≤ 2h = HOT, ≤ 6h = TRENDING, red flag = RED FLAG
     private var signalBadge: (label: String, icon: String, color: Color)? {
         if article.isRedFlag { return ("RED FLAG", "exclamationmark.triangle.fill", Theme.bearRed) }
-        let f = ISO8601DateFormatter()
-        if let date = f.date(from: article.publishedAt) {
+        if let date = article.parsedDate {
             let age = Date().timeIntervalSince(date)
-            if age < 2 * 3600 { return ("HOT", "flame.fill", Color(hue: 0.05, saturation: 0.9, brightness: 0.95)) }
+            if age < 2 * 3600 { return ("HOT", "flame.fill", Theme.holdAmber) }
             if age < 6 * 3600 { return ("TRENDING", "chart.line.uptrend.xyaxis", Theme.securityGold) }
             if age < 12 * 3600 { return ("BREAKING", "dot.radiowaves.left.and.right", Theme.bullGreen) }
         }
@@ -2254,11 +2264,63 @@ private struct InstitutionalDashCard: View {
             }
         }
         .background(Theme.canvasDeep)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
                 .stroke(Theme.borderFine, lineWidth: 0.5)
         )
+    }
+}
+
+// MARK: - Market Status Strip
+
+private struct MarketStatusStrip: View {
+    private var isMarketOpen: Bool {
+        let cal = Calendar(identifier: .gregorian)
+        let comps = cal.dateComponents(in: TimeZone(identifier: "Asia/Kolkata")!, from: Date())
+        guard let weekday = comps.weekday, weekday != 1, weekday != 7 else { return false }
+        let hour = comps.hour ?? 0
+        let minute = comps.minute ?? 0
+        let totalMinutes = hour * 60 + minute
+        return totalMinutes >= 555 && totalMinutes < 930
+    }
+
+    private var statusLabel: String { isMarketOpen ? "NSE OPEN" : "NSE CLOSED" }
+    private var statusColor: Color { isMarketOpen ? Theme.bullGreen : Theme.bearRed }
+
+    private var istTimeString: String {
+        let f = DateFormatter()
+        f.timeZone = TimeZone(identifier: "Asia/Kolkata")
+        f.dateFormat = "EEE, d MMM · HH:mm IST"
+        return f.string(from: Date()).uppercased()
+    }
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.standard) {
+            HStack(spacing: Theme.Spacing.small) {
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: statusColor.opacity(0.5), radius: 3)
+                Text(statusLabel)
+                    .font(Theme.officialStampFont(size: 9))
+                    .tracking(1.2)
+                    .foregroundStyle(statusColor)
+            }
+            .padding(.horizontal, Theme.Spacing.standard)
+            .padding(.vertical, Theme.Spacing.medium)
+            .background(statusColor.opacity(0.08))
+            .cornerRadius(Theme.CornerRadius.small)
+            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(statusColor.opacity(0.25), lineWidth: 0.5))
+
+            Text(istTimeString)
+                .font(Theme.serialNumberFont(size: 9, relativeTo: .caption2))
+                .foregroundStyle(Theme.inkTertiary)
+
+            Spacer()
+        }
+        .padding(.horizontal, Theme.screenPadding)
+        .padding(.bottom, Theme.Spacing.small)
     }
 }
 
@@ -2296,7 +2358,9 @@ extension HomeScreen {
                         .padding(.horizontal, Theme.screenPadding)
                         .padding(.top, Theme.Spacing.standard)
                     }
-                    
+
+                    MarketStatusStrip()
+
                     // NEW: Horizontal Quick Nav Bar
                     ScrollView(.horizontal) {
                         HStack(spacing: Theme.Spacing.medium) {
@@ -2404,12 +2468,22 @@ extension HomeScreen {
                         )
                     }
                     if viewModel.watchlist.isEmpty && !viewModel.isLoading {
-                        Text("Add stocks to your watchlist to see them here")
-                            .font(Theme.serialNumberFont(size: 13))
-                            .foregroundStyle(Theme.inkTertiary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, Theme.screenPadding)
-                            .padding(.vertical, Theme.Spacing.screen)
+                        VStack(spacing: Theme.Spacing.card) {
+                            Image(systemName: "binoculars")
+                                .font(.largeTitle.weight(.light))
+                                .foregroundStyle(Theme.inkTertiary.opacity(0.4))
+                            Text("NO STOCKS ON WATCHLIST")
+                                .font(Theme.officialStampFont(size: 11))
+                                .tracking(1.5)
+                                .foregroundStyle(Theme.inkTertiary)
+                            Text("Add stocks from Search to track them here.")
+                                .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .body))
+                                .foregroundStyle(Theme.inkSecondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Theme.Spacing.xLarge)
+                        .padding(.horizontal, Theme.screenPadding)
                     } else {
                         VStack(spacing: Theme.Spacing.standard) {
                             ForEach(viewModel.watchlist) { stock in
@@ -2456,21 +2530,10 @@ extension HomeScreen {
 // ── Section 6a: NEWS FEED ─────────────────────────
                 VStack(alignment: .leading, spacing: 0) {
                     // Section header (bilingual, matches existing pattern)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("ताज़ा समाचार")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                        Text("MARKET NEWS")
-                            .font(.caption.weight(.semibold)).monospaced()
-                            .tracking(2.0)
-                            .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                        SectionHeader(title: "Market News", hindiTitle: "ताज़ा समाचार")
                     }
-                    .padding(.bottom, Theme.Spacing.standard)
                     .padding(.horizontal, Theme.screenPadding)
-
-                    GuillocheDivider()
-                        .padding(.horizontal, Theme.screenPadding)
-                        .padding(.bottom, Theme.Spacing.standard)
 
                     if let feed = feedVM.feed {
                         // Horizontal scrolling news strip — all news in one scroll
@@ -2512,7 +2575,31 @@ extension HomeScreen {
                 .id(HomeSectionID.news.rawValue)
         case .youtube:
 // ── Section 6c: YOUTUBE FEED ─────────────────────────
-                 if let feed = feedVM.feed, !feed.youtubeVideos.isEmpty {
+                 if let feed = feedVM.feed, feed.youtubeVideos.isEmpty {
+                    // Empty state: harvest is being populated or no quality videos yet
+                    VStack(alignment: .leading, spacing: 0) {
+                        SectionHeader(title: "Expert Videos", hindiTitle: "विशेषज्ञ विश्लेषण")
+                        HStack(spacing: Theme.Spacing.standard) {
+                            Image(systemName: "play.rectangle.on.rectangle")
+                                .font(.title2.weight(.light))
+                                .foregroundStyle(Theme.securityGold.opacity(0.7))
+                            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                                Text("Curating SEBI-Registered Channels")
+                                    .font(Theme.officialStampFont(size: 11))
+                                    .foregroundStyle(Theme.inkPrimary)
+                                Text("Only 50k+ view videos from Pranjal Kamra, SOIC Finance, Capitalmind, and other trusted advisors. Refreshes nightly.")
+                                    .font(Theme.engravedSerif(size: 12, weight: .regular, relativeTo: .caption))
+                                    .foregroundStyle(Theme.inkSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .lineSpacing(2)
+                            }
+                        }
+                        .padding(Theme.Spacing.card)
+                        .banknoteCard()
+                        .padding(.horizontal, Theme.screenPadding)
+                    }
+                    .id(HomeSectionID.youtube.rawValue)
+                 } else if let feed = feedVM.feed, !feed.youtubeVideos.isEmpty {
                     let allVideos = Array(feed.youtubeVideos.prefix(15))
                     // Unique channel names for filter chips
                     let channelNames: [String] = Array(
@@ -2528,21 +2615,10 @@ extension HomeScreen {
                     }()
 
                     VStack(alignment: .leading, spacing: 0) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("विशेषज्ञ विश्लेषण")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                            Text("EXPERT VIDEOS")
-                                .font(.caption.weight(.semibold)).monospaced()
-                                .tracking(2.0)
-                                .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                            SectionHeader(title: "Expert Videos", hindiTitle: "विशेषज्ञ विश्लेषण")
                         }
-                        .padding(.bottom, Theme.Spacing.standard)
                         .padding(.horizontal, Theme.screenPadding)
-
-                        GuillocheDivider()
-                            .padding(.horizontal, Theme.screenPadding)
-                            .padding(.bottom, Theme.Spacing.standard)
 
                         // ── Channel filter chip bar ───────────────
                         if channelNames.count > 1 {
@@ -2617,6 +2693,17 @@ extension HomeScreen {
                                         Text(event.ticker)
                                             .font(Theme.serialNumberFont(size: 13))
                                             .foregroundStyle(Theme.inkPrimary)
+                                        if viewModel.watchlist.contains(where: { $0.ticker == event.ticker }) {
+                                            Text("WATCHLIST")
+                                                .font(Theme.officialStampFont(size: 7))
+                                                .tracking(0.8)
+                                                .foregroundStyle(Theme.securityGold)
+                                                .padding(.horizontal, Theme.Spacing.small)
+                                                .padding(.vertical, Theme.Spacing.xSmall)
+                                                .background(Theme.securityGold.opacity(0.12))
+                                                .cornerRadius(Theme.CornerRadius.small)
+                                                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
+                                        }
                                         Spacer()
                                         Text(event.daysAway == 0 ? "Today" : "In \(event.daysAway) days")
                                             .font(Theme.officialStampFont(size: 9))
@@ -2641,40 +2728,76 @@ extension HomeScreen {
                 .id(HomeSectionID.earnings.rawValue)
         case .marketPulse:
 // ── Section 8: Market Pulse ───────────────────────
-                DashboardSection(id: HomeSectionID.marketPulse.rawValue, title: "Market Pulse", hindi: "बाजार की नब्ज", icon: "waveform.path.ecg") {
+                VStack(spacing: Theme.Spacing.standard) {
+                    HStack(spacing: Theme.Spacing.tight) {
+                        Image(systemName: "waveform.path.ecg")
+                            .font(.caption)
+                            .foregroundStyle(Theme.securityGold)
+                        SectionHeader(title: "Market Pulse", hindiTitle: "बाजार की नब्ज")
+                    }
                     if let pulse = viewModel.dashboard?.pulse {
                         MarketPulseDashCard(pulse: pulse)
+                        if pulse.advances + pulse.declines > 0 {
+                            let ratio = Double(pulse.advances) / Double(pulse.advances + pulse.declines)
+                            MarketMoodGauge(ratio: ratio)
+                        }
                     } else {
                         DashboardLoadingCard(label: "Market Pulse", isLoading: viewModel.dashboardLoading)
                     }
                 }
+                .id(HomeSectionID.marketPulse.rawValue)
+                .padding(.horizontal, Theme.screenPadding)
         case .momentum:
 // ── Section 9: Momentum ───────────────────────────
-                DashboardSection(id: HomeSectionID.momentum.rawValue, title: "Momentum Scan", hindi: "गति विश्लेषण", icon: "arrow.up.right.circle.fill") {
+                VStack(spacing: Theme.Spacing.standard) {
+                    HStack(spacing: Theme.Spacing.tight) {
+                        Image(systemName: "arrow.up.right.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(Theme.securityGold)
+                        SectionHeader(title: "Momentum Scan", hindiTitle: "गति विश्लेषण")
+                    }
                     if let momentum = viewModel.dashboard?.momentum {
                         MomentumDashCard(momentum: momentum)
                     } else {
                         DashboardLoadingCard(label: "Momentum Scan", isLoading: viewModel.dashboardLoading)
                     }
                 }
+                .id(HomeSectionID.momentum.rawValue)
+                .padding(.horizontal, Theme.screenPadding)
         case .macroAlt:
 // ── Section 10: Macro & Alternatives ─────────────
-                DashboardSection(id: HomeSectionID.macroAlt.rawValue, title: "Macro & Alternatives", hindi: "वृहद अर्थव्यवस्था", icon: "globe.asia.australia.fill") {
+                VStack(spacing: Theme.Spacing.standard) {
+                    HStack(spacing: Theme.Spacing.tight) {
+                        Image(systemName: "globe.asia.australia.fill")
+                            .font(.caption)
+                            .foregroundStyle(Theme.securityGold)
+                        SectionHeader(title: "Macro & Alternatives", hindiTitle: "वृहद अर्थव्यवस्था")
+                    }
                     if let macro = viewModel.dashboard?.macro {
                         MacroDashCard(macro: macro)
                     } else {
                         DashboardLoadingCard(label: "Macro Data", isLoading: viewModel.dashboardLoading)
                     }
                 }
+                .id(HomeSectionID.macroAlt.rawValue)
+                .padding(.horizontal, Theme.screenPadding)
         case .institutional:
 // ── Section 11: Institutional Flow ───────────────
-                DashboardSection(id: HomeSectionID.institutional.rawValue, title: "Institutional Allocation", hindi: "संस्थागत प्रवाह", icon: "building.columns.fill") {
+                VStack(spacing: Theme.Spacing.standard) {
+                    HStack(spacing: Theme.Spacing.tight) {
+                        Image(systemName: "building.columns.fill")
+                            .font(.caption)
+                            .foregroundStyle(Theme.securityGold)
+                        SectionHeader(title: "Institutional Allocation", hindiTitle: "संस्थागत प्रवाह")
+                    }
                     if let inst = viewModel.dashboard?.institutional {
                         InstitutionalDashCard(flow: inst)
                     } else {
                         DashboardLoadingCard(label: "Institutional Flow", isLoading: viewModel.dashboardLoading)
                     }
                 }
+                .id(HomeSectionID.institutional.rawValue)
+                .padding(.horizontal, Theme.screenPadding)
         }
     }
 }
