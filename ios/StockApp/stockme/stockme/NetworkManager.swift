@@ -431,7 +431,7 @@ class NetworkManager: ObservableObject {
     func getMarketIndices() async throws -> MarketIndicesResponse {
         guard let url = URL(string: "\(baseURL)/market-indices") else { throw NetworkError.invalidURL }
         var request = URLRequest(url: url)
-        request.timeoutInterval = 10
+        request.timeoutInterval = 20
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw NetworkError.invalidResponse

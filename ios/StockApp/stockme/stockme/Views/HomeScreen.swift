@@ -701,34 +701,41 @@ struct HomeScreen: View {
             }
         }
         .task {
-            // 1. Indices — awaited first so loading state resolves before render
-            await viewModel.fetchIndices()
-
-            // 2. Non-blocking background fetches
+            // Fire indices and all background fetches in parallel — don't block portfolio on indices
+            let indicesTask = Task { await viewModel.fetchIndices() }
             viewModel.fetchSectors()
             viewModel.fetchEarnings()
             viewModel.fetchDashboard()
             viewModel.startIndicesTimer()
 
-            // 3. User-dependent fetches — guard on currentUser
             if let user = authManager.currentUser {
                 if viewModel.stockCount == 0 && !viewModel.isLoading {
                     await viewModel.fetchData(userId: user.userId)
                 }
                 consensusVM.fetch(userId: user.userId)
                 feedVM.fetch(userId: user.userId)
+                // Retry indices after portfolio loads — backend may need warmup on cold start
+                if viewModel.indicesFetchFailed || viewModel.indices.isEmpty {
+                    await viewModel.fetchIndices()
+                }
                 if let resp = try? await NetworkManager.shared.fetchTimeframeConflicts(userId: user.userId) {
                     timeframeConflicts = resp.conflicts
                 }
                 dailyAction = await NetworkManager.shared.fetchDailyAction(userId: user.userId)
             }
+            await indicesTask.value
         }
-        // Late-auth guard: if token restores from keychain AFTER the view appears,
-        // retry all user-dependent fetches that would have been skipped.
+        // Late-auth guard: token restores from keychain AFTER view appears.
         .onChange(of: authManager.currentUser?.userId) { uid in
             guard let uid = uid else { return }
-            if viewModel.stockCount == 0 && !viewModel.isLoading {
-                Task { await viewModel.fetchData(userId: uid) }
+            Task {
+                if viewModel.stockCount == 0 && !viewModel.isLoading {
+                    await viewModel.fetchData(userId: uid)
+                }
+                // Retry indices — initial fetch may have fired before backend was ready
+                if viewModel.indicesFetchFailed || viewModel.indices.isEmpty {
+                    await viewModel.fetchIndices()
+                }
             }
             consensusVM.fetch(userId: uid)
             feedVM.fetch(userId: uid)
