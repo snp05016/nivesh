@@ -111,21 +111,21 @@ struct CompareScreen: View {
 
     @ViewBuilder
     private func compareGrid(a: QuickInfo, b: QuickInfo, c: QuickInfo?) -> some View {
-        let aUp = a.changePercent >= 0
-        let bUp = b.changePercent >= 0
-        let cUp = (c?.changePercent ?? 0) >= 0
+        let aUp = (a.changePercent ?? 0.0) >= 0
+        let bUp = (b.changePercent ?? 0.0) >= 0
+        let cUp = (c?.changePercent ?? 0.0) >= 0
         
         let a52: Double = {
             guard let h = a.week52High, let l = a.week52Low, (h - l) != 0 else { return 0 }
-            return (a.price - l) / (h - l) * 100
+            return ((a.price ?? 0.0) - l) / (h - l) * 100
         }()
         let b52: Double = {
             guard let h = b.week52High, let l = b.week52Low, (h - l) != 0 else { return 0 }
-            return (b.price - l) / (h - l) * 100
+            return ((b.price ?? 0.0) - l) / (h - l) * 100
         }()
         let c52: Double = {
             guard let c = c, let h = c.week52High, let l = c.week52Low, (h - l) != 0 else { return 0 }
-            return (c.price - l) / (h - l) * 100
+            return ((c.price ?? 0.0) - l) / (h - l) * 100
         }()
 
         VStack(spacing: 0) {
@@ -144,8 +144,8 @@ struct CompareScreen: View {
 
             // Rows
             Group {
-                CompareRow(label: "PRICE", valA: a.price.inrFormatted, valB: b.price.inrFormatted, valC: c?.price.inrFormatted)
-                CompareRow(label: "TODAY", valA: a.changePercent.percentFormatted, valB: b.changePercent.percentFormatted, valC: c?.changePercent.percentFormatted,
+                CompareRow(label: "PRICE", valA: (a.price ?? 0.0).inrFormatted, valB: (b.price ?? 0.0).inrFormatted, valC: c?.price?.inrFormatted)
+                CompareRow(label: "TODAY", valA: (a.changePercent ?? 0.0).percentFormatted, valB: (b.changePercent ?? 0.0).percentFormatted, valC: c?.changePercent?.percentFormatted,
                            colorA: aUp ? Theme.bullGreen : Theme.bearRed, colorB: bUp ? Theme.bullGreen : Theme.bearRed, colorC: cUp ? Theme.bullGreen : Theme.bearRed)
                 CompareRow(label: "P/E RATIO",
                            valA: a.peRatio.map { String(format: "%.1f", $0) } ?? "—",

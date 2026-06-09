@@ -87,6 +87,7 @@ struct StockAnalysis: Codable {
     let signalChanged: Bool?
     let previousSignal: String?
     var advisorMatrix: [AdvisorInsightRow] = []
+    let pricePerformance: PricePerformance?
 
     enum CodingKeys: String, CodingKey {
         case ticker, signal, exchange, patterns
@@ -108,6 +109,7 @@ struct StockAnalysis: Codable {
         case signalChanged = "signal_changed"
         case previousSignal = "previous_signal"
         case advisorMatrix = "advisor_matrix"
+        case pricePerformance = "price_performance"
     }
 
     init(from decoder: Decoder) throws {
@@ -128,12 +130,13 @@ struct StockAnalysis: Codable {
         fundamentalsSnapshot = try c.decode(FundamentalsSnapshot.self, forKey: .fundamentalsSnapshot)
         whatToWatch          = try c.decode([String].self,             forKey: .whatToWatch)
         disclaimer           = try c.decode(String.self,               forKey: .disclaimer)
-        recentNews           = try c.decodeIfPresent([NewsItem].self,  forKey: .recentNews)
-        patterns             = try c.decodeIfPresent([String].self,    forKey: .patterns)
-        confidenceRationale  = try c.decodeIfPresent(String.self,     forKey: .confidenceRationale)
-        signalChanged        = try c.decodeIfPresent(Bool.self,        forKey: .signalChanged)
-        previousSignal       = try c.decodeIfPresent(String.self,     forKey: .previousSignal)
+        recentNews           = try c.decodeIfPresent([NewsItem].self,          forKey: .recentNews)
+        patterns             = try c.decodeIfPresent([String].self,            forKey: .patterns)
+        confidenceRationale  = try c.decodeIfPresent(String.self,             forKey: .confidenceRationale)
+        signalChanged        = try c.decodeIfPresent(Bool.self,               forKey: .signalChanged)
+        previousSignal       = try c.decodeIfPresent(String.self,             forKey: .previousSignal)
         advisorMatrix        = (try? c.decodeIfPresent([AdvisorInsightRow].self, forKey: .advisorMatrix)) ?? []
+        pricePerformance     = try c.decodeIfPresent(PricePerformance.self,   forKey: .pricePerformance)
     }
 }
 
@@ -362,9 +365,9 @@ struct PeVsAvg: Codable {
 
 struct QuickInfo: Codable {
     let ticker: String
-    let price: Double
-    let change: Double
-    let changePercent: Double
+    let price: Double?
+    let change: Double?
+    let changePercent: Double?
     let signal: Signal?
     let sector: String?
     let industry: String?
@@ -399,6 +402,18 @@ struct QuickInfo: Codable {
         case volume, avgVolume = "avg_volume"
         case priceHistory90d = "price_history_90d"
         case peVsAvg = "pe_vs_avg"
+    }
+}
+
+struct PricePerformance: Codable {
+    let change3mPct: Double?
+    let change6mPct: Double?
+    let change12mPct: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case change3mPct  = "change_3m_pct"
+        case change6mPct  = "change_6m_pct"
+        case change12mPct = "change_12m_pct"
     }
 }
 
