@@ -49,7 +49,7 @@ struct YouTubeCardView: View {
                         .padding(Theme.Spacing.small)
 
                     // Duration badge
-                    if video.durationSeconds > 0 {
+                    if (video.durationSeconds ?? 0) > 0 {
                         Text(video.formattedDuration)
                             .font(.caption2.weight(.semibold).monospaced())
                             .foregroundStyle(.white)
@@ -172,7 +172,7 @@ struct YouTubeCompactCard: View {
                         .padding(Theme.Spacing.small)
 
                     // Duration badge
-                    if video.durationSeconds > 0 {
+                    if (video.durationSeconds ?? 0) > 0 {
                         Text(video.formattedDuration)
                             .font(.caption2.weight(.semibold).monospaced())
                             .foregroundStyle(.white)

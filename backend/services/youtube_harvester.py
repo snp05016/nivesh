@@ -483,10 +483,17 @@ async def harvest_portfolio_videos() -> dict:
 
         for ticker in tickers:
             company_name = get_company_name(ticker)
-            videos = search_videos_for_ticker(ticker, company_name, max_results=3)
+            # Fetch more candidates so we have enough to filter after 50k+ view threshold
+            videos = search_videos_for_ticker(ticker, company_name, max_results=10)
+
+            # Only persist search results with 50k+ views — channel-registry videos bypass this
+            quality_videos = [
+                v for v in videos
+                if v.get("source") != "ytdlp_search" or int(v.get("view_count") or 0) >= 50_000
+            ]
 
             added = 0
-            for v in videos:
+            for v in quality_videos:
                 v["matched_ticker"] = ticker
                 if _upsert_video(db, v):
                     added += 1
