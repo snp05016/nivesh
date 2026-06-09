@@ -389,6 +389,7 @@ struct AnalysisScreen: View {
                 timeHorizonSection(analysis)
                 riskFactorsSection(analysis)
                 fundamentalsSection(analysis)
+                newsSection(analysis)
                 whatToWatchSection(analysis)
                 disclaimerSection(analysis)
                 Spacer(minLength: 100)
@@ -465,6 +466,14 @@ struct AnalysisScreen: View {
                 Spacer()
                 BanknoteSignalBadge(signal: analysis.signal, rotation: -3).stampAppear()
             }
+            if let perf = analysis.pricePerformance {
+                HStack(spacing: Theme.Spacing.medium) {
+                    pricePerformanceChip(label: "3M", pct: perf.change3mPct)
+                    pricePerformanceChip(label: "6M", pct: perf.change6mPct)
+                    pricePerformanceChip(label: "1Y", pct: perf.change12mPct)
+                    Spacer()
+                }
+            }
             GuillocheDivider()
         }
     }
@@ -482,16 +491,16 @@ struct AnalysisScreen: View {
             GuillocheDivider()
             HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                 Text("₹").font(Theme.engravedSerif(size: 24, weight: .bold)).foregroundStyle(Theme.goldPrimary)
-                Text(info.price.inrFormatted.replacingOccurrences(of: "₹", with: ""))
+                Text((info.price ?? 0.0).inrFormatted.replacingOccurrences(of: "₹", with: ""))
                     .font(Theme.dataLarge()).foregroundStyle(Theme.inkPrimary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: Theme.Spacing.medium) {
-                Text(info.change >= 0 ? "+" : "") + Text(info.change.inrFormatted)
-                Text("(\(info.changePercent.percentFormatted))")
+                Text((info.change ?? 0.0) >= 0 ? "+" : "") + Text((info.change ?? 0.0).inrFormatted)
+                Text("(\((info.changePercent ?? 0.0).percentFormatted))")
             }
             .font(Theme.monoTabular(size: 16))
-            .foregroundStyle(info.change >= 0 ? Theme.dataPositive : Theme.dataNegative)
+            .foregroundStyle((info.change ?? 0.0) >= 0 ? Theme.dataPositive : Theme.dataNegative)
         }
         .padding(Theme.Spacing.card)
         .background(Theme.surfaceElevated)
@@ -751,6 +760,50 @@ struct AnalysisScreen: View {
         }
     }
 
+    // MARK: -- Price Performance Chip
+
+    @ViewBuilder
+    private func pricePerformanceChip(label: String, pct: Double?) -> some View {
+        if let pct = pct {
+            let isPositive = pct >= 0
+            HStack(spacing: Theme.Spacing.xSmall) {
+                Image(systemName: isPositive ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
+                    .font(.system(size: 7))
+                Text("\(label)  \(isPositive ? "+" : "")\(String(format: "%.1f", pct))%")
+                    .font(Theme.serialNumberFont(size: 11))
+            }
+            .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
+            .padding(.horizontal, Theme.Spacing.standard)
+            .padding(.vertical, Theme.Spacing.xSmall)
+            .background((isPositive ? Theme.bullGreen : Theme.bearRed).opacity(0.10))
+            .clipShape(Capsule())
+        }
+    }
+
+    // MARK: -- News Section
+
+    @ViewBuilder
+    private func newsSection(_ analysis: StockAnalysis) -> some View {
+        if let news = analysis.recentNews, !news.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                GuillocheDivider()
+                HStack {
+                    Text("RECENT NEWS")
+                        .font(Theme.officialStampFont(size: 9))
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.inkSecondary)
+                    Spacer()
+                    Text("\(news.count) articles")
+                        .font(Theme.microLabel(size: 9))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+                ForEach(news.prefix(5)) { item in
+                    NewsItemCard(item: item)
+                }
+            }
+        }
+    }
+
     private func disclaimerSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
             GuillocheDivider()
@@ -833,16 +886,16 @@ struct AnalysisScreen: View {
                                 Text("₹")
                                     .font(Theme.engravedSerif(size: 24, weight: .bold))
                                     .foregroundStyle(Theme.securityGold)
-                                Text(qi.price.inrFormatted.replacingOccurrences(of: "₹", with: ""))
+                                Text((qi.price ?? 0.0).inrFormatted.replacingOccurrences(of: "₹", with: ""))
                                     .font(Theme.serialNumberFont(size: 44))
                                     .foregroundStyle(Theme.inkPrimary)
                             }
                             HStack(spacing: Theme.Spacing.medium) {
-                                Text(qi.change >= 0 ? "+" : "") + Text(qi.change.inrFormatted)
-                                Text("(\(qi.changePercent.percentFormatted))")
+                                Text((qi.change ?? 0.0) >= 0 ? "+" : "") + Text((qi.change ?? 0.0).inrFormatted)
+                                Text("(\((qi.changePercent ?? 0.0).percentFormatted))")
                             }
                             .font(Theme.serialNumberFont(size: 16))
-                            .foregroundStyle(qi.change >= 0 ? Theme.bullGreen : Theme.bearRed)
+                            .foregroundStyle((qi.change ?? 0.0) >= 0 ? Theme.bullGreen : Theme.bearRed)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(Theme.Spacing.large)

@@ -454,11 +454,12 @@ struct StockProfileView: View {
                 .font(Theme.officialStampFont(size: 10))
                 .tracking(1.5)
                 .foregroundStyle(Theme.inkTertiary)
-            Text(IndianFormatter.price(info.price))
+            Text(info.price != nil ? IndianFormatter.price(info.price!) : "—")
                 .font(Theme.serialNumberFont(size: 32, relativeTo: .largeTitle))
                 .foregroundStyle(Theme.inkPrimary)
-            let up = info.changePercent >= 0
-            Text(String(format: "%@%.2f%%", up ? "▲ " : "▼ ", abs(info.changePercent)))
+            let changePct = info.changePercent ?? 0.0
+            let up = changePct >= 0
+            Text(String(format: "%@%.2f%%", up ? "▲ " : "▼ ", abs(changePct)))
                 .font(Theme.serialNumberFont(size: 14, relativeTo: .body))
                 .foregroundStyle(up ? Theme.bullGreen : Theme.bearRed)
         }

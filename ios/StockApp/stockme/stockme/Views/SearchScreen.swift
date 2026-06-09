@@ -600,8 +600,8 @@ struct SearchScreen: View {
                     ticker: info.ticker,
                     companyName: trendingStocks[i].companyName,
                     exchange: "NSE",
-                    currentPrice: info.price,
-                    changePercent: info.changePercent,
+                    currentPrice: info.price ?? 0.0,
+                    changePercent: info.changePercent ?? 0.0,
                     signal: info.signal
                 )
             }
