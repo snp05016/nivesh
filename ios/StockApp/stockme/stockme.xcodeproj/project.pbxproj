@@ -12,6 +12,9 @@
 		414F3F7BF28273CCF8BC1DAE /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6CE9566D846F57F1621D95D5 /* Foundation.framework */; };
 		470FBA23C5B5B6039A44CDFC /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A94200CABF549F3814BE454 /* SwiftUI.framework */; };
 		67F9769B9AFF81876A3046B6 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB11A87B4A3C0D1298C98C71 /* Theme.swift */; };
+		994D12D4EFE141EB8660F6AE /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FFF8801DFAC44DC85E3323E /* ThemeManager.swift */; };
+		DECB14E755B044F6B5EE6F78 /* FinanceTerms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69C6BCF5FDE543BDA43C719B /* FinanceTerms.swift */; };
+		9C3FB9A024D744D6B0B42C9A /* TermDefinitionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09F9274AD2034B23A38EF88F /* TermDefinitionOverlay.swift */; };
 		AF10CE3D5F89DBA50C664FAD /* NiveshWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D822F29E492E020F7F3666CF /* NiveshWidget.swift */; };
 		C52789692FD37E75001449A9 /* launch_animated.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = C52789682FD37E75001449A9 /* launch_animated.mp4 */; };
 		E34E73D25AF01C38AA811E1F /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE68747565E218B524BDA777 /* WidgetKit.framework */; };
@@ -68,6 +71,9 @@
 		C5C19BEB2FCC8C6B0041471A /* stockmeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = stockmeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C5C19BF52FCC8C6B0041471A /* stockmeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = stockmeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CB11A87B4A3C0D1298C98C71 /* Theme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Theme.swift; path = stockme/Utilities/Theme.swift; sourceTree = "<group>"; };
+		8FFF8801DFAC44DC85E3323E /* ThemeManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ThemeManager.swift; path = stockme/Utilities/ThemeManager.swift; sourceTree = "<group>"; };
+		69C6BCF5FDE543BDA43C719B /* FinanceTerms.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FinanceTerms.swift; path = stockme/Utilities/FinanceTerms.swift; sourceTree = "<group>"; };
+		09F9274AD2034B23A38EF88F /* TermDefinitionOverlay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TermDefinitionOverlay.swift; path = stockme/Utilities/TermDefinitionOverlay.swift; sourceTree = "<group>"; };
 		D822F29E492E020F7F3666CF /* NiveshWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NiveshWidget.swift; sourceTree = "<group>"; };
 		FE68747565E218B524BDA777 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -153,6 +159,9 @@
 				EAC19C91DC8416D084E78F62 /* Frameworks */,
 				0678BB29058FB29663D39FB4 /* NiveshWidget */,
 				CB11A87B4A3C0D1298C98C71 /* Theme.swift */,
+				8FFF8801DFAC44DC85E3323E /* ThemeManager.swift */,
+				69C6BCF5FDE543BDA43C719B /* FinanceTerms.swift */,
+				09F9274AD2034B23A38EF88F /* TermDefinitionOverlay.swift */,
 				4021A9831FC4097703433E8C /* IndianFormatter.swift */,
 				54F2671B228E864260B8D939 /* HapticManager.swift */,
 				231D89A09B8CC2A3D61AD48B /* Extensions.swift */,
@@ -348,6 +357,9 @@
 			files = (
 				AF10CE3D5F89DBA50C664FAD /* NiveshWidget.swift in Sources */,
 				67F9769B9AFF81876A3046B6 /* Theme.swift in Sources */,
+				994D12D4EFE141EB8660F6AE /* ThemeManager.swift in Sources */,
+				DECB14E755B044F6B5EE6F78 /* FinanceTerms.swift in Sources */,
+				9C3FB9A024D744D6B0B42C9A /* TermDefinitionOverlay.swift in Sources */,
 				13CED51F040DBB935891021B /* IndianFormatter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
