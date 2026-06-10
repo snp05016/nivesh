@@ -2052,7 +2052,7 @@ private struct NoteEditorSheet: View {
 struct PortfolioBriefSheet: View {
     let portfolioValue: Double
     let pnl: Double
-    let holdings: [HoldingModel]
+    let holdings: [PortfolioHolding]
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
@@ -2100,9 +2100,9 @@ struct PortfolioBriefSheet: View {
                 // Top 3 performers
                 Text("TOP PERFORMERS")
                     .font(Theme.officialStampFont(size: 9)).tracking(1.5).foregroundStyle(Theme.inkTertiary)
-                ForEach(holdings.sorted { $0.pnlPercent > $1.pnlPercent }.prefix(3)) { h in
+                ForEach(Array(holdings.sorted { $0.pnlPercent > $1.pnlPercent }.prefix(3))) { h in
                     HStack {
-                        Text(h.ticker).font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkPrimary)
+                        Text(h.stock.ticker).font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkPrimary)
                         Spacer()
                         Text(IndianFormatter.percent(h.pnlPercent))
                             .font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.bullGreen)
@@ -2117,7 +2117,7 @@ struct PortfolioBriefSheet: View {
                     .font(Theme.officialStampFont(size: 9)).tracking(1.5).foregroundStyle(Theme.inkTertiary)
                 ForEach(holdings.sorted { $0.pnlPercent < $1.pnlPercent }.prefix(3)) { h in
                     HStack {
-                        Text(h.ticker).font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkPrimary)
+                        Text(h.stock.ticker).font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkPrimary)
                         Spacer()
                         Text(IndianFormatter.percent(h.pnlPercent))
                             .font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.bearRed)

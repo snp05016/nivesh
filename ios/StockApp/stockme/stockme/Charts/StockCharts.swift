@@ -1192,31 +1192,3 @@ extension View {
     }
 }
 
-// MARK: - SparklineView
-
-/// A compact sparkline chart drawn on Canvas. Used in screener rows and watchlist cards.
-/// Renders a polyline from the given values, auto-scaled to fit.
-struct SparklineView: View {
-    let values: [Double]
-    let color: Color
-
-    var body: some View {
-        Canvas { context, size in
-            guard values.count > 1 else { return }
-            let mn = values.min()!
-            let mx = values.max()!
-            let rng = max(mx - mn, 1)
-            var path = Path()
-            for (i, v) in values.enumerated() {
-                let x = CGFloat(i) / CGFloat(values.count - 1) * size.width
-                let y = size.height - CGFloat((v - mn) / rng) * size.height
-                if i == 0 {
-                    path.move(to: CGPoint(x: x, y: y))
-                } else {
-                    path.addLine(to: CGPoint(x: x, y: y))
-                }
-            }
-            context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
-        }
-    }
-}
