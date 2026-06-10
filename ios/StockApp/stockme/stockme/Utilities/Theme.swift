@@ -94,6 +94,20 @@ enum Theme {
     static let chartPromoter = adaptive("4A5A8A", "6A7AAA")
     static let avatarBackground = adaptive("E5E0D5", "3A3530")
 
+    // Chart fill gradients
+    static var chartBullGradient: LinearGradient {
+        LinearGradient(
+            colors: [bullGreen.opacity(0.20), bullGreen.opacity(0.02)],
+            startPoint: .top, endPoint: .bottom
+        )
+    }
+    static var chartBearGradient: LinearGradient {
+        LinearGradient(
+            colors: [bearRed.opacity(0.20), bearRed.opacity(0.02)],
+            startPoint: .top, endPoint: .bottom
+        )
+    }
+
     // MARK: - Denomination Tints (banknote-specific)
     // Use as .shadow(color:) or .overlay accents — NOT as full background fills
 

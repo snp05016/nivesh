@@ -93,7 +93,13 @@ enum AppTheme: String, CaseIterable, Codable {
 final class ThemeManager {
     static let shared = ThemeManager()
 
-    @AppStorage("selectedTheme") var selectedTheme: String = AppTheme.darkImmersive.rawValue
+    private let defaults = UserDefaults.standard
+    private let key = "selectedTheme"
+
+    var selectedTheme: String {
+        get { defaults.string(forKey: key) ?? AppTheme.darkImmersive.rawValue }
+        set { defaults.set(newValue, forKey: key) }
+    }
 
     var current: AppTheme {
         get { AppTheme(rawValue: selectedTheme) ?? .darkImmersive }

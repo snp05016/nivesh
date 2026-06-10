@@ -1,5 +1,20 @@
 import SwiftUI
 
+// MARK: - Haptic Helper (UIKit-safe for widget extension)
+
+#if canImport(UIKit)
+import UIKit
+private func triggerImpactHaptic() {
+    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+}
+private func triggerSelectionHaptic() {
+    UISelectionFeedbackGenerator().selectionChanged()
+}
+#else
+private func triggerImpactHaptic() {}
+private func triggerSelectionHaptic() {}
+#endif
+
 // MARK: - ViewModifier
 
 /// Applies a long-press gesture to any Text view. When held for 0.5s,
@@ -11,7 +26,7 @@ struct TermTooltipModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onLongPressGesture(minimumDuration: 0.5) {
-                HapticManager.impact(.medium)
+                triggerImpactHaptic()
                 showTooltip = true
             }
             .overlay {
@@ -71,12 +86,15 @@ struct TermTooltipCard: View {
             .banknoteCard()
             .frame(maxWidth: 300)
 
-            Button(action: { HapticManager.selection(); onDismiss() }) {
+            Button(action: {
+                triggerSelectionHaptic()
+                onDismiss()
+            }) {
                 Image(systemName: "xmark.circle.fill")
                     .font(.title3)
                     .foregroundStyle(Theme.inkTertiary)
             }
-            .buttonStyle(EKPressStyle())
+            .buttonStyle(.plain)
             .padding(Theme.Spacing.medium)
         }
         .padding(Theme.screenPadding)

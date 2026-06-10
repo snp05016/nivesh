@@ -560,7 +560,10 @@ struct SearchScreen: View {
                 peRatio: nil,
                 profitGrowthPct: nil,
                 rsi: nil,
-                pcr: nil
+                pcr: nil,
+                currentPrice: nil,
+                changePercent: nil,
+                sparkline: nil
             )
         }
         screenerResults = Array(mapped.prefix(20))

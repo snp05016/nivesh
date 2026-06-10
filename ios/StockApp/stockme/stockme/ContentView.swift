@@ -407,6 +407,60 @@ struct MarketsView: View {
         }
     }
 
+    // MARK: - Index chips
+
+    private func indexMiniChip(index: LiveMarketIndex) -> some View {
+        let isPositive = index.changePct >= 0
+        let changeStr  = (isPositive ? "+" : "") + String(format: "%.2f%%", index.changePct)
+        let valueStr   = index.ticker == "USDINR=X"
+            ? String(format: "%.2f", index.value)
+            : IndianFormatter.price(index.value)
+
+        return VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+            Text(index.name)
+                .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+                .tracking(1.0)
+                .foregroundStyle(Theme.inkTertiary)
+                .lineLimit(1)
+            Text(valueStr)
+                .font(Theme.serialNumberFont(size: 14, relativeTo: .callout))
+                .foregroundStyle(Theme.inkPrimary)
+                .monospacedDigit()
+            HStack(spacing: Theme.Spacing.xSmall) {
+                Image(systemName: isPositive ? "arrow.up.right" : "arrow.down.right")
+                    .font(Theme.serialNumberFont(size: 9, relativeTo: .caption2))
+                Text(changeStr)
+                    .font(Theme.serialNumberFont(size: 10, relativeTo: .caption))
+            }
+            .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
+        }
+        .padding(.horizontal, Theme.Spacing.standard)
+        .padding(.vertical, Theme.Spacing.medium)
+        .frame(minWidth: 88, alignment: .leading)
+        .banknoteCard()
+    }
+
+    private func indexPlaceholderChip(name: String) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+            Text(name)
+                .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+                .tracking(1.0)
+                .foregroundStyle(Theme.inkTertiary)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                .fill(Theme.inkTertiary.opacity(0.12))
+                .frame(width: 72, height: 14)
+                .shimmerPlaceholder(isLoading: true)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                .fill(Theme.inkTertiary.opacity(0.08))
+                .frame(width: 48, height: 10)
+                .shimmerPlaceholder(isLoading: true)
+        }
+        .padding(.horizontal, Theme.Spacing.standard)
+        .padding(.vertical, Theme.Spacing.medium)
+        .frame(minWidth: 88, alignment: .leading)
+        .banknoteCard()
+    }
+
     // MARK: - Section card (overview grid card)
 
     private func sectionCard(_ section: MarketSection) -> some View {
