@@ -160,6 +160,7 @@ struct ExpertNetworkView: View {
 
             VStack(spacing: 0) {
                 pageHeader
+                    .padding(.top, Theme.Spacing.standard)
 
                 // Segmented control
                 Picker("", selection: $selectedSegment) {

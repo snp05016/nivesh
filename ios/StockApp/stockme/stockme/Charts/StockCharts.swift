@@ -305,6 +305,7 @@ struct RSIChart: View {
 
         VStack(alignment: .leading, spacing: 12) {
             ChartSectionHeader(title: "RSI (14-Period)")
+                .financeTerm("RSI")
 
             if rsiData.isEmpty {
                 Text("Insufficient price data for RSI")
@@ -689,6 +690,7 @@ struct PriceRangeGauge: View {
                         Text("52W LOW")
                             .font(Theme.officialStampFont(size: 8))
                             .foregroundStyle(Theme.inkTertiary)
+                            .financeTerm("52W Low")
                         Text(low52w.inrFormatted)
                             .font(Theme.serialNumberFont(size: 11))
                             .foregroundStyle(Theme.bearRed)
@@ -1187,5 +1189,34 @@ extension View {
     }
     func immersiveChartTint(isPositive: Bool) -> some View {
         self.foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
+    }
+}
+
+// MARK: - SparklineView
+
+/// A compact sparkline chart drawn on Canvas. Used in screener rows and watchlist cards.
+/// Renders a polyline from the given values, auto-scaled to fit.
+struct SparklineView: View {
+    let values: [Double]
+    let color: Color
+
+    var body: some View {
+        Canvas { context, size in
+            guard values.count > 1 else { return }
+            let mn = values.min()!
+            let mx = values.max()!
+            let rng = max(mx - mn, 1)
+            var path = Path()
+            for (i, v) in values.enumerated() {
+                let x = CGFloat(i) / CGFloat(values.count - 1) * size.width
+                let y = size.height - CGFloat((v - mn) / rng) * size.height
+                if i == 0 {
+                    path.move(to: CGPoint(x: x, y: y))
+                } else {
+                    path.addLine(to: CGPoint(x: x, y: y))
+                }
+            }
+            context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
+        }
     }
 }

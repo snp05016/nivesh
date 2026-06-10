@@ -609,86 +609,69 @@ struct SearchScreen: View {
     }
 }
 
-private struct ScreenerResultRow: View {
-    let result: ScreenerResult
+	private struct ScreenerResultRow: View {
+	    let result: ScreenerResult
 
-    var body: some View {
-        HStack(spacing: 0) {
-            Rectangle()
-                .fill(Theme.securityGold.opacity(0.4))
-                .frame(width: 1)
-                .padding(.vertical, Theme.Spacing.standard)
+	    private var sparklineColor: Color {
+	        guard let vals = result.sparkline, vals.count > 1,
+	              let first = vals.first, let last = vals.last else { return Theme.inkTertiary }
+	        return last >= first ? Theme.bullGreen : Theme.bearRed
+	    }
 
-            HStack(spacing: Theme.Spacing.card) {
-                StockIcon(ticker: result.ticker, signal: nil)
+	    var body: some View {
+	        HStack(spacing: Theme.Spacing.standard) {
+	            // ── Left: 2-letter ticker tile ──────────────────────
+	            Text(String(result.ticker.prefix(2)).uppercased())
+	                .font(Theme.serialNumberFont(size: 12))
+	                .foregroundStyle(Theme.securityGold)
+	                .frame(width: 40, height: 40)
+	                .background(Theme.canvasDeep)
+	                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
 
-                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                    // TICKER — engraved serif for premium feel
-                    Text(result.ticker.uppercased())
-                        .font(Theme.engravedSerif(size: 14, weight: .bold))
-                        .foregroundStyle(Theme.inkPrimary)
-                    if let company = result.companyName {
-                        Text(company)
-                            .font(Theme.serialNumberFont(size: 10))
-                            .foregroundStyle(Theme.inkSecondary)
-                            .lineLimit(1)
-                    }
-                    if let reason = result.reason {
-                        Text(reason)
-                            .font(.caption2)
-                            .foregroundStyle(Theme.inkTertiary)
-                            .lineLimit(1)
-                    }
-                }
-                Spacer()
-                // Metrics column — serialNumberFont for all numbers
-                VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
-                    if let conf = result.confidencePct {
-                        Text("\(conf)%")
-                            .font(Theme.serialNumberFont(size: 11))
-                            .contentTransition(.numericText())
-                            .foregroundStyle(Theme.securityGold)
-                    }
-                    if let fs = result.fScore {
-                        Text("F:\(fs)/9")
-                            .font(Theme.serialNumberFont(size: 10))
-                            .contentTransition(.numericText())
-                            .foregroundStyle(Theme.bullGreen)
-                    }
-                    if let pe = result.peRatio {
-                        Text("PE:\(String(format: "%.1f", pe))")
-                            .font(Theme.serialNumberFont(size: 10))
-                            .foregroundStyle(Theme.inkSecondary)
-                    }
-                    if let pg = result.profitGrowthPct {
-                        Text("+\(String(format: "%.0f", pg))%")
-                            .font(Theme.serialNumberFont(size: 10))
-                            .contentTransition(.numericText())
-                            .foregroundStyle(Theme.bullGreen)
-                    }
-                    if let r = result.rsi {
-                        Text("RSI:\(String(format: "%.0f", r))")
-                            .font(Theme.serialNumberFont(size: 10))
-                            .foregroundStyle(Theme.bearRed)
-                    }
-                    if let pcr = result.pcr {
-                        Text("PCR:\(String(format: "%.1f", pcr))")
-                            .font(Theme.serialNumberFont(size: 10))
-                            .foregroundStyle(Theme.holdAmber)
-                    }
-                }
-                Image(systemName: "arrow.right")
-                    .foregroundStyle(Theme.inkSecondary.opacity(0.3))
-                    .font(.footnote.weight(.bold))
-            }
-            .padding(.vertical, Theme.Spacing.standard)
-            .padding(.leading, Theme.Spacing.standard)
-            .padding(.trailing, Theme.Spacing.card)
-        }
-        .glassCard()
-        .banknoteCard()
-    }
-}
+	            // ── Center-left: ticker + company name ──────────────
+	            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+	                Text(result.ticker.uppercased())
+	                    .font(Theme.serialNumberFont(size: 13))
+	                    .foregroundStyle(Theme.inkPrimary)
+	                if let company = result.companyName {
+	                    Text(company)
+	                        .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .footnote))
+	                        .foregroundStyle(Theme.inkSecondary)
+	                        .lineLimit(1)
+	                }
+	            }
+
+	            Spacer()
+
+	            // ── Center: Sparkline ───────────────────────────────
+	            if let sparkVals = result.sparkline, sparkVals.count > 1 {
+	                SparklineView(values: sparkVals, color: sparklineColor)
+	                    .frame(width: 60, height: 32)
+	            }
+
+	            // ── Right: price + % badge ──────────────────────────
+	            if let price = result.currentPrice {
+	                let change = result.changePercent ?? 0
+	                let isUp = change >= 0
+	                VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
+	                    Text(IndianFormatter.price(price))
+	                        .font(Theme.serialNumberFont(size: 13))
+	                        .foregroundStyle(Theme.inkPrimary)
+	                    Text(IndianFormatter.percent(change))
+	                        .font(Theme.serialNumberFont(size: 11))
+	                        .foregroundStyle(isUp ? Theme.bullGreen : Theme.bearRed)
+	                        .padding(.horizontal, Theme.Spacing.small)
+	                        .padding(.vertical, Theme.Spacing.xSmall)
+	                        .background((isUp ? Theme.bullGreen : Theme.bearRed).opacity(0.15))
+	                        .cornerRadius(Theme.CornerRadius.small)
+	                }
+	            }
+	        }
+	        .padding(.horizontal, Theme.screenPadding)
+	        .padding(.vertical, Theme.Spacing.standard)
+	        .banknoteCard()
+	    }
+	}
 
 private struct StockEntryRow: View {
     let entry: StockEntry

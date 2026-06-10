@@ -1,6 +1,16 @@
 import SwiftUI
 import UIKit
 
+// MARK: - UIColor Brightness Helper
+
+extension UIColor {
+    func withBrightness(offset: CGFloat) -> UIColor {
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        return UIColor(hue: h, saturation: s, brightness: max(0, min(1, b + offset)), alpha: a)
+    }
+}
+
 enum Theme {
 
     // MARK: - Adaptive Color Helper
@@ -24,11 +34,32 @@ enum Theme {
         })
     }
 
-    // MARK: - The Paper
+    // MARK: - The Paper (dynamic per ThemeManager)
 
-    static let canvas       = adaptive("F5F0E8", "1C1A14") // off-white / aged charcoal
-    static let canvasDeep   = adaptive("EDE8DC", "242018") // card surfaces
-    static let canvasShadow = adaptive("D9D3C4", "141210") // pressed/inset
+    static var canvas: Color {
+        Color(UIColor { tc in
+            let scheme: ColorScheme = tc.userInterfaceStyle == .dark ? .dark : .light
+            return UIColor(ThemeManager.shared.canvas(for: scheme))
+        })
+    }
+    static var canvasDeep: Color {
+        Color(UIColor { tc in
+            let scheme: ColorScheme = tc.userInterfaceStyle == .dark ? .dark : .light
+            let base = UIColor(ThemeManager.shared.canvas(for: scheme))
+            return scheme == .dark
+                ? base.withBrightness(offset: 0.04)
+                : base.withBrightness(offset: -0.02)
+        })
+    }
+    static var canvasShadow: Color {
+        Color(UIColor { tc in
+            let scheme: ColorScheme = tc.userInterfaceStyle == .dark ? .dark : .light
+            let base = UIColor(ThemeManager.shared.canvas(for: scheme))
+            return scheme == .dark
+                ? base.withBrightness(offset: -0.03)
+                : base.withBrightness(offset: -0.04)
+        })
+    }
 
     // MARK: - The Inks
 
@@ -38,7 +69,12 @@ enum Theme {
 
     // MARK: - The Accents
 
-    static let securityGold      = adaptive("B8973A", "C8A84A") // dull gold / brighter gold
+    static var securityGold: Color {
+        Color(UIColor { tc in
+            let scheme: ColorScheme = tc.userInterfaceStyle == .dark ? .dark : .light
+            return UIColor(ThemeManager.shared.accent(for: scheme))
+        })
+    }
     static let securityGoldLight = adaptive("E8C96A", "E8C96A")
 
     // MARK: - Market Signals

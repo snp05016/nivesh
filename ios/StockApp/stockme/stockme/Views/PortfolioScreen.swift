@@ -139,7 +139,10 @@ struct PortfolioScreen: View {
     @State private var riskAnalysis: RiskAnalysis? = nil
     @State private var redFlags: RedFlagsResponse? = nil
 
-    @StateObject private var tagsManager = WatchlistTagsManager()
+        @State private var showBriefSheet = false
+    @State private var showTransactionSheet = false
+
+@StateObject private var tagsManager = WatchlistTagsManager()
     @State private var activeWatchlistTag: String? = nil
     @State private var showTagSheet = false
     @State private var taggingTicker = ""
@@ -167,16 +170,19 @@ struct PortfolioScreen: View {
                                     .foregroundStyle(Theme.inkSecondary)
                                     .padding(Theme.Spacing.medium)
                             }
-                            Button { shareToWhatsApp() } label: {
+                            Button { HapticManager.selection(); showBriefSheet = true } label: {
                                 Image(systemName: "message")
                                     .foregroundStyle(Theme.inkSecondary)
                                     .padding(Theme.Spacing.medium)
                             }
                             .buttonStyle(EKPressStyle())
-                            ZStack {
-                                Circle().stroke(Theme.borderSage, lineWidth: 0.5).frame(width: 44, height: 44)
-                                Text("₹").font(Theme.engravedSerif(size: 18, weight: .bold)).foregroundStyle(Theme.inkPrimary)
+                            Button { HapticManager.selection(); showTransactionSheet = true } label: {
+                                ZStack {
+                                    Circle().stroke(Theme.borderSage, lineWidth: 0.5).frame(width: 44, height: 44)
+                                    Text("₹").font(Theme.engravedSerif(size: 18, weight: .bold)).foregroundStyle(Theme.inkPrimary)
+                                }
                             }
+                            .buttonStyle(EKPressStyle())
                         }
                     }
                     .padding(.horizontal, Theme.screenPadding)
@@ -712,6 +718,7 @@ private struct PortfolioRiskCard: View {
                 Text("β \(String(format: "%.2f", beta))")
                     .font(Theme.monoTabular(size: 12, relativeTo: .caption))
                     .foregroundStyle(Theme.inkSecondary)
+                    .financeTerm("Beta")
             }
 
             // Concentration warnings
@@ -2040,7 +2047,202 @@ private struct NoteEditorSheet: View {
             }
         }
 
-        struct ShareSheet: UIViewControllerRepresentable {
+        // MARK: - Portfolio Brief Sheet
+
+struct PortfolioBriefSheet: View {
+    let portfolioValue: Double
+    let pnl: Double
+    let holdings: [HoldingModel]
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.large) {
+                // Header
+                HStack {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                        Text("PORTFOLIO BRIEF")
+                            .font(Theme.officialStampFont(size: 10)).tracking(1.5)
+                            .foregroundStyle(Theme.securityGold)
+                        Text("Your snapshot")
+                            .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
+                            .foregroundStyle(Theme.inkSecondary)
+                    }
+                    Spacer()
+                    Button(action: { HapticManager.selection(); dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2).foregroundStyle(Theme.inkTertiary)
+                    }.buttonStyle(EKPressStyle())
+                }
+
+                GuillocheDivider()
+
+                // Summary
+                HStack(spacing: Theme.Spacing.standard) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                        Text("VALUE").font(Theme.officialStampFont(size: 7)).tracking(1.2).foregroundStyle(Theme.inkTertiary)
+                        Text(IndianFormatter.priceCompact(portfolioValue))
+                            .font(Theme.serialNumberFont(size: 16, relativeTo: .headline)).foregroundStyle(Theme.inkPrimary)
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
+                        Text("P&L").font(Theme.officialStampFont(size: 7)).tracking(1.2).foregroundStyle(Theme.inkTertiary)
+                        let isUp = pnl >= 0
+                        Text((isUp ? "+" : "") + IndianFormatter.priceCompact(abs(pnl)))
+                            .font(Theme.serialNumberFont(size: 16, relativeTo: .headline))
+                            .foregroundStyle(isUp ? Theme.bullGreen : Theme.bearRed)
+                    }
+                }
+                .padding(Theme.Spacing.card).banknoteCard()
+
+                GuillocheDivider()
+
+                // Top 3 performers
+                Text("TOP PERFORMERS")
+                    .font(Theme.officialStampFont(size: 9)).tracking(1.5).foregroundStyle(Theme.inkTertiary)
+                ForEach(holdings.sorted { $0.pnlPercent > $1.pnlPercent }.prefix(3)) { h in
+                    HStack {
+                        Text(h.ticker).font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkPrimary)
+                        Spacer()
+                        Text(IndianFormatter.percent(h.pnlPercent))
+                            .font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.bullGreen)
+                    }
+                    .padding(.vertical, Theme.Spacing.small)
+                }
+
+                GuillocheDivider()
+
+                // Bottom 3 performers
+                Text("NEEDS ATTENTION")
+                    .font(Theme.officialStampFont(size: 9)).tracking(1.5).foregroundStyle(Theme.inkTertiary)
+                ForEach(holdings.sorted { $0.pnlPercent < $1.pnlPercent }.prefix(3)) { h in
+                    HStack {
+                        Text(h.ticker).font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkPrimary)
+                        Spacer()
+                        Text(IndianFormatter.percent(h.pnlPercent))
+                            .font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.bearRed)
+                    }
+                    .padding(.vertical, Theme.Spacing.small)
+                }
+            }
+            .padding(Theme.screenPadding)
+        }
+        .background(Theme.canvas.ignoresSafeArea())
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+}
+
+// MARK: - Quick Transaction Sheet
+
+struct QuickTransactionSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var transactionType: TransactionType = .buy
+    @State private var ticker = ""
+    @State private var quantity = ""
+    @State private var price = ""
+    @State private var isSubmitting = false
+
+    enum TransactionType { case buy, sell }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: Theme.Spacing.large) {
+                // BUY / SELL toggle
+                HStack(spacing: 0) {
+                    ForEach([TransactionType.buy, .sell], id: \.self) { type in
+                        Button(action: { HapticManager.selection(); transactionType = type }) {
+                            Text(type == .buy ? "BUY" : "SELL")
+                                .font(Theme.officialStampFont(size: 11)).tracking(1.5)
+                                .foregroundStyle(transactionType == type ? Theme.canvas : Theme.inkSecondary)
+                                .frame(maxWidth: .infinity).padding(.vertical, Theme.Spacing.standard)
+                                .background(
+                                    transactionType == type
+                                        ? (type == .buy ? Theme.bullGreen : Theme.bearRed)
+                                        : Theme.canvasDeep
+                                )
+                        }
+                        .buttonStyle(EKPressStyle())
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+                .padding(.horizontal, Theme.screenPadding)
+
+                // Ticker field
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                    Text("TICKER SYMBOL")
+                        .font(Theme.officialStampFont(size: 8)).tracking(1.5).foregroundStyle(Theme.inkTertiary)
+                    TextField("e.g. RELIANCE", text: $ticker)
+                        .font(Theme.serialNumberFont(size: 16)).foregroundStyle(Theme.inkPrimary)
+                        .textInputAutocapitalization(.characters)
+                        .padding(Theme.Spacing.card).banknoteCard()
+                }.padding(.horizontal, Theme.screenPadding)
+
+                // Quantity + Price fields
+                HStack(spacing: Theme.Spacing.standard) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                        Text("QTY").font(Theme.officialStampFont(size: 8)).tracking(1.5).foregroundStyle(Theme.inkTertiary)
+                        TextField("0", text: $quantity).keyboardType(.numberPad)
+                            .font(Theme.serialNumberFont(size: 16)).foregroundStyle(Theme.inkPrimary)
+                            .padding(Theme.Spacing.card).banknoteCard()
+                    }
+                    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                        Text("PRICE ₹").font(Theme.officialStampFont(size: 8)).tracking(1.5).foregroundStyle(Theme.inkTertiary)
+                        TextField("0.00", text: $price).keyboardType(.decimalPad)
+                            .font(Theme.serialNumberFont(size: 16)).foregroundStyle(Theme.inkPrimary)
+                            .padding(Theme.Spacing.card).banknoteCard()
+                    }
+                }.padding(.horizontal, Theme.screenPadding)
+
+                Spacer()
+
+                // Submit button
+                Button(action: { submitTransaction() }) {
+                    Text(isSubmitting ? "LOGGING..." : "LOG \(transactionType == .buy ? "BUY" : "SELL")")
+                        .font(Theme.officialStampFont(size: 11)).tracking(1.5)
+                        .foregroundStyle(Theme.canvas).frame(maxWidth: .infinity)
+                        .padding(Theme.Spacing.card)
+                        .background(transactionType == .buy ? Theme.bullGreen : Theme.bearRed)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+                }
+                .buttonStyle(EKPressStyle())
+                .padding(.horizontal, Theme.screenPadding)
+                .disabled(ticker.isEmpty || quantity.isEmpty || price.isEmpty || isSubmitting)
+            }
+            .padding(.top, Theme.Spacing.large)
+            .background(Theme.canvas.ignoresSafeArea())
+            .navigationTitle("Quick Transaction")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func submitTransaction() {
+        isSubmitting = true
+        HapticManager.impact(.medium)
+        // POST to existing transaction endpoint
+        Task {
+            do {
+                // Placeholder: call transaction API here
+                try await Task.sleep(nanoseconds: 800_000_000)
+                await MainActor.run {
+                    HapticManager.success()
+                    isSubmitting = false
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    HapticManager.error()
+                    isSubmitting = false
+                }
+            }
+        }
+    }
+}
+
+
+struct ShareSheet: UIViewControllerRepresentable {
             let items: [Any]
             func makeUIViewController(context: Context) -> UIActivityViewController {
                 UIActivityViewController(activityItems: items, applicationActivities: nil)
