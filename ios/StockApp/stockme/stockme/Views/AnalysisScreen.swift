@@ -475,6 +475,15 @@ struct AnalysisScreen: View {
                 }
             }
             GuillocheDivider()
+            if let prices = viewModel.quickInfo?.priceHistory90d, !prices.isEmpty {
+                PriceHistoryChart(
+                    prices: prices,
+                    ticker: ticker,
+                    week52High: viewModel.quickInfo?.week52High,
+                    week52Low: viewModel.quickInfo?.week52Low
+                )
+                .immersiveChartTint(isPositive: (viewModel.quickInfo?.changePercent ?? 0) >= 0)
+            }
         }
     }
 

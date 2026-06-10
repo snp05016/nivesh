@@ -1056,4 +1056,20 @@ class NetworkManager: ObservableObject {
         catch { throw NetworkError.decodingError(error.localizedDescription) }
     }
 
+    // MARK: - Portfolio Valuation History
+
+    func fetchValuationHistory(userId: Int, days: Int = 90) async throws -> ValuationHistoryResponse {
+        guard let url = URL(string: "\(baseURL)/api/v1/portfolio/valuation-history?user_id=\(userId)&days=\(days)") else {
+            throw NetworkError.invalidURL
+        }
+        var req = authRequest(url)
+        req.timeoutInterval = 30
+        let (data, response) = try await dataWithRetry(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        do { return try JSONDecoder().decode(ValuationHistoryResponse.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
 }

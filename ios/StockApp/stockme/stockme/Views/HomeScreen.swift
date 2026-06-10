@@ -608,6 +608,8 @@ struct HomeScreen: View {
     @State private var isOnline = true
     // Item 7: YouTube channel filter
     @State private var selectedChannel: String? = nil
+    @State private var valuationHistory: [ValuationSnapshot] = []
+    @State private var valuationLoading = false
     private let homeTabs = ["Market Pulse", "My Holdings", "Advisory"]
 
     var body: some View {
@@ -722,6 +724,13 @@ struct HomeScreen: View {
                     timeframeConflicts = resp.conflicts
                 }
                 dailyAction = await NetworkManager.shared.fetchDailyAction(userId: user.userId)
+
+                // Portfolio valuation history for the immersive hero chart
+                valuationLoading = true
+                if let data = try? await HomeFeedService.shared.fetchValuationHistory(userId: user.userId, days: 90) {
+                    valuationHistory = data.snapshots.sorted { $0.parsedDate < $1.parsedDate }
+                }
+                valuationLoading = false
             }
             await indicesTask.value
         }
@@ -1568,6 +1577,7 @@ struct MarketMoodGauge: View {
                 }
             }
             .aspectRatio(2.0, contentMode: .fit)
+            .frame(maxHeight: 100)
             .clipped()
 
             VStack(spacing: Theme.Spacing.small) {
@@ -2400,16 +2410,24 @@ extension HomeScreen {
                 .id(HomeSectionID.top.rawValue)
         case .portfolio:
 // ── Section 2: Portfolio ──────────────────────────
-                PortfolioNoteCard(
-                    value: viewModel.portfolioValue,
-                    totalPnL: viewModel.totalPnL,
-                    invested: viewModel.investedValue,
-                    todayPnL: viewModel.todayPnL,
-                    count: viewModel.stockCount,
-                    isLoading: viewModel.isLoading
-                )
-                .padding(.horizontal, Theme.screenPadding)
+                Group {
+                    if !valuationHistory.isEmpty {
+                        ImmersivePortfolioHeroChart(snapshots: valuationHistory)
+                        GuillocheDivider()
+                            .padding(.horizontal, Theme.screenPadding)
+                    }
+                    PortfolioNoteCard(
+                        value: viewModel.portfolioValue,
+                        totalPnL: viewModel.totalPnL,
+                        invested: viewModel.investedValue,
+                        todayPnL: viewModel.todayPnL,
+                        count: viewModel.stockCount,
+                        isLoading: viewModel.isLoading
+                    )
+                    .padding(.horizontal, Theme.screenPadding)
+                }
                 .id(HomeSectionID.portfolio.rawValue)
+                .immersiveChartTint(isPositive: viewModel.totalPnL >= 0)
         case .indices:
 // ── Section 3: Market Indices ─────────────────────
                 VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
