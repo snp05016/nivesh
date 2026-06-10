@@ -1007,9 +1007,12 @@ struct ScreenerResult: Codable, Identifiable {
     let profitGrowthPct: Double?
     let rsi: Double?
     let pcr: Double?
+    let currentPrice: Double?
+    let changePercent: Double?
+    let sparkline: [Double]?
 
     enum CodingKeys: String, CodingKey {
-        case ticker, signal, reason
+        case ticker, signal, reason, sparkline
         case companyName = "company_name"
         case confidencePct = "confidence_pct"
         case fScore = "f_score"
@@ -1017,6 +1020,8 @@ struct ScreenerResult: Codable, Identifiable {
         case profitGrowthPct = "profit_growth_pct"
         case rsi = "rsi"
         case pcr = "pcr"
+        case currentPrice = "current_price"
+        case changePercent = "change_percent"
     }
 }
 

@@ -16,8 +16,9 @@ struct NewsMultimediaView: View {
             Theme.canvas.ignoresSafeArea()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: Theme.sectionSpacing) {
                     pageHeader
+                        .padding(.top, Theme.Spacing.standard)
                     // 8.1 Horizontal Curated News Carousel
                     newsCarousel
                     // 8.2 Embedded Podcast Network

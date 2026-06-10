@@ -832,105 +832,121 @@ private struct PortfolioNoteCard: View {
     let count: Int
     let isLoading: Bool
 
+    private var totalPnLPercent: Double {
+        (totalPnL / max(invested, 1)) * 100
+    }
+
+    private var todayPnLPercent: Double {
+        (todayPnL / max(value - todayPnL, 1)) * 100
+    }
+
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // Rupee watermark
-            GeometryReader { _ in RupeeWatermark() }
+        VStack(spacing: 0) {
 
-            // Micro-text security thread on left edge
-            SecurityThread()
-
-            // Corner ornament top-right
-            VStack {
-                HStack {
-                    Spacer()
-                    CornerOrnament()
-                        .padding(.top, Theme.Spacing.medium)
-                        .padding(.trailing, 8)
+            // ── Row 1: Portfolio value + today P&L ──────────────────────
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                    Text("PORTFOLIO VALUE")
+                        .font(Theme.officialStampFont(size: 8)).tracking(1.5)
+                        .foregroundStyle(Theme.inkTertiary)
+                    Text(IndianFormatter.priceCompact(value))
+                        .font(.title.weight(.bold)).monospaced()
+                        .foregroundStyle(Theme.inkPrimary)
+                        .contentTransition(.numericText())
                 }
                 Spacer()
-            }
-
-            VStack(alignment: .leading, spacing: 0) {
-                // Banknote denomination header
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("NIVESH")
-                            .font(Theme.engravedSerif(size: 14, weight: .bold))
-                            .foregroundStyle(Theme.inkPrimary)
-                        Text("Reserve Bank of Intelligence")
-                            .font(Theme.serialNumberFont(size: 8))
-                            .foregroundStyle(Theme.inkTertiary)
-                    }
-                    Spacer()
-                    Text("भारतीय निवेश")
-                        .font(Theme.hindiFont(size: 11))
-                        .foregroundStyle(Theme.inkSecondary)
-                }
-                .padding(.bottom, Theme.Spacing.medium)
-
-                GuillocheDivider()
-
-                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                    Text("निवेश पोर्टफोलियो")
-                        .font(Theme.hindiFont(size: 11))
-                        .foregroundStyle(Theme.inkSecondary)
-
-                    Text("PORTFOLIO VALUE")
-                        .font(Theme.officialStampFont(size: 9))
-                        .foregroundStyle(Theme.inkSecondary)
-
-                    Text("I PROMISE TO PAY THE BEARER")
-                        .font(.caption2.weight(.medium))
-                        .tracking(2)
+                VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
+                    Text("TODAY")
+                        .font(Theme.officialStampFont(size: 8)).tracking(1.5)
                         .foregroundStyle(Theme.inkTertiary)
-                        .padding(.bottom, Theme.Spacing.xSmall)
-
-                    PortfolioValueDisplay(target: value, fontSize: 30)
-
-                    HStack(spacing: Theme.Spacing.tight) {
-                        Image(systemName: totalPnL >= 0 ? "arrow.up.right" : "arrow.down.right")
-                        Text(totalPnL.inrFormatted)
-                            .contentTransition(.numericText())
-                        Text("(\((invested > 0 ? totalPnL/invested*100 : 0).percentFormatted))")
-                            .contentTransition(.numericText())
-                    }
-                    .font(Theme.serialNumberFont(size: 13))
-                    .foregroundStyle(totalPnL >= 0 ? Theme.bullGreen : Theme.bearRed)
-                }
-                .padding(.top, Theme.Spacing.small)
-
-                // Signature block
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Platform Governor")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(Theme.inkSecondary)
-                    Text("Nirav Patel")
-                        .font(Font.custom("SnellRoundhand", size: 18, relativeTo: .title2))
-                        .foregroundStyle(Theme.inkPrimary.opacity(0.7))
-                        .padding(.top, -2)
-                }
-                .padding(.top, Theme.Spacing.standard)
-
-                GuillocheDivider()
-
-                HStack {
-                    StatNoteBlock(label: "TODAY", value: todayPnL.inrFormatted, color: todayPnL >= 0 ? Theme.bullGreen : Theme.bearRed)
-                    Spacer()
-                    StatNoteBlock(label: "INVESTED", value: invested.shortFormatted, color: Theme.inkPrimary)
-                    Spacer()
-                    StatNoteBlock(label: "ASSETS", value: "\(count)", color: Theme.inkPrimary)
+                    let todayUp = todayPnL >= 0
+                    Text((todayUp ? "+" : "") + IndianFormatter.priceCompact(abs(todayPnL)))
+                        .font(Theme.serialNumberFont(size: 15, relativeTo: .subheadline).weight(.semibold))
+                        .foregroundStyle(todayUp ? Theme.bullGreen : Theme.bearRed)
+                    Text(IndianFormatter.percent(todayPnLPercent))
+                        .font(Theme.serialNumberFont(size: 11, relativeTo: .footnote))
+                        .foregroundStyle(todayUp ? Theme.bullGreen : Theme.bearRed)
                 }
             }
-            .padding(.leading, 32)
-            .padding(.trailing, 24)
-            .padding(.vertical, Theme.Spacing.screen)
+            .padding(Theme.Spacing.card)
+
+            GuillocheDivider()
+                .padding(.horizontal, Theme.Spacing.card)
+
+            // ── Row 2: Invested / Returns / Stocks ──────────────────────
+            HStack(spacing: 0) {
+                VStack(spacing: Theme.Spacing.xSmall) {
+                    Text("INVESTED")
+                        .font(Theme.officialStampFont(size: 7)).tracking(1.2)
+                        .foregroundStyle(Theme.inkTertiary)
+                    Text(IndianFormatter.priceCompact(invested))
+                        .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote))
+                        .foregroundStyle(Theme.inkSecondary)
+                }
+                .frame(maxWidth: .infinity)
+
+                Rectangle().fill(Theme.borderFine).frame(width: 0.5, height: 32)
+
+                VStack(spacing: Theme.Spacing.xSmall) {
+                    Text("RETURNS")
+                        .font(Theme.officialStampFont(size: 7)).tracking(1.2)
+                        .foregroundStyle(Theme.inkTertiary)
+                    let up = totalPnL >= 0
+                    Text((up ? "+" : "") + IndianFormatter.percent(totalPnLPercent))
+                        .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline).weight(.semibold))
+                        .foregroundStyle(up ? Theme.bullGreen : Theme.bearRed)
+                }
+                .frame(maxWidth: .infinity)
+
+                Rectangle().fill(Theme.borderFine).frame(width: 0.5, height: 32)
+
+                VStack(spacing: Theme.Spacing.xSmall) {
+                    Text("STOCKS")
+                        .font(Theme.officialStampFont(size: 7)).tracking(1.2)
+                        .foregroundStyle(Theme.inkTertiary)
+                    Text("\(count)")
+                        .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline).weight(.semibold))
+                        .foregroundStyle(Theme.inkPrimary)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.vertical, Theme.Spacing.standard)
+            .padding(.horizontal, Theme.Spacing.card)
+
+            GuillocheDivider()
+                .padding(.horizontal, Theme.Spacing.card)
+
+            // ── Row 3: P&L progress bar ──────────────────────────────────
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                let progress = min(max((value - invested) / max(invested, 1) * 5 + 0.5, 0.05), 0.95)
+                let isUp = totalPnL >= 0
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                            .fill(Theme.canvasShadow).frame(height: 4)
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                            .fill(isUp ? Theme.bullGreen : Theme.bearRed)
+                            .frame(width: geo.size.width * progress, height: 4)
+                    }
+                }
+                .frame(height: 4)
+                HStack {
+                    Text("COST BASIS").font(Theme.officialStampFont(size: 7)).tracking(1)
+                        .foregroundStyle(Theme.inkTertiary)
+                    Spacer()
+                    Text("CURRENT VALUE").font(Theme.officialStampFont(size: 7)).tracking(1)
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+            }
+            .padding(.horizontal, Theme.Spacing.card)
+            .padding(.vertical, Theme.Spacing.standard)
         }
         .banknoteCard()
-        .clipped()
         .shimmerPlaceholder(isLoading: isLoading)
     }
 }
+
+
 
 private struct StatNoteBlock: View {
     let label: String

@@ -107,6 +107,50 @@ struct SettingsScreen: View {
                                 PickerNoteRow(icon: "bell.fill", color: Theme.bearRed, title: "Notification Sound", selection: $notificationSound, options: ["Default", "rupee_rustle.mp3"])
                             }
 
+                            SettingsNoteGroup(title: "Denomination Theme", hindi: "मुद्रा थीम") {
+                                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                                    Text("DENOMINATION THEME")
+                                        .font(Theme.officialStampFont(size: 9)).tracking(1.5)
+                                        .foregroundStyle(Theme.inkTertiary)
+
+                                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())],
+                                              spacing: Theme.Spacing.standard) {
+                                        ForEach(AppTheme.allCases, id: \.self) { theme in
+                                            Button(action: {
+                                                HapticManager.selection()
+                                                ThemeManager.shared.current = theme
+                                            }) {
+                                                HStack(spacing: Theme.Spacing.medium) {
+                                                    Circle()
+                                                        .fill(theme.swatchColor)
+                                                        .frame(width: 20, height: 20)
+                                                        .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 0.5))
+                                                    Text(theme.displayName)
+                                                        .font(Theme.engravedSerif(size: 12, weight: .regular, relativeTo: .footnote))
+                                                        .foregroundStyle(Theme.inkPrimary)
+                                                        .lineLimit(1)
+                                                    Spacer()
+                                                    if ThemeManager.shared.current == theme {
+                                                        Image(systemName: "checkmark")
+                                                            .font(.caption.weight(.bold))
+                                                            .foregroundStyle(Theme.securityGold)
+                                                    }
+                                                }
+                                                .padding(Theme.Spacing.standard)
+                                                .background(ThemeManager.shared.current == theme
+                                                            ? Theme.securityGold.opacity(0.08) : Theme.canvasDeep)
+                                                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+                                                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                                                    .stroke(ThemeManager.shared.current == theme
+                                                            ? Theme.securityGold.opacity(0.4) : Theme.borderFine, lineWidth: 0.5))
+                                            }
+                                            .buttonStyle(EKPressStyle())
+                                        }
+                                    }
+                                }
+                                .padding(.vertical, Theme.Spacing.standard)
+                            }
+
                             SettingsNoteGroup(title: "Data Registry", hindi: "डेटा रजिस्ट्री") {
                                 PickerNoteRow(icon: "indianrupeesign", color: Theme.bullGreen, title: "Currency Format", selection: $currencyDisplay, options: ["Lakhs/Crores", "Absolute"])
                             }

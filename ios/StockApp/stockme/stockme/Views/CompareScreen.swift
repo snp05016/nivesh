@@ -199,6 +199,7 @@ private struct CompareRow: View {
                 .font(Theme.officialStampFont(size: 8))
                 .foregroundStyle(Theme.inkSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .financeTerm(label)
             Text(valA)
                 .font(Theme.serialNumberFont(size: 11))
                 .foregroundStyle(colorA)

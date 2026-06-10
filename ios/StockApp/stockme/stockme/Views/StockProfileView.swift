@@ -484,6 +484,7 @@ struct StockProfileView: View {
                         .font(Theme.officialStampFont(size: 8))
                         .tracking(1.0)
                         .foregroundStyle(Theme.inkTertiary)
+                        .financeTerm(label)
                     Text(value)
                         .font(Theme.serialNumberFont(size: 14, relativeTo: .body))
                         .foregroundStyle(Theme.inkPrimary)

@@ -140,6 +140,52 @@ private struct GlobalOverlayModifier: ViewModifier {
     }
 }
 
+// MARK: - Markets Tab
+
+enum MarketsTab: String, CaseIterable {
+    case overview  = "OVERVIEW"
+    case earnings  = "EARNINGS"
+    case technical = "TECHNICAL"
+    case unlisted  = "UNLISTED"
+    case screener  = "SCREENER"
+    case alerts    = "ALERTS"
+}
+
+// MARK: - Markets Tab Bar
+
+struct MarketsTabBar: View {
+    @Binding var selected: MarketsTab
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.Spacing.standard) {
+                ForEach(MarketsTab.allCases, id: \.self) { tab in
+                    Button(action: { HapticManager.selection(); selected = tab }) {
+                        Text(tab.rawValue)
+                            .font(Theme.officialStampFont(size: 10))
+                            .tracking(1.0)
+                            .foregroundStyle(selected == tab ? Theme.canvas : Theme.inkSecondary)
+                            .padding(.horizontal, Theme.Spacing.card)
+                            .padding(.vertical, Theme.Spacing.medium)
+                            .background(selected == tab ? Theme.securityGold : Theme.canvasDeep)
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule().stroke(
+                                    selected == tab ? Theme.securityGold : Theme.borderSage,
+                                    lineWidth: 0.5
+                                )
+                            )
+                    }
+                    .buttonStyle(EKPressStyle())
+                }
+            }
+            .padding(.horizontal, Theme.screenPadding)
+            .padding(.vertical, Theme.Spacing.medium)
+        }
+        .background(Theme.canvas)
+    }
+}
+
 // MARK: - Market Section Enum
 
 enum MarketSection: String, Hashable, CaseIterable {
@@ -210,16 +256,11 @@ enum MarketSection: String, Hashable, CaseIterable {
 struct MarketsView: View {
     @EnvironmentObject var authManager: AuthManager
 
-    // nil = hub landing; non-nil = full-screen section (no NavigationStack nesting)
+    @State private var selectedTab: MarketsTab = .overview
     @State private var activeSection: MarketSection? = nil
     @State private var livePulse = false
     @State private var indices: [LiveMarketIndex] = []
     @State private var isLoadingIndices = false
-
-    // Featured section displayed prominently at the top of the hub
-    private let featuredSection: MarketSection = .earnings
-    // Remaining 4 sections shown in a 2-column grid
-    private let gridSections: [[MarketSection]] = [[.technical, .unlisted], [.screener, .alerts]]
 
     var body: some View {
         ZStack {
@@ -232,8 +273,35 @@ struct MarketsView: View {
                         removal:   .move(edge: .trailing).combined(with: .opacity)
                     ))
             } else {
-                hubView
+                VStack(spacing: 0) {
+                    // Sticky tab bar
+                    MarketsTabBar(selected: $selectedTab)
+                        .background(Theme.canvas)
+
+                    GuillocheDivider()
+                        .padding(.horizontal, Theme.screenPadding)
+
+                    // Content area
+                    Group {
+                        switch selectedTab {
+                        case .overview:
+                            overviewContent
+                        case .earnings:
+                            sectionPage(.earnings)
+                        case .technical:
+                            sectionPage(.technical)
+                        case .unlisted:
+                            sectionPage(.unlisted)
+                        case .screener:
+                            sectionPage(.screener)
+                        case .alerts:
+                            sectionPage(.alerts)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.18), value: selectedTab)
+                }
             }
         }
         .animation(.spring(response: 0.38, dampingFraction: 0.84), value: activeSection)
@@ -245,201 +313,139 @@ struct MarketsView: View {
         }
     }
 
-    // MARK: - Hub Landing
+    // MARK: - Overview (formerly hub)
 
-    private var hubView: some View {
-        VStack(spacing: 0) {
-            hubHeader
-            ScrollView {
-                VStack(spacing: Theme.sectionSpacing) {
-                    indicesStrip
-                        .padding(.top, Theme.Spacing.medium)
-                    GuillocheDivider()
+    private var overviewContent: some View {
+        ScrollView {
+            VStack(spacing: Theme.sectionSpacing) {
+                // Live indices strip
+                VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                    Text("LIVE INDICES")
+                        .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.inkTertiary)
                         .padding(.horizontal, Theme.screenPadding)
-                    // Featured section — full width
-                    featuredCard(featuredSection)
-                        .padding(.horizontal, Theme.screenPadding)
-                    // 2-col grid rows
-                    ForEach(gridSections, id: \.first) { row in
-                        HStack(alignment: .top, spacing: Theme.Spacing.card) {
-                            ForEach(row, id: \.self) { section in
-                                gridCard(section)
+
+                    if isLoadingIndices || indices.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: Theme.Spacing.standard) {
+                                ForEach(["NIFTY 50", "SENSEX", "BANK NIFTY"], id: \.self) { name in
+                                    indexPlaceholderChip(name: name)
+                                }
                             }
+                            .padding(.horizontal, Theme.screenPadding)
                         }
+                    } else {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: Theme.Spacing.standard) {
+                                ForEach(indices.prefix(6)) { index in
+                                    indexMiniChip(index: index)
+                                }
+                            }
+                            .padding(.horizontal, Theme.screenPadding)
+                        }
+                    }
+                }
+                .padding(.top, Theme.Spacing.standard)
+
+                GuillocheDivider()
+                    .padding(.horizontal, Theme.screenPadding)
+
+                // Section cards
+                ForEach(MarketSection.allCases, id: \.self) { section in
+                    sectionCard(section)
                         .padding(.horizontal, Theme.screenPadding)
-                    }
-                }
-                .padding(.bottom, Theme.sectionSpacing)
-            }
-            .scrollIndicators(.hidden)
-        }
-    }
-
-    // MARK: Hub header
-
-    private var hubHeader: some View {
-        HStack(alignment: .center, spacing: 0) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                Text("बाज़ार")
-                    .font(Theme.hindiFont(size: 11))
-                    .foregroundStyle(Theme.inkSecondary)
-                Text("MARKETS")
-                    .font(Theme.engravedSerif(size: 26, weight: .bold, relativeTo: .title))
-                    .foregroundStyle(Theme.inkPrimary)
-            }
-            Spacer()
-            // Live pulse indicator
-            HStack(spacing: Theme.Spacing.small) {
-                Circle()
-                    .fill(Theme.bullGreen)
-                    .frame(width: 6, height: 6)
-                    .scaleEffect(livePulse ? 1.5 : 0.8)
-                    .opacity(livePulse ? 0.5 : 1.0)
-                Text("LIVE")
-                    .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
-                    .tracking(1.5)
-                    .foregroundStyle(Theme.bullGreen)
-            }
-        }
-        .padding(.horizontal, Theme.screenPadding)
-        .padding(.top, Theme.Spacing.large)
-        .padding(.bottom, Theme.Spacing.standard)
-        .background(Theme.canvasDeep)
-    }
-
-    // MARK: Indices strip
-
-    private var indicesStrip: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-            Text("LIVE INDICES")
-                .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
-                .tracking(1.5)
-                .foregroundStyle(Theme.inkTertiary)
-                .padding(.horizontal, Theme.screenPadding)
-
-            if isLoadingIndices || indices.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Theme.Spacing.standard) {
-                        ForEach(["NIFTY 50", "SENSEX", "BANK NIFTY"], id: \.self) { name in
-                            indexPlaceholderChip(name: name)
-                        }
-                    }
-                    .padding(.horizontal, Theme.screenPadding)
-                }
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Theme.Spacing.standard) {
-                        ForEach(indices.prefix(6)) { index in
-                            indexMiniChip(index: index)
-                        }
-                    }
-                    .padding(.horizontal, Theme.screenPadding)
                 }
             }
+            .padding(.bottom, Theme.sectionSpacing)
         }
+        .scrollIndicators(.hidden)
     }
 
-    private func indexMiniChip(index: LiveMarketIndex) -> some View {
-        let isPositive = index.changePct >= 0
-        let changeStr  = (isPositive ? "+" : "") + String(format: "%.2f%%", index.changePct)
-        let valueStr   = index.ticker == "USDINR=X"
-            ? String(format: "%.2f", index.value)
-            : IndianFormatter.price(index.value)
+    // MARK: - Section page (tab content for non-overview tabs)
 
-        return VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-            Text(index.name)
-                .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
-                .tracking(1.0)
-                .foregroundStyle(Theme.inkTertiary)
-                .lineLimit(1)
-            Text(valueStr)
-                .font(Theme.serialNumberFont(size: 14, relativeTo: .callout))
-                .foregroundStyle(Theme.inkPrimary)
-                .monospacedDigit()
-            HStack(spacing: Theme.Spacing.xSmall) {
-                Image(systemName: isPositive ? "arrow.up.right" : "arrow.down.right")
-                    .font(Theme.serialNumberFont(size: 9, relativeTo: .caption2))
-                Text(changeStr)
-                    .font(Theme.serialNumberFont(size: 10, relativeTo: .caption))
-            }
-            .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
-        }
-        .padding(.horizontal, Theme.Spacing.standard)
-        .padding(.vertical, Theme.Spacing.medium)
-        .frame(minWidth: 88, alignment: .leading)
-        .banknoteCard()
-    }
-
-    private func indexPlaceholderChip(name: String) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-            Text(name)
-                .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
-                .tracking(1.0)
-                .foregroundStyle(Theme.inkTertiary)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                .fill(Theme.inkTertiary.opacity(0.12))
-                .frame(width: 72, height: 14)
-                .shimmerPlaceholder(isLoading: true)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                .fill(Theme.inkTertiary.opacity(0.08))
-                .frame(width: 48, height: 10)
-                .shimmerPlaceholder(isLoading: true)
-        }
-        .padding(.horizontal, Theme.Spacing.standard)
-        .padding(.vertical, Theme.Spacing.medium)
-        .frame(minWidth: 88, alignment: .leading)
-        .banknoteCard()
-    }
-
-    // MARK: Featured card (full width)
-
-    private func featuredCard(_ section: MarketSection) -> some View {
-        Button(action: {
-            HapticManager.impact(.light)
-            withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) { activeSection = section }
-        }) {
-            HStack(spacing: Theme.Spacing.large) {
-                // Icon column
-                ZStack {
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                        .fill(section.accentColor.opacity(0.12))
-                        .frame(width: 54, height: 54)
-                    Image(systemName: section.icon)
-                        .font(Theme.serialNumberFont(size: 24, relativeTo: .headline))
-                        .foregroundStyle(section.accentColor)
-                }
-
-                // Text column
+    @ViewBuilder
+    private func sectionPage(_ section: MarketSection) -> some View {
+        VStack(spacing: 0) {
+            // Inline header with push button
+            HStack(spacing: Theme.Spacing.standard) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text(section.hindi)
                         .font(Theme.hindiFont(size: 10))
                         .foregroundStyle(Theme.inkTertiary)
                     Text(section.englishTitle)
-                        .font(Theme.engravedSerif(size: 18, weight: .bold, relativeTo: .headline))
+                        .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .headline))
                         .foregroundStyle(Theme.inkPrimary)
-                    Text(section.subtitle)
-                        .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
-                        .tracking(1.2)
+                }
+                Spacer()
+                Button(action: {
+                    HapticManager.selection()
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) {
+                        activeSection = section
+                    }
+                }) {
+                    HStack(spacing: Theme.Spacing.small) {
+                        Text("FULL VIEW")
+                            .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
+                            .tracking(1.2)
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .font(.caption2)
+                    }
+                    .foregroundStyle(Theme.securityGold)
+                    .padding(.horizontal, Theme.Spacing.standard)
+                    .padding(.vertical, Theme.Spacing.small)
+                    .background(Theme.securityGold.opacity(0.08))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(EKPressStyle())
+            }
+            .padding(.horizontal, Theme.screenPadding)
+            .padding(.vertical, Theme.Spacing.standard)
+
+            sectionContent(section)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    // MARK: - Section card (overview grid card)
+
+    private func sectionCard(_ section: MarketSection) -> some View {
+        Button(action: {
+            HapticManager.selection()
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) { activeSection = section }
+        }) {
+            HStack(spacing: Theme.Spacing.large) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                        .fill(section.accentColor.opacity(0.12))
+                        .frame(width: 48, height: 48)
+                    Image(systemName: section.icon)
+                        .font(Theme.serialNumberFont(size: 20, relativeTo: .headline))
                         .foregroundStyle(section.accentColor)
+                }
+
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                    Text(section.hindi)
+                        .font(Theme.hindiFont(size: 10))
+                        .foregroundStyle(Theme.inkTertiary)
+                    Text(section.englishTitle)
+                        .font(Theme.engravedSerif(size: 15, weight: .bold, relativeTo: .headline))
+                        .foregroundStyle(Theme.inkPrimary)
                     Text(section.description)
-                        .font(Theme.engravedSerif(size: 12, weight: .regular, relativeTo: .caption))
+                        .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .caption))
                         .foregroundStyle(Theme.inkSecondary)
-                        .lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, Theme.Spacing.xSmall)
+                        .lineLimit(2)
                 }
 
                 Spacer()
 
-                // Arrow
-                Image(systemName: "arrow.right")
-                    .font(Theme.serialNumberFont(size: 14, relativeTo: .callout))
-                    .foregroundStyle(section.accentColor.opacity(0.7))
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(section.accentColor.opacity(0.5))
             }
             .padding(Theme.Spacing.card)
             .frame(maxWidth: .infinity, alignment: .leading)
             .banknoteCard()
-            // Gold accent stripe along leading edge
             .overlay(
                 Rectangle()
                     .fill(section.accentColor.opacity(0.8))
@@ -451,60 +457,7 @@ struct MarketsView: View {
         .buttonStyle(EKPressStyle())
     }
 
-    // MARK: Grid card (half width)
-
-    private func gridCard(_ section: MarketSection) -> some View {
-        Button(action: {
-            HapticManager.selection()
-            withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) { activeSection = section }
-        }) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                // Icon + arrow row
-                HStack(alignment: .top) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                            .fill(section.accentColor.opacity(0.12))
-                            .frame(width: 36, height: 36)
-                        Image(systemName: section.icon)
-                            .font(Theme.serialNumberFont(size: 16, relativeTo: .subheadline))
-                            .foregroundStyle(section.accentColor)
-                    }
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
-                        .foregroundStyle(section.accentColor.opacity(0.6))
-                        .padding(.top, Theme.Spacing.xSmall)
-                }
-                .padding(.top, Theme.Spacing.small)
-
-                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                    Text(section.hindi)
-                        .font(Theme.hindiFont(size: 9))
-                        .foregroundStyle(Theme.inkTertiary)
-                    Text(section.englishTitle)
-                        .font(Theme.engravedSerif(size: 14, weight: .bold, relativeTo: .subheadline))
-                        .foregroundStyle(Theme.inkPrimary)
-                    Text(section.subtitle)
-                        .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
-                        .tracking(1.0)
-                        .foregroundStyle(section.accentColor)
-                }
-
-                Text(section.description)
-                    .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .caption2))
-                    .foregroundStyle(Theme.inkTertiary)
-                    .lineSpacing(2)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(Theme.Spacing.standard)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .banknoteCard()
-        }
-        .buttonStyle(EKPressStyle())
-    }
-
-    // MARK: - Section Shell (fullscreen with back strip)
+// MARK: - Section Shell (fullscreen with back strip)
 
     @ViewBuilder
     private func sectionShell(_ section: MarketSection) -> some View {
