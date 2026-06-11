@@ -16,6 +16,7 @@ struct SettingsScreen: View {
     @AppStorage("ipoAlerts") private var ipoAlerts = false
     @AppStorage("dev_welcome_notification") private var devWelcomeNotification = false
     @AppStorage("notificationSound") private var notificationSound = "Default"
+    @AppStorage("selectedTheme") private var selectedThemeRaw = AppTheme.darkImmersive.rawValue
 
     @StateObject private var notificationManager = NotificationManager.shared
 
@@ -118,8 +119,11 @@ struct SettingsScreen: View {
                                               spacing: Theme.Spacing.standard) {
                                         ForEach(AppTheme.allCases, id: \.self) { theme in
                                             Button(action: {
-                                                HapticManager.selection()
-                                                ThemeManager.shared.current = theme
+                                                HapticManager.impact(.medium)
+                                                withAnimation(.spring(response: 0.40, dampingFraction: 0.72)) {
+                                                    selectedThemeRaw = theme.rawValue
+                                                    ThemeManager.shared.current = theme
+                                                }
                                             }) {
                                                 HStack(spacing: Theme.Spacing.medium) {
                                                     Circle()
@@ -131,23 +135,25 @@ struct SettingsScreen: View {
                                                         .foregroundStyle(Theme.inkPrimary)
                                                         .lineLimit(1)
                                                     Spacer()
-                                                    if ThemeManager.shared.current == theme {
+                                                    if selectedThemeRaw == theme.rawValue {
                                                         Image(systemName: "checkmark")
                                                             .font(.caption.weight(.bold))
                                                             .foregroundStyle(Theme.securityGold)
+                                                            .transition(.scale.combined(with: .opacity))
                                                     }
                                                 }
                                                 .padding(Theme.Spacing.standard)
-                                                .background(ThemeManager.shared.current == theme
+                                                .background(selectedThemeRaw == theme.rawValue
                                                             ? Theme.securityGold.opacity(0.08) : Theme.canvasDeep)
                                                 .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                                                 .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                                                    .stroke(ThemeManager.shared.current == theme
+                                                    .stroke(selectedThemeRaw == theme.rawValue
                                                             ? Theme.securityGold.opacity(0.4) : Theme.borderFine, lineWidth: 0.5))
                                             }
                                             .buttonStyle(EKPressStyle())
                                         }
                                     }
+                                    .animation(.spring(response: 0.40, dampingFraction: 0.72), value: selectedThemeRaw)
                                 }
                                 .padding(.vertical, Theme.Spacing.standard)
                             }
