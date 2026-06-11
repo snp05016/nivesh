@@ -823,26 +823,66 @@ struct StockProfileView: View {
                         .font(Theme.officialStampFont(size: 9))
                         .tracking(1.5)
                         .foregroundStyle(Theme.inkTertiary)
-                    if let score = data.score {
-                        Text("\(score) / 9")
+                    if let fScore = data.fScore {
+                        let max = data.maxPossible ?? 9
+                        Text("\(fScore) / \(max)")
                             .font(Theme.serialNumberFont(size: 28, relativeTo: .title))
-                            .foregroundStyle(score >= 7 ? Theme.bullGreen : score >= 4 ? Theme.holdAmber : Theme.bearRed)
+                            .foregroundStyle(fScore >= 7 ? Theme.bullGreen : fScore >= 4 ? Theme.holdAmber : Theme.bearRed)
                     }
                 }
                 .glossaryTerm("PIOTROSKI F-SCORE", definition: "A 9-point financial health score. Scores 0–3 indicate weak financials, 4–6 are neutral, and 7–9 indicate strong fundamentals. Developed by Joseph Piotroski to identify financially sound value stocks.")
                 Spacer()
-                if let score = data.score {
-                    let quality = score >= 7 ? "STRONG" : score >= 4 ? "MODERATE" : "WEAK"
-                    BanknoteSignalBadge(
-                        text: quality,
-                        color: score >= 7 ? Theme.bullGreen : score >= 4 ? Theme.holdAmber : Theme.bearRed,
-                        rotation: -2
-                    )
+                VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
+                    if let grade = data.grade {
+                        let gradeColor: Color = {
+                            switch grade {
+                            case "STRONG": return Theme.bullGreen
+                            case "GOOD": return Theme.bullGreenLight
+                            case "DISTRESS": return Theme.bearRed
+                            case "WEAK": return Theme.bearRedLight
+                            default: return Theme.holdAmber
+                            }
+                        }()
+                        BanknoteSignalBadge(text: grade, color: gradeColor, rotation: -2)
+                    }
+                    if let confidence = data.confidence {
+                        Text(confidence)
+                            .font(Theme.officialStampFont(size: 8))
+                            .tracking(0.8)
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
+                }
+            }
+
+            if let checks = data.checks, !checks.isEmpty {
+                GuillocheDivider()
+
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())],
+                          spacing: Theme.Spacing.tight) {
+                    ForEach(Array(checks.keys.sorted()), id: \.self) { key in
+                        HStack(spacing: Theme.Spacing.small) {
+                            Circle()
+                                .fill(checks[key] == "PASS" ? Theme.bullGreen : Theme.bearRed)
+                                .frame(width: 6, height: 6)
+                            Text(formatCheckLabel(key))
+                                .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
+                                .foregroundStyle(Theme.inkSecondary)
+                                .lineLimit(1)
+                            Spacer()
+                        }
+                    }
                 }
             }
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
+    }
+
+    private func formatCheckLabel(_ key: String) -> String {
+        key.replacingOccurrences(of: "_", with: " ")
+            .split(separator: " ")
+            .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
+            .joined(separator: " ")
     }
 
     // MARK: - Shared helpers
