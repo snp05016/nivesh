@@ -124,12 +124,12 @@ private struct DrawerContent: View {
             Theme.canvasDeep.ignoresSafeArea()
             SecurityThread()
 
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.none) {
                 header
                 Rectangle().fill(Theme.securityGold.opacity(0.28)).frame(height: 0.5)
 
                 ScrollView() {
-                    VStack(spacing: 0) {
+                    VStack(spacing: Theme.Spacing.none) {
                         ForEach(Array(HomeSectionID.allCases.enumerated()), id: \.element.id) { i, section in
                             BookmarkRow(number: i + 1, section: section) {
                                 scrollTarget = section.rawValue
@@ -148,7 +148,7 @@ private struct DrawerContent: View {
                 Spacer(minLength: 0)
 
                 // Footer hint
-                VStack(spacing: 0) {
+                VStack(spacing: Theme.Spacing.none) {
                     Rectangle().fill(Theme.securityGold.opacity(0.18)).frame(height: 0.5)
                     Text("TAP TO JUMP TO SECTION")
                         .font(Theme.officialStampFont(size: 7))
@@ -163,8 +163,8 @@ private struct DrawerContent: View {
     }
 
     private var header: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
+        HStack(spacing: Theme.Spacing.standard) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                 Text("NIVESH")
                     .font(Theme.engravedSerif(size: 16, weight: .bold))
                     .foregroundStyle(Theme.inkPrimary)
@@ -205,7 +205,7 @@ private struct BookmarkRow: View {
             HapticManager.selection()
             onTap()
         }) {
-            HStack(spacing: 14) {
+            HStack(spacing: Theme.Spacing.standard) {
                 // Numbered badge
                 ZStack {
                     Circle()
@@ -216,8 +216,8 @@ private struct BookmarkRow: View {
                         .foregroundStyle(Theme.securityGold)
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 5) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                    HStack(spacing: Theme.Spacing.tight) {
                         Image(systemName: section.icon)
                             .font(Theme.officialStampFont(size: 10))
                             .foregroundStyle(Theme.securityGold.opacity(0.85))

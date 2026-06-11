@@ -113,7 +113,7 @@ struct PriceHistoryChart: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             ChartSectionHeader(title: "Price History")
 
             Picker("Range", selection: $range) {
@@ -303,7 +303,7 @@ struct RSIChart: View {
             }
         }()
 
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             ChartSectionHeader(title: "RSI (14-Period)")
                 .financeTerm("RSI")
 
@@ -403,7 +403,7 @@ struct VolumeChart: View {
     var body: some View {
         let avg = avgVolume
 
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             ChartSectionHeader(title: "Volume")
 
             let hasVol = prices.contains { $0.volume != nil && ($0.volume ?? 0) > 0 }
@@ -488,7 +488,7 @@ struct ShareholdingChart: View {
         ]
         let total = data.reduce(0.0) { $0 + $1.value }
 
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             ChartSectionHeader(title: "Shareholding Pattern")
 
             if total < 1 {
@@ -542,7 +542,7 @@ struct FinancialsChart: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             ChartSectionHeader(title: "Quarterly Financials")
 
             if quarters.isEmpty {
@@ -584,7 +584,7 @@ struct FinancialsChart: View {
                         )
                         .foregroundStyle(Theme.securityGold)
                         .annotation(position: .top) {
-                            VStack(spacing: 1) {
+                            VStack(spacing: Theme.Spacing.xSmall) {
                                 Text("Latest")
                                     .font(Theme.officialStampFont(size: 8))
                                     .foregroundStyle(Theme.securityGold)
@@ -645,7 +645,7 @@ struct PriceRangeGauge: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             ChartSectionHeader(title: "52-Week Price Range")
 
             GeometryReader { geo in
@@ -655,12 +655,12 @@ struct PriceRangeGauge: View {
 
                 ZStack(alignment: .leading) {
                     // Track
-                    RoundedRectangle(cornerRadius: 3)
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                         .fill(Theme.inkSecondary.opacity(0.12))
                         .frame(height: 8)
 
                     // Filled portion
-                    RoundedRectangle(cornerRadius: 3)
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                         .fill(
                             LinearGradient(
                                 colors: [Theme.bearRed.opacity(0.6), Theme.holdAmber.opacity(0.6), Theme.bullGreen.opacity(0.6)],
@@ -686,7 +686,7 @@ struct PriceRangeGauge: View {
 
                 // Labels
                 HStack {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("52W LOW")
                             .font(Theme.officialStampFont(size: 8))
                             .foregroundStyle(Theme.inkTertiary)
@@ -696,7 +696,7 @@ struct PriceRangeGauge: View {
                             .foregroundStyle(Theme.bearRed)
                     }
                     Spacer()
-                    VStack(alignment: .center, spacing: 2) {
+                    VStack(alignment: .center, spacing: Theme.Spacing.xSmall) {
                         Text("NOW")
                             .font(Theme.officialStampFont(size: 8))
                             .foregroundStyle(Theme.inkTertiary)
@@ -705,7 +705,7 @@ struct PriceRangeGauge: View {
                             .foregroundStyle(Theme.inkPrimary)
                     }
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
+                    VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                         Text("TARGET")
                             .font(Theme.officialStampFont(size: 8))
                             .foregroundStyle(Theme.inkTertiary)
@@ -731,7 +731,7 @@ struct PortfolioAllocationChart: View {
     private var totalValue: Double { holdings.reduce(0) { $0 + $1.currentValue } }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             ChartSectionHeader(title: "Portfolio Allocation")
 
             if holdings.isEmpty {
@@ -759,7 +759,7 @@ struct PortfolioAllocationChart: View {
                         )
                         .annotation(position: .overlay) {
                             if pct > 5 {
-                                VStack(spacing: 1) {
+                                VStack(spacing: Theme.Spacing.xSmall) {
                                     Text(h.stock.ticker)
                                         .font(Theme.officialStampFont(size: 8))
                                         .foregroundStyle(.white)
@@ -773,7 +773,7 @@ struct PortfolioAllocationChart: View {
                     .frame(height: 220)
 
                     // Centre value
-                    VStack(spacing: 2) {
+                    VStack(spacing: Theme.Spacing.xSmall) {
                         Text("₹")
                             .font(Theme.engravedSerif(size: 14, weight: .bold))
                             .foregroundStyle(Theme.securityGold)
@@ -790,7 +790,7 @@ struct PortfolioAllocationChart: View {
 
                 // High-concentration warnings
                 ForEach(holdings.filter { h in total > 0 && h.currentValue / total > 0.15 }) { h in
-                    HStack(spacing: 6) {
+                    HStack(spacing: Theme.Spacing.tight) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.caption)
                             .foregroundStyle(Theme.holdAmber)
@@ -815,7 +815,7 @@ struct PnLWaterfallChart: View {
         let sorted = holdings.sorted { $0.pnl > $1.pnl }
         let totalPnL = sorted.reduce(0.0) { $0 + $1.pnl }
 
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             ChartSectionHeader(title: "P&L Breakdown")
 
             if sorted.isEmpty {
@@ -904,7 +904,7 @@ struct StockVsNiftyChart: View {
             }
         }()
 
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             ChartSectionHeader(title: "\(ticker) vs Nifty 50")
 
             if filteredStock.isEmpty {
@@ -979,7 +979,7 @@ struct SectorHeatmapView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             ChartSectionHeader(title: "Sector Heatmap")
 
             if sectors.isEmpty {
@@ -988,14 +988,14 @@ struct SectorHeatmapView: View {
                     .foregroundStyle(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, minHeight: 80)
             } else {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Theme.Spacing.medium) {
                     ForEach(sectors) { sector in
                         ZStack {
-                            RoundedRectangle(cornerRadius: 6)
+                            RoundedRectangle(cornerRadius: Theme.CornerRadius.tight)
                                 .fill(color(for: sector.changePct).opacity(0.18))
-                            RoundedRectangle(cornerRadius: 6)
+                            RoundedRectangle(cornerRadius: Theme.CornerRadius.tight)
                                 .stroke(color(for: sector.changePct).opacity(0.35), lineWidth: 0.8)
-                            VStack(spacing: 4) {
+                            VStack(spacing: Theme.Spacing.small) {
                                 Text(sector.name)
                                     .font(Theme.officialStampFont(size: 8))
                                     .foregroundStyle(Theme.inkPrimary)
@@ -1005,7 +1005,7 @@ struct SectorHeatmapView: View {
                                     .font(Theme.serialNumberFont(size: 13))
                                     .foregroundStyle(color(for: sector.changePct))
                             }
-                            .padding(8)
+                            .padding(Theme.Spacing.medium)
                         }
                         .animation(.easeInOut(duration: 0.3), value: sector.changePct)
                     }
@@ -1028,25 +1028,24 @@ struct SparklineView: View {
     var body: some View {
         Canvas { context, size in
             guard values.count > 1 else { return }
-            // BUG-05: inset by strokeWidth/2 so the line never clips at top/bottom edges.
-            let strokeWidth: CGFloat = 1.5
-            let inset = strokeWidth / 2
-            let drawW = max(size.width - inset * 2, 1)
-            let drawH = max(size.height - inset * 2, 1)
-            let mn = values.min()!
-            let mx = values.max()!
-            let rng = max(mx - mn, 1)
-            var path = Path()
-            for (i, v) in values.enumerated() {
-                let x = inset + CGFloat(i) / CGFloat(values.count - 1) * drawW
-                let y = inset + drawH - CGFloat((v - mn) / rng) * drawH
-                if i == 0 {
-                    path.move(to: CGPoint(x: x, y: y))
-                } else {
-                    path.addLine(to: CGPoint(x: x, y: y))
-                }
+            let mn = values.min()!, mx = values.max()!
+            let rng = max(mx - mn, 0.001)
+            let inset: CGFloat = 1.0
+            func pt(_ i: Int) -> CGPoint {
+                let x = inset + CGFloat(i) / CGFloat(values.count - 1) * (size.width - inset * 2)
+                let y = inset + (size.height - inset * 2) * (1 - CGFloat((values[i] - mn) / rng))
+                return CGPoint(x: x, y: y)
             }
-            context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: strokeWidth, lineJoin: .round))
+            var path = Path()
+            path.move(to: pt(0))
+            for i in 1..<values.count {
+                let prev = pt(i - 1), curr = pt(i)
+                let cp1 = CGPoint(x: (prev.x + curr.x) / 2, y: prev.y)
+                let cp2 = CGPoint(x: (prev.x + curr.x) / 2, y: curr.y)
+                path.addCurve(to: curr, control1: cp1, control2: cp2)
+            }
+            context.stroke(path, with: .color(color),
+                           style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
         }
     }
 }

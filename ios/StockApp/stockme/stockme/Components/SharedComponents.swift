@@ -35,7 +35,7 @@ struct AppHeader: View {
                 }
             }
 
-            GuillocheDivider()
+            SectionDivider()
         }
         .padding(.horizontal, Theme.screenPadding)
         .padding(.top, Theme.Spacing.standard)
@@ -50,8 +50,8 @@ private struct StockPreviewCard: View {
 
     var body: some View {
         GeometryReader { geo in
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.card) {
+                HStack(spacing: Theme.Spacing.standard) {
                     ZStack {
                         RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                             .fill(Theme.inkSecondary.opacity(0.08))
@@ -62,7 +62,7 @@ private struct StockPreviewCard: View {
                     }
                     .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.borderFine, lineWidth: 0.5))
 
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text(stock.companyName)
                             .font(Theme.engravedSerif(size: 15, weight: .bold, relativeTo: .subheadline))
                             .foregroundStyle(Theme.inkPrimary)
@@ -76,7 +76,7 @@ private struct StockPreviewCard: View {
                     }
                 }
 
-                GuillocheDivider()
+                SectionDivider()
 
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                     Text("₹")
@@ -113,7 +113,7 @@ struct StockRow: View {
     var daysUntilEvent: Int? = nil
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Theme.Spacing.none) {
             // Left border stripe — 3pt, colored by return direction
             Rectangle()
                 .fill(stock.changePercent >= 0 ? Theme.dataPositive : Theme.dataNegative)

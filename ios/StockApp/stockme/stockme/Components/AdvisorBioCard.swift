@@ -5,10 +5,10 @@ struct AdvisorBioCard: View {
     @State private var isExpanded = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             // Header
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text(advisor.advisorName)
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(Theme.inkPrimary)
@@ -30,7 +30,7 @@ struct AdvisorBioCard: View {
             // Framework tags
             if let framework = advisor.analyticalFramework {
                 ScrollView(.horizontal) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: Theme.Spacing.small) {
                         ForEach(framework.components(separatedBy: ","), id: \.self) { tag in
                             Text(tag.trimmingCharacters(in: .whitespaces))
                                 .font(.caption2)

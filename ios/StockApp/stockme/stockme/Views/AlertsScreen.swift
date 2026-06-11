@@ -42,9 +42,9 @@ struct AlertsScreen: View {
             ZStack {
                 DenominationBackground(denomination: .fifty)
 
-                VStack(spacing: 0) {
+                VStack(spacing: Theme.Spacing.none) {
                     // Bilingual header
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                         Text("मूल्य चेतावनी")
                             .font(Theme.hindiFont(size: 11))
                             .foregroundStyle(Theme.inkSecondary)
@@ -134,7 +134,7 @@ struct AlertsScreen: View {
                     VStack {
                         HStack(spacing: Theme.Spacing.standard) {
                             Image(systemName: "bell.fill").foregroundStyle(Theme.securityGold)
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                 Text("ALERT TRIGGERED")
                                     .font(Theme.officialStampFont(size: 8))
                                     .foregroundStyle(Theme.inkSecondary)
@@ -204,7 +204,7 @@ private struct AlertRow: View {
     let onDelete: () -> Void
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Theme.Spacing.none) {
             Rectangle()
                 .fill(isTriggered ? Theme.bullGreen.opacity(0.4) : Theme.securityGold.opacity(0.3))
                 .frame(width: 1)
@@ -327,7 +327,7 @@ struct AddAlertSheet: View {
                                 .banknoteCard()
 
                                 if !searchResults.isEmpty {
-                                    VStack(spacing: 0) {
+                                    VStack(spacing: Theme.Spacing.none) {
                                         ForEach(searchResults.prefix(5)) { entry in
                                             Button {
                                                 selectedTicker = entry.ticker
@@ -341,7 +341,7 @@ struct AddAlertSheet: View {
                                                 }
                                             } label: {
                                                 HStack {
-                                                    VStack(alignment: .leading, spacing: 2) {
+                                                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                                         Text(entry.ticker).font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkPrimary)
                                                         Text(entry.companyName).font(.caption).foregroundStyle(Theme.inkSecondary)
                                                     }
@@ -350,7 +350,7 @@ struct AddAlertSheet: View {
                                                 }
                                                 .padding(Theme.Spacing.standard)
                                             }
-                                            Divider().background(Theme.borderFine)
+                                            Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
                                         }
                                     }
                                     .banknoteCard()
@@ -359,7 +359,7 @@ struct AddAlertSheet: View {
                         } else {
                             // Selected stock display
                             HStack {
-                                VStack(alignment: .leading, spacing: 2) {
+                                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                     Text(selectedTicker).font(Theme.engravedSerif(size: 16, weight: .bold)).foregroundStyle(Theme.inkPrimary)
                                     Text(selectedCompany).font(.caption).foregroundStyle(Theme.inkSecondary)
                                     if priceLoading {
@@ -382,7 +382,7 @@ struct AddAlertSheet: View {
                             Text("ALERT WHEN PRICE GOES")
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.inkSecondary)
-                            HStack(spacing: 0) {
+                            HStack(spacing: Theme.Spacing.none) {
                                 Button { direction = "above" } label: {
                                     HStack { Image(systemName: "arrow.up"); Text("Above Target") }
                                         .frame(maxWidth: .infinity)

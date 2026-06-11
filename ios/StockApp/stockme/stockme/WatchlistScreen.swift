@@ -27,7 +27,7 @@ struct WatchlistScreen: View {
             Theme.canvas.ignoresSafeArea()
 
             ScrollView {
-                LazyVStack(spacing: 0) {
+                LazyVStack(spacing: Theme.Spacing.none) {
                     header
 
                     searchField
@@ -101,7 +101,7 @@ struct WatchlistScreen: View {
                 .foregroundStyle(Theme.inkTertiary)
             TextField("", text: $searchText, prompt:
                 Text("Search ticker or company")
-                    .foregroundColor(Theme.inkTertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             )
             .font(Theme.serialNumberFont(size: 14, relativeTo: .callout))
             .foregroundStyle(Theme.inkPrimary)

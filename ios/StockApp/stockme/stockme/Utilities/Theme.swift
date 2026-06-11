@@ -63,9 +63,9 @@ enum Theme {
 
     // MARK: - The Inks
 
-    static let inkPrimary   = adaptive("2C2C2C", "F0EDE5") // charcoal / warm white
-    static let inkSecondary = adaptive("5C6B5A", "8A9A82") // sage green / sage
-    static let inkTertiary  = adaptive("8A8A7A", "4E5A4A") // faded / dim green-grey
+    static let inkPrimary   = adaptive("2C2C2C", "F2F0EC") // charcoal / warm white
+    static let inkSecondary = adaptive("5C6B5A", "8B8E9C") // sage / cool gray
+    static let inkTertiary  = adaptive("8A8A7A", "4A4D5C") // faded / muted dark
 
     // MARK: - The Accents
 
@@ -75,15 +75,15 @@ enum Theme {
             return UIColor(ThemeManager.shared.accent(for: scheme))
         })
     }
-    static let securityGoldLight = adaptive("E8C96A", "E8C040")
+    static let securityGoldLight = adaptive("E8C96A", "77A7FA")
 
     // MARK: - Market Signals
 
-    static let bullGreen      = adaptive("2D5A3D", "00C896") // forest / electric teal-green
-    static let bullGreenLight = adaptive("4A7A5A", "0E2A1C") // positive bg tint
-    static let bearRed        = adaptive("8B3A2A", "FF4444") // brick / vivid red
-    static let bearRedLight   = adaptive("B55A45", "2A0E0E") // negative bg tint
-    static let holdAmber      = adaptive("8B6914", "D4A217") // aged / electric amber
+    static let bullGreen      = adaptive("2D9A6A", "00C896") // forest / electric teal-green #00C896
+    static var bullGreenLight: Color { bullGreen.opacity(0.18) }
+    static let bearRed        = adaptive("8B3A2A", "FF4D4D") // brick / electric red #FF4D4D
+    static var bearRedLight: Color   { bearRed.opacity(0.18) }
+    static let holdAmber      = adaptive("8B6914", "FAB31C") // aged / electric amber #FAB31C
 
     // Legacy aliases — Signal.color in Models.swift uses these
     static let signalEmerald = bullGreen
@@ -108,16 +108,8 @@ enum Theme {
 
     // MARK: - Borders (toned down 10%)
 
-    static let borderFine = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark
-            ? UIColor(white: 1, alpha: 0.06)
-            : uiColor("2C2C2C", alpha: 0.10)
-    })
-    static let borderSage = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark
-            ? uiColor("8A9A82", alpha: 0.12)
-            : uiColor("5C6B5A", alpha: 0.20)
-    })
+    static var borderFine: Color { inkPrimary.opacity(0.08) }
+    static var borderSage: Color { securityGold.opacity(0.20) }
     static let paperBorder = Color(UIColor { tc in
         tc.userInterfaceStyle == .dark
             ? UIColor(white: 1, alpha: 0.06)
@@ -236,6 +228,7 @@ enum Theme {
     // MARK: - Spacing
 
     enum Spacing {
+        static let none: CGFloat = 0   // flush stacking (no gap)
         static let xSmall: CGFloat = 2
         static let small: CGFloat = 4
         static let tight: CGFloat = 6
@@ -278,17 +271,19 @@ enum Theme {
     )
 
     // Chart glow fills — fade from signal colour to clear
-    static let chartBullGradient = LinearGradient(
-        colors: [bullGreen.opacity(0.28), bullGreen.opacity(0.0)],
-        startPoint: .top,
-        endPoint: .bottom
-    )
+    static var chartBullGradient: LinearGradient {
+        LinearGradient(
+            colors: [bullGreen.opacity(0.20), bullGreen.opacity(0.05), bullGreen.opacity(0.00)],
+            startPoint: .top, endPoint: .bottom
+        )
+    }
 
-    static let chartBearGradient = LinearGradient(
-        colors: [bearRed.opacity(0.28), bearRed.opacity(0.0)],
-        startPoint: .top,
-        endPoint: .bottom
-    )
+    static var chartBearGradient: LinearGradient {
+        LinearGradient(
+            colors: [bearRed.opacity(0.20), bearRed.opacity(0.05), bearRed.opacity(0.00)],
+            startPoint: .top, endPoint: .bottom
+        )
+    }
 }
 
 // MARK: - Paper Texture (dark-mode aware)
@@ -378,6 +373,17 @@ struct GuillocheDivider: View {
     }
 }
 
+// MARK: - Section Divider (replaces GuillocheDivider in all views)
+
+struct SectionDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(Theme.inkPrimary.opacity(0.07))
+            .frame(height: 0.5)
+            .padding(.horizontal, Theme.screenPadding)
+    }
+}
+
 // MARK: - Count-Up Number
 
 struct CountUpNumber: View {
@@ -428,25 +434,16 @@ extension View {
         modifier(StaggerAppear(delay: delay))
     }
 
-    // Double-border banknote card (toned down 10%)
+    // Single-border dark fintech card
     func banknoteCard() -> some View {
-        let shadowRadius: CGFloat = 3
-        let shadowY: CGFloat = 2
-        return self
+        self
             .background(Theme.canvasDeep)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
             .overlay(
-                ZStack {
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                        .stroke(Color.white.opacity(0.5), lineWidth: 0.5)
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                        .stroke(Theme.inkPrimary.opacity(0.12), lineWidth: 1)
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.tight)
-                        .stroke(Theme.inkSecondary.opacity(0.16), lineWidth: 0.5)
-                        .padding(3)
-                }
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
+                    .stroke(Theme.inkPrimary.opacity(0.10), lineWidth: 0.5)
             )
-            .shadow(color: Theme.inkPrimary.opacity(0.06), radius: shadowRadius, x: 0, y: shadowY)
+            .shadow(color: Theme.canvas.opacity(0.6), radius: 8, x: 0, y: 4)
     }
 
     // Glass-over-paper inner card layer — data floats on frosted glass

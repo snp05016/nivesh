@@ -7,12 +7,12 @@ struct AdvisoryMatrixCard: View {
     let ticker: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.none) {
             // Header
-            HStack(alignment: .top, spacing: 0) {
+            HStack(alignment: .top, spacing: Theme.Spacing.none) {
                 SecurityThread()
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text("STREET INTELLIGENCE")
                         .font(Theme.officialStampFont(size: 10))
                         .tracking(0.8)
@@ -33,15 +33,15 @@ struct AdvisoryMatrixCard: View {
                     .padding(.vertical, 4)
                     .background(Theme.securityGold.opacity(0.10))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 3)
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                             .stroke(Theme.securityGold.opacity(0.35), lineWidth: 0.5)
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
             }
             .padding(.top, 14)
             .padding(.trailing, 16)
 
-            GuillocheDivider()
+            SectionDivider()
                 .padding(.horizontal, 4)
 
             if insights.isEmpty {
@@ -68,12 +68,12 @@ struct AdvisoryMatrixCard: View {
     // MARK: - Insight Rows
 
     private var insightRows: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Theme.Spacing.none) {
             ForEach(Array(insights.enumerated()), id: \.element.id) { index, insight in
                 AdvisorInsightRowView(insight: insight)
 
                 if index < insights.count - 1 {
-                    Divider()
+                    Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
                         .background(Theme.borderFine)
                         .padding(.horizontal, 16)
                 }

@@ -90,7 +90,7 @@ struct DialecticProgressView: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.none) {
             // Header
             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                 Text("\u{0935}\u{093F}\u{0936}\u{094D}\u{0932}\u{0947}\u{0937}\u{0923} \u{092A}\u{094D}\u{0930}\u{0917}\u{0924}\u{093F}")
@@ -103,7 +103,7 @@ struct DialecticProgressView: View {
             }
             .padding(.bottom, Theme.Spacing.card)
 
-            GuillocheDivider()
+            SectionDivider()
                 .padding(.bottom, Theme.Spacing.card)
 
             if !showFallback && client.events.isEmpty && client.isConnected {
@@ -119,7 +119,7 @@ struct DialecticProgressView: View {
                 // Live SSE events
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 0) {
+                        LazyVStack(alignment: .leading, spacing: Theme.Spacing.none) {
                             ForEach(client.events) { event in
                                 AgentEventRow(event: event)
                                     .id(event.id)
@@ -137,7 +137,7 @@ struct DialecticProgressView: View {
                 // Fallback: pre-defined stages with sequential reveal
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 0) {
+                        LazyVStack(alignment: .leading, spacing: Theme.Spacing.none) {
                             ForEach(0..<min(fallbackStep, Self.fallbackStages.count), id: \.self) { i in
                                 let stage = Self.fallbackStages[i]
                                 let status: String = i < fallbackStep - 1 ? "complete"
@@ -224,7 +224,7 @@ struct AgentEventRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.medium) {
             // Timeline dot + connector
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.none) {
                 Circle()
                     .fill(statusColor)
                     .frame(width: 8, height: 8)

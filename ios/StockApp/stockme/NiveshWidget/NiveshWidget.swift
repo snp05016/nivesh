@@ -62,7 +62,7 @@ struct NiveshWidgetEntryView : View {
         ZStack {
             Theme.canvasDeep.ignoresSafeArea()
             
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.none) {
                 switch family {
                 case .systemSmall:
                     smallWidget
@@ -81,26 +81,26 @@ struct NiveshWidgetEntryView : View {
             Text("P&L")
                 .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
                 .tracking(1.5)
-                .foregroundColor(Theme.inkSecondary)
+                .foregroundStyle(Theme.inkSecondary)
             
             Text(IndianFormatter.price(entry.pnL))
                 .font(Theme.serialNumberFont(size: 16, relativeTo: .headline))
-                .foregroundColor(entry.pnL >= 0 ? Theme.bullGreen : Theme.bearRed)
+                .foregroundStyle(entry.pnL >= 0 ? Theme.bullGreen : Theme.bearRed)
             
             Spacer(minLength: Theme.Spacing.standard)
             
             Text("NIFTY 50")
                 .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
                 .tracking(1.5)
-                .foregroundColor(Theme.inkSecondary)
+                .foregroundStyle(Theme.inkSecondary)
             
             Text(IndianFormatter.price(entry.niftyValue))
                 .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
-                .foregroundColor(Theme.inkPrimary)
+                .foregroundStyle(Theme.inkPrimary)
                 
             Text(entry.niftyChange >= 0 ? "+\(IndianFormatter.price(entry.niftyChange))" : IndianFormatter.price(entry.niftyChange))
                 .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote))
-                .foregroundColor(entry.niftyChange >= 0 ? Theme.bullGreen : Theme.bearRed)
+                .foregroundStyle(entry.niftyChange >= 0 ? Theme.bullGreen : Theme.bearRed)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -114,20 +114,20 @@ struct NiveshWidgetEntryView : View {
                 Text("TOP HOLDINGS")
                     .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
                     .tracking(1.5)
-                    .foregroundColor(Theme.inkSecondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 
                 ForEach(entry.topHoldings.prefix(3)) { holding in
                     HStack {
                         Text(holding.ticker)
                             .font(Theme.engravedSerif(size: 12, weight: .bold, relativeTo: .caption))
-                            .foregroundColor(Theme.inkPrimary)
+                            .foregroundStyle(Theme.inkPrimary)
                             .lineLimit(1)
                         
                         Spacer()
                         
                         Text(IndianFormatter.price(holding.pnl))
                             .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
-                            .foregroundColor(holding.isUp ? Theme.bullGreen : Theme.bearRed)
+                            .foregroundStyle(holding.isUp ? Theme.bullGreen : Theme.bearRed)
                     }
                 }
                 Spacer(minLength: 0)

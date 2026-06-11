@@ -97,14 +97,14 @@ struct InteractivePriceChartView: View {
             // Selected point info bar
             HStack(spacing: Theme.Spacing.standard) {
                 if let p = selectedPoint {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text(p.date).font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                         Text(IndianFormatter.price(p.close))
                             .font(Theme.serialNumberFont(size: 14))
                             .foregroundStyle(Theme.inkPrimary)
                     }
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
+                    VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                         HStack(spacing: Theme.Spacing.small) {
                             Text("H").font(.caption2).foregroundStyle(Theme.inkTertiary)
                             Text(IndianFormatter.price(p.high)).font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.bullGreen)
@@ -114,12 +114,12 @@ struct InteractivePriceChartView: View {
                             Text(IndianFormatter.price(p.low)).font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.bearRed)
                         }
                     }
-                    VStack(alignment: .trailing, spacing: 2) {
+                    VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                         Text("VOL").font(.caption2).foregroundStyle(Theme.inkTertiary)
                         Text(IndianFormatter.priceCompact(p.volume)).font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.inkSecondary)
                     }
                 } else if let last = filteredPrices.last {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text(ticker.uppercased()).font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.securityGold)
                         Text(IndianFormatter.price(last.close))
                             .font(Theme.serialNumberFont(size: 16))
@@ -129,7 +129,7 @@ struct InteractivePriceChartView: View {
                     if let first = filteredPrices.first, first.close != 0 {
                         let returnPct = (last.close - first.close) / first.close * 100
                         let up = returnPct >= 0
-                        VStack(alignment: .trailing, spacing: 2) {
+                        VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                             Text("PERIOD RETURN").font(.caption2).foregroundStyle(Theme.inkTertiary)
                             Text(String(format: "%@%.2f%%", up ? "+" : "", returnPct))
                                 .font(Theme.serialNumberFont(size: 12))
@@ -286,7 +286,7 @@ struct InteractivePriceChartView: View {
             }
 
             // Controls: period + toggles
-            HStack(spacing: 0) {
+            HStack(spacing: Theme.Spacing.none) {
                 // Period selector
                 ForEach(Array(zip(periods, periodLabels)), id: \.0) { period, label in
                     Button(label) {
@@ -354,10 +354,10 @@ struct StockProfileView: View {
             ZStack {
                 DenominationBackground(denomination: .twoHundred)
 
-                VStack(spacing: 0) {
+                VStack(spacing: Theme.Spacing.none) {
                     // Tab bar
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 0) {
+                        HStack(spacing: Theme.Spacing.none) {
                             ForEach(Array(tabItems.enumerated()), id: \.offset) { idx, item in
                                 Button {
                                     HapticManager.selection()
@@ -365,7 +365,7 @@ struct StockProfileView: View {
                                         activeTab = idx
                                     }
                                 } label: {
-                                    VStack(spacing: 4) {
+                                    VStack(spacing: Theme.Spacing.small) {
                                         Text(item.label.uppercased())
                                             .font(Theme.officialStampFont(size: 9))
                                             .tracking(1.0)
@@ -384,7 +384,7 @@ struct StockProfileView: View {
                     }
                     .background(Theme.canvasDeep)
 
-                    GuillocheDivider()
+                    SectionDivider()
 
                     // Tab content
                     TabView(selection: $activeTab) {
@@ -467,7 +467,7 @@ struct StockProfileView: View {
         .padding(Theme.Spacing.card)
         .banknoteCard()
 
-        GuillocheDivider().padding(.horizontal, 0)
+        SectionDivider().padding(.horizontal, 0)
 
         // Key metrics grid
         let metrics: [(String, String, String, String)] = [
@@ -698,7 +698,7 @@ struct StockProfileView: View {
             let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
 
             // Header
-            HStack(spacing: 0) {
+            HStack(spacing: Theme.Spacing.none) {
                 Text("QTR").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkSecondary)
                     .frame(width: colW * 0.28, alignment: .leading)
                 Text("REVENUE").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkSecondary)
@@ -710,7 +710,7 @@ struct StockProfileView: View {
             .glossaryTerm("PAT", definition: "Profit After Tax — the net earnings of the company after all expenses and taxes, also called Net Profit.")
 
             ForEach(shown) { q in
-                HStack(spacing: 0) {
+                HStack(spacing: Theme.Spacing.none) {
                     Text(q.label)
                         .font(Theme.officialStampFont(size: 8))
                         .foregroundStyle(Theme.inkPrimary)

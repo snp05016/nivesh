@@ -130,7 +130,7 @@ struct ErrorDiagnoserView: View {
 
     var body: some View {
         if let error = error {
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.none) {
                 VStack(spacing: Theme.Spacing.card) {
                     currencyBand
 
@@ -174,7 +174,7 @@ struct ErrorDiagnoserView: View {
                                 .foregroundStyle(Theme.securityGold)
                                 .padding(.horizontal, Theme.Spacing.card).padding(.vertical, Theme.Spacing.tight)
                                 .background(Theme.securityGold.opacity(0.06))
-                                .overlay(RoundedRectangle(cornerRadius: 2)
+                                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                                     .stroke(Theme.securityGold.opacity(0.25), lineWidth: 1))
                             }
                             .disabled(isRetrying)
@@ -190,7 +190,7 @@ struct ErrorDiagnoserView: View {
                             .offset(x: 50, y: 10).allowsHitTesting(false)
                     }
                 )
-                .overlay(RoundedRectangle(cornerRadius: 2).stroke(Theme.borderSage, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.borderSage, lineWidth: 1))
                 .cornerRadius(2)
                 .shadow(color: Theme.canvasShadow.opacity(0.1), radius: 3, y: 2)
 
@@ -204,12 +204,12 @@ struct ErrorDiagnoserView: View {
     }
 
     private var currencyBand: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Theme.Spacing.none) {
             Rectangle().fill(Theme.bearRed.opacity(0.10)).frame(width: 32, height: 22)
-                .overlay(HStack(spacing: 2) {
+                .overlay(HStack(spacing: Theme.Spacing.xSmall) {
                     ForEach(0..<3, id: \.self) { _ in Circle().fill(Theme.bearRed.opacity(0.25)).frame(width: 3, height: 3) }
                 })
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.none) {
                 Rectangle().fill(Theme.bearRed.opacity(0.25)).frame(height: 1)
                 Text("DIAGNOSTIC").font(Theme.officialStampFont(size: 8))
                     .tracking(3).foregroundStyle(Theme.bearRed.opacity(0.6))
@@ -217,14 +217,14 @@ struct ErrorDiagnoserView: View {
                 Rectangle().fill(Theme.bearRed.opacity(0.25)).frame(height: 1)
             }
             Rectangle().fill(Theme.bearRed.opacity(0.10)).frame(width: 32, height: 22)
-                .overlay(HStack(spacing: 2) {
+                .overlay(HStack(spacing: Theme.Spacing.xSmall) {
                     ForEach(0..<3, id: \.self) { _ in Circle().fill(Theme.bearRed.opacity(0.25)).frame(width: 3, height: 3) }
                 })
         }
     }
 
     private var diagnosticExpander: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Theme.Spacing.none) {
             Button { withAnimation(.easeInOut(duration: 0.2)) { showDiagnostics.toggle() } } label: {
                 HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: showDiagnostics ? "chevron.down" : "chevron.right").font(.caption.weight(.bold))
@@ -279,7 +279,7 @@ extension View {
         context: ErrorDiagnostic = ErrorDiagnostic(),
         retryAction: (() async -> Void)? = nil
     ) -> some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Theme.Spacing.none) {
             self
             if error != nil {
                 ErrorDiagnoserView(error: error, context: context, retryAction: retryAction)

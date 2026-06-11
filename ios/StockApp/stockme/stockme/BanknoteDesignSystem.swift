@@ -25,7 +25,7 @@ struct SecurityThread: View {
             Rectangle()
                 .fill(Theme.securityGold.opacity(0.11))
                 .frame(width: 12)
-            VStack(spacing: 2) {
+            VStack(spacing: Theme.Spacing.xSmall) {
                 ForEach(0..<20, id: \.self) { _ in
                     Text("NIVESH ₹ RBI ")
                         .font(Theme.serialNumberFont(size: 5))
@@ -106,7 +106,7 @@ struct BanknoteSignalBadge: View {
             .padding(.vertical, 4)
             .background(tintColor.opacity(0.07))
             .overlay(
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                     .stroke(tintColor.opacity(0.4), lineWidth: 1)
             )
             .rotationEffect(.degrees(rotation))
@@ -122,7 +122,7 @@ struct PortfolioValueDisplay: View {
     @State private var current: Double = 0
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 1) {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xSmall) {
             Text("₹")
                 .font(Theme.engravedSerif(size: fontSize, weight: .bold))
                 .foregroundStyle(Theme.securityGold)

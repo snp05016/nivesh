@@ -356,7 +356,7 @@ struct AnalysisScreen: View {
                                 .foregroundStyle(Theme.inkSecondary)
                                 .lineSpacing(6)
                         }
-                        GuillocheDivider()
+                        SectionDivider()
                         if let officers = info.officers, !officers.isEmpty {
                             VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                                 Text("KEY EXECUTIVES")
@@ -482,7 +482,7 @@ struct AnalysisScreen: View {
                     Spacer()
                 }
             }
-            GuillocheDivider()
+            SectionDivider()
             if let prices = viewModel.quickInfo?.priceHistory90d, !prices.isEmpty {
                 PriceHistoryChart(
                     prices: prices,
@@ -506,7 +506,7 @@ struct AnalysisScreen: View {
                 }
                 Spacer()
             }
-            GuillocheDivider()
+            SectionDivider()
             HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                 Text("₹").font(Theme.engravedSerif(size: 24, weight: .bold)).foregroundStyle(Theme.goldPrimary)
                 Text((info.price ?? 0.0).inrFormatted.replacingOccurrences(of: "₹", with: ""))
@@ -529,8 +529,8 @@ struct AnalysisScreen: View {
     // MARK: -- AI Verdict Card (Hero)
 
     private func aiVerdictCard(_ analysis: StockAnalysis) -> some View {
-        VStack(spacing: 0) {
-            GuillocheDivider()
+        VStack(spacing: Theme.Spacing.none) {
+            SectionDivider()
             VStack(alignment: .leading, spacing: Theme.Spacing.card) {
                 HStack {
                     Text("AI VERDICT").font(Theme.sectionCapsLabel()).tracking(1.5).foregroundStyle(Theme.inkPrimary)
@@ -574,7 +574,7 @@ struct AnalysisScreen: View {
             .background(Theme.surfaceElevated)
             .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderStrong, lineWidth: 1))
             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
-            GuillocheDivider()
+            SectionDivider()
         }
     }
 
@@ -817,7 +817,7 @@ struct AnalysisScreen: View {
             let isPositive = pct >= 0
             HStack(spacing: Theme.Spacing.xSmall) {
                 Image(systemName: isPositive ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
-                    .font(.system(size: 7))
+                    .font(Theme.officialStampFont(size: 7))
                 Text("\(label)  \(isPositive ? "+" : "")\(String(format: "%.1f", pct))%")
                     .font(Theme.serialNumberFont(size: 11))
             }
@@ -835,7 +835,7 @@ struct AnalysisScreen: View {
     private func newsSection(_ analysis: StockAnalysis) -> some View {
         if let news = analysis.recentNews, !news.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                GuillocheDivider()
+                SectionDivider()
                 HStack {
                     Text("RECENT NEWS")
                         .font(Theme.officialStampFont(size: 9))
@@ -855,7 +855,7 @@ struct AnalysisScreen: View {
 
     private func disclaimerSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            GuillocheDivider()
+            SectionDivider()
             Text(stripEmoji(analysis.disclaimer))
                 .font(Theme.microLabel(size: 9)).foregroundStyle(Theme.inkTertiary)
                 .lineSpacing(4).frame(maxWidth: .infinity, alignment: .leading)
@@ -929,7 +929,7 @@ struct AnalysisScreen: View {
                             }
                             Spacer()
                         }
-                        GuillocheDivider()
+                        SectionDivider()
                         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                             HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                                 Text("₹")
@@ -976,7 +976,7 @@ struct AnalysisScreen: View {
                         }
                     }
 
-                    GuillocheDivider()
+                    SectionDivider()
 
                     Text(info.suggestedActionText)
                         .font(.footnote.weight(.medium))
@@ -1176,7 +1176,7 @@ struct AnalysisScreen: View {
                         .foregroundStyle(Theme.inkPrimary)
                         .padding(.vertical, 14)
                         .frame(maxWidth: .infinity)
-                        .overlay(RoundedRectangle(cornerRadius: 2).stroke(Theme.inkPrimary, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.inkPrimary, lineWidth: 1))
                     }
                 }
                 .padding(.top, 8)
@@ -1238,8 +1238,8 @@ private struct MacroImpactChip: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 3) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+            HStack(spacing: Theme.Spacing.xSmall) {
                 Text(item.ticker)
                     .font(Theme.monoTabular(size: 11, relativeTo: .caption2).weight(.bold))
                 Text(directionArrow)
@@ -1251,10 +1251,10 @@ private struct MacroImpactChip: View {
                 .foregroundStyle(textColor.opacity(0.85))
                 .lineLimit(1)
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, Theme.Spacing.medium)
         .padding(.vertical, Theme.Spacing.tight)
         .background(chipColor.opacity(0.8))
-        .cornerRadius(6)
+        .cornerRadius(Theme.CornerRadius.tight)
     }
 }
 
@@ -1265,7 +1265,7 @@ private struct MacroChip: View {
     let value: String
     let color: Color
     var body: some View {
-        VStack(spacing: 3) {
+        VStack(spacing: Theme.Spacing.xSmall) {
             Text(label)
                 .font(Theme.officialStampFont(size: 7))
                 .foregroundStyle(Theme.inkTertiary)
@@ -1318,7 +1318,7 @@ private struct KeyFactorCard: View {
                 Image(systemName: icon)
                     .font(.subheadline)
                     .foregroundStyle(color)
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text(hindiTitle)
                         .font(Theme.hindiFont(size: 9))
                         .foregroundStyle(Theme.inkTertiary)
@@ -1327,7 +1327,7 @@ private struct KeyFactorCard: View {
                         .foregroundStyle(Theme.inkPrimary)
                 }
             }
-            GuillocheDivider()
+            SectionDivider()
             Text(text)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Theme.inkSecondary)
@@ -1335,8 +1335,8 @@ private struct KeyFactorCard: View {
         }
         .padding(Theme.Spacing.card)
         .background(color.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(color.opacity(0.2), lineWidth: 0.8))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(color.opacity(0.2), lineWidth: 0.8))
     }
 }
 
@@ -1346,7 +1346,7 @@ private struct PerforationBar: View {
     let percent: Int
 
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: Theme.Spacing.xSmall) {
             ForEach(0..<20, id: \.self) { i in
                 let threshold = Double(i + 1) / 20.0 * 100.0
                 Circle()
@@ -1376,7 +1376,7 @@ private struct NewsItemCard: View {
                         Rectangle().fill(Theme.inkSecondary.opacity(0.1))
                     }
                     .frame(width: UIScreen.main.bounds.width * 0.20, height: UIScreen.main.bounds.width * 0.20)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                 }
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
@@ -1460,7 +1460,7 @@ private struct AnalysisNoteSection: View {
                 .font(Theme.officialStampFont(size: 9))
                 .foregroundStyle(Theme.inkPrimary)
 
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                 ForEach(items, id: \.self) { item in
                     HStack(alignment: .top, spacing: Theme.Spacing.standard) {
                         Rectangle()
@@ -1478,13 +1478,13 @@ private struct AnalysisNoteSection: View {
         .padding(Theme.Spacing.large)
         .banknoteCard()
         .overlay(
-            HStack(spacing: 0) {
+            HStack(spacing: Theme.Spacing.none) {
                 Rectangle()
                     .fill(color.opacity(0.25))
                     .frame(width: 2)
                 Spacer()
             }
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
         )
     }
 }
@@ -1547,7 +1547,7 @@ private struct ConfidenceCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text("CONFIDENCE SCORE")
                         .font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkSecondary)
                         .financeTerm("Confidence Score")
@@ -1579,14 +1579,14 @@ private struct TrendBar: View {
     let value: Double
     let color: Color
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: Theme.Spacing.xSmall) {
             Text(String(format: "%.1f%%", value))
                 .font(.caption2.weight(.medium)).foregroundStyle(color)
             GeometryReader { geo in
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                     .fill(color.opacity(0.25))
                     .frame(width: geo.size.width)
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                     .fill(color)
                     .frame(width: geo.size.width * min(value / 80.0, 1.0))
             }
@@ -1611,7 +1611,7 @@ private struct ValuationBadge: View {
             Image(systemName: isAbove ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
                 .foregroundStyle(badgeColor)
                 .font(.body)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                 Text("VALUATION VS HISTORY")
                     .font(Theme.officialStampFont(size: 8))
                     .foregroundStyle(Theme.inkSecondary)
@@ -1620,7 +1620,7 @@ private struct ValuationBadge: View {
                     .foregroundStyle(badgeColor)
             }
             Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                 Text("NOW").font(Theme.officialStampFont(size: 7)).foregroundStyle(Theme.inkTertiary)
                 Text(String(format: "%.1f", peVsAvg.currentPe)).font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkPrimary)
                 Text("AVG").font(Theme.officialStampFont(size: 7)).foregroundStyle(Theme.inkTertiary)
@@ -1629,8 +1629,8 @@ private struct ValuationBadge: View {
         }
         .padding(Theme.Spacing.standard)
         .background(badgeColor.opacity(0.07))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(badgeColor.opacity(0.35), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(badgeColor.opacity(0.35), lineWidth: 1))
     }
 }
 
@@ -1661,7 +1661,7 @@ private struct GlossarySheet: View {
                     Text(term)
                         .font(Theme.engravedSerif(size: 22, weight: .bold))
                         .foregroundStyle(Theme.inkPrimary)
-                    GuillocheDivider()
+                    SectionDivider()
                     Text(glossaryDefinitions[term] ?? "No definition available for this term.")
                         .font(.body.weight(.medium))
                         .foregroundStyle(Theme.inkSecondary)
@@ -1711,7 +1711,7 @@ struct AnalysisLimitationsCard: View {
                     Text("This analysis weights Indian market factors: promoter behaviour, FII/DII flows, retail sentiment, and news momentum. It is not a substitute for your own judgment.")
                         .font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.inkSecondary)
 
-                    Divider().background(Theme.inkTertiary.opacity(0.3))
+                    Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
 
                     Text(disclaimer)
                         .font(Theme.serialNumberFont(size: 9)).foregroundStyle(Theme.inkTertiary)
@@ -1742,7 +1742,7 @@ struct NewsReaderView: View {
                                 Rectangle().fill(Theme.inkSecondary.opacity(0.1))
                             }
                             .frame(height: geo.size.height * 0.28)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
                             .padding(.horizontal, Theme.screenPadding)
                         }
 
@@ -1765,7 +1765,7 @@ struct NewsReaderView: View {
                         .font(Theme.serialNumberFont(size: 11))
                         .foregroundStyle(Theme.inkTertiary)
 
-                        GuillocheDivider()
+                        SectionDivider()
 
                         if let summary = item.summary, !summary.isEmpty {
                             Text(summary)
@@ -1791,7 +1791,7 @@ struct NewsReaderView: View {
                                     .padding(.vertical, 14)
                                     .frame(maxWidth: .infinity)
                                     .background(Theme.inkPrimary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                                 }
                             } else {
                                 HStack {
@@ -1803,7 +1803,7 @@ struct NewsReaderView: View {
                                 .padding(.vertical, 14)
                                 .frame(maxWidth: .infinity)
                                 .background(Theme.inkPrimary.opacity(0.5))
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                             }
                         }
                         .padding(.top, 20)
@@ -1880,7 +1880,7 @@ private struct CollapsibleSection<Content: View>: View {
                 .padding(.leading, 16)
                 .padding(.vertical, 8)
                 .background(Theme.canvasDeep.opacity(0.5))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight))
             }
         }
     }

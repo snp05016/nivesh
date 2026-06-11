@@ -21,9 +21,9 @@ struct LoginScreen: View {
             BanknoteWatermark(text: "OFFICIAL", size: 100, opacity: 0.015, alignment: .bottomTrailing)
 
             ScrollView {
-                VStack(spacing: 0) {
+                VStack(spacing: Theme.Spacing.none) {
                     // Header (Official Denomination Style)
-                    VStack(spacing: 16) {
+                    VStack(spacing: Theme.Spacing.card) {
                         ZStack {
                             Circle()
                                 .stroke(Theme.inkSecondary.opacity(0.3), lineWidth: 1)
@@ -35,7 +35,7 @@ struct LoginScreen: View {
                         .padding(.top, 60)
                         .staggerAppear(delay: 0.1)
 
-                        VStack(spacing: 4) {
+                        VStack(spacing: Theme.Spacing.small) {
                             Text("निवेश / NIVESH")
                                 .font(Theme.engravedSerif(size: 34, weight: .bold, relativeTo: .largeTitle))
                                 .foregroundStyle(Theme.inkPrimary)
@@ -50,15 +50,15 @@ struct LoginScreen: View {
 
                     // Entry Form
                     VStack(spacing: Theme.Spacing.large) {
-                        VStack(spacing: 16) {
+                        VStack(spacing: Theme.Spacing.card) {
                             if isRegistering {
                                 // Display Name
-                                VStack(alignment: .leading, spacing: 8) {
+                                VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                                     Text("पूरा नाम / FULL NAME")
                                         .font(.caption2.weight(.black))
                                         .foregroundStyle(Theme.inkSecondary)
                                     
-                                    HStack(spacing: 12) {
+                                    HStack(spacing: Theme.Spacing.standard) {
                                         Image(systemName: "person.text.rectangle.fill")
                                             .font(.callout)
                                             .foregroundStyle(Theme.inkSecondary.opacity(0.5))
@@ -75,12 +75,12 @@ struct LoginScreen: View {
                             }
 
                             // Username
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                                 Text("प्रयोक्ता नाम / USERNAME")
                                     .font(.caption2.weight(.black))
                                     .foregroundStyle(Theme.inkSecondary)
                                 
-                                HStack(spacing: 12) {
+                                HStack(spacing: Theme.Spacing.standard) {
                                     Image(systemName: "person.fill")
                                         .font(.callout)
                                         .foregroundStyle(Theme.inkSecondary.opacity(0.5))
@@ -97,12 +97,12 @@ struct LoginScreen: View {
                             }
 
                             // Password
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                                 Text("कूटशब्द / SECURITY KEY")
                                     .font(.caption2.weight(.black))
                                     .foregroundStyle(Theme.inkSecondary)
                                 
-                                HStack(spacing: 12) {
+                                HStack(spacing: Theme.Spacing.standard) {
                                     Image(systemName: "lock.shield.fill")
                                         .font(.callout)
                                         .foregroundStyle(Theme.inkSecondary.opacity(0.5))
@@ -119,7 +119,7 @@ struct LoginScreen: View {
 
                         // Error (Styled as a VOID stamp)
                         if let err = authManager.loginError {
-                            HStack(spacing: 10) {
+                            HStack(spacing: Theme.Spacing.medium) {
                                 BanknoteSignalBadge(text: "DENIED", color: Theme.bearRed, rotation: -8)
                                     .scaleEffect(0.8)
                                 Text(err.uppercased())
@@ -161,12 +161,12 @@ struct LoginScreen: View {
 
                         if !isRegistering {
                             // Quick-fill (Official Tokens)
-                            VStack(spacing: 12) {
+                            VStack(spacing: Theme.Spacing.standard) {
                                 Text("QUICK AUTHENTICATION")
                                     .font(Theme.labelStyle)
                                     .foregroundStyle(Theme.inkSecondary)
                                 
-                                HStack(spacing: 10) {
+                                HStack(spacing: Theme.Spacing.medium) {
                                     ForEach(["saumya", "nirav", "ankur"], id: \.self) { name in
                                         Button {
                                             username = name
@@ -179,7 +179,7 @@ struct LoginScreen: View {
                                                 .padding(.vertical, Theme.Spacing.standard)
                                                 .background(username == name ? Theme.securityGold.opacity(0.1) : Color.clear)
                                                 .foregroundStyle(username == name ? Theme.securityGold : Theme.inkPrimary)
-                                                .overlay(RoundedRectangle(cornerRadius: 2).stroke(username == name ? Theme.securityGold : Theme.inkPrimary.opacity(0.1), lineWidth: 1))
+                                                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(username == name ? Theme.securityGold : Theme.inkPrimary.opacity(0.1), lineWidth: 1))
                                         }
                                     }
                                 }

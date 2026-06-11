@@ -111,12 +111,12 @@ struct DalalStreetConsensusCard: View {
     // MARK: - Loaded
 
     private func loadedView(response: AdvisoryConsensusResponse) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.none) {
             // Header row
-            HStack(alignment: .top, spacing: 0) {
+            HStack(alignment: .top, spacing: Theme.Spacing.none) {
                 SecurityThread()
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text("DALAL STREET ADVISORY CONSENSUS")
                         .font(Theme.officialStampFont(size: 10))
                         .tracking(0.8)
@@ -137,15 +137,15 @@ struct DalalStreetConsensusCard: View {
                     .padding(.vertical, 4)
                     .background(Theme.securityGold.opacity(0.10))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 3)
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                             .stroke(Theme.securityGold.opacity(0.35), lineWidth: 0.5)
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
             }
             .padding(.top, 14)
             .padding(.trailing, 16)
 
-            GuillocheDivider()
+            SectionDivider()
                 .padding(.horizontal, 4)
 
             // Sector heat section
@@ -157,7 +157,7 @@ struct DalalStreetConsensusCard: View {
                     .padding(.horizontal, Theme.Spacing.card)
                     .padding(.bottom, 6)
 
-                VStack(spacing: 8) {
+                VStack(spacing: Theme.Spacing.medium) {
                     ForEach(Array(response.sectorSignals.prefix(3))) { signal in
                         SectorSignalRow(signal: signal)
                     }
@@ -165,7 +165,7 @@ struct DalalStreetConsensusCard: View {
                 .padding(.horizontal, Theme.Spacing.card)
                 .padding(.bottom, 12)
 
-                GuillocheDivider()
+                SectionDivider()
                     .padding(.horizontal, 4)
             }
 
@@ -178,7 +178,7 @@ struct DalalStreetConsensusCard: View {
                     .padding(.horizontal, Theme.Spacing.card)
                     .padding(.bottom, 6)
 
-                VStack(spacing: 0) {
+                VStack(spacing: Theme.Spacing.none) {
                     ForEach(Array(response.trendingTickers.prefix(3))) { ticker in
                         TrendingTickerRow(ticker: ticker, onTap: {
                             HapticManager.selection()
@@ -205,7 +205,7 @@ private struct SectorSignalRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Theme.Spacing.medium) {
             // Dominant stance dot
             Circle()
                 .fill(dotColor)
@@ -221,9 +221,9 @@ private struct SectorSignalRow: View {
 
             // Progress bar
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                     .fill(bearishColor.opacity(0.18))
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                     .fill(bullishColor.opacity(0.75))
                     .frame(width: UIScreen.main.bounds.width * 0.25 * bullFraction)
             }
@@ -254,7 +254,7 @@ private struct TrendingTickerRow: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 10) {
+            HStack(spacing: Theme.Spacing.medium) {
                 // Ticker label
                 Text(stripEmoji(ticker.ticker))
                     .font(Theme.serialNumberFont(size: 12))
@@ -275,7 +275,7 @@ private struct TrendingTickerRow: View {
                 Spacer()
 
                 // Views in Indian format
-                HStack(spacing: 3) {
+                HStack(spacing: Theme.Spacing.xSmall) {
                     Image(systemName: "eye.fill")
                         .font(Theme.officialStampFont(size: 8))
                         .foregroundStyle(Theme.inkTertiary)

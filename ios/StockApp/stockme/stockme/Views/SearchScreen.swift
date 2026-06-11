@@ -172,9 +172,9 @@ struct SearchScreen: View {
             ZStack {
                 DenominationBackground(denomination: .twoHundred)
 
-                VStack(spacing: 0) {
+                VStack(spacing: Theme.Spacing.none) {
                     // Bilingual header
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                         Text("खोजें")
                             .font(Theme.hindiFont(size: 11))
                             .foregroundStyle(Theme.inkSecondary)
@@ -188,7 +188,7 @@ struct SearchScreen: View {
                     .padding(.bottom, 16)
 
                     // Search field
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                         Text("खोज / SEARCH DIRECTORY")
                             .font(Theme.officialStampFont(size: 8))
                             .foregroundStyle(Theme.inkSecondary)
@@ -255,7 +255,7 @@ struct SearchScreen: View {
 
                     // Discover screener pills — glass capsule strip
                     if searchText.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                             Text("DISCOVER / खोजें")
                                 .font(Theme.officialStampFont(size: 8))
                                 .foregroundStyle(Theme.inkSecondary)
@@ -341,7 +341,7 @@ struct SearchScreen: View {
                     }
 
                     // Results section
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                         SectionHeader(
                             title: {
                                 if !searchText.isEmpty { return "Search Results" }
@@ -356,7 +356,7 @@ struct SearchScreen: View {
                         )
 
                         ScrollView {
-                            LazyVStack(spacing: 12) {
+                            LazyVStack(spacing: Theme.Spacing.standard) {
                                 if !searchText.isEmpty {
                                     // search mode handled below
                                 } else if screenerLoading {
@@ -367,7 +367,7 @@ struct SearchScreen: View {
                                     }
                                     .padding(.top, 40)
                                 } else if activePreset != nil && screenerResults.isEmpty {
-                                    VStack(spacing: 12) {
+                                    VStack(spacing: Theme.Spacing.standard) {
                                         BanknoteSignalBadge(text: "NO RESULTS", color: Theme.inkSecondary, rotation: -3)
                                         Text("No stocks matched this screen")
                                             .font(.subheadline)
@@ -397,7 +397,7 @@ struct SearchScreen: View {
 
                                 if !searchText.isEmpty {
                                     if searchResults.isEmpty && !isSearching {
-                                        VStack(spacing: 16) {
+                                        VStack(spacing: Theme.Spacing.card) {
                                             BanknoteSignalBadge(text: "NOT FOUND", color: Theme.bearRed, rotation: -4)
                                             Text("No entries matching '\(searchText)'")
                                                 .font(.subheadline)
@@ -420,7 +420,7 @@ struct SearchScreen: View {
                                             .ekPressHaptic()
                                         }
                                         if isSearching {
-                                            VStack(spacing: 12) {
+                                            VStack(spacing: Theme.Spacing.standard) {
                                                 ForEach(0..<3, id: \.self) { _ in
                                                     SearchSkeletonRow()
                                                 }
@@ -680,16 +680,16 @@ private struct StockEntryRow: View {
     let entry: StockEntry
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Theme.Spacing.none) {
             Rectangle()
                 .fill(Theme.inkSecondary.opacity(0.3))
                 .frame(width: 1)
                 .padding(.vertical, Theme.Spacing.standard)
 
-            HStack(spacing: 16) {
+            HStack(spacing: Theme.Spacing.card) {
                 StockIcon(ticker: entry.ticker, signal: nil)
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text(entry.companyName.uppercased())
                         .font(Theme.engravedSerif(size: 16, weight: .bold))
                         .foregroundStyle(Theme.inkPrimary)
@@ -712,21 +712,21 @@ private struct StockEntryRow: View {
 
 private struct SearchSkeletonRow: View {
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Theme.Spacing.none) {
             Rectangle()
                 .fill(Theme.inkSecondary.opacity(0.15))
                 .frame(width: 1)
                 .padding(.vertical, Theme.Spacing.standard)
 
-            HStack(spacing: 16) {
+            HStack(spacing: Theme.Spacing.card) {
                 Circle()
                     .fill(Theme.inkTertiary.opacity(0.15))
                     .frame(width: 40, height: 40)
-                VStack(alignment: .leading, spacing: 6) {
-                    RoundedRectangle(cornerRadius: 3)
+                VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                         .fill(Theme.inkTertiary.opacity(0.15))
                         .frame(width: UIScreen.main.bounds.width * 0.35, height: 12)
-                    RoundedRectangle(cornerRadius: 3)
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                         .fill(Theme.inkTertiary.opacity(0.1))
                         .frame(width: UIScreen.main.bounds.width * 0.20, height: 9)
                 }

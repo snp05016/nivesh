@@ -23,10 +23,10 @@ struct ValuationCalendarView: View {
 
             RBISealBackground().opacity(0.04)
 
-            HStack(spacing: 0) {
+            HStack(spacing: Theme.Spacing.none) {
                 SecurityThread()
 
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.none) {
 
                     // Card Header
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
@@ -58,24 +58,24 @@ struct ValuationCalendarView: View {
                     }
                     .padding(.bottom, 10)
 
-                    GuillocheDivider()
+                    SectionDivider()
                         .padding(.bottom, Theme.Spacing.card)
 
                     // Summary Stats Row
                     if let summary = vm.summary {
-                        HStack(spacing: 0) {
+                        HStack(spacing: Theme.Spacing.none) {
                             StatPill(
                                 label: "PERIOD CHANGE",
                                 value: formatCurrency(summary.periodChangeValue),
                                 color: summary.periodChangeValue >= 0 ? bullGreen : bearRed
                             )
-                            Divider().frame(height: 30).opacity(0.2)
+                            Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(width: 0.5, height: 30)
                             StatPill(
                                 label: "PEAK",
                                 value: formatCurrency(summary.peakValue),
                                 color: goldAccent
                             )
-                            Divider().frame(height: 30).opacity(0.2)
+                            Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(width: 0.5, height: 30)
                             StatPill(
                                 label: "DATA POINTS",
                                 value: "\(summary.dataPoints) days",
@@ -376,7 +376,7 @@ struct StatPill: View {
     let value: String
     let color: Color
     var body: some View {
-        VStack(alignment: .center, spacing: 3) {
+        VStack(alignment: .center, spacing: Theme.Spacing.xSmall) {
             Text(label)
                 .font(Theme.serialNumberFont(size: 8))
                 .tracking(1.0)

@@ -40,7 +40,7 @@ enum AppTheme: String, CaseIterable, Codable {
 
     var canvasDark: Color {
         switch self {
-        case .darkImmersive:   return Color(red: 0.04, green: 0.04, blue: 0.06)  // #0A0A0F — deep dark canvas
+        case .darkImmersive:   return Color(red: 0.035, green: 0.043, blue: 0.063) // #090B10 — deep navy-black
         case .chocolateBrown:  return Color(red: 0.10, green: 0.06, blue: 0.04)
         case .greenishYellow:  return Color(red: 0.05, green: 0.07, blue: 0.04)
         case .fluorescentBlue: return Color(red: 0.02, green: 0.04, blue: 0.10)
@@ -64,25 +64,25 @@ enum AppTheme: String, CaseIterable, Codable {
 
     var accentDark: Color {
         switch self {
-        case .darkImmersive:   return Color(red: 0.83, green: 0.66, blue: 0.09)  // #D4A817 — electric amber accent
-        case .chocolateBrown:  return Color(red: 0.80, green: 0.45, blue: 0.18)
-        case .greenishYellow:  return Color(red: 0.68, green: 0.82, blue: 0.20)
-        case .fluorescentBlue: return Color(red: 0.20, green: 0.60, blue: 1.00)
-        case .lavender:        return Color(red: 0.75, green: 0.60, blue: 0.90)
-        case .brightYellow:    return Color(red: 1.00, green: 0.85, blue: 0.10)
-        case .stoneGrey:       return Color(red: 0.72, green: 0.72, blue: 0.72)
+        case .darkImmersive:   return Color(red: 0.357, green: 0.565, blue: 0.965) // #5B90F6 — electric blue
+        case .chocolateBrown:  return Color(red: 0.55, green: 0.65, blue: 0.95)    // warm blue
+        case .greenishYellow:  return Color(red: 0.30, green: 0.85, blue: 0.65)    // teal
+        case .fluorescentBlue: return Color(red: 0.20, green: 0.55, blue: 1.00)    // pure blue
+        case .lavender:        return Color(red: 0.70, green: 0.55, blue: 0.95)    // purple-blue
+        case .brightYellow:    return Color(red: 0.95, green: 0.85, blue: 0.20)    // yellow-gold
+        case .stoneGrey:       return Color(red: 0.65, green: 0.70, blue: 0.80)    // blue-grey
         }
     }
 
     var accentLight: Color {
         switch self {
-        case .darkImmersive:   return Color(red: 0.72, green: 0.59, blue: 0.23)
-        case .chocolateBrown:  return Color(red: 0.65, green: 0.35, blue: 0.12)
-        case .greenishYellow:  return Color(red: 0.58, green: 0.70, blue: 0.15)
-        case .fluorescentBlue: return Color(red: 0.15, green: 0.45, blue: 0.85)
-        case .lavender:        return Color(red: 0.62, green: 0.50, blue: 0.78)
-        case .brightYellow:    return Color(red: 0.90, green: 0.75, blue: 0.08)
-        case .stoneGrey:       return Color(red: 0.55, green: 0.55, blue: 0.55)
+        case .darkImmersive:   return Color(red: 0.357, green: 0.565, blue: 0.965)
+        case .chocolateBrown:  return Color(red: 0.45, green: 0.55, blue: 0.85)
+        case .greenishYellow:  return Color(red: 0.25, green: 0.72, blue: 0.55)
+        case .fluorescentBlue: return Color(red: 0.15, green: 0.45, blue: 0.90)
+        case .lavender:        return Color(red: 0.60, green: 0.45, blue: 0.85)
+        case .brightYellow:    return Color(red: 0.85, green: 0.75, blue: 0.15)
+        case .stoneGrey:       return Color(red: 0.55, green: 0.60, blue: 0.70)
         }
     }
 }

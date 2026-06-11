@@ -23,7 +23,7 @@ struct CompareScreen: View {
                 DenominationBackground(denomination: .twoHundred)
 
                 ScrollView {
-                    VStack(spacing: 20) {
+                    VStack(spacing: Theme.Spacing.screen) {
                         // Picker row
                         HStack(spacing: Theme.Spacing.small) {
                             StockPickerButton(label: "Stock A", selected: selectedA, searchText: $searchTextA) { entry in
@@ -50,7 +50,7 @@ struct CompareScreen: View {
                         .padding(.horizontal, Theme.screenPadding)
 
                         if loading {
-                            VStack(spacing: 12) {
+                            VStack(spacing: Theme.Spacing.standard) {
                                 ProgressView().tint(Theme.securityGold).scaleEffect(1.2)
                                 Text("Fetching data…")
                                     .font(Theme.officialStampFont(size: 9))
@@ -60,7 +60,7 @@ struct CompareScreen: View {
                         } else if let a = infoA, let b = infoB {
                             compareGrid(a: a, b: b, c: infoC)
                         } else {
-                            VStack(spacing: 10) {
+                            VStack(spacing: Theme.Spacing.medium) {
                                 Image(systemName: "chart.bar.xaxis.ascending")
                                     .font(.largeTitle).foregroundStyle(Theme.inkTertiary)
                                 Text("Select two stocks to compare")
@@ -128,9 +128,9 @@ struct CompareScreen: View {
             return ((c.price ?? 0.0) - l) / (h - l) * 100
         }()
 
-        VStack(spacing: 0) {
+        VStack(spacing: Theme.Spacing.none) {
             // Header row
-            HStack(spacing: 0) {
+            HStack(spacing: Theme.Spacing.none) {
                 Text("").frame(maxWidth: .infinity)
                 CompareHeaderCell(text: a.ticker)
                 CompareHeaderCell(text: b.ticker)
@@ -140,7 +140,7 @@ struct CompareScreen: View {
             }
             .padding(.horizontal, Theme.screenPadding)
 
-            GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+            SectionDivider().padding(.horizontal, Theme.screenPadding)
 
             // Rows
             Group {
@@ -194,7 +194,7 @@ private struct CompareRow: View {
     var colorC: Color = Theme.inkPrimary
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Theme.Spacing.none) {
             Text(label)
                 .font(Theme.officialStampFont(size: 8))
                 .foregroundStyle(Theme.inkSecondary)
@@ -239,7 +239,7 @@ private struct StockPickerButton: View {
 
     var body: some View {
         Button { showPicker = true } label: {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 Text(label).font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                 Text(selected?.ticker ?? "Tap to select")
                     .font(Theme.serialNumberFont(size: 13))
@@ -256,7 +256,7 @@ private struct StockPickerButton: View {
             NavigationStack {
                 ZStack {
                     Theme.canvas.ignoresSafeArea()
-                    VStack(spacing: 0) {
+                    VStack(spacing: Theme.Spacing.none) {
                         HStack {
                             Image(systemName: "magnifyingglass").foregroundStyle(Theme.inkTertiary)
                             TextField("Search stock…", text: $searchText)
@@ -265,7 +265,7 @@ private struct StockPickerButton: View {
                         }
                         .padding(Theme.Spacing.standard)
                         .background(Theme.inkPrimary.opacity(0.05))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                         .padding()
 
                         List(results) { entry in
@@ -273,7 +273,7 @@ private struct StockPickerButton: View {
                                 onSelect(entry)
                                 showPicker = false
                             } label: {
-                                VStack(alignment: .leading, spacing: 2) {
+                                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                     Text(entry.ticker).font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkPrimary)
                                     Text(entry.companyName).font(.caption).foregroundStyle(Theme.inkSecondary)
                                 }

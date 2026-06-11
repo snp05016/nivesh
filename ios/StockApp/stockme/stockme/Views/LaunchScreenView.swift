@@ -104,11 +104,11 @@ struct LaunchScreenView: View {
             ZStack {
                 Theme.canvas.ignoresSafeArea()
 
-                VStack(spacing: 0) {
+                VStack(spacing: Theme.Spacing.none) {
                     Spacer()
 
                     // ── Mark + wordmark stack ──────────────────────────────
-                    VStack(spacing: 20) {
+                    VStack(spacing: Theme.Spacing.screen) {
                         // Icon mark — 130×130 with double border
                         ZStack {
                             RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
@@ -119,7 +119,7 @@ struct LaunchScreenView: View {
                                 .stroke(Theme.securityGold.opacity(0.55), lineWidth: 1.2)
                                 .frame(width: geo.size.width * 0.35, height: geo.size.width * 0.35)
 
-                            RoundedRectangle(cornerRadius: 19)
+                            RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
                                 .stroke(Theme.securityGold.opacity(0.25), lineWidth: 0.5)
                                 .frame(width: geo.size.width * 0.35 * (122.0 / 130.0), height: geo.size.width * 0.35 * (122.0 / 130.0))
 
@@ -128,9 +128,9 @@ struct LaunchScreenView: View {
                         }
 
                         // Wordmark row
-                        VStack(spacing: 8) {
+                        VStack(spacing: Theme.Spacing.medium) {
                             // NIVESH + flanking rules
-                            HStack(spacing: 14) {
+                            HStack(spacing: Theme.Spacing.standard) {
                                 Rectangle()
                                     .fill(Theme.securityGold.opacity(0.35))
                                     .frame(width: geo.size.width * 0.056, height: 0.6)

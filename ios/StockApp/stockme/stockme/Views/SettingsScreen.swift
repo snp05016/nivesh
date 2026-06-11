@@ -193,7 +193,7 @@ struct SettingsScreen: View {
                                     .foregroundStyle(Theme.securityGold)
                                 }
                                 .padding(.vertical, Theme.Spacing.standard)
-                                Divider().background(Theme.inkSecondary.opacity(0.05))
+                                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
                                 ToggleNoteRow(icon: "bell.badge", color: Theme.securityGold, title: "IPO Alerts", isOn: $ipoAlerts)
                             }
 
@@ -278,7 +278,7 @@ struct SettingsScreen: View {
             }
             .padding(.horizontal, Theme.Spacing.small)
 
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.none) {
                 // Row 1 — Test Push Notification
                 HStack {
                     SettingIcon(icon: "bell.badge.fill", color: Theme.holdAmber)
@@ -299,7 +299,7 @@ struct SettingsScreen: View {
                 .contentShape(Rectangle())
                 .onTapGesture { showTestNotifSheet = true }
 
-                Divider().background(Theme.inkSecondary.opacity(0.05))
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
 
                 // Row 2 — Morning Summary Push
                 HStack {
@@ -330,7 +330,7 @@ struct SettingsScreen: View {
                     }
                 }
 
-                Divider().background(Theme.inkSecondary.opacity(0.05))
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
 
                 // Row 3 — Harvest YouTube Now
                 HStack {
@@ -372,7 +372,7 @@ struct SettingsScreen: View {
                     }
                 }
 
-                Divider().background(Theme.inkSecondary.opacity(0.05))
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
 
                 // Row 4 — Notification Permission Status
                 HStack {
@@ -405,7 +405,7 @@ struct SettingsScreen: View {
                     }
                 }
 
-                Divider().background(Theme.inkSecondary.opacity(0.05))
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
 
                 // Row 4b — Welcome Notification Toggle
                 HStack {
@@ -425,7 +425,7 @@ struct SettingsScreen: View {
                 }
                 .padding(.vertical, Theme.Spacing.standard)
 
-                Divider().background(Theme.inkSecondary.opacity(0.05))
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
 
                 // Row 5 — APNs Device Token
                 HStack {
@@ -455,7 +455,7 @@ struct SettingsScreen: View {
                     }
                 }
 
-                Divider().background(Theme.inkSecondary.opacity(0.05))
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
 
                 // Row 5b — Notification Registration Error
                 if let error = notificationManager.registrationError {
@@ -468,7 +468,7 @@ struct SettingsScreen: View {
                     )
                     .padding(.vertical, Theme.Spacing.medium)
 
-                    Divider().background(Theme.inkSecondary.opacity(0.05))
+                    Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
                 }
 
                 // Row 6 — Reset Tutorial
@@ -496,7 +496,7 @@ struct SettingsScreen: View {
                     NotificationCenter.default.post(name: Notification.Name("resetTutorial"), object: nil)
                 }
 
-                Divider().background(Theme.inkSecondary.opacity(0.05))
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
 
                 // Row 7 — Reset Onboarding
                 HStack {
@@ -636,7 +636,7 @@ private struct SettingsNoteGroup<Content: View>: View {
             }
             .padding(.horizontal, Theme.Spacing.small)
 
-            VStack(spacing: 0) { content }
+            VStack(spacing: Theme.Spacing.none) { content }
                 .padding(.horizontal, Theme.Spacing.card)
                 .banknoteCard()
         }
@@ -677,7 +677,7 @@ private struct ToggleNoteRow: View {
             .tint(Theme.securityGold)
         }
         .padding(.vertical, Theme.Spacing.standard)
-        Divider().background(Theme.inkSecondary.opacity(0.05))
+        Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
     }
 }
 
@@ -703,7 +703,7 @@ private struct PickerNoteRow: View {
             .tint(Theme.inkSecondary)
         }
         .padding(.vertical, Theme.Spacing.standard)
-        Divider().background(Theme.inkSecondary.opacity(0.05))
+        Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
     }
 }
 
@@ -725,7 +725,7 @@ private struct DatePickerNoteRow: View {
                 .tint(Theme.securityGold)
         }
         .padding(.vertical, Theme.Spacing.standard)
-        Divider().background(Theme.inkSecondary.opacity(0.05))
+        Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
     }
 }
 
