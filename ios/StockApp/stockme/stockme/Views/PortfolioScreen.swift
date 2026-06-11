@@ -156,11 +156,13 @@ struct PortfolioScreen: View {
         guard !snapshots.isEmpty else { return [] }
         let n: Int
         switch selectedRange {
-        case .day:   n = 2
-        case .week:  n = 7
-        case .month: n = 30
-        case .year:  n = snapshots.count
-        case .all:   n = snapshots.count
+        case .day:         n = 2
+        case .week:        n = 7
+        case .month:       n = 30
+        case .threeMonths: n = 90
+        case .sixMonths:   n = 180
+        case .year:        n = snapshots.count
+        case .all:         n = snapshots.count
         }
         return Array(snapshots.suffix(max(n, 2)))
     }

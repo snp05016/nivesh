@@ -11,9 +11,10 @@ extension UIColor {
     }
 }
 
+
 enum Theme {
 
-    // MARK: - Adaptive Color Helper
+    // MARK: - Color Helpers
 
     private static func uiColor(_ hex: String, alpha: CGFloat = 1) -> UIColor {
         let h = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
@@ -25,120 +26,86 @@ enum Theme {
         return UIColor(red: r, green: g, blue: b, alpha: alpha)
     }
 
-    // Creates a Color that automatically adapts to light/dark mode
+    // Kept for backward-compat — now always returns the dark value since palette is fixed dark
     static func adaptive(_ light: String, _ dark: String, alpha: CGFloat = 1) -> Color {
-        Color(UIColor { tc in
-            tc.userInterfaceStyle == .dark
-                ? uiColor(dark, alpha: alpha)
-                : uiColor(light, alpha: alpha)
-        })
+        Color(uiColor(dark, alpha: alpha))
     }
 
-    // MARK: - The Paper (dynamic per ThemeManager)
+    // MARK: - The Canvas (fixed dark — Bloomberg terminal navy)
 
-    static var canvas: Color {
-        Color(UIColor { tc in
-            let scheme: ColorScheme = tc.userInterfaceStyle == .dark ? .dark : .light
-            return UIColor(ThemeManager.shared.canvas(for: scheme))
-        })
-    }
-    static var canvasDeep: Color {
-        Color(UIColor { tc in
-            let scheme: ColorScheme = tc.userInterfaceStyle == .dark ? .dark : .light
-            let base = UIColor(ThemeManager.shared.canvas(for: scheme))
-            return scheme == .dark
-                ? base.withBrightness(offset: 0.04)
-                : base.withBrightness(offset: -0.02)
-        })
-    }
-    static var canvasShadow: Color {
-        Color(UIColor { tc in
-            let scheme: ColorScheme = tc.userInterfaceStyle == .dark ? .dark : .light
-            let base = UIColor(ThemeManager.shared.canvas(for: scheme))
-            return scheme == .dark
-                ? base.withBrightness(offset: -0.03)
-                : base.withBrightness(offset: -0.04)
-        })
-    }
+    static let canvas      = Color(uiColor("0A0E17"))   // near-black deep navy
+    static let canvasDeep  = Color(uiColor("111827"))   // card surface
+    static let canvasShadow = Color(uiColor("070B12"))  // deepest shadow
 
     // MARK: - The Inks
 
-    static let inkPrimary   = adaptive("2C2C2C", "F2F0EC") // charcoal / warm white
-    static let inkSecondary = adaptive("5C6B5A", "8B8E9C") // sage / cool gray
-    static let inkTertiary  = adaptive("8A8A7A", "4A4D5C") // faded / muted dark
+    static let inkPrimary   = Color(uiColor("F0F4FF"))  // bright white-blue
+    static let inkSecondary = Color(uiColor("8892A0"))  // cool gray
+    static let inkTertiary  = Color(uiColor("4A5568"))  // dim gray
 
-    // MARK: - The Accents
+    // MARK: - The Accents (neon teal — THE signature accent)
 
-    static var securityGold: Color {
-        Color(UIColor { tc in
-            let scheme: ColorScheme = tc.userInterfaceStyle == .dark ? .dark : .light
-            return UIColor(ThemeManager.shared.accent(for: scheme))
-        })
-    }
-    static let securityGoldLight = adaptive("E8C96A", "77A7FA")
+    static let securityGold      = Color(uiColor("00D4AA"))              // neon teal
+    static let securityGoldLight = Color(uiColor("00FFD0"))              // lighter teal highlight
 
     // MARK: - Market Signals
 
-    static let bullGreen      = adaptive("2D9A6A", "00C896") // forest / electric teal-green #00C896
-    static var bullGreenLight: Color { bullGreen.opacity(0.18) }
-    static let bearRed        = adaptive("8B3A2A", "FF4D4D") // brick / electric red #FF4D4D
-    static var bearRedLight: Color   { bearRed.opacity(0.18) }
-    static let holdAmber      = adaptive("8B6914", "FAB31C") // aged / electric amber #FAB31C
+    static let bullGreen      = Color(uiColor("00D4AA"))                         // neon teal (same as securityGold)
+    static var bullGreenLight: Color { Color(uiColor("00D4AA")).opacity(0.13) }
+    static let bearRed        = Color(uiColor("E85555"))                         // vivid red
+    static var bearRedLight:   Color { Color(uiColor("E85555")).opacity(0.13) }
+    static let holdAmber      = Color(uiColor("B08020"))                         // amber hold
 
     // Legacy aliases — Signal.color in Models.swift uses these
     static let signalEmerald = bullGreen
     static let signalRuby    = bearRed
 
+    // MARK: - Extended Palette
+
+    static let avatarBlue    = Color(uiColor("4B7BEC"))  // avatar / badge accent
+    static let cardBlueDeep  = Color(uiColor("1A2744"))  // deep navy card surface
+
     // MARK: - Chart & Data Colors
 
-    static let chartPromoter = adaptive("4A5A8A", "6A7AAA")
-    static let avatarBackground = adaptive("E5E0D5", "3A3530")
+    static let chartPromoter   = Color(uiColor("6A7AAA"))
+    static let avatarBackground = cardBlueDeep
 
-    // MARK: - Denomination Tints (banknote-specific)
-    // Use as .shadow(color:) or .overlay accents — NOT as full background fills
+    // MARK: - Denomination Tints (dark-mode fixed)
 
     enum NoteTint {
-        static let ten: Color = adaptive("6B3A28", "9B6050")
-        static let fifty: Color = adaptive("4A5A8A", "6A7AAA")
-        static let hundred: Color = adaptive("7A6BA0", "9A8BC0")
-        static let twoHundred: Color = adaptive("C85A20", "E87A40")
-        static let fiveHundred: Color = adaptive("4A6B5A", "6A8B7A")
-        static let twoThousand: Color = adaptive("B040A0", "D060C0")
+        static let ten:        Color = Color(uiColor("9B6050"))
+        static let fifty:      Color = Color(uiColor("6A7AAA"))
+        static let hundred:    Color = Color(uiColor("9A8BC0"))
+        static let twoHundred: Color = Color(uiColor("E87A40"))
+        static let fiveHundred:Color = Color(uiColor("6A8B7A"))
+        static let twoThousand:Color = Color(uiColor("D060C0"))
     }
 
-    // MARK: - Borders (toned down 10%)
+    // MARK: - Borders
 
-    static var borderFine: Color { inkPrimary.opacity(0.08) }
-    static var borderSage: Color { securityGold.opacity(0.20) }
-    static let paperBorder = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark
-            ? UIColor(white: 1, alpha: 0.06)
-            : UIColor(white: 0, alpha: 0.08)
-    })
-    static let paperTexture = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark
-            ? UIColor(white: 1, alpha: 0.025)
-            : UIColor(white: 0, alpha: 0.030)
-    })
+    static var borderFine: Color { Color.white.opacity(0.04) }
+    static var borderSage: Color { Color.white.opacity(0.08) }
+    static let paperBorder  = Color.white.opacity(0.06)
+    static let paperTexture = Color.white.opacity(0.025)
 
-    // MARK: - Surface Hierarchy (Phase 1 redesign)
+    // MARK: - Surface Hierarchy
 
-    static let surfaceElevated = adaptive("EDE8DC", "262318")   // cards one level above canvas
-    static let surfaceFloat    = adaptive("F0EBE0", "2E2A20")   // modal sheets, dropdowns
+    static let surfaceElevated = Color(uiColor("1A2035"))   // cards one level above canvas
+    static let surfaceFloat    = Color(uiColor("1E2540"))   // modal sheets, dropdowns
 
-    // MARK: - Enhanced Borders (Phase 1 redesign)
+    // MARK: - Enhanced Borders
 
-    static let borderSubtle    = adaptive("2C2C2C", "3A3530", alpha: 0.60)
-    static let borderStrong    = adaptive("B8973A", "C8A84A", alpha: 0.25)  // gold-tinted important borders
+    static let borderSubtle = Color.white.opacity(0.06)
+    static let borderStrong = Color(uiColor("00D4AA")).opacity(0.25)   // teal-tinted important borders
 
-    // MARK: - Data Colors (Phase 1 redesign — muted financial semantics)
+    // MARK: - Data Colors
 
-    static let dataPositive      = adaptive("3D9B6A", "3D9B6A")   // muted forest green
-    static let dataNegative      = adaptive("C4533A", "C4533A")   // heritage brick red
-    static let dataPositiveMuted = adaptive("3D9B6A", "3D9B6A", alpha: 0.15)
-    static let dataNegativeMuted = adaptive("C4533A", "C4533A", alpha: 0.15)
-    static let goldPrimary       = adaptive("B8973A", "C8A84A")   // security gold alias
-    static let goldMuted         = adaptive("B8973A", "C8A84A", alpha: 0.30)
+    static let dataPositive      = Color(uiColor("00D4AA"))
+    static let dataNegative      = Color(uiColor("E85555"))
+    static let dataPositiveMuted = Color(uiColor("00D4AA")).opacity(0.15)
+    static let dataNegativeMuted = Color(uiColor("E85555")).opacity(0.15)
+    static let goldPrimary       = securityGold                      // alias
+    static var goldMuted: Color  { securityGold.opacity(0.30) }
 
     // MARK: - Typography
 
@@ -160,61 +127,61 @@ enum Theme {
         }
     }
 
+    /// Body / heading text — now uses system font so all call sites keep working.
     static func engravedSerif(size: CGFloat, weight: Font.Weight = .regular, relativeTo style: Font.TextStyle = .body) -> Font {
-        weight == .bold
-            ? Font.custom("Georgia-Bold", size: size, relativeTo: style)
-            : Font.custom("Georgia", size: size, relativeTo: style)
+        Font.system(size: size, weight: weight == .bold ? .bold : .regular, design: .default)
     }
 
+    /// Monospaced font for prices, percentages, numerical data.
     static func serialNumberFont(size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
         let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
         return Font.system(size: scaled, weight: .medium, design: .monospaced)
     }
 
-    // Official stamp labels — apply .tracking(1.5) on Text at call site
+    /// Official stamp labels — apply .tracking(1.5) at call site.
     static func officialStampFont(size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
         let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
         return Font.system(size: scaled, weight: .medium, design: .default)
     }
 
+    /// Secondary text — italic system font (replaces Georgia italic).
     static func hindiFont(size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
-        Font.custom("Georgia", size: size, relativeTo: style).italic()
+        Font.system(size: size, weight: .regular)
     }
 
     static let labelStyle = Font.caption.weight(.bold).uppercaseSmallCaps()
 
-    // MARK: - Data Typography (Phase 1 redesign)
+    // MARK: - Data Typography
 
-    /// Large price display — Georgia Bold 28pt for live prices
+    /// Large price display — monospaced bold for live prices.
     static func dataLarge(size: CGFloat = 28, relativeTo style: Font.TextStyle = .title) -> Font {
-        Font.custom("Georgia-Bold", size: size, relativeTo: style)
+        Font.system(size: size, weight: .bold, design: .monospaced)
     }
 
-    /// Extra-large display — Georgia Bold 38pt for portfolio totals
+    /// Extra-large display — monospaced bold for portfolio totals.
     static func dataXL(size: CGFloat = 38, relativeTo style: Font.TextStyle = .largeTitle) -> Font {
-        Font.custom("Georgia-Bold", size: size, relativeTo: style)
+        Font.system(size: size, weight: .bold, design: .monospaced)
     }
 
-    /// Monospaced tabular font — vertically aligned decimals for P&L numbers
+    /// Monospaced tabular font — vertically aligned decimals for P&L numbers.
     static func monoTabular(size: CGFloat = 14, relativeTo style: Font.TextStyle = .body) -> Font {
         let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
         return Font.system(size: scaled, weight: .medium, design: .monospaced)
     }
 
-    /// Micro label — 10pt SF Pro medium for axis labels, timestamps
+    /// Micro label — for axis labels, timestamps.
     static func microLabel(size: CGFloat = 10, relativeTo style: Font.TextStyle = .caption2) -> Font {
         let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
         return Font.system(size: scaled, weight: .medium, design: .default)
     }
 
-    /// Section header label — 11pt SF Pro semibold ALL CAPS with tracking +1.2
+    /// Section header label — ALL CAPS with tracking +1.2 at call site.
     static func sectionCapsLabel(size: CGFloat = 11, relativeTo style: Font.TextStyle = .caption) -> Font {
         let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
         return Font.system(size: scaled, weight: .semibold, design: .default)
     }
 
-    // Fix 1.1: SF Pro Rounded for secondary typography (descriptions, timestamps, card labels).
-    // Georgia (.engravedSerif) reserved STRICTLY for hero metrics (portfolio value, ticker stamps, headers).
+    /// SF Pro Rounded for secondary typography.
     static func roundedSecondary(size: CGFloat = 14, weight: Font.Weight = .regular, relativeTo style: Font.TextStyle = .body) -> Font {
         let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
         return Font.system(size: scaled, weight: weight, design: .rounded)
@@ -228,7 +195,7 @@ enum Theme {
     // MARK: - Spacing
 
     enum Spacing {
-        static let none: CGFloat = 0   // flush stacking (no gap)
+        static let none: CGFloat = 0
         static let xSmall: CGFloat = 2
         static let small: CGFloat = 4
         static let tight: CGFloat = 6
@@ -238,88 +205,67 @@ enum Theme {
         static let screen: CGFloat = 20
         static let large: CGFloat = 24
         static let xLarge: CGFloat = 32
-        static let cardInset: CGFloat = 20   // standard card internal padding
-        static let sectionGap: CGFloat = 28  // gap between major sections
+        static let cardInset: CGFloat = 20
+        static let sectionGap: CGFloat = 28
     }
+
+    // MARK: - Corner Radii
 
     enum CornerRadius {
-        static let small: CGFloat = 4
-        static let tight: CGFloat = 6
-        static let medium: CGFloat = 8
-        static let large: CGFloat = 12
-        static let card: CGFloat = 16
-        static let pill: CGFloat = 100   // for signal badges, chips
-        static let sheet: CGFloat = 24   // bottom sheets
+        static let small: CGFloat  = 4
+        static let tight: CGFloat  = 6
+        static let medium: CGFloat = 10   // was 8
+        static let large: CGFloat  = 12
+        static let card: CGFloat   = 14   // was 16
+        static let badge: CGFloat  = 8
+        static let pill: CGFloat   = 100
+        static let sheet: CGFloat  = 24
     }
 
-    static let cardPadding: CGFloat = Spacing.screen
-    static let screenPadding: CGFloat = Spacing.screen
+    static let cardPadding: CGFloat    = Spacing.screen
+    static let screenPadding: CGFloat  = Spacing.screen
     static let sectionSpacing: CGFloat = Spacing.xLarge
 
     // MARK: - Gradients
 
     static let securityThreadGradient = LinearGradient(
-        colors: [securityGold.opacity(0.35), securityGold.opacity(0.08)],
+        colors: [Color(uiColor("00D4AA")).opacity(0.35), Color(uiColor("00D4AA")).opacity(0.08)],
         startPoint: .top,
         endPoint: .bottom
     )
 
     static let securityGoldGradient = LinearGradient(
-        colors: [securityGold, securityGold.opacity(0.78)],
+        colors: [Color(uiColor("00D4AA")), Color(uiColor("00D4AA")).opacity(0.78)],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
 
-    // Chart glow fills — fade from signal colour to clear
+    /// Chart glow fill — teal fade for bull moves
     static var chartBullGradient: LinearGradient {
         LinearGradient(
-            colors: [bullGreen.opacity(0.20), bullGreen.opacity(0.05), bullGreen.opacity(0.00)],
+            colors: [Color(uiColor("00D4AA")).opacity(0.25), Color(uiColor("00D4AA")).opacity(0.05), Color.clear],
             startPoint: .top, endPoint: .bottom
         )
     }
 
+    /// Chart glow fill — red fade for bear moves
     static var chartBearGradient: LinearGradient {
         LinearGradient(
-            colors: [bearRed.opacity(0.20), bearRed.opacity(0.05), bearRed.opacity(0.00)],
+            colors: [Color(uiColor("E85555")).opacity(0.20), Color(uiColor("E85555")).opacity(0.05), Color.clear],
             startPoint: .top, endPoint: .bottom
         )
     }
 }
 
-// MARK: - Paper Texture (dark-mode aware)
+// MARK: - Paper Texture (now a plain dark canvas)
 
 struct PaperTexture: View {
-    @Environment(\.colorScheme) var colorScheme
-
     var body: some View {
-        ZStack {
-            Theme.canvas.ignoresSafeArea()
-
-            Canvas { context, size in
-                let grainColor: Color = colorScheme == .dark
-                    ? .white.opacity(0.025)
-                    : .black.opacity(0.030)
-                for _ in 0..<500 {
-                    let rect = CGRect(
-                        x: CGFloat.random(in: 0...size.width),
-                        y: CGFloat.random(in: 0...size.height),
-                        width: 1, height: 1
-                    )
-                    context.fill(Path(rect), with: .color(grainColor))
-                }
-            }
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
-
-            Rectangle()
-                .fill(Theme.inkSecondary.opacity(colorScheme == .dark ? 0.025 : 0.030))
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-        }
+        Theme.canvas.ignoresSafeArea()
     }
 }
 
-// MARK: - Banknote Watermark
+// MARK: - Banknote Watermark (no-op in terminal aesthetic)
 
 struct BanknoteWatermark: View {
     let text: String
@@ -328,57 +274,24 @@ struct BanknoteWatermark: View {
     let alignment: Alignment
 
     var body: some View {
-        ZStack {
-            Color.clear
-                .overlay(
-                    Text(text)
-                        .font(Theme.engravedSerif(size: size, weight: .bold))
-                        .foregroundStyle(Theme.inkPrimary.opacity(opacity))
-                        .rotationEffect(.degrees(-20))
-                        .offset(x: size * 0.1, y: size * 0.1),
-                    alignment: alignment
-                )
-        }
-        .allowsHitTesting(false)
+        EmptyView()
     }
 }
 
-// MARK: - Guilloché Divider (toned down)
+// MARK: - Guilloché Divider (replaced with clean spacer)
 
 struct GuillocheDivider: View {
     var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                Path { path in
-                    let w = geo.size.width
-                    path.move(to: .zero)
-                    for x in stride(from: 0, through: w, by: 4) {
-                        path.addLine(to: CGPoint(x: x, y: sin(x / 4.0) * 2))
-                    }
-                }
-                .stroke(Theme.inkSecondary.opacity(0.22), lineWidth: 0.5)
-
-                Path { path in
-                    let w = geo.size.width
-                    path.move(to: CGPoint(x: 0, y: 4))
-                    for x in stride(from: 0, through: w, by: 4) {
-                        path.addLine(to: CGPoint(x: x, y: cos(x / 4.0) * 2 + 4))
-                    }
-                }
-                .stroke(Theme.inkSecondary.opacity(0.08), lineWidth: 0.5)
-            }
-            .frame(height: Theme.Spacing.medium)
-            .padding(.vertical, Theme.Spacing.tight)
-        }
+        Spacer().frame(height: Theme.Spacing.card)
     }
 }
 
-// MARK: - Section Divider (replaces GuillocheDivider in all views)
+// MARK: - Section Divider
 
 struct SectionDivider: View {
     var body: some View {
         Rectangle()
-            .fill(Theme.inkPrimary.opacity(0.07))
+            .fill(Color.white.opacity(0.06))
             .frame(height: 0.5)
             .padding(.horizontal, Theme.screenPadding)
     }
@@ -434,27 +347,36 @@ extension View {
         modifier(StaggerAppear(delay: delay))
     }
 
-    // Single-border dark fintech card
+    /// Dark terminal card — single hairline border on deep navy surface.
     func banknoteCard() -> some View {
         self
             .background(Theme.canvasDeep)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
-                    .stroke(Theme.inkPrimary.opacity(0.10), lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
             )
-            .shadow(color: Theme.canvas.opacity(0.6), radius: 8, x: 0, y: 4)
     }
 
-    // Glass-over-paper inner card layer — data floats on frosted glass
+    /// Alias for banknoteCard — explicit dark card style.
+    func darkCard() -> some View {
+        self
+            .background(Theme.canvasDeep)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+            )
+    }
+
+    /// Frosted glass inner card layer.
     func glassCard() -> some View {
         self
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
-                    .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
             )
-            .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
     }
 }

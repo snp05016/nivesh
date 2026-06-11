@@ -48,14 +48,16 @@ extension String {
 
 /// G3 — canonical chart time-range domain + underline selector.
 enum TimeRange: String, CaseIterable, Hashable {
-    case day, week, month, year, all
+    case day, week, month, threeMonths, sixMonths, year, all
     var label: String {
         switch self {
-        case .day:   return "1D"
-        case .week:  return "1W"
-        case .month: return "1M"
-        case .year:  return "1Y"
-        case .all:   return "ALL"
+        case .day:         return "1D"
+        case .week:        return "1W"
+        case .month:       return "1M"
+        case .threeMonths: return "3M"
+        case .sixMonths:   return "6M"
+        case .year:        return "1Y"
+        case .all:         return "ALL"
         }
     }
 }
@@ -64,23 +66,22 @@ struct TimeRangeSelector: View {
     @Binding var selected: TimeRange
     let ranges: [TimeRange]
     var body: some View {
-        HStack(spacing: Theme.Spacing.none) {
+        HStack(spacing: Theme.Spacing.small) {
             ForEach(ranges, id: \.self) { range in
                 Button(action: { HapticManager.selection(); selected = range }) {
-                    VStack(spacing: Theme.Spacing.xSmall) {
-                        Text(range.label)
-                            .font(Theme.officialStampFont(size: 10)).tracking(0.5)
-                            .foregroundStyle(selected == range ? Theme.securityGold : Theme.inkTertiary)
-                        Rectangle()
-                            .fill(selected == range ? Theme.securityGold : Color.clear)
-                            .frame(height: 1.5)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Theme.Spacing.medium)
+                    Text(range.label)
+                        .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
+                        .foregroundStyle(selected == range ? Theme.securityGold : Theme.inkTertiary)
+                        .padding(.horizontal, Theme.Spacing.standard)
+                        .padding(.vertical, Theme.Spacing.tight)
+                        .background(selected == range ? Theme.securityGold.opacity(0.18) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.badge))
                 }
                 .buttonStyle(EKPressStyle())
             }
         }
+        .padding(.horizontal, Theme.screenPadding)
+        .padding(.vertical, Theme.Spacing.medium)
     }
 }
 

@@ -108,37 +108,6 @@ struct DenominationBackground: View {
     }
 
     var body: some View {
-        ZStack {
-            PaperTexture()
-
-            // Denomination color wash
-            tint
-                .opacity(colorScheme == .dark ? 0.055 : 0.038)
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-
-            // Fix 1.2: Frosted glassmorphism layer — modern material on top
-            // of banknote palette, replacing old 3% static noise grain.
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-
-            // RBI seal — trailing edge, partially clipped like a real note stamp
-            HStack {
-                Spacer()
-                RBISealBackground(opacity: colorScheme == .dark ? 0.055 : 0.038)
-                    .offset(x: 60)
-            }
-            .ignoresSafeArea()
-
-            // Micro-text strip at bottom
-            VStack {
-                Spacer()
-                MicroTextStrip()
-                    .padding(.bottom, 4)
-            }
-            .ignoresSafeArea()
-        }
+        Theme.canvas.ignoresSafeArea()
     }
 }
