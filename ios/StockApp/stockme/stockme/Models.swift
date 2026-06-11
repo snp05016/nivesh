@@ -332,11 +332,17 @@ struct StockHistoryResponse: Codable {
 
 struct PiotroskiData: Codable {
     let ticker: String?
-    let score: Int?
-    let components: [String: Int]?
+    let fScore: Int?
+    let maxPossible: Int?
+    let grade: String?
+    let confidence: String?
+    let checks: [String: String]?
 
     enum CodingKeys: String, CodingKey {
-        case ticker, score, components
+        case ticker
+        case fScore = "f_score"
+        case maxPossible = "max_possible"
+        case grade, confidence, checks
     }
 }
 
