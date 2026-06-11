@@ -5,7 +5,7 @@ import SwiftUI
 // Shared point-projection used by the line shape, area shape, and scrub overlay
 // so the curve, the fill, the dashed crosshair and the dot all align perfectly.
 
-private enum ImmersiveChartGeometry {
+enum ImmersiveChartGeometry {
     /// Vertical breathing room so peaks/troughs, the glow and the scrub dot never clip.
     static let verticalInset: CGFloat = 22
 
@@ -48,7 +48,7 @@ private enum ImmersiveChartGeometry {
 // MARK: - Shapes
 
 /// The glowing price curve. Trimmable so it can draw itself in on appear.
-private struct GlowLineShape: Shape {
+struct GlowLineShape: Shape {
     let values: [Double]
     func path(in rect: CGRect) -> Path {
         ImmersiveChartGeometry.smoothLine(ImmersiveChartGeometry.points(values: values, in: rect))
@@ -56,7 +56,7 @@ private struct GlowLineShape: Shape {
 }
 
 /// The gradient area beneath the curve (line + closed baseline at the bottom edge).
-private struct GlowAreaShape: Shape {
+struct GlowAreaShape: Shape {
     let values: [Double]
     func path(in rect: CGRect) -> Path {
         let pts = ImmersiveChartGeometry.points(values: values, in: rect)
