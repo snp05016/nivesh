@@ -407,7 +407,7 @@ class NetworkManager: ObservableObject {
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, note: note))
-        let (data, response) = try await session.data(for: request)
+        let (_, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw NetworkError.invalidResponse
         }
@@ -520,7 +520,7 @@ class NetworkManager: ObservableObject {
 
     func getAlerts(userId: Int) async throws -> [PriceAlert] {
         guard let url = URL(string: "\(baseURL)/alerts/\(userId)") else { throw NetworkError.invalidURL }
-        var request = authRequest(url)
+        let request = authRequest(url)
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
         return (try? JSONDecoder().decode(AlertsResponse.self, from: data))?.alerts ?? []
@@ -863,7 +863,7 @@ class NetworkManager: ObservableObject {
 
     func fetchTradeJournal(userId: Int) async throws -> [TradeJournalEntry] {
         guard let url = URL(string: "\(baseURL)/trade-journal/\(userId)") else { throw NetworkError.invalidURL }
-        var request = authRequest(url)
+        let request = authRequest(url)
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
         do {
@@ -912,7 +912,7 @@ class NetworkManager: ObservableObject {
 
     func fetchTradeJournalStats(userId: Int) async throws -> TradeJournalStatsResponse {
         guard let url = URL(string: "\(baseURL)/trade-journal/\(userId)/stats") else { throw NetworkError.invalidURL }
-        var request = authRequest(url)
+        let request = authRequest(url)
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
         do { return try JSONDecoder().decode(TradeJournalStatsResponse.self, from: data) }

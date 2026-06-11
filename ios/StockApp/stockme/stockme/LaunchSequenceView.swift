@@ -89,10 +89,10 @@ private struct Banknote: View {
                 VStack(spacing: 2) {
                     Text("₹\(denominations[index])")
                         .font(Theme.engravedSerif(size: 20, weight: .bold, relativeTo: .title3))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                     Text("RESERVE BANK")
                         .font(Theme.monoTabular(size: 7, relativeTo: .caption2))
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundStyle(.white.opacity(0.7))
                 }
             )
             .overlay(

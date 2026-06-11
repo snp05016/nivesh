@@ -182,7 +182,7 @@ struct ExpertNetworkView: View {
                             endpoint: "/api/v1/ideas/feed",
                             classification: "IDEAS_FETCH_FAILURE"
                         ),
-                        retryAction: { await vm.load() }
+                        retryAction: { vm.load() }
                     )
                     Spacer()
                 } else {

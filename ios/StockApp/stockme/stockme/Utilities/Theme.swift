@@ -16,7 +16,7 @@ enum Theme {
     // MARK: - Adaptive Color Helper
 
     private static func uiColor(_ hex: String, alpha: CGFloat = 1) -> UIColor {
-        var h = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        let h = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         var int: UInt64 = 0
         Scanner(string: h).scanHexInt64(&int)
         let r = CGFloat((int >> 16) & 0xFF) / 255

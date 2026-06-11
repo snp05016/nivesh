@@ -735,7 +735,7 @@ struct HomeScreen: View {
             await indicesTask.value
         }
         // Late-auth guard: token restores from keychain AFTER view appears.
-        .onChange(of: authManager.currentUser?.userId) { uid in
+        .onChange(of: authManager.currentUser?.userId) { _, uid in
             guard let uid = uid else { return }
             Task {
                 if viewModel.stockCount == 0 && !viewModel.isLoading {
@@ -758,7 +758,7 @@ struct HomeScreen: View {
         .onDisappear {
             viewModel.stopIndicesTimer()
         }
-        .onChange(of: viewModel.sessionExpired) { expired in
+        .onChange(of: viewModel.sessionExpired) { _, expired in
             if expired {
                 authManager.logout()
             }

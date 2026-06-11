@@ -55,13 +55,9 @@ class EarningsDashboardViewModel: ObservableObject {
             progressError = nil; feedError = nil; moversError = nil; dashboardError = nil
 
             // Pre-computed aggregates from dashboard-pulse (yoy_health + cap_grid)
-            do {
-                let dash = try await NetworkManager.shared.fetchExtendedMarketDashboard()
-                self.yoyMarketHealth = dash?.yoyMarketHealth
-                self.capIndexAggregator = dash?.capIndexAggregator ?? []
-            } catch {
-                self.dashboardError = (error as? NetworkError)?.displayDetail ?? error.localizedDescription
-            }
+            let dash = await NetworkManager.shared.fetchExtendedMarketDashboard()
+            self.yoyMarketHealth = dash?.yoyMarketHealth
+            self.capIndexAggregator = dash?.capIndexAggregator ?? []
 
             // Progress
             do { self.progress = try await NetworkManager.shared.fetchEarningsProgress() }
@@ -99,26 +95,22 @@ class EarningsDashboardViewModel: ObservableObject {
         calendarError = nil
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
         let dateStr = f.string(from: date)
-        do {
-            // Use enhanced endpoint with sparkline price data
-            if let calResp = await NetworkManager.shared.fetchEarningsCalendar(date: dateStr) {
-                self.calendarDayResults = calResp.results
-                // Build sparkline lookup: ticker → sparkline array
-                var sparkMap: [String: [Double]] = [:]
-                for item in calResp.results {
-                    if !item.sparkline.isEmpty {
-                        sparkMap[item.ticker] = item.sparkline
-                    }
+        // Use enhanced endpoint with sparkline price data
+        if let calResp = await NetworkManager.shared.fetchEarningsCalendar(date: dateStr) {
+            self.calendarDayResults = calResp.results
+            // Build sparkline lookup: ticker → sparkline array
+            var sparkMap: [String: [Double]] = [:]
+            for item in calResp.results {
+                if !item.sparkline.isEmpty {
+                    sparkMap[item.ticker] = item.sparkline
                 }
-                self.calendarSparklines = sparkMap
-                if let err = calResp.error {
-                    self.calendarError = err
-                }
-            } else {
-                self.calendarDayResults = []
             }
-        } catch {
-            self.calendarError = (error as? NetworkError)?.displayDetail ?? error.localizedDescription
+            self.calendarSparklines = sparkMap
+            if let err = calResp.error {
+                self.calendarError = err
+            }
+        } else {
+            self.calendarDayResults = []
         }
     }
 
@@ -191,7 +183,7 @@ struct EarningsDashboardView: View {
             .frame(maxHeight: .infinity, alignment: .top)
         }
         .task { vm.load() }
-        .onChange(of: vm.selectedMarketCap) { _ in vm.load() }
+        .onChange(of: vm.selectedMarketCap) { _, _ in vm.load() }
         .onChange(of: vm.selectedSort) { _, _ in vm.load() }
     }
 
@@ -558,8 +550,6 @@ struct EarningsProgressView: View {
     }
 
     private func earningsTableRow(_ r: EarningsResult, tableWidth: CGFloat) -> some View {
-        let mode = vm.comparisonMode
-        let revGrowth = r.revenueGrowthPct
         let profitGrowth = r.netProfitGrowthPct
         return HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
@@ -742,7 +732,6 @@ struct EarningsCalendarView: View {
 
     private func calendarDayCell(_ date: Date) -> some View {
         let sel = isSelected(date)
-        let isToday = calendar.isDateInToday(date)
         let dayStr = apiDate(date)
         let dayResults = vm.calendarDayResults.filter { $0.resultDate == dayStr }
         let count = dayResults.count
