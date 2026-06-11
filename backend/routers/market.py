@@ -893,15 +893,18 @@ def stock_history_endpoint(ticker: str, exchange: str = "NSE", period: str = "1y
         if df is None or df.empty:
             return {"ticker": ticker, "exchange": exchange, "period": period, "prices": []}
 
+        import math as _m_stock
         prices = []
         for dt, row in df.iterrows():
+            o = float(row["Open"]); h = float(row["High"]); l = float(row["Low"])
+            c = float(row["Close"]); v = float(row.get("Volume", 0) or 0)
             prices.append({
                 "date": dt.strftime("%Y-%m-%d"),
-                "open": round(float(row["Open"]), 2),
-                "high": round(float(row["High"]), 2),
-                "low": round(float(row["Low"]), 2),
-                "close": round(float(row["Close"]), 2),
-                "volume": float(row.get("Volume", 0) or 0),
+                "open": round(o, 2) if not (_m_stock.isnan(o) or _m_stock.isinf(o)) else None,
+                "high": round(h, 2) if not (_m_stock.isnan(h) or _m_stock.isinf(h)) else None,
+                "low": round(l, 2) if not (_m_stock.isnan(l) or _m_stock.isinf(l)) else None,
+                "close": round(c, 2) if not (_m_stock.isnan(c) or _m_stock.isinf(c)) else None,
+                "volume": v if not (_m_stock.isnan(v) or _m_stock.isinf(v)) else 0,
             })
 
         result = {"ticker": ticker, "exchange": exchange, "period": period, "prices": prices}
@@ -1160,6 +1163,17 @@ def stock_profile_endpoint(ticker: str, exchange: str = "NSE"):
                 return None
         return v
 
+    def _sanitize_for_json(obj):
+        """Recursively replace NaN/Inf with None so json.dumps never fails."""
+        if isinstance(obj, dict):
+            return {k: _sanitize_for_json(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_sanitize_for_json(v) for v in obj]
+        if isinstance(obj, float):
+            if math.isnan(obj) or math.isinf(obj):
+                return None
+        return obj
+
     result = {
         "ticker": ticker.upper(),
         "exchange": exchange.upper(),
@@ -1179,8 +1193,8 @@ def stock_profile_endpoint(ticker: str, exchange: str = "NSE"):
         "week_52_low": _clean_num(week_52_low),
         "market_cap_crores": _clean_num(market_cap_crores),
         "description": description,
-        "price_history": price_history_data,
-        "quarterly_financials": quarterly_data,
+        "price_history": _sanitize_for_json(price_history_data),
+        "quarterly_financials": _sanitize_for_json(quarterly_data),
         "errors": errors,
     }
 
