@@ -33,15 +33,15 @@ enum Theme {
 
     // MARK: - The Canvas (fixed dark — Bloomberg terminal navy)
 
-    static let canvas      = Color(uiColor("0A0E17"))   // near-black deep navy
-    static let canvasDeep  = Color(uiColor("111827"))   // card surface
-    static let canvasShadow = Color(uiColor("070B12"))  // deepest shadow
+    static var canvas: Color { ThemeManager.shared.current.canvasDark }
+    static var canvasDeep: Color { ThemeManager.shared.current.canvasDeep }
+    static var canvasShadow: Color { ThemeManager.shared.current.canvasShadow }
 
     // MARK: - The Inks
 
-    static let inkPrimary   = Color(uiColor("F0F4FF"))  // bright white-blue
-    static let inkSecondary = Color(uiColor("8892A0"))  // cool gray
-    static let inkTertiary  = Color(uiColor("4A5568"))  // dim gray
+    static var inkPrimary: Color { ThemeManager.shared.current.inkPrimary }
+    static var inkSecondary: Color { ThemeManager.shared.current.inkSecondary }
+    static var inkTertiary: Color { ThemeManager.shared.current.inkTertiary }
 
     // MARK: - The Accents (neon teal — THE signature accent)
 

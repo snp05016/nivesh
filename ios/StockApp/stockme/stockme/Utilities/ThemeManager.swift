@@ -85,6 +85,66 @@ enum AppTheme: String, CaseIterable, Codable {
         case .stoneGrey:       return Color(red: 0.55, green: 0.60, blue: 0.70)
         }
     }
+
+    var canvasDeep: Color {
+        switch self {
+        case .darkImmersive:   return Color(red: 0.066, green: 0.094, blue: 0.153) // #111827
+        case .chocolateBrown:  return Color(red: 0.15, green: 0.09, blue: 0.06)
+        case .greenishYellow:  return Color(red: 0.08, green: 0.10, blue: 0.06)
+        case .fluorescentBlue: return Color(red: 0.04, green: 0.06, blue: 0.15)
+        case .lavender:        return Color(red: 0.08, green: 0.06, blue: 0.15)
+        case .brightYellow:    return Color(red: 0.12, green: 0.10, blue: 0.04)
+        case .stoneGrey:       return Color(red: 0.08, green: 0.08, blue: 0.08)
+        }
+    }
+
+    var canvasShadow: Color {
+        switch self {
+        case .darkImmersive:   return Color(red: 0.027, green: 0.043, blue: 0.070) // #070B12
+        case .chocolateBrown:  return Color(red: 0.05, green: 0.03, blue: 0.02)
+        case .greenishYellow:  return Color(red: 0.03, green: 0.04, blue: 0.02)
+        case .fluorescentBlue: return Color(red: 0.01, green: 0.02, blue: 0.05)
+        case .lavender:        return Color(red: 0.03, green: 0.02, blue: 0.05)
+        case .brightYellow:    return Color(red: 0.04, green: 0.03, blue: 0.01)
+        case .stoneGrey:       return Color(red: 0.02, green: 0.02, blue: 0.02)
+        }
+    }
+
+    var inkPrimary: Color {
+        switch self {
+        case .darkImmersive:   return Color(red: 0.941, green: 0.957, blue: 1.0) // #F0F4FF
+        case .chocolateBrown:  return Color(red: 1.0, green: 0.95, blue: 0.90)
+        case .greenishYellow:  return Color(red: 0.95, green: 1.0, blue: 0.90)
+        case .fluorescentBlue: return Color(red: 0.90, green: 0.95, blue: 1.0)
+        case .lavender:        return Color(red: 0.95, green: 0.90, blue: 1.0)
+        case .brightYellow:    return Color(red: 1.0, green: 0.98, blue: 0.90)
+        case .stoneGrey:       return Color(red: 0.95, green: 0.95, blue: 0.95)
+        }
+    }
+
+    var inkSecondary: Color {
+        switch self {
+        case .darkImmersive:   return Color(red: 0.533, green: 0.572, blue: 0.627) // #8892A0
+        case .chocolateBrown:  return Color(red: 0.65, green: 0.55, blue: 0.45)
+        case .greenishYellow:  return Color(red: 0.55, green: 0.65, blue: 0.45)
+        case .fluorescentBlue: return Color(red: 0.45, green: 0.55, blue: 0.75)
+        case .lavender:        return Color(red: 0.60, green: 0.50, blue: 0.70)
+        case .brightYellow:    return Color(red: 0.70, green: 0.65, blue: 0.45)
+        case .stoneGrey:       return Color(red: 0.60, green: 0.60, blue: 0.60)
+        }
+    }
+
+    var inkTertiary: Color {
+        switch self {
+        case .darkImmersive:   return Color(red: 0.290, green: 0.333, blue: 0.408) // #4A5568
+        case .chocolateBrown:  return Color(red: 0.40, green: 0.30, blue: 0.25)
+        case .greenishYellow:  return Color(red: 0.30, green: 0.40, blue: 0.25)
+        case .fluorescentBlue: return Color(red: 0.25, green: 0.30, blue: 0.45)
+        case .lavender:        return Color(red: 0.35, green: 0.25, blue: 0.45)
+        case .brightYellow:    return Color(red: 0.45, green: 0.40, blue: 0.25)
+        case .stoneGrey:       return Color(red: 0.35, green: 0.35, blue: 0.35)
+        }
+    }
 }
 
 // MARK: - ThemeManager
@@ -93,11 +153,15 @@ enum AppTheme: String, CaseIterable, Codable {
 final class ThemeManager {
     static let shared = ThemeManager()
 
-    @ObservationIgnored @AppStorage("selectedTheme") var selectedTheme: String = AppTheme.darkImmersive.rawValue
-
     var current: AppTheme {
-        get { AppTheme(rawValue: selectedTheme) ?? .darkImmersive }
-        set { selectedTheme = newValue.rawValue }
+        didSet {
+            UserDefaults.standard.set(current.rawValue, forKey: "selectedTheme")
+        }
+    }
+
+    private init() {
+        let saved = UserDefaults.standard.string(forKey: "selectedTheme") ?? AppTheme.darkImmersive.rawValue
+        self.current = AppTheme(rawValue: saved) ?? .darkImmersive
     }
 
     /// Explicit colour-scheme-aware accessors called from Theme.swift.
