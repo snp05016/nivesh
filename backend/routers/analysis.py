@@ -379,7 +379,7 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
             "debt_to_equity": round(info.get("debtToEquity") / 100, 2) if info.get("debtToEquity") else None,
             "promoter_holding_pct": round(info.get("heldPercentInsiders", 0) * 100, 1) or None,
             "fii_holding_pct": round(info.get("heldPercentInstitutions", 0) * 100, 1) or None,
-            "dii_holding_pct": round(info.get("heldPercentInstitutions", 0) * 100 * 0.35, 1) or None,  // DII ~35% of institutional
+            "dii_holding_pct": round(info.get("heldPercentInstitutions", 0) * 100 * 0.35, 1) or None,  # DII ~35% of institutional
             "ebitda_margin_pct": round(info.get("ebitdaMargins", 0) * 100, 1) if info.get("ebitdaMargins") else None,
             "roe_pct": round(info.get("returnOnEquity", 0) * 100, 1) if info.get("returnOnEquity") else None,
             "roce_pct": round(info.get("returnOnCapitalEmployed", 0) * 100, 1) if info.get("returnOnCapitalEmployed") else None,
