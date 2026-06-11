@@ -59,7 +59,8 @@ final class GlobalErrorDiagnoser: ObservableObject {
         let rawError: String
     }
 
-    func track(_ message: String, diagnostic: ErrorDiagnostic = ErrorDiagnostic(), rawError: String = "") {
+    func track(_ message: String, diagnostic: ErrorDiagnostic? = nil, rawError: String = "") {
+        let diagnostic = diagnostic ?? ErrorDiagnostic()
         let entry = TrackedError(message: message, diagnostic: diagnostic, rawError: rawError)
         errors.insert(entry, at: 0)
         if errors.count > maxStored { errors = Array(errors.prefix(maxStored)) }

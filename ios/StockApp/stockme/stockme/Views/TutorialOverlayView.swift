@@ -65,7 +65,6 @@ struct TutorialOverlayView: View {
     }
 
     private func steps(geo: GeometryProxy) -> [TutorialStep] {
-        let w = geo.size.width
         return [
             TutorialStep(number: 1,  title: "Welcome to Nivesh",
                 body: "Your personal investment companion. Built just for you. This quick tour shows you everything in 2 minutes.",

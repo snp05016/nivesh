@@ -20,7 +20,7 @@ struct SignalBadgeView: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.tight) {
             Text(direction.arrow)
-                .font(.system(size: 14, weight: .bold))
+                .font(Theme.serialNumberFont(size: 14, relativeTo: .body).weight(.bold))
                 .foregroundColor(direction.color)
 
             Text(direction.text)

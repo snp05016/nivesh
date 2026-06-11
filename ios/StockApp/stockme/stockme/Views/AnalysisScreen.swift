@@ -506,7 +506,7 @@ struct AnalysisScreen: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: Theme.Spacing.medium) {
-                Text((info.change ?? 0.0) >= 0 ? "+" : "") + Text((info.change ?? 0.0).inrFormatted)
+                Text("\((info.change ?? 0.0) >= 0 ? "+" : "")\((info.change ?? 0.0).inrFormatted)")
                 Text("(\((info.changePercent ?? 0.0).percentFormatted))")
             }
             .font(Theme.monoTabular(size: 16))
@@ -902,7 +902,7 @@ struct AnalysisScreen: View {
                                     .foregroundStyle(Theme.inkPrimary)
                             }
                             HStack(spacing: Theme.Spacing.medium) {
-                                Text((qi.change ?? 0.0) >= 0 ? "+" : "") + Text((qi.change ?? 0.0).inrFormatted)
+                                Text("\((qi.change ?? 0.0) >= 0 ? "+" : "")\((qi.change ?? 0.0).inrFormatted)")
                                 Text("(\((qi.changePercent ?? 0.0).percentFormatted))")
                             }
                             .font(Theme.serialNumberFont(size: 16))
