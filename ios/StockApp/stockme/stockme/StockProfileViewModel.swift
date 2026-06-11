@@ -13,6 +13,7 @@ class StockProfileViewModel: ObservableObject {
 
     // Financials
     @Published var quarterlyFinancials: [QuarterlyFinancial] = []
+    @Published var promoterHistory: [PromoterHistoryPoint] = []
     @Published var piotroski: PiotroskiData?
     @Published var financialsLoading = false
 
@@ -53,11 +54,12 @@ class StockProfileViewModel: ObservableObject {
     func fetchFinancials() async {
         guard quarterlyFinancials.isEmpty else { return }
         await MainActor.run { financialsLoading = true }
-        async let qf = NetworkManager.shared.getQuarterlyFinancials(ticker: ticker, exchange: exchange)
+        async let qf = NetworkManager.shared.getQuarterlyFinancialsResponse(ticker: ticker, exchange: exchange)
         async let pf = NetworkManager.shared.fetchPiotroski(ticker: ticker)
         let (q, p) = await (qf, pf)
         await MainActor.run {
-            quarterlyFinancials = q
+            quarterlyFinancials = q?.quarters ?? []
+            promoterHistory = q?.promoterHistory ?? []
             piotroski = p
             financialsLoading = false
         }
