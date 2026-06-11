@@ -676,12 +676,35 @@ class NetworkManager: ObservableObject {
 
     func fetchStockHistory(ticker: String, exchange: String = "NSE", period: String = "1y") async -> StockHistoryResponse? {
         guard let encoded = ticker.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let url = URL(string: "\(baseURL)/api/v1/market/stock-history?ticker=\(encoded)&exchange=\(exchange)&period=\(period)") else { return nil }
+              let url = URL(string: "\(baseURL)/api/v1/market/stock-history?ticker=\(encoded)&exchange=\(exchange)&period=\(period)") else {
+            print("[fetchStockHistory] Invalid URL for ticker=\(ticker) exchange=\(exchange)")
+            return nil
+        }
         var request = URLRequest(url: url)
         request.timeoutInterval = 15
-        guard let (data, resp) = try? await session.data(for: request),
-              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
-        return try? JSONDecoder().decode(StockHistoryResponse.self, from: data)
+        do {
+            let (data, resp) = try await session.data(for: request)
+            guard let http = resp as? HTTPURLResponse else {
+                print("[fetchStockHistory] Non-HTTP response for \(ticker)")
+                return nil
+            }
+            guard http.statusCode == 200 else {
+                let body = String(data: data, prefix: 500)
+                print("[fetchStockHistory] HTTP \(http.statusCode) for \(ticker): \(body)")
+                return nil
+            }
+            do {
+                return try JSONDecoder().decode(StockHistoryResponse.self, from: data)
+            } catch {
+                let body = String(data: data, prefix: 500)
+                print("[fetchStockHistory] Decode error for \(ticker): \(error.localizedDescription) — body: \(body)")
+                return nil
+            }
+        } catch {
+            let ns = error as NSError
+            print("[fetchStockHistory] Network error for \(ticker): domain=\(ns.domain) code=\(ns.code) desc=\(ns.localizedDescription)")
+            return nil
+        }
     }
 
     // MARK: - Piotroski F-Score
