@@ -964,9 +964,7 @@ struct StockProfileView: View {
                     AxisValueLabel()
                 }
                 AxisMarks { _ in
-                    AxisValueLabel(anchor: .top) {
-                        Text("₹ Cr")
-                    }
+                    AxisValueLabel()
                 }
             }
             .frame(height: UIScreen.main.bounds.height * 0.25)
@@ -1021,9 +1019,7 @@ struct StockProfileView: View {
                     AxisValueLabel()
                 }
                 AxisMarks { _ in
-                    AxisValueLabel(anchor: .top) {
-                        Text("₹ Cr")
-                    }
+                    AxisValueLabel()
                 }
             }
             .frame(height: UIScreen.main.bounds.height * 0.25)
@@ -1075,10 +1071,8 @@ struct StockProfileView: View {
                     }
                 }
                 .chartYAxis {
-                    AxisMarks { value in
-                        AxisValueLabel() {
-                            Text("\(value.as(Double.self)?.formatted(.number.precision(.fractionLength(0))) ?? "")%")
-                        }
+                    AxisMarks { _ in
+                        AxisValueLabel()
                     }
                 }
                 .frame(height: UIScreen.main.bounds.height * 0.25)
@@ -1096,11 +1090,8 @@ struct StockProfileView: View {
         let fii = qInfo.fiiHoldingPct ?? 0
         let dii = qInfo.diiHoldingPct ?? 0
         let publicHolding = max(0, 100 - promoter - fii - dii)
-        guard promoter > 0 || fii > 0 || dii > 0 else {
-            EmptyView()
-            return
-        }
 
+        if promoter > 0 || fii > 0 || dii > 0 {
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             Text("SHAREHOLDING PATTERN")
                 .font(Theme.officialStampFont(size: 9))
@@ -1136,6 +1127,7 @@ struct StockProfileView: View {
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
+        }
     }
 
     private func legendDot(color: Color, label: String, value: Double) -> some View {
@@ -1187,10 +1179,8 @@ struct StockProfileView: View {
                     }
                 }
                 .chartYAxis {
-                    AxisMarks { value in
-                        AxisValueLabel() {
-                            Text("\(value.as(Double.self)?.formatted(.number.precision(.fractionLength(1))) ?? "")%")
-                        }
+                    AxisMarks { _ in
+                        AxisValueLabel()
                     }
                 }
                 .frame(height: UIScreen.main.bounds.height * 0.25)
@@ -1222,11 +1212,8 @@ struct StockProfileView: View {
         let roe = qInfo.roePct
         let roce = qInfo.rocePct
         let pe = qInfo.peRatio
-        guard roe != nil || roce != nil || pe != nil else {
-            EmptyView()
-            return
-        }
 
+        if roe != nil || roce != nil || pe != nil {
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             Text("PROFITABILITY RATIOS")
                 .font(Theme.officialStampFont(size: 9))
@@ -1282,6 +1269,7 @@ struct StockProfileView: View {
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
+        }
     }
 
     private func glossaryTermInline(_ term: String, definition: String) -> some View {
