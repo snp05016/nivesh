@@ -103,13 +103,20 @@ struct MicroTextStrip: View {
 
 struct DenominationBackground: View {
     let denomination: Denomination
+    @AppStorage("selectedTheme") private var selectedTheme: String = AppTheme.darkImmersive.rawValue
     @Environment(\.colorScheme) var colorScheme
+
+    private var currentTheme: AppTheme {
+        AppTheme(rawValue: selectedTheme) ?? .darkImmersive
+    }
 
     private var tint: Color {
         denomination.tint
     }
 
     var body: some View {
-        Theme.canvas.ignoresSafeArea()
+        (colorScheme == .dark ? currentTheme.canvasDark : currentTheme.canvasLight)
+            .ignoresSafeArea()
+            .animation(.easeInOut(duration: 0.6), value: selectedTheme)
     }
 }
