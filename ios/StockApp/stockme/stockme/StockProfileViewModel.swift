@@ -40,6 +40,7 @@ class StockProfileViewModel: ObservableObject {
     }
 
     func fetchChart(period: String = "1y") async {
+        guard history == nil else { return }
         await MainActor.run { chartLoading = true }
         async let hist = NetworkManager.shared.fetchStockHistory(ticker: ticker, exchange: exchange, period: period)
         async let nifty = NetworkManager.shared.getNiftyHistory(days: periodToDays(period))

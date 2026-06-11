@@ -378,6 +378,32 @@ struct StockProfileView: View {
                             .shimmerPlaceholder(isLoading: true)
                             .padding(.horizontal, Theme.screenPadding)
                             .padding(.bottom, Theme.Spacing.standard)
+                    } else if let info = vm.quickInfo {
+                        // Fallback hero — price header from quickInfo when chart data unavailable
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                            Text(ticker.uppercased())
+                                .font(Theme.officialStampFont(size: 10))
+                                .tracking(1.5)
+                                .foregroundStyle(Theme.inkTertiary)
+                            Text(info.price != nil ? IndianFormatter.price(info.price!) : "—")
+                                .font(.largeTitle.weight(.bold))
+                                .monospaced()
+                                .foregroundStyle(Theme.inkPrimary)
+                            let change = info.changePercent ?? 0
+                            HStack(spacing: Theme.Spacing.tight) {
+                                Text((change >= 0 ? "▲ +" : "▼ ") + String(format: "%.2f%%", abs(change)))
+                                    .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote).weight(.semibold))
+                                    .foregroundStyle(change >= 0 ? Theme.bullGreen : Theme.bearRed)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, Theme.screenPadding)
+                        .padding(.vertical, Theme.Spacing.card)
+                        .padding(.bottom, Theme.Spacing.standard)
+                        .background(
+                            (info.changePercent ?? 0) >= 0
+                                ? Theme.bullGreen.opacity(0.06) : Theme.bearRed.opacity(0.06)
+                        )
                     }
 
                     // Tab bar
@@ -438,7 +464,10 @@ struct StockProfileView: View {
                     }
                 }
             }
-        .task { await vm.fetchChart() }
+        .task {
+            await vm.fetchOverview()
+            await vm.fetchChart()
+        }
     }
 
     private var tabItems: [(label: String, icon: String)] {
