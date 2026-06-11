@@ -885,24 +885,16 @@ def stock_history_endpoint(ticker: str, exchange: str = "NSE", period: str = "1y
         cached = _dcache_get("stock_history", cache_key)
         if cached:
             return cached
-        suffix = EXCHANGE_SUFFIX.get(exchange.upper(), ".NS")
-        full_ticker = ticker.upper() + suffix
-        t = yf.Ticker(full_ticker)
-        hist = None
-        for attempt in range(3):
-            try:
-                hist = t.history(period=period)
-                if not hist.empty:
-                    break
-            except Exception as e:
-                print(f"[YF] stock-history attempt {attempt+1} failed: {e}")
-                if attempt < 2:
-                    import time as _time_mod
-                    _time_mod.sleep(1.5 * (2 ** attempt))
-        if hist is None or hist.empty:
+
+        period_map = {"1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730, "5y": 1825}
+        days = period_map.get(period, 365)
+
+        df = get_price_history(ticker.upper(), period_days=days, exchange=exchange.upper())
+        if df is None or df.empty:
             return {"ticker": ticker, "exchange": exchange, "period": period, "prices": []}
+
         prices = []
-        for dt, row in hist.iterrows():
+        for dt, row in df.iterrows():
             prices.append({
                 "date": dt.strftime("%Y-%m-%d"),
                 "open": round(float(row["Open"]), 2),
@@ -911,6 +903,7 @@ def stock_history_endpoint(ticker: str, exchange: str = "NSE", period: str = "1y
                 "close": round(float(row["Close"]), 2),
                 "volume": float(row.get("Volume", 0) or 0),
             })
+
         result = {"ticker": ticker, "exchange": exchange, "period": period, "prices": prices}
         _dcache_set("stock_history", cache_key, result)
         return result
