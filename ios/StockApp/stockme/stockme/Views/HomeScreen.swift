@@ -610,6 +610,33 @@ struct HomeScreen: View {
     @State private var selectedChannel: String? = nil
     @State private var valuationHistory: [ValuationSnapshot] = []
     @State private var valuationLoading = false
+    @State private var portfolioRange: TimeRange = .month
+
+    private var rangedValuationHistory: [ValuationSnapshot] {
+        guard !valuationHistory.isEmpty else { return [] }
+        let n: Int
+        switch portfolioRange {
+        case .day:         n = 2
+        case .week:        n = 7
+        case .month:       n = 30
+        case .threeMonths: n = 90
+        case .sixMonths:   n = 180
+        case .year:        n = valuationHistory.count
+        case .all:         n = valuationHistory.count
+        }
+        return Array(valuationHistory.suffix(max(n, 2)))
+    }
+
+    @AppStorage("homeAutoRefreshSeconds") private var homeAutoRefreshSeconds: String = "0"
+
+    // Spotlight-style quick search
+    @State private var showSearch: Bool = false
+    @State private var searchText: String = ""
+    @FocusState private var searchFocused: Bool
+    private var searchResults: [StockEntry] {
+        guard !searchText.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
+        return StockDatabase.search(searchText)
+    }
     private let homeTabs = ["Market Pulse", "My Holdings", "Advisory"]
 
     var body: some View {
@@ -693,6 +720,15 @@ struct HomeScreen: View {
             .navigationDestination(for: String.self) { ticker in
                 AnalysisScreen(ticker: ticker)
             }
+            .onReceive(Timer.publish(every: (Double(homeAutoRefreshSeconds) ?? 0) > 0 ? (Double(homeAutoRefreshSeconds) ?? 60) : 999999, on: .main, in: .common).autoconnect()) { _ in
+                guard (Double(homeAutoRefreshSeconds) ?? 0) > 0, let user = authManager.currentUser else { return }
+                Task {
+                    await viewModel.fetchData(userId: user.userId)
+                    await viewModel.fetchIndices()
+                    viewModel.fetchSectors()
+                    feedVM.fetch(userId: user.userId, forceRefresh: true)
+                }
+            }
         }
 
         .sheet(isPresented: $showingEditLayout) {
@@ -727,7 +763,7 @@ struct HomeScreen: View {
 
                 // Portfolio valuation history for the immersive hero chart
                 valuationLoading = true
-                if let data = try? await HomeFeedService.shared.fetchValuationHistory(userId: user.userId, days: 90) {
+                if let data = try? await HomeFeedService.shared.fetchValuationHistory(userId: user.userId, days: 365) {
                     valuationHistory = data.snapshots.sorted { $0.parsedDate < $1.parsedDate }
                 }
                 valuationLoading = false
@@ -2386,6 +2422,22 @@ extension HomeScreen {
                                     .foregroundStyle(Theme.inkPrimary)
                             }
                             Spacer()
+                            Button {
+                                HapticManager.selection()
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                    showSearch.toggle()
+                                    if showSearch { searchFocused = true }
+                                }
+                            } label: {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.title3.weight(.medium))
+                                    .foregroundStyle(Theme.securityGold)
+                                    .frame(width: 40, height: 40)
+                                    .background(Theme.securityGold.opacity(0.12))
+                                    .clipShape(Circle())
+                                    .overlay(Circle().stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
+                            }
+                            .buttonStyle(EKPressStyle())
                             NavigationLink(destination: SettingsScreen()) {
                                 ZStack {
                                     Circle()
@@ -2400,6 +2452,109 @@ extension HomeScreen {
                         }
                         .padding(.horizontal, Theme.screenPadding)
                         .padding(.top, Theme.Spacing.standard)
+                    }
+
+                    // Spotlight-style quick search bar
+                    if showSearch {
+                        VStack(spacing: Theme.Spacing.none) {
+                            HStack(spacing: Theme.Spacing.medium) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.body.weight(.medium))
+                                    .foregroundStyle(Theme.securityGold)
+                                TextField("Ticker or company name...", text: $searchText)
+                                    .font(Theme.engravedSerif(size: 16, weight: .regular, relativeTo: .body))
+                                    .foregroundStyle(Theme.inkPrimary)
+                                    .focused($searchFocused)
+                                    .autocapitalization(.allCharacters)
+                                if !searchText.isEmpty {
+                                    Button {
+                                        HapticManager.selection()
+                                        searchText = ""
+                                    } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.body)
+                                            .foregroundStyle(Theme.inkTertiary)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                Button {
+                                    HapticManager.selection()
+                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                        showSearch = false
+                                        searchText = ""
+                                    }
+                                } label: {
+                                    Text("CANCEL")
+                                        .font(Theme.officialStampFont(size: 10))
+                                        .tracking(1.0)
+                                        .foregroundStyle(Theme.inkTertiary)
+                                }
+                                .buttonStyle(EKPressStyle())
+                            }
+                            .padding(.horizontal, Theme.Spacing.card)
+                            .padding(.vertical, Theme.Spacing.standard)
+                            .background(Theme.canvasDeep)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
+                            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.large).stroke(Theme.securityGold.opacity(0.25), lineWidth: 0.5))
+                            .padding(.horizontal, Theme.screenPadding)
+
+                            // Live search results
+                            if !searchResults.isEmpty {
+                                VStack(spacing: Theme.Spacing.none) {
+                                    ForEach(searchResults.prefix(8)) { entry in
+                                        Button {
+                                            HapticManager.selection()
+                                            navigationPath.append(entry.ticker)
+                                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                                showSearch = false
+                                                searchText = ""
+                                            }
+                                        } label: {
+                                            HStack(spacing: Theme.Spacing.standard) {
+                                                ZStack {
+                                                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                                        .fill(entry.ticker.tileColor)
+                                                        .frame(width: 36, height: 36)
+                                                    Text(String(entry.ticker.prefix(2)))
+                                                        .font(Theme.serialNumberFont(size: 12, relativeTo: .caption).weight(.bold))
+                                                        .foregroundStyle(.white)
+                                                }
+                                                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                                                    Text(entry.companyName)
+                                                        .font(Theme.engravedSerif(size: 14, weight: .semibold, relativeTo: .body))
+                                                        .foregroundStyle(Theme.inkPrimary)
+                                                        .lineLimit(1)
+                                                    Text("\(entry.ticker) · \(entry.sector)")
+                                                        .font(Theme.serialNumberFont(size: 11, relativeTo: .caption2))
+                                                        .foregroundStyle(Theme.inkSecondary)
+                                                        .lineLimit(1)
+                                                }
+                                                Spacer()
+                                                Image(systemName: "arrow.up.forward")
+                                                    .font(.caption.weight(.semibold))
+                                                    .foregroundStyle(Theme.inkTertiary)
+                                            }
+                                            .padding(.horizontal, Theme.Spacing.card)
+                                            .padding(.vertical, Theme.Spacing.standard)
+                                        }
+                                        .buttonStyle(EKPressStyle())
+                                        if entry != searchResults.prefix(8).last {
+                                            Rectangle()
+                                                .fill(Theme.borderFine)
+                                                .frame(height: 0.5)
+                                                .padding(.horizontal, Theme.Spacing.card)
+                                        }
+                                    }
+                                }
+                                .background(Theme.canvasDeep)
+                                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
+                                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.large).stroke(Theme.borderSage, lineWidth: 0.5))
+                                .padding(.horizontal, Theme.screenPadding)
+                                .padding(.top, Theme.Spacing.medium)
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                            }
+                        }
+                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
 
                     MarketStatusStrip()
@@ -2445,7 +2600,8 @@ extension HomeScreen {
 // ── Section 2: Portfolio ──────────────────────────
                 Group {
                     if !valuationHistory.isEmpty {
-                        ImmersivePortfolioHeroChart(snapshots: valuationHistory)
+                        ImmersivePortfolioHeroChart(snapshots: rangedValuationHistory)
+                        TimeRangeSelector(selected: $portfolioRange, ranges: TimeRange.allCases)
                         SectionDivider()
                             .padding(.horizontal, Theme.screenPadding)
                     }
@@ -2585,7 +2741,7 @@ extension HomeScreen {
                 .id(HomeSectionID.morning.rawValue)
         case .news:
 // ── Section 6a: NEWS FEED ─────────────────────────
-                VStack(alignment: .leading, spacing: Theme.Spacing.none) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                     // Section header (bilingual, matches existing pattern)
                     VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                         SectionHeader(title: "Market News", hindiTitle: "ताज़ा समाचार")
@@ -2671,7 +2827,7 @@ extension HomeScreen {
                         return allVideos
                     }()
 
-                    VStack(alignment: .leading, spacing: Theme.Spacing.none) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                             SectionHeader(title: "Expert Videos", hindiTitle: "विशेषज्ञ विश्लेषण")
                         }
