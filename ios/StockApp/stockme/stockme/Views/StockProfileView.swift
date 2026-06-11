@@ -355,6 +355,28 @@ struct StockProfileView: View {
                 DenominationBackground(denomination: .twoHundred)
 
                 VStack(spacing: Theme.Spacing.none) {
+                    // Immersive hero chart
+                    if let hist = vm.history, !hist.prices.isEmpty {
+                        let closes = hist.prices.map(\.close)
+                        let dates = hist.prices.map(\.parsedDate)
+                        let price = vm.quickInfo?.price ?? closes.last ?? 0
+                        let changePct = vm.quickInfo?.changePercent ?? 0
+                        ImmersiveStockHeroChart(
+                            prices: closes,
+                            changePercent: changePct,
+                            currentPrice: price,
+                            dates: dates
+                        )
+                        .padding(.bottom, Theme.Spacing.standard)
+                    } else if vm.chartLoading {
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
+                            .fill(Theme.inkTertiary.opacity(0.08))
+                            .frame(height: UIScreen.main.bounds.height * 0.26)
+                            .shimmerPlaceholder(isLoading: true)
+                            .padding(.horizontal, Theme.screenPadding)
+                            .padding(.bottom, Theme.Spacing.standard)
+                    }
+
                     // Tab bar
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: Theme.Spacing.none) {
@@ -413,6 +435,7 @@ struct StockProfileView: View {
                 }
             }
         }
+        .task { await vm.fetchChart() }
     }
 
     private var tabItems: [(label: String, icon: String)] {

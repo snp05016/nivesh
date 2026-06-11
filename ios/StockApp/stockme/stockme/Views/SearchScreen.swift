@@ -158,6 +158,11 @@ struct SearchScreen: View {
     @State private var screenerActionResult: ScreenerResult? = nil
     @State private var showScreenerAction = false
 
+    // Stock tap action sheet (universal)
+    @State private var stockTapTicker = ""
+    @State private var stockTapCompanyName: String? = nil
+    @State private var showStockTapAction = false
+
     // Fallback trending if no movers data available
     private let fallbackTrending = [
         Stock(ticker: "RELIANCE", companyName: "Reliance Industries", exchange: "NSE", currentPrice: 0, changePercent: 0, signal: nil),
@@ -388,10 +393,15 @@ struct SearchScreen: View {
                                     }
                                 } else if searchText.isEmpty {
                                     ForEach(trendingStocks) { stock in
-                                        NavigationLink(value: stock.ticker) {
+                                        Button {
+                                            HapticManager.selection()
+                                            stockTapTicker = stock.ticker
+                                            stockTapCompanyName = stock.companyName
+                                            showStockTapAction = true
+                                        } label: {
                                             StockRow(stock: stock)
                                         }
-                                        .ekPressHaptic()
+                                        .buttonStyle(EKPressStyle())
                                     }
                                 }
 
@@ -404,20 +414,30 @@ struct SearchScreen: View {
                                                 .foregroundStyle(Theme.inkSecondary)
                                             // Still allow direct navigation — user may know the exact ticker
                                             let ticker = searchText.uppercased().trimmingCharacters(in: .whitespaces)
-                                            NavigationLink(value: ticker) {
+                                            Button {
+                                                HapticManager.selection()
+                                                stockTapTicker = ticker
+                                                stockTapCompanyName = nil
+                                                showStockTapAction = true
+                                            } label: {
                                                 Text("Analyse \(ticker) anyway →")
                                                     .font(.caption)
                                                     .foregroundStyle(Theme.securityGold)
                                             }
-                                            .ekPressHaptic()
+                                            .buttonStyle(EKPressStyle())
                                         }
                                         .padding(.top, 60)
                                     } else {
                                         ForEach(searchResults) { entry in
-                                            NavigationLink(value: entry.ticker) {
+                                            Button {
+                                                HapticManager.selection()
+                                                stockTapTicker = entry.ticker
+                                                stockTapCompanyName = entry.companyName
+                                                showStockTapAction = true
+                                            } label: {
                                                 StockEntryRow(entry: entry)
                                             }
-                                            .ekPressHaptic()
+                                            .buttonStyle(EKPressStyle())
                                         }
                                         if isSearching {
                                             VStack(spacing: Theme.Spacing.standard) {
@@ -515,6 +535,17 @@ struct SearchScreen: View {
                     Button("Cancel", role: .cancel) {}
                 }
             }
+            .stockTapActionSheet(
+                ticker: stockTapTicker,
+                companyName: stockTapCompanyName,
+                isPresented: $showStockTapAction,
+                onAIAnalysis: { ticker in
+                    navPath.append(ticker)
+                },
+                onStockProfile: { ticker in
+                    navPath.append(StockProfileDest(ticker: ticker, exchange: "NSE"))
+                }
+            )
             .sheet(isPresented: $showFilterSheet) {
                 FilterSheet(customPresetsManager: customPresetsManager) { preset in
                     activeCustomPreset = preset
