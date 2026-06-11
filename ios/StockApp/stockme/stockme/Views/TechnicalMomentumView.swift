@@ -19,13 +19,13 @@ struct TechnicalMomentumView: View {
     var body: some View {
         ZStack {
             Theme.canvas.ignoresSafeArea()
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.none) {
                 pageHeader
                 // 9.1 Dropdown Index Selector
                 indexDropdown
                 // 9.2 Horizontal Analytics Sub-Bar
                 subTabBar
-                Divider().opacity(0.4)
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
                 subTabContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -38,7 +38,7 @@ struct TechnicalMomentumView: View {
 
     private var pageHeader: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 Text("तकनीकी गति")
                     .font(Theme.hindiFont(size: 11))
                     .foregroundStyle(Theme.inkSecondary)
@@ -65,7 +65,7 @@ struct TechnicalMomentumView: View {
                 Button(idx) { selectedIndex = idx }
             }
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.Spacing.medium) {
                 Text(selectedIndex)
                     .font(Theme.serialNumberFont(size: 12))
                     .foregroundStyle(Theme.inkPrimary)
@@ -84,7 +84,7 @@ struct TechnicalMomentumView: View {
 
     private var subTabBar: some View {
         ScrollView(.horizontal) {
-            HStack(spacing: 0) {
+            HStack(spacing: Theme.Spacing.none) {
                 ForEach(Array(subTabs.enumerated()), id: \.offset) { idx, tab in
                     Button(action: { selectedSubTab = idx }) {
                         Text(tab)
@@ -123,7 +123,7 @@ struct TechnicalMomentumView: View {
 
     private var technicalTrendsTab: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                 // 9.3 Radio Button Momentum Filters
                 momentumFilterRow
 
@@ -151,16 +151,16 @@ struct TechnicalMomentumView: View {
 
     // 9.3 Radio Button Selection Controls
     private var momentumFilterRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             Text("MOMENTUM FILTER")
                 .font(Theme.officialStampFont(size: 10))
                 .tracking(1.5)
                 .foregroundStyle(Theme.inkSecondary)
 
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.Spacing.medium) {
                 ForEach(momentumFilters, id: \.self) { filter in
                     Button(action: { selectedMomentum = filter }) {
-                        HStack(spacing: 5) {
+                        HStack(spacing: Theme.Spacing.tight) {
                             // Radio circle
                             ZStack {
                                 Circle()
@@ -217,7 +217,7 @@ struct TechnicalMomentumView: View {
 
     private var sectorsTab: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Theme.Spacing.medium) {
                 if let pulse = dashboard?.pulse {
                     // Fallback: show advance/decline breadth block
                     let total = pulse.advances + pulse.declines
@@ -267,7 +267,7 @@ struct TechnicalMomentumView: View {
                                  pct: Double(pulse.unchanged) / Double(total) * 100,
                                  color: Theme.holdAmber)
 
-                    GuillocheDivider()
+                    SectionDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     // Breadth ratio card
@@ -389,11 +389,11 @@ struct TechnicalMomentumView: View {
 
     private var moverRowPlaceholder: some View {
         HStack(spacing: Theme.Spacing.standard) {
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 24, height: 12)
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: UIScreen.main.bounds.width * 0.22, height: 14)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 24, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: UIScreen.main.bounds.width * 0.22, height: 14)
             Spacer()
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 50, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 50, height: 12)
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
@@ -436,10 +436,10 @@ struct TechnicalMomentumView: View {
 
     private var momentumCardPlaceholder: some View {
         HStack(spacing: Theme.Spacing.standard) {
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: UIScreen.main.bounds.width * 0.2, height: 14)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: UIScreen.main.bounds.width * 0.2, height: 14)
             Spacer()
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 60, height: 12)
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 40, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 60, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 40, height: 12)
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
@@ -492,7 +492,7 @@ struct MomentumIndicatorCard: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.standard) {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                 HStack(spacing: Theme.Spacing.medium) {
                     Text(ticker.ticker)
                         .font(Theme.serialNumberFont(size: 14))
@@ -615,10 +615,10 @@ struct OIBreadthRow: View {
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2)
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                         .fill(color.opacity(0.12))
                         .frame(height: 6)
-                    RoundedRectangle(cornerRadius: 2)
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                         .fill(color.opacity(0.7))
                         .frame(width: geo.size.width * min(pct / 100.0, 1.0), height: 6)
                 }

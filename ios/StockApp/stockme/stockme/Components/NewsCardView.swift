@@ -33,7 +33,7 @@ struct NewsCardView: View {
             }
         }) {
             GeometryReader { geo in
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.none) {
                     // Hero image (if available)
                     if let imageUrl = article.imageUrl, let url = URL(string: imageUrl) {
                         AsyncImage(url: url) { phase in
@@ -57,9 +57,9 @@ struct NewsCardView: View {
                         }
                     }
 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                     // Header row
-                    HStack(spacing: 8) {
+                    HStack(spacing: Theme.Spacing.medium) {
                         // Source pill
                         Text(sourceLabel.uppercased())
                             .font(.caption2.weight(.bold).monospaced())
@@ -76,7 +76,7 @@ struct NewsCardView: View {
 
                         // Red flag indicator
                         if article.isRedFlag {
-                            HStack(spacing: 3) {
+                            HStack(spacing: Theme.Spacing.xSmall) {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .font(.caption2.weight(.bold))
                                 Text("RED FLAG")

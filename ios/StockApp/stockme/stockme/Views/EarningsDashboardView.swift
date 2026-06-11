@@ -174,7 +174,7 @@ struct EarningsDashboardView: View {
         ZStack {
             Theme.canvas.ignoresSafeArea()
 
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.none) {
                 headerBar
                 tabBar
                 tabContent
@@ -249,7 +249,7 @@ struct EarningsDashboardView: View {
         }
         .scrollIndicators(.hidden)
         .background(Theme.canvasDeep)
-        .overlay(Divider(), alignment: .bottom)
+        .overlay(Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5), alignment: .bottom)
     }
 
     // MARK: Tab Content
@@ -337,10 +337,10 @@ struct EarningsProgressView: View {
             // Progress bar
             let w = UIScreen.main.bounds.width
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 3)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                     .fill(Theme.inkTertiary.opacity(0.15))
                 let pct = p.total > 0 ? CGFloat(p.reported) / CGFloat(p.total) : 0
-                RoundedRectangle(cornerRadius: 3)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                     .fill(LinearGradient(
                         colors: [Theme.bullGreen, Theme.securityGold],
                         startPoint: .leading, endPoint: .trailing))
@@ -359,9 +359,9 @@ struct EarningsProgressView: View {
     private var progressCardPlaceholder: some View {
         let w = UIScreen.main.bounds.width
         return VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-            RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.12)).frame(height: 14).frame(width: w * 0.35)
-            RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.12)).frame(height: 36).frame(width: w * 0.45)
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.12)).frame(height: 6)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.12)).frame(height: 14).frame(width: w * 0.35)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.12)).frame(height: 36).frame(width: w * 0.45)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.12)).frame(height: 6)
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
@@ -380,13 +380,13 @@ struct EarningsProgressView: View {
             let profitGrowth: Double = vm.yoyMarketHealth?.netProfitYoYPct ?? vm.aggregateProfitGrowth
             let sourceLabel: String = vm.yoyMarketHealth != nil ? "NSE AGGREGATE" : "FEED ESTIMATE"
 
-            HStack(spacing: 0) {
+            HStack(spacing: Theme.Spacing.none) {
                 aggregateMetric(
                     label: "AVG REVENUE GROWTH",
                     value: revGrowth,
                     isLoading: vm.isLoading && vm.yoyMarketHealth == nil && vm.feed.isEmpty
                 )
-                Divider().frame(height: 40).padding(.horizontal, 16)
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(width: 0.5, height: 40).padding(.horizontal, Theme.Spacing.card)
                 aggregateMetric(
                     label: "AVG NET PROFIT GROWTH",
                     value: profitGrowth,
@@ -410,7 +410,7 @@ struct EarningsProgressView: View {
                 .tracking(1.2)
                 .foregroundStyle(Theme.inkTertiary)
             if isLoading {
-                RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.12)).frame(width: 60, height: 22)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.12)).frame(width: 60, height: 22)
             } else {
                 Text(IndianFormatter.delta(value))
                     .font(.title3.weight(.bold).monospaced())
@@ -448,7 +448,7 @@ struct EarningsProgressView: View {
                                     .padding(.vertical, 5)
                                     .background(vm.selectedMarketCap == cap ? Theme.securityGold.opacity(0.10) : Theme.canvasDeep)
                                     .cornerRadius(Theme.CornerRadius.tight)
-                                    .overlay(RoundedRectangle(cornerRadius: 5).stroke(Theme.borderSage, lineWidth: 0.5))
+                                    .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.borderSage, lineWidth: 0.5))
                             }
                         }
                     }
@@ -464,9 +464,9 @@ struct EarningsProgressView: View {
     /// Backend pre-computed cap grid table (from /api/v1/market/dashboard-pulse)
     private var capGridTable: some View {
         let colW = UIScreen.main.bounds.width - Theme.Spacing.card * 2  // available content width
-        return VStack(spacing: 0) {
+        return VStack(spacing: Theme.Spacing.none) {
             // Header
-            HStack(spacing: 0) {
+            HStack(spacing: Theme.Spacing.none) {
                 Text("BRACKET").tableHeaderStyle().frame(width: colW * 0.20, alignment: .leading)
                 Text("MCAP").tableHeaderStyle().frame(maxWidth: .infinity, alignment: .trailing)
                 Text("REVENUE").tableHeaderStyle().frame(maxWidth: .infinity, alignment: .trailing)
@@ -476,10 +476,10 @@ struct EarningsProgressView: View {
             .padding(.horizontal, 8).padding(.vertical, 6)
             .background(Theme.canvasDeep)
 
-            Divider().opacity(0.5)
+            Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
 
             ForEach(vm.capIndexAggregator) { row in
-                HStack(spacing: 0) {
+                HStack(spacing: Theme.Spacing.none) {
                     Text(row.capBracket.uppercased())
                         .font(.caption2.weight(.bold).monospaced())
                         .foregroundStyle(row.capBracket == "All" ? Theme.securityGold : Theme.inkPrimary)
@@ -498,11 +498,11 @@ struct EarningsProgressView: View {
                         .frame(width: colW * 0.10, alignment: .trailing)
                 }
                 .padding(.horizontal, 8).padding(.vertical, 7)
-                Divider().opacity(0.25)
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
             }
         }
         .cornerRadius(Theme.CornerRadius.tight)
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.borderSage, lineWidth: 0.5))
+        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.borderSage, lineWidth: 0.5))
     }
 
     private func capLabel(_ cap: String) -> String {
@@ -517,9 +517,9 @@ struct EarningsProgressView: View {
 
     private var earningsTable: some View {
         let colW = UIScreen.main.bounds.width - Theme.Spacing.card * 2
-        return VStack(spacing: 0) {
+        return VStack(spacing: Theme.Spacing.none) {
             // Header row
-            HStack(spacing: 0) {
+            HStack(spacing: Theme.Spacing.none) {
                 Text("COMPANY").tableHeaderStyle().frame(maxWidth: .infinity, alignment: .leading)
                 Text("REVENUE").tableHeaderStyle().frame(minWidth: colW * 0.22, alignment: .trailing)
                 Text("GROSS PROFIT").tableHeaderStyle().frame(minWidth: colW * 0.22, alignment: .trailing)
@@ -529,29 +529,29 @@ struct EarningsProgressView: View {
             .padding(.vertical, 6)
             .background(Theme.canvasDeep)
 
-            Divider().opacity(0.5)
+            Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
 
             if vm.feed.isEmpty && vm.isLoading {
                 ForEach(0..<4, id: \.self) { _ in
                     tableRowPlaceholder
-                    Divider().opacity(0.3)
+                    Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
                 }
             } else {
                 ForEach(vm.filteredFeed.prefix(10)) { result in
                     earningsTableRow(result, tableWidth: colW)
                     if result.id != vm.filteredFeed.prefix(10).last?.id {
-                        Divider().opacity(0.25)
+                        Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
                     }
                 }
             }
         }
         .cornerRadius(Theme.CornerRadius.tight)
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.borderSage, lineWidth: 0.5))
+        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.borderSage, lineWidth: 0.5))
     }
 
     private func earningsTableRow(_ r: EarningsResult, tableWidth: CGFloat) -> some View {
         let profitGrowth = r.netProfitGrowthPct
-        return HStack(spacing: 0) {
+        return HStack(spacing: Theme.Spacing.none) {
             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                 Text(r.ticker)
                     .font(.caption.weight(.semibold).monospaced())
@@ -588,11 +588,11 @@ struct EarningsProgressView: View {
 
     private var tableRowPlaceholder: some View {
         HStack(spacing: Theme.Spacing.medium) {
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 60, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 60, height: 12)
             Spacer()
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 10)
@@ -703,7 +703,7 @@ struct EarningsCalendarView: View {
             VStack(spacing: Theme.Spacing.card) {
                 // 1.2 Horizontal Calendar Day Scroller
                 calendarScrollRow
-                GuillocheDivider()
+                SectionDivider()
                 // Results for selected date
                 selectedDayResults
             }
@@ -869,7 +869,7 @@ struct EarningsCalendarView: View {
                     .padding(.vertical, 6)
                     .background(alertSetFor == r.ticker ? Theme.securityGold.opacity(0.10) : Theme.canvasDeep)
                     .cornerRadius(Theme.CornerRadius.tight)
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.borderSage, lineWidth: 0.5))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.borderSage, lineWidth: 0.5))
                 }
                 
                 Button(action: {
@@ -887,12 +887,12 @@ struct EarningsCalendarView: View {
                     .padding(.vertical, 6)
                     .background(Theme.canvasDeep)
                     .cornerRadius(Theme.CornerRadius.tight)
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.borderSage, lineWidth: 0.5))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.borderSage, lineWidth: 0.5))
                 }
             }
         }
-        .padding(.vertical, 8)
-        .overlay(Divider(), alignment: .bottom)
+        .padding(.vertical, Theme.Spacing.medium)
+        .overlay(Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5), alignment: .bottom)
     }
 }
 
@@ -902,7 +902,7 @@ struct EarningsFeedView: View {
     @ObservedObject var vm: EarningsDashboardViewModel
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Theme.Spacing.none) {
             // 2.2 Tabbed Performance Sorting Grid
             sortTabBar
             ScrollView {
@@ -935,8 +935,8 @@ struct EarningsFeedView: View {
     }
 
     private var sortTabBar: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 0) {
+        VStack(spacing: Theme.Spacing.none) {
+            HStack(spacing: Theme.Spacing.none) {
                 ForEach([("latest", "Latest Results"), ("best", "Best Performer"), ("worst", "Worst Performer")], id: \.0) { key, label in
                     Button(action: { vm.selectedSort = key }) {
                         Text(label)
@@ -962,14 +962,14 @@ struct EarningsFeedView: View {
             }
         }
         .background(Theme.canvasDeep)
-        .overlay(Divider(), alignment: .bottom)
+        .overlay(Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5), alignment: .bottom)
     }
 
     private var feedCardPlaceholder: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-            RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 100, height: 13)
-            RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.10)).frame(height: 13)
-            RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 160, height: 11)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 100, height: 13)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(height: 13)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 160, height: 11)
         }
         .padding(Theme.Spacing.standard)
         .banknoteCard()
@@ -1030,22 +1030,22 @@ struct EarningsResultCard: View {
                 .padding(.vertical, 4)
             }
 
-            GuillocheDivider()
+            SectionDivider()
 
             // 2.4 Historical period baseline rows
-            HStack(spacing: 0) {
+            HStack(spacing: Theme.Spacing.none) {
                 metricColumn(
                     label: "NET SALES",
                     current: IndianFormatter.formatLakhsCrores(result.revenue),
                     growth: result.revenueGrowthPct
                 )
-                Divider().frame(height: 44).padding(.horizontal, 8)
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(width: 0.5, height: 44).padding(.horizontal, Theme.Spacing.medium)
                 metricColumn(
                     label: "NET PROFIT",
                     current: IndianFormatter.formatLakhsCrores(result.netProfit),
                     growth: result.netProfitGrowthPct
                 )
-                Divider().frame(height: 44).padding(.horizontal, 8)
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(width: 0.5, height: 44).padding(.horizontal, Theme.Spacing.medium)
                 metricColumn(
                     label: "MARGIN",
                     current: String(format: "%.1f%%", result.netProfitMarginPct),
@@ -1252,7 +1252,7 @@ struct ScreenerView: View {
         .background(Theme.canvasDeep)
         .cornerRadius(Theme.CornerRadius.large)
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
                 .stroke(Theme.borderSage, lineWidth: 0.5)
         )
     }
@@ -1261,7 +1261,7 @@ struct ScreenerView: View {
 
     private var noResultsForPreset: some View {
         VStack(spacing: Theme.Spacing.standard) {
-            GuillocheDivider()
+            SectionDivider()
                 .padding(.horizontal, 16)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
@@ -1392,7 +1392,7 @@ struct ScreenerView: View {
                 // Icon + Bookmark row
                 HStack {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 6)
+                            RoundedRectangle(cornerRadius: Theme.CornerRadius.tight)
                                 .fill(Theme.securityGold.opacity(0.12))
                                 .frame(width: 32, height: 32)
                             Image(systemName: preset.icon)
@@ -1421,7 +1421,7 @@ struct ScreenerView: View {
                             .background(Theme.securityGold.opacity(0.10))
                             .cornerRadius(Theme.CornerRadius.medium)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 8)
+                                RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                                     .stroke(Theme.securityGold.opacity(0.2), lineWidth: 0.5)
                             )
                     }
@@ -1447,7 +1447,7 @@ struct ScreenerView: View {
             .background(isSelected ? Theme.securityGold.opacity(0.06) : Theme.canvasDeep)
             .cornerRadius(Theme.CornerRadius.large)
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
                     .stroke(
                         isSelected ? Theme.securityGold.opacity(0.4) : Theme.borderSage,
                         lineWidth: isSelected ? 1.0 : 0.5
@@ -1466,7 +1466,7 @@ struct ScreenerView: View {
 
         return AnyView(
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                GuillocheDivider()
+                SectionDivider()
 
                 HStack {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
@@ -1489,9 +1489,9 @@ struct ScreenerView: View {
                 }
 
                 let colW = UIScreen.main.bounds.width - Theme.Spacing.card * 2
-                VStack(spacing: 0) {
+                VStack(spacing: Theme.Spacing.none) {
                         // Table header
-                        HStack(spacing: 0) {
+                        HStack(spacing: Theme.Spacing.none) {
                             Text("TICKER").tableHeaderStyle().frame(maxWidth: .infinity, alignment: .leading)
                             Text("LTP").tableHeaderStyle().frame(minWidth: colW * 0.18, alignment: .trailing)
                             Text("CHG%").tableHeaderStyle().frame(minWidth: colW * 0.14, alignment: .trailing)
@@ -1503,8 +1503,8 @@ struct ScreenerView: View {
                         .cornerRadius(Theme.CornerRadius.small)
 
                         ForEach(Array(filteredResults.prefix(15).enumerated()), id: \.offset) { idx, r in
-                            HStack(spacing: 0) {
-                                VStack(alignment: .leading, spacing: 1) {
+                            HStack(spacing: Theme.Spacing.none) {
+                                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                     Text(r.ticker)
                                         .font(.footnote.weight(.bold).monospaced())
                                         .foregroundStyle(Theme.inkPrimary)
@@ -1534,7 +1534,7 @@ struct ScreenerView: View {
                             .padding(.vertical, 8)
 
                             if idx < min(filteredResults.count, 15) - 1 {
-                                Divider().opacity(0.25)
+                                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
                             }
                         }
             }
@@ -1542,7 +1542,7 @@ struct ScreenerView: View {
             .background(Theme.canvasDeep)
             .cornerRadius(Theme.CornerRadius.medium)
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                     .stroke(Theme.borderSage, lineWidth: 0.5)
             )
         }
@@ -1557,7 +1557,7 @@ struct ScreenerView: View {
         }
         return AnyView(
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                GuillocheDivider()
+                SectionDivider()
 
                 HStack {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
@@ -1591,7 +1591,7 @@ struct ScreenerView: View {
     }
 
     private func screenerBackendResultRow(result: ScreenerResult) -> some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Theme.Spacing.none) {
             Rectangle()
                 .fill(Theme.securityGold.opacity(0.4))
                 .frame(width: 1)
@@ -1682,7 +1682,7 @@ struct VarianceTrackerView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Theme.Spacing.none) {
             // 4.3 Pre-Result Sentiment Segmentation Tabs
             expectationFilterBar
             ScrollView {
@@ -1708,7 +1708,7 @@ struct VarianceTrackerView: View {
     }
 
     private var expectationFilterBar: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Theme.Spacing.none) {
             ForEach([("all","All"), ("high","High Expectations"), ("low","Low Expectations")], id: \.0) { key, label in
                 Button(action: { expectationFilter = key }) {
                     Text(label)
@@ -1721,13 +1721,13 @@ struct VarianceTrackerView: View {
             }
         }
         .background(Theme.canvasDeep)
-        .overlay(Divider(), alignment: .bottom)
+        .overlay(Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5), alignment: .bottom)
     }
 
     private var variancePlaceholder: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-            RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 100, height: 13)
-            RoundedRectangle(cornerRadius: 4).fill(Theme.inkTertiary.opacity(0.10)).frame(height: 60)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 100, height: 13)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(height: 60)
         }
         .padding(Theme.Spacing.standard).banknoteCard().shimmerPlaceholder(isLoading: true)
     }
@@ -1769,17 +1769,17 @@ struct VarianceCard: View {
             }
 
             // 4.1 Three-column matrix: Revenue, Net Profit, EPS
-            HStack(spacing: 0) {
+            HStack(spacing: Theme.Spacing.none) {
                 varianceColumn(label: "REVENUE",
                                estimate: estimate.revenueEstimate.map { IndianFormatter.formatLakhsCrores($0) },
                                actual: estimate.revenueActual.map { IndianFormatter.formatLakhsCrores($0) },
                                variancePct: estimate.revenueSurprisePct)
-                Divider().frame(height: 50).padding(.horizontal, 6)
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(width: 0.5, height: 50).padding(.horizontal, Theme.Spacing.tight)
                 varianceColumn(label: "NET PROFIT",
                                estimate: estimate.netProfitEstimate.map { IndianFormatter.formatLakhsCrores($0) },
                                actual: estimate.netProfitActual.map { IndianFormatter.formatLakhsCrores($0) },
                                variancePct: estimate.netProfitSurprisePct)
-                Divider().frame(height: 50).padding(.horizontal, 6)
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(width: 0.5, height: 50).padding(.horizontal, Theme.Spacing.tight)
                 varianceColumn(label: "EPS",
                                estimate: estimate.epsEstimate.map { String(format: "₹%.2f", $0) },
                                actual: estimate.epsActual.map { String(format: "₹%.2f", $0) },
@@ -1791,7 +1791,7 @@ struct VarianceCard: View {
     }
 
     private func varianceColumn(label: String, estimate: String?, actual: String?, variancePct: Double?) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
             Text(label)
                 .font(.caption2.weight(.semibold).monospaced())
                 .tracking(1)
@@ -1834,7 +1834,7 @@ struct VarianceCard: View {
                 .padding(.vertical, 4)
                 .background(color.opacity(0.10))
                 .cornerRadius(Theme.CornerRadius.small)
-                .overlay(RoundedRectangle(cornerRadius: 4).stroke(color.opacity(0.3), lineWidth: 0.5))
+                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(color.opacity(0.3), lineWidth: 0.5))
         )
     }
 }
@@ -1873,7 +1873,7 @@ struct PostResultMonitorView: View {
 
                 // Table header
                 let headerW = UIScreen.main.bounds.width
-                HStack(spacing: 0) {
+                HStack(spacing: Theme.Spacing.none) {
                     Text("COMPANY").tableHeaderStyle().frame(maxWidth: .infinity, alignment: .leading)
                     Text("RESULT DATE").tableHeaderStyle().frame(minWidth: headerW * 0.20, alignment: .trailing)
                     Text("LTP").tableHeaderStyle().frame(minWidth: headerW * 0.20, alignment: .trailing)
@@ -1896,7 +1896,7 @@ struct PostResultMonitorView: View {
                 } else {
                     ForEach(vm.postResultMovers) { mover in
                         postResultRow(mover)
-                        Divider().opacity(0.25).padding(.horizontal, 16)
+                        Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5).padding(.horizontal, 16)
                     }
                 }
             }
@@ -1933,7 +1933,7 @@ struct PostResultMonitorView: View {
     private func postResultRow(_ m: PostResultMover) -> some View {
         let isPos = m.changePercent >= 0
         let rowW = UIScreen.main.bounds.width
-        return HStack(spacing: 0) {
+        return HStack(spacing: Theme.Spacing.none) {
             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                 Text(m.ticker)
                     .font(.footnote.weight(.bold).monospaced())
@@ -1970,15 +1970,15 @@ struct PostResultMonitorView: View {
     }
 
     private var moverRowPlaceholder: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Theme.Spacing.none) {
             VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
-                RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 110, height: 10)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 110, height: 10)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 60, height: 12)
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 55, height: 12).padding(.leading, 8)
-            RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 55, height: 12).padding(.leading, 8)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 60, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 55, height: 12).padding(.leading, 8)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 55, height: 12).padding(.leading, 8)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

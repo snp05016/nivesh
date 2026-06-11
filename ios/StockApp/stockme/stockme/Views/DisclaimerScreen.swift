@@ -8,7 +8,7 @@ struct DisclaimerScreen: View {
             // The Banknote Canvas
             PaperTexture()
 
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.none) {
                 Spacer()
 
                 VStack(spacing: Theme.Spacing.large) {

@@ -39,9 +39,10 @@ struct NiveshBrandChip: View {
 /// G6 — per-ticker tile tint (the sole sanctioned Color(hue:) site — see AGENTS §8.3).
 extension String {
     var tileColor: Color {
-        let hues: [Double] = [0.55, 0.58, 0.62, 0.48, 0.52, 0.65, 0.50, 0.57]
+        let hues: [Double]        = [0.60, 0.63, 0.58, 0.55, 0.65, 0.68, 0.57, 0.61]
+        let saturations: [Double] = [0.50, 0.45, 0.55, 0.42, 0.48, 0.52, 0.46, 0.50]
         let idx = abs(self.hashValue) % hues.count
-        return Color(hue: hues[idx], saturation: 0.45, brightness: 0.35)
+        return Color(hue: hues[idx], saturation: saturations[idx], brightness: 0.30)
     }
 }
 
@@ -63,7 +64,7 @@ struct TimeRangeSelector: View {
     @Binding var selected: TimeRange
     let ranges: [TimeRange]
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Theme.Spacing.none) {
             ForEach(ranges, id: \.self) { range in
                 Button(action: { HapticManager.selection(); selected = range }) {
                     VStack(spacing: Theme.Spacing.xSmall) {

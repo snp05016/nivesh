@@ -40,7 +40,7 @@ struct NewsMultimediaView: View {
 
     private var pageHeader: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 Text("समाचार और बुद्धिमत्ता")
                     .font(Theme.hindiFont(size: 11, relativeTo: .caption))
                     .foregroundStyle(Theme.inkSecondary)
@@ -62,7 +62,7 @@ struct NewsMultimediaView: View {
     // MARK: 8.1 Horizontal News Carousel
 
     private var newsCarousel: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             SectionHeader(title: "MACRO UPDATES", hindiTitle: "व्यापक आर्थिक अपडेट")
 
             ScrollView(.horizontal) {
@@ -85,17 +85,17 @@ struct NewsMultimediaView: View {
     // MARK: 8.2 Podcast Network
 
     private var podcastSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             SectionHeader(title: "MARKET DEEP DIVES", hindiTitle: "गहन विश्लेषण")
 
             if isLoading && videos.isEmpty {
-                HStack(spacing: 12) {
+                HStack(spacing: Theme.Spacing.standard) {
                     ForEach(0..<3, id: \.self) { _ in videoCardPlaceholder }
                 }
                 .padding(.horizontal, Theme.Spacing.card)
             } else {
                 ScrollView(.horizontal) {
-                    HStack(spacing: 12) {
+                    HStack(spacing: Theme.Spacing.standard) {
                         ForEach(videos.prefix(8)) { video in
                             VideoCard(video: video)
                         }
@@ -111,7 +111,7 @@ struct NewsMultimediaView: View {
     // MARK: 8.3 Behind-the-News Editorial
 
     private var editorialSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             SectionHeader(title: "DEEP STRUCTURAL ANALYSIS", hindiTitle: "गहन संरचनात्मक विश्लेषण")
 
             // Long-horizon socioeconomic columns — now expandable
@@ -163,11 +163,11 @@ struct NewsMultimediaView: View {
     // MARK: 8.5 Expert Execution Panel
 
     private var expertPanel: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             SectionHeader(title: "GET EXPERT ADVICE", hindiTitle: "विशेषज्ञ सलाह")
 
             // Tab bar
-            HStack(spacing: 0) {
+            HStack(spacing: Theme.Spacing.none) {
                 ForEach(Array(expertTabs.enumerated()), id: \.offset) { idx, tab in
                     Button(action: { expertTab = idx }) {
                         Text(tab)
@@ -214,7 +214,7 @@ struct NewsMultimediaView: View {
     private var newsCardPlaceholder: some View {
         let cardWidth = UIScreen.main.bounds.width * 0.58
         let cardHeight = UIScreen.main.bounds.height * 0.16
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).fill(Theme.inkTertiary.opacity(0.10)).frame(width: cardWidth - Theme.Spacing.standard * 2, height: cardHeight * 0.40)
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: (cardWidth - Theme.Spacing.standard * 2) * 0.8, height: 12)
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: (cardWidth - Theme.Spacing.standard * 2) * 0.55, height: 10)
@@ -300,7 +300,7 @@ struct NewsCarouselCard: View {
             HapticManager.selection()
             showDetail = true
         }) {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.none) {
                 // Hero image at top of card
                 ZStack(alignment: .bottom) {
                     if let imageUrl = article.imageUrl, let url = URL(string: imageUrl) {
@@ -371,7 +371,7 @@ struct NewsCarouselCard: View {
                         if let badge = signalBadge {
                             HStack(spacing: Theme.Spacing.xSmall) {
                                 Image(systemName: badge.icon)
-                                    .font(.system(size: 8, weight: .bold))
+                                    .font(Theme.officialStampFont(size: 8))
                                 Text(badge.label)
                                     .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
                                     .tracking(0.8)
@@ -409,9 +409,9 @@ struct NewsCarouselCard: View {
                         }
 
                         if let ticker = article.ticker, !ticker.isEmpty {
-                            HStack(spacing: 2) {
+                            HStack(spacing: Theme.Spacing.xSmall) {
                                 Image(systemName: "chart.line.uptrend.xyaxis")
-                                    .font(.system(size: 7))
+                                    .font(Theme.officialStampFont(size: 7))
                                 Text(ticker)
                                     .font(Theme.serialNumberFont(size: 9, relativeTo: .caption2))
                             }
@@ -577,7 +577,7 @@ struct EditorialRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.none) {
             // ── Always-visible header (tap to expand) ───────────────────
             Button(action: {
                 HapticManager.selection()
@@ -623,7 +623,7 @@ struct EditorialRow: View {
             // ── Expandable content ───────────────────────────────────────
             if expanded {
                 VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                    GuillocheDivider()
+                    SectionDivider()
                         .padding(.top, Theme.Spacing.medium)
 
                     if let summary = article.summary, !summary.isEmpty {
@@ -763,7 +763,7 @@ struct NewsListRow: View {
                         if let badge = signalBadge {
                             HStack(spacing: Theme.Spacing.xSmall) {
                                 Image(systemName: badge.icon)
-                                    .font(.system(size: 7, weight: .bold))
+                                    .font(Theme.officialStampFont(size: 7))
                                 Text(badge.label)
                                     .font(Theme.officialStampFont(size: 7, relativeTo: .caption2))
                                     .tracking(0.6)
@@ -804,9 +804,9 @@ struct NewsListRow: View {
 
                     // Ticker chip if available
                     if let ticker = article.ticker, !ticker.isEmpty {
-                        HStack(spacing: 2) {
+                        HStack(spacing: Theme.Spacing.xSmall) {
                             Image(systemName: "chart.line.uptrend.xyaxis")
-                                .font(.system(size: 7))
+                                .font(Theme.officialStampFont(size: 7))
                             Text(ticker)
                                 .font(Theme.serialNumberFont(size: 9, relativeTo: .caption2))
                         }

@@ -12,7 +12,7 @@ struct OnboardingScreen: View {
             BanknoteWatermark(text: "RESERVE BANK", size: 120, opacity: 0.02, alignment: .topLeading)
             BanknoteWatermark(text: "CENTRAL REGISTRY", size: 100, opacity: 0.02, alignment: .bottomTrailing)
 
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.none) {
                 Spacer()
 
                 // Official Medallion
@@ -28,7 +28,7 @@ struct OnboardingScreen: View {
                 .padding(.bottom, Theme.Spacing.xLarge)
 
                 // App name
-                VStack(spacing: 8) {
+                VStack(spacing: Theme.Spacing.medium) {
                     Text("निवेश / NIVESH")
                         .font(Theme.engravedSerif(size: 44, weight: .bold, relativeTo: .largeTitle))
                         .foregroundStyle(Theme.inkPrimary)

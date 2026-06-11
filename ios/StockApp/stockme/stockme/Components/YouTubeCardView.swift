@@ -13,7 +13,7 @@ struct YouTubeCardView: View {
                 UIApplication.shared.open(url)
             }
         }) {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: Theme.Spacing.standard) {
                 // Thumbnail
                 ZStack(alignment: .bottomTrailing) {
                     if let thumbUrl = video.thumbnailUrl, let url = URL(string: thumbUrl) {
@@ -62,7 +62,7 @@ struct YouTubeCardView: View {
                 }
 
                 // Metadata
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                     // Channel name
                     Text(video.channelName.uppercased())
                         .font(.caption2.weight(.bold).monospaced())
@@ -80,7 +80,7 @@ struct YouTubeCardView: View {
                     Spacer(minLength: 0)
 
                     // Footer: views + tickers
-                    HStack(spacing: 6) {
+                    HStack(spacing: Theme.Spacing.tight) {
                         Image(systemName: "eye")
                             .font(.caption2)
                             .foregroundStyle(dimText)
@@ -136,7 +136,7 @@ struct YouTubeCompactCard: View {
                 UIApplication.shared.open(url)
             }
         }) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                 // Thumbnail
                 ZStack(alignment: .bottomTrailing) {
                     if let thumbUrl = video.thumbnailUrl, let url = URL(string: thumbUrl) {
@@ -199,7 +199,7 @@ struct YouTubeCompactCard: View {
                     .lineSpacing(1)
 
                 // Views
-                HStack(spacing: 3) {
+                HStack(spacing: Theme.Spacing.xSmall) {
                     Image(systemName: "eye")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -210,7 +210,7 @@ struct YouTubeCompactCard: View {
 
                 // Ticker chips
                 if !video.tickersMentioned.isEmpty {
-                    HStack(spacing: 3) {
+                    HStack(spacing: Theme.Spacing.xSmall) {
                         ForEach(video.tickersMentioned.prefix(2), id: \.self) { ticker in
                             Button(action: { onTickerTap?(ticker) }) {
                                 Text(ticker)

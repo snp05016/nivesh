@@ -24,14 +24,14 @@ struct BanknoteErrorCanvas: View {
     private let bandSize = CGSize(width: 40, height: 28)
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Theme.Spacing.none) {
             // ── Paper texture card ──────────────────────────────────────
-            VStack(spacing: 20) {
+            VStack(spacing: Theme.Spacing.screen) {
                 // Currency band header
                 currencyBand
 
                 // Error content
-                VStack(spacing: 12) {
+                VStack(spacing: Theme.Spacing.standard) {
                     // Denomination-style error title
                     Text(title)
                         .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
@@ -74,7 +74,7 @@ struct BanknoteErrorCanvas: View {
                                 isRetrying = false
                             }
                         } label: {
-                            HStack(spacing: 6) {
+                            HStack(spacing: Theme.Spacing.tight) {
                                 if isRetrying {
                                     ProgressView()
                                         .scaleEffect(0.7)
@@ -130,13 +130,13 @@ struct BanknoteErrorCanvas: View {
     // MARK: - Currency Band
 
     private var currencyBand: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Theme.Spacing.none) {
             // Left guilloche block
             Rectangle()
                 .fill(Theme.bearRed.opacity(0.12))
                 .frame(width: bandSize.width, height: bandSize.height)
                 .overlay(
-                    HStack(spacing: 2) {
+                    HStack(spacing: Theme.Spacing.xSmall) {
                         ForEach(0..<3, id: \.self) { _ in
                             Circle()
                                 .fill(Theme.bearRed.opacity(0.3))
@@ -146,7 +146,7 @@ struct BanknoteErrorCanvas: View {
                 )
 
             // Center label
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.none) {
                 Rectangle().fill(Theme.bearRed.opacity(0.3)).frame(height: 1)
                 Text("DATA FAULT")
                     .font(.caption2.weight(.bold).monospaced())
@@ -162,7 +162,7 @@ struct BanknoteErrorCanvas: View {
                 .fill(Theme.bearRed.opacity(0.12))
                 .frame(width: bandSize.width, height: bandSize.height)
                 .overlay(
-                    HStack(spacing: 2) {
+                    HStack(spacing: Theme.Spacing.xSmall) {
                         ForEach(0..<3, id: \.self) { _ in
                             Circle()
                                 .fill(Theme.bearRed.opacity(0.3))
@@ -183,7 +183,7 @@ struct MarketSectionErrorRow: View {
     let errorMessage: String
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Theme.Spacing.medium) {
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.caption2)
@@ -224,14 +224,14 @@ struct DiagnosticErrorDrawer: View {
     @Binding var isExpanded: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Theme.Spacing.none) {
             // ── Tappable header row ────────────────────────────────────
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isExpanded.toggle()
                 }
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: Theme.Spacing.tight) {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(Theme.securityGold)
@@ -251,7 +251,7 @@ struct DiagnosticErrorDrawer: View {
 
             // ── Expanded diagnostic details ────────────────────────────
             if isExpanded {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                     // Divider
                     Rectangle()
                         .fill(Theme.borderSage)
@@ -276,7 +276,7 @@ struct DiagnosticErrorDrawer: View {
                             diagnosticRow(label: "exception_msg", value: msg)
                         }
                         if let traceback = exc.cleanedTraceback, !traceback.isEmpty {
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                                 Text("cleaned_traceback")
                                     .font(.caption2.weight(.bold).monospaced())
                                     .foregroundStyle(Theme.inkTertiary)
@@ -295,7 +295,7 @@ struct DiagnosticErrorDrawer: View {
                     Button {
                         copyPayloadToClipboard()
                     } label: {
-                        HStack(spacing: 6) {
+                        HStack(spacing: Theme.Spacing.tight) {
                             Image(systemName: "doc.on.doc")
                                 .font(.caption2)
                             Text("COPY TO CLIPBOARD")
@@ -326,7 +326,7 @@ struct DiagnosticErrorDrawer: View {
     // MARK: - Row helper
 
     private func diagnosticRow(label: String, value: String) -> some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: Theme.Spacing.medium) {
             Text(label)
                 .font(.caption2.weight(.bold).monospaced())
                 .foregroundStyle(Theme.inkTertiary)
@@ -355,7 +355,7 @@ struct DiagnosticErrorDrawer: View {
 #if DEBUG
 struct BanknoteErrorCanvas_Previews: PreviewProvider {
     static var previews: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: Theme.Spacing.large) {
             BanknoteErrorCanvas(
                 title: "Market Data Unavailable",
                 detail: "NSE connection timed out after 15 seconds.\nComponent: nse_data_provider\nTicker: RELIANCE\n\nError: HTTPSConnectionPool(host='nseindia.com', port=443): Read timed out.",

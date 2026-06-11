@@ -112,7 +112,7 @@ struct TutorialOverlayView: View {
         if let rect = step.spotlightRect {
             if rect.midY > h * 0.55 {
                 // Spotlight in bottom half → card floats ABOVE it
-                VStack(spacing: 0) {
+                VStack(spacing: Theme.Spacing.none) {
                     Spacer(minLength: 60)
                     cardBody(step: step)
                         .padding(.horizontal, Theme.Spacing.screen)
@@ -120,7 +120,7 @@ struct TutorialOverlayView: View {
                 }
             } else {
                 // Spotlight in top half → card floats BELOW it
-                VStack(spacing: 0) {
+                VStack(spacing: Theme.Spacing.none) {
                     Spacer(minLength: rect.maxY + 24)
                     cardBody(step: step)
                         .padding(.horizontal, Theme.Spacing.screen)
@@ -128,7 +128,7 @@ struct TutorialOverlayView: View {
                 }
             }
         } else {
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.none) {
                 Spacer()
                 cardBody(step: step)
                     .padding(.horizontal, Theme.Spacing.large)
@@ -140,7 +140,7 @@ struct TutorialOverlayView: View {
     // MARK: - Card content
 
     private func cardBody(step: TutorialStep) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.none) {
             HStack {
                 Text("\(tutorialManager.currentStep) of \(tutorialManager.totalSteps)")
                     .font(Theme.serialNumberFont(size: 10))

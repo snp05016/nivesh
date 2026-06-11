@@ -793,6 +793,7 @@ mood must be exactly: "positive", "cautious", or "negative"
                     model=HAIKU_MODEL,
                     max_tokens=400,
                     messages=[{"role": "user", "content": prompt}],
+                    extra_body={"cache_control": {"type": "ephemeral"}},
                 )
                 break
             except Exception as e:
@@ -2685,6 +2686,7 @@ def export_portfolio_pdf(user_id: int, authorization: str = Header(None)):
                                     "Write: Executive Summary (3 bullets), Holdings Review (one line per stock with signal and P&L%), Risk Watch, Overall Recommendation."
                                 )
                             }],
+                            extra_body={"cache_control": {"type": "ephemeral"}},
                         )
                         break
                     except Exception as _pe:

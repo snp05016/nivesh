@@ -21,16 +21,16 @@ struct SignalBadgeView: View {
         HStack(spacing: Theme.Spacing.tight) {
             Text(direction.arrow)
                 .font(Theme.serialNumberFont(size: 14, relativeTo: .body).weight(.bold))
-                .foregroundColor(direction.color)
+                .foregroundStyle(direction.color)
 
             Text(direction.text)
                 .font(Theme.officialStampFont(size: 10))
                 .tracking(1.2)
-                .foregroundColor(direction.color)
+                .foregroundStyle(direction.color)
 
             Text("\(confidencePct)%")
                 .font(Theme.serialNumberFont(size: 11, relativeTo: .caption2))
-                .foregroundColor(Theme.inkSecondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
         .padding(.horizontal, Theme.Spacing.small)
         .padding(.vertical, Theme.Spacing.xSmall)

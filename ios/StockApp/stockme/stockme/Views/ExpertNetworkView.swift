@@ -158,7 +158,7 @@ struct ExpertNetworkView: View {
         ZStack {
             Theme.canvas.ignoresSafeArea()
 
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.none) {
                 pageHeader
                     .padding(.top, Theme.Spacing.standard)
 
@@ -187,7 +187,7 @@ struct ExpertNetworkView: View {
                     Spacer()
                 } else {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                             if selectedSegment == 0 {
                                 advisoryWireSection
                             } else {
@@ -206,7 +206,7 @@ struct ExpertNetworkView: View {
 
     private var pageHeader: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 Text("विशेषज्ञ नेटवर्क")
                     .font(Theme.hindiFont(size: 11))
                     .foregroundStyle(Theme.inkSecondary)
@@ -228,7 +228,7 @@ struct ExpertNetworkView: View {
     // MARK: Advisory Wire Section
 
     private var advisoryWireSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             SectionHeader(title: "ADVISORY WIRE", hindiTitle: "सलाह तार")
                 .padding(.top, 8)
 
@@ -259,7 +259,7 @@ struct ExpertNetworkView: View {
     // MARK: Verified Minds Section
 
     private var verifiedMindsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             SectionHeader(title: "VERIFIED MINDS", hindiTitle: "प्रमाणित विशेषज्ञ")
                 .padding(.top, 8)
 
@@ -383,9 +383,9 @@ struct ExpertProfileCard: View {
     let expert: MarketExpert
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             // Avatar + compliance badge
-            HStack(spacing: 10) {
+            HStack(spacing: Theme.Spacing.medium) {
                 ZStack {
                     Circle()
                         .fill(Theme.canvasDeep)
@@ -479,9 +479,9 @@ struct ExpertPostCard: View {
     let onBookmark: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             // Header
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.Spacing.medium) {
                 ZStack {
                     Circle()
                         .fill(Theme.canvasDeep)
@@ -541,7 +541,7 @@ struct ExpertPostCard: View {
             HStack(spacing: Theme.Spacing.card) {
                 // Like counter
                 Button(action: { onLike(); HapticManager.impact(.light) }) {
-                    HStack(spacing: 5) {
+                    HStack(spacing: Theme.Spacing.tight) {
                         Image(systemName: post.isLiked ? "heart.fill" : "heart")
                             .font(Theme.officialStampFont(size: 13))
                             .foregroundStyle(post.isLiked ? Theme.bearRed : Theme.inkTertiary)

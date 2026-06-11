@@ -10,7 +10,7 @@ struct HistoryScreen: View {
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.card) {
                     HStack {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                             Text("पुरालेख")
                                 .font(Theme.hindiFont(size: 11, relativeTo: .caption))
                                 .foregroundStyle(Theme.inkSecondary)
@@ -23,7 +23,7 @@ struct HistoryScreen: View {
                     .padding(.horizontal, Theme.screenPadding)
                     .padding(.top, 12)
 
-                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    SectionDivider().padding(.horizontal, Theme.screenPadding)
 
                     if reportManager.savedReports.isEmpty {
                         Spacer()
@@ -68,7 +68,7 @@ private struct ReportHistoryNoteRow: View {
     let report: StockAnalysis
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Theme.Spacing.none) {
             Rectangle()
                 .fill(report.signal.color.opacity(0.3))
                 .frame(width: 1)
@@ -77,7 +77,7 @@ private struct ReportHistoryNoteRow: View {
             HStack(spacing: Theme.Spacing.card) {
                 StockIcon(ticker: report.ticker, signal: report.signal)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text(report.companyName.uppercased())
                         .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .body))
                         .foregroundStyle(Theme.inkPrimary)

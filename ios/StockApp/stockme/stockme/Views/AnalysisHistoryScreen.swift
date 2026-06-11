@@ -39,7 +39,7 @@ struct AnalysisHistoryTimelineView: View {
                             y: .value("Price", s.price)
                         )
                         .symbol {
-                            VStack(spacing: 2) {
+                            VStack(spacing: Theme.Spacing.xSmall) {
                                 Text(s.signal == .bullish ? "BUY" : (s.signal == .bearish ? "SELL" : "HOLD"))
                                     .font(Theme.officialStampFont(size: 8))
                                     .foregroundStyle(Theme.inkPrimary)

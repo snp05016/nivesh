@@ -32,10 +32,10 @@ struct TradeJournalScreen: View {
         ZStack {
             Theme.canvasDeep.ignoresSafeArea()
 
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.none) {
                 // Header
                 HStack {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                         Text("व्यापार पत्रिका")
                             .font(Theme.hindiFont(size: 11))
                             .foregroundStyle(Theme.inkSecondary)
@@ -100,7 +100,7 @@ struct TradeJournalScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.card) {
                 // Ticker
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text("TICKER")
                         .font(.caption2).tracking(1).foregroundStyle(Theme.inkSecondary)
                     TextField("e.g. RELIANCE", text: $newTicker)
@@ -115,7 +115,7 @@ struct TradeJournalScreen: View {
                 }
 
                 // Action picker
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text("ACTION")
                         .font(.caption2).tracking(1).foregroundStyle(Theme.inkSecondary)
                     HStack(spacing: Theme.Spacing.medium) {
@@ -134,7 +134,7 @@ struct TradeJournalScreen: View {
                 }
 
                 // Price
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text("PRICE AT TIME (₹)")
                         .font(.caption2).tracking(1).foregroundStyle(Theme.inkSecondary)
                     TextField("0.00", text: $newPrice)
@@ -149,7 +149,7 @@ struct TradeJournalScreen: View {
                 }
 
                 // Reason
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text("REASON / THESIS")
                         .font(.caption2).tracking(1).foregroundStyle(Theme.inkSecondary)
                     TextEditor(text: $newReason)
@@ -164,7 +164,7 @@ struct TradeJournalScreen: View {
                 }
 
                 // Mood
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text("MOOD")
                         .font(.caption2).tracking(1).foregroundStyle(Theme.inkSecondary)
                     HStack(spacing: Theme.Spacing.medium) {

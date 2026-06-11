@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     @EnvironmentObject var authManager: AuthManager
@@ -85,7 +86,9 @@ struct ContentView: View {
                 .tabItem { Label("Portfolio", systemImage: "briefcase.fill") }
                 .tag(4)
         }
-        .accentColor(Theme.securityGold)
+        .tint(Theme.securityGold)
+        .toolbarBackground(Theme.canvasDeep, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
         .modifier(GlobalOverlayModifier(selectedTab: $selectedTab, tutorialManager: tutorialManager))
     }
 
@@ -273,12 +276,12 @@ struct MarketsView: View {
                         removal:   .move(edge: .trailing).combined(with: .opacity)
                     ))
             } else {
-                VStack(spacing: 0) {
+                VStack(spacing: Theme.Spacing.none) {
                     // Sticky tab bar
                     MarketsTabBar(selected: $selectedTab)
                         .background(Theme.canvas)
 
-                    GuillocheDivider()
+                    SectionDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     // Content area
@@ -348,7 +351,7 @@ struct MarketsView: View {
                 }
                 .padding(.top, Theme.Spacing.standard)
 
-                GuillocheDivider()
+                SectionDivider()
                     .padding(.horizontal, Theme.screenPadding)
 
                 // Section cards
@@ -366,7 +369,7 @@ struct MarketsView: View {
 
     @ViewBuilder
     private func sectionPage(_ section: MarketSection) -> some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Theme.Spacing.none) {
             // Inline header with push button
             HStack(spacing: Theme.Spacing.standard) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
@@ -504,7 +507,7 @@ struct MarketsView: View {
                 Rectangle()
                     .fill(section.accentColor.opacity(0.8))
                     .frame(width: 3)
-                    .clipShape(RoundedRectangle(cornerRadius: 2)),
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small)),
                 alignment: .leading
             )
         }
@@ -515,7 +518,7 @@ struct MarketsView: View {
 
     @ViewBuilder
     private func sectionShell(_ section: MarketSection) -> some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Theme.Spacing.none) {
             // ← MARKETS branded back strip
             HStack(spacing: Theme.Spacing.standard) {
                 Button(action: {

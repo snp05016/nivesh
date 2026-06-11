@@ -113,13 +113,13 @@ struct PreIPOMarketplaceView: View {
         ZStack {
             Theme.canvas.ignoresSafeArea()
 
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.none) {
                 pageHeader
                 // 6.1 Pinned Advisory Banner
                 advisoryBanner
                 // 6.5 Search bar
                 searchBar
-                Divider().opacity(0.4)
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
                 companyList
             }
         }
@@ -129,8 +129,8 @@ struct PreIPOMarketplaceView: View {
     // MARK: Header
 
     private var pageHeader: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: Theme.Spacing.standard) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 Text("प्री-आईपीओ और अनलिस्टेड")
                     .font(Theme.hindiFont(size: 11))
                     .foregroundStyle(Theme.inkSecondary)
@@ -262,7 +262,7 @@ struct PreIPOMarketplaceView: View {
 
     private var companyList: some View {
         ScrollView {
-            LazyVStack(spacing: 10) {
+            LazyVStack(spacing: Theme.Spacing.medium) {
                 if vm.isLoading && vm.companies.isEmpty {
                     ForEach(0..<4, id: \.self) { _ in companyPlaceholder }
                 } else {
@@ -282,7 +282,7 @@ struct PreIPOMarketplaceView: View {
         let isBookmarked = vm.bookmarkedIds.contains(company.id)
         let isPos = company.changePct >= 0
 
-        return VStack(alignment: .leading, spacing: 0) {
+        return VStack(alignment: .leading, spacing: Theme.Spacing.none) {
             // Main Row
             HStack(spacing: Theme.Spacing.standard) {
                 // Company initials badge
@@ -295,7 +295,7 @@ struct PreIPOMarketplaceView: View {
                         .foregroundStyle(Theme.securityGold)
                 }
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text(company.name)
                         .font(Theme.officialStampFont(size: 13))
                         .foregroundStyle(Theme.inkPrimary)
@@ -307,11 +307,11 @@ struct PreIPOMarketplaceView: View {
                 Spacer()
 
                 // 6.2 LTP + delta
-                VStack(alignment: .trailing, spacing: 3) {
+                VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                     Text(IndianFormatter.price(company.ltp))
                         .font(Theme.serialNumberFont(size: 13))
                         .foregroundStyle(Theme.inkPrimary)
-                    HStack(spacing: 3) {
+                    HStack(spacing: Theme.Spacing.xSmall) {
                         Image(systemName: isPos ? "arrow.up" : "arrow.down")
                             .font(Theme.officialStampFont(size: 9))
                             .foregroundStyle(isPos ? Theme.bullGreen : Theme.bearRed)
@@ -342,7 +342,7 @@ struct PreIPOMarketplaceView: View {
             // 6.4 Expanded Metadata Sheet
             if isExpanded {
                 VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                    Divider().opacity(0.4)
+                    Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
 
                     Text(company.description)
                         .font(Theme.officialStampFont(size: 12))
@@ -351,7 +351,7 @@ struct PreIPOMarketplaceView: View {
 
                     // 6.3 OTC Pricing Detail
                     HStack(spacing: Theme.Spacing.standard) {
-                        VStack(alignment: .leading, spacing: 3) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                             Text("OTC LTP")
                                 .font(Theme.serialNumberFont(size: 8))
                                 .foregroundStyle(Theme.inkTertiary)
@@ -359,8 +359,8 @@ struct PreIPOMarketplaceView: View {
                                 .font(Theme.serialNumberFont(size: 16))
                                 .foregroundStyle(Theme.inkPrimary)
                         }
-                        Divider().frame(height: 36)
-                        VStack(alignment: .leading, spacing: 3) {
+                        Rectangle().fill(Theme.inkPrimary.opacity(0.10)).frame(width: 0.5, height: 36)
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                             Text("ABS CHANGE")
                                 .font(Theme.serialNumberFont(size: 8))
                                 .foregroundStyle(Theme.inkTertiary)
@@ -368,8 +368,8 @@ struct PreIPOMarketplaceView: View {
                                 .font(Theme.serialNumberFont(size: 14))
                                 .foregroundStyle(company.changeAbs >= 0 ? Theme.bullGreen : Theme.bearRed)
                         }
-                        Divider().frame(height: 36)
-                        VStack(alignment: .leading, spacing: 3) {
+                        Rectangle().fill(Theme.inkPrimary.opacity(0.10)).frame(width: 0.5, height: 36)
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                             Text("% CHANGE")
                                 .font(Theme.serialNumberFont(size: 8))
                                 .foregroundStyle(Theme.inkTertiary)
@@ -406,16 +406,16 @@ struct PreIPOMarketplaceView: View {
     }
 
     private var companyPlaceholder: some View {
-        HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 6).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 44, height: 44)
-            VStack(alignment: .leading, spacing: 6) {
-                RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 130, height: 12)
-                RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 80, height: 10)
+        HStack(spacing: Theme.Spacing.standard) {
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 44, height: 44)
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 130, height: 12)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 80, height: 10)
             }
             Spacer()
-            VStack(alignment: .trailing, spacing: 6) {
-                RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
-                RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 50, height: 10)
+            VStack(alignment: .trailing, spacing: Theme.Spacing.tight) {
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 50, height: 10)
             }
         }
         .padding(14)
