@@ -689,14 +689,14 @@ class NetworkManager: ObservableObject {
                 return nil
             }
             guard http.statusCode == 200 else {
-                let body = String(data: data, prefix: 500)
+                let body = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
                 print("[fetchStockHistory] HTTP \(http.statusCode) for \(ticker): \(body)")
                 return nil
             }
             do {
                 return try JSONDecoder().decode(StockHistoryResponse.self, from: data)
             } catch {
-                let body = String(data: data, prefix: 500)
+                let body = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
                 print("[fetchStockHistory] Decode error for \(ticker): \(error.localizedDescription) — body: \(body)")
                 return nil
             }
