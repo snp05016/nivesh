@@ -171,11 +171,6 @@ class TradingAgentsGraph:
         temperature = self.config.get("temperature")
         if temperature is not None and temperature != "":
             kwargs["temperature"] = float(temperature)
-        # Fix 2.12: Inject minor temperature fluctuation when at 0 to prevent
-        # Bull/Bear agents from outputting identical mirrored statements.
-        if kwargs.get("temperature", 0) == 0:
-            import random as _random
-            kwargs["temperature"] = _random.uniform(0.05, 0.15)
 
         return kwargs
 
