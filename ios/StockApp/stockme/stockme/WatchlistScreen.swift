@@ -13,6 +13,12 @@ struct WatchlistScreen: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
 
+    // Stock tap action sheet
+    @State private var stockTapTicker = ""
+    @State private var stockTapCompanyName: String? = nil
+    @State private var showStockTapAction = false
+    @State private var navPath = NavigationPath()
+
     private var filteredItems: [WatchlistItem] {
         let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
         guard !query.isEmpty else { return items }
@@ -23,23 +29,29 @@ struct WatchlistScreen: View {
     }
 
     var body: some View {
-        ZStack {
-            Theme.canvas.ignoresSafeArea()
+        NavigationStack(path: $navPath) {
+            ZStack {
+                Theme.canvas.ignoresSafeArea()
 
-            ScrollView {
-                LazyVStack(spacing: Theme.Spacing.none) {
-                    header
+                ScrollView {
+                    LazyVStack(spacing: Theme.Spacing.none) {
+                        header
 
-                    searchField
-                        .padding(.horizontal, Theme.screenPadding)
-                        .padding(.bottom, Theme.Spacing.standard)
+                        searchField
+                            .padding(.horizontal, Theme.screenPadding)
+                            .padding(.bottom, Theme.Spacing.standard)
 
                     if filteredItems.isEmpty {
                         emptyState
                             .padding(.top, Theme.Spacing.xLarge)
                     } else {
                         ForEach(filteredItems) { item in
-                            NavigationLink(value: item.ticker) {
+                            Button {
+                                HapticManager.selection()
+                                stockTapTicker = item.ticker
+                                stockTapCompanyName = item.companyName
+                                showStockTapAction = true
+                            } label: {
                                 WatchlistRow(item: item, onTap: { _ in
                                     HapticManager.selection()
                                 })
@@ -63,6 +75,24 @@ struct WatchlistScreen: View {
             }
             .background(Theme.canvas)
             .refreshable { await load() }
+            }
+            .navigationDestination(for: String.self) { ticker in
+                AnalysisScreen(ticker: ticker)
+            }
+            .navigationDestination(for: StockProfileDest.self) { dest in
+                StockProfileView(ticker: dest.ticker, exchange: dest.exchange)
+            }
+            .stockTapActionSheet(
+                ticker: stockTapTicker,
+                companyName: stockTapCompanyName,
+                isPresented: $showStockTapAction,
+                onAIAnalysis: { ticker in
+                    navPath.append(ticker)
+                },
+                onStockProfile: { ticker in
+                    navPath.append(StockProfileDest(ticker: ticker, exchange: "NSE"))
+                }
+            )
         }
         .task { await load() }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("DeepLinkWatchlistAdd"))) { _ in

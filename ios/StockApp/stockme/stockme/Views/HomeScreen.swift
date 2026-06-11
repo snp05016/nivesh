@@ -633,6 +633,11 @@ struct HomeScreen: View {
     @State private var showSearch: Bool = false
     @State private var searchText: String = ""
     @FocusState private var searchFocused: Bool
+
+    // Stock tap action sheet (universal)
+    @State private var stockTapTicker = ""
+    @State private var stockTapCompanyName: String? = nil
+    @State private var showStockTapAction = false
     private var searchResults: [StockEntry] {
         guard !searchText.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
         return StockDatabase.search(searchText)
@@ -720,6 +725,9 @@ struct HomeScreen: View {
             .navigationDestination(for: String.self) { ticker in
                 AnalysisScreen(ticker: ticker)
             }
+            .navigationDestination(for: StockProfileDest.self) { dest in
+                StockProfileView(ticker: dest.ticker, exchange: dest.exchange)
+            }
             .onReceive(Timer.publish(every: (Double(homeAutoRefreshSeconds) ?? 0) > 0 ? (Double(homeAutoRefreshSeconds) ?? 60) : 999999, on: .main, in: .common).autoconnect()) { _ in
                 guard (Double(homeAutoRefreshSeconds) ?? 0) > 0, let user = authManager.currentUser else { return }
                 Task {
@@ -738,6 +746,17 @@ struct HomeScreen: View {
                 }
             }
         }
+        .stockTapActionSheet(
+            ticker: stockTapTicker,
+            companyName: stockTapCompanyName,
+            isPresented: $showStockTapAction,
+            onAIAnalysis: { ticker in
+                navigationPath.append(ticker)
+            },
+            onStockProfile: { ticker in
+                navigationPath.append(StockProfileDest(ticker: ticker, exchange: "NSE"))
+            }
+        )
         .task {
             // Fire indices and all background fetches in parallel — don't block portfolio on indices
             let indicesTask = Task { await viewModel.fetchIndices() }
@@ -2504,7 +2523,9 @@ extension HomeScreen {
                                     ForEach(searchResults.prefix(8)) { entry in
                                         Button {
                                             HapticManager.selection()
-                                            navigationPath.append(entry.ticker)
+                                            stockTapTicker = entry.ticker
+                                            stockTapCompanyName = entry.companyName
+                                            showStockTapAction = true
                                             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                                 showSearch = false
                                                 searchText = ""

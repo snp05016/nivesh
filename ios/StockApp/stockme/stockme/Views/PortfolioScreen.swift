@@ -147,6 +147,12 @@ struct PortfolioScreen: View {
     @State private var showTagSheet = false
     @State private var taggingTicker = ""
 
+    // Stock tap action sheet (universal)
+    @State private var stockTapTicker = ""
+    @State private var stockTapCompanyName: String? = nil
+    @State private var showStockTapAction = false
+    @State private var portfolioNavPath = NavigationPath()
+
     // Screen B — immersive valuation chart (fetched at view level; ViewModel untouched)
     @State private var snapshots: [ValuationSnapshot] = []
     @State private var selectedRange: TimeRange = .year
@@ -168,7 +174,7 @@ struct PortfolioScreen: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $portfolioNavPath) {
             ZStack {
                 DenominationBackground(denomination: .twoThousand)
 
@@ -323,7 +329,12 @@ struct PortfolioScreen: View {
                                         ForEach(viewModel.watchlistItems.filter { item in
                                             activeWatchlistTag == nil || (tagsManager.tags[item.ticker]?.contains(activeWatchlistTag!) ?? false)
                                         }) { item in
-                                            NavigationLink(value: item.ticker) {
+                                            Button {
+                                                HapticManager.selection()
+                                                stockTapTicker = item.ticker
+                                                stockTapCompanyName = item.companyName
+                                                showStockTapAction = true
+                                            } label: {
                                                 WatchlistRowView(item: item, tags: tagsManager.tags[item.ticker] ?? [], onRemove: {
                                                     guard let user = authManager.currentUser else { return }
                                                     Task { await viewModel.removeFromWatchlist(ticker: item.ticker, userId: user.userId) }
@@ -420,6 +431,20 @@ struct PortfolioScreen: View {
         .navigationDestination(for: String.self) { ticker in
             AnalysisScreen(ticker: ticker)
         }
+        .navigationDestination(for: StockProfileDest.self) { dest in
+            StockProfileView(ticker: dest.ticker, exchange: dest.exchange)
+        }
+        .stockTapActionSheet(
+            ticker: stockTapTicker,
+            companyName: stockTapCompanyName,
+            isPresented: $showStockTapAction,
+            onAIAnalysis: { ticker in
+                portfolioNavPath.append(ticker)
+            },
+            onStockProfile: { ticker in
+                portfolioNavPath.append(StockProfileDest(ticker: ticker, exchange: "NSE"))
+            }
+        )
         .onAppear {
             guard let user = authManager.currentUser else { return }
             if viewModel.holdings.isEmpty && !viewModel.isLoading {
@@ -629,7 +654,12 @@ struct PortfolioScreen: View {
                 }
 
                 ForEach(filteredWatchlist) { item in
-                    NavigationLink(value: item.ticker) {
+                    Button {
+                        HapticManager.selection()
+                        stockTapTicker = item.ticker
+                        stockTapCompanyName = item.companyName
+                        showStockTapAction = true
+                    } label: {
                         WatchlistRowView(item: item, tags: tagsManager.tags[item.ticker] ?? [], onRemove: {
                             guard let user = authManager.currentUser else { return }
                             Task { await viewModel.removeFromWatchlist(ticker: item.ticker, userId: user.userId) }
@@ -833,7 +863,12 @@ private struct RedFlagsSection: View {
 
                 if isExpanded {
                     ForEach(rf.flags) { flag in
-                        NavigationLink(value: flag.ticker) {
+                        Button {
+                            HapticManager.selection()
+                            stockTapTicker = flag.ticker
+                            stockTapCompanyName = nil
+                            showStockTapAction = true
+                        } label: {
                             HStack(alignment: .top, spacing: Theme.Spacing.medium) {
                                 Text(flag.severity == "CRITICAL" ? "🔴" : flag.severity == "WARNING" ? "🟡" : "🔵")
                                     .font(.caption)
