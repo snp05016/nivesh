@@ -911,6 +911,283 @@ def stock_history_endpoint(ticker: str, exchange: str = "NSE", period: str = "1y
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Stock Profile — unified endpoint for iOS StockProfileView
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _yf_fetch_info(full_ticker: str) -> dict:
+    """Fetch yfinance Ticker.info with 3 retries. Returns empty dict on failure."""
+    import time as _time
+    import random as _random
+    for attempt in range(3):
+        try:
+            t = yf.Ticker(full_ticker)
+            info = t.info
+            if info and (info.get("currentPrice") or info.get("regularMarketPrice")):
+                return info
+        except Exception as e:
+            if attempt < 2:
+                _time.sleep((1.5 * (2 ** attempt)) + (_random.random() * 0.5))
+    try:
+        t = yf.Ticker(full_ticker)
+        return t.info or {}
+    except Exception:
+        return {}
+
+@router.get("/api/v1/stock-profile")
+def stock_profile_endpoint(ticker: str, exchange: str = "NSE"):
+    """
+    All data needed for StockProfileView in a single call.
+    Returns HTTP 200 on partial failures — errors array explains what's missing.
+    """
+    import math
+    
+    cache_key = f"profile_{ticker.upper()}_{exchange.upper()}"
+    cached = _dcache_get("market", cache_key)
+    if cached is not None:
+        return cached
+    
+    errors: list[str] = []
+    full_ticker = _resolve_ticker(ticker, exchange)
+
+    # ── 1. Company overview from yfinance ──────────────────────────────────
+    company_name = None
+    current_price = None
+    day_change_pct = None
+    pe_ratio = None
+    sector = None
+    promoter_holding_pct = None
+    fii_holding_pct = None
+    dii_holding_pct = None
+    roe_pct = None
+    roce_pct = None
+    ebitda_margin_pct = None
+    debt_to_equity = None
+    week_52_high = None
+    week_52_low = None
+    market_cap_crores = None
+    description = None
+
+    try:
+        info = _yf_fetch_info(full_ticker)
+        if not info:
+            raise Exception("yfinance returned empty info dict after 3 retries")
+
+        company_name = info.get("longName")
+        current_price = info.get("currentPrice") or info.get("regularMarketPrice")
+        prev_close = info.get("previousClose") or info.get("regularMarketPreviousClose")
+
+        if current_price and prev_close and float(prev_close) > 0:
+            day_change_pct = round(
+                ((float(current_price) - float(prev_close)) / float(prev_close)) * 100, 2
+            )
+
+        pe_ratio = info.get("trailingPE") or info.get("forwardPE")
+        sector = info.get("sector")
+
+        # Holdings — yfinance stores as decimal (0.452 = 45.2%)
+        raw_promoter = info.get("heldPercentInsiders")
+        if raw_promoter is not None:
+            promoter_holding_pct = round(float(raw_promoter) * 100, 2)
+
+        raw_inst = info.get("heldPercentInstitutions")
+        if raw_inst is not None:
+            fii_holding_pct = round(float(raw_inst) * 100, 2)
+
+        # Profitability — yfinance returns decimal (0.152 = 15.2%)
+        roe = info.get("returnOnEquity")
+        if roe is not None:
+            roe_pct = round(float(roe) * 100, 2) if float(roe) < 10 else round(float(roe), 2)
+
+        roce = info.get("returnOnCapitalEmployed")
+        if roce is not None:
+            roce_pct = round(float(roce) * 100, 2) if float(roce) < 10 else round(float(roce), 2)
+
+        # EBITDA margin — compute from ebitda / totalRevenue
+        ebitda = info.get("ebitda")
+        total_revenue = info.get("totalRevenue")
+        if ebitda and total_revenue and float(total_revenue) > 0:
+            ebitda_margin_pct = round((float(ebitda) / float(total_revenue)) * 100, 2)
+
+        debt_to_equity = info.get("debtToEquity")
+        week_52_high = info.get("fiftyTwoWeekHigh")
+        week_52_low = info.get("fiftyTwoWeekLow")
+
+        mcap = info.get("marketCap")
+        if mcap is not None:
+            market_cap_crores = round(float(mcap) / 1e7, 2)
+
+        description = info.get("longBusinessSummary")
+
+        if current_price is None:
+            raise Exception(f"yfinance info missing currentPrice for {full_ticker}")
+
+    except Exception as e:
+        errors.append("company_info_unavailable")
+
+    # ── Supplement holdings from fundamentals provider ─────────────────────
+    try:
+        fund = get_fundamentals(ticker, exchange)
+        if fund:
+            if fund.get("fii_holding_pct"):
+                fii_holding_pct = fund.get("fii_holding_pct")
+            if fund.get("dii_holding_pct"):
+                dii_holding_pct = fund.get("dii_holding_pct")
+    except Exception:
+        pass
+
+    # ── 2. Price history — full error capture ──────────────────────────────
+    price_history_data: dict = {"prices": [], "source": None, "error": None}
+
+    try:
+        df = get_price_history(ticker.upper(), period_days=365, exchange=exchange.upper())
+        if df is None or df.empty:
+            # Diagnose which source(s) failed and why
+            failure_reasons: list[str] = []
+
+            # Probe jugaad-data
+            try:
+                from services.nse_data_provider import _JUGAAD_AVAILABLE as _j
+            except ImportError:
+                _j = False
+
+            if not _j:
+                failure_reasons.append("jugaad-data: module unavailable at startup")
+
+            # Probe yfinance directly for the real error
+            try:
+                import yfinance as _yf
+                _suffix = ".NS" if exchange.upper() == "NSE" else ".BO"
+                _sym = f"{ticker.upper()}{_suffix}"
+                _test = _yf.Ticker(_sym)
+                _test_hist = _test.history(period="5d")
+                if _test_hist is None or _test_hist.empty:
+                    failure_reasons.append(f"yfinance: returned empty DataFrame for {_sym}")
+            except Exception as _yfe:
+                failure_reasons.append(f"yfinance: {type(_yfe).__name__}('{_yfe}')")
+
+            if not failure_reasons:
+                failure_reasons.append("unknown: get_price_history returned empty")
+            price_history_data["error"] = "; ".join(failure_reasons)
+            errors.append("price_history_unavailable")
+        else:
+            prices = []
+            for dt_val, row in df.iterrows():
+                prices.append({
+                    "date": dt_val.strftime("%Y-%m-%d") if hasattr(dt_val, "strftime") else str(dt_val)[:10],
+                    "open": round(float(row["Open"]), 2),
+                    "high": round(float(row["High"]), 2),
+                    "low": round(float(row["Low"]), 2),
+                    "close": round(float(row["Close"]), 2),
+                    "volume": float(row.get("Volume", 0) or 0),
+                })
+            price_history_data["prices"] = prices
+            try:
+                from services.nse_data_provider import _JUGAAD_AVAILABLE as _j2
+                price_history_data["source"] = "jugaad-data" if _j2 else "yfinance"
+            except ImportError:
+                price_history_data["source"] = "yfinance"
+    except Exception as e:
+        price_history_data["error"] = f"get_price_history: {type(e).__name__}('{e}')"
+        errors.append("price_history_unavailable")
+
+    # ── 3. Quarterly financials ────────────────────────────────────────────
+    quarterly_data: dict = {"quarters": [], "promoter_history": [], "error": None}
+
+    try:
+        t_obj, fin = _get_quarterly_fin(full_ticker)
+        if fin is not None and not fin.empty:
+            rev_row = fin.loc["Total Revenue"] if "Total Revenue" in fin.index else None
+            profit_row = fin.loc["Net Income"] if "Net Income" in fin.index else None
+            cols = list(fin.columns)[:8]
+            for col in cols:
+                label = col.strftime("Q%q %Y") if hasattr(col, "strftime") else str(col)[:7]
+                rev = float(rev_row[col]) / 1e7 if rev_row is not None and col in rev_row.index else 0
+                profit = float(profit_row[col]) / 1e7 if profit_row is not None and col in profit_row.index else 0
+                rev = 0.0 if math.isnan(rev) or math.isinf(rev) else round(rev, 1)
+                profit = 0.0 if math.isnan(profit) or math.isinf(profit) else round(profit, 1)
+                quarterly_data["quarters"].append({
+                    "label": label,
+                    "revenue": rev,
+                    "net_profit": profit,
+                })
+        else:
+            quarterly_data["error"] = f"_get_quarterly_fin: empty data for {full_ticker}"
+            errors.append("quarterly_financials_unavailable")
+    except Exception as e:
+        quarterly_data["error"] = f"_get_quarterly_fin: {type(e).__name__}('{e}')"
+        errors.append("quarterly_financials_unavailable")
+
+    # Promoter/FII/DII holding history from DB (same pattern as quarterly-financials endpoint)
+    try:
+        from database import get_session as _gs, AnalysisHistory as _AH
+        with _gs() as session:
+            rows = session.query(_AH).filter(
+                _AH.ticker == ticker.upper()
+            ).order_by(_AH.created_at.desc()).limit(8).all()
+            seen: dict[str, bool] = {}
+            for row in rows:
+                if row.full_json:
+                    try:
+                        data = json.loads(row.full_json)
+                        fs = data.get("fundamentals_snapshot", {})
+                        prom = fs.get("promoter_holding_pct")
+                        fii_v = fs.get("fii_holding_pct")
+                        dii_v = fs.get("dii_holding_pct")
+                        date_key = row.analysis_date[:7] if row.analysis_date else "?"
+                        if date_key not in seen and prom is not None:
+                            seen[date_key] = True
+                            quarterly_data["promoter_history"].append({
+                                "period": row.analysis_date,
+                                "promoter": prom,
+                                "fii": fii_v or 0,
+                                "dii": dii_v or 0,
+                            })
+                    except Exception:
+                        pass
+            quarterly_data["promoter_history"] = list(
+                reversed(quarterly_data["promoter_history"][:4])
+            )
+    except Exception:
+        pass
+
+    # ── 4. Sanitise & assemble ─────────────────────────────────────────────
+    def _clean_num(v):
+        if v is None:
+            return None
+        if isinstance(v, (int, float)):
+            if math.isnan(v) or math.isinf(v):
+                return None
+        return v
+
+    result = {
+        "ticker": ticker.upper(),
+        "exchange": exchange.upper(),
+        "company_name": company_name,
+        "current_price": _clean_num(current_price),
+        "day_change_pct": _clean_num(day_change_pct),
+        "pe_ratio": _clean_num(pe_ratio),
+        "sector": sector,
+        "promoter_holding_pct": _clean_num(promoter_holding_pct),
+        "fii_holding_pct": _clean_num(fii_holding_pct),
+        "dii_holding_pct": _clean_num(dii_holding_pct),
+        "roe_pct": _clean_num(roe_pct),
+        "roce_pct": _clean_num(roce_pct),
+        "ebitda_margin_pct": _clean_num(ebitda_margin_pct),
+        "debt_to_equity": _clean_num(debt_to_equity),
+        "week_52_high": _clean_num(week_52_high),
+        "week_52_low": _clean_num(week_52_low),
+        "market_cap_crores": _clean_num(market_cap_crores),
+        "description": description,
+        "price_history": price_history_data,
+        "quarterly_financials": quarterly_data,
+        "errors": errors,
+    }
+
+    _dcache_set("market", cache_key, result, ttl=900)
+    return result
+
+
 # ── Pydantic response schemas (must precede endpoints that reference them) ────
 from pydantic import BaseModel as _BaseModel
 from typing import List as _List, Optional as _Optional

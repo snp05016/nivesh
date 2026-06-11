@@ -405,13 +405,13 @@ struct StockProfileView: View {
                             (info.changePercent ?? 0) >= 0
                                 ? Theme.bullGreen.opacity(0.06) : Theme.bearRed.opacity(0.06)
                         )
-                    } else if let error = vm.chartError {
+                    } else if let error = vm.stockProfileError {
                         // Detailed error display — copy-paste ready
                         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                             HStack(spacing: Theme.Spacing.tight) {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundStyle(Theme.bearRed)
-                                Text("CHART DATA ERROR")
+                                Text("STOCK PROFILE ERROR")
                                     .font(Theme.officialStampFont(size: 10))
                                     .tracking(1.5)
                                     .foregroundStyle(Theme.bearRed)
@@ -506,10 +506,7 @@ struct StockProfileView: View {
                     }
                 }
             }
-        .task {
-            await vm.fetchOverview()
-            await vm.fetchChart()
-        }
+        .task { await vm.fetchStockProfile() }
     }
 
     private var tabItems: [(label: String, icon: String)] {
@@ -823,12 +820,12 @@ struct StockProfileView: View {
                         chartSection_PromoterHistory()
                     }
                 } else {
-                    if let error = vm.chartError {
+                    if let error = vm.stockProfileError {
                         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                             HStack(spacing: Theme.Spacing.tight) {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundStyle(Theme.bearRed)
-                                Text("CHART DATA ERROR")
+                                Text("STOCK PROFILE ERROR")
                                     .font(Theme.officialStampFont(size: 10))
                                     .tracking(1.5)
                                     .foregroundStyle(Theme.bearRed)
@@ -870,8 +867,7 @@ struct StockProfileView: View {
             .padding(.horizontal, Theme.screenPadding)
             .padding(.vertical, Theme.Spacing.card)
         }
-        .task { await vm.fetchChart() }
-        .task { await vm.fetchFinancials() }
+        .task { await vm.fetchStockProfile() }
     }
 
     // MARK: - Chart Helpers
