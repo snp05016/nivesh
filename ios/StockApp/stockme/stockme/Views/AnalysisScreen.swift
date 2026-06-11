@@ -482,6 +482,7 @@ struct AnalysisScreen: View {
                     week52High: viewModel.quickInfo?.week52High,
                     week52Low: viewModel.quickInfo?.week52Low
                 )
+                .padding(.horizontal, -Theme.screenPadding)
                 .immersiveChartTint(isPositive: (viewModel.quickInfo?.changePercent ?? 0) >= 0)
             }
         }
