@@ -13,9 +13,9 @@ Nivesh is a full-stack Indian stock market intelligence platform. It combines a 
 |-------|-----------|
 | Backend | Python 3.14, FastAPI, SQLAlchemy, PostgreSQL |
 | AI Pipeline | LangGraph, Claude Sonnet/Haiku, DeepSeek V4 Flash |
-| iOS | SwiftUI, AVFoundation, Charts, WidgetKit |
+| iOS | SwiftUI, AVFoundation, Charts, WidgetKit, WidgetKit |
 | Data | yfinance, PKScreener, FinBERT, matplotlib |
-| Infra | DigitalOcean, multiprocessing, SSE streaming, Redis, APNs |
+| Infra | DigitalOcean, multiprocessing, SSE streaming, Redis, APNs, Redis, APNs |
 
 ---
 
@@ -183,6 +183,15 @@ TabView (5 primary tabs)
   ├── ExpertNetworkView — Research, analyst ratings
   ├── NewsMultimediaView — News carousel, video podcasts
   └── PortfolioScreen — Holdings, watchlist, charts, calendar
+```
+
+
+### New Components & Extensions
+```
+• NiveshWidgetExtension (WidgetKit)
+• AnalysisHistoryScreen, InteractiveTutorialScreen
+• HomeLayoutEditorSheet, WatchlistTagsManager
+• SpeechRecognizerManager, iPad NavigationSplitView adaptation
 ```
 
 

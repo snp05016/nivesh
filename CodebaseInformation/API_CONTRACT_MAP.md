@@ -1,6 +1,6 @@
 # Nivesh — Full-Stack API Contract & Bridge Map
 
-> Generated: 2026-06-06
+> Generated: 2026-06-12
 > Coverage: Every `URLSession` call in Swift ↔ Every `@router`/`@app` route in FastAPI
 > Status key: ✅ Match | ⚠️ Mismatch | 🔴 Missing frontend | ❌ Missing backend
 

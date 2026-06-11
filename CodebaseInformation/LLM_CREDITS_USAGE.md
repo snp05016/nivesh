@@ -1,7 +1,7 @@
 # Nivesh — LLM API Credits Usage Map
 
 > **Exhaustive audit of every file consuming LLM API credits and the iOS features that trigger them.**
-> Generated: June 6, 2026
+> Generated: June 12, 2026
 > Cost rates: DeepSeek V4 Flash $0.00014/Kin / Claude Haiku $0.00025/Kin / Claude Sonnet $0.003/Kin
 
 ---
