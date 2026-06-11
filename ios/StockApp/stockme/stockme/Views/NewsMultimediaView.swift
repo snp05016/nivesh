@@ -286,7 +286,7 @@ struct NewsCarouselCard: View {
         let f = ISO8601DateFormatter()
         if let date = f.date(from: article.publishedAt) {
             let age = Date().timeIntervalSince(date)
-            if age < 2 * 3600 { return ("HOT", "flame.fill", Color(hue: 0.05, saturation: 0.9, brightness: 0.95)) }
+            if age < 2 * 3600 { return ("HOT", "flame.fill", Theme.bearRed) }
             if age < 6 * 3600 { return ("TRENDING", "chart.line.uptrend.xyaxis", Theme.securityGold) }
             if age < 12 * 3600 { return ("BREAKING", "dot.radiowaves.left.and.right", Theme.bullGreen) }
         }
@@ -708,7 +708,7 @@ struct NewsListRow: View {
         let f = ISO8601DateFormatter()
         if let date = f.date(from: article.publishedAt) {
             let age = Date().timeIntervalSince(date)
-            if age < 2 * 3600 { return ("HOT", "flame.fill", Color(hue: 0.05, saturation: 0.9, brightness: 0.95)) }
+            if age < 2 * 3600 { return ("HOT", "flame.fill", Theme.bearRed) }
             if age < 6 * 3600 { return ("TRENDING", "chart.line.uptrend.xyaxis", Theme.securityGold) }
             if age < 12 * 3600 { return ("BREAKING", "dot.radiowaves.left.and.right", Theme.bullGreen) }
         }
