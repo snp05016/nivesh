@@ -11,6 +11,7 @@ struct SettingsScreen: View {
     @AppStorage("morningBriefTime") private var morningBriefTime: Double = 0 // storing seconds from midnight
     @AppStorage("defaultDeepScan") private var defaultDeepScan = false
     @AppStorage("dataRefreshRate") private var dataRefreshRate = "Real-time"
+    @AppStorage("homeAutoRefreshSeconds") private var homeAutoRefreshSeconds = "0"
     @AppStorage("currencyDisplay") private var currencyDisplay = "Lakhs/Crores"
     @AppStorage("ipoAlerts") private var ipoAlerts = false
     @AppStorage("dev_welcome_notification") private var devWelcomeNotification = false
@@ -153,6 +154,7 @@ struct SettingsScreen: View {
 
                             SettingsNoteGroup(title: "Data Registry", hindi: "डेटा रजिस्ट्री") {
                                 PickerNoteRow(icon: "indianrupeesign", color: Theme.bullGreen, title: "Currency Format", selection: $currencyDisplay, options: ["Lakhs/Crores", "Absolute"])
+                                AutoRefreshNoteRow(icon: "arrow.triangle.2.circlepath", color: Theme.securityGold, title: "Home Auto-Refresh", selection: $homeAutoRefreshSeconds)
                             }
 
                             SettingsNoteGroup(title: "Archives", hindi: "अभिलेखागार") {
@@ -701,6 +703,56 @@ private struct PickerNoteRow: View {
                 }
             }
             .tint(Theme.inkSecondary)
+        }
+        .padding(.vertical, Theme.Spacing.standard)
+        Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
+    }
+}
+
+private struct AutoRefreshNoteRow: View {
+    let icon: String
+    let color: Color
+    let title: String
+    @Binding var selection: String
+
+    private let intervals: [(label: String, value: String)] = [
+        ("Manual", "0"),
+        ("5 seconds", "5"),
+        ("15 seconds", "15"),
+        ("30 seconds", "30"),
+        ("60 seconds", "60")
+    ]
+
+    private var selectedLabel: String {
+        intervals.first(where: { $0.value == selection })?.label ?? "Manual"
+    }
+
+    var body: some View {
+        HStack {
+            SettingIcon(icon: icon, color: color)
+            Text(title.uppercased())
+                .font(Theme.officialStampFont(size: 9))
+                .foregroundStyle(Theme.inkPrimary)
+            Spacer()
+            Menu {
+                ForEach(intervals, id: \.value) { option in
+                    Button {
+                        HapticManager.selection()
+                        selection = option.value
+                    } label: {
+                        HStack {
+                            Text(option.label)
+                            if selection == option.value {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Text(selectedLabel)
+                    .font(Theme.serialNumberFont(size: 13))
+                    .foregroundStyle(Theme.inkSecondary)
+            }
         }
         .padding(.vertical, Theme.Spacing.standard)
         Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)

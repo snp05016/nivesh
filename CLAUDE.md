@@ -62,6 +62,10 @@ This document is the supreme, non-negotiable instruction manual for any AI agent
 4. [Pillar III: AI Pipeline & Cost Engineering (LangGraph)](#4-pillar-iii-ai-pipeline--cost-engineering-langgraph)
 5. [Pillar IV: Data Formats & Financial Formatting](#5-pillar-iv-data-formats--financial-formatting)
 6. [Enforcement & Review](#6-enforcement--review)
+   - 6.1 [Pre-Commit Verification](#61-pre-commit-verification)
+   - 6.2 [Xcode Build Prohibition](#62-xcode-build-prohibition)
+   - 6.3 [Refusal Protocol](#63-refusal-protocol---exact-verbiage)
+   - 6.4 [Commit Workflow](#64-commit-workflow)
 7. [Glossary](#7-glossary)
 
 ---
@@ -942,7 +946,18 @@ Before any commit, the AI MUST verify:
 4. **Lakh/Crore scan:** Search the diff for "Million", "Billion", "Trillion" in output strings. REJECT the commit if any found.
 5. **Prompt integrity check:** If `backend/prompts.py` was modified, verify the `INDIAN_MARKET_SYSTEM_PROMPT` was not shortened or had its tone/altered priorities altered.
 
-### 6.2 Refusal Protocol — Exact Verbiage
+### 6.2 Xcode Build Prohibition
+
+**The AI MUST NEVER run `xcodebuild` or attempt to compile/build the iOS application.** The Swift/Xcode project in `ios/StockApp/` is a reference-only design document. Attempting to compile it will crash the agent session.
+
+**Forbidden commands:**
+- `xcodebuild`
+- `xcodebuild -project`, `xcodebuild -workspace`
+- Any command that invokes the Xcode build system
+
+**Enforcement:** If any prompt or finishing workflow would trigger an `xcodebuild` command, SKIP that step entirely. Do not attempt to verify Swift code via compilation.
+
+### 6.3 Refusal Protocol — Exact Verbiage
 
 When refusing a request, use this exact template:
 
@@ -955,6 +970,29 @@ Compliant alternative: [snippet using Theme.* tokens]
 
 Architectural impact: [description of what breaks if this change proceeds]
 ```
+
+### 6.4 Commit Workflow
+
+**Rule:** The AI MUST commit changes after every small task or phase is completed. This ensures incremental, reviewable checkpoints.
+
+**When to commit:**
+- After each discrete task within a prompt is finished (e.g., "added search bar" = commit, "added results list" = commit)
+- After each development phase is completed (e.g., frontend component done, backend endpoint done, integration done)
+- After the final task of a prompt is completed
+
+**Commit message format:**
+```
+<imperative verb> <component>: <brief description>
+```
+Examples: `Add SearchScreen: voice search toggle`, `Fix market.py: screener rate limiting`, `Refactor Theme: extract spacing tokens`
+
+**Pre-commit checklist:**
+1. Run `gitnexus_detect_changes()` to verify expected scope
+2. Run `git status` and `git diff --stat` to review staged changes
+3. NEVER commit secrets, .env files, or large binary assets
+4. Verify no `xcodebuild` artifacts are included
+
+**Enforcement:** If a task or phase completes without a commit, the AI MUST commit before proceeding to the next task.
 
 ---
 
