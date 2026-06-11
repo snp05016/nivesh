@@ -425,6 +425,7 @@ struct StockProfileView: View {
             }
             .navigationTitle(ticker.uppercased())
             .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)  // we provide our own chevron; hide the system one
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button { dismiss() } label: {
@@ -626,18 +627,73 @@ struct StockProfileView: View {
     private var newsTab: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.card) {
-                Text("NEWS")
+                Text("LATEST NEWS")
                     .font(Theme.officialStampFont(size: 9))
                     .tracking(1.5)
                     .foregroundStyle(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, Theme.Spacing.small)
 
-                emptyState(message: "Pull news via AI Analysis tab for full sentiment coverage")
+                if vm.overviewLoading {
+                    skeletonBlock(rows: 5)
+                } else if let news = vm.quickInfo?.recentNews, !news.isEmpty {
+                    ForEach(news) { item in
+                        newsCard(item)
+                    }
+                } else {
+                    emptyState(message: "No recent news for this stock")
+                }
             }
             .padding(.horizontal, Theme.screenPadding)
             .padding(.vertical, Theme.Spacing.card)
         }
+        .task { await vm.fetchOverview() }
+    }
+
+    @ViewBuilder
+    private func newsCard(_ item: NewsItem) -> some View {
+        Link(destination: URL(string: item.link) ?? URL(string: "https://www.google.com")!) {
+            HStack(alignment: .top, spacing: Theme.Spacing.card) {
+                if let urlStr = item.imageUrl, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { image in
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Rectangle().fill(Theme.inkTertiary.opacity(0.08))
+                    }
+                    .frame(width: 64, height: 64)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight))
+                }
+
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                    Text(item.title)
+                        .font(Theme.engravedSerif(size: 14, weight: .semibold, relativeTo: .subheadline))
+                        .foregroundStyle(Theme.inkPrimary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(3)
+                    HStack(spacing: Theme.Spacing.tight) {
+                        Text(item.publisher.uppercased())
+                            .font(Theme.officialStampFont(size: 8))
+                            .tracking(1.0)
+                            .foregroundStyle(Theme.securityGold)
+                        if let t = item.publishTime {
+                            Text("•").foregroundStyle(Theme.inkTertiary)
+                            Text(Date(timeIntervalSince1970: TimeInterval(t)), style: .relative)
+                                .font(Theme.officialStampFont(size: 8))
+                                .foregroundStyle(Theme.inkTertiary)
+                        }
+                    }
+                }
+                Spacer(minLength: Theme.Spacing.tight)
+                Image(systemName: "arrow.up.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.Spacing.card)
+            .banknoteCard()
+        }
+        .buttonStyle(EKPressStyle())
+        .simultaneousGesture(TapGesture().onEnded { HapticManager.selection() })
     }
 
     // MARK: - Tab: Updates
