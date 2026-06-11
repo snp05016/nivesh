@@ -1130,6 +1130,22 @@ private struct MorningDecreeCard: View {
     }
 }
 
+/// Screen D 12.5 — sector capsule pill ("Auto +1.80%").
+private struct SectorPill: View {
+    let name: String
+    let change: Double
+    var body: some View {
+        let up = change >= 0
+        Text(name + " " + IndianFormatter.percent(change))
+            .font(Theme.serialNumberFont(size: 11, relativeTo: .footnote))
+            .foregroundStyle(up ? Theme.bullGreen : Theme.bearRed)
+            .padding(.horizontal, Theme.Spacing.card - 4)
+            .padding(.vertical, Theme.Spacing.tight)
+            .background((up ? Theme.bullGreen : Theme.bearRed).opacity(0.12))
+            .clipShape(Capsule())
+    }
+}
+
 private struct SectorPulseCard: View {
     let sector: SectorPerformance
 
@@ -2360,23 +2376,24 @@ extension HomeScreen {
                 Group {
                     if let user = authManager.currentUser {
                         HStack {
+                            // Screen D — greeting header: date + "Hi, Name"
                             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                                Text("भारतीय वित्तीय विश्लेषण")
-                                    .font(Theme.hindiFont(size: 11))
-                                    .foregroundStyle(Theme.inkSecondary)
-                                Text("RESERVE BANK OF INTELLIGENCE")
-                                    .font(Theme.officialStampFont(size: 9))
+                                Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)))
+                                    .font(Theme.officialStampFont(size: 9)).tracking(0.5)
+                                    .foregroundStyle(Theme.inkTertiary)
+                                Text("Hi, \(user.displayName)")
+                                    .font(.largeTitle.weight(.bold))
                                     .foregroundStyle(Theme.inkPrimary)
                             }
                             Spacer()
                             NavigationLink(destination: SettingsScreen()) {
                                 ZStack {
                                     Circle()
-                                        .fill(Theme.securityGold.opacity(0.15))
+                                        .fill(Theme.securityGold)
                                         .frame(width: 40, height: 40)
                                     Text(String(user.displayName.prefix(1)).uppercased())
-                                        .font(.headline.weight(.bold))
-                                        .foregroundStyle(Theme.securityGold)
+                                        .font(Theme.serialNumberFont(size: 16, relativeTo: .body).weight(.semibold))
+                                        .foregroundStyle(Theme.canvas)
                                 }
                                 .overlay(Circle().stroke(Theme.securityGold.opacity(0.4), lineWidth: 1))
                             }
@@ -2538,11 +2555,18 @@ extension HomeScreen {
                 }
         case .sectors:
 // ── Section 5: Sector Pulse ───────────────────────
-                VStack(spacing: Theme.Spacing.standard) {
-                    SectionHeader(title: "Sector Pulse", hindiTitle: "क्षेत्र प्रदर्शन")
+                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                    SectionHeader(title: "Sectors today", hindiTitle: "क्षेत्र प्रदर्शन")
                     if !viewModel.sectorData.isEmpty {
-                        SectorHeatmapView(sectors: viewModel.sectorData)
+                        // Screen D 12.5 — horizontal scroll of sector pills
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: Theme.Spacing.standard) {
+                                ForEach(viewModel.sectorData) { sector in
+                                    SectorPill(name: sector.name, change: sector.changePct)
+                                }
+                            }
                             .padding(.horizontal, Theme.screenPadding)
+                        }
                     } else {
                         DashboardLoadingCard(label: "Sector Pulse", isLoading: viewModel.isLoading)
                     }
