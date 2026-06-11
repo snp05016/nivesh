@@ -4,6 +4,102 @@ import SwiftUI
 // Defined once here so every screen (Home, Watchlist, Portfolio, Analysis)
 // can reuse them without duplicate-symbol conflicts.
 
+// MARK: - Global UI Consistency Mandate components
+// One canonical implementation of each, reused app-wide (AGENTS Global Mandate G2/G3/G5/G6/G10).
+
+/// G2 — the single percentage badge style for the entire app.
+struct ChangeBadge: View {
+    let value: Double   // percentage
+    var body: some View {
+        let up = value >= 0
+        Text((up ? "▲ " : "▼ ") + IndianFormatter.percent(abs(value)))
+            .font(Theme.serialNumberFont(size: 11, relativeTo: .footnote).weight(.semibold))
+            .foregroundStyle(up ? Theme.bullGreen : Theme.bearRed)
+            .padding(.horizontal, Theme.Spacing.medium)
+            .padding(.vertical, Theme.Spacing.xSmall)
+            .background((up ? Theme.bullGreen : Theme.bearRed).opacity(0.18))
+            .clipShape(Capsule())
+    }
+}
+
+/// G5 — the "Nivesh निवेश" identity chip shown top-right on root tab screens.
+struct NiveshBrandChip: View {
+    var body: some View {
+        HStack(spacing: Theme.Spacing.xSmall) {
+            Text("Nivesh")
+                .font(Theme.engravedSerif(size: 12, weight: .semibold, relativeTo: .footnote))
+                .foregroundStyle(Theme.inkPrimary)
+            Text("निवेश")
+                .font(Theme.hindiFont(size: 11, relativeTo: .footnote))
+                .foregroundStyle(Theme.inkSecondary)
+        }
+    }
+}
+
+/// G6 — per-ticker tile tint (the sole sanctioned Color(hue:) site — see AGENTS §8.3).
+extension String {
+    var tileColor: Color {
+        let hues: [Double] = [0.55, 0.58, 0.62, 0.48, 0.52, 0.65, 0.50, 0.57]
+        let idx = abs(self.hashValue) % hues.count
+        return Color(hue: hues[idx], saturation: 0.45, brightness: 0.35)
+    }
+}
+
+/// G3 — canonical chart time-range domain + underline selector.
+enum TimeRange: String, CaseIterable, Hashable {
+    case day, week, month, year, all
+    var label: String {
+        switch self {
+        case .day:   return "1D"
+        case .week:  return "1W"
+        case .month: return "1M"
+        case .year:  return "1Y"
+        case .all:   return "ALL"
+        }
+    }
+}
+
+struct TimeRangeSelector: View {
+    @Binding var selected: TimeRange
+    let ranges: [TimeRange]
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(ranges, id: \.self) { range in
+                Button(action: { HapticManager.selection(); selected = range }) {
+                    VStack(spacing: Theme.Spacing.xSmall) {
+                        Text(range.label)
+                            .font(Theme.officialStampFont(size: 10)).tracking(0.5)
+                            .foregroundStyle(selected == range ? Theme.securityGold : Theme.inkTertiary)
+                        Rectangle()
+                            .fill(selected == range ? Theme.securityGold : Color.clear)
+                            .frame(height: 1.5)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Theme.Spacing.medium)
+                }
+                .buttonStyle(EKPressStyle())
+            }
+        }
+    }
+}
+
+/// G10 — the canonical scrub tooltip for every scrubbable chart.
+struct ScrubTooltipView: View {
+    let price: Double
+    let date: Date
+    var body: some View {
+        Text(IndianFormatter.price(price) + " · " + date.formatted(.dateTime.day().month(.abbreviated)))
+            .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote))
+            .foregroundStyle(Theme.inkPrimary)
+            .padding(.horizontal, Theme.Spacing.card)
+            .padding(.vertical, Theme.Spacing.standard)
+            .background(Theme.canvasDeep)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                .stroke(Theme.borderFine, lineWidth: 0.5))
+    }
+}
+
 /// Pill badge for +/-% or +/-₹ values — green or red tinted.
 struct SignalBadgePill: View {
     let value: Double
