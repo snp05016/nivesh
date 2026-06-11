@@ -421,6 +421,69 @@ struct QuickInfo: Codable {
     }
 }
 
+// MARK: - Unified StockProfile Response
+
+struct PriceHistoryBlock: Codable {
+    let prices: [OHLCVPoint]
+    let source: String?
+    let error: String?
+}
+
+struct QuarterlyFinancialsBlock: Codable {
+    let quarters: [QuarterlyFinancial]
+    let promoterHistory: [PromoterHistoryPoint]?
+    let error: String?
+
+    enum CodingKeys: String, CodingKey {
+        case quarters, error
+        case promoterHistory = "promoter_history"
+    }
+}
+
+struct StockProfileResponse: Codable {
+    let ticker: String
+    let exchange: String
+    let companyName: String
+    let currentPrice: Double
+    let dayChangePct: Double
+    let peRatio: Double?
+    let sector: String?
+    let promoterHoldingPct: Double?
+    let fiiHoldingPct: Double?
+    let diiHoldingPct: Double?
+    let roePct: Double?
+    let rocePct: Double?
+    let ebitdaMarginPct: Double?
+    let debtToEquity: Double?
+    let week52High: Double?
+    let week52Low: Double?
+    let marketCapCrores: Double?
+    let description: String?
+    let priceHistory: PriceHistoryBlock?
+    let quarterlyFinancials: QuarterlyFinancialsBlock?
+    let errors: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case ticker, exchange, sector, description, errors
+        case companyName = "company_name"
+        case currentPrice = "current_price"
+        case dayChangePct = "day_change_pct"
+        case peRatio = "pe_ratio"
+        case promoterHoldingPct = "promoter_holding_pct"
+        case fiiHoldingPct = "fii_holding_pct"
+        case diiHoldingPct = "dii_holding_pct"
+        case roePct = "roe_pct"
+        case rocePct = "roce_pct"
+        case ebitdaMarginPct = "ebitda_margin_pct"
+        case debtToEquity = "debt_to_equity"
+        case week52High = "week_52_high"
+        case week52Low = "week_52_low"
+        case marketCapCrores = "market_cap_crores"
+        case priceHistory = "price_history"
+        case quarterlyFinancials = "quarterly_financials"
+    }
+}
+
 struct PricePerformance: Codable {
     let change3mPct: Double?
     let change6mPct: Double?

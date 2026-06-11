@@ -12,6 +12,10 @@ class StockProfileViewModel: ObservableObject {
     @Published var chartLoading = false
     @Published var chartError: String? = nil
 
+    // Unified stock profile
+    @Published var stockProfile: StockProfileResponse?
+    @Published var stockProfileError: String?
+
     // Financials
     @Published var quarterlyFinancials: [QuarterlyFinancial] = []
     @Published var promoterHistory: [PromoterHistoryPoint] = []
@@ -53,15 +57,6 @@ class StockProfileViewModel: ObservableObject {
             history = h
             niftyHistory = n
             chartLoading = false
-            if h == nil {
-                chartError = """
-                Stock history fetch failed for \(ticker)
-                Endpoint: GET /api/v1/market/stock-history?ticker=\(ticker)&exchange=\(exchange)&period=\(period)
-                Reason: Network error, HTTP non-200, or decode failure.
-                Check server logs with: journalctl -u nivesh.service -n 50 --no-pager
-                Or test manually: curl "https://api.nivesh.app/api/v1/market/stock-history?ticker=\(ticker)&exchange=\(exchange)&period=\(period)"
-                """
-            }
         }
     }
 
@@ -97,6 +92,72 @@ class StockProfileViewModel: ObservableObject {
         case "2y": return 730
         case "5y": return 1825
         default: return 365
+        }
+    }
+
+    func fetchStockProfile() async {
+        guard stockProfile == nil else { return }
+        await MainActor.run {
+            chartLoading = true
+            financialsLoading = true
+            overviewLoading = true
+            stockProfileError = nil
+        }
+        do {
+            let profile = try await NetworkManager.shared.fetchStockProfile(ticker: ticker, exchange: exchange)
+            await MainActor.run {
+                stockProfile = profile
+                if let ph = profile.priceHistory, !ph.prices.isEmpty {
+                    history = StockHistoryResponse(
+                        ticker: profile.ticker,
+                        exchange: profile.exchange,
+                        period: "1y",
+                        prices: ph.prices
+                    )
+                }
+                quickInfo = QuickInfo(
+                    ticker: profile.ticker,
+                    price: profile.currentPrice,
+                    change: nil,
+                    changePercent: profile.dayChangePct,
+                    signal: nil,
+                    sector: profile.sector,
+                    industry: nil,
+                    description: profile.description,
+                    officers: nil,
+                    website: nil,
+                    recentNews: nil,
+                    sparkline30d: nil,
+                    week52High: profile.week52High,
+                    week52Low: profile.week52Low,
+                    peRatio: profile.peRatio,
+                    debtToEquity: profile.debtToEquity,
+                    promoterHoldingPct: profile.promoterHoldingPct,
+                    fiiHoldingPct: profile.fiiHoldingPct,
+                    diiHoldingPct: profile.diiHoldingPct,
+                    ebitdaMarginPct: profile.ebitdaMarginPct,
+                    roePct: profile.roePct,
+                    rocePct: profile.rocePct,
+                    volume: nil,
+                    avgVolume: nil,
+                    priceHistory90d: nil,
+                    peVsAvg: nil
+                )
+                if let qf = profile.quarterlyFinancials {
+                    quarterlyFinancials = qf.quarters
+                    promoterHistory = qf.promoterHistory ?? []
+                }
+                chartLoading = false
+                financialsLoading = false
+                overviewLoading = false
+            }
+        } catch {
+            await MainActor.run {
+                stockProfileError = error.localizedDescription
+                chartLoading = false
+                financialsLoading = false
+                overviewLoading = false
+            }
         }
     }
 }

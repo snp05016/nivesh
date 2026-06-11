@@ -707,6 +707,43 @@ class NetworkManager: ObservableObject {
         }
     }
 
+    // MARK: - Unified Stock Profile
+
+    func fetchStockProfile(ticker: String, exchange: String = "NSE") async throws -> StockProfileResponse {
+        let endpoint = "/api/v1/stock-profile?ticker=\(ticker)&exchange=\(exchange)"
+        guard let encoded = ticker.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "\(baseURL)\(endpoint)") else {
+            print("[fetchStockProfile] Invalid URL: \(baseURL)\(endpoint)")
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 20
+        let data: Data, response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            let ns = error as NSError
+            print("[fetchStockProfile] Network error for \(ticker): domain=\(ns.domain) code=\(ns.code) desc=\(ns.localizedDescription)")
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: -1, body: "domain=\(ns.domain) code=\(ns.code) desc=\(ns.localizedDescription)")
+        }
+        guard let http = response as? HTTPURLResponse else {
+            print("[fetchStockProfile] Non-HTTP response for \(ticker)")
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Non-HTTP response")
+        }
+        guard http.statusCode == 200 else {
+            let body = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
+            print("[fetchStockProfile] HTTP \(http.statusCode) for \(ticker): \(body)")
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(body))
+        }
+        do {
+            return try JSONDecoder().decode(StockProfileResponse.self, from: data)
+        } catch {
+            let body = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
+            print("[fetchStockProfile] Decode error for \(ticker): \(error.localizedDescription) — body: \(body)")
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: "Decode: \(error.localizedDescription)")
+        }
+    }
+
     // MARK: - Piotroski F-Score
 
     func fetchPiotroski(ticker: String) async -> PiotroskiData? {
