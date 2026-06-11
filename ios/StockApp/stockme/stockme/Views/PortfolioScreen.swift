@@ -170,7 +170,7 @@ struct PortfolioScreen: View {
             ZStack {
                 DenominationBackground(denomination: .twoThousand)
 
-                VStack(spacing: 0) {
+                VStack(spacing: Theme.Spacing.none) {
                     // Bilingual header
                     HStack {
                         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
@@ -222,8 +222,8 @@ struct PortfolioScreen: View {
 
                             // Screen B — full-bleed immersive valuation chart + underline selector
                             if !rangedSnapshots.isEmpty {
-                                VStack(spacing: 0) {
-                                    ImmersivePortfolioHeroChart(snapshots: rangedSnapshots)
+                                VStack(spacing: Theme.Spacing.none) {
+                                    ImmersivePortfolioHeroChart(snapshots: rangedSnapshots, showValueHeader: false)
                                     TimeRangeSelector(selected: $selectedRange,
                                                       ranges: [.day, .week, .month, .year, .all])
                                         .padding(.horizontal, Theme.screenPadding)
@@ -253,7 +253,7 @@ struct PortfolioScreen: View {
                                     .padding(.horizontal, Theme.screenPadding)
                             }
 
-                            HStack(spacing: 0) {
+                            HStack(spacing: Theme.Spacing.none) {
                                 TabNoteButton(title: "Holdings", isSelected: selectedTab == 0) { selectedTab = 0 }
                                 TabNoteButton(title: "Watchlist", isSelected: selectedTab == 1) { selectedTab = 1 }
                                 TabNoteButton(title: "Journal", isSelected: selectedTab == 2) { selectedTab = 2 }
@@ -263,7 +263,7 @@ struct PortfolioScreen: View {
 
                             if selectedTab == 0 {
                                 // Screen B — holdings in a single banknote card, 0.5pt separators
-                                VStack(spacing: 0) {
+                                VStack(spacing: Theme.Spacing.none) {
                                     ForEach(Array(viewModel.holdings.enumerated()), id: \.element.id) { idx, holding in
                                         NavigationLink(value: HoldingNavValue(ticker: holding.stock.ticker, userNote: holding.notes, purchaseDateStr: holding.purchaseDate, holding: holding)) {
                                             HoldingNoteRow(holding: holding,
@@ -372,9 +372,9 @@ struct PortfolioScreen: View {
                         .padding(.horizontal, 20)
                         .padding(.vertical, Theme.Spacing.standard)
                         .background(Theme.canvas)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
                         .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.bullGreen.opacity(0.4), lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.large).stroke(Theme.bullGreen.opacity(0.4), lineWidth: 1))
                         .padding(.top, 60)
                         Spacer()
                     }
@@ -578,7 +578,7 @@ struct PortfolioScreen: View {
                     .foregroundStyle(Theme.securityGold)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.securityGold, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.securityGold, lineWidth: 1))
                 }
             }
             .padding(.top, 40)
@@ -746,7 +746,7 @@ private struct PortfolioRiskCard: View {
             if let score = riskAnalysis?.riskScore {
                 HStack(spacing: Theme.Spacing.small) {
                     ForEach(1...10, id: \.self) { i in
-                        RoundedRectangle(cornerRadius: 2)
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                             .fill(i <= score ? riskColor : Theme.canvasDeep)
                             .frame(height: 8)
                     }
@@ -1032,7 +1032,7 @@ private struct PortfolioAllocationDonutCard: View {
                     }
                 }
                 .frame(width: 110, height: 110)
-                VStack(spacing: 0) {
+                VStack(spacing: Theme.Spacing.none) {
                     Text("\(holdings.count)")
                         .font(Theme.serialNumberFont(size: 18, relativeTo: .title3).weight(.bold))
                         .foregroundStyle(Theme.inkPrimary)
@@ -1082,7 +1082,7 @@ private struct PortfolioHeroNote: View {
 
             SecurityThread()
 
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.none) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("NIVESH")
@@ -1099,7 +1099,7 @@ private struct PortfolioHeroNote: View {
                 }
                 .padding(.bottom, 8)
 
-                GuillocheDivider()
+                SectionDivider()
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text("निवेश पोर्टफोलियो")
@@ -1130,7 +1130,7 @@ private struct PortfolioHeroNote: View {
                 }
                 .padding(.top, 4)
 
-                GuillocheDivider()
+                SectionDivider()
 
                 HStack {
                     StatNoteBlock(label: "DAILY", value: todayPnL.inrFormatted, color: todayPnL >= 0 ? Theme.bullGreen : Theme.bearRed)
@@ -1175,7 +1175,7 @@ private struct WatchlistRowView: View {
     let onTag: () -> Void
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Theme.Spacing.none) {
             // Left sage-green rule (no P&L signal)
             Rectangle()
                 .fill(Theme.borderSage.opacity(0.6))
@@ -1243,13 +1243,13 @@ private struct WatchlistSkeletonRow: View {
                 .fill(Theme.inkTertiary.opacity(0.1))
                 .frame(width: 40, height: 40)
             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.15)).frame(width: 130, height: 12)
-                RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.1)).frame(width: 60, height: 9)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.15)).frame(width: 130, height: 12)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.1)).frame(width: 60, height: 9)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: Theme.Spacing.tight) {
-                RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.15)).frame(width: 70, height: 12)
-                RoundedRectangle(cornerRadius: 3).fill(Theme.inkTertiary.opacity(0.1)).frame(width: 40, height: 9)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.15)).frame(width: 70, height: 12)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.1)).frame(width: 40, height: 9)
             }
         }
         .padding(.vertical, Theme.Spacing.standard)
@@ -1290,9 +1290,9 @@ private struct AddHoldingSheet: View {
         NavigationStack {
             ZStack {
                 Theme.canvas.ignoresSafeArea()
-                VStack(spacing: 0) {
+                VStack(spacing: Theme.Spacing.none) {
                     // Stock search
-                    VStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.none) {
                         HStack {
                             Image(systemName: "magnifyingglass").foregroundStyle(Theme.inkTertiary)
                             if let entry = selectedEntry {
@@ -1324,7 +1324,7 @@ private struct AddHoldingSheet: View {
                         }
                         .padding(Theme.Spacing.standard)
                         .background(Theme.inkPrimary.opacity(0.05))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                         .padding(.horizontal, Theme.screenPadding)
                         .padding(.top, 16)
                         
@@ -1369,7 +1369,7 @@ private struct AddHoldingSheet: View {
                                 .foregroundStyle(Theme.inkPrimary)
                                 .padding(Theme.Spacing.standard)
                                 .background(Theme.inkPrimary.opacity(0.05))
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                         }
                         
                         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
@@ -1382,7 +1382,7 @@ private struct AddHoldingSheet: View {
                                 .foregroundStyle(Theme.inkPrimary)
                                 .padding(Theme.Spacing.standard)
                                 .background(Theme.inkPrimary.opacity(0.05))
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                         }
                         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                             Text("PURCHASE DATE")
@@ -1406,7 +1406,7 @@ private struct AddHoldingSheet: View {
                                 .foregroundStyle(Theme.inkPrimary)
                                 .padding(Theme.Spacing.standard)
                                 .background(Theme.inkPrimary.opacity(0.05))
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                         }
                         
                         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
@@ -1418,7 +1418,7 @@ private struct AddHoldingSheet: View {
                                 .foregroundStyle(Theme.inkPrimary)
                                 .padding(Theme.Spacing.standard)
                                 .background(Theme.inkPrimary.opacity(0.05))
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                         }
                         
                         if let err = errorText {
@@ -1476,7 +1476,7 @@ private struct AddHoldingSheet: View {
                             .padding(.vertical, Theme.Spacing.standard)
                             .background(canAdd ? Theme.securityGold : Theme.inkTertiary.opacity(0.3))
                             .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
                         }
                         .disabled(!canAdd)
                     }
@@ -1562,7 +1562,7 @@ private struct EditHoldingSheet: View {
                                     .foregroundStyle(Theme.inkPrimary)
                                     .padding(Theme.Spacing.standard)
                                     .background(Theme.inkPrimary.opacity(0.05))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                             }
                             
                             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
@@ -1575,7 +1575,7 @@ private struct EditHoldingSheet: View {
                                     .foregroundStyle(Theme.inkPrimary)
                                     .padding(Theme.Spacing.standard)
                                     .background(Theme.inkPrimary.opacity(0.05))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                             }
                             
                             if let err = errorText {
@@ -1615,7 +1615,7 @@ private struct EditHoldingSheet: View {
                                 .padding(.vertical, Theme.Spacing.standard)
                                 .background(canSave ? Theme.securityGold : Theme.inkTertiary.opacity(0.3))
                                 .foregroundStyle(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
                             }
                             .disabled(!canSave)
                         }
@@ -1675,8 +1675,8 @@ private struct NoteEditorSheet: View {
                                 .frame(minHeight: 150)
                                 .padding(Theme.Spacing.card)
                                 .background(Theme.canvasDeep)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.borderSage, lineWidth: 1))
+                                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+                                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(Theme.borderSage, lineWidth: 1))
                                 .padding(.horizontal, 20)
                             
                             // Character count
@@ -1726,7 +1726,7 @@ private struct NoteEditorSheet: View {
                     ZStack {
                         Theme.canvas.ignoresSafeArea()
                         
-                        VStack(spacing: 0) {
+                        VStack(spacing: Theme.Spacing.none) {
                             HStack {
                                 Image(systemName: "magnifyingglass")
                                     .foregroundStyle(Theme.inkTertiary)
@@ -1738,7 +1738,7 @@ private struct NoteEditorSheet: View {
                             }
                             .padding(Theme.Spacing.standard)
                             .background(Theme.inkPrimary.opacity(0.05))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                             .padding(.horizontal, Theme.screenPadding)
                             .padding(.top, 16)
                             .padding(.bottom, 8)
@@ -1842,7 +1842,7 @@ private struct NoteEditorSheet: View {
                                 .annotation(position: .overlay) {
                                     let pct = totalValue > 0 ? (item.value / totalValue) * 100 : 0
                                     if pct > 5 {
-                                        VStack(spacing: 2) {
+                                        VStack(spacing: Theme.Spacing.xSmall) {
                                             Text(item.sector)
                                                 .font(Theme.officialStampFont(size: 8))
                                                 .foregroundStyle(.white)
@@ -1856,7 +1856,7 @@ private struct NoteEditorSheet: View {
                             }
                             .frame(height: 220)
                             
-                            VStack(spacing: 2) {
+                            VStack(spacing: Theme.Spacing.xSmall) {
                                 Text("₹")
                                     .font(Theme.engravedSerif(size: 14, weight: .bold))
                                     .foregroundStyle(Theme.inkTertiary)
@@ -2107,7 +2107,7 @@ private struct NoteEditorSheet: View {
                     ZStack {
                         Theme.canvas.ignoresSafeArea()
 
-                        VStack(spacing: 0) {
+                        VStack(spacing: Theme.Spacing.none) {
                             // Toolbar
                             HStack {
                                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
@@ -2205,7 +2205,7 @@ struct PortfolioBriefSheet: View {
                     }.buttonStyle(EKPressStyle())
                 }
 
-                GuillocheDivider()
+                SectionDivider()
 
                 // Summary
                 HStack(spacing: Theme.Spacing.standard) {
@@ -2225,7 +2225,7 @@ struct PortfolioBriefSheet: View {
                 }
                 .padding(Theme.Spacing.card).banknoteCard()
 
-                GuillocheDivider()
+                SectionDivider()
 
                 // Top 3 performers
                 Text("TOP PERFORMERS")
@@ -2240,7 +2240,7 @@ struct PortfolioBriefSheet: View {
                     .padding(.vertical, Theme.Spacing.small)
                 }
 
-                GuillocheDivider()
+                SectionDivider()
 
                 // Bottom 3 performers
                 Text("NEEDS ATTENTION")
@@ -2279,7 +2279,7 @@ struct QuickTransactionSheet: View {
         NavigationStack {
             VStack(spacing: Theme.Spacing.large) {
                 // BUY / SELL toggle
-                HStack(spacing: 0) {
+                HStack(spacing: Theme.Spacing.none) {
                     ForEach([TransactionType.buy, .sell], id: \.self) { type in
                         Button(action: { HapticManager.selection(); transactionType = type }) {
                             Text(type == .buy ? "BUY" : "SELL")
