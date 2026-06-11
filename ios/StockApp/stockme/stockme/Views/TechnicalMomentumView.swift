@@ -564,29 +564,6 @@ struct MomentumIndicatorCard: View {
     }
 }
 
-// MARK: - Sparkline View (Swift Charts)
-
-struct SparklineView: View {
-    let values: [Double]
-    let color: Color
-
-    var body: some View {
-        Chart {
-            ForEach(Array(values.enumerated()), id: \.offset) { idx, val in
-                LineMark(
-                    x: .value("", idx),
-                    y: .value("", val)
-                )
-                .foregroundStyle(color)
-                .lineStyle(StrokeStyle(lineWidth: 1.5))
-            }
-        }
-        .chartXAxis(.hidden)
-        .chartYAxis(.hidden)
-        .chartYScale(domain: (values.min() ?? 0)...(values.max() ?? 1))
-    }
-}
-
 // MARK: - Sector Heat Block (for 9.2 Sectors tab)
 
 struct SectorHeatBlock: View {

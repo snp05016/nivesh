@@ -63,9 +63,9 @@ enum Theme {
 
     // MARK: - The Inks
 
-    static let inkPrimary   = adaptive("2C2C2C", "E8E0D0") // charcoal / aged cream
-    static let inkSecondary = adaptive("5C6B5A", "8A9E80") // sage green / lighter sage
-    static let inkTertiary  = adaptive("8A8A7A", "5C5C52") // faded / dim
+    static let inkPrimary   = adaptive("2C2C2C", "F0EDE5") // charcoal / warm white
+    static let inkSecondary = adaptive("5C6B5A", "8A9A82") // sage green / sage
+    static let inkTertiary  = adaptive("8A8A7A", "4E5A4A") // faded / dim green-grey
 
     // MARK: - The Accents
 
@@ -75,15 +75,15 @@ enum Theme {
             return UIColor(ThemeManager.shared.accent(for: scheme))
         })
     }
-    static let securityGoldLight = adaptive("E8C96A", "E8C96A")
+    static let securityGoldLight = adaptive("E8C96A", "E8C040")
 
     // MARK: - Market Signals
 
-    static let bullGreen      = adaptive("2D5A3D", "4A8A5D") // forest / lighter forest
-    static let bullGreenLight = adaptive("4A7A5A", "5A9A6A")
-    static let bearRed        = adaptive("8B3A2A", "C05540") // brick / brighter brick
-    static let bearRedLight   = adaptive("B55A45", "D06A55")
-    static let holdAmber      = adaptive("8B6914", "B08020") // aged / brighter amber
+    static let bullGreen      = adaptive("2D5A3D", "00C896") // forest / electric teal-green
+    static let bullGreenLight = adaptive("4A7A5A", "0E2A1C") // positive bg tint
+    static let bearRed        = adaptive("8B3A2A", "FF4444") // brick / vivid red
+    static let bearRedLight   = adaptive("B55A45", "2A0E0E") // negative bg tint
+    static let holdAmber      = adaptive("8B6914", "D4A217") // aged / electric amber
 
     // Legacy aliases — Signal.color in Models.swift uses these
     static let signalEmerald = bullGreen
@@ -93,20 +93,6 @@ enum Theme {
 
     static let chartPromoter = adaptive("4A5A8A", "6A7AAA")
     static let avatarBackground = adaptive("E5E0D5", "3A3530")
-
-    // Chart fill gradients
-    static var chartBullGradient: LinearGradient {
-        LinearGradient(
-            colors: [bullGreen.opacity(0.20), bullGreen.opacity(0.02)],
-            startPoint: .top, endPoint: .bottom
-        )
-    }
-    static var chartBearGradient: LinearGradient {
-        LinearGradient(
-            colors: [bearRed.opacity(0.20), bearRed.opacity(0.02)],
-            startPoint: .top, endPoint: .bottom
-        )
-    }
 
     // MARK: - Denomination Tints (banknote-specific)
     // Use as .shadow(color:) or .overlay accents — NOT as full background fills
@@ -122,8 +108,16 @@ enum Theme {
 
     // MARK: - Borders (toned down 10%)
 
-    static let borderFine = adaptive("2C2C2C", "E8E0D0", alpha: 0.10)
-    static let borderSage = adaptive("5C6B5A", "8A9E80", alpha: 0.20)
+    static let borderFine = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(white: 1, alpha: 0.06)
+            : uiColor("2C2C2C", alpha: 0.10)
+    })
+    static let borderSage = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? uiColor("8A9A82", alpha: 0.12)
+            : uiColor("5C6B5A", alpha: 0.20)
+    })
     static let paperBorder = Color(UIColor { tc in
         tc.userInterfaceStyle == .dark
             ? UIColor(white: 1, alpha: 0.06)
@@ -281,6 +275,19 @@ enum Theme {
         colors: [securityGold, securityGold.opacity(0.78)],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
+    )
+
+    // Chart glow fills — fade from signal colour to clear
+    static let chartBullGradient = LinearGradient(
+        colors: [bullGreen.opacity(0.28), bullGreen.opacity(0.0)],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    static let chartBearGradient = LinearGradient(
+        colors: [bearRed.opacity(0.28), bearRed.opacity(0.0)],
+        startPoint: .top,
+        endPoint: .bottom
     )
 }
 
