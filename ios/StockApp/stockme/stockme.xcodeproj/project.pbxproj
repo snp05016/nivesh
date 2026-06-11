@@ -14,7 +14,6 @@
 		67F9769B9AFF81876A3046B6 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB11A87B4A3C0D1298C98C71 /* Theme.swift */; };
 		994D12D4EFE141EB8660F6AE /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FFF8801DFAC44DC85E3323E /* ThemeManager.swift */; };
 		AF10CE3D5F89DBA50C664FAD /* NiveshWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D822F29E492E020F7F3666CF /* NiveshWidget.swift */; };
-		B689EAE4097B42CD900DF8ED /* SharedDarkComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DC41215CA7482E851B1101 /* SharedDarkComponents.swift */; };
 		C52789692FD37E75001449A9 /* launch_animated.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = C52789682FD37E75001449A9 /* launch_animated.mp4 */; };
 		DECB14E755B044F6B5EE6F78 /* FinanceTerms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69C6BCF5FDE543BDA43C719B /* FinanceTerms.swift */; };
 		E34E73D25AF01C38AA811E1F /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE68747565E218B524BDA777 /* WidgetKit.framework */; };
@@ -360,7 +359,6 @@
 				994D12D4EFE141EB8660F6AE /* ThemeManager.swift in Sources */,
 				DECB14E755B044F6B5EE6F78 /* FinanceTerms.swift in Sources */,
 				13CED51F040DBB935891021B /* IndianFormatter.swift in Sources */,
-				B689EAE4097B42CD900DF8ED /* SharedDarkComponents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

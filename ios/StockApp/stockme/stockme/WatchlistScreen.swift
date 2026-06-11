@@ -54,7 +54,7 @@ struct WatchlistScreen: View {
                             }
 
                             Rectangle()
-                                .fill(Color.white.opacity(0.05))
+                                .fill(Theme.borderFine)
                                 .frame(height: 0.5)
                                 .padding(.horizontal, Theme.screenPadding)
                         }
@@ -84,14 +84,7 @@ struct WatchlistScreen: View {
                     .font(Theme.engravedSerif(size: 28, weight: .bold, relativeTo: .largeTitle))
                     .foregroundStyle(Theme.inkPrimary)
                 Spacer()
-                HStack(spacing: Theme.Spacing.xSmall) {
-                    Text("Nivesh")
-                        .font(Theme.engravedSerif(size: 14, weight: .bold, relativeTo: .callout))
-                        .foregroundStyle(Theme.securityGold)
-                    Text("निवेश")
-                        .font(Theme.hindiFont(size: 14, relativeTo: .callout))
-                        .foregroundStyle(Theme.inkPrimary)
-                }
+                NiveshBrandChip()
             }
         }
         .padding(.horizontal, Theme.screenPadding)
@@ -214,15 +207,13 @@ struct WatchlistRow: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.standard) {
 
-            // 2-letter avatar — rounded square, dark teal bg (#0D2432)
-            ZStack {
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                    .fill(Color(UIColor(red: 0.051, green: 0.141, blue: 0.196, alpha: 1)))
-                    .frame(width: 42, height: 42)
-                Text(initials)
-                    .font(Theme.engravedSerif(size: 14, weight: .bold, relativeTo: .callout))
-                    .foregroundStyle(Theme.securityGold)
-            }
+            // 2-letter avatar — rounded square, per-ticker tile tint (G6)
+            Text(initials)
+                .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote).weight(.semibold))
+                .foregroundStyle(Theme.inkPrimary)
+                .frame(width: 42, height: 42)
+                .background(item.ticker.tileColor)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
 
             // Ticker + company name
             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
@@ -238,16 +229,17 @@ struct WatchlistRow: View {
 
             Spacer(minLength: Theme.Spacing.medium)
 
-            // Sparkline (mini directional line)
-            WatchlistMiniSparkline(dataPoints: sparklineSeries, isPositive: isPositive)
-                .frame(width: 56, height: 28)
+            // Sparkline (G1 — line only, no fill; green up / red down)
+            SparklineView(values: sparklineSeries,
+                          color: isPositive ? Theme.bullGreen : Theme.bearRed)
+                .frame(width: 60, height: 32)
 
-            // Price + signal badge
+            // Price + change badge (G2)
             VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                 Text(IndianFormatter.price(item.currentPrice))
-                    .font(Theme.serialNumberFont(size: 14, relativeTo: .callout))
+                    .font(Theme.serialNumberFont(size: 14, relativeTo: .callout).weight(.semibold))
                     .foregroundStyle(Theme.inkPrimary)
-                SignalBadgePill(value: item.dayChangePct, isPercent: true)
+                ChangeBadge(value: item.dayChangePct)
             }
         }
         .padding(.horizontal, Theme.screenPadding)
@@ -257,17 +249,3 @@ struct WatchlistRow: View {
     }
 }
 
-// MARK: - WatchlistMiniSparkline (4b) — file-local wrapper over the shared GlowLineChart
-// Named distinctly to avoid colliding with the public `MiniSparkline` in EarningsDashboardView.
-
-private struct WatchlistMiniSparkline: View {
-    let dataPoints: [Double]
-    let isPositive: Bool
-
-    var body: some View {
-        GlowLineChart(
-            dataPoints: dataPoints.isEmpty ? [1, 1, 1, 1, 1] : dataPoints,
-            isPositive: isPositive
-        )
-    }
-}

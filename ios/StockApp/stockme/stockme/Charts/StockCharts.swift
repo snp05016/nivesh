@@ -1028,20 +1028,25 @@ struct SparklineView: View {
     var body: some View {
         Canvas { context, size in
             guard values.count > 1 else { return }
+            // BUG-05: inset by strokeWidth/2 so the line never clips at top/bottom edges.
+            let strokeWidth: CGFloat = 1.5
+            let inset = strokeWidth / 2
+            let drawW = max(size.width - inset * 2, 1)
+            let drawH = max(size.height - inset * 2, 1)
             let mn = values.min()!
             let mx = values.max()!
             let rng = max(mx - mn, 1)
             var path = Path()
             for (i, v) in values.enumerated() {
-                let x = CGFloat(i) / CGFloat(values.count - 1) * size.width
-                let y = size.height - CGFloat((v - mn) / rng) * size.height
+                let x = inset + CGFloat(i) / CGFloat(values.count - 1) * drawW
+                let y = inset + drawH - CGFloat((v - mn) / rng) * drawH
                 if i == 0 {
                     path.move(to: CGPoint(x: x, y: y))
                 } else {
                     path.addLine(to: CGPoint(x: x, y: y))
                 }
             }
-            context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
+            context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: strokeWidth, lineJoin: .round))
         }
     }
 }
