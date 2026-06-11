@@ -138,17 +138,30 @@ MARKET_ANALYST_PERSONA = (
     "Write a very detailed and nuanced report. Append a Markdown table for key points."
 )
 
-FUNDAMENTALS_ANALYST_PERSONA = (
-    "You are a researcher tasked with analyzing fundamental information. "
-    "Write a comprehensive report on the company's financials (balance sheet, "
-    "cash flow, income statement) and profile to gain a full view for traders.\n\n"
-    "Tool Definitions:\n"
-    "- get_fundamentals(ticker, curr_date): Comprehensive fundamental summary.\n"
-    "- get_balance_sheet(ticker, freq, curr_date): Balance sheet details.\n"
-    "- get_cashflow(ticker, freq, curr_date): Cash flow details.\n"
-    "- get_income_statement(ticker, freq, curr_date): Income statement details.\n\n"
-    "Provide specific, actionable insights. Append a Markdown table for key points."
-)
+    FUNDAMENTALS_ANALYST_PERSONA = (
+        "You are a researcher tasked with analyzing fundamental information. "
+        "Write a comprehensive report on the company's financials (balance sheet, "
+        "cash flow, income statement) and profile to gain a full view for traders.\n\n"
+        "Tool Definitions:\n"
+        "- get_fundamentals(ticker, curr_date): Comprehensive fundamental summary.\n"
+        "- get_balance_sheet(ticker, freq, curr_date): Balance sheet details.\n"
+        "- get_cashflow(ticker, freq, curr_date): Cash flow details.\n"
+        "- get_income_statement(ticker, freq, curr_date): Income statement details.\n\n"
+        "Provide specific, actionable insights. Append a Markdown table for key points."
+    )
+
+    GOVERNANCE_ANALYST_PERSONA = (
+        "You are an Indian corporate governance forensics analyst. "
+        "Scan for governance red flags: auditor resignations, CFO/MD departures, "
+        "SEBI actions, promoter pledging spikes, bulk/block deals, insider cluster "
+        "selling, ASM/GSM listings, credit downgrades, and regulatory penalties. "
+        "Output a governance score (0-100) and a structured red flags report.\n\n"
+        "Tool Definitions:\n"
+        "- get_news(query, start_date, end_date): Search governance events.\n"
+        "- get_insider_transactions(curr_date, look_back_days, ticker): SAST+insider trades.\n\n"
+        "NAME & NUMBER: Every claim must have a figure, date, or rupee amount. "
+        "Never fabricate. Append a Markdown table summary."
+    )
 
 # ═════════════════════════════════════════════════════════════════════════════
 # JSON Extraction Helper
@@ -234,7 +247,7 @@ def create_optimized_analyst_node(llm, persona: str, report_key: str, tools: lis
 
 
 class OptimizedGraphSetup(GraphSetup):
-    def setup_graph(self, selected_analysts=["market", "news", "fundamentals"]):
+    def setup_graph(self, selected_analysts=["governance", "market", "news", "fundamentals"]):
         from tradingagents.agents.utils.agent_utils import (
             get_stock_data,
             get_indicators,
@@ -252,6 +265,12 @@ class OptimizedGraphSetup(GraphSetup):
         )
 
         analyst_factories = {
+            "governance": lambda: create_optimized_analyst_node(
+                self.quick_thinking_llm,
+                GOVERNANCE_ANALYST_PERSONA,
+                "governance",
+                [get_news, get_insider_transactions],
+            ),
             "market": lambda: create_optimized_analyst_node(
                 self.quick_thinking_llm,
                 MARKET_ANALYST_PERSONA,
@@ -358,7 +377,7 @@ class OptimizedTradingAgentsGraph(TradingAgentsGraph):
             analyst_concurrency_limit=self.config.get("analyst_concurrency_limit", 1),
         )
         self.workflow = self.graph_setup.setup_graph(
-            kwargs.get("selected_analysts", ["market", "news", "fundamentals"])
+            kwargs.get("selected_analysts", ["governance", "market", "news", "fundamentals"])
         )
         self.graph = self.workflow.compile()
 
@@ -388,14 +407,18 @@ def run_trading_agents(full_ticker: str, analysis_date: str) -> str:
     print(f"[AI] Thinking: Gathering market data and fundamental ratios...")
     config = build_ta_config()
     ta = OptimizedTradingAgentsGraph(
-        selected_analysts=["market", "news", "fundamentals"],
+        selected_analysts=["governance", "market", "news", "fundamentals"],
         debug=True,  # Enable debug for terminal logs
         config=config,
     )
     print(f"[AI] Thinking: Running Agent Graph propagation...")
-    _, decision = ta.propagate(full_ticker, analysis_date)
+    final_state, decision = ta.propagate(full_ticker, analysis_date)
     print(f"[AI] Thinking: Analysis complete. Formatting output...")
-    return str(decision)
+    governance_report = final_state.get("governance_report", "")
+    output = str(decision)
+    if governance_report:
+        output = f"GOVERNANCE FORENSICS REPORT:\n{governance_report}\n\n---\n\n{output}"
+    return output
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -669,6 +692,7 @@ def _normalize_response(result: dict) -> dict:
         "management_quality",
         "geopolitical_context",
         "promoter_fii_dii_activity",
+        "governance_assessment",
         "turnaround_story",
         "fundamentals_summary",
         "global_macro_impact",
@@ -710,7 +734,13 @@ def _normalize_response(result: dict) -> dict:
     if not isinstance(result.get("fundamentals_snapshot"), dict):
         result["fundamentals_snapshot"] = {}
 
-    # 14. analysis_date — must be string
+    # 14. governance fields — must be present (governance analyst output)
+    if not isinstance(result.get("governance_score"), (int, float)):
+        result["governance_score"] = 0
+    if not isinstance(result.get("governance_red_flags"), list):
+        result["governance_red_flags"] = []
+
+    # 15. analysis_date — must be string
     if not isinstance(result.get("analysis_date"), str):
         from datetime import date
 
