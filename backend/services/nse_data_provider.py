@@ -73,7 +73,7 @@ def get_price_history(
             if raw is not None and len(raw) > 10:
                 raw = raw.rename(columns={
                     "OPEN": "Open", "HIGH": "High", "LOW": "Low",
-                    "CLOSE": "Close", "TOTTRDQTY": "Volume",
+                    "CLOSE": "Close", "TOTTRDQTY": "Volume", "VOLUME": "Volume"
                 })
                 df = raw[["Open", "High", "Low", "Close", "Volume"]].sort_index()
                 logger.info(f"[nse_data_provider] {ticker}: jugaad-data {len(df)} rows")
@@ -95,6 +95,8 @@ def get_price_history(
             df = yf.download(yf_ticker, period=f"{period_days}d", auto_adjust=True, progress=False)
             if (df is None or len(df) < 10) and exchange == "NSE":
                 df = yf.download(f"{ticker}.BO", period=f"{period_days}d", auto_adjust=True, progress=False)
+            if df is not None and isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.droplevel(1)
             logger.info(f"[nse_data_provider] {ticker}: yfinance {len(df) if df is not None else 0} rows")
         except Exception as e:
             logger.error(f"[nse_data_provider] {ticker}: yfinance also failed: {e}")
