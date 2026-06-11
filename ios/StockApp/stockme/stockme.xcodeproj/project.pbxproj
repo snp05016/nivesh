@@ -13,12 +13,11 @@
 		470FBA23C5B5B6039A44CDFC /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A94200CABF549F3814BE454 /* SwiftUI.framework */; };
 		67F9769B9AFF81876A3046B6 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB11A87B4A3C0D1298C98C71 /* Theme.swift */; };
 		994D12D4EFE141EB8660F6AE /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FFF8801DFAC44DC85E3323E /* ThemeManager.swift */; };
-		9C3FB9A024D744D6B0B42C9A /* TermDefinitionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09F9274AD2034B23A38EF88F /* TermDefinitionOverlay.swift */; };
 		AF10CE3D5F89DBA50C664FAD /* NiveshWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D822F29E492E020F7F3666CF /* NiveshWidget.swift */; };
+		B689EAE4097B42CD900DF8ED /* SharedDarkComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DC41215CA7482E851B1101 /* SharedDarkComponents.swift */; };
 		C52789692FD37E75001449A9 /* launch_animated.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = C52789682FD37E75001449A9 /* launch_animated.mp4 */; };
 		DECB14E755B044F6B5EE6F78 /* FinanceTerms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69C6BCF5FDE543BDA43C719B /* FinanceTerms.swift */; };
 		E34E73D25AF01C38AA811E1F /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE68747565E218B524BDA777 /* WidgetKit.framework */; };
-		B689EAE4097B42CD900DF8ED /* SharedDarkComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DC41215CA7482E851B1101 /* SharedDarkComponents.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -68,6 +67,7 @@
 		6CE9566D846F57F1621D95D5 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		7A94200CABF549F3814BE454 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		8FFF8801DFAC44DC85E3323E /* ThemeManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ThemeManager.swift; path = stockme/Utilities/ThemeManager.swift; sourceTree = "<group>"; };
+		94DC41215CA7482E851B1101 /* SharedDarkComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SharedDarkComponents.swift; path = stockme/Components/SharedDarkComponents.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6A1B2C3D4E5F6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		C52789682FD37E75001449A9 /* launch_animated.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = launch_animated.mp4; sourceTree = "<group>"; };
 		C5C19BDC2FCC8C6A0041471A /* stockme.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = stockme.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -76,7 +76,6 @@
 		CB11A87B4A3C0D1298C98C71 /* Theme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Theme.swift; path = stockme/Utilities/Theme.swift; sourceTree = "<group>"; };
 		D822F29E492E020F7F3666CF /* NiveshWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NiveshWidget.swift; sourceTree = "<group>"; };
 		FE68747565E218B524BDA777 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
-		94DC41215CA7482E851B1101 /* SharedDarkComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SharedDarkComponents.swift; path = stockme/Components/SharedDarkComponents.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -360,7 +359,6 @@
 				67F9769B9AFF81876A3046B6 /* Theme.swift in Sources */,
 				994D12D4EFE141EB8660F6AE /* ThemeManager.swift in Sources */,
 				DECB14E755B044F6B5EE6F78 /* FinanceTerms.swift in Sources */,
-				9C3FB9A024D744D6B0B42C9A /* TermDefinitionOverlay.swift in Sources */,
 				13CED51F040DBB935891021B /* IndianFormatter.swift in Sources */,
 				B689EAE4097B42CD900DF8ED /* SharedDarkComponents.swift in Sources */,
 			);
