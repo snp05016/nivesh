@@ -350,9 +350,11 @@ struct StockProfileView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                DenominationBackground(denomination: .twoHundred)
+        // NOTE: No NavigationStack here — this view is always pushed into a
+        // parent stack via navigationDestination. A nested NavigationStack
+        // breaks navigation (dark screen → auto-pop) and the back button.
+        ZStack {
+            DenominationBackground(denomination: .twoHundred)
 
                 VStack(spacing: Theme.Spacing.none) {
                     // Immersive hero chart
@@ -434,7 +436,6 @@ struct StockProfileView: View {
                     }
                 }
             }
-        }
         .task { await vm.fetchChart() }
     }
 
