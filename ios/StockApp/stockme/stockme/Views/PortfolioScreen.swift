@@ -248,7 +248,11 @@ struct PortfolioScreen: View {
                             PortfolioRiskCard(riskAnalysis: riskAnalysis)
                                 .padding(.horizontal, Theme.screenPadding)
 
-                            RedFlagsSection(redFlags: redFlags)
+                            RedFlagsSection(redFlags: redFlags, onTickerTap: { ticker in
+                                stockTapTicker = ticker
+                                stockTapCompanyName = nil
+                                showStockTapAction = true
+                            })
                                 .padding(.horizontal, Theme.screenPadding)
 
                             if let user = authManager.currentUser {
@@ -833,6 +837,7 @@ private struct PortfolioRiskCard: View {
 
 private struct RedFlagsSection: View {
     let redFlags: RedFlagsResponse?
+    let onTickerTap: (String) -> Void
     @State private var isExpanded = false
 
     var body: some View {
@@ -865,9 +870,7 @@ private struct RedFlagsSection: View {
                     ForEach(rf.flags) { flag in
                         Button {
                             HapticManager.selection()
-                            stockTapTicker = flag.ticker
-                            stockTapCompanyName = nil
-                            showStockTapAction = true
+                            onTickerTap(flag.ticker)
                         } label: {
                             HStack(alignment: .top, spacing: Theme.Spacing.medium) {
                                 Text(flag.severity == "CRITICAL" ? "🔴" : flag.severity == "WARNING" ? "🟡" : "🔵")
