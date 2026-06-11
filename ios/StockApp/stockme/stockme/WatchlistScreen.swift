@@ -212,7 +212,7 @@ struct WatchlistRow: View {
                 .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote).weight(.semibold))
                 .foregroundStyle(Theme.inkPrimary)
                 .frame(width: 42, height: 42)
-                .background(item.ticker.tileColor)
+                .background(Theme.cardBlueDeep)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
 
             // Ticker + company name

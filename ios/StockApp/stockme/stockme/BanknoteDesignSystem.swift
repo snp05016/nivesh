@@ -20,37 +20,13 @@ extension View {
 // MARK: - Security Thread
 
 struct SecurityThread: View {
-    var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(Theme.securityGold.opacity(0.11))
-                .frame(width: 12)
-            VStack(spacing: Theme.Spacing.xSmall) {
-                ForEach(0..<20, id: \.self) { _ in
-                    Text("NIVESH ₹ RBI ")
-                        .font(Theme.serialNumberFont(size: 5))
-                        .foregroundStyle(Theme.securityGold.opacity(0.38))
-                        .rotationEffect(.degrees(-90))
-                        .fixedSize()
-                }
-            }
-        }
-        .frame(width: 12)
-        .clipped()
-        .allowsHitTesting(false)
-    }
+    var body: some View { EmptyView() }
 }
 
 // MARK: - Rupee Medallion Watermark (₹ at 320pt, behind hero content)
 
 struct RupeeWatermark: View {
-    var body: some View {
-        Text("₹")
-            .font(Font.custom("Georgia-Bold", size: 320))
-            .foregroundStyle(Theme.securityGold.opacity(0.035))
-            .offset(x: 60, y: -40)
-            .allowsHitTesting(false)
-    }
+    var body: some View { EmptyView() }
 }
 
 // MARK: - Corner Ornament (4 concentric offset circles, top-right of hero card)
