@@ -2,11 +2,12 @@ import SwiftUI
 
 // Each rupee denomination has a distinct color DNA
 enum Denomination {
-    case ten, fifty, hundred, twoHundred, fiveHundred, twoThousand
+    case ten, twenty, fifty, hundred, twoHundred, fiveHundred, twoThousand
 
     var numeral: String {
         switch self {
         case .ten:          return "10"
+        case .twenty:       return "20"
         case .fifty:        return "50"
         case .hundred:      return "100"
         case .twoHundred:   return "200"
@@ -18,6 +19,7 @@ enum Denomination {
     var tint: Color {
         switch self {
         case .ten:         return Theme.NoteTint.ten
+        case .twenty:      return Theme.NoteTint.twenty
         case .fifty:       return Theme.NoteTint.fifty
         case .hundred:     return Theme.NoteTint.hundred
         case .twoHundred:  return Theme.NoteTint.twoHundred
