@@ -603,7 +603,6 @@ struct HomeScreen: View {
         return HomeSectionID.allCases
     }
 
-    @State private var selectedTab = 0
     // Fix 3.3: Offline guard — block destructive watchlist ops when disconnected
     @State private var isOnline = true
     // Item 7: YouTube channel filter
@@ -642,7 +641,6 @@ struct HomeScreen: View {
         guard !searchText.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
         return StockDatabase.search(searchText)
     }
-    private let homeTabs = ["Market Pulse", "My Holdings", "Advisory"]
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -652,30 +650,6 @@ struct HomeScreen: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: Theme.Spacing.card) {
-
-                            // Fix 1.3: Sticky 3-tab segment control
-                            HStack(spacing: Theme.Spacing.none) {
-                                ForEach(Array(homeTabs.enumerated()), id: \.offset) { idx, label in
-                                    Button {
-                                        selectedTab = idx
-                                        HapticManager.selection()
-                                    } label: {
-                                        Text(label.uppercased())
-                                            .font(Theme.officialStampFont(size: 10))
-                                            .tracking(1.5)
-                                            .foregroundStyle(selectedTab == idx ? Theme.inkPrimary : Theme.inkTertiary)
-                                            .padding(.vertical, Theme.Spacing.small)
-                                            .padding(.horizontal, Theme.Spacing.standard)
-                                            .background(selectedTab == idx ? Theme.securityGold.opacity(0.12) : Color.clear)
-                                            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            .padding(.vertical, Theme.Spacing.tight)
-                            .padding(.horizontal, Theme.screenPadding)
-                            .background(Theme.canvasDeep.opacity(0.95))
-                            .overlay(Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5), alignment: .bottom)
 
                             ForEach(activeSectionOrder, id: \.self) { sectionId in
                                 renderSection(id: sectionId)
