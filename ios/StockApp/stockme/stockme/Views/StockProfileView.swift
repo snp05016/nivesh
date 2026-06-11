@@ -341,6 +341,7 @@ struct StockProfileView: View {
 
     @StateObject private var vm: StockProfileViewModel
     @State private var activeTab = 0
+    @State private var showSMA: Set<Int> = [20, 50, 200]
     @Environment(\.dismiss) var dismiss
 
     init(ticker: String, exchange: String = "NSE") {
@@ -721,23 +722,576 @@ struct StockProfileView: View {
     @ViewBuilder
     private var chartTab: some View {
         ScrollView {
-            VStack(spacing: Theme.Spacing.standard) {
+            VStack(spacing: Theme.Spacing.xLarge) {
                 if vm.chartLoading {
-                    ProgressView().tint(Theme.securityGold).scaleEffect(1.3).padding(40)
+                    skeletonBlock(rows: 3)
+                    skeletonBlock(rows: 3)
+                    skeletonBlock(rows: 3)
                 } else if let hist = vm.history, !hist.prices.isEmpty {
                     InteractivePriceChartView(
                         history: hist.prices,
                         niftyHistory: vm.niftyHistory,
                         ticker: ticker
                     )
-                    .padding(.vertical, Theme.Spacing.standard)
+
+                    chartSection_RSI(hist: hist)
+                    chartSection_SMA(hist: hist)
+
+                    if !vm.quarterlyFinancials.isEmpty {
+                        chartSection_QuarterlyRevenue()
+                        chartSection_QuarterlyPAT()
+                        chartSection_PATMargin()
+                    }
+
+                    if let qInfo = vm.quickInfo {
+                        chartSection_Shareholding(qInfo: qInfo)
+                        chartSection_Profitability(qInfo: qInfo)
+                    }
+
+                    if !vm.promoterHistory.isEmpty {
+                        chartSection_PromoterHistory()
+                    }
                 } else {
                     emptyState(message: "Price history unavailable")
                 }
             }
+            .padding(.horizontal, Theme.screenPadding)
             .padding(.vertical, Theme.Spacing.card)
         }
         .task { await vm.fetchChart() }
+        .task { await vm.fetchFinancials() }
+    }
+
+    // MARK: - Chart Helpers
+
+    private func computeRSI(_ prices: [OHLCVPoint], period: Int = 14) -> [(date: Date, rsi: Double)] {
+        guard prices.count > period else { return [] }
+        var gains: [Double] = []
+        var losses: [Double] = []
+        for i in 1..<prices.count {
+            let diff = prices[i].close - prices[i-1].close
+            gains.append(max(diff, 0))
+            losses.append(max(-diff, 0))
+        }
+        var avgGain = gains.prefix(period).reduce(0, +) / Double(period)
+        var avgLoss = losses.prefix(period).reduce(0, +) / Double(period)
+        var result: [(date: Date, rsi: Double)] = []
+        for i in period..<prices.count {
+            avgGain = (avgGain * Double(period - 1) + gains[i - 1]) / Double(period)
+            avgLoss = (avgLoss * Double(period - 1) + losses[i - 1]) / Double(period)
+            let rs = avgLoss == 0 ? 100.0 : avgGain / avgLoss
+            result.append((date: prices[i].parsedDate, rsi: 100 - (100 / (1 + rs))))
+        }
+        return result
+    }
+
+    private func computeSMA(_ prices: [OHLCVPoint], period: Int) -> [(date: Date, value: Double)] {
+        guard prices.count >= period else { return [] }
+        var result: [(date: Date, value: Double)] = []
+        for i in period...prices.count {
+            let slice = prices[(i-period)..<i]
+            let avg = slice.map(\.close).reduce(0, +) / Double(period)
+            result.append((date: prices[i-1].parsedDate, value: avg))
+        }
+        return result
+    }
+
+    // MARK: - Chart 2: RSI Oscillator
+
+    @ViewBuilder
+    private func chartSection_RSI(hist: StockHistoryResponse) -> some View {
+        let rsiData = computeRSI(hist.prices)
+        if !rsiData.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                Text("RSI (14)")
+                    .font(Theme.officialStampFont(size: 9))
+                    .tracking(1.5)
+                    .foregroundStyle(Theme.inkTertiary)
+
+                Chart {
+                    ForEach(rsiData, id: \.date) { pt in
+                        LineMark(
+                            x: .value("Date", pt.date),
+                            y: .value("RSI", pt.rsi)
+                        )
+                        .foregroundStyle(Theme.securityGold)
+                    }
+                    RuleMark(y: .value("Overbought", 70))
+                        .foregroundStyle(Theme.bearRed.opacity(0.4))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    RuleMark(y: .value("Oversold", 30))
+                        .foregroundStyle(Theme.bullGreen.opacity(0.4))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                }
+                .chartYScale(domain: 0...100)
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 2)) { _ in
+                        AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(values: [0, 30, 50, 70, 100]) { value in
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: UIScreen.main.bounds.height * 0.25)
+            }
+            .padding(Theme.Spacing.card)
+            .banknoteCard()
+        }
+    }
+
+    // MARK: - Chart 3: Moving Averages
+
+    @ViewBuilder
+    private func chartSection_SMA(hist: StockHistoryResponse) -> some View {
+        let closes = hist.prices
+        let sma20 = computeSMA(closes, period: 20)
+        let sma50 = computeSMA(closes, period: 50)
+        let sma200 = computeSMA(closes, period: 200)
+        let isUp = (closes.last?.close ?? 0) >= (closes.first?.close ?? 0)
+
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            Text("MOVING AVERAGES")
+                .font(Theme.officialStampFont(size: 9))
+                .tracking(1.5)
+                .foregroundStyle(Theme.inkTertiary)
+
+            HStack(spacing: Theme.Spacing.tight) {
+                ForEach([(20, Theme.securityGold), (50, Theme.bearRed), (200, Theme.avatarBlue)], id: \.0) { period, color in
+                    Button {
+                        HapticManager.selection()
+                        if showSMA.contains(period) { showSMA.remove(period) }
+                        else { showSMA.insert(period) }
+                    } label: {
+                        Text("SMA \(period)")
+                            .font(Theme.officialStampFont(size: 8))
+                            .tracking(0.8)
+                            .foregroundStyle(showSMA.contains(period) ? color : Theme.inkTertiary)
+                            .padding(.horizontal, Theme.Spacing.medium)
+                            .padding(.vertical, Theme.Spacing.small)
+                            .background(showSMA.contains(period) ? color.opacity(0.12) : Theme.canvasDeep)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(EKPressStyle())
+                }
+            }
+
+            Chart {
+                ForEach(closes, id: \.date) { pt in
+                    AreaMark(
+                        x: .value("Date", pt.parsedDate),
+                        y: .value("Price", pt.close)
+                    )
+                    .foregroundStyle(isUp ? Theme.bullGreen.opacity(0.08) : Theme.bearRed.opacity(0.08))
+                }
+                if showSMA.contains(20) {
+                    ForEach(sma20, id: \.date) { pt in
+                        LineMark(x: .value("Date", pt.date), y: .value("SMA20", pt.value))
+                            .foregroundStyle(Theme.securityGold)
+                    }
+                }
+                if showSMA.contains(50) {
+                    ForEach(sma50, id: \.date) { pt in
+                        LineMark(x: .value("Date", pt.date), y: .value("SMA50", pt.value))
+                            .foregroundStyle(Theme.bearRed)
+                    }
+                }
+                if showSMA.contains(200) {
+                    ForEach(sma200, id: \.date) { pt in
+                        LineMark(x: .value("Date", pt.date), y: .value("SMA200", pt.value))
+                            .foregroundStyle(Theme.avatarBlue)
+                    }
+                }
+            }
+            .chartXAxis {
+                AxisMarks(values: .automatic(desiredCount: 3)) { _ in
+                    AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+                }
+            }
+            .chartYAxis {
+                AxisMarks { value in
+                    AxisValueLabel()
+                }
+            }
+            .frame(height: UIScreen.main.bounds.height * 0.25)
+        }
+        .padding(Theme.Spacing.card)
+        .banknoteCard()
+    }
+
+    // MARK: - Chart 4: Quarterly Revenue
+
+    @ViewBuilder
+    private func chartSection_QuarterlyRevenue() -> some View {
+        let quarters = Array(vm.quarterlyFinancials.prefix(8).reversed())
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            Text("QUARTERLY REVENUE")
+                .font(Theme.officialStampFont(size: 9))
+                .tracking(1.5)
+                .foregroundStyle(Theme.inkTertiary)
+
+            Chart {
+                ForEach(quarters, id: \.label) { q in
+                    BarMark(
+                        x: .value("Quarter", q.label),
+                        y: .value("Revenue", q.revenue)
+                    )
+                    .foregroundStyle(Theme.securityGold.opacity(0.85))
+
+                    if q.revenue > 0 {
+                        PointMark(
+                            x: .value("Quarter", q.label),
+                            y: .value("Revenue", q.revenue)
+                        )
+                        .symbolSize(30)
+                        .foregroundStyle(Theme.securityGold)
+                        .annotation(position: .top) {
+                            Text(IndianFormatter.priceCompact(q.revenue))
+                                .font(Theme.microLabel(size: 8))
+                                .foregroundStyle(Theme.inkSecondary)
+                        }
+                    }
+                }
+            }
+            .chartXAxis {
+                AxisMarks { _ in
+                    AxisValueLabel()
+                }
+            }
+            .chartYAxis {
+                AxisMarks { value in
+                    AxisValueLabel()
+                }
+                AxisMarks { _ in
+                    AxisValueLabel(anchor: .top) {
+                        Text("₹ Cr")
+                    }
+                }
+            }
+            .frame(height: UIScreen.main.bounds.height * 0.25)
+        }
+        .padding(Theme.Spacing.card)
+        .banknoteCard()
+    }
+
+    // MARK: - Chart 5: Quarterly PAT
+
+    @ViewBuilder
+    private func chartSection_QuarterlyPAT() -> some View {
+        let quarters = Array(vm.quarterlyFinancials.prefix(8).reversed())
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            Text("QUARTERLY PAT")
+                .font(Theme.officialStampFont(size: 9))
+                .tracking(1.5)
+                .foregroundStyle(Theme.inkTertiary)
+                .glossaryTerm("PAT", definition: "Profit After Tax — net earnings after all expenses, interest, and taxes are deducted. The bottom-line profit available to shareholders.")
+
+            Chart {
+                ForEach(quarters, id: \.label) { q in
+                    BarMark(
+                        x: .value("Quarter", q.label),
+                        y: .value("PAT", q.netProfit)
+                    )
+                    .foregroundStyle(by: .value("Sign", q.netProfit >= 0 ? "positive" : "negative"))
+
+                    PointMark(
+                        x: .value("Quarter", q.label),
+                        y: .value("PAT", q.netProfit)
+                    )
+                    .symbolSize(30)
+                    .foregroundStyle(q.netProfit >= 0 ? Theme.bullGreen : Theme.bearRed)
+                    .annotation(position: q.netProfit >= 0 ? .top : .bottom) {
+                        Text(IndianFormatter.priceCompact(q.netProfit))
+                            .font(Theme.microLabel(size: 8))
+                            .foregroundStyle(Theme.inkSecondary)
+                    }
+                }
+                RuleMark(y: .value("Zero", 0))
+                    .foregroundStyle(Theme.inkTertiary.opacity(0.4))
+            }
+            .chartForegroundStyleScale(["positive": Theme.bullGreen, "negative": Theme.bearRed])
+            .chartXAxis {
+                AxisMarks { _ in
+                    AxisValueLabel()
+                }
+            }
+            .chartYAxis {
+                AxisMarks { value in
+                    AxisValueLabel()
+                }
+                AxisMarks { _ in
+                    AxisValueLabel(anchor: .top) {
+                        Text("₹ Cr")
+                    }
+                }
+            }
+            .frame(height: UIScreen.main.bounds.height * 0.25)
+        }
+        .padding(Theme.Spacing.card)
+        .banknoteCard()
+    }
+
+    // MARK: - Chart 6: PAT Margin %
+
+    @ViewBuilder
+    private func chartSection_PATMargin() -> some View {
+        let quarters = Array(vm.quarterlyFinancials.prefix(8).reversed())
+        let margins = quarters.map { q -> (label: String, margin: Double) in
+            (q.label, q.revenue > 0 ? (q.netProfit / q.revenue) * 100 : 0)
+        }
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            Text("PAT MARGIN %")
+                .font(Theme.officialStampFont(size: 9))
+                .tracking(1.5)
+                .foregroundStyle(Theme.inkTertiary)
+
+            if !margins.isEmpty {
+                Chart {
+                    ForEach(margins, id: \.label) { pt in
+                        LineMark(
+                            x: .value("Quarter", pt.label),
+                            y: .value("Margin", pt.margin)
+                        )
+                        .foregroundStyle(Theme.securityGold)
+
+                        AreaMark(
+                            x: .value("Quarter", pt.label),
+                            y: .value("Margin", pt.margin)
+                        )
+                        .foregroundStyle(Theme.securityGold.opacity(0.08))
+
+                        PointMark(
+                            x: .value("Quarter", pt.label),
+                            y: .value("Margin", pt.margin)
+                        )
+                        .symbolSize(30)
+                        .foregroundStyle(Theme.securityGold)
+                    }
+                }
+                .chartXAxis {
+                    AxisMarks { _ in
+                        AxisValueLabel()
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks { value in
+                        AxisValueLabel() {
+                            Text("\(value.as(Double.self)?.formatted(.number.precision(.fractionLength(0))) ?? "")%")
+                        }
+                    }
+                }
+                .frame(height: UIScreen.main.bounds.height * 0.25)
+            }
+        }
+        .padding(Theme.Spacing.card)
+        .banknoteCard()
+    }
+
+    // MARK: - Chart 7: Shareholding Breakdown
+
+    @ViewBuilder
+    private func chartSection_Shareholding(qInfo: QuickInfo) -> some View {
+        let promoter = qInfo.promoterHoldingPct ?? 0
+        let fii = qInfo.fiiHoldingPct ?? 0
+        let dii = qInfo.diiHoldingPct ?? 0
+        let publicHolding = max(0, 100 - promoter - fii - dii)
+        guard promoter > 0 || fii > 0 || dii > 0 else {
+            EmptyView()
+            return
+        }
+
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            Text("SHAREHOLDING PATTERN")
+                .font(Theme.officialStampFont(size: 9))
+                .tracking(1.5)
+                .foregroundStyle(Theme.inkTertiary)
+
+            Chart {
+                BarMark(x: .value("Pct", promoter), y: .value("Type", "Holding"))
+                    .foregroundStyle(Theme.securityGold)
+                BarMark(x: .value("Pct", fii), y: .value("Type", "Holding"))
+                    .foregroundStyle(Theme.bullGreen)
+                BarMark(x: .value("Pct", dii), y: .value("Type", "Holding"))
+                    .foregroundStyle(Theme.avatarBlue)
+                BarMark(x: .value("Pct", publicHolding), y: .value("Type", "Holding"))
+                    .foregroundStyle(Theme.inkTertiary.opacity(0.4))
+            }
+            .chartXAxis {
+                AxisMarks { _ in
+                    AxisValueLabel() {
+                        Text("\($0.as(Double.self)?.formatted(.number.precision(.fractionLength(0))) ?? "")%")
+                    }
+                }
+            }
+            .frame(height: 44)
+
+            // Legend
+            HStack(spacing: Theme.Spacing.standard) {
+                legendDot(color: Theme.securityGold, label: "Promoter", value: promoter)
+                legendDot(color: Theme.bullGreen, label: "FII", value: fii)
+                legendDot(color: Theme.avatarBlue, label: "DII", value: dii)
+                legendDot(color: Theme.inkTertiary.opacity(0.4), label: "Public", value: publicHolding)
+            }
+        }
+        .padding(Theme.Spacing.card)
+        .banknoteCard()
+    }
+
+    private func legendDot(color: Color, label: String, value: Double) -> some View {
+        HStack(spacing: Theme.Spacing.small) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text("\(label) \(String(format: "%.1f", value))%")
+                .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
+                .foregroundStyle(Theme.inkSecondary)
+        }
+    }
+
+    // MARK: - Chart 8: Promoter Holding History
+
+    @ViewBuilder
+    private func chartSection_PromoterHistory() -> some View {
+        let history = vm.promoterHistory
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            Text("PROMOTER HOLDING HISTORY")
+                .font(Theme.officialStampFont(size: 9))
+                .tracking(1.5)
+                .foregroundStyle(Theme.inkTertiary)
+
+            if !history.isEmpty {
+                Chart {
+                    ForEach(history, id: \.period) { pt in
+                        LineMark(
+                            x: .value("Period", pt.period),
+                            y: .value("Holding", pt.promoter)
+                        )
+                        .foregroundStyle(Theme.securityGold)
+
+                        AreaMark(
+                            x: .value("Period", pt.period),
+                            y: .value("Holding", pt.promoter)
+                        )
+                        .foregroundStyle(Theme.securityGold.opacity(0.08))
+
+                        PointMark(
+                            x: .value("Period", pt.period),
+                            y: .value("Holding", pt.promoter)
+                        )
+                        .symbolSize(25)
+                        .foregroundStyle(Theme.securityGold)
+                    }
+                }
+                .chartXAxis {
+                    AxisMarks { _ in
+                        AxisValueLabel()
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks { value in
+                        AxisValueLabel() {
+                            Text("\(value.as(Double.self)?.formatted(.number.precision(.fractionLength(1))) ?? "")%")
+                        }
+                    }
+                }
+                .frame(height: UIScreen.main.bounds.height * 0.25)
+
+                if history.count >= 2 {
+                    let latest = history.last?.promoter ?? 0
+                    let prev = history[history.count - 2].promoter
+                    if latest < prev {
+                        HStack(spacing: Theme.Spacing.small) {
+                            Image(systemName: "arrow.down.right")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(Theme.bearRed)
+                            Text("Promoter holding declined from \(String(format: "%.1f", prev))% to \(String(format: "%.1f", latest))%")
+                                .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
+                                .foregroundStyle(Theme.bearRed)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(Theme.Spacing.card)
+        .banknoteCard()
+    }
+
+    // MARK: - Chart 9: ROE vs ROCE
+
+    @ViewBuilder
+    private func chartSection_Profitability(qInfo: QuickInfo) -> some View {
+        let roe = qInfo.roePct
+        let roce = qInfo.rocePct
+        let pe = qInfo.peRatio
+        guard roe != nil || roce != nil || pe != nil else {
+            EmptyView()
+            return
+        }
+
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            Text("PROFITABILITY RATIOS")
+                .font(Theme.officialStampFont(size: 9))
+                .tracking(1.5)
+                .foregroundStyle(Theme.inkTertiary)
+
+            Chart {
+                if let roe = roe {
+                    BarMark(x: .value("Metric", "ROE"), y: .value("Pct", roe))
+                        .foregroundStyle(Theme.bullGreen)
+                        .annotation(position: .top) {
+                            Text(String(format: "%.1f%%", roe))
+                                .font(Theme.microLabel(size: 9))
+                                .foregroundStyle(Theme.inkSecondary)
+                        }
+                }
+                if let roce = roce {
+                    BarMark(x: .value("Metric", "ROCE"), y: .value("Pct", roce))
+                        .foregroundStyle(Theme.securityGold)
+                        .annotation(position: .top) {
+                            Text(String(format: "%.1f%%", roce))
+                                .font(Theme.microLabel(size: 9))
+                                .foregroundStyle(Theme.inkSecondary)
+                        }
+                }
+                if let pe = pe {
+                    BarMark(x: .value("Metric", "P/E"), y: .value("Pct", pe))
+                        .foregroundStyle(Theme.avatarBlue)
+                        .annotation(position: .top) {
+                            Text(String(format: "%.1f", pe))
+                                .font(Theme.microLabel(size: 9))
+                                .foregroundStyle(Theme.inkSecondary)
+                        }
+                }
+            }
+            .chartXAxis {
+                AxisMarks { _ in
+                    AxisValueLabel()
+                }
+            }
+            .chartYAxis {
+                AxisMarks { value in
+                    AxisValueLabel()
+                }
+            }
+            .frame(height: UIScreen.main.bounds.height * 0.25)
+
+            HStack {
+                glossaryTermInline("ROE", definition: "Return on Equity — measures how efficiently a company generates profit from shareholders' money. Higher = better capital deployment.")
+                Spacer()
+                glossaryTermInline("ROCE", definition: "Return on Capital Employed — measures how efficiently a company generates profit from its total capital. Higher = better capital deployment.")
+            }
+        }
+        .padding(Theme.Spacing.card)
+        .banknoteCard()
+    }
+
+    private func glossaryTermInline(_ term: String, definition: String) -> some View {
+        HStack(spacing: Theme.Spacing.small) {
+            Circle().fill(Theme.securityGold.opacity(0.3)).frame(width: 4, height: 4)
+            Text(term)
+                .font(Theme.microLabel(size: 9))
+                .foregroundStyle(Theme.inkTertiary)
+        }
+        .glossaryTerm(term, definition: definition)
     }
 
     // MARK: - Tab: Financials
