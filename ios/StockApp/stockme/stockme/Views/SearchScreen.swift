@@ -518,34 +518,24 @@ struct SearchScreen: View {
             .navigationDestination(for: StockProfileDest.self) { dest in
                 StockProfileView(ticker: dest.ticker, exchange: dest.exchange)
             }
-            .confirmationDialog(
-                screenerActionResult.map { "\($0.companyName ?? $0.ticker)" } ?? "",
-                isPresented: $showScreenerAction,
-                titleVisibility: .visible
-            ) {
-                if let result = screenerActionResult {
-                    Button("✦ Generate AI Analysis") {
-                        HapticManager.impact(.medium)
-                        navPath.append(result.ticker)
-                    }
-                    Button("◉ Stock Profile") {
-                        HapticManager.impact(.medium)
-                        navPath.append(StockProfileDest(ticker: result.ticker, exchange: "NSE"))
-                    }
-                    Button("Cancel", role: .cancel) {}
+            .navigationDestination(for: StockActionHubDest.self) { dest in
+                StockActionHubView(dest: dest, path: $navPath)
+            }
+            .navigationDestination(for: AnalysisDest.self) { dest in
+                AnalysisScreen(ticker: dest.ticker, launchMode: dest.mode)
+            }
+            .onChange(of: showScreenerAction) { _, show in
+                if show, let result = screenerActionResult {
+                    navPath.append(StockActionHubDest(ticker: result.ticker, companyName: result.companyName, exchange: "NSE"))
+                    showScreenerAction = false
                 }
             }
-            .stockTapActionSheet(
-                ticker: stockTapTicker,
-                companyName: stockTapCompanyName,
-                isPresented: $showStockTapAction,
-                onAIAnalysis: { ticker in
-                    navPath.append(ticker)
-                },
-                onStockProfile: { ticker in
-                    navPath.append(StockProfileDest(ticker: ticker, exchange: "NSE"))
+            .onChange(of: showStockTapAction) { _, show in
+                if show {
+                    navPath.append(StockActionHubDest(ticker: stockTapTicker, companyName: stockTapCompanyName, exchange: "NSE"))
+                    showStockTapAction = false
                 }
-            )
+            }
             .sheet(isPresented: $showFilterSheet) {
                 FilterSheet(customPresetsManager: customPresetsManager) { preset in
                     activeCustomPreset = preset

@@ -82,17 +82,18 @@ struct WatchlistScreen: View {
             .navigationDestination(for: StockProfileDest.self) { dest in
                 StockProfileView(ticker: dest.ticker, exchange: dest.exchange)
             }
-            .stockTapActionSheet(
-                ticker: stockTapTicker,
-                companyName: stockTapCompanyName,
-                isPresented: $showStockTapAction,
-                onAIAnalysis: { ticker in
-                    navPath.append(ticker)
-                },
-                onStockProfile: { ticker in
-                    navPath.append(StockProfileDest(ticker: ticker, exchange: "NSE"))
+            .navigationDestination(for: StockActionHubDest.self) { dest in
+                StockActionHubView(dest: dest, path: $navPath)
+            }
+            .navigationDestination(for: AnalysisDest.self) { dest in
+                AnalysisScreen(ticker: dest.ticker, launchMode: dest.mode)
+            }
+            .onChange(of: showStockTapAction) { _, show in
+                if show {
+                    navPath.append(StockActionHubDest(ticker: stockTapTicker, companyName: stockTapCompanyName, exchange: "NSE"))
+                    showStockTapAction = false
                 }
-            )
+            }
         }
         .task { await load() }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("DeepLinkWatchlistAdd"))) { _ in
