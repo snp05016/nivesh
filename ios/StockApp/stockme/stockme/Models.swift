@@ -387,6 +387,11 @@ struct QuickInfo: Codable {
     let peRatio: Double?
     let debtToEquity: Double?
     let promoterHoldingPct: Double?
+    let fiiHoldingPct: Double?
+    let diiHoldingPct: Double?
+    let ebitdaMarginPct: Double?
+    let roePct: Double?
+    let rocePct: Double?
     let volume: Int?
     let avgVolume: Int?
     let priceHistory90d: [PricePoint]?
@@ -405,6 +410,11 @@ struct QuickInfo: Codable {
         case peRatio = "pe_ratio"
         case debtToEquity = "debt_to_equity"
         case promoterHoldingPct = "promoter_holding_pct"
+        case fiiHoldingPct = "fii_holding_pct"
+        case diiHoldingPct = "dii_holding_pct"
+        case ebitdaMarginPct = "ebitda_margin_pct"
+        case roePct = "roe_pct"
+        case rocePct = "roce_pct"
         case volume, avgVolume = "avg_volume"
         case priceHistory90d = "price_history_90d"
         case peVsAvg = "pe_vs_avg"
