@@ -1,227 +1,263 @@
 import SwiftUI
 
-// MARK: - ImmersiveChartState
+// MARK: - Chart geometry helpers
+//
+// Shared point-projection used by the line shape, area shape, and scrub overlay
+// so the curve, the fill, the dashed crosshair and the dot all align perfectly.
 
-@Observable
-final class ImmersiveChartState {
-    var snapshots: [ValuationSnapshot] = []
-    var visibleStartIndex: Int = 0
-    var visibleEndIndex: Int = 0
-    var scrubIndex: Int? = nil
-    var scale: CGFloat = 1.0
+private enum ImmersiveChartGeometry {
+    /// Vertical breathing room so peaks/troughs, the glow and the scrub dot never clip.
+    static let verticalInset: CGFloat = 22
 
-    var visibleSnapshots: ArraySlice<ValuationSnapshot> {
-        guard !snapshots.isEmpty else { return [] }
-        let s = max(0, visibleStartIndex)
-        let e = min(snapshots.count - 1, visibleEndIndex)
-        guard s <= e else { return [] }
-        return snapshots[s...e]
-    }
-
-    var displayValue: Double {
-        if let idx = scrubIndex, snapshots.indices.contains(idx) {
-            return snapshots[idx].totalValue
+    /// Projects a value series into view-space points. Line runs full-bleed edge to edge.
+    static func points(values: [Double], in rect: CGRect) -> [CGPoint] {
+        guard values.count > 1 else {
+            guard values.first != nil else { return [] }
+            return [CGPoint(x: rect.minX, y: rect.midY),
+                    CGPoint(x: rect.maxX, y: rect.midY)]
         }
-        return snapshots.last?.totalValue ?? 0
-    }
-
-    var displayDate: Date? {
-        if let idx = scrubIndex, snapshots.indices.contains(idx) {
-            return snapshots[idx].parsedDate
+        let mn = values.min() ?? 0
+        let mx = values.max() ?? 1
+        let rng = max(mx - mn, 0.0001)
+        let usableH = rect.height - verticalInset * 2
+        let step = rect.width / CGFloat(values.count - 1)
+        return values.enumerated().map { i, v in
+            let x = rect.minX + CGFloat(i) * step
+            let y = rect.minY + verticalInset + (1 - CGFloat((v - mn) / rng)) * usableH
+            return CGPoint(x: x, y: y)
         }
-        return snapshots.last?.parsedDate
     }
 
-    var isPositive: Bool {
-        (snapshots.last?.totalPnl ?? 0) >= 0
-    }
-
-    var displayPnlPct: Double {
-        if let idx = scrubIndex, snapshots.indices.contains(idx) {
-            return snapshots[idx].pnlPercent
+    /// Smooth the polyline with horizontal-tangent cubic Béziers (same easing as the sparkline).
+    static func smoothLine(_ pts: [CGPoint]) -> Path {
+        var path = Path()
+        guard pts.count > 1 else { return path }
+        path.move(to: pts[0])
+        for i in 1..<pts.count {
+            let prev = pts[i - 1]
+            let curr = pts[i]
+            let midX = (prev.x + curr.x) / 2
+            path.addCurve(to: curr,
+                          control1: CGPoint(x: midX, y: prev.y),
+                          control2: CGPoint(x: midX, y: curr.y))
         }
-        return snapshots.last?.pnlPercent ?? 0
+        return path
     }
+}
 
-    func reset(snapshots: [ValuationSnapshot]) {
-        self.snapshots = snapshots
-        visibleStartIndex = 0
-        visibleEndIndex = max(0, snapshots.count - 1)
-        scrubIndex = nil
-        scale = 1.0
+// MARK: - Shapes
+
+/// The glowing price curve. Trimmable so it can draw itself in on appear.
+private struct GlowLineShape: Shape {
+    let values: [Double]
+    func path(in rect: CGRect) -> Path {
+        ImmersiveChartGeometry.smoothLine(ImmersiveChartGeometry.points(values: values, in: rect))
+    }
+}
+
+/// The gradient area beneath the curve (line + closed baseline at the bottom edge).
+private struct GlowAreaShape: Shape {
+    let values: [Double]
+    func path(in rect: CGRect) -> Path {
+        let pts = ImmersiveChartGeometry.points(values: values, in: rect)
+        guard pts.count > 1 else { return Path() }
+        var path = ImmersiveChartGeometry.smoothLine(pts)
+        path.addLine(to: CGPoint(x: pts.last!.x, y: rect.maxY))
+        path.addLine(to: CGPoint(x: pts.first!.x, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }
 
 // MARK: - ImmersivePortfolioHeroChart
+//
+// Full-bleed dark-fintech glow chart. Smooth neon line with a soft gradient fill,
+// animated draw-in, and a finger-tracking scrub tooltip with a dashed crosshair + ringed dot.
+// Public API preserved: `ImmersivePortfolioHeroChart(snapshots:)`.
 
 struct ImmersivePortfolioHeroChart: View {
     let snapshots: [ValuationSnapshot]
+    /// When false the static value header is omitted (e.g. Portfolio, where
+    /// `PortfolioHeroBlock` is already the resting hero). The scrub tooltip still appears.
+    var showValueHeader: Bool = true
 
-    @State private var chartState = ImmersiveChartState()
+    @State private var scrubIndex: Int? = nil
+    @State private var drawProgress: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let chartHeight: CGFloat = UIScreen.main.bounds.height * 0.28
+    private let chartHeight: CGFloat = UIScreen.main.bounds.height * 0.26
+
+    // MARK: Derived data
+
+    private var values: [Double] { snapshots.map(\.totalValue) }
+    private var isPositive: Bool { (snapshots.last?.totalPnl ?? 0) >= 0 }
+    private var lineColor: Color { isPositive ? Theme.bullGreen : Theme.bearRed }
+    private var fillGradient: LinearGradient {
+        isPositive ? Theme.chartBullGradient : Theme.chartBearGradient
+    }
+
+    private var displayValue: Double {
+        if let i = scrubIndex, snapshots.indices.contains(i) { return snapshots[i].totalValue }
+        return snapshots.last?.totalValue ?? 0
+    }
+    private var displayDate: Date? {
+        if let i = scrubIndex, snapshots.indices.contains(i) { return snapshots[i].parsedDate }
+        return snapshots.last?.parsedDate
+    }
+    private var displayPnlPct: Double {
+        if let i = scrubIndex, snapshots.indices.contains(i) { return snapshots[i].pnlPercent }
+        return snapshots.last?.pnlPercent ?? 0
+    }
 
     var body: some View {
         Group {
-            if snapshots.isEmpty {
+            if snapshots.count < 2 {
                 EmptyView()
             } else {
-                ZStack(alignment: .topLeading) {
-                    // Layer 1 — Immersive tint background
-                    Color.clear
-                        .immersiveChartTint(isPositive: chartState.isPositive)
-
-                    // Layer 2 — Value/date overlay (non-interactive)
-                    valueOverlay
-
-                    // Layer 3 — Canvas chart
-                    chartCanvas
-                        .frame(height: chartHeight)
-                        .padding(.horizontal, 0)
-
-                    // Layer 4 — Gesture overlay
-                    gestureOverlay
+                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                    if showValueHeader {
+                        valueHeader
+                            .padding(.horizontal, Theme.screenPadding)
+                    }
+                    chartBody
                         .frame(height: chartHeight)
                 }
             }
         }
-        .onAppear { chartState.reset(snapshots: snapshots) }
-        .onChange(of: snapshots.count) { _, _ in chartState.reset(snapshots: snapshots) }
+        .onAppear { animateIn() }
+        .onChange(of: snapshots.count) { _, _ in
+            scrubIndex = nil
+            animateIn()
+        }
     }
 
-    // MARK: - Value Overlay
+    // MARK: Hero value header
 
-    private var valueOverlay: some View {
+    private var valueHeader: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-            Text(IndianFormatter.priceCompact(chartState.displayValue))
-                .font(.title.weight(.bold))
+            Text(IndianFormatter.priceCompact(displayValue))
+                .font(.largeTitle.weight(.bold))
                 .monospaced()
                 .foregroundStyle(Theme.inkPrimary)
                 .contentTransition(.numericText())
-                .animation(.easeInOut(duration: 0.05), value: chartState.displayValue)
+                .animation(.easeInOut(duration: 0.08), value: displayValue)
 
-            HStack(spacing: Theme.Spacing.small) {
-                if let d = chartState.displayDate {
+            HStack(spacing: Theme.Spacing.tight) {
+                Text((displayPnlPct >= 0 ? "▲ +" : "▼ ") + String(format: "%.2f%%", abs(displayPnlPct)))
+                    .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote).weight(.semibold))
+                    .foregroundStyle(displayPnlPct >= 0 ? Theme.bullGreen : Theme.bearRed)
+                if let d = displayDate {
+                    Text("·")
+                        .foregroundStyle(Theme.inkTertiary)
                     Text(dateString(from: d))
                         .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
                         .foregroundStyle(Theme.inkTertiary)
                 }
-                let pnl = chartState.displayPnlPct
-                Text((pnl >= 0 ? "+" : "") + String(format: "%.2f%%", pnl))
-                    .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
-                    .foregroundStyle(pnl >= 0 ? Theme.bullGreen : Theme.bearRed)
             }
+            .animation(.easeInOut(duration: 0.08), value: displayPnlPct)
         }
-        .padding(.horizontal, Theme.screenPadding)
-        .padding(.top, Theme.Spacing.standard)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .allowsHitTesting(false)
     }
 
-    // MARK: - Canvas Chart
+    // MARK: Chart body (fill + glow line + scrub overlay)
 
-    private var chartCanvas: some View {
-        Canvas { context, size in
-            let vp = Array(chartState.visibleSnapshots)
-            guard vp.count > 1 else { return }
+    private var chartBody: some View {
+        GeometryReader { geo in
+            let rect = CGRect(origin: .zero, size: geo.size)
+            let pts = ImmersiveChartGeometry.points(values: values, in: rect)
 
-            let values = vp.map(\.totalValue)
-            let mn = values.min() ?? 0
-            let mx = values.max() ?? 1
-            let rng = max(mx - mn, 1)
-            let pad: CGFloat = 16
-            let lineColor = chartState.isPositive ? Theme.bullGreen : Theme.bearRed
+            ZStack {
+                // Gradient area fill — fades in with the draw-in.
+                GlowAreaShape(values: values)
+                    .fill(fillGradient)
+                    .opacity(Double(drawProgress))
 
-            func xFor(_ i: Int) -> CGFloat {
-                CGFloat(i) / CGFloat(vp.count - 1) * size.width
+                // Soft outer glow — a wide blurred copy of the curve.
+                GlowLineShape(values: values)
+                    .trim(from: 0, to: drawProgress)
+                    .stroke(lineColor.opacity(0.45),
+                            style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+                    .blur(radius: 9)
+
+                // Crisp neon line.
+                GlowLineShape(values: values)
+                    .trim(from: 0, to: drawProgress)
+                    .stroke(lineColor,
+                            style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+
+                // Scrub crosshair + dot + floating tooltip.
+                if let i = scrubIndex, pts.indices.contains(i) {
+                    scrubOverlay(point: pts[i], in: geo.size, index: i)
+                }
             }
-            func yFor(_ v: Double) -> CGFloat {
-                pad + CGFloat((mx - v) / rng) * (size.height - 2 * pad)
-            }
-
-            // Gradient fill under line
-            var fillPath = Path()
-            fillPath.move(to: CGPoint(x: 0, y: size.height))
-            for (i, pt) in vp.enumerated() {
-                fillPath.addLine(to: CGPoint(x: xFor(i), y: yFor(pt.totalValue)))
-            }
-            fillPath.addLine(to: CGPoint(x: size.width, y: size.height))
-            fillPath.closeSubpath()
-            context.fill(fillPath, with: .color(lineColor.opacity(0.18)))
-
-            // Chart line
-            var linePath = Path()
-            for (i, pt) in vp.enumerated() {
-                let p = CGPoint(x: xFor(i), y: yFor(pt.totalValue))
-                if i == 0 { linePath.move(to: p) }
-                else { linePath.addLine(to: p) }
-            }
-            context.stroke(linePath, with: .color(lineColor),
-                           style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
-
-            // Crosshair when scrubbing
-            if let si = chartState.scrubIndex,
-               chartState.snapshots.indices.contains(si) {
-                let localIdx = si - chartState.visibleStartIndex
-                guard localIdx >= 0, localIdx < vp.count else { return }
-                let cx = xFor(localIdx)
-                let cy = yFor(chartState.snapshots[si].totalValue)
-
-                var crosshair = Path()
-                crosshair.move(to: CGPoint(x: cx, y: 0))
-                crosshair.addLine(to: CGPoint(x: cx, y: size.height))
-                context.stroke(crosshair, with: .color(Theme.inkTertiary),
-                               style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-
-                context.fill(
-                    Path(ellipseIn: CGRect(x: cx - 4, y: cy - 4, width: 8, height: 8)),
-                    with: .color(lineColor)
-                )
-            }
-        }
-        .padding(.horizontal, 0)
-    }
-
-    // MARK: - Gesture Overlay
-
-    private var gestureOverlay: some View {
-        Color.clear
             .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 2)
-                    .onChanged { value in
-                        let vp = Array(chartState.visibleSnapshots)
-                        guard !vp.isEmpty else { return }
-                        let screenW = UIScreen.main.bounds.width
-                        let idx = min(max(Int(value.location.x / screenW * CGFloat(vp.count)), 0), vp.count - 1)
-                        let globalIdx = chartState.visibleStartIndex + idx
-                        if chartState.scrubIndex != globalIdx {
-                            HapticManager.selection()
-                            chartState.scrubIndex = globalIdx
-                        }
-                    }
-                    .onEnded { _ in
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                            chartState.scrubIndex = nil
-                        }
-                    }
-            )
-            .simultaneousGesture(
-                MagnificationGesture()
-                    .onChanged { scale in
-                        let center = (chartState.visibleStartIndex + chartState.visibleEndIndex) / 2
-                        let currentWindow = chartState.visibleEndIndex - chartState.visibleStartIndex
-                        let count = chartState.snapshots.count
-                        guard count > 1 else { return }
-                        let newWindow = max(7, min(count - 1, Int(CGFloat(currentWindow) / scale)))
-                        let half = newWindow / 2
-                        chartState.visibleStartIndex = max(0, center - half)
-                        chartState.visibleEndIndex = min(count - 1, center + half)
-                    }
-            )
+            .gesture(scrubGesture(in: geo.size))
+        }
     }
 
-    // MARK: - Helpers
+    // MARK: Scrub overlay
+
+    @ViewBuilder
+    private func scrubOverlay(point pt: CGPoint, in size: CGSize, index i: Int) -> some View {
+        // Dashed vertical crosshair.
+        Path { p in
+            p.move(to: CGPoint(x: pt.x, y: 0))
+            p.addLine(to: CGPoint(x: pt.x, y: size.height))
+        }
+        .stroke(Theme.inkTertiary.opacity(0.55),
+                style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
+
+        // Dot on the line with a white ring.
+        Circle()
+            .fill(lineColor)
+            .frame(width: 9, height: 9)
+            .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+            .shadow(color: lineColor.opacity(0.6), radius: 4)
+            .position(pt)
+
+        // Floating price tooltip, clamped within the chart width.
+        if let d = displayDate {
+            ScrubTooltipView(price: snapshots[i].totalValue, date: d)
+                .fixedSize()
+                .position(x: clampedTooltipX(pt.x, width: size.width), y: 16)
+        }
+    }
+
+    private func clampedTooltipX(_ x: CGFloat, width: CGFloat) -> CGFloat {
+        let halfTooltip: CGFloat = 70
+        return min(max(x, halfTooltip), width - halfTooltip)
+    }
+
+    // MARK: Gesture
+
+    private func scrubGesture(in size: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 2)
+            .onChanged { value in
+                guard values.count > 1, size.width > 0 else { return }
+                let ratio = min(max(value.location.x / size.width, 0), 1)
+                let idx = Int(round(ratio * CGFloat(values.count - 1)))
+                if scrubIndex != idx {
+                    HapticManager.selection()
+                    scrubIndex = idx
+                }
+            }
+            .onEnded { _ in
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    scrubIndex = nil
+                }
+            }
+    }
+
+    // MARK: Helpers
+
+    private func animateIn() {
+        drawProgress = 0
+        if reduceMotion {
+            drawProgress = 1
+        } else {
+            withAnimation(.easeOut(duration: 0.9)) { drawProgress = 1 }
+        }
+    }
 
     private func dateString(from date: Date) -> String {
         let f = DateFormatter()
@@ -231,6 +267,9 @@ struct ImmersivePortfolioHeroChart: View {
 }
 
 // MARK: - ImmersiveChartTint ViewModifier
+//
+// Soft top-anchored colour wash behind a hero chart so the screen background
+// subtly picks up the bullish / bearish tone. Used by Home and Analysis screens.
 
 struct ImmersiveChartTint: ViewModifier {
     let isPositive: Bool
@@ -240,6 +279,7 @@ struct ImmersiveChartTint: ViewModifier {
             (isPositive ? Theme.bullGreen : Theme.bearRed)
                 .opacity(0.07)
                 .frame(height: UIScreen.main.bounds.height * 0.35)
+                .blur(radius: 40)
                 .allowsHitTesting(false)
                 .animation(.easeInOut(duration: 0.3), value: isPositive)
         }
