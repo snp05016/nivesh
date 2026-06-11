@@ -10,6 +10,7 @@ class StockProfileViewModel: ObservableObject {
     @Published var history: StockHistoryResponse?
     @Published var niftyHistory: [NiftyPricePoint] = []
     @Published var chartLoading = false
+    @Published var chartError: String? = nil
 
     // Financials
     @Published var quarterlyFinancials: [QuarterlyFinancial] = []
@@ -41,7 +42,10 @@ class StockProfileViewModel: ObservableObject {
 
     func fetchChart(period: String = "1y") async {
         guard history == nil else { return }
-        await MainActor.run { chartLoading = true }
+        await MainActor.run {
+            chartLoading = true
+            chartError = nil
+        }
         async let hist = NetworkManager.shared.fetchStockHistory(ticker: ticker, exchange: exchange, period: period)
         async let nifty = NetworkManager.shared.getNiftyHistory(days: periodToDays(period))
         let (h, n) = await (hist, nifty)
@@ -49,6 +53,15 @@ class StockProfileViewModel: ObservableObject {
             history = h
             niftyHistory = n
             chartLoading = false
+            if h == nil {
+                chartError = """
+                Stock history fetch failed for \(ticker)
+                Endpoint: GET /api/v1/market/stock-history?ticker=\(ticker)&exchange=\(exchange)&period=\(period)
+                Reason: Network error, HTTP non-200, or decode failure.
+                Check server logs with: journalctl -u nivesh.service -n 50 --no-pager
+                Or test manually: curl "https://api.nivesh.app/api/v1/market/stock-history?ticker=\(ticker)&exchange=\(exchange)&period=\(period)"
+                """
+            }
         }
     }
 

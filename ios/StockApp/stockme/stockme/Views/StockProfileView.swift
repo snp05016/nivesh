@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import UIKit
 
 // MARK: - Glossary Term System (Phase 4)
 
@@ -404,6 +405,47 @@ struct StockProfileView: View {
                             (info.changePercent ?? 0) >= 0
                                 ? Theme.bullGreen.opacity(0.06) : Theme.bearRed.opacity(0.06)
                         )
+                    } else if let error = vm.chartError {
+                        // Detailed error display — copy-paste ready
+                        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                            HStack(spacing: Theme.Spacing.tight) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(Theme.bearRed)
+                                Text("CHART DATA ERROR")
+                                    .font(Theme.officialStampFont(size: 10))
+                                    .tracking(1.5)
+                                    .foregroundStyle(Theme.bearRed)
+                            }
+                            Text(error)
+                                .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
+                                .foregroundStyle(Theme.inkSecondary)
+                                .textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Button {
+                                UIPasteboard.general.string = error
+                                HapticManager.success()
+                            } label: {
+                                HStack(spacing: Theme.Spacing.small) {
+                                    Image(systemName: "doc.on.doc")
+                                        .font(.caption)
+                                    Text("COPY ERROR TO CLIPBOARD")
+                                        .font(Theme.officialStampFont(size: 9))
+                                        .tracking(0.8)
+                                }
+                                .foregroundStyle(Theme.securityGold)
+                                .padding(.horizontal, Theme.Spacing.medium)
+                                .padding(.vertical, Theme.Spacing.tight)
+                                .background(Theme.securityGold.opacity(0.1))
+                                .clipShape(Capsule())
+                            }
+                            .buttonStyle(EKPressStyle())
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(Theme.Spacing.card)
+                        .background(Theme.canvasDeep)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+                        .padding(.horizontal, Theme.screenPadding)
+                        .padding(.bottom, Theme.Spacing.standard)
                     }
 
                     // Tab bar
@@ -781,7 +823,48 @@ struct StockProfileView: View {
                         chartSection_PromoterHistory()
                     }
                 } else {
-                    emptyState(message: "Price history unavailable")
+                    if let error = vm.chartError {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                            HStack(spacing: Theme.Spacing.tight) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(Theme.bearRed)
+                                Text("CHART DATA ERROR")
+                                    .font(Theme.officialStampFont(size: 10))
+                                    .tracking(1.5)
+                                    .foregroundStyle(Theme.bearRed)
+                            }
+                            Text(error)
+                                .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
+                                .foregroundStyle(Theme.inkSecondary)
+                                .textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Button {
+                                UIPasteboard.general.string = error
+                                HapticManager.success()
+                            } label: {
+                                HStack(spacing: Theme.Spacing.small) {
+                                    Image(systemName: "doc.on.doc")
+                                        .font(.caption)
+                                    Text("COPY ERROR TO CLIPBOARD")
+                                        .font(Theme.officialStampFont(size: 9))
+                                        .tracking(0.8)
+                                }
+                                .foregroundStyle(Theme.securityGold)
+                                .padding(.horizontal, Theme.Spacing.medium)
+                                .padding(.vertical, Theme.Spacing.tight)
+                                .background(Theme.securityGold.opacity(0.1))
+                                .clipShape(Capsule())
+                            }
+                            .buttonStyle(EKPressStyle())
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(Theme.Spacing.card)
+                        .background(Theme.canvasDeep)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+                        .banknoteCard()
+                    } else {
+                        emptyState(message: "Price history unavailable")
+                    }
                 }
             }
             .padding(.horizontal, Theme.screenPadding)
