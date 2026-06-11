@@ -172,26 +172,34 @@ struct AnalysisScreen: View {
                 .accessibilityLabel("Back")
             }
             ToolbarItem(placement: .principal) {
-                VStack(spacing: 0) {
-                    Text("विश्लेषण रिपोर्ट")
-                        .font(Theme.hindiFont(size: 9))
-                        .foregroundStyle(Theme.inkSecondary)
-                    Text("ANALYSIS REPORT")
-                        .font(Theme.engravedSerif(size: 14, weight: .bold))
-                        .foregroundStyle(Theme.inkPrimary)
-                }
+                // Screen C — inline ticker title
+                Text(ticker)
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(Theme.inkPrimary)
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    shareAsImage()
-                } label: {
-                    Image(systemName: "square.and.arrow.up")
-                        .foregroundStyle(viewModel.analysis != nil ? Theme.inkPrimary : Theme.inkSecondary.opacity(0.3))
+                HStack(spacing: Theme.Spacing.medium) {
+                    // Screen C — price + ChangeBadge inline on the right
+                    if let info = viewModel.quickInfo {
+                        Text(IndianFormatter.price(livePrice ?? info.price ?? 0))
+                            .font(Theme.serialNumberFont(size: 13, relativeTo: .footnote))
+                            .foregroundStyle(Theme.inkPrimary)
+                        ChangeBadge(value: info.changePercent ?? 0)
+                    }
+                    Button {
+                        shareAsImage()
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .foregroundStyle(viewModel.analysis != nil ? Theme.inkPrimary : Theme.inkSecondary.opacity(0.3))
+                    }
+                    .disabled(viewModel.analysis == nil)
+                    .accessibilityLabel("Share as Image")
                 }
-                .disabled(viewModel.analysis == nil)
-                .accessibilityLabel("Share as Image")
             }
         }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Theme.canvas, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .onAppear {
             activeTab = savedLastTab
             deepScanEnabled = defaultDeepScan
@@ -625,9 +633,14 @@ struct AnalysisScreen: View {
                         Text("BULL CASE").font(Theme.sectionCapsLabel()).foregroundStyle(Theme.dataPositive)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    ForEach(analysis.bullCase.prefix(3), id: \.self) { point in
-                        HStack(alignment: .top, spacing: Theme.Spacing.tight) {
-                            Text("▲").font(Theme.monoTabular(size: 8)).foregroundStyle(Theme.dataPositive)
+                    ForEach(Array(analysis.bullCase.prefix(3).enumerated()), id: \.offset) { idx, point in
+                        HStack(alignment: .top, spacing: Theme.Spacing.medium) {
+                            Text("\(idx + 1)")
+                                .font(Theme.officialStampFont(size: 10)).tracking(1.2)
+                                .foregroundStyle(Theme.securityGold)
+                                .frame(width: 20, height: 20)
+                                .background(Theme.securityGold.opacity(0.15))
+                                .clipShape(Circle())
                             Text(stripEmoji(point))
                                 .font(Theme.engravedSerif(size: 12, weight: .regular, relativeTo: .caption))
                                 .foregroundStyle(Theme.inkSecondary).lineSpacing(3)
@@ -643,9 +656,14 @@ struct AnalysisScreen: View {
                         Text("BEAR CASE").font(Theme.sectionCapsLabel(size: 12)).foregroundStyle(Theme.dataNegative)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    ForEach(analysis.bearCase.prefix(3), id: \.self) { point in
-                        HStack(alignment: .top, spacing: Theme.Spacing.tight) {
-                            Text("▼").font(Theme.monoTabular(size: 9)).foregroundStyle(Theme.dataNegative)
+                    ForEach(Array(analysis.bearCase.prefix(3).enumerated()), id: \.offset) { idx, point in
+                        HStack(alignment: .top, spacing: Theme.Spacing.medium) {
+                            Text("\(idx + 1)")
+                                .font(Theme.officialStampFont(size: 10)).tracking(1.2)
+                                .foregroundStyle(Theme.bearRed)
+                                .frame(width: 20, height: 20)
+                                .background(Theme.bearRed.opacity(0.15))
+                                .clipShape(Circle())
                             Text(stripEmoji(point))
                                 .font(Theme.engravedSerif(size: 13, weight: .medium, relativeTo: .caption))
                                 .foregroundStyle(Theme.inkPrimary).lineSpacing(3)
@@ -724,6 +742,26 @@ struct AnalysisScreen: View {
     private func fundamentalsSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
             SectionHeaderView(title: "FUNDAMENTALS")
+
+            // Screen C — 3-column numeric metric grid with long-press term tooltips
+            if let info = viewModel.quickInfo {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())],
+                          spacing: Theme.Spacing.standard) {
+                    AnalysisMetricCell(label: "P/E", term: "P/E Ratio",
+                                       value: info.peRatio.map { String(format: "%.1f", $0) } ?? "—")
+                    AnalysisMetricCell(label: "DEBT/EQ", term: "Debt/Equity",
+                                       value: info.debtToEquity.map { String(format: "%.2f", $0) } ?? "—")
+                    AnalysisMetricCell(label: "PROMOTER", term: "Promoter Pledging",
+                                       value: info.promoterHoldingPct.map { String(format: "%.1f%%", $0) } ?? "—")
+                    AnalysisMetricCell(label: "52W HIGH", term: "52W High",
+                                       value: info.week52High.map { IndianFormatter.price($0) } ?? "—")
+                    AnalysisMetricCell(label: "52W LOW", term: "52W Low",
+                                       value: info.week52Low.map { IndianFormatter.price($0) } ?? "—")
+                    AnalysisMetricCell(label: "VOLUME", term: "Bulk Deal",
+                                       value: info.volume.map { "\($0)" } ?? "—")
+                }
+            }
+
             let factors: [(String, String)] = [
                 ("MANAGEMENT QUALITY", analysis.keyFactors.managementQuality),
                 ("GEOPOLITICAL CONTEXT", analysis.keyFactors.geopoliticalContext),
@@ -1238,6 +1276,31 @@ private struct MacroChip: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
+    }
+}
+
+// MARK: - Analysis Metric Cell (Screen C 3-col grid)
+
+private struct AnalysisMetricCell: View {
+    let label: String
+    let term: String
+    let value: String
+
+    var body: some View {
+        VStack(spacing: Theme.Spacing.xSmall) {
+            Text(label)
+                .font(Theme.officialStampFont(size: 8)).tracking(1.2)
+                .foregroundStyle(Theme.inkTertiary)
+                .financeTerm(term)
+            Text(value)
+                .font(Theme.serialNumberFont(size: 14, relativeTo: .footnote).weight(.bold))
+                .foregroundStyle(Theme.inkPrimary)
+                .lineLimit(1).minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Theme.Spacing.standard)
+        .padding(.horizontal, Theme.Spacing.small)
+        .banknoteCard()
     }
 }
 
