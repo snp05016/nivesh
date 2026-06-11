@@ -1110,9 +1110,7 @@ struct StockProfileView: View {
             }
             .chartXAxis {
                 AxisMarks { _ in
-                    AxisValueLabel() {
-                        Text("\($0.as(Double.self)?.formatted(.number.precision(.fractionLength(0))) ?? "")%")
-                    }
+                    AxisValueLabel()
                 }
             }
             .frame(height: 44)
