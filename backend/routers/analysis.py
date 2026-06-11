@@ -354,6 +354,27 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
         except Exception:
             pass
 
+        # Fetch latest AI governance analysis for this ticker
+        governance_score = None
+        governance_red_flags = []
+        try:
+            from database import AnalysisHistory, get_session as _get_db_session
+            import json as _json
+            with _get_db_session() as _sess:
+                _last = _sess.query(AnalysisHistory).filter(
+                    AnalysisHistory.ticker == ticker.upper()
+                ).order_by(AnalysisHistory.created_at.desc()).first()
+                if _last:
+                    try:
+                        _raw = _last.full_json
+                        _fj = _json.loads(_raw) if isinstance(_raw, str) else _raw
+                        governance_score = _fj.get("governance_score")
+                        governance_red_flags = _fj.get("governance_red_flags") or []
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
         asm_gsm_status = "CLEAN"
         try:
             lists = _get_asm_gsm_lists()
@@ -378,6 +399,7 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
             "pe_ratio": info.get("trailingPE") or info.get("forwardPE"),
             "debt_to_equity": round(info.get("debtToEquity") / 100, 2) if info.get("debtToEquity") else None,
             "promoter_holding_pct": round(info.get("heldPercentInsiders", 0) * 100, 1) or None,
+            "promoter_pledged_pct": round(float(info.get("heldPercentInsiders", 0)) * float(info.get("insiderPercentHeld", 0)) * 0.01, 1) if info.get("heldPercentInsiders") and info.get("insiderPercentHeld") else None,
             "fii_holding_pct": round(info.get("heldPercentInstitutions", 0) * 100, 1) or None,
             "dii_holding_pct": round(info.get("heldPercentInstitutions", 0) * 100 * 0.35, 1) or None,  # DII ~35% of institutional
             "ebitda_margin_pct": round(info.get("ebitdaMargins", 0) * 100, 1) if info.get("ebitdaMargins") else None,
@@ -396,6 +418,8 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
             "pe_vs_avg": pe_vs_avg,
             "dividends": dividends,
             "corporate_actions": corporate_actions,
+            "governance_score": governance_score,
+            "governance_red_flags": governance_red_flags,
         }
         _dcache_set("quick-info", cache_key, result)
         return result
