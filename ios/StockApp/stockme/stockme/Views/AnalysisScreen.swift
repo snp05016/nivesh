@@ -106,6 +106,9 @@ class AnalysisViewModel: ObservableObject {
 struct AnalysisScreen: View {
     let ticker: String
     var forceCached: Bool = false
+    /// When set (from StockActionHubView), bypasses the legacy "Cached Report
+    /// Found" alert and launches the report directly in the chosen mode.
+    var launchMode: AnalysisLaunchMode? = nil
     var userNote: String? = nil
     var purchaseDateStr: String? = nil
     var portfolioHolding: PortfolioHolding? = nil
@@ -126,6 +129,11 @@ struct AnalysisScreen: View {
     @State private var livePrice: Double? = nil
     @State private var pricePollingTask: Task<Void, Never>? = nil
     @State private var previousAnalysis: StockAnalysis? = nil
+
+    // Immersive hero chart (1y price history, fetched once on appear)
+    @State private var heroPrices: [Double] = []
+    @State private var heroDates: [Date] = []
+    @State private var heroLoading = false
 
     private static let deepScanDisabledTickers: Set<String> = [
         "NIFTY", "SENSEX", "BANKNIFTY", "NIFTYBANK", "INDIAVIX",
@@ -207,8 +215,20 @@ struct AnalysisScreen: View {
                 if let cached = reportManager.getReport(for: ticker) {
                     previousAnalysis = cached
                 }
-                
-                if forceCached, let cached = previousAnalysis {
+
+                if let mode = launchMode {
+                    // Hub-driven launch: act directly, no alert.
+                    switch mode {
+                    case .cached:
+                        if let cached = previousAnalysis { viewModel.analysis = cached }
+                        else { viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: false) }
+                    case .regenerate:
+                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: false)
+                    case .deepScan:
+                        let forbidden = Self.deepScanDisabledTickers.contains(ticker.uppercased())
+                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: !forbidden)
+                    }
+                } else if forceCached, let cached = previousAnalysis {
                     viewModel.analysis = cached
                 } else if previousAnalysis != nil {
                     showingRegenerateAlert = true
@@ -217,6 +237,7 @@ struct AnalysisScreen: View {
                 }
             }
             startPricePolling()
+            fetchHeroHistory()
         }
         .onChange(of: activeTab) { _, val in savedLastTab = val }
         .onDisappear {
@@ -245,6 +266,42 @@ struct AnalysisScreen: View {
             }
         } message: {
             Text("A report for \(ticker) was recently generated. Generating a new one takes time and credits. Do you want to view the existing report or generate a new one?")
+        }
+    }
+
+    // MARK: - Immersive hero chart
+
+    private func fetchHeroHistory() {
+        guard heroPrices.isEmpty, !heroLoading else { return }
+        heroLoading = true
+        Task {
+            let hist = await NetworkManager.shared.fetchStockHistory(ticker: ticker, exchange: "NSE", period: "1y")
+            await MainActor.run {
+                if let hist = hist, !hist.prices.isEmpty {
+                    heroPrices = hist.prices.map(\.close)
+                    heroDates = hist.prices.map(\.parsedDate)
+                }
+                heroLoading = false
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func heroChartSection(_ analysis: StockAnalysis) -> some View {
+        if !heroPrices.isEmpty {
+            let price = livePrice ?? viewModel.quickInfo?.price ?? heroPrices.last ?? 0
+            let changePct = viewModel.quickInfo?.changePercent ?? 0
+            ImmersiveStockHeroChart(
+                prices: heroPrices,
+                changePercent: changePct,
+                currentPrice: price,
+                dates: heroDates
+            )
+        } else if heroLoading {
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
+                .fill(Theme.inkTertiary.opacity(0.08))
+                .frame(height: UIScreen.main.bounds.height * 0.26)
+                .shimmerPlaceholder(isLoading: true)
         }
     }
 
@@ -386,9 +443,14 @@ struct AnalysisScreen: View {
     @ViewBuilder
     private func renderFullAnalysis(_ analysis: StockAnalysis) -> some View {
         ScrollView {
-            VStack(spacing: Theme.Spacing.sectionGap) {
-                stockHeaderSection(analysis)
-                aiVerdictCard(analysis)
+            VStack(spacing: Theme.Spacing.none) {
+                // Immersive hero chart for this specific stock — full-bleed, very top.
+                heroChartSection(analysis)
+                    .padding(.bottom, Theme.Spacing.standard)
+
+                VStack(spacing: Theme.Spacing.sectionGap) {
+                    stockHeaderSection(analysis)
+                    aiVerdictCard(analysis)
                 if let prev = previousAnalysis, prev.analysisDate != analysis.analysisDate {
                     whatChangedSection(analysis, previous: prev)
                 }
@@ -401,9 +463,10 @@ struct AnalysisScreen: View {
                 whatToWatchSection(analysis)
                 disclaimerSection(analysis)
                 Spacer(minLength: 100)
+                }
+                .padding(.horizontal, Theme.screenPadding)
+                .padding(.top, Theme.Spacing.standard)
             }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.top, Theme.Spacing.standard)
         }
     }
 

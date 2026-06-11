@@ -438,17 +438,18 @@ struct PortfolioScreen: View {
         .navigationDestination(for: StockProfileDest.self) { dest in
             StockProfileView(ticker: dest.ticker, exchange: dest.exchange)
         }
-        .stockTapActionSheet(
-            ticker: stockTapTicker,
-            companyName: stockTapCompanyName,
-            isPresented: $showStockTapAction,
-            onAIAnalysis: { ticker in
-                portfolioNavPath.append(ticker)
-            },
-            onStockProfile: { ticker in
-                portfolioNavPath.append(StockProfileDest(ticker: ticker, exchange: "NSE"))
+        .navigationDestination(for: StockActionHubDest.self) { dest in
+            StockActionHubView(dest: dest, path: $portfolioNavPath)
+        }
+        .navigationDestination(for: AnalysisDest.self) { dest in
+            AnalysisScreen(ticker: dest.ticker, launchMode: dest.mode)
+        }
+        .onChange(of: showStockTapAction) { _, show in
+            if show {
+                portfolioNavPath.append(StockActionHubDest(ticker: stockTapTicker, companyName: stockTapCompanyName, exchange: "NSE"))
+                showStockTapAction = false
             }
-        )
+        }
         .onAppear {
             guard let user = authManager.currentUser else { return }
             if viewModel.holdings.isEmpty && !viewModel.isLoading {

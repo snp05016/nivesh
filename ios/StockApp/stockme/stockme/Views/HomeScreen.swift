@@ -728,6 +728,12 @@ struct HomeScreen: View {
             .navigationDestination(for: StockProfileDest.self) { dest in
                 StockProfileView(ticker: dest.ticker, exchange: dest.exchange)
             }
+            .navigationDestination(for: StockActionHubDest.self) { dest in
+                StockActionHubView(dest: dest, path: $navigationPath)
+            }
+            .navigationDestination(for: AnalysisDest.self) { dest in
+                AnalysisScreen(ticker: dest.ticker, launchMode: dest.mode)
+            }
             .onReceive(Timer.publish(every: (Double(homeAutoRefreshSeconds) ?? 0) > 0 ? (Double(homeAutoRefreshSeconds) ?? 60) : 999999, on: .main, in: .common).autoconnect()) { _ in
                 guard (Double(homeAutoRefreshSeconds) ?? 0) > 0, let user = authManager.currentUser else { return }
                 Task {
@@ -746,17 +752,12 @@ struct HomeScreen: View {
                 }
             }
         }
-        .stockTapActionSheet(
-            ticker: stockTapTicker,
-            companyName: stockTapCompanyName,
-            isPresented: $showStockTapAction,
-            onAIAnalysis: { ticker in
-                navigationPath.append(ticker)
-            },
-            onStockProfile: { ticker in
-                navigationPath.append(StockProfileDest(ticker: ticker, exchange: "NSE"))
+        .onChange(of: showStockTapAction) { _, show in
+            if show {
+                navigationPath.append(StockActionHubDest(ticker: stockTapTicker, companyName: stockTapCompanyName, exchange: "NSE"))
+                showStockTapAction = false
             }
-        )
+        }
         .task {
             // Fire indices and all background fetches in parallel — don't block portfolio on indices
             let indicesTask = Task { await viewModel.fetchIndices() }
