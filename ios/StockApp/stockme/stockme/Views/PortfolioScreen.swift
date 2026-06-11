@@ -147,6 +147,24 @@ struct PortfolioScreen: View {
     @State private var showTagSheet = false
     @State private var taggingTicker = ""
 
+    // Screen B — immersive valuation chart (fetched at view level; ViewModel untouched)
+    @State private var snapshots: [ValuationSnapshot] = []
+    @State private var selectedRange: TimeRange = .year
+
+    /// Snapshots filtered to the selected time range (tail of the 90-day series).
+    private var rangedSnapshots: [ValuationSnapshot] {
+        guard !snapshots.isEmpty else { return [] }
+        let n: Int
+        switch selectedRange {
+        case .day:   n = 2
+        case .week:  n = 7
+        case .month: n = 30
+        case .year:  n = snapshots.count
+        case .all:   n = snapshots.count
+        }
+        return Array(snapshots.suffix(max(n, 2)))
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -191,15 +209,33 @@ struct PortfolioScreen: View {
 
                     ScrollView {
                         VStack(spacing: Theme.sectionSpacing) {
-                            PortfolioHeroNote(
+                            // Screen B — hero value block (price + two pills + brand chip)
+                            PortfolioHeroBlock(
                                 value: viewModel.totalValue,
                                 totalPnL: viewModel.totalValue - viewModel.investedValue,
-                                invested: viewModel.investedValue,
-                                todayPnL: viewModel.todayPnL,
-                                count: viewModel.holdings.count,
+                                totalPnLPercent: viewModel.investedValue > 0
+                                    ? (viewModel.totalValue - viewModel.investedValue) / viewModel.investedValue * 100
+                                    : 0,
                                 isLoading: viewModel.isLoading
                             )
                             .padding(.horizontal, Theme.screenPadding)
+
+                            // Screen B — full-bleed immersive valuation chart + underline selector
+                            if !rangedSnapshots.isEmpty {
+                                VStack(spacing: 0) {
+                                    ImmersivePortfolioHeroChart(snapshots: rangedSnapshots)
+                                    TimeRangeSelector(selected: $selectedRange,
+                                                      ranges: [.day, .week, .month, .year, .all])
+                                        .padding(.horizontal, Theme.screenPadding)
+                                        .padding(.top, Theme.Spacing.standard)
+                                }
+                            }
+
+                            // Screen B — allocation donut
+                            if !viewModel.holdings.isEmpty {
+                                PortfolioAllocationDonutCard(holdings: viewModel.holdings)
+                                    .padding(.horizontal, Theme.screenPadding)
+                            }
 
                             PortfolioRiskCard(riskAnalysis: riskAnalysis)
                                 .padding(.horizontal, Theme.screenPadding)
@@ -209,11 +245,6 @@ struct PortfolioScreen: View {
 
                             if let user = authManager.currentUser {
                                 ValuationCalendarView(userId: user.userId)
-                                    .padding(.horizontal, Theme.screenPadding)
-                            }
-
-                            if !viewModel.holdings.isEmpty {
-                                PortfolioChartsCarousel(holdings: viewModel.holdings)
                                     .padding(.horizontal, Theme.screenPadding)
                             }
 
@@ -231,13 +262,14 @@ struct PortfolioScreen: View {
                             .padding(.horizontal, Theme.screenPadding)
 
                             if selectedTab == 0 {
-                                ScrollView(.horizontal) {
-                                    HStack(spacing: Theme.Spacing.standard) {
-                                        ForEach(viewModel.holdings) { holding in
-                                            NavigationLink(value: HoldingNavValue(ticker: holding.stock.ticker, userNote: holding.notes, purchaseDateStr: holding.purchaseDate, holding: holding)) {
-                                                HoldingNoteRow(holding: holding, signalWarning: signalWarnings[holding.stock.ticker])
-                                                    .frame(width: UIScreen.main.bounds.width * 0.78)
-                                            }
+                                // Screen B — holdings in a single banknote card, 0.5pt separators
+                                VStack(spacing: 0) {
+                                    ForEach(Array(viewModel.holdings.enumerated()), id: \.element.id) { idx, holding in
+                                        NavigationLink(value: HoldingNavValue(ticker: holding.stock.ticker, userNote: holding.notes, purchaseDateStr: holding.purchaseDate, holding: holding)) {
+                                            HoldingNoteRow(holding: holding,
+                                                           color: allocationPalette[idx % allocationPalette.count],
+                                                           signalWarning: signalWarnings[holding.stock.ticker])
+                                        }
                                         .ekPress()
                                         .contextMenu {
                                             Button("Edit Holding") {
@@ -254,11 +286,14 @@ struct PortfolioScreen: View {
                                                 showDeleteAlert = true
                                             }
                                         }
+                                        if idx != viewModel.holdings.count - 1 {
+                                            Rectangle().fill(Theme.borderFine).frame(height: 0.5)
+                                                .padding(.horizontal, Theme.Spacing.card)
+                                        }
                                     }
                                 }
+                                .banknoteCard()
                                 .padding(.horizontal, Theme.screenPadding)
-                                .scrollIndicators(.hidden)
-                            }
                             } else if selectedTab == 1 {
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: Theme.Spacing.medium) {
@@ -399,6 +434,11 @@ struct PortfolioScreen: View {
                 let uid = user.userId
                 riskAnalysis = try? await NetworkManager.shared.fetchRiskAnalysis(userId: uid)
                 redFlags = try? await NetworkManager.shared.fetchRedFlags(userId: uid)
+            }
+            Task {
+                if let resp = try? await NetworkManager.shared.fetchValuationHistory(userId: user.userId, days: 90) {
+                    snapshots = resp.snapshots
+                }
             }
         }
         .sheet(isPresented: $showAddWatchlistSheet) {
@@ -863,75 +903,167 @@ private struct TabNoteButton: View {
     }
 }
 
+/// Screen B holding row — colored allocation dot, ticker, shares, value, ChangeBadge.
+/// Lives inside a single shared `.banknoteCard()` (no per-row card).
 private struct HoldingNoteRow: View {
     let holding: PortfolioHolding
+    var color: Color = Theme.inkSecondary
     var signalWarning: SignalWarning? = nil
 
     var body: some View {
-        HStack(spacing: 0) {
-            Rectangle()
-                .fill(holding.pnl >= 0 ? Theme.bullGreen.opacity(0.3) : Theme.bearRed.opacity(0.3))
-                .frame(width: 1)
-                .padding(.vertical, Theme.Spacing.standard)
+        HStack(spacing: Theme.Spacing.card) {
+            Circle().fill(color).frame(width: 8, height: 8)
 
-            HStack(spacing: Theme.Spacing.card) {
-                StockIcon(ticker: holding.stock.ticker, signal: holding.pnl >= 0 ? .bullish : .bearish)
-
-                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                    Text(holding.stock.companyName.uppercased())
-                        .font(Theme.engravedSerif(size: 15, weight: .bold))
-                        .foregroundStyle(Theme.inkPrimary)
-                    Text("\(Int(holding.shares)) SHARES • AVG ₹\(holding.buyPrice.inrFormatted)")
-                        .font(Theme.serialNumberFont(size: 9))
+            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                Text(holding.stock.ticker)
+                    .font(Theme.serialNumberFont(size: 14, relativeTo: .body).weight(.bold))
+                    .foregroundStyle(Theme.inkPrimary)
+                Text("\(Int(holding.shares)) shares")
+                    .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .footnote))
+                    .foregroundStyle(Theme.inkTertiary)
+                if let note = holding.notes, !note.isEmpty {
+                    Text(note)
+                        .font(Font.custom("Georgia", size: 12, relativeTo: .caption).italic())
                         .foregroundStyle(Theme.inkSecondary)
-                    if let target = holding.targetPrice {
-                        let progress = holding.stock.currentPrice / target
-                        HStack(spacing: Theme.Spacing.small) {
-                            Text("TGT ₹\(target.inrFormatted)")
-                                .font(Theme.serialNumberFont(size: 8))
-                                .foregroundStyle(Theme.inkSecondary)
-                            ProgressView(value: min(max(progress, 0), 1))
-                                .progressViewStyle(LinearProgressViewStyle(tint: progress >= 1 ? Theme.bullGreen : Theme.securityGold))
-                                .frame(height: 4)
-                        }
-                        .padding(.top, 2)
-                    }
-                    if let note = holding.notes, !note.isEmpty {
-                        Text(note)
-                            .font(Font.custom("Georgia", size: 12, relativeTo: .caption).italic())
-                            .foregroundStyle(Theme.inkSecondary)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                    }
-                    if let warning = signalWarning {
-                        HStack(spacing: Theme.Spacing.small) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.caption2)
-                            Text(warning.signalFlipped ? "SIGNAL CHANGED" : "BEARISH")
-                                .font(Theme.officialStampFont(size: 7))
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
-                        .background(Theme.bearRed)
-                        .clipShape(Capsule())
-                    }
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
-                    Text(holding.currentValue.inrFormatted)
-                        .font(Theme.serialNumberFont(size: 14))
-                        .foregroundStyle(Theme.inkPrimary)
-                    Text(holding.pnl.inrFormatted)
-                        .font(Theme.serialNumberFont(size: 12))
-                        .foregroundStyle(holding.pnl >= 0 ? Theme.bullGreen : Theme.bearRed)
+                if let warning = signalWarning {
+                    HStack(spacing: Theme.Spacing.small) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                        Text(warning.signalFlipped ? "SIGNAL CHANGED" : "BEARISH")
+                            .font(Theme.officialStampFont(size: 7))
+                    }
+                    .foregroundStyle(Theme.inkPrimary)
+                    .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
+                    .background(Theme.bearRed.opacity(0.18))
+                    .clipShape(Capsule())
                 }
             }
-            .padding(.vertical, Theme.Spacing.standard)
-            .padding(.leading, 12)
-            .padding(.trailing, 16)
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
+                Text(IndianFormatter.price(holding.currentValue))
+                    .font(Theme.serialNumberFont(size: 14, relativeTo: .body).weight(.semibold))
+                    .foregroundStyle(Theme.inkPrimary)
+                ChangeBadge(value: holding.pnlPercent)
+            }
         }
+        .padding(.horizontal, Theme.Spacing.card)
+        .padding(.vertical, Theme.Spacing.standard)
+    }
+}
+
+/// Shared 6-colour allocation palette (donut segments + holding dots), Screen B.
+let allocationPalette: [Color] = [
+    Theme.bullGreen,
+    Theme.securityGold,
+    Theme.bearRed.opacity(0.8),
+    Color(hue: 0.58, saturation: 0.5, brightness: 0.6),
+    Color(hue: 0.72, saturation: 0.4, brightness: 0.65),
+    Theme.inkSecondary
+]
+
+/// Screen B — hero value block: label, large price, two pills, brand chip.
+private struct PortfolioHeroBlock: View {
+    let value: Double
+    let totalPnL: Double
+    let totalPnLPercent: Double
+    let isLoading: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+            HStack {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                    Text("Portfolio · current value")
+                        .font(Theme.officialStampFont(size: 9)).tracking(1.5)
+                        .foregroundStyle(Theme.inkTertiary)
+                    Text(IndianFormatter.price(value))
+                        .font(.largeTitle.weight(.bold)).monospaced()
+                        .foregroundStyle(Theme.inkPrimary)
+                        .contentTransition(.numericText())
+                }
+                Spacer()
+                NiveshBrandChip()
+            }
+            HStack(spacing: Theme.Spacing.small) {
+                ChangeBadge(value: totalPnLPercent)
+                let up = totalPnL >= 0
+                Text((up ? "+" : "") + IndianFormatter.priceCompact(totalPnL) + " total")
+                    .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote))
+                    .foregroundStyle(up ? Theme.bullGreen : Theme.bearRed)
+                    .padding(.horizontal, Theme.Spacing.medium)
+                    .padding(.vertical, Theme.Spacing.xSmall)
+                    .background((up ? Theme.bullGreen : Theme.bearRed).opacity(0.18))
+                    .clipShape(Capsule())
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .shimmerPlaceholder(isLoading: isLoading)
+    }
+}
+
+/// Screen B — allocation donut + legend card.
+private struct PortfolioAllocationDonutCard: View {
+    let holdings: [PortfolioHolding]
+    private var total: Double { max(holdings.reduce(0) { $0 + $1.currentValue }, 1) }
+    private var sorted: [PortfolioHolding] { holdings.sorted { $0.currentValue > $1.currentValue } }
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.large) {
+            ZStack {
+                Canvas { ctx, size in
+                    let lineW: CGFloat = 14
+                    let radius = min(size.width, size.height) / 2 - lineW / 2
+                    let center = CGPoint(x: size.width / 2, y: size.height / 2)
+                    var startDeg: Double = -90
+                    for (i, h) in sorted.enumerated() {
+                        let sweep = (h.currentValue / total) * 360
+                        var p = Path()
+                        // BUG-10: 1° gap each side for clean segment separation
+                        p.addArc(center: center, radius: radius,
+                                 startAngle: .degrees(startDeg + 1),
+                                 endAngle: .degrees(startDeg + sweep - 1), clockwise: false)
+                        ctx.stroke(p, with: .color(allocationPalette[i % allocationPalette.count]),
+                                   style: StrokeStyle(lineWidth: lineW, lineCap: .butt))
+                        startDeg += sweep
+                    }
+                }
+                .frame(width: 110, height: 110)
+                VStack(spacing: 0) {
+                    Text("\(holdings.count)")
+                        .font(Theme.serialNumberFont(size: 18, relativeTo: .title3).weight(.bold))
+                        .foregroundStyle(Theme.inkPrimary)
+                    Text("STOCKS")
+                        .font(Theme.officialStampFont(size: 8)).tracking(1.0)
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                ForEach(Array(sorted.prefix(4).enumerated()), id: \.element.id) { i, h in
+                    HStack(spacing: Theme.Spacing.small) {
+                        Circle().fill(allocationPalette[i % allocationPalette.count]).frame(width: 8, height: 8)
+                        Text(h.stock.ticker)
+                            .font(Theme.serialNumberFont(size: 13, relativeTo: .footnote))
+                            .foregroundStyle(Theme.inkPrimary)
+                        Spacer()
+                        Text(String(format: "%.1f%%", h.currentValue / total * 100))
+                            .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote))
+                            .foregroundStyle(Theme.inkSecondary)
+                    }
+                }
+                if holdings.count > 4 {
+                    Text("+ \(holdings.count - 4) more")
+                        .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .footnote))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(Theme.Spacing.card)
         .banknoteCard()
     }
 }
