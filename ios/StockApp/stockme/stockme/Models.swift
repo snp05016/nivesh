@@ -396,6 +396,10 @@ struct QuickInfo: Codable {
     let avgVolume: Int?
     let priceHistory90d: [PricePoint]?
     let peVsAvg: PeVsAvg?
+    let asmGsmStatus: String?
+    let promoterPledgedPct: Double?
+    let governanceScore: Int?
+    let governanceRedFlags: [String]?
 
     enum CodingKeys: String, CodingKey {
         case ticker, signal
@@ -418,6 +422,10 @@ struct QuickInfo: Codable {
         case volume, avgVolume = "avg_volume"
         case priceHistory90d = "price_history_90d"
         case peVsAvg = "pe_vs_avg"
+        case asmGsmStatus = "asm_gsm_status"
+        case promoterPledgedPct = "promoter_pledged_pct"
+        case governanceScore = "governance_score"
+        case governanceRedFlags = "governance_red_flags"
     }
 }
 
