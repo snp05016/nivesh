@@ -34,7 +34,7 @@ struct NiveshBulletRow: View {
     let text: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: Theme.Spacing.standard) {
             Circle()
                 .fill(goldAccent)
                 .frame(width: 4, height: 4)
@@ -264,7 +264,7 @@ struct MomentumStockRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Theme.Spacing.standard) {
             Text(stock.ticker)
                 .font(.footnote.weight(.semibold)).monospaced()
                 .foregroundStyle(.primary.opacity(0.90))
@@ -365,7 +365,7 @@ struct FundReturnRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Theme.Spacing.standard) {
             Text("\(rank)")
                 .font(.caption.weight(.medium)).monospaced()
                 .foregroundStyle(subtleText)
@@ -417,7 +417,7 @@ struct AdvisoryConsensusEmptyCard: View {
                 SecurityThread()
 
                 VStack(alignment: .leading, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("दलाल स्ट्रीट सलाह")
                             .font(.caption2)
                             .foregroundStyle(dimText)
@@ -1016,7 +1016,7 @@ private struct MorningDecreeCard: View {
 
                 VStack(alignment: .leading, spacing: 0) {
                     // Header
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("प्रातःकालीन सारांश")
                             .font(.caption2)
                             .foregroundStyle(Theme.inkSecondary)
@@ -1476,7 +1476,7 @@ private struct MacroDashCard: View {
 
                 VStack(alignment: .leading, spacing: 0) {
                     // Header
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("वृहद अर्थव्यवस्था")
                             .font(.caption2)
                             .foregroundStyle(Theme.inkSecondary)
@@ -1891,7 +1891,7 @@ struct CompactNewsCell: View {
                         }
 
                         if let ticker = article.ticker, !ticker.isEmpty {
-                            HStack(spacing: 2) {
+                            HStack(spacing: Theme.Spacing.xSmall) {
                                 Image(systemName: "chart.line.uptrend.xyaxis")
                                     .font(.system(size: 7))
                                 Text(ticker)
@@ -2243,7 +2243,7 @@ private struct InstitutionalDashCard: View {
 
                 VStack(alignment: .leading, spacing: 0) {
                     // Header
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("संस्थागत प्रवाह")
                             .font(.caption2)
                             .foregroundStyle(Theme.inkSecondary)
@@ -2360,7 +2360,7 @@ extension HomeScreen {
                 Group {
                     if let user = authManager.currentUser {
                         HStack {
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                 Text("भारतीय वित्तीय विश्लेषण")
                                     .font(Theme.hindiFont(size: 11))
                                     .foregroundStyle(Theme.inkSecondary)

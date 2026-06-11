@@ -40,7 +40,7 @@ enum AppTheme: String, CaseIterable, Codable {
 
     var canvasDark: Color {
         switch self {
-        case .darkImmersive:   return Color(red: 0.11, green: 0.10, blue: 0.08)
+        case .darkImmersive:   return Color(red: 0.04, green: 0.04, blue: 0.06)  // #0A0A0F — deep dark canvas
         case .chocolateBrown:  return Color(red: 0.10, green: 0.06, blue: 0.04)
         case .greenishYellow:  return Color(red: 0.05, green: 0.07, blue: 0.04)
         case .fluorescentBlue: return Color(red: 0.02, green: 0.04, blue: 0.10)
@@ -64,7 +64,7 @@ enum AppTheme: String, CaseIterable, Codable {
 
     var accentDark: Color {
         switch self {
-        case .darkImmersive:   return Color(red: 0.78, green: 0.66, blue: 0.29)
+        case .darkImmersive:   return Color(red: 0.83, green: 0.66, blue: 0.09)  // #D4A817 — electric amber accent
         case .chocolateBrown:  return Color(red: 0.80, green: 0.45, blue: 0.18)
         case .greenishYellow:  return Color(red: 0.68, green: 0.82, blue: 0.20)
         case .fluorescentBlue: return Color(red: 0.20, green: 0.60, blue: 1.00)
@@ -93,13 +93,7 @@ enum AppTheme: String, CaseIterable, Codable {
 final class ThemeManager {
     static let shared = ThemeManager()
 
-    private let defaults = UserDefaults.standard
-    private let key = "selectedTheme"
-
-    var selectedTheme: String {
-        get { defaults.string(forKey: key) ?? AppTheme.darkImmersive.rawValue }
-        set { defaults.set(newValue, forKey: key) }
-    }
+    @ObservationIgnored @AppStorage("selectedTheme") var selectedTheme: String = AppTheme.darkImmersive.rawValue
 
     var current: AppTheme {
         get { AppTheme(rawValue: selectedTheme) ?? .darkImmersive }
