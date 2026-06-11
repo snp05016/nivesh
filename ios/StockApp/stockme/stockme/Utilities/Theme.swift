@@ -73,12 +73,13 @@ enum Theme {
     // MARK: - Denomination Tints (dark-mode fixed)
 
     enum NoteTint {
-        static let ten:        Color = Color(uiColor("9B6050"))
-        static let fifty:      Color = Color(uiColor("6A7AAA"))
-        static let hundred:    Color = Color(uiColor("9A8BC0"))
-        static let twoHundred: Color = Color(uiColor("E87A40"))
-        static let fiveHundred:Color = Color(uiColor("6A8B7A"))
-        static let twoThousand:Color = Color(uiColor("D060C0"))
+        static let ten:        Color = Color(uiColor("8B5A42"))  // Chocolate Brown  — ₹10
+        static let twenty:     Color = Color(uiColor("B8C840"))  // Greenish Yellow  — ₹20
+        static let fifty:      Color = Color(uiColor("3A72CC"))  // Fluorescent Blue — ₹50
+        static let hundred:    Color = Color(uiColor("9080C0"))  // Lavender         — ₹100
+        static let twoHundred: Color = Color(uiColor("C8A800"))  // Bright Yellow    — ₹200
+        static let fiveHundred:Color = Color(uiColor("7A8E8E"))  // Stone Grey       — ₹500
+        static let twoThousand:Color = Color(uiColor("C050A0"))  // Magenta (retired)— ₹2000
     }
 
     // MARK: - Borders
