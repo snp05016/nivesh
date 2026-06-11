@@ -310,11 +310,26 @@ def _yf_fetch_info(sym: str) -> dict:
     return {}
 
 def _yf_price(ticker_sym: str) -> tuple[float | None, float | None]:
+    import pandas as pd
     def _fetch(sym: str):
-        info = _yf_fetch_info(sym)
-        current = info.get("currentPrice") or info.get("regularMarketPrice")
-        prev = info.get("previousClose") or info.get("regularMarketPreviousClose")
-        return current, prev
+        try:
+            import yfinance as yf
+            hist = yf.Ticker(sym).history(period="5d")
+            if hist.empty:
+                return None, None
+            if isinstance(hist.columns, pd.MultiIndex):
+                hist.columns = [c[0] for c in hist.columns]
+            
+            closes = hist["Close"].dropna().values
+            if len(closes) == 0:
+                return None, None
+            
+            current = float(closes[-1])
+            prev = float(closes[-2]) if len(closes) >= 2 else current
+            return current, prev
+        except Exception as e:
+            print(f"[YF Price Error] {sym}: {e}")
+            return None, None
 
     current, prev = _fetch(ticker_sym)
     if current is None and ticker_sym.upper().endswith(".BO"):
