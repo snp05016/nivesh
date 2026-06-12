@@ -381,6 +381,229 @@ def macro_strip_endpoint():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/macro-context/{ticker}")
+def macro_context_endpoint(ticker: str, exchange: str = "NSE", sector: str = ""):
+    """Returns macro context for a specific stock: strip data, FII/DII trend,
+    sector performance, Market Mood Index, deterministic impact mapping, and
+    AI-generated analysis if a cached analysis exists."""
+    import math as _m_ctx
+    try:
+        _dcache_key = f"macro_ctx_{ticker.upper()}_{sector}"
+        _dcached = _dcache_get("market", _dcache_key)
+        if _dcached is not None:
+            return _dcached
+
+        result = {
+            "ticker": ticker.upper(),
+            "macro_strip": {},
+            "fii_dii_trend": {},
+            "sector_performance": {},
+            "market_mood": {},
+            "stock_impact": [],
+            "summary": "",
+        }
+
+        # -- 1. Macro strip ---------------------------------------------------
+        try:
+            t_usd = yf.Ticker("USDINR=X")
+            usd_info = t_usd.info
+            usd_inr = usd_info.get("regularMarketPrice") or usd_info.get("currentPrice")
+            if usd_inr and not _m_ctx.isnan(float(usd_inr)):
+                result["macro_strip"]["usd_inr"] = round(float(usd_inr), 2)
+
+            t_brent = yf.Ticker("BZ=F")
+            brent_info = t_brent.info
+            brent = brent_info.get("regularMarketPrice") or brent_info.get("currentPrice")
+            if brent and not _m_ctx.isnan(float(brent)):
+                result["macro_strip"]["brent_oil_usd"] = round(float(brent), 2)
+
+            t_vix = yf.Ticker("^INDIAVIX")
+            vix_info = t_vix.info
+            vix = vix_info.get("regularMarketPrice") or vix_info.get("currentPrice")
+            if vix and not _m_ctx.isnan(float(vix)):
+                result["macro_strip"]["india_vix"] = round(float(vix), 2)
+            else:
+                result["macro_strip"]["india_vix"] = 16.0
+
+            result["macro_strip"]["rbi_repo_rate_pct"] = 6.50
+            result["macro_strip"]["rbi_stance"] = "Neutral"
+        except Exception as e:
+            result["macro_strip"]["_error"] = str(e)
+
+        # -- 2. FII/DII trend -------------------------------------------------
+        try:
+            from database import FIIDIIFlow, get_session as _get_db_sess
+            with _get_db_sess() as db:
+                flows = db.query(FIIDIIFlow).order_by(FIIDIIFlow.date.desc()).limit(5).all()
+                if flows:
+                    total_fii = sum(f.fii_net or 0 for f in flows)
+                    total_dii = sum(f.dii_net or 0 for f in flows)
+                    result["fii_dii_trend"] = {
+                        "last_5_sessions": [
+                            {"date": str(f.date), "fii_net": f.fii_net, "dii_net": f.dii_net}
+                            for f in flows
+                        ],
+                        "fii_net_5d_crores": round(total_fii, 0),
+                        "dii_net_5d_crores": round(total_dii, 0),
+                    }
+                    if total_fii < -500:
+                        result["fii_dii_trend"]["bias"] = "FII_SELLING"
+                    elif total_fii > 500:
+                        result["fii_dii_trend"]["bias"] = "FII_BUYING"
+                    elif total_dii > 500 and total_fii < 0:
+                        result["fii_dii_trend"]["bias"] = "DII_SUPPORTING"
+                    else:
+                        result["fii_dii_trend"]["bias"] = "NEUTRAL"
+        except Exception as e:
+            result["fii_dii_trend"] = {"_error": str(e), "bias": "NEUTRAL"}
+
+        # -- 3. Sector performance --------------------------------------------
+        try:
+            from services.scraper import fetch_market_pulse
+            pulse = fetch_market_pulse()
+            sectors = pulse.get("sectors", [])
+            sector_name = sector or "Unknown"
+            for s in sectors:
+                if s.get("name", "").lower() == sector_name.lower():
+                    result["sector_performance"] = {
+                        "name": s.get("name"),
+                        "change_pct": s.get("change_pct"),
+                    }
+                    break
+            result["sector_performance"]["nifty_change_pct"] = pulse.get("nifty_change_pct")
+        except Exception as e:
+            result["sector_performance"] = {"_error": str(e)}
+
+        # -- 4. Market Mood Index ---------------------------------------------
+        vix_val = result["macro_strip"].get("india_vix", 16)
+        fii_bias = result["fii_dii_trend"].get("bias", "NEUTRAL")
+        if vix_val > 25 and fii_bias == "FII_SELLING":
+            zone = "EXTREME_FEAR"; score = 20
+        elif vix_val > 20:
+            zone = "FEAR"; score = 35
+        elif vix_val > 15 and fii_bias == "FII_BUYING":
+            zone = "GREED"; score = 65
+        elif vix_val < 12 and fii_bias == "FII_BUYING":
+            zone = "EXTREME_GREED"; score = 80
+        else:
+            zone = "NEUTRAL"; score = 50
+        interp_map = {
+            "EXTREME_FEAR": "Markets oversold — historically good entry points for long-term investors",
+            "FEAR": "Cautious sentiment — observe before deploying heavy capital",
+            "NEUTRAL": "Balanced sentiment — normal market conditions",
+            "GREED": "Markets overbought — hold existing positions, avoid fresh entries",
+            "EXTREME_GREED": "Euphoria zone — consider profit booking, high risk of correction",
+        }
+        result["market_mood"] = {
+            "zone": zone, "score": score, "india_vix": vix_val,
+            "interpretation": interp_map.get(zone, ""),
+        }
+
+        # -- 5. Deterministic impact mapping ----------------------------------
+        sector_lower = (sector or "").lower()
+        impacts = []
+        brent_val = result["macro_strip"].get("brent_oil_usd")
+        if brent_val:
+            if any(kw in sector_lower for kw in ("oil", "energy", "petroleum")):
+                impacts.append({"factor": "Brent Crude", "value": f"${brent_val}/bbl",
+                    "impact": "POSITIVE",
+                    "detail": "Higher crude directly benefits upstream margins. Every $1/bbl rise adds to revenue per barrel of domestic production."})
+            elif any(kw in sector_lower for kw in ("paint", "chemical", "aviation", "tyre", "logistics")):
+                impacts.append({"factor": "Brent Crude", "value": f"${brent_val}/bbl",
+                    "impact": "NEGATIVE",
+                    "detail": "Crude is a key input cost. Sustained high prices compress EBITDA margins in this sector."})
+            elif any(kw in sector_lower for kw in ("it", "software", "technology")):
+                impacts.append({"factor": "Brent Crude", "value": f"${brent_val}/bbl",
+                    "impact": "INDIRECT",
+                    "detail": "Crude impacts client budgets in energy-dependent verticals. Marginally negative for IT services demand from oil-dependent economies."})
+            else:
+                impacts.append({"factor": "Brent Crude", "value": f"${brent_val}/bbl",
+                    "impact": "NEUTRAL",
+                    "detail": "No direct margin linkage. Indirect impact via inflation expectations and input costs across the supply chain."})
+
+        usd_val = result["macro_strip"].get("usd_inr")
+        if usd_val:
+            if any(kw in sector_lower for kw in ("it", "software", "technology", "pharma")):
+                impacts.append({"factor": "USD/INR", "value": f"Rs.{usd_val}",
+                    "impact": "POSITIVE",
+                    "detail": f"Rupee depreciation boosts export revenues. Every Rs.1 weakness adds to operating margins for exporters billing in USD."})
+            elif any(kw in sector_lower for kw in ("oil", "energy", "chemical", "aviation")):
+                impacts.append({"factor": "USD/INR", "value": f"Rs.{usd_val}",
+                    "impact": "NEGATIVE",
+                    "detail": "Weaker rupee increases cost of dollar-denominated imports (crude, raw materials). Margin compression risk."})
+            else:
+                impacts.append({"factor": "USD/INR", "value": f"Rs.{usd_val}",
+                    "impact": "MONITOR",
+                    "detail": "Indirect impact. FII sentiment turns cautious above Rs.85/USD as dollar returns shrink in rupee terms."})
+
+        repo = result["macro_strip"].get("rbi_repo_rate_pct", 6.5)
+        if repo:
+            if any(kw in sector_lower for kw in ("bank", "finance", "nbfc", "housing")):
+                if repo < 7:
+                    impacts.append({"factor": "RBI Repo Rate", "value": f"{repo}%",
+                        "impact": "POSITIVE",
+                        "detail": f"Rate-sensitive sector. Lower rates boost credit growth and reduce NPAs. Every 25bps cut adds ~15bps to bank NIMs."})
+                else:
+                    impacts.append({"factor": "RBI Repo Rate", "value": f"{repo}%",
+                        "impact": "NEGATIVE",
+                        "detail": "Higher rates compress NIMs and slow credit offtake. Every 25bps hike reduces loan demand with ~2 quarter lag."})
+            elif any(kw in sector_lower for kw in ("real estate", "auto", "infra")):
+                impacts.append({"factor": "RBI Repo Rate", "value": f"{repo}%",
+                    "impact": "INTEREST_RATE_SENSITIVE",
+                    "detail": "Demand linked to borrowing costs. Rate changes impact buyer affordability with a ~2 quarter lag."})
+            else:
+                impacts.append({"factor": "RBI Repo Rate", "value": f"{repo}%",
+                    "impact": "NEUTRAL",
+                    "detail": "Minimal direct impact. Broader economy effect via credit cycle and consumption demand."})
+
+        bias = result["fii_dii_trend"].get("bias", "NEUTRAL")
+        fii_net = result["fii_dii_trend"].get("fii_net_5d_crores", 0)
+        if bias == "FII_SELLING":
+            impacts.append({"factor": "FII/DII Flow", "value": f"{fii_net:.0f} Cr (FII 5D net)",
+                "impact": "DII_SUPPORTING",
+                "detail": "FIIs are net sellers but DIIs (mutual funds, insurance) are absorbing via SIP inflows. This suppresses volatility short-term but builds fragility if fundamentals don't improve. Watch for DII absorption fatigue."})
+        elif bias == "FII_BUYING":
+            impacts.append({"factor": "FII/DII Flow", "value": f"{fii_net:.0f} Cr (FII 5D net)",
+                "impact": "POSITIVE",
+                "detail": "FIIs accumulating — institutional conviction supporting the stock. Combined FII+DII buying typically precedes upward price momentum."})
+
+        result["stock_impact"] = impacts
+
+        # -- 6. AI-enhanced summary -------------------------------------------
+        try:
+            from database import AnalysisHistory, get_session as _get_db_sess2
+            import json as _json2
+            with _get_db_sess2() as db:
+                last = db.query(AnalysisHistory).filter(
+                    AnalysisHistory.ticker == ticker.upper()
+                ).order_by(AnalysisHistory.created_at.desc()).first()
+                if last:
+                    try:
+                        fj = _json2.loads(last.full_json) if isinstance(last.full_json, str) else last.full_json
+                        kf = fj.get("key_factors", {})
+                        macro_impact = kf.get("global_macro_impact", "")
+                        sentiment = kf.get("indian_market_sentiment", "")
+                        if macro_impact:
+                            result["ai_summary"] = macro_impact
+                            result["ai_sentiment"] = sentiment
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        if not result.get("ai_summary"):
+            impact_lines = []
+            for imp in impacts:
+                if imp["impact"] in ("POSITIVE", "NEGATIVE"):
+                    impact_lines.append(f"{imp['factor']} ({imp['value']}): {imp['impact']} — {imp['detail'][:100]}")
+            result["summary"] = " | ".join(impact_lines[:3]) if impact_lines else "No significant macro headwinds or tailwinds detected."
+
+        _dcache_set("market", _dcache_key, result, ttl=3600)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/earnings-calendar")
 def earnings_calendar_endpoint():
     """Returns upcoming earnings dates for NSE portfolio stocks."""
