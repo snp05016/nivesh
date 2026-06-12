@@ -459,10 +459,7 @@ struct AdvisoryConsensusEmptyCard: View {
 
 @MainActor
 class HomeViewModel: ObservableObject {
-    @Published var portfolioValue: Double = 0
-    @Published var todayPnL: Double = 0
-    @Published var totalPnL: Double = 0
-    @Published var investedValue: Double = 0
+
     @Published var stockCount: Int = 0
     @Published var watchlist: [Stock] = []
     @Published var indices: [LiveMarketIndex] = []
@@ -491,10 +488,7 @@ class HomeViewModel: ObservableObject {
         isLoading = true
         do {
             let holdings = try await NetworkManager.shared.getPortfolio(userId: userId)
-            portfolioValue = holdings.reduce(0) { $0 + $1.currentValue }
-            investedValue = holdings.reduce(0) { $0 + $1.investedValue }
-            todayPnL = holdings.reduce(0) { $0 + ($1.stock.currentPrice * $1.shares * ($1.stock.changePercent/100)) }
-            totalPnL = portfolioValue - investedValue
+
             stockCount = holdings.count
 
             do {
@@ -607,24 +601,7 @@ struct HomeScreen: View {
     @State private var isOnline = true
     // Item 7: YouTube channel filter
     @State private var selectedChannel: String? = nil
-    @State private var valuationHistory: [ValuationSnapshot] = []
-    @State private var valuationLoading = false
-    @State private var portfolioRange: TimeRange = .month
 
-    private var rangedValuationHistory: [ValuationSnapshot] {
-        guard !valuationHistory.isEmpty else { return [] }
-        let n: Int
-        switch portfolioRange {
-        case .day:         n = 2
-        case .week:        n = 7
-        case .month:       n = 30
-        case .threeMonths: n = 90
-        case .sixMonths:   n = 180
-        case .year:        n = valuationHistory.count
-        case .all:         n = valuationHistory.count
-        }
-        return Array(valuationHistory.suffix(max(n, 2)))
-    }
 
     @AppStorage("homeAutoRefreshSeconds") private var homeAutoRefreshSeconds: String = "0"
 
@@ -755,12 +732,7 @@ struct HomeScreen: View {
                 }
                 dailyAction = await NetworkManager.shared.fetchDailyAction(userId: user.userId)
 
-                // Portfolio valuation history for the immersive hero chart
-                valuationLoading = true
-                if let data = try? await HomeFeedService.shared.fetchValuationHistory(userId: user.userId, days: 365) {
-                    valuationHistory = data.snapshots.sorted { $0.parsedDate < $1.parsedDate }
-                }
-                valuationLoading = false
+
             }
             await indicesTask.value
         }
@@ -849,130 +821,6 @@ private struct DailyActionCard: View {
         .background(Theme.canvasDeep)
         .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(borderColor.opacity(0.3), lineWidth: 0.5))
         .cornerRadius(Theme.CornerRadius.medium)
-    }
-}
-
-// MARK: - Portfolio Note Card (the ₹2000 note hero)
-
-private struct PortfolioNoteCard: View {
-    let value: Double
-    let totalPnL: Double
-    let invested: Double
-    let todayPnL: Double
-    let count: Int
-    let isLoading: Bool
-
-    private var totalPnLPercent: Double {
-        (totalPnL / max(invested, 1)) * 100
-    }
-
-    private var todayPnLPercent: Double {
-        (todayPnL / max(value - todayPnL, 1)) * 100
-    }
-
-    var body: some View {
-        VStack(spacing: Theme.Spacing.none) {
-
-            // ── Row 1: Portfolio value + today P&L ──────────────────────
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                    Text("PORTFOLIO VALUE")
-                        .font(Theme.officialStampFont(size: 8)).tracking(1.5)
-                        .foregroundStyle(Theme.inkTertiary)
-                    Text(IndianFormatter.priceCompact(value))
-                        .font(.title.weight(.bold)).monospaced()
-                        .foregroundStyle(Theme.inkPrimary)
-                        .contentTransition(.numericText())
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
-                    Text("TODAY")
-                        .font(Theme.officialStampFont(size: 8)).tracking(1.5)
-                        .foregroundStyle(Theme.inkTertiary)
-                    let todayUp = todayPnL >= 0
-                    Text((todayUp ? "+" : "") + IndianFormatter.priceCompact(abs(todayPnL)))
-                        .font(Theme.serialNumberFont(size: 15, relativeTo: .subheadline).weight(.semibold))
-                        .foregroundStyle(todayUp ? Theme.bullGreen : Theme.bearRed)
-                    Text(IndianFormatter.percent(todayPnLPercent))
-                        .font(Theme.serialNumberFont(size: 11, relativeTo: .footnote))
-                        .foregroundStyle(todayUp ? Theme.bullGreen : Theme.bearRed)
-                }
-            }
-            .padding(Theme.Spacing.card)
-
-            SectionDivider()
-                .padding(.horizontal, Theme.Spacing.card)
-
-            // ── Row 2: Invested / Returns / Stocks ──────────────────────
-            HStack(spacing: Theme.Spacing.none) {
-                VStack(spacing: Theme.Spacing.xSmall) {
-                    Text("INVESTED")
-                        .font(Theme.officialStampFont(size: 7)).tracking(1.2)
-                        .foregroundStyle(Theme.inkTertiary)
-                    Text(IndianFormatter.priceCompact(invested))
-                        .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote))
-                        .foregroundStyle(Theme.inkSecondary)
-                }
-                .frame(maxWidth: .infinity)
-
-                Rectangle().fill(Theme.borderFine).frame(width: 0.5, height: 32)
-
-                VStack(spacing: Theme.Spacing.xSmall) {
-                    Text("RETURNS")
-                        .font(Theme.officialStampFont(size: 7)).tracking(1.2)
-                        .foregroundStyle(Theme.inkTertiary)
-                    let up = totalPnL >= 0
-                    Text((up ? "+" : "") + IndianFormatter.percent(totalPnLPercent))
-                        .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline).weight(.semibold))
-                        .foregroundStyle(up ? Theme.bullGreen : Theme.bearRed)
-                }
-                .frame(maxWidth: .infinity)
-
-                Rectangle().fill(Theme.borderFine).frame(width: 0.5, height: 32)
-
-                VStack(spacing: Theme.Spacing.xSmall) {
-                    Text("STOCKS")
-                        .font(Theme.officialStampFont(size: 7)).tracking(1.2)
-                        .foregroundStyle(Theme.inkTertiary)
-                    Text("\(count)")
-                        .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline).weight(.semibold))
-                        .foregroundStyle(Theme.inkPrimary)
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .padding(.vertical, Theme.Spacing.standard)
-            .padding(.horizontal, Theme.Spacing.card)
-
-            SectionDivider()
-                .padding(.horizontal, Theme.Spacing.card)
-
-            // ── Row 3: P&L progress bar ──────────────────────────────────
-            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                let progress = min(max((value - invested) / max(invested, 1) * 5 + 0.5, 0.05), 0.95)
-                let isUp = totalPnL >= 0
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                            .fill(Theme.canvasShadow).frame(height: 4)
-                        RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                            .fill(isUp ? Theme.bullGreen : Theme.bearRed)
-                            .frame(width: geo.size.width * progress, height: 4)
-                    }
-                }
-                .frame(height: 4)
-                HStack {
-                    Text("COST BASIS").font(Theme.officialStampFont(size: 7)).tracking(1)
-                        .foregroundStyle(Theme.inkTertiary)
-                    Spacer()
-                    Text("CURRENT VALUE").font(Theme.officialStampFont(size: 7)).tracking(1)
-                        .foregroundStyle(Theme.inkTertiary)
-                }
-            }
-            .padding(.horizontal, Theme.Spacing.card)
-            .padding(.vertical, Theme.Spacing.standard)
-        }
-        .banknoteCard()
-        .shimmerPlaceholder(isLoading: isLoading)
     }
 }
 
@@ -2592,26 +2440,7 @@ extension HomeScreen {
                     }
                 }
                 .id(HomeSectionID.top.rawValue)
-        case .portfolio:
-// ── Section 2: Portfolio ──────────────────────────
-                Group {
-                    if !valuationHistory.isEmpty {
-                        ImmersivePortfolioHeroChart(snapshots: rangedValuationHistory)
-                        TimeRangeSelector(selected: $portfolioRange, ranges: TimeRange.allCases)
-                        SectionDivider()
-                            .padding(.horizontal, Theme.screenPadding)
-                    }
-                    PortfolioNoteCard(
-                        value: viewModel.portfolioValue,
-                        totalPnL: viewModel.totalPnL,
-                        invested: viewModel.investedValue,
-                        todayPnL: viewModel.todayPnL,
-                        count: viewModel.stockCount,
-                        isLoading: viewModel.isLoading
-                    )
-                    .padding(.horizontal, Theme.screenPadding)
-                }
-                .id(HomeSectionID.portfolio.rawValue)
+
         case .indices:
 // ── Section 3: Market Indices ─────────────────────
                 VStack(alignment: .leading, spacing: Theme.Spacing.standard) {

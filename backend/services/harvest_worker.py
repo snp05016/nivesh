@@ -257,6 +257,11 @@ def start_scheduler():
     _scheduler.add_job(_run_premarket_cache_warm, "cron", hour=3,  minute=30)             # 9:00 AM IST
     _scheduler.add_job(_run_error_digest,         "cron", hour=1,  minute=30)             # 7:00 AM IST
 
+    # ── Harvester jobs (merged from nivesh-harvester microservice) ────────────
+    _scheduler.add_job(_run_expert_harvest_bg, "interval", minutes=15, id="expert_harvest", replace_existing=True)
+    _scheduler.add_job(_run_sebi_harvest_bg,   "interval", minutes=60, id="sebi_harvest",   replace_existing=True)
+    _scheduler.add_job(_run_youtube_expert_bg, "interval", minutes=120, id="youtube_expert_harvest", replace_existing=True)
+
     _scheduler.start()
     promote_initial_admins()
     logging.info(
@@ -265,6 +270,55 @@ def start_scheduler():
         "new: (cache-purge 3:00 AM, bhavcopy 7:00 PM, morning-brief-pregen 6:30 AM, "
         "piotroski-weekly Sun 11 PM, premarket-warm 9:00 AM, error-digest 7:00 AM) [all IST]"
     )
+
+
+async def _run_expert_harvest_bg():
+    try:
+        from services.harvester_expert import scrape_all_expert_sources
+        from services.harvester_db import get_session as h_get_session, upsert_card
+        cards = scrape_all_expert_sources()
+        count = 0
+        for card in cards:
+            with h_get_session() as s:
+                if upsert_card(s, card):
+                    count += 1
+        logging.info("Expert harvest: %d new cards", count)
+    except Exception as e:
+        logging.exception("Expert harvest failed: %s", e)
+
+
+async def _run_sebi_harvest_bg():
+    try:
+        from services.harvester_sebi import harvest_sebi_filings
+        n = harvest_sebi_filings()
+        logging.info("SEBI harvest: %d new cards", n)
+    except Exception as e:
+        logging.exception("SEBI harvest failed: %s", e)
+
+
+async def _run_youtube_expert_bg():
+    try:
+        from services.expert_youtube_harvester import harvest_youtube_transcripts
+        n = harvest_youtube_transcripts()
+        logging.info("YouTube expert harvest: %d new cards", n)
+    except Exception as e:
+        logging.exception("YouTube expert harvest failed: %s", e)
+
+
+def _seed_harvester_sources():
+    from services.harvester_db import get_session as h_get_session, record_source_health
+    SOURCE_ROSTER = [
+        "NSE Corporate Announcements", "CRISIL Ratings", "ICRA Ratings",
+        "CARE Ratings", "India Ratings & Research", "CNBC-TV18 Expert View",
+        "Moneycontrol Expert Columns", "SEBI RIA Registry",
+        "AMFI Mutual Fund Data", "YouTube Finance Channels",
+    ]
+    try:
+        with h_get_session() as s:
+            for name in SOURCE_ROSTER:
+                record_source_health(s, name, success=True, items=0)
+    except Exception:
+        pass
 
 
 def stop_scheduler():

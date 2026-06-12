@@ -5,7 +5,6 @@ import SwiftUI
 enum HomeSectionID: String, CaseIterable, Identifiable, Codable {
     var id: String { rawValue }
     case top           = "home.top"
-    case portfolio     = "home.portfolio"
     case indices       = "home.indices"
     case watchlist     = "home.watchlist"
     case sectors       = "home.sectors"
@@ -21,7 +20,6 @@ enum HomeSectionID: String, CaseIterable, Identifiable, Codable {
     var title: String {
         switch self {
         case .top:           return "Today's Action"
-        case .portfolio:     return "Portfolio"
         case .indices:       return "Market Indices"
         case .watchlist:     return "Watchlist"
         case .sectors:       return "Sector Pulse"
@@ -39,7 +37,6 @@ enum HomeSectionID: String, CaseIterable, Identifiable, Codable {
     var hindiTitle: String {
         switch self {
         case .top:           return "आज की कार्रवाई"
-        case .portfolio:     return "निवेश पोर्टफोलियो"
         case .indices:       return "बाजार सूचकांक"
         case .watchlist:     return "बाज़ार की निगरानी"
         case .sectors:       return "क्षेत्र प्रदर्शन"
@@ -57,7 +54,6 @@ enum HomeSectionID: String, CaseIterable, Identifiable, Codable {
     var icon: String {
         switch self {
         case .top:           return "bolt.fill"
-        case .portfolio:     return "indianrupeesign.circle.fill"
         case .indices:       return "waveform.path.ecg"
         case .watchlist:     return "eye.fill"
         case .sectors:       return "chart.bar.fill"

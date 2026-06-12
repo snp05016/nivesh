@@ -183,7 +183,7 @@ def _get_asm_gsm_lists():
 # ---------------------------------------------------------------------------
 # Analysis worker (runs in subprocess)
 # ---------------------------------------------------------------------------
-def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False):
+def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False, scan_type="standard"):
     from dotenv import load_dotenv
     from pathlib import Path as _Path
     import os
@@ -199,7 +199,7 @@ def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False):
         if _ta_core.exists():
             sys.path.insert(0, str(_ta_core))
         from services.orchestrator import analyze
-        result = analyze(ticker, exchange, user_id, deep_scan=deep_scan)
+        result = analyze(ticker, exchange, user_id, deep_scan=deep_scan, scan_type=scan_type)
         queue.put({"status": "ok", "result": result})
     except ImportError as e:
         tb = traceback.format_exc()
@@ -508,7 +508,7 @@ async def analyze_endpoint(req: AnalyzeRequest, request: Request):
         queue = multiprocessing.Queue()
         p = multiprocessing.Process(
             target=_run_analysis_worker,
-            args=(queue, req.ticker, req.exchange, req.user_id, req.deep_scan)
+            args=(queue, req.ticker, req.exchange, req.user_id, req.deep_scan, req.scan_type)
         )
         p.start()
 
