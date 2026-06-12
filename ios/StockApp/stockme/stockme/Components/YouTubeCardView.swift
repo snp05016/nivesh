@@ -4,7 +4,7 @@ struct YouTubeCardView: View {
     let video: YouTubeVideoItem
     var onTickerTap: ((String) -> Void)? = nil
 
-    private let goldAccent = Theme.securityGold
+    private var goldAccent: Color { Theme.securityGold }
     private let dimText    = Color.secondary
 
     var body: some View {
@@ -128,7 +128,7 @@ struct YouTubeCompactCard: View {
     let video: YouTubeVideoItem
     var onTickerTap: ((String) -> Void)? = nil
 
-    private let goldAccent = Theme.securityGold
+    private var goldAccent: Color { Theme.securityGold }
 
     var body: some View {
         Button(action: {

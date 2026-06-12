@@ -11,12 +11,15 @@ struct ContentView: View {
     var bypassLaunch: Bool = false
 
     @State private var showLaunch: Bool
-    private let launchOffset: CGFloat = 24
+    @ObservedObject private var themeManager = ThemeManager.shared
 
     init(bypassLaunch: Bool = false) {
         self.bypassLaunch = bypassLaunch
         _showLaunch = State(initialValue: !bypassLaunch)
+        setupTabBarAppearance()
+    }
 
+    private func setupTabBarAppearance() {
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = UIColor(Theme.canvasDeep)
@@ -34,7 +37,6 @@ struct ContentView: View {
         appearance.stackedLayoutAppearance.normal.titleTextAttributes = [
             .foregroundColor: mutedColor, .font: smallFont
         ]
-
         UITabBar.appearance().standardAppearance = appearance
         UITabBar.appearance().scrollEdgeAppearance = appearance
         UITabBar.appearance().tintColor = goldColor
@@ -60,6 +62,12 @@ struct ContentView: View {
                 .transition(.opacity)
                 .zIndex(10)
             }
+        }
+        .onAppear {
+            setupTabBarAppearance()
+        }
+        .onChange(of: themeManager.selectedTheme) { _, _ in
+            setupTabBarAppearance()
         }
     }
 

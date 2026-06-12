@@ -4,7 +4,7 @@ struct NewsCardView: View {
     let article: NewsArticleItem
     var onTickerTap: ((String) -> Void)? = nil
 
-    private let goldAccent = Theme.securityGold
+    private var goldAccent: Color { Theme.securityGold }
     private let bearRed    = Theme.bearRed
     private let bullGreen  = Theme.bullGreen
     private let dimText    = Color.secondary
