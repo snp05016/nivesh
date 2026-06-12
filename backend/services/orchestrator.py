@@ -402,7 +402,7 @@ def build_ta_config(scan_type: str = "standard") -> dict:
     config = DEFAULT_CONFIG.copy()
     if scan_type == "extreme":
         # DeepSeek V4 Pro reasoning model for all agent nodes
-        config["quick_think_llm"] = "deepseek-v4-pro"
+        config["quick_think_llm"] = "deepseek-reasoner"
         config["quick_think_provider"] = "deepseek"
         config["max_debate_rounds"] = 3
         config["max_risk_discuss_rounds"] = 2

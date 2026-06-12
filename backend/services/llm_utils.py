@@ -67,7 +67,7 @@ def deepseek_chat(
     from helpers import _log_token_usage  # local import avoids circular deps
 
     selected_model = model or DEEPSEEK_MODEL
-    is_pro = selected_model == "deepseek-v4-pro"
+    is_pro = selected_model == "deepseek-reasoner"
     client = get_deepseek_client()
     last_exc: Exception | None = None
     effective_max = max(max_tokens * (8 if is_pro else 5), 512)
@@ -81,8 +81,7 @@ def deepseek_chat(
                 temperature=temperature,
             )
             if is_pro:
-                kwargs["reasoning_effort"] = "max"
-                kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+                kwargs.pop("temperature", None) # deepseek-reasoner does not support temperature
 
             response = client.chat.completions.create(**kwargs)
 
