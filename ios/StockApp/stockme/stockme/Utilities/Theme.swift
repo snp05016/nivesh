@@ -33,31 +33,24 @@ enum Theme {
 
     // MARK: - The Canvas (delegates to ThemeManager for per-denomination + light/dark)
 
-    static var canvas: Color      { ThemeManager.shared.canvas(for: currentScheme) }
-    static var canvasDeep: Color  { ThemeManager.shared.canvasDeep(for: currentScheme) }
-    static var canvasShadow: Color { ThemeManager.shared.canvasShadow(for: currentScheme) }
+    static var canvas: Color      { ThemeManager.shared.canvas(for: currentColorScheme) }
+    static var canvasDeep: Color  { ThemeManager.shared.canvasDeep(for: currentColorScheme) }
+    static var canvasShadow: Color { ThemeManager.shared.canvasShadow(for: currentColorScheme) }
 
     // MARK: - The Inks (delegates to ThemeManager for per-denomination + light/dark)
 
-    static var inkPrimary: Color   { ThemeManager.shared.inkPrimary(for: currentScheme) }
-    static var inkSecondary: Color { ThemeManager.shared.inkSecondary(for: currentScheme) }
-    static var inkTertiary: Color  { ThemeManager.shared.inkTertiary(for: currentScheme) }
+    static var inkPrimary: Color   { ThemeManager.shared.inkPrimary(for: currentColorScheme) }
+    static var inkSecondary: Color { ThemeManager.shared.inkSecondary(for: currentColorScheme) }
+    static var inkTertiary: Color  { ThemeManager.shared.inkTertiary(for: currentColorScheme) }
 
     // MARK: - The Accents
 
-    static var securityGold: Color      { ThemeManager.shared.accent(for: currentScheme) }
+    static var securityGold: Color      { ThemeManager.shared.accent(for: currentColorScheme) }
     static var securityGoldLight: Color { securityGold.opacity(0.13) }
 
     // MARK: - Color Scheme Detection
-    private static var currentScheme: ColorScheme {
-        #if os(iOS)
-        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let style = scene.windows.first?.traitCollection.userInterfaceStyle
-        else { return .dark }
-        return style == .dark ? .dark : .light
-        #else
-        return .dark
-        #endif
+    private static var currentColorScheme: ColorScheme {
+        UITraitCollection.current.userInterfaceStyle == .dark ? .dark : .light
     }
 
     // MARK: - Market Signals
