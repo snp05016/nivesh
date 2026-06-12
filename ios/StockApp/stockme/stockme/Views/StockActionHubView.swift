@@ -16,7 +16,7 @@ enum AnalysisLaunchMode: Hashable {
     case cached      // show the stored report, no network
     case regenerate  // fresh standard analysis
     case deepScan    // fresh analysis with PKScreener + FinBERT
-    case extremeScan // DeepSeek V4 Pro, 3-round debate, long-form thesis
+    case extremeScan // DeepSeek reasoning, 4 graph bundles, 10-min deep report
 }
 
 /// Pushed from the hub to open the AI report in a specific mode.
