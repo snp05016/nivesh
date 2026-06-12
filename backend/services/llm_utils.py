@@ -52,30 +52,39 @@ def deepseek_chat(
     max_tokens: int = 512,
     temperature: float = 0.3,
     log_endpoint: str | None = None,
+    model: str | None = None,
 ) -> str:
-    """Call DeepSeek V4 Flash via OpenAI-compatible API.
+    """Call DeepSeek V4 Flash/Pro via OpenAI-compatible API.
 
-    V4 Flash is a thinking model — reasoning_content consumes max_tokens
+    V4 Flash/Pro are thinking models — reasoning_content consumes max_tokens
     before content is generated.  We inflate the requested max_tokens to
     leave room for internal reasoning, then return content (or
     reasoning_content as fallback).
 
+    When model is 'deepseek-v4-pro', enables thinking mode with max reasoning effort.
     Retries up to 3 times with exponential backoff (2 s, 4 s, 8 s).
     """
     from helpers import _log_token_usage  # local import avoids circular deps
 
+    selected_model = model or DEEPSEEK_MODEL
+    is_pro = selected_model == "deepseek-v4-pro"
     client = get_deepseek_client()
     last_exc: Exception | None = None
-    effective_max = max(max_tokens * 5, 512)
+    effective_max = max(max_tokens * (8 if is_pro else 5), 512)
 
     for attempt in range(3):
         try:
-            response = client.chat.completions.create(
-                model=DEEPSEEK_MODEL,
+            kwargs: dict = dict(
+                model=selected_model,
                 messages=messages,
                 max_tokens=effective_max,
                 temperature=temperature,
             )
+            if is_pro:
+                kwargs["reasoning_effort"] = "max"
+                kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+
+            response = client.chat.completions.create(**kwargs)
 
             if log_endpoint and hasattr(response, "usage"):
                 _log_token_usage(log_endpoint, response.usage)

@@ -82,6 +82,8 @@ def _model_display(llm) -> str:
     if llm is None:
         return "N/A"
     s = str(llm).lower()
+    if "deepseek-v4-pro" in s or "v4-pro" in s:
+        return "DeepSeek V4 Pro"
     if "reasoner" in s or "pro" in s:
         return "DeepSeek V4 Pro"
     if "deepseek" in s or "chat" in s:
