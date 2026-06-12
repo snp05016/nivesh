@@ -1118,7 +1118,9 @@ struct AnalysisScreen: View {
                     thesisBlock(title: "SECTOR POSITIONING", text: stripEmoji(sp), color: Theme.holdAmber)
                 }
             }
-            .padding(.vertical, Theme.Spacing.tight)
+            .padding(Theme.Spacing.card)
+            .banknoteCard()
+            .padding(.horizontal, Theme.screenPadding)
         }
 
         if let gf = analysis.governanceFlags, !gf.isEmpty {
@@ -1376,21 +1378,32 @@ struct AnalysisScreen: View {
     }
 
     private func thesisBlock(title: String, text: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-            Text(title)
-                .font(Theme.officialStampFont(size: 9)).foregroundStyle(color)
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            // Title with colored accent bar
+            HStack(spacing: Theme.Spacing.small) {
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(color)
+                    .frame(width: 3, height: 16)
+                Text(title)
+                    .font(Theme.officialStampFont(size: 10))
+                    .tracking(1.2)
+                    .foregroundStyle(color)
+            }
+            // Body text — serif, larger, high line height for readability
             Text(text)
-                .font(.caption)
+                .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
                 .foregroundStyle(Theme.inkPrimary)
+                .lineSpacing(7)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(Theme.Spacing.card)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(color.opacity(0.06))
-        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-            .stroke(color.opacity(0.2), lineWidth: 0.5))
-        .cornerRadius(Theme.CornerRadius.medium)
-        .padding(.horizontal, Theme.screenPadding)
+        .background(color.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                .stroke(color.opacity(0.15), lineWidth: 0.5)
+        )
     }
 
     private func disclaimerSection(_ analysis: StockAnalysis) -> some View {
