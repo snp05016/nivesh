@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Header, HTTPException
 from fastapi.responses import StreamingResponse
 import asyncio
 import json
 import time
 from helpers import (
     _dash_lock, _active_analyses, _completed_analyses,
-    _harvest_status, _token_stats, _request_log
+    _harvest_status, _token_stats, _request_log, require_auth
 )
 
 router = APIRouter(tags=["Dashboard"])
@@ -76,8 +76,9 @@ def get_dashboard_snapshot():
         }
 
 @router.get("/api/v1/dashboard/stream")
-async def dashboard_stream(request: Request):
+async def dashboard_stream(request: Request, authorization: str = Header(None)):
     """SSE endpoint for live dashboard updates and checkpoint progress."""
+    require_auth(authorization)
     return StreamingResponse(
         event_generator(request),
         media_type="text/event-stream",

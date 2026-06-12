@@ -1231,7 +1231,12 @@ extension NetworkManager {
             urlStr += "&ticker=\(enc)"
         }
         guard let url = URL(string: urlStr) else { throw NetworkError.invalidURL }
-        let (data, _) = try await URLSession.shared.data(from: url)
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, _) = try await session.data(for: request)
         return try JSONDecoder().decode(HarvesterFeedResponse.self, from: data)
     }
 
@@ -1240,7 +1245,12 @@ extension NetworkManager {
         guard let url = URL(string: "\(harvesterBaseURL)/harvester/governance/\(enc)") else {
             throw NetworkError.invalidURL
         }
-        let (data, _) = try await URLSession.shared.data(from: url)
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, _) = try await session.data(for: request)
         return try JSONDecoder().decode([HarvestedCard].self, from: data)
     }
 
