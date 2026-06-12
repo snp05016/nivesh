@@ -1937,3 +1937,66 @@ struct StockMacroImpact: Codable, Identifiable {
     let detail: String
 }
 
+// MARK: - Harvester (Market Intelligence) models — port 8001 microservice
+
+struct HarvestedCard: Codable, Identifiable {
+    let id: Int
+    let sourceType: String
+    let sourceName: String
+    let sourceUrl: String
+    let originalAuthor: String?
+    let publishedAt: String?
+    let title: String
+    let reformattedSummary: String?
+    let keyTakeaways: [String]?
+    let tickers: [String]?
+    let sentiment: String?
+    let credibilityScore: Int
+    let cardType: String
+    let expertCredential: String?
+    let createdAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case sourceType = "source_type"
+        case sourceName = "source_name"
+        case sourceUrl = "source_url"
+        case originalAuthor = "original_author"
+        case publishedAt = "published_at"
+        case title
+        case reformattedSummary = "reformatted_summary"
+        case keyTakeaways = "key_takeaways"
+        case tickers
+        case sentiment
+        case credibilityScore = "credibility_score"
+        case cardType = "card_type"
+        case expertCredential = "expert_credential"
+        case createdAt = "created_at"
+    }
+}
+
+struct HarvesterFeedResponse: Codable {
+    let cards: [HarvestedCard]
+    let total: Int
+    let sources: [String]
+}
+
+struct HarvesterSourceStatus: Codable, Identifiable {
+    var id: String { sourceName }
+    let sourceName: String
+    let lastSuccess: String?
+    let lastFailure: String?
+    let itemsScraped: Int
+    let isHealthy: Bool
+    let errorMessage: String?
+
+    enum CodingKeys: String, CodingKey {
+        case sourceName = "source_name"
+        case lastSuccess = "last_success"
+        case lastFailure = "last_failure"
+        case itemsScraped = "items_scraped"
+        case isHealthy = "is_healthy"
+        case errorMessage = "error_message"
+    }
+}
+
