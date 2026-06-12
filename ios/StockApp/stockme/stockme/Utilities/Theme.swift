@@ -45,8 +45,8 @@ enum Theme {
 
     // MARK: - The Accents (neon teal — THE signature accent)
 
-    static let securityGold      = Color(uiColor("00D4AA"))              // neon teal
-    static let securityGoldLight = Color(uiColor("00FFD0"))              // lighter teal highlight
+    static var securityGold: Color { ThemeManager.shared.current.accentDark }
+    static var securityGoldLight: Color { ThemeManager.shared.current.accentLight }
 
     // MARK: - Market Signals
 
@@ -97,7 +97,7 @@ enum Theme {
     // MARK: - Enhanced Borders
 
     static let borderSubtle = Color.white.opacity(0.06)
-    static let borderStrong = Color(uiColor("00D4AA")).opacity(0.25)   // teal-tinted important borders
+    static var borderStrong: Color { securityGold.opacity(0.25) }   // accent-tinted important borders
 
     // MARK: - Data Colors
 
@@ -105,7 +105,7 @@ enum Theme {
     static let dataNegative      = Color(uiColor("E85555"))
     static let dataPositiveMuted = Color(uiColor("00D4AA")).opacity(0.15)
     static let dataNegativeMuted = Color(uiColor("E85555")).opacity(0.15)
-    static let goldPrimary       = securityGold                      // alias
+    static var goldPrimary: Color { securityGold }                      // alias
     static var goldMuted: Color  { securityGold.opacity(0.30) }
 
     // MARK: - Typography
@@ -229,17 +229,21 @@ enum Theme {
 
     // MARK: - Gradients
 
-    static let securityThreadGradient = LinearGradient(
-        colors: [Color(uiColor("00D4AA")).opacity(0.35), Color(uiColor("00D4AA")).opacity(0.08)],
-        startPoint: .top,
-        endPoint: .bottom
-    )
+    static var securityThreadGradient: LinearGradient {
+        LinearGradient(
+            colors: [securityGold.opacity(0.35), securityGold.opacity(0.08)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
 
-    static let securityGoldGradient = LinearGradient(
-        colors: [Color(uiColor("00D4AA")), Color(uiColor("00D4AA")).opacity(0.78)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    static var securityGoldGradient: LinearGradient {
+        LinearGradient(
+            colors: [securityGold, securityGold.opacity(0.78)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
 
     /// Chart glow fill — teal fade for bull moves
     static var chartBullGradient: LinearGradient {
