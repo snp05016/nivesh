@@ -80,9 +80,9 @@ class ConditionalLogic:
         if count >= effective_max:
             return "Research Manager"
         
-        current_response = debate_state.get("current_response", "")
+        latest_speaker = debate_state.get("latest_speaker", "")
         # Toggle between researchers based on the last speaker
-        if "Bull" in current_response:
+        if latest_speaker == "Bull":
             return "Bear Researcher"
         return "Bull Researcher"
 
