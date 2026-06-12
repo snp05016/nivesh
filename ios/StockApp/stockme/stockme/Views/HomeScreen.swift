@@ -2804,12 +2804,7 @@ extension HomeScreen {
         case .marketPulse:
 // ── Section 8: Market Pulse ───────────────────────
                 VStack(spacing: Theme.Spacing.standard) {
-                    HStack(spacing: Theme.Spacing.tight) {
-                        Image(systemName: "waveform.path.ecg")
-                            .font(.caption)
-                            .foregroundStyle(Theme.securityGold)
                         SectionHeader(title: "Market Pulse", hindiTitle: "बाजार की नब्ज")
-                    }
                     if let pulse = viewModel.dashboard?.pulse {
                         MarketPulseDashCard(pulse: pulse)
                         if pulse.advances + pulse.declines > 0 {
@@ -2825,12 +2820,7 @@ extension HomeScreen {
         case .momentum:
 // ── Section 9: Momentum ───────────────────────────
                 VStack(spacing: Theme.Spacing.standard) {
-                    HStack(spacing: Theme.Spacing.tight) {
-                        Image(systemName: "arrow.up.right.circle.fill")
-                            .font(.caption)
-                            .foregroundStyle(Theme.securityGold)
                         SectionHeader(title: "Momentum Scan", hindiTitle: "गति विश्लेषण")
-                    }
                     if let momentum = viewModel.dashboard?.momentum {
                         MomentumDashCard(momentum: momentum)
                     } else {
@@ -2842,12 +2832,7 @@ extension HomeScreen {
         case .macroAlt:
 // ── Section 10: Macro & Alternatives ─────────────
                 VStack(spacing: Theme.Spacing.standard) {
-                    HStack(spacing: Theme.Spacing.tight) {
-                        Image(systemName: "globe.asia.australia.fill")
-                            .font(.caption)
-                            .foregroundStyle(Theme.securityGold)
                         SectionHeader(title: "Macro & Alternatives", hindiTitle: "वृहद अर्थव्यवस्था")
-                    }
                     if let macro = viewModel.dashboard?.macro {
                         MacroDashCard(macro: macro)
                     } else {
@@ -2859,12 +2844,7 @@ extension HomeScreen {
         case .institutional:
 // ── Section 11: Institutional Flow ───────────────
                 VStack(spacing: Theme.Spacing.standard) {
-                    HStack(spacing: Theme.Spacing.tight) {
-                        Image(systemName: "building.columns.fill")
-                            .font(.caption)
-                            .foregroundStyle(Theme.securityGold)
                         SectionHeader(title: "Institutional Allocation", hindiTitle: "संस्थागत प्रवाह")
-                    }
                     if let inst = viewModel.dashboard?.institutional {
                         InstitutionalDashCard(flow: inst)
                     } else {
