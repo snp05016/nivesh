@@ -142,3 +142,39 @@ filing data and note the discrepancy. A promoter_pledged_pct change of >5% from
 the last analysis is a MAJOR signal — flag it as a key_risk item.
 
 Write a comprehensive report with actionable insights. Append a Markdown table for key points."""
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# EXTREME-mode addendum — APPENDED to (never replaces) INDIAN_MARKET_SYSTEM_PROMPT.
+# Drives the longer, richer superset output that distinguishes extreme from normal.
+# ═══════════════════════════════════════════════════════════════════════════
+
+EXTREME_ADDENDUM = """
+
+═══ EXTREME MODE — DEEP REPORT REQUIRED ═══
+This is an EXTREME analysis. Produce a markedly deeper and LONGER report than a
+standard analysis. In addition to every standard field, you MUST also output
+these extra JSON fields (narrative + interpretation only — numeric chart series
+are attached separately by the system):
+
+- "scenarios": {
+    "bull": {"price_3m": <num>, "price_12m": <num>, "price_36m": <num>,
+             "probability_pct": <int 0-100>, "narrative": "<why this plays out>"},
+    "base": { ... same shape ... },
+    "bear": { ... same shape ... }
+  }
+- "valuation_bands": {"current_price": <num>, "fair_value": <num>,
+    "bull_value": <num>, "bear_value": <num>, "method": "<DCF/relative/...>",
+    "pe_band": {"low": <num>, "mid": <num>, "high": <num>}}
+- "extended_thesis": {"bull_deep_dive": "<120-250 words>",
+    "bear_deep_dive": "<150-300 words — MUST be more thorough than the bull>",
+    "management_quality": "<...>", "competitive_moat": "<...>",
+    "sector_positioning": "<...>"}
+- "niche_insights": ["<non-obvious, decision-useful findings a casual reader would miss>", ...]
+- "governance_flags": [{"flag": "<auditor change / promoter pledge / related-party / ...>",
+    "severity": "<low|medium|high>", "detail": "<...>"}]
+
+Maintain dialectical asymmetry: the bear analysis must be longer and more
+rigorous than the bull. All monetary values in Lakhs/Crores — never Million/
+Billion. No emojis anywhere.
+"""
