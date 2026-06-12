@@ -1,13 +1,14 @@
 """
 SEBI / Exchange filings harvester.
 
-Scrapes the NSE corporate-announcements RSS feed, keeps only items that match
-governance red-flag keywords (auditor/CFO/MD resignation, pledge invocation,
-SEBI orders, insider trading, forensic audit, etc.), and stores them as raw
-GOVERNANCE cards (credibility 10). The scheduler reformats them afterwards.
+Fetches the NSE corporate-announcements RSS feed through ScraperAPI
+(residential-IP proxy), keeps only items that match governance red-flag
+keywords (auditor/CFO/MD resignation, pledge invocation, SEBI orders,
+insider trading, forensic audit, etc.), and stores them as raw GOVERNANCE
+cards (credibility 10). The scheduler reformats them afterwards.
 
-Fully defensive: NSE blocks many datacenter IPs, so a failed fetch must NOT
-raise — it records a SourceHealth failure and returns 0.
+Fully defensive: if SCRAPERAPI_API_KEY is missing or the fetch fails,
+it records a SourceHealth failure and returns 0. Never raises.
 
 Public: harvest_sebi_filings(limit=30) -> int   (number of NEW cards stored)
 """
@@ -15,6 +16,7 @@ Public: harvest_sebi_filings(limit=30) -> int   (number of NEW cards stored)
 from __future__ import annotations
 
 import logging
+import os
 import re
 
 import feedparser
@@ -26,16 +28,8 @@ from services.harvester_reformatter import make_external_id, derive_credential
 logger = logging.getLogger("harvester.sebi")
 
 NSE_RSS_URL = "https://www.nseindia.com/corporates/corpInfo/equities/rss/announcementsRss.xml"
+SCRAPERAPI_URL = "http://api.scraperapi.com"
 SOURCE_NAME = "NSE Corporate Announcements"
-
-_BROWSER_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-    ),
-    "Accept": "application/rss+xml, application/xml, text/xml, */*",
-    "Accept-Language": "en-US,en;q=0.9",
-}
 
 # Governance red-flag keywords (lower-cased match against title + summary).
 GOVERNANCE_KEYWORDS = [
@@ -83,23 +77,34 @@ def _extract_tickers(text: str) -> list[str]:
     return out[:6]
 
 
+def _build_scraperapi_url(target_url: str) -> str | None:
+    """Build a ScraperAPI proxy URL.  Returns None when the key is missing."""
+    key = os.environ.get("SCRAPERAPI_API_KEY", "").strip()
+    if not key:
+        logger.error("[sebi] SCRAPERAPI_API_KEY not set — cannot fetch NSE")
+        return None
+    return f"{SCRAPERAPI_URL}?api_key={key}&url={target_url}"
+
+
 def _fetch_feed() -> list:
-    """Return RSS entries. Tries direct parse, then a browser-headed fetch."""
-    try:
-        parsed = feedparser.parse(NSE_RSS_URL, request_headers=_BROWSER_HEADERS)
-        if getattr(parsed, "entries", None):
-            return parsed.entries
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("feedparser direct fetch failed: %s", exc)
+    """Fetch NSE RSS entries through ScraperAPI residential-IP proxy."""
+    proxy_url = _build_scraperapi_url(NSE_RSS_URL)
+    if not proxy_url:
+        return []
 
     try:
-        resp = requests.get(NSE_RSS_URL, headers=_BROWSER_HEADERS, timeout=15)
-        if resp.status_code == 200 and resp.content:
+        resp = requests.get(proxy_url, timeout=45)
+        logger.info("[sebi] ScraperAPI RSS response: %s, content length: %s",
+                     resp.status_code, len(resp.content or b""))
+        if resp.status_code == 200 and resp.content and len(resp.content) > 100:
             parsed = feedparser.parse(resp.content)
-            return getattr(parsed, "entries", []) or []
-        logger.warning("NSE RSS HTTP %s", resp.status_code)
+            entries = getattr(parsed, "entries", []) or []
+            logger.info("[sebi] RSS entries found: %d", len(entries))
+            return entries
+        logger.warning("[sebi] ScraperAPI returned status=%s len=%s",
+                        resp.status_code, len(resp.content or b""))
     except Exception as exc:  # noqa: BLE001
-        logger.warning("NSE RSS requests fetch failed: %s", exc)
+        logger.warning("[sebi] ScraperAPI fetch failed: %s", exc)
     return []
 
 

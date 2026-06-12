@@ -247,7 +247,7 @@ def start_scheduler():
     _scheduler.add_job(snapshot_all_users,            "cron", hour=11, minute=0)   # 4:30 PM IST (11:00 UTC)
     _scheduler.add_job(run_nightly_screen,            "cron", hour=11, minute=15)  # 4:45 PM IST (11:15 UTC)
     _scheduler.add_job(_run_evaluate_analysis_outcomes,"cron", hour=2, minute=0)   # 2:00 AM IST
-    _scheduler.add_job(_run_harvest_filings,          "interval", minutes=15)      # corporate filings every 15 min
+    _scheduler.add_job(_run_evaluate_analysis_outcomes,"cron", hour=2, minute=0)   # 2:00 AM IST
 
     # ── NEW jobs ──────────────────────────────────────────────────────────────
     _scheduler.add_job(_run_cache_purge,          "cron", hour=3,  minute=0)              # 3:00 AM IST
@@ -257,18 +257,19 @@ def start_scheduler():
     _scheduler.add_job(_run_premarket_cache_warm, "cron", hour=3,  minute=30)             # 9:00 AM IST
     _scheduler.add_job(_run_error_digest,         "cron", hour=1,  minute=30)             # 7:00 AM IST
 
-    # ── Harvester jobs (merged from nivesh-harvester microservice) ────────────
-    _scheduler.add_job(_run_expert_harvest_bg, "interval", minutes=15, id="expert_harvest", replace_existing=True)
-    _scheduler.add_job(_run_sebi_harvest_bg,   "interval", minutes=60, id="sebi_harvest",   replace_existing=True)
+    # ── Harvester jobs (ScraperAPI-backed, rate-limited for free tier) ─────────
+    _scheduler.add_job(_run_expert_harvest_bg, "interval", minutes=120, id="expert_harvest", replace_existing=True)
+    _scheduler.add_job(_run_sebi_harvest_bg,   "interval", minutes=120, id="sebi_harvest",   replace_existing=True)
     _scheduler.add_job(_run_youtube_expert_bg, "interval", minutes=120, id="youtube_expert_harvest", replace_existing=True)
 
     _scheduler.start()
     promote_initial_admins()
     logging.info(
         "All schedulers started — existing: (advisor 1:30, news 12:30, yt-channel 1:00, "
-        "yt-portfolio 1:15, snapshot 4:30 PM, pkscreener 4:45 PM, outcome-eval 2:00 AM, filings 15min) | "
+        "yt-portfolio 1:15, snapshot 4:30 PM, pkscreener 4:45 PM, outcome-eval 2:00 AM) | "
         "new: (cache-purge 3:00 AM, bhavcopy 7:00 PM, morning-brief-pregen 6:30 AM, "
-        "piotroski-weekly Sun 11 PM, premarket-warm 9:00 AM, error-digest 7:00 AM) [all IST]"
+        "piotroski-weekly Sun 11 PM, premarket-warm 9:00 AM, error-digest 7:00 AM) | "
+        "harvesters: (expert 120min, sebi 120min, yt-expert 120min) [all IST]"
     )
 
 
