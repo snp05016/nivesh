@@ -99,24 +99,20 @@ struct DialecticProgressView: View {
     private static let fallbackStages: [(agent: String, message: String, llmModel: String)] = [
         ("Factor Engine", "Computing RSI, MACD, Bollinger Bands, SMA crossovers...", "Deterministic"),
         ("Epistemic Feedback", "Loading prior analysis audit and outcome tracking...", "N/A"),
-        ("Governance Agent", "Scanning for auditor resignations, SEBI actions, promoter pledges...", "DeepSeek V4 Flash"),
-        ("Market Analyst", "Analyzing price structure, volume profiles, DMA signals...", "DeepSeek V4 Flash"),
-        ("Sentiment Analyst", "Processing social sentiment and news mood...", "DeepSeek V4 Flash"),
-        ("News Analyst", "Scanning headlines, macro catalysts, red flags...", "DeepSeek V4 Flash"),
-        ("Fundamentals Analyst", "Decomposing P&L quality, FCF, working capital...", "DeepSeek V4 Flash"),
-        ("Bull Researcher", "Round 1 — Building bullish thesis with catalysts...", "DeepSeek V4 Flash"),
-        ("Bear Researcher", "Round 1 — Bear researcher challenging assumptions...", "DeepSeek V4 Flash"),
-        ("Bull Researcher", "Round 2 — Rebuttal with supplementary evidence...", "DeepSeek V4 Flash"),
-        ("Bear Researcher", "Round 2 — Counter-rebuttal with risk quantification...", "DeepSeek V4 Flash"),
-        ("Bull Researcher", "Round 3 — Final thesis consolidation...", "DeepSeek V4 Flash"),
-        ("Bear Researcher", "Round 3 — Final risk verdict...", "DeepSeek V4 Flash"),
-        ("Research Manager", "Synthesizing debate, assigning verdict with confidence...", "Claude Haiku 4.5"),
-        ("Trader", "Computing entry, target, and stop-loss levels...", "DeepSeek V4 Flash"),
-        ("Risk Committee", "Aggressive risk profile stress-testing levels...", "DeepSeek V4 Flash"),
-        ("Risk Committee", "Conservative risk profile capital preservation check...", "DeepSeek V4 Flash"),
-        ("Risk Committee", "Neutral risk profile blended assessment...", "DeepSeek V4 Flash"),
-        ("Portfolio Manager", "Final verdict — synthesizing all prior nodes...", "Claude Haiku 4.5"),
-        ("Claude Reformatter", "Reformatting output into structured JSON...", "Claude Sonnet"),
+        ("Governance Agent", "Scanning for auditor resignations, SEBI actions, promoter pledges...", "LLM"),
+        ("Market Analyst", "Analyzing price structure, volume profiles, DMA signals...", "LLM"),
+        ("Sentiment Analyst", "Processing social sentiment and news mood...", "LLM"),
+        ("News Analyst", "Scanning headlines, macro catalysts, red flags...", "LLM"),
+        ("Fundamentals Analyst", "Decomposing P&L quality, FCF, working capital...", "LLM"),
+        ("Bull Researcher", "Building bullish thesis with catalysts...", "LLM"),
+        ("Bear Researcher", "Challenging assumptions, finding risks...", "LLM"),
+        ("Research Manager", "Synthesizing debate, assigning verdict...", "LLM"),
+        ("Trader", "Computing entry, target, stop-loss levels...", "LLM"),
+        ("Risk Committee", "Aggressive profile — stress-testing levels...", "LLM"),
+        ("Risk Committee", "Conservative profile — capital preservation...", "LLM"),
+        ("Risk Committee", "Neutral profile — blended assessment...", "LLM"),
+        ("Portfolio Manager", "Final verdict — synthesizing all nodes...", "LLM"),
+        ("Claude Reformatter", "Reformatting into structured JSON...", "LLM"),
     ]
 
     var body: some View {
@@ -136,10 +132,11 @@ struct DialecticProgressView: View {
             SectionDivider()
                 .padding(.bottom, Theme.Spacing.card)
 
-            // Progress bar
+            // Progress bar — uses actual total from events (fallback = stages count)
             let completedCount = max(client.events.filter { $0.status == "complete" }.count,
                                       showFallback && fallbackStep > 0 ? fallbackStep - 1 : 0)
-            let total = 20
+            let total = client.events.isEmpty ? Self.fallbackStages.count
+                      : (client.events.last?.totalStages ?? Self.fallbackStages.count)
             VStack(spacing: Theme.Spacing.small) {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
@@ -294,7 +291,7 @@ struct AgentEventRow: View {
                     Text(event.agentName)
                         .font(.caption.weight(.bold).monospaced())
                         .foregroundStyle(statusColor)
-                    if !event.llmModel.isEmpty && event.llmModel != "N/A" {
+                    if !event.llmModel.isEmpty && event.llmModel != "N/A" && event.llmModel != "LLM" {
                         Text(event.llmModel)
                             .font(Theme.microLabel(size: 7))
                             .foregroundStyle(Theme.securityGold.opacity(0.7))
