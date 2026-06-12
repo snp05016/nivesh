@@ -407,7 +407,7 @@ def build_ta_config(scan_type: str = "standard") -> dict:
         config["quick_think_provider"] = "deepseek"
         config["max_debate_rounds"] = 2          # was 3 — runaway fix
         config["max_risk_discuss_rounds"] = 1    # was 2 — runaway fix
-        config["max_tokens"] = 8000              # was 16000 — runaway fix
+        config["max_tokens"] = 4000              # cost reduction: extreme keeps depth
         config["recursion_limit"] = 40           # explicit LangGraph bound (no infinite loops)
         config["analyst_tool_loop_cap"] = 3      # cap agent↔tool loop iterations
     else:
@@ -417,7 +417,7 @@ def build_ta_config(scan_type: str = "standard") -> dict:
         config["quick_think_provider"] = "deepseek"
         config["max_debate_rounds"] = 1
         config["max_risk_discuss_rounds"] = 1
-        config["max_tokens"] = 4000
+        config["max_tokens"] = 1000              # cost reduction: 1000×5=5000 effective
     config["llm_provider"] = "deepseek"
     config["deep_think_llm"] = HAIKU_MODEL
     config["deep_think_provider"] = "anthropic"
@@ -452,8 +452,54 @@ def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "s
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# Reformat with Claude (Phase 1) → DeepSeek V4 Flash fallback (Phase 2)
+# Reformat: DeepSeek V4 Flash primary → Claude Sonnet fallback
 # ═════════════════════════════════════════════════════════════════════════════
+
+
+def reformat_with_deepseek(
+    raw_output: str,
+    full_ticker: str,
+    exchange: str,
+    prior_analyses: list[dict] | None = None,
+    scan_type: str = "standard",
+) -> dict:
+    """Primary reformatter: DeepSeek V4 Flash (Tier 1, cheapest).
+    Falls back to Claude Sonnet only on parse failure."""
+
+    is_extreme = scan_type == "extreme"
+
+    for attempt in range(2):
+        try:
+            system_prompt = INDIAN_MARKET_SYSTEM_PROMPT
+            if is_extreme:
+                system_prompt += EXTREME_ADDENDUM
+            ds_raw = _deepseek_chat(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"Reformat the following analysis for {full_ticker} ({exchange}) into the prescribed JSON format.\n\n{raw_output[:8000]}"},
+                ],
+                max_tokens=2000 if is_extreme else 1000,
+                temperature=0,
+                log_endpoint="reformat_deepseek",
+            )
+            result = _extract_json_from_text(ds_raw)
+            if result:
+                import json
+                parsed = json.loads(result)
+                if isinstance(parsed, dict) and parsed.get("signal"):
+                    parsed = _normalize_response(parsed)
+                    parsed["reformat_model"] = "deepseek-flash"
+                    return parsed
+            # Parse failed — try again
+        except Exception:
+            continue
+
+    # DeepSeek failed twice — fall back to Claude Sonnet (expensive, reliable)
+    import logging
+    logging.getLogger("orchestrator").warning(
+        f"[reformat_fallback] {full_ticker}: DeepSeek reformat failed after 2 attempts, falling back to Claude Sonnet"
+    )
+    return reformat_with_claude(raw_output, full_ticker, exchange, prior_analyses, scan_type)
 
 
 def reformat_with_claude(
@@ -1239,7 +1285,7 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
 
     emitter.emit("format", "Reformatter",
                  "Structuring the report into the final schema", pct=80)
-    result = reformat_with_claude(
+    result = reformat_with_deepseek(
         raw_output, full_ticker, exchange, prior_analyses=prior, scan_type=scan_type
     )
     result = _normalize_response(result, scan_type)
