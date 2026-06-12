@@ -178,6 +178,26 @@ final class ThemeManager {
         scheme == .dark ? current.canvasDark : current.canvasLight
     }
 
+    func canvasDeep(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? current.canvasDeep : current.canvasLight.opacity(0.92)
+    }
+
+    func canvasShadow(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? current.canvasShadow : current.canvasLight.opacity(0.82)
+    }
+
+    func inkPrimary(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? current.inkPrimaryDark : current.inkPrimaryLight
+    }
+
+    func inkSecondary(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? current.inkSecondaryDark : current.inkSecondaryLight
+    }
+
+    func inkTertiary(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? current.inkTertiaryDark : current.inkTertiaryLight
+    }
+
     func accent(for scheme: ColorScheme) -> Color {
         scheme == .dark ? current.accentDark : current.accentLight
     }
