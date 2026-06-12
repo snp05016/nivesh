@@ -14,6 +14,9 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+# YouTube cookies file for authenticated requests (bypasses cloud IP blocks)
+_COOKIES_PATH = os.path.join(os.path.dirname(__file__), "..", "cookies.txt")
+
 # Devanagari Unicode block: U+0900 (ऀ) to U+097F (ॿ)
 _DEVANAGARI_START = 0x0900
 _DEVANAGARI_END = 0x097F
@@ -115,6 +118,22 @@ def _build_result(source: str, segments: list, duration_seconds: float) -> dict:
 # Layer 1 — YouTube Transcript API
 # ---------------------------------------------------------------------------
 
+def _load_cookies_session():
+    """Load Netscape-format cookies.txt into a requests.Session if available."""
+    import requests as _requests
+    session = _requests.Session()
+    if os.path.exists(_COOKIES_PATH):
+        try:
+            from http.cookiejar import MozillaCookieJar
+            cj = MozillaCookieJar(_COOKIES_PATH)
+            cj.load(ignore_discard=True, ignore_expires=True)
+            session.cookies = cj
+            logger.info("Loaded YouTube cookies from %s", _COOKIES_PATH)
+        except Exception as e:
+            logger.warning("Failed to load cookies from %s: %s", _COOKIES_PATH, e)
+    return session
+
+
 def _fetch_youtube_api(video_id: str, duration_seconds: float) -> Optional[dict]:
     """
     Attempt to fetch transcript via youtube_transcript_api.
@@ -130,20 +149,11 @@ def _fetch_youtube_api(video_id: str, duration_seconds: float) -> Optional[dict]
         logger.warning("youtube_transcript_api not available: %s", exc)
         return None
 
+    session = _load_cookies_session()
+
     try:
-        # Some versions/forks use static method, others need an instance
-        if hasattr(YouTubeTranscriptApi, "get_transcript"):
-            raw = YouTubeTranscriptApi.get_transcript(
-                video_id, languages=["en", "hi"]
-            )
-        elif hasattr(YouTubeTranscriptApi, "fetch"):
-            # Instance-based fetch (seen in some versions like 1.2.x)
-            raw = YouTubeTranscriptApi().fetch(
-                video_id, languages=["en", "hi"]
-            )
-        else:
-            # Fallback to manual list/find
-            raw = YouTubeTranscriptApi().list(video_id).find_transcript(["en", "hi"]).fetch()
+        ytt_api = YouTubeTranscriptApi(http_client=session)
+        raw = ytt_api.fetch(video_id, languages=["en", "hi"])
     except (TranscriptsDisabled, NoTranscriptFound) as exc:
         logger.warning(
             "YouTube Transcript API: no transcript for %s — %s", video_id, exc
@@ -214,6 +224,8 @@ def _fetch_whisper(video_id: str, duration_seconds: float) -> dict:
         "outtmpl": tmp_base + ".%(ext)s",
         "quiet": True,
     }
+    if os.path.exists(_COOKIES_PATH):
+        ydl_opts["cookiefile"] = _COOKIES_PATH
 
     video_url = f"https://www.youtube.com/watch?v={video_id}"
     downloaded_file: Optional[str] = None
