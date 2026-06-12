@@ -213,7 +213,7 @@ Bear researcher prompt MUST be longer than Bull's. Bear has more data signals (m
 ### 4.4 LLM Config
 ```python
 HAIKU_MODEL = "claude-haiku-4-5-20251001"   # Tier 2 synthesis
-SONNET_MODEL = "claude-3-5-sonnet-latest"    # Final reformatter
+SONNET_MODEL = "claude-sonnet-4-6"           # Final reformatter (3.5 alias retired/404)
 DEEPSEEK_MODEL = "deepseek-chat"             # Tier 1 bulk agents
 ```
 Use `build_ta_config()` to override — NEVER modify `DEFAULT_CONFIG` directly.

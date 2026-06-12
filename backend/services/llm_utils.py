@@ -24,7 +24,7 @@ _THINK_TAG_RE = re.compile(r"</?think(?:ing)?>", re.IGNORECASE)
 # ═════════════════════════════════════════════════════════════════════════════
 
 HAIKU_MODEL = "claude-haiku-4-5-20251001"  # Tier 2 — synthesis agents
-SONNET_MODEL = "claude-3-5-sonnet-latest"   # Tier 3 — final reformatter only
+SONNET_MODEL = "claude-sonnet-4-6"          # Tier 3 — final reformatter only (3.5 alias retired/404)
 DEEPSEEK_MODEL = "deepseek-chat"            # Tier 1 — bulk agent tasks
 
 
