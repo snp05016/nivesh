@@ -1861,8 +1861,95 @@ struct TopMoversResponse: Codable {
     enum CodingKeys: String, CodingKey {
         case gainers, losers
         case activeByValue = "active_by_value"
-        case activeByVolume = "active_by_volume"
+         case activeByVolume = "active_by_volume"
         case fetchedAt = "fetched_at"
     }
+}
+
+// MARK: - Macro Context Models
+
+struct MacroContextResponse: Codable {
+    let ticker: String
+    let macroStrip: MacroStrip?
+    let fiiDiiTrend: FIIDIITrend?
+    let sectorPerformance: MacroSectorPerformance?
+    let marketMood: MarketMood?
+    let stockImpact: [MacroImpactItem]?
+    let summary: String?
+    let aiSummary: String?
+    let aiSentiment: String?
+
+    enum CodingKeys: String, CodingKey {
+        case ticker
+        case macroStrip = "macro_strip"
+        case fiiDiiTrend = "fii_dii_trend"
+        case sectorPerformance = "sector_performance"
+        case marketMood = "market_mood"
+        case stockImpact = "stock_impact"
+        case summary
+        case aiSummary = "ai_summary"
+        case aiSentiment = "ai_sentiment"
+    }
+}
+
+struct MacroStrip: Codable {
+    let usdInr: Double?
+    let brentOilUsd: Double?
+    let indiaVix: Double?
+    let rbiRepoRatePct: Double?
+    let rbiStance: String?
+
+    enum CodingKeys: String, CodingKey {
+        case usdInr = "usd_inr"
+        case brentOilUsd = "brent_oil_usd"
+        case indiaVix = "india_vix"
+        case rbiRepoRatePct = "rbi_repo_rate_pct"
+        case rbiStance = "rbi_stance"
+    }
+}
+
+struct FIIDIITrend: Codable {
+    let fiiNet5dCrores: Double?
+    let diiNet5dCrores: Double?
+    let bias: String?
+
+    enum CodingKeys: String, CodingKey {
+        case fiiNet5dCrores = "fii_net_5d_crores"
+        case diiNet5dCrores = "dii_net_5d_crores"
+        case bias
+    }
+}
+
+struct MacroSectorPerformance: Codable {
+    let name: String?
+    let changePct: Double?
+    let niftyChangePct: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case changePct = "change_pct"
+        case niftyChangePct = "nifty_change_pct"
+    }
+}
+
+struct MarketMood: Codable {
+    let zone: String?
+    let score: Int?
+    let indiaVix: Double?
+    let interpretation: String?
+
+    enum CodingKeys: String, CodingKey {
+        case zone, score
+        case indiaVix = "india_vix"
+        case interpretation
+    }
+}
+
+struct MacroImpactItem: Codable, Identifiable {
+    var id: String { factor }
+    let factor: String
+    let value: String
+    let impact: String
+    let detail: String
 }
 
