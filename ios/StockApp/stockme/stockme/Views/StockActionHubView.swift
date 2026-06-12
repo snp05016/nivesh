@@ -16,6 +16,7 @@ enum AnalysisLaunchMode: Hashable {
     case cached      // show the stored report, no network
     case regenerate  // fresh standard analysis
     case deepScan    // fresh analysis with PKScreener + FinBERT
+    case extremeScan // DeepSeek V4 Pro, 3-round debate, long-form thesis
 }
 
 /// Pushed from the hub to open the AI report in a specific mode.
@@ -101,6 +102,18 @@ struct StockActionHubView: View {
                                 disabled: deepScanForbidden
                             ) {
                                 path.append(AnalysisDest(ticker: dest.ticker, mode: .deepScan))
+                            }
+
+                            actionCard(
+                                symbol: "flame.fill",
+                                title: "Extreme Analysis",
+                                subtitle: deepScanForbidden
+                                    ? "Unavailable for indices"
+                                    : "DeepSeek V4 Pro · 3-round debate · 1000+ word thesis",
+                                tint: Theme.bearRed,
+                                disabled: deepScanForbidden
+                            ) {
+                                path.append(AnalysisDest(ticker: dest.ticker, mode: .extremeScan))
                             }
                         }
                     }
