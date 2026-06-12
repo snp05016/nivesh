@@ -220,8 +220,8 @@ struct MacroStrip: Codable {
     let crudeOilUsd: Double?
     let brentOilUsd: Double?
     let indiaVix: Double?
-    let rbiRepoRatePct: Double
-    let rbiStance: String
+    let rbiRepoRatePct: Double?
+    let rbiStance: String?
 
     enum CodingKeys: String, CodingKey {
         case usdInr = "usd_inr"
@@ -1861,20 +1861,20 @@ struct TopMoversResponse: Codable {
     enum CodingKeys: String, CodingKey {
         case gainers, losers
         case activeByValue = "active_by_value"
-         case activeByVolume = "active_by_volume"
+        case activeByVolume = "active_by_volume"
         case fetchedAt = "fetched_at"
     }
 }
 
-// MARK: - Macro Context Models
+// MARK: - Macro Context Models (Stock Profile)
 
-struct MacroContextResponse: Codable {
+struct MacroContextData: Codable {
     let ticker: String
     let macroStrip: MacroStrip?
-    let fiiDiiTrend: FIIDIITrend?
-    let sectorPerformance: MacroSectorPerformance?
-    let marketMood: MarketMood?
-    let stockImpact: [MacroImpactItem]?
+    let fiiDiiTrend: FIIDIITrendData?
+    let sectorPerformance: MacroSectorPerf?
+    let marketMood: MarketMoodData?
+    let stockImpact: [StockMacroImpact]?
     let summary: String?
     let aiSummary: String?
     let aiSentiment: String?
@@ -1892,23 +1892,7 @@ struct MacroContextResponse: Codable {
     }
 }
 
-struct MacroStrip: Codable {
-    let usdInr: Double?
-    let brentOilUsd: Double?
-    let indiaVix: Double?
-    let rbiRepoRatePct: Double?
-    let rbiStance: String?
-
-    enum CodingKeys: String, CodingKey {
-        case usdInr = "usd_inr"
-        case brentOilUsd = "brent_oil_usd"
-        case indiaVix = "india_vix"
-        case rbiRepoRatePct = "rbi_repo_rate_pct"
-        case rbiStance = "rbi_stance"
-    }
-}
-
-struct FIIDIITrend: Codable {
+struct FIIDIITrendData: Codable {
     let fiiNet5dCrores: Double?
     let diiNet5dCrores: Double?
     let bias: String?
@@ -1920,7 +1904,7 @@ struct FIIDIITrend: Codable {
     }
 }
 
-struct MacroSectorPerformance: Codable {
+struct MacroSectorPerf: Codable {
     let name: String?
     let changePct: Double?
     let niftyChangePct: Double?
@@ -1932,7 +1916,7 @@ struct MacroSectorPerformance: Codable {
     }
 }
 
-struct MarketMood: Codable {
+struct MarketMoodData: Codable {
     let zone: String?
     let score: Int?
     let indiaVix: Double?
@@ -1945,7 +1929,7 @@ struct MarketMood: Codable {
     }
 }
 
-struct MacroImpactItem: Codable, Identifiable {
+struct StockMacroImpact: Codable, Identifiable {
     var id: String { factor }
     let factor: String
     let value: String

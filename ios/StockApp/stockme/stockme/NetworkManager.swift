@@ -1134,7 +1134,7 @@ class NetworkManager: ObservableObject {
 
     // MARK: - Macro Context
 
-    func fetchMacroContext(ticker: String, exchange: String = "NSE", sector: String = "") async -> MacroContextResponse? {
+    func fetchMacroContext(ticker: String, exchange: String = "NSE", sector: String = "") async -> MacroContextData? {
         var components = URLComponents(string: "\(baseURL)/macro-context/\(ticker)")!
         components.queryItems = [
             URLQueryItem(name: "exchange", value: exchange),
@@ -1144,7 +1144,7 @@ class NetworkManager: ObservableObject {
 
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
-            return try JSONDecoder().decode(MacroContextResponse.self, from: data)
+            return try JSONDecoder().decode(MacroContextData.self, from: data)
         } catch {
             print("[MacroContext] Fetch failed: \(error)")
             return nil
