@@ -382,7 +382,7 @@ struct StockProfileView: View {
                                 Button {
                                     HapticManager.selection()
                                     chartPeriod = period
-                                    vm.fetchChart(period: period)
+                                    Task { await vm.fetchChart(period: period) }
                                 } label: {
                                     Text(label)
                                         .font(Theme.officialStampFont(size: 8))
