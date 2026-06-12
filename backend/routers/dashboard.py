@@ -39,11 +39,32 @@ async def event_generator(request: Request):
         await asyncio.sleep(1)  # Poll every 1s during analysis for faster updates
 
 def get_dashboard_snapshot():
-    """Get current dashboard state."""
+    """Get current dashboard state.
+
+    The authoritative 'is an analysis running' signal is the DB AnalysisJob table
+    (survives restarts / connection drops). The in-memory _active_analyses dict is
+    merged in as a best-effort supplement.
+    """
+    # DB-backed active jobs — single source of truth for the v2 engine.
+    db_jobs = {}
+    try:
+        import database
+        for j in database.list_active_jobs():
+            db_jobs[j["job_id"]] = {
+                "job_id": j["job_id"], "ticker": j["ticker"],
+                "scan_type": j["scan_type"], "status": j["status"],
+                "stage": j["stage"], "progress_pct": j["progress_pct"],
+                "tokens_used": j["tokens_used"],
+                "checkpoints": j["checkpoints"][-3:],  # last few for a live ticker
+            }
+    except Exception as e:
+        print(f"[dashboard] active job read failed: {e}")
+
     with _dash_lock:
+        merged = {**dict(_active_analyses), **db_jobs}
         return {
             "type": "dashboard_snapshot",
-            "active_analyses": dict(_active_analyses),
+            "active_analyses": merged,
             "recent_analyses": list(_completed_analyses)[:10],
             "harvest_status": dict(_harvest_status),
             "token_stats": {
