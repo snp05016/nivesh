@@ -11,26 +11,38 @@ from helpers import (
 router = APIRouter(tags=["Dashboard"])
 
 async def event_generator(request: Request):
-    """Generate SSE events for dashboard updates."""
+    """Generate SSE events for dashboard and checkpoint progress updates."""
+    ticker = request.query_params.get("ticker", "")
     last_check = time.time()
+    sent_progress_count = 0
+
     while True:
         if await request.is_disconnected():
             break
-        
-        # Check for new events
+
+        if ticker:
+            # Serve analysis checkpoint progress for this ticker
+            try:
+                from services.orchestrator import get_analysis_progress
+                events = get_analysis_progress(ticker)
+                # Send only new events since last check
+                for event in events[sent_progress_count:]:
+                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+                sent_progress_count = len(events)
+            except Exception:
+                pass
+
+        # Also send dashboard snapshot every 2s (for general monitoring)
         current_state = get_dashboard_snapshot()
-        
-        # Send update if state changed
-        # Fix 2.39: ensure_ascii=False for Indian news headings with
-        # localized characters (Devanagari, Tamil, etc.)
         yield f"data: {json.dumps(current_state, ensure_ascii=False)}\n\n"
-        
-        await asyncio.sleep(2)  # Update every 2 seconds
+
+        await asyncio.sleep(1)  # Poll every 1s during analysis for faster updates
 
 def get_dashboard_snapshot():
     """Get current dashboard state."""
     with _dash_lock:
         return {
+            "type": "dashboard_snapshot",
             "active_analyses": dict(_active_analyses),
             "recent_analyses": list(_completed_analyses)[:10],
             "harvest_status": dict(_harvest_status),
@@ -44,7 +56,7 @@ def get_dashboard_snapshot():
 
 @router.get("/api/v1/dashboard/stream")
 async def dashboard_stream(request: Request):
-    """SSE endpoint for live dashboard updates."""
+    """SSE endpoint for live dashboard updates and checkpoint progress."""
     return StreamingResponse(
         event_generator(request),
         media_type="text/event-stream",
