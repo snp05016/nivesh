@@ -145,6 +145,15 @@ enum AppTheme: String, CaseIterable, Codable {
         case .stoneGrey:       return Color(red: 0.45, green: 0.45, blue: 0.48)  // silver
         }
     }
+
+    // Color-scheme-aware ink variants (used by Theme.swift adaptive properties)
+    var inkPrimaryDark: Color { Color(red: 0.91, green: 0.93, blue: 0.94) }   // #E8ECF0 near-white for dark mode
+    var inkSecondaryDark: Color { Color(red: 0.53, green: 0.60, blue: 0.67) }  // #8899AA
+    var inkTertiaryDark: Color { Color(red: 0.33, green: 0.40, blue: 0.47) }   // #556677
+
+    var inkPrimaryLight: Color { Color(red: 0.10, green: 0.11, blue: 0.13) }   // #1A1C20 near-black for light mode
+    var inkSecondaryLight: Color { Color(red: 0.27, green: 0.33, blue: 0.40) }  // #445566
+    var inkTertiaryLight: Color { Color(red: 0.47, green: 0.53, blue: 0.60) }   // #778899
 }
 
 // MARK: - ThemeManager
