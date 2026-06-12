@@ -6,7 +6,20 @@ struct AgentEvent: Identifiable, Equatable {
     let agentName: String
     let status: String       // "thinking", "complete", "error"
     let message: String
+    let llmModel: String     // e.g. "DeepSeek V4 Flash", "Claude Haiku 4.5"
+    let stage: Int           // 0-19
+    let totalStages: Int     // 20
     let timestamp: Date
+
+    init(agentName: String, status: String, message: String, llmModel: String = "", stage: Int = 0, totalStages: Int = 20, timestamp: Date = Date()) {
+        self.agentName = agentName
+        self.status = status
+        self.message = message
+        self.llmModel = llmModel
+        self.stage = stage
+        self.totalStages = totalStages
+        self.timestamp = timestamp
+    }
 
     static func == (lhs: AgentEvent, rhs: AgentEvent) -> Bool { lhs.id == rhs.id }
 }
@@ -45,7 +58,10 @@ final class AgentStreamClient: ObservableObject {
                     let agent = obj["agent"] as? String ?? "Unknown"
                     let status = obj["status"] as? String ?? "thinking"
                     let message = obj["message"] as? String ?? ""
-                    let event = AgentEvent(agentName: agent, status: status, message: message, timestamp: Date())
+                    let llmModel = obj["llm_model"] as? String ?? ""
+                    let stage = obj["stage"] as? Int ?? 0
+                    let totalStages = obj["total_stages"] as? Int ?? 20
+                    let event = AgentEvent(agentName: agent, status: status, message: message, llmModel: llmModel, stage: stage, totalStages: totalStages, timestamp: Date())
                     await MainActor.run { self.events.append(event) }
                     if status == "complete" || status == "error" { break }
                 }
@@ -80,13 +96,27 @@ struct DialecticProgressView: View {
     let userId: Int?
     let ticker: String
 
-    private static let fallbackStages: [(agent: String, message: String)] = [
-        ("Market Analyst", "Fetching technical indicators and price data..."),
-        ("News Analyst", "Scanning headlines and sentiment streams..."),
-        ("Fundamentals Analyst", "Reviewing financial statements and ratios..."),
-        ("Bull Researcher", "Building the bullish thesis with catalysts..."),
-        ("Bear Researcher", "Challenging assumptions and finding risks..."),
-        ("Risk Committee", "Finalizing risk clearance and confidence score..."),
+    private static let fallbackStages: [(agent: String, message: String, llmModel: String)] = [
+        ("Factor Engine", "Computing RSI, MACD, Bollinger Bands, SMA crossovers...", "Deterministic"),
+        ("Epistemic Feedback", "Loading prior analysis audit and outcome tracking...", "N/A"),
+        ("Governance Agent", "Scanning for auditor resignations, SEBI actions, promoter pledges...", "DeepSeek V4 Flash"),
+        ("Market Analyst", "Analyzing price structure, volume profiles, DMA signals...", "DeepSeek V4 Flash"),
+        ("Sentiment Analyst", "Processing social sentiment and news mood...", "DeepSeek V4 Flash"),
+        ("News Analyst", "Scanning headlines, macro catalysts, red flags...", "DeepSeek V4 Flash"),
+        ("Fundamentals Analyst", "Decomposing P&L quality, FCF, working capital...", "DeepSeek V4 Flash"),
+        ("Bull Researcher", "Round 1 — Building bullish thesis with catalysts...", "DeepSeek V4 Flash"),
+        ("Bear Researcher", "Round 1 — Bear researcher challenging assumptions...", "DeepSeek V4 Flash"),
+        ("Bull Researcher", "Round 2 — Rebuttal with supplementary evidence...", "DeepSeek V4 Flash"),
+        ("Bear Researcher", "Round 2 — Counter-rebuttal with risk quantification...", "DeepSeek V4 Flash"),
+        ("Bull Researcher", "Round 3 — Final thesis consolidation...", "DeepSeek V4 Flash"),
+        ("Bear Researcher", "Round 3 — Final risk verdict...", "DeepSeek V4 Flash"),
+        ("Research Manager", "Synthesizing debate, assigning verdict with confidence...", "Claude Haiku 4.5"),
+        ("Trader", "Computing entry, target, and stop-loss levels...", "DeepSeek V4 Flash"),
+        ("Risk Committee", "Aggressive risk profile stress-testing levels...", "DeepSeek V4 Flash"),
+        ("Risk Committee", "Conservative risk profile capital preservation check...", "DeepSeek V4 Flash"),
+        ("Risk Committee", "Neutral risk profile blended assessment...", "DeepSeek V4 Flash"),
+        ("Portfolio Manager", "Final verdict — synthesizing all prior nodes...", "Claude Haiku 4.5"),
+        ("Claude Reformatter", "Reformatting output into structured JSON...", "Claude Sonnet"),
     ]
 
     var body: some View {
@@ -105,6 +135,29 @@ struct DialecticProgressView: View {
 
             SectionDivider()
                 .padding(.bottom, Theme.Spacing.card)
+
+            // Progress bar
+            let completedCount = max(client.events.filter { $0.status == "complete" }.count,
+                                      showFallback && fallbackStep > 0 ? fallbackStep - 1 : 0)
+            let total = 20
+            VStack(spacing: Theme.Spacing.small) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Theme.inkTertiary.opacity(0.1))
+                            .frame(height: 3)
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Theme.securityGold)
+                            .frame(width: geo.size.width * CGFloat(completedCount) / CGFloat(total), height: 3)
+                            .animation(.easeInOut(duration: 0.4), value: completedCount)
+                    }
+                }
+                .frame(height: 3)
+                Text("Stage \(completedCount)/\(total)")
+                    .font(Theme.microLabel(size: 8))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+            .padding(.bottom, Theme.Spacing.card)
 
             if !showFallback && client.events.isEmpty && client.isConnected {
                 // Initial connecting state
@@ -146,7 +199,9 @@ struct DialecticProgressView: View {
                                     agentName: stage.agent,
                                     status: status,
                                     message: stage.message,
-                                    timestamp: Date()
+                                    llmModel: stage.llmModel,
+                                    stage: i,
+                                    totalStages: Self.fallbackStages.count
                                 ))
                                 .id(i)
                             }
@@ -235,9 +290,20 @@ struct AgentEventRow: View {
             }
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                Text(event.agentName)
-                    .font(.caption.weight(.bold).monospaced())
-                    .foregroundStyle(statusColor)
+                HStack(spacing: Theme.Spacing.small) {
+                    Text(event.agentName)
+                        .font(.caption.weight(.bold).monospaced())
+                        .foregroundStyle(statusColor)
+                    if !event.llmModel.isEmpty && event.llmModel != "N/A" {
+                        Text(event.llmModel)
+                            .font(Theme.microLabel(size: 7))
+                            .foregroundStyle(Theme.securityGold.opacity(0.7))
+                            .padding(.horizontal, Theme.Spacing.small)
+                            .padding(.vertical, 1)
+                            .background(Theme.securityGold.opacity(0.1))
+                            .clipShape(Capsule())
+                    }
+                }
                 Text(event.message)
                     .font(.caption2)
                     .foregroundStyle(Theme.inkSecondary)

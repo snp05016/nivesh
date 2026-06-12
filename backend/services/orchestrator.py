@@ -99,6 +99,17 @@ from tradingagents.graph.analyst_execution import build_analyst_execution_plan
 from tradingagents.graph.conditional_logic import ConditionalLogic
 from tradingagents.graph.setup import GraphSetup
 
+# Shared progress state for SSE streaming — module-level, thread-safe
+import threading as _thd
+import time as _time
+_analysis_progress_lock = _thd.Lock()
+_analysis_progress: dict[str, list[dict]] = {}
+
+def get_analysis_progress(ticker: str) -> list[dict]:
+    """Thread-safe read of analysis checkpoint progress."""
+    with _analysis_progress_lock:
+        return _analysis_progress.get(ticker.upper(), [])
+
 # ═════════════════════════════════════════════════════════════════════════════
 # Model Identifiers
 # ═════════════════════════════════════════════════════════════════════════════
@@ -426,7 +437,15 @@ def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "s
     output = str(decision)
     if governance_report:
         output = f"GOVERNANCE FORENSICS REPORT:\n{governance_report}\n\n---\n\n{output}"
-    return output
+
+    # Collect checkpoint progress events from agent nodes
+    from tradingagents.graph.setup import get_progress_events as _get_prog
+    progress = _get_prog()
+    # Store in module-level shared dict for SSE streaming
+    with _analysis_progress_lock:
+        _analysis_progress[full_ticker] = progress
+
+    return output, progress
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1101,7 +1120,7 @@ def analyze(
     except:
         pass
 
-    raw_output = run_trading_agents(full_ticker, analysis_date, scan_type)
+    raw_output, _ = run_trading_agents(full_ticker, analysis_date, scan_type)
     raw_output += f"\n\nADDITIONAL DATA (MANDATORY TO INCLUDE IN fundamentals_snapshot):\nPromoter Pledging: {pledging_data}\n"
 
     # ── Deep Scan: PKScreener + FinBERT injection ────────────────────────────
@@ -1184,6 +1203,7 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
     result["exchange"] = exchange
     result["_cache_type"] = "FULL AI"
     result["scan_type"] = scan_type
+    result["analysis_checkpoints"] = get_analysis_progress(ticker)
 
     try:
         with get_session() as session:
