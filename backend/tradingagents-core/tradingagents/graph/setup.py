@@ -1,5 +1,7 @@
 # TradingAgents/graph/setup.py
 
+import threading
+import time
 from typing import Any, Dict, List
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
@@ -10,6 +12,46 @@ from tradingagents.agents.utils.agent_states import AgentState
 
 from .analyst_execution import build_analyst_execution_plan, AnalystNodeSpec
 from .conditional_logic import ConditionalLogic
+
+# Shared progress tracking for SSE streaming
+_progress_lock = threading.Lock()
+_progress_events: list[dict] = []
+
+def get_progress_events() -> list[dict]:
+    """Thread-safe read of accumulated progress events."""
+    with _progress_lock:
+        return list(_progress_events)
+
+def clear_progress_events():
+    """Reset progress for a new analysis run."""
+    with _progress_lock:
+        _progress_events.clear()
+
+def _emit_progress(agent_name: str, status: str, message: str, llm_model: str, stage: int, total: int):
+    """Thread-safe append of a progress event."""
+    with _progress_lock:
+        _progress_events.append({
+            "agent": agent_name,
+            "status": status,
+            "message": message,
+            "llm_model": llm_model,
+            "stage": stage,
+            "total_stages": total,
+            "timestamp": time.time(),
+        })
+
+def wrap_node_with_progress(agent_name: str, llm_model: str, stage: int, total: int, inner_fn):
+    """Wrap a graph node function to emit progress before and after execution."""
+    def wrapped(state):
+        _emit_progress(agent_name, "thinking", f"Running {agent_name}...", llm_model, stage, total)
+        try:
+            result = inner_fn(state)
+            _emit_progress(agent_name, "complete", f"{agent_name} completed", llm_model, stage, total)
+            return result
+        except Exception as e:
+            _emit_progress(agent_name, "error", str(e)[:200], llm_model, stage, total)
+            raise
+    return wrapped
 
 
 # ---------------------------------------------------------------------------
@@ -69,27 +111,53 @@ class GraphSetup:
             concurrency_limit=self.analyst_concurrency_limit,
         )
 
-        analyst_factories = {
-            "governance": lambda: create_governance_analyst(self.quick_thinking_llm),
-            "market": lambda: create_market_analyst(self.quick_thinking_llm),
-            "social": lambda: create_sentiment_analyst(self.quick_thinking_llm),
-            "news": lambda: create_news_analyst(self.quick_thinking_llm),
-            "fundamentals": lambda: create_fundamentals_analyst(self.quick_thinking_llm),
-        }
+        # Analyst stage numbers (after Factor Engine=0, Epistemic=1)
+        TOTAL_STAGES = 20
+        _analyst_stages = {"governance": 2, "market": 3, "social": 4, "news": 5, "fundamentals": 6}
+        _analyst_labels = {"governance": "Governance Agent", "market": "Market Analyst", "social": "Sentiment Analyst", "news": "News Analyst", "fundamentals": "Fundamentals Analyst"}
 
-        # Create researcher and manager nodes
-        bull_researcher_node = create_bull_researcher(self.quick_thinking_llm)
-        bear_researcher_node = create_bear_researcher(self.quick_thinking_llm)
+        analyst_factories = {}
+        for key in ("governance", "market", "social", "news", "fundamentals"):
+            factory = {
+                "governance": lambda: create_governance_analyst(self.quick_thinking_llm),
+                "market": lambda: create_market_analyst(self.quick_thinking_llm),
+                "social": lambda: create_sentiment_analyst(self.quick_thinking_llm),
+                "news": lambda: create_news_analyst(self.quick_thinking_llm),
+                "fundamentals": lambda: create_fundamentals_analyst(self.quick_thinking_llm),
+            }[key]
+            stage = _analyst_stages[key]
+            label = _analyst_labels[key]
+            analyst_factories[key] = lambda f=factory, s=stage, l=label: wrap_node_with_progress(l, "DeepSeek V4 Flash", s, TOTAL_STAGES, f())
+
+        # Create researcher and manager nodes (with progress wrapping)
+        bull_researcher_node = wrap_node_with_progress(
+            "Bull Researcher", "DeepSeek V4 Flash", 7, TOTAL_STAGES,
+            create_bull_researcher(self.quick_thinking_llm))
+        bear_researcher_node = wrap_node_with_progress(
+            "Bear Researcher", "DeepSeek V4 Flash", 8, TOTAL_STAGES,
+            create_bear_researcher(self.quick_thinking_llm))
         # Tier 2 (deep_thinking_llm) for trust-critical synthesis nodes
-        research_manager_node = create_research_manager(self.deep_thinking_llm)
-        trader_node = create_trader(self.quick_thinking_llm)
+        research_manager_node = wrap_node_with_progress(
+            "Research Manager", "Claude Haiku 4.5", 10, TOTAL_STAGES,
+            create_research_manager(self.deep_thinking_llm))
+        trader_node = wrap_node_with_progress(
+            "Trader", "DeepSeek V4 Flash", 11, TOTAL_STAGES,
+            create_trader(self.quick_thinking_llm))
 
         # Create risk analysis nodes (Aggressive/Neutral/Conservative Debators — Tier 1)
-        aggressive_analyst = create_aggressive_debator(self.quick_thinking_llm)
-        neutral_analyst = create_neutral_debator(self.quick_thinking_llm)
-        conservative_analyst = create_conservative_debator(self.quick_thinking_llm)
+        aggressive_analyst = wrap_node_with_progress(
+            "Risk Committee", "DeepSeek V4 Flash", 12, TOTAL_STAGES,
+            create_aggressive_debator(self.quick_thinking_llm))
+        neutral_analyst = wrap_node_with_progress(
+            "Risk Committee", "DeepSeek V4 Flash", 13, TOTAL_STAGES,
+            create_neutral_debator(self.quick_thinking_llm))
+        conservative_analyst = wrap_node_with_progress(
+            "Risk Committee", "DeepSeek V4 Flash", 14, TOTAL_STAGES,
+            create_conservative_debator(self.quick_thinking_llm))
         # Tier 2 for Portfolio Manager final verdict
-        portfolio_manager_node = create_portfolio_manager(self.deep_thinking_llm)
+        portfolio_manager_node = wrap_node_with_progress(
+            "Portfolio Manager", "Claude Haiku 4.5", 15, TOTAL_STAGES,
+            create_portfolio_manager(self.deep_thinking_llm))
 
         # Create workflow
         workflow = StateGraph(AgentState)

@@ -374,6 +374,11 @@ class TradingAgentsGraph:
 
     def _run_graph(self, company_name, trade_date, asset_type: str = "stock"):
         """Execute the graph and write the resulting state to disk and memory log."""
+        from .setup import clear_progress_events, _emit_progress
+        clear_progress_events()
+
+        # Stage 0: Factor Engine
+        _emit_progress("Factor Engine", "thinking", "Computing RSI, MACD, Bollinger Bands, SMA crossovers...", "Deterministic", 0, 20)
         # ── Pre-compute deterministic technical indicators ────────────────────
         precomputed_indicators = ""
         try:
@@ -389,7 +394,10 @@ class TradingAgentsGraph:
                 logger.info(f"[factor_engine] {company_name}: indicators pre-computed (RSI={indicators.get('rsi_14')})")
         except Exception as _fe_err:
             logger.warning(f"[factor_engine] {company_name}: failed, LLM will compute: {_fe_err}")
+        _emit_progress("Factor Engine", "complete", "Technical indicators computed", "Deterministic", 0, 20)
 
+        # Stage 1: Epistemic Feedback
+        _emit_progress("Epistemic Feedback", "thinking", "Loading prior analysis audit and outcome tracking...", "N/A", 1, 20)
         # ── Epistemic feedback block ──────────────────────────────────────────
         epistemic_feedback = ""
         try:
@@ -399,6 +407,7 @@ class TradingAgentsGraph:
                 logger.info(f"[feedback_injector] {company_name}: prior analysis feedback loaded")
         except Exception as _fb_err:
             logger.warning(f"[feedback_injector] {company_name}: failed silently: {_fb_err}")
+        _emit_progress("Epistemic Feedback", "complete", "Prior analysis audit loaded", "N/A", 1, 20)
 
         # Initialize state — inject memory log context for PM and the
         # deterministically resolved instrument identity for all agents.
