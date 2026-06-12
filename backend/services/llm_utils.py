@@ -70,7 +70,14 @@ def deepseek_chat(
     is_pro = selected_model == "deepseek-reasoner"
     client = get_deepseek_client()
     last_exc: Exception | None = None
-    effective_max = max(max_tokens * (8 if is_pro else 5), 512)
+    # Reasoner (is_pro) needs headroom for reasoning_content, but the old `max_tokens * 8`
+    # inflated extreme calls to 64K-128K tokens — a primary cause of 15-20 min runaways.
+    # Cap the reasoner headroom; leave the non-pro `* 5` path UNCHANGED (5 external callers
+    # depend on it: portfolio red-flags/macro/trade-journal, advisor harvester, morning briefs).
+    if is_pro:
+        effective_max = min(max_tokens + 8000, 16000)
+    else:
+        effective_max = max(max_tokens * 5, 512)
 
     for attempt in range(3):
         try:
