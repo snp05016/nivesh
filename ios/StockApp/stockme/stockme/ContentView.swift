@@ -67,6 +67,7 @@ struct ContentView: View {
         }
         .onAppear {
             setupTabBarAppearance()
+            engineManager.startWatching()
         }
         .onChange(of: selectedTheme) { _, _ in
             setupTabBarAppearance()
