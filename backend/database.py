@@ -936,6 +936,29 @@ def get_active_job_for_user(user_id: Optional[int]) -> Optional[dict]:
         return _job_to_dict(j) if j else None
 
 
+# Wall-clock limits mirror services.job_worker._WALLCLOCK_LIMITS so a crashed
+# worker never permanently blocks new runs of the same scan_type.
+_STALE_LIMITS = {"extreme": 600, "standard": 300}
+
+
+def get_active_job_for_user_and_type(user_id: Optional[int], scan_type: str) -> Optional[dict]:
+    """Active (QUEUED/RUNNING) job for this user AND scan_type, ignoring stale
+    jobs older than their wall-clock limit. Lets extreme and standard coexist."""
+    if user_id is None:
+        return None
+    import datetime
+    cutoff_sec = _STALE_LIMITS.get(scan_type, 300)
+    threshold = datetime.datetime.utcnow() - datetime.timedelta(seconds=cutoff_sec)
+    with get_session() as s:
+        j = (s.query(AnalysisJob)
+               .filter(AnalysisJob.user_id == user_id,
+                       AnalysisJob.scan_type == scan_type,
+                       AnalysisJob.status.in_(["QUEUED", "RUNNING"]),
+                       AnalysisJob.created_at >= threshold)
+               .order_by(AnalysisJob.created_at.desc()).first())
+        return _job_to_dict(j) if j else None
+
+
 def list_active_jobs() -> list[dict]:
     """All QUEUED/RUNNING jobs — for the live dashboard 'what's running' panel."""
     with get_session() as s:
