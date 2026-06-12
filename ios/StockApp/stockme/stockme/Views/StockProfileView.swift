@@ -343,6 +343,8 @@ struct StockProfileView: View {
     @StateObject private var vm: StockProfileViewModel
     @State private var activeTab = 0
     @State private var showSMA: Set<Int> = [20, 50, 200]
+    @State private var macroContext: MacroContextResponse?
+    @State private var macroLoading = false
     @Environment(\.dismiss) var dismiss
 
     init(ticker: String, exchange: String = "NSE") {
@@ -486,8 +488,9 @@ struct StockProfileView: View {
                         newsTab.tag(2)
                         updatesTab.tag(3)
                         governanceTab.tag(4)
-                        chartTab.tag(5)
-                        financialsTab.tag(6)
+                        macroTab.tag(5)
+                        chartTab.tag(6)
+                        financialsTab.tag(7)
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
                     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: activeTab)
@@ -518,6 +521,7 @@ struct StockProfileView: View {
             ("News", "newspaper"),
             ("Updates", "bell"),
             ("Governance", "shield.checkered"),
+            ("Macro", "globe.asia.australia"),
             ("Chart", "chart.xyaxis.line"),
             ("Financials", "tablecells"),
         ]
@@ -1190,6 +1194,280 @@ struct StockProfileView: View {
         .padding(Theme.Spacing.card)
         .banknoteCard()
         .glossaryTerm("DEBT TO EQUITY", definition: "Total debt divided by shareholders' equity. Below 1.0 = low leverage, financially conservative. 1.0–2.0 = moderate leverage, acceptable for capital-intensive sectors. Above 2.0 = high financial risk — interest payments consume earnings, vulnerable to rate hikes. Infrastructure/metals can sustain higher D/E; for other sectors, D/E >1.5 is a governance concern.")
+    }
+
+    // MARK: - Tab: Macro
+
+    @ViewBuilder
+    private var macroTab: some View {
+        ScrollView {
+            VStack(spacing: Theme.Spacing.card) {
+                if macroLoading {
+                    skeletonBlock(rows: 4)
+                } else if let macro = macroContext {
+                    macroMoodGauge(macro: macro)
+                    macroStripCard(macro: macro)
+                    macroImpactList(macro: macro)
+                    macroAIInsightCard(macro: macro)
+                } else {
+                    emptyState(message: "Macro context unavailable")
+                }
+            }
+            .padding(.horizontal, Theme.screenPadding)
+            .padding(.vertical, Theme.Spacing.card)
+        }
+        .task { await loadMacroContext() }
+    }
+
+    private func loadMacroContext() async {
+        guard macroContext == nil else { return }
+        macroLoading = true
+        let sector = vm.quickInfo?.sector ?? ""
+        macroContext = await NetworkManager.shared.fetchMacroContext(
+            ticker: ticker, exchange: exchange, sector: sector
+        )
+        macroLoading = false
+    }
+
+    // MARK: -- Market Mood Gauge
+
+    @ViewBuilder
+    private func macroMoodGauge(macro: MacroContextResponse) -> some View {
+        if let mood = macro.marketMood {
+            VStack(spacing: Theme.Spacing.standard) {
+                Text("MARKET MOOD INDEX")
+                    .font(Theme.officialStampFont(size: 9))
+                    .tracking(1.5)
+                    .foregroundStyle(Theme.inkTertiary)
+
+                let score = Double(mood.score ?? 50)
+                let zoneColor: Color = {
+                    switch mood.zone ?? "" {
+                    case "EXTREME_FEAR": return Theme.bearRed
+                    case "FEAR": return Theme.bearRed.opacity(0.6)
+                    case "EXTREME_GREED": return Theme.bullGreen
+                    case "GREED": return Theme.bullGreen.opacity(0.6)
+                    default: return Theme.holdAmber
+                    }
+                }()
+
+                ZStack {
+                    Circle()
+                        .trim(from: 0.25, to: 0.75)
+                        .stroke(
+                            AngularGradient(
+                                gradient: Gradient(colors: [
+                                    Theme.bearRed, Theme.bearRed.opacity(0.5),
+                                    Theme.holdAmber,
+                                    Theme.bullGreen.opacity(0.5), Theme.bullGreen
+                                ]),
+                                center: .center
+                            ),
+                            style: StrokeStyle(lineWidth: 12, lineCap: .round)
+                        )
+                        .frame(width: 140, height: 140)
+                        .rotationEffect(.degrees(180))
+
+                    let angle = Angle(degrees: -90 + (score / 100.0 * 180))
+                    Path { path in
+                        path.move(to: CGPoint(x: 70, y: 70))
+                        path.addLine(to: CGPoint(
+                            x: 70 + 55 * cos(angle.radians - .pi / 2),
+                            y: 70 + 55 * sin(angle.radians - .pi / 2)
+                        ))
+                    }
+                    .stroke(Theme.inkPrimary, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+
+                    VStack(spacing: 0) {
+                        Text("\(Int(score))")
+                            .font(Theme.serialNumberFont(size: 22, relativeTo: .title2))
+                            .foregroundStyle(zoneColor)
+                        Text(mood.zone?.replacingOccurrences(of: "_", with: " ") ?? "")
+                            .font(Theme.microLabel(size: 7))
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
+                }
+                .frame(height: 100)
+
+                if let interp = mood.interpretation, !interp.isEmpty {
+                    Text(interp)
+                        .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
+                        .foregroundStyle(Theme.inkSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(3)
+                }
+            }
+            .padding(Theme.Spacing.card)
+            .banknoteCard()
+            .glossaryTerm("MARKET MOOD INDEX", definition: "A composite gauge based on India VIX, FII/DII flow direction, and Nifty momentum. Extreme Fear (<30) = historically good entry zones. Extreme Greed (>70) = caution zone, retail euphoria often precedes corrections. Derived from Tickertape's MMI methodology adapted for Indian markets.")
+        }
+    }
+
+    // MARK: -- Macro Strip Card
+
+    @ViewBuilder
+    private func macroStripCard(macro: MacroContextResponse) -> some View {
+        if let strip = macro.macroStrip {
+            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                Text("MACRO INDICATORS")
+                    .font(Theme.officialStampFont(size: 9))
+                    .tracking(1.5)
+                    .foregroundStyle(Theme.inkTertiary)
+
+                HStack(spacing: Theme.Spacing.none) {
+                    macroStripItem(
+                        label: "BRENT",
+                        value: strip.brentOilUsd.map { "$\(String(format: "%.0f", $0))" } ?? "N/A",
+                        subtitle: "/bbl",
+                        icon: "fuelpump.fill",
+                        color: (strip.brentOilUsd ?? 0) > 85 ? Theme.bearRed : Theme.holdAmber
+                    )
+                    macroStripItem(
+                        label: "USD/INR",
+                        value: strip.usdInr.map { "Rs.\(String(format: "%.1f", $0))" } ?? "N/A",
+                        subtitle: "Rs. per $",
+                        icon: "dollarsign.arrow.circlepath",
+                        color: (strip.usdInr ?? 0) > 85 ? Theme.bearRed : Theme.bullGreen
+                    )
+                    macroStripItem(
+                        label: "VIX",
+                        value: strip.indiaVix.map { String(format: "%.1f", $0) } ?? "N/A",
+                        subtitle: "fear gauge",
+                        icon: "waveform.path.ecg",
+                        color: (strip.indiaVix ?? 0) > 20 ? Theme.bearRed : (strip.indiaVix ?? 0) > 15 ? Theme.holdAmber : Theme.bullGreen
+                    )
+                    macroStripItem(
+                        label: "RBI",
+                        value: strip.rbiRepoRatePct.map { "\(String(format: "%.2f", $0))%" } ?? "N/A",
+                        subtitle: "repo rate",
+                        icon: "building.columns.fill",
+                        color: Theme.avatarBlue
+                    )
+                }
+            }
+            .padding(Theme.Spacing.card)
+            .banknoteCard()
+        }
+    }
+
+    private func macroStripItem(label: String, value: String, subtitle: String, icon: String, color: Color) -> some View {
+        VStack(spacing: Theme.Spacing.xSmall) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundStyle(color)
+            Text(value)
+                .font(Theme.serialNumberFont(size: 14, relativeTo: .footnote))
+                .foregroundStyle(Theme.inkPrimary)
+            Text(label)
+                .font(Theme.microLabel(size: 7))
+                .tracking(0.5)
+                .foregroundStyle(Theme.inkTertiary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: -- Macro Impact List
+
+    @ViewBuilder
+    private func macroImpactList(macro: MacroContextResponse) -> some View {
+        if let impacts = macro.stockImpact, !impacts.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                Text("HOW MACRO AFFECTS \(ticker.uppercased())")
+                    .font(Theme.officialStampFont(size: 9))
+                    .tracking(1.5)
+                    .foregroundStyle(Theme.inkTertiary)
+
+                ForEach(impacts) { item in
+                    HStack(alignment: .top, spacing: Theme.Spacing.standard) {
+                        Text(item.impact)
+                            .font(Theme.microLabel(size: 7))
+                            .tracking(0.5)
+                            .foregroundStyle(
+                                item.impact == "POSITIVE" ? Theme.bullGreen :
+                                item.impact == "NEGATIVE" ? Theme.bearRed :
+                                Theme.holdAmber
+                            )
+                            .padding(.horizontal, Theme.Spacing.tight)
+                            .padding(.vertical, Theme.Spacing.xSmall)
+                            .background(
+                                (item.impact == "POSITIVE" ? Theme.bullGreen :
+                                 item.impact == "NEGATIVE" ? Theme.bearRed :
+                                 Theme.holdAmber).opacity(0.12)
+                            )
+                            .clipShape(Capsule())
+
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                            HStack {
+                                Text(item.factor)
+                                    .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
+                                    .foregroundStyle(Theme.inkPrimary)
+                                Spacer()
+                                Text(item.value)
+                                    .font(Theme.microLabel(size: 9))
+                                    .foregroundStyle(Theme.inkSecondary)
+                            }
+                            Text(item.detail)
+                                .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
+                                .foregroundStyle(Theme.inkSecondary)
+                                .lineLimit(3)
+                                .lineSpacing(2)
+                        }
+                    }
+                    .padding(Theme.Spacing.standard)
+                    .background(Theme.inkTertiary.opacity(0.03))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight))
+
+                    if item.id != impacts.last?.id {
+                        Rectangle()
+                            .fill(Theme.borderFine)
+                            .frame(height: 0.5)
+                            .padding(.horizontal, Theme.Spacing.standard)
+                    }
+                }
+            }
+            .padding(Theme.Spacing.card)
+            .banknoteCard()
+        }
+    }
+
+    // MARK: -- AI Macro Insight Card
+
+    @ViewBuilder
+    private func macroAIInsightCard(macro: MacroContextResponse) -> some View {
+        if let aiSummary = macro.aiSummary, !aiSummary.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                HStack(spacing: Theme.Spacing.small) {
+                    Image(systemName: "sparkles")
+                        .font(.caption)
+                        .foregroundStyle(Theme.securityGold)
+                    Text("AI MACRO ANALYSIS")
+                        .font(Theme.officialStampFont(size: 9))
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.securityGold)
+                }
+
+                Text(aiSummary)
+                    .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .body))
+                    .foregroundStyle(Theme.inkPrimary)
+                    .lineSpacing(5)
+                    .lineLimit(8)
+
+                if let sentiment = macro.aiSentiment, !sentiment.isEmpty {
+                    SectionDivider()
+                    HStack(spacing: Theme.Spacing.small) {
+                        Text("SENTIMENT:")
+                            .font(Theme.officialStampFont(size: 8))
+                            .foregroundStyle(Theme.inkTertiary)
+                        Text(sentiment)
+                            .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .lineLimit(3)
+                    }
+                }
+            }
+            .padding(Theme.Spacing.card)
+            .banknoteCard()
+        }
     }
 
     // MARK: - Tab: Chart
