@@ -11,7 +11,8 @@ struct ContentView: View {
     var bypassLaunch: Bool = false
 
     @State private var showLaunch: Bool
-    @ObservedObject private var themeManager = ThemeManager.shared
+    private let launchOffset: CGFloat = UIScreen.main.bounds.height * 0.08
+    @AppStorage("selectedTheme") private var selectedTheme: String = AppTheme.darkImmersive.rawValue
 
     init(bypassLaunch: Bool = false) {
         self.bypassLaunch = bypassLaunch
@@ -66,7 +67,7 @@ struct ContentView: View {
         .onAppear {
             setupTabBarAppearance()
         }
-        .onChange(of: themeManager.selectedTheme) { _, _ in
+        .onChange(of: selectedTheme) { _, _ in
             setupTabBarAppearance()
         }
     }
