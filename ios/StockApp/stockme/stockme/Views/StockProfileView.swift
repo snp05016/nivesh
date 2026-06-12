@@ -243,7 +243,7 @@ struct InteractivePriceChartView: View {
                 GeometryReader { geo in
                     Rectangle().fill(.clear).contentShape(Rectangle())
                         .gesture(
-                            DragGesture(minimumDistance: 0)
+                            DragGesture(minimumDistance: 2)
                                 .onChanged { val in
                                     guard let frame = proxy.plotFrame else { return }
                                     let x = val.location.x - geo[frame].origin.x
@@ -256,7 +256,7 @@ struct InteractivePriceChartView: View {
                                     withAnimation(.easeOut(duration: 0.2)) { selectedPoint = nil }
                                 }
                         )
-                        .simultaneousGesture(
+                        .highPriorityGesture(
                             MagnificationGesture()
                                 .onChanged { scale in
                                     let newZoom = baseZoom * scale
@@ -491,6 +491,7 @@ struct StockProfileView: View {
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
                     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: activeTab)
+                    .frame(maxHeight: .infinity)
                 }
             }
             .navigationTitle(ticker.uppercased())
@@ -974,16 +975,16 @@ struct StockProfileView: View {
                 }
             }
 
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(Theme.inkTertiary.opacity(0.1))
-                        .frame(height: 8)
+            let barWidth = UIScreen.main.bounds.width - (Theme.screenPadding * 2) - (Theme.Spacing.card * 2)
 
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(promoter > 50 ? Theme.bullGreen : promoter > 25 ? Theme.holdAmber : Theme.bearRed)
-                        .frame(width: geo.size.width * CGFloat(min(promoter / 100.0, 1.0)), height: 8)
-                }
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(Theme.inkTertiary.opacity(0.1))
+                    .frame(height: 8)
+
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(promoter > 50 ? Theme.bullGreen : promoter > 25 ? Theme.holdAmber : Theme.bearRed)
+                    .frame(width: barWidth * CGFloat(min(promoter / 100.0, 1.0)), height: 8)
             }
             .frame(height: 8)
 
@@ -1144,31 +1145,31 @@ struct StockProfileView: View {
                 Spacer()
             }
 
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(Theme.inkTertiary.opacity(0.1))
-                        .frame(height: 8)
+            let gaugeWidth = UIScreen.main.bounds.width - (Theme.screenPadding * 2) - (Theme.Spacing.card * 2)
 
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(Theme.bullGreen.opacity(0.35))
-                        .frame(width: geo.size.width * 0.33, height: 8)
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(Theme.inkTertiary.opacity(0.1))
+                    .frame(height: 8)
 
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(Theme.holdAmber.opacity(0.35))
-                        .frame(width: geo.size.width * 0.33, height: 8)
-                        .offset(x: geo.size.width * 0.33)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(Theme.bullGreen.opacity(0.35))
+                    .frame(width: gaugeWidth * 0.33, height: 8)
 
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(Theme.bearRed.opacity(0.3))
-                        .frame(width: geo.size.width * 0.34, height: 8)
-                        .offset(x: geo.size.width * 0.66)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(Theme.holdAmber.opacity(0.35))
+                    .frame(width: gaugeWidth * 0.33, height: 8)
+                    .offset(x: gaugeWidth * 0.33)
 
-                    Circle()
-                        .fill(dte > 2 ? Theme.bearRed : dte > 1 ? Theme.holdAmber : Theme.bullGreen)
-                        .frame(width: 10, height: 10)
-                        .offset(x: geo.size.width * CGFloat(min(dte / 3.0, 1.0)) - 5)
-                }
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(Theme.bearRed.opacity(0.3))
+                    .frame(width: gaugeWidth * 0.34, height: 8)
+                    .offset(x: gaugeWidth * 0.66)
+
+                Circle()
+                    .fill(dte > 2 ? Theme.bearRed : dte > 1 ? Theme.holdAmber : Theme.bullGreen)
+                    .frame(width: 10, height: 10)
+                    .offset(x: gaugeWidth * CGFloat(min(dte / 3.0, 1.0)) - 5)
             }
             .frame(height: 10)
 
