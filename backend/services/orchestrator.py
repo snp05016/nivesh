@@ -401,12 +401,15 @@ class OptimizedTradingAgentsGraph(TradingAgentsGraph):
 def build_ta_config(scan_type: str = "standard") -> dict:
     config = DEFAULT_CONFIG.copy()
     if scan_type == "extreme":
-        # DeepSeek V4 Pro reasoning model for all agent nodes
+        # DeepSeek reasoning model for all agent nodes — bounded for ≤10 min depth-first runs.
+        # Runaway fix: rounds/tokens capped + explicit LangGraph recursion + tool-loop bound.
         config["quick_think_llm"] = "deepseek-reasoner"
         config["quick_think_provider"] = "deepseek"
-        config["max_debate_rounds"] = 3
-        config["max_risk_discuss_rounds"] = 2
-        config["max_tokens"] = 16000
+        config["max_debate_rounds"] = 2          # was 3 — runaway fix
+        config["max_risk_discuss_rounds"] = 1    # was 2 — runaway fix
+        config["max_tokens"] = 8000              # was 16000 — runaway fix
+        config["recursion_limit"] = 40           # explicit LangGraph bound (no infinite loops)
+        config["analyst_tool_loop_cap"] = 3      # cap agent↔tool loop iterations
     else:
         # Tier 1 (bulk agent nodes): DeepSeek V4 Flash
         # Tier 2 (Research Manager, Portfolio Manager): Claude Haiku 4.5
