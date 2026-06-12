@@ -602,6 +602,24 @@ struct HomeScreen: View {
     // Item 7: YouTube channel filter
     @State private var selectedChannel: String? = nil
 
+    @State private var valuationHistory: [ValuationSnapshot] = []
+    @State private var valuationLoading = false
+    @State private var portfolioRange: TimeRange = .month
+
+    private var rangedValuationHistory: [ValuationSnapshot] {
+        guard !valuationHistory.isEmpty else { return [] }
+        let n: Int
+        switch portfolioRange {
+        case .day:         n = 2
+        case .week:        n = 7
+        case .month:       n = 30
+        case .threeMonths: n = 90
+        case .sixMonths:   n = 180
+        case .year:        n = valuationHistory.count
+        case .all:         n = valuationHistory.count
+        }
+        return Array(valuationHistory.suffix(max(n, 2)))
+    }
 
     @AppStorage("homeAutoRefreshSeconds") private var homeAutoRefreshSeconds: String = "0"
 
@@ -731,6 +749,13 @@ struct HomeScreen: View {
                     timeframeConflicts = resp.conflicts
                 }
                 dailyAction = await NetworkManager.shared.fetchDailyAction(userId: user.userId)
+
+                // Portfolio valuation history for the immersive hero chart
+                valuationLoading = true
+                if let data = try? await HomeFeedService.shared.fetchValuationHistory(userId: user.userId, days: 365) {
+                    valuationHistory = data.snapshots.sorted { $0.parsedDate < $1.parsedDate }
+                }
+                valuationLoading = false
 
 
             }
@@ -2440,6 +2465,18 @@ extension HomeScreen {
                     }
                 }
                 .id(HomeSectionID.top.rawValue)
+
+        case .portfolio:
+// ── Section 2: Portfolio ──────────────────────────
+                Group {
+                    if !valuationHistory.isEmpty {
+                        ImmersivePortfolioHeroChart(snapshots: rangedValuationHistory)
+                        TimeRangeSelector(selected: $portfolioRange, ranges: TimeRange.allCases)
+                        SectionDivider()
+                            .padding(.horizontal, Theme.screenPadding)
+                    }
+                }
+                .id(HomeSectionID.portfolio.rawValue)
 
         case .indices:
 // ── Section 3: Market Indices ─────────────────────
