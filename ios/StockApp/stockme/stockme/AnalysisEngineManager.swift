@@ -1,6 +1,6 @@
 import SwiftUI
 import UserNotifications
-
+import Combine
 /// Global manager for the v2 analysis engine — polls the backend job API so every
 /// screen can show live analysis progress without any connection-tied lifetime.
 /// Injected as ``.environmentObject()`` at the app root (stockmeApp.swift).
