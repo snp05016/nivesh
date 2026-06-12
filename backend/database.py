@@ -139,6 +139,7 @@ class AnalysisHistory(Base):
     promoter_pledged_trend = Column(String(20), nullable=True)
     raw_output     = Column(Text, nullable=True)
     full_json      = Column(Text, nullable=False)
+    scan_type      = Column(String(20), nullable=False, default="standard")
     # Epistemic feedback loop — added 2026-06-03
     outcome_delta_pct    = Column(Float, nullable=True)   # % price change since analysis
     was_correct          = Column(Boolean, nullable=True)  # signal matched price direction
@@ -698,7 +699,7 @@ def get_user_by_credentials(session: Session, username: str, password: str) -> O
     return None
 
 
-def save_analysis(session: Session, user_id: Optional[int], ticker: str, result: dict, raw_output: Optional[str] = None) -> dict:
+def save_analysis(session: Session, user_id: Optional[int], ticker: str, result: dict, raw_output: Optional[str] = None, scan_type: str = "standard") -> dict:
     """Save analysis. Returns result dict enriched with signal_changed and previous_signal."""
     ticker = ticker.upper()
     tp = result.get("target_prices") or {}
@@ -753,6 +754,7 @@ def save_analysis(session: Session, user_id: Optional[int], ticker: str, result:
         promoter_pledged_trend=curr_pledged_trend,
         raw_output=raw_output,
         full_json=json.dumps(result),
+        scan_type=scan_type,
     )
     session.add(record)
     session.commit()
@@ -772,7 +774,7 @@ def get_recent_analyses(
     return [json.loads(r.full_json) for r in reversed(rows)]
 
 
-def get_analysis_for_date(session: Session, ticker: str, target_date: str) -> Optional[dict]:
+def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_type: str = "standard") -> Optional[dict]:
     # Fix 2.40: Use 24h rolling time delta instead of absolute calendar day
     # boundary. An analysis from 23:30 yesterday is still valid at 00:30 today.
     from datetime import datetime as _dt, timedelta as _td
@@ -782,6 +784,7 @@ def get_analysis_for_date(session: Session, ticker: str, target_date: str) -> Op
         .filter(
             AnalysisHistory.ticker == ticker.upper(),
             AnalysisHistory.analysis_date == target_date,
+            AnalysisHistory.scan_type == scan_type,
         )
         .order_by(AnalysisHistory.created_at.desc())
         .first()
