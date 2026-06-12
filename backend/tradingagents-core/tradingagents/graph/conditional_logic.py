@@ -57,6 +57,33 @@ class ConditionalLogic:
             return "tools_governance"
         return "Msg Clear Governance"
 
+    def should_fast_track_governance(self, state: AgentState) -> str:
+        """After governance clears, check for 2+ CRITICAL red flags.
+        If found, skip remaining analysts + debate → route directly to Portfolio Manager."""
+        governance_report = state.get("governance_report", "")
+        critical_count = governance_report.count("⚠ CRITICAL")
+        if critical_count >= 2:
+            import logging
+            ticker = state.get("company_of_interest", "?")
+            logging.getLogger("tradingagents").warning(
+                f"[cost-save] fast-track triggered: {ticker}, critical_count={critical_count}"
+            )
+            # Populate skipped reports with placeholder
+            state["market_report"] = "Skipped — governance FAIL overrides"
+            state["sentiment_report"] = "Skipped — governance FAIL overrides"
+            state["news_report"] = "Skipped — governance FAIL overrides"
+            state["fundamentals_report"] = "Skipped — governance FAIL overrides"
+            debate = state.get("investment_debate_state", {})
+            debate["history"] = "Debate skipped — governance FAIL"
+            debate["judge_decision"] = "SELL — governance FAIL"
+            state["investment_debate_state"] = debate
+            state["trader_investment_plan"] = "SELL — governance FAIL"
+            risk = state.get("risk_debate_state", {})
+            risk["history"] = "Risk review skipped — governance FAIL"
+            state["risk_debate_state"] = risk
+            return "Portfolio Manager"
+        return "Market Analyst"  # normal flow
+
     def should_continue_debate(self, state: AgentState) -> str:
         """Determine if debate should continue with strict fallback routing."""
         # Safety fallback if state is missing
