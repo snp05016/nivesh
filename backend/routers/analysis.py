@@ -514,7 +514,7 @@ async def analyze_endpoint(req: AnalyzeRequest, request: Request):
 
         import time as _time_module
         _start_time = _time_module.monotonic()
-        _timeout = 600 if req.scan_type == "extreme" else 300
+        _timeout = 1500 if req.scan_type == "extreme" else 600
 
         try:
             while p.is_alive():
