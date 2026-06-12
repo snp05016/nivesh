@@ -938,7 +938,7 @@ def get_active_job_for_user(user_id: Optional[int]) -> Optional[dict]:
 
 # Wall-clock limits mirror services.job_worker._WALLCLOCK_LIMITS so a crashed
 # worker never permanently blocks new runs of the same scan_type.
-_STALE_LIMITS = {"extreme": 600, "standard": 300}
+_STALE_LIMITS: dict[str, int] = {"extreme": 600, "standard": 300}
 
 
 def get_active_job_for_user_and_type(user_id: Optional[int], scan_type: str) -> Optional[dict]:
@@ -946,9 +946,8 @@ def get_active_job_for_user_and_type(user_id: Optional[int], scan_type: str) -> 
     jobs older than their wall-clock limit. Lets extreme and standard coexist."""
     if user_id is None:
         return None
-    import datetime
     cutoff_sec = _STALE_LIMITS.get(scan_type, 300)
-    threshold = datetime.datetime.utcnow() - datetime.timedelta(seconds=cutoff_sec)
+    threshold = datetime.utcnow() - timedelta(seconds=cutoff_sec)
     with get_session() as s:
         j = (s.query(AnalysisJob)
                .filter(AnalysisJob.user_id == user_id,
