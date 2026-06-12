@@ -113,7 +113,8 @@ class AnalysisViewModel: ObservableObject {
                 }
             }
 
-            if !Task.isCancelled { isLoading = false }
+            // v2 engine: isLoading stays true until the poll loop sets analysis/errorInfo
+            if jobId == nil, !Task.isCancelled { isLoading = false }
         }
     }
 
