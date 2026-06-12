@@ -199,7 +199,6 @@ struct AnalysisScreen: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
-                    viewModel.cancelAnalysis()
                     dismiss()
                 } label: {
                     Image(systemName: "chevron.left")
