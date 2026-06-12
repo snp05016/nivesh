@@ -1177,9 +1177,9 @@ def stock_profile_endpoint(ticker: str, exchange: str = "NSE"):
     result = {
         "ticker": ticker.upper(),
         "exchange": exchange.upper(),
-        "company_name": company_name,
-        "current_price": _clean_num(current_price),
-        "day_change_pct": _clean_num(day_change_pct),
+        "company_name": company_name or ticker.upper(),
+        "current_price": _clean_num(current_price) or 0,
+        "day_change_pct": _clean_num(day_change_pct) or 0,
         "pe_ratio": _clean_num(pe_ratio),
         "sector": sector,
         "promoter_holding_pct": _clean_num(promoter_holding_pct),
