@@ -69,6 +69,7 @@ _ta_mock.default_config.DEFAULT_CONFIG = {}
 _prompts_mock = sys.modules["prompts"]
 _prompts_mock.INDIAN_MARKET_SYSTEM_PROMPT = "mock_system_prompt"
 _prompts_mock.NEWS_ANALYST_PERSONA = "mock_news_persona"
+_prompts_mock.EXTREME_ADDENDUM = "\nmock_extreme_addendum"
 
 # Patch langchain/langgraph specifics
 _lc_msg = sys.modules["langchain_core.messages"]

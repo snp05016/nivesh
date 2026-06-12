@@ -72,7 +72,7 @@ from database import (
     PKScreenerSignal,
 )
 
-from prompts import INDIAN_MARKET_SYSTEM_PROMPT, NEWS_ANALYST_PERSONA
+from prompts import INDIAN_MARKET_SYSTEM_PROMPT, NEWS_ANALYST_PERSONA, EXTREME_ADDENDUM
 
 from services.staleness import compute_staleness
 from services.piotroski import compute_piotroski
@@ -461,6 +461,7 @@ def reformat_with_claude(
     full_ticker: str,
     exchange: str,
     prior_analyses: list[dict] | None = None,
+    scan_type: str = "standard",
 ) -> dict:
     """Reformat raw AI output into structured JSON.
     Tries Claude Sonnet first, falls back to DeepSeek V4 Flash if Claude fails,
@@ -484,7 +485,12 @@ def reformat_with_claude(
             )
         serialized_history = json.dumps(history_points, sort_keys=True)
 
+    is_extreme = scan_type == "extreme"
+    reformat_max_tokens = 8000 if is_extreme else 4000
+
     system_prompt = INDIAN_MARKET_SYSTEM_PROMPT
+    if is_extreme:
+        system_prompt += EXTREME_ADDENDUM
     if serialized_history:
         system_prompt += (
             f"\n\nPREVIOUS HISTORICAL ANALYSES (CONTEXT):\n{serialized_history}"
@@ -522,6 +528,14 @@ def reformat_with_claude(
                 "cache_control": {"type": "ephemeral"},
             }
         ]
+        if is_extreme:
+            system_array.append(
+                {
+                    "type": "text",
+                    "text": EXTREME_ADDENDUM,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            )
         if serialized_history:
             system_array.append(
                 {
@@ -535,7 +549,7 @@ def reformat_with_claude(
             try:
                 response = claude_client.messages.create(
                     model=SONNET_MODEL,
-                    max_tokens=4000,
+                    max_tokens=reformat_max_tokens,
                     system=system_array,
                     messages=[{"role": "user", "content": user_message}],
                     temperature=0,
@@ -576,7 +590,7 @@ def reformat_with_claude(
         try:
             ds_raw = _deepseek_chat(
                 ds_messages,
-                max_tokens=4000,
+                max_tokens=reformat_max_tokens,
                 temperature=0,
                 log_endpoint="reformat_deepseek",
             )
@@ -592,7 +606,7 @@ def reformat_with_claude(
     print(f"[FALLBACK] Returning normalized minimal analysis for {full_ticker}")
     return _normalize_response(
         {
-            "ticker": full_ticker,
+            "ticker": full_ticker,  # noqa: extreme bundles attached by analyze() on the happy path
             "company_name": full_ticker,
             "exchange": exchange,
             "analysis_date": date.today().strftime("%Y-%m-%d"),
@@ -610,7 +624,8 @@ def reformat_with_claude(
             "disclaimer": "Analysis failed due to an API error. Please try again later.",
             "confidence_rationale": "Analysis could not be completed due to an API error.",
             "raw_output": raw_output,
-        }
+        },
+        scan_type,
     )
 
 
@@ -656,9 +671,11 @@ def _sanitize_nan_inf(obj):
     return obj
 
 
-def _normalize_response(result: dict) -> dict:
+def _normalize_response(result: dict, scan_type: str = "standard") -> dict:
     """Sanitize AI analysis response to ensure all iOS-required fields exist with correct types.
     Handles null values, missing fields, type mismatches, NaN/Inf->null, and float->int coercion.
+    When scan_type == "extreme", additionally guarantees the extreme superset blocks exist
+    (additive — standard analyses are unaffected).
     """
     import math
 
@@ -779,6 +796,16 @@ def _normalize_response(result: dict) -> dict:
         from datetime import date
 
         result["analysis_date"] = date.today().strftime("%Y-%m-%d")
+
+    # 16. EXTREME superset — additive guarantees so the iOS extra sections/graphs
+    # always decode. Standard analyses skip this entirely.
+    if scan_type == "extreme":
+        result["analysis_tier"] = "extreme"
+        result.setdefault("scenarios", {})
+        result.setdefault("valuation_bands", {})
+        result.setdefault("extended_thesis", {})
+        result.setdefault("niche_insights", [])
+        result.setdefault("governance_flags", [])
 
     return result
 
@@ -1199,14 +1226,23 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
             print(f"[DEEP-SCAN] FinBERT context build failed: {e}")
 
     result = reformat_with_claude(
-        raw_output, full_ticker, exchange, prior_analyses=prior
+        raw_output, full_ticker, exchange, prior_analyses=prior, scan_type=scan_type
     )
-    result = _normalize_response(result)
+    result = _normalize_response(result, scan_type)
     result["ticker"] = ticker.upper()
     result["exchange"] = exchange
     result["_cache_type"] = "FULL AI"
     result["scan_type"] = scan_type
     result["analysis_checkpoints"] = get_analysis_progress(ticker)
+
+    # EXTREME superset — attach deterministic, code-computed graph bundles (real numbers
+    # for the charts; the LLM already supplied the narrative blocks via EXTREME_ADDENDUM).
+    if scan_type == "extreme":
+        try:
+            from services.extreme_enrichers import build_extreme_bundles
+            result.update(build_extreme_bundles(ticker.upper(), exchange))
+        except Exception as _enrich_err:
+            print(f"[EXTREME] enrichment failed for {ticker}: {_enrich_err}")
 
     try:
         with get_session() as session:
