@@ -134,6 +134,7 @@ struct AnalysisScreen: View {
     @State private var heroPrices: [Double] = []
     @State private var heroDates: [Date] = []
     @State private var heroLoading = false
+    @State private var heroPeriod = "1y"
 
     private static let deepScanDisabledTickers: Set<String> = [
         "NIFTY", "SENSEX", "BANKNIFTY", "NIFTYBANK", "INDIAVIX",
@@ -240,7 +241,7 @@ struct AnalysisScreen: View {
                 }
             }
             startPricePolling()
-            fetchHeroHistory()
+            fetchHeroHistory(period: heroPeriod)
         }
         .onChange(of: activeTab) { _, val in savedLastTab = val }
         .onDisappear {
@@ -274,11 +275,10 @@ struct AnalysisScreen: View {
 
     // MARK: - Immersive hero chart
 
-    private func fetchHeroHistory() {
-        guard heroPrices.isEmpty, !heroLoading else { return }
+    private func fetchHeroHistory(period: String = "1y") {
         heroLoading = true
         Task {
-            let hist = await NetworkManager.shared.fetchStockHistory(ticker: ticker, exchange: "NSE", period: "1y")
+            let hist = await NetworkManager.shared.fetchStockHistory(ticker: ticker, exchange: "NSE", period: period)
             await MainActor.run {
                 if let hist = hist, !hist.prices.isEmpty {
                     heroPrices = hist.prices.map(\.close)
@@ -300,6 +300,26 @@ struct AnalysisScreen: View {
                 currentPrice: price,
                 dates: heroDates
             )
+            HStack(spacing: Theme.Spacing.tight) {
+                ForEach(Array(zip(["1mo","3mo","6mo","1y","2y","5y","max"], ["1M","3M","6M","1Y","2Y","5Y","ALL"])), id: \.0) { period, label in
+                    Button {
+                        HapticManager.selection()
+                        heroPeriod = period
+                        fetchHeroHistory(period: period)
+                    } label: {
+                        Text(label)
+                            .font(Theme.officialStampFont(size: 8))
+                            .tracking(0.8)
+                            .foregroundStyle(heroPeriod == period ? Theme.securityGold : Theme.inkTertiary)
+                            .padding(.horizontal, Theme.Spacing.tight)
+                            .padding(.vertical, Theme.Spacing.xSmall)
+                            .background(heroPeriod == period ? Theme.securityGold.opacity(0.12) : Theme.canvasDeep)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(EKPressStyle())
+                }
+            }
+            .padding(.top, Theme.Spacing.standard)
         } else if heroLoading {
             RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
                 .fill(Theme.inkTertiary.opacity(0.08))

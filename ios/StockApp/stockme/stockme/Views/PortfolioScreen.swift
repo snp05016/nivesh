@@ -233,7 +233,7 @@ struct PortfolioScreen: View {
                                 VStack(spacing: Theme.Spacing.none) {
                                     ImmersivePortfolioHeroChart(snapshots: rangedSnapshots, showValueHeader: false)
                                     TimeRangeSelector(selected: $selectedRange,
-                                                      ranges: [.day, .week, .month, .year, .all])
+                                                      ranges: [.day, .week, .month, .threeMonths, .sixMonths, .year, .all])
                                         .padding(.horizontal, Theme.screenPadding)
                                         .padding(.top, Theme.Spacing.standard)
                                 }
@@ -468,7 +468,7 @@ struct PortfolioScreen: View {
                 redFlags = try? await NetworkManager.shared.fetchRedFlags(userId: uid)
             }
             Task {
-                if let resp = try? await NetworkManager.shared.fetchValuationHistory(userId: user.userId, days: 90) {
+                if let resp = try? await NetworkManager.shared.fetchValuationHistory(userId: user.userId, days: 730) {
                     snapshots = resp.snapshots
                 }
             }
