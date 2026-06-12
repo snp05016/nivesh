@@ -510,7 +510,6 @@ struct AnalysisScreen: View {
     // MARK: - Full Analysis (Redesigned)
 
     @ViewBuilder
-    @ViewBuilder
     private func renderFullAnalysis(_ analysis: StockAnalysis) -> some View {
         if analysis.analysisTier == "extreme" {
             // Extreme superset: switch between the AI report (with extra extreme
