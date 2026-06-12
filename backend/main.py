@@ -1998,10 +1998,29 @@ def dashboard_data(authorization: str = Header(None)):
                     })
         feature_errors[feature] = errs[:5]
 
+    # ── v2 engine: merge DB-backed active jobs ───────────────────────────
+    db_active_jobs = {}
+    try:
+        import database
+        for j in database.list_active_jobs():
+            db_active_jobs[j["job_id"]] = {
+                "job_id": j["job_id"], "user_id": j.get("user_id"),
+                "ticker": j["ticker"], "scan_type": j.get("scan_type"),
+                "status": j["status"], "stage": j.get("stage"),
+                "progress_pct": j.get("progress_pct", 0),
+                "checkpoints": (j.get("checkpoints") or [])[-5:],
+                "tokens_used": j.get("tokens_used"),
+                "error": j.get("error"),
+            }
+    except Exception as e:
+        print(f"[dashboard] DB active jobs read failed: {e}")
+
+    merged_active = list({**db_active_jobs, **{a.get("job_id", ""): a for a in active}}.values())
+
     return {
         "server_start":    _server_start.isoformat(),
         "uptime_s":        round(uptime),
-        "active_analyses": active,
+        "active_analyses": merged_active,
         "recent_analyses": completed,
         "historical_analyses": history,
         "request_log":     reqs,
