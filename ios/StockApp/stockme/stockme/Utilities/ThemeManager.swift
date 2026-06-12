@@ -52,13 +52,13 @@ enum AppTheme: String, CaseIterable, Codable {
 
     var canvasLight: Color {
         switch self {
-        case .darkImmersive:   return Color(red: 0.96, green: 0.94, blue: 0.91)
-        case .chocolateBrown:  return Color(red: 0.95, green: 0.92, blue: 0.88)
-        case .greenishYellow:  return Color(red: 0.95, green: 0.96, blue: 0.90)
-        case .fluorescentBlue: return Color(red: 0.93, green: 0.95, blue: 0.98)
-        case .lavender:        return Color(red: 0.95, green: 0.94, blue: 0.97)
-        case .brightYellow:    return Color(red: 0.97, green: 0.96, blue: 0.89)
-        case .stoneGrey:       return Color(red: 0.94, green: 0.94, blue: 0.93)
+        case .darkImmersive:   return Color(red: 0.98, green: 0.97, blue: 0.95)  // warm beige — Reserve Bank bond paper
+        case .chocolateBrown:  return Color(red: 0.91, green: 0.83, blue: 0.76)  // warm terracotta-brown tint
+        case .greenishYellow:  return Color(red: 0.95, green: 0.96, blue: 0.86)  // chartreuse-sage tint
+        case .fluorescentBlue: return Color(red: 0.91, green: 0.94, blue: 0.97)  // sky-blue tint
+        case .lavender:        return Color(red: 0.94, green: 0.92, blue: 0.97)  // soft mauve tint
+        case .brightYellow:    return Color(red: 0.97, green: 0.95, blue: 0.84)  // golden-wheat tint
+        case .stoneGrey:       return Color(red: 0.93, green: 0.93, blue: 0.93)  // cool grey tint
         }
     }
 
@@ -76,13 +76,13 @@ enum AppTheme: String, CaseIterable, Codable {
 
     var accentLight: Color {
         switch self {
-        case .darkImmersive:   return Color(red: 0.357, green: 0.565, blue: 0.965)
-        case .chocolateBrown:  return Color(red: 0.45, green: 0.55, blue: 0.85)
-        case .greenishYellow:  return Color(red: 0.25, green: 0.72, blue: 0.55)
-        case .fluorescentBlue: return Color(red: 0.15, green: 0.45, blue: 0.90)
-        case .lavender:        return Color(red: 0.60, green: 0.45, blue: 0.85)
-        case .brightYellow:    return Color(red: 0.85, green: 0.75, blue: 0.15)
-        case .stoneGrey:       return Color(red: 0.55, green: 0.60, blue: 0.70)
+        case .darkImmersive:   return Color(red: 0.38, green: 0.58, blue: 0.97)  // electric blue
+        case .chocolateBrown:  return Color(red: 0.55, green: 0.27, blue: 0.07)  // deep chocolate
+        case .greenishYellow:  return Color(red: 0.35, green: 0.55, blue: 0.15)  // forest green
+        case .fluorescentBlue: return Color(red: 0.18, green: 0.42, blue: 0.85)  // royal blue
+        case .lavender:        return Color(red: 0.50, green: 0.35, blue: 0.75)  // deep purple
+        case .brightYellow:    return Color(red: 0.85, green: 0.65, blue: 0.05)  // amber gold
+        case .stoneGrey:       return Color(red: 0.40, green: 0.40, blue: 0.42)  // charcoal
         }
     }
 
@@ -112,37 +112,37 @@ enum AppTheme: String, CaseIterable, Codable {
 
     var inkPrimary: Color {
         switch self {
-        case .darkImmersive:   return Color(red: 0.941, green: 0.957, blue: 1.0) // #F0F4FF
-        case .chocolateBrown:  return Color(red: 1.0, green: 0.95, blue: 0.90)
-        case .greenishYellow:  return Color(red: 0.95, green: 1.0, blue: 0.90)
-        case .fluorescentBlue: return Color(red: 0.90, green: 0.95, blue: 1.0)
-        case .lavender:        return Color(red: 0.95, green: 0.90, blue: 1.0)
-        case .brightYellow:    return Color(red: 1.0, green: 0.98, blue: 0.90)
-        case .stoneGrey:       return Color(red: 0.95, green: 0.95, blue: 0.95)
+        case .darkImmersive:   return Color(red: 0.12, green: 0.12, blue: 0.14)  // deep ink black
+        case .chocolateBrown:  return Color(red: 0.18, green: 0.10, blue: 0.05)  // espresso
+        case .greenishYellow:  return Color(red: 0.08, green: 0.14, blue: 0.06)  // forest ink
+        case .fluorescentBlue: return Color(red: 0.04, green: 0.10, blue: 0.22)  // midnight blue
+        case .lavender:        return Color(red: 0.12, green: 0.06, blue: 0.22)  // deep violet
+        case .brightYellow:    return Color(red: 0.18, green: 0.14, blue: 0.04)  // bronze ink
+        case .stoneGrey:       return Color(red: 0.10, green: 0.10, blue: 0.10)  // charcoal ink
         }
     }
 
     var inkSecondary: Color {
         switch self {
-        case .darkImmersive:   return Color(red: 0.533, green: 0.572, blue: 0.627) // #8892A0
-        case .chocolateBrown:  return Color(red: 0.65, green: 0.55, blue: 0.45)
-        case .greenishYellow:  return Color(red: 0.55, green: 0.65, blue: 0.45)
-        case .fluorescentBlue: return Color(red: 0.45, green: 0.55, blue: 0.75)
-        case .lavender:        return Color(red: 0.60, green: 0.50, blue: 0.70)
-        case .brightYellow:    return Color(red: 0.70, green: 0.65, blue: 0.45)
-        case .stoneGrey:       return Color(red: 0.60, green: 0.60, blue: 0.60)
+        case .darkImmersive:   return Color(red: 0.28, green: 0.30, blue: 0.34)  // slate grey
+        case .chocolateBrown:  return Color(red: 0.35, green: 0.22, blue: 0.14)  // warm brown
+        case .greenishYellow:  return Color(red: 0.22, green: 0.30, blue: 0.18)  // sage green
+        case .fluorescentBlue: return Color(red: 0.18, green: 0.24, blue: 0.38)  // steel blue
+        case .lavender:        return Color(red: 0.28, green: 0.20, blue: 0.38)  // muted purple
+        case .brightYellow:    return Color(red: 0.38, green: 0.30, blue: 0.15)  // olive brown
+        case .stoneGrey:       return Color(red: 0.28, green: 0.28, blue: 0.30)  // mid grey
         }
     }
 
     var inkTertiary: Color {
         switch self {
-        case .darkImmersive:   return Color(red: 0.290, green: 0.333, blue: 0.408) // #4A5568
-        case .chocolateBrown:  return Color(red: 0.40, green: 0.30, blue: 0.25)
-        case .greenishYellow:  return Color(red: 0.30, green: 0.40, blue: 0.25)
-        case .fluorescentBlue: return Color(red: 0.25, green: 0.30, blue: 0.45)
-        case .lavender:        return Color(red: 0.35, green: 0.25, blue: 0.45)
-        case .brightYellow:    return Color(red: 0.45, green: 0.40, blue: 0.25)
-        case .stoneGrey:       return Color(red: 0.35, green: 0.35, blue: 0.35)
+        case .darkImmersive:   return Color(red: 0.45, green: 0.48, blue: 0.52)  // light slate
+        case .chocolateBrown:  return Color(red: 0.50, green: 0.35, blue: 0.25)  // terracotta
+        case .greenishYellow:  return Color(red: 0.38, green: 0.48, blue: 0.32)  // moss
+        case .fluorescentBlue: return Color(red: 0.32, green: 0.40, blue: 0.55)  // sky slate
+        case .lavender:        return Color(red: 0.45, green: 0.35, blue: 0.55)  // mauve grey
+        case .brightYellow:    return Color(red: 0.55, green: 0.48, blue: 0.30)  // khaki
+        case .stoneGrey:       return Color(red: 0.45, green: 0.45, blue: 0.48)  // silver
         }
     }
 }
