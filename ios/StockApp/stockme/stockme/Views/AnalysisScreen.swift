@@ -418,7 +418,8 @@ struct AnalysisScreen: View {
                     stockHeaderCard(info: info)
                 }
                 VStack(spacing: Theme.Spacing.screen) {
-                    if let scanType = viewModel.jobStatus?.scanType ?? viewModel.isLoading ? "standard" : nil {
+                    let scanType = viewModel.jobStatus?.scanType ?? "standard"
+                    if viewModel.isLoading || viewModel.jobStatus != nil {
                         HStack(spacing: Theme.Spacing.tight) {
                             Image(systemName: scanType == "extreme" ? "tornado" : "waveform.badge.magnifyingglass")
                                 .font(Theme.microLabel())
