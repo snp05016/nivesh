@@ -484,7 +484,7 @@ async def analyze_endpoint(req: AnalyzeRequest):
     ticker = req.ticker.upper()
 
     if req.user_id is not None:
-        active = database.get_active_job_for_user(req.user_id)
+        active = database.get_active_job_for_user_and_type(req.user_id, req.scan_type)
         if active:
             return _JSONResponse(status_code=409, content={
                 "error_code": "ALREADY_RUNNING",
