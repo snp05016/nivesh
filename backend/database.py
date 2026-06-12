@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import secrets
+import uuid
 import bcrypt
 from datetime import datetime, date, timedelta
 from pathlib import Path
@@ -157,6 +158,30 @@ class SignalEvent(Base):
     to_signal   = Column(String(30), nullable=False)
     event_date  = Column(String(20), nullable=False)
     created_at  = Column(DateTime, default=datetime.utcnow)
+
+
+class AnalysisJob(Base):
+    """Server-side background analysis job — the single source of truth for
+    'is an analysis running?'. Decoupled from the HTTP connection (v2 engine)."""
+    __tablename__ = "analysis_jobs"
+
+    job_id       = Column(String(12), primary_key=True)
+    user_id      = Column(Integer, ForeignKey("users.id"), nullable=True)
+    ticker       = Column(String(30), nullable=False)
+    exchange     = Column(String(10), nullable=False, default="NSE")
+    scan_type    = Column(String(20), nullable=False, default="standard")
+    status       = Column(String(20), nullable=False, default="QUEUED")   # QUEUED/RUNNING/SUCCEEDED/FAILED/CANCELLED/TIMEOUT
+    stage        = Column(String(60), nullable=True)
+    progress_pct = Column(Integer, nullable=False, default=0)
+    checkpoints  = Column(Text, nullable=False, default="[]")             # JSON list of {ts,stage,agent,message,state}
+    pid          = Column(Integer, nullable=True)
+    heartbeat_at = Column(DateTime, nullable=True)
+    tokens_used  = Column(Integer, nullable=False, default=0)
+    error        = Column(Text, nullable=True)
+    result_json  = Column(Text, nullable=True)                            # full normalized result when SUCCEEDED
+    created_at   = Column(DateTime, default=datetime.utcnow)
+    started_at   = Column(DateTime, nullable=True)
+    finished_at  = Column(DateTime, nullable=True)
 
 
 class PriceTarget(Base):
@@ -809,6 +834,121 @@ def get_all_ticker_history(session: Session, ticker: str, user_id: Optional[int]
         res["raw_output"] = r.raw_output
         results.append(res)
     return results
+
+
+# ---------------------------------------------------------------------------
+# AnalysisJob DAO — self-managing sessions (called from routers + worker subprocess).
+# These open their own get_session() and commit, unlike the *_analysis helpers above
+# which take a caller-provided session.
+# ---------------------------------------------------------------------------
+
+_JOB_TERMINAL = {"SUCCEEDED", "FAILED", "CANCELLED", "TIMEOUT"}
+
+
+def _job_to_dict(j: "AnalysisJob") -> dict:
+    return {
+        "job_id": j.job_id, "user_id": j.user_id, "ticker": j.ticker,
+        "exchange": j.exchange, "scan_type": j.scan_type, "status": j.status,
+        "stage": j.stage, "progress_pct": j.progress_pct,
+        "checkpoints": json.loads(j.checkpoints or "[]"),
+        "pid": j.pid, "tokens_used": j.tokens_used, "error": j.error,
+        "created_at": j.created_at.isoformat() if j.created_at else None,
+        "started_at": j.started_at.isoformat() if j.started_at else None,
+        "finished_at": j.finished_at.isoformat() if j.finished_at else None,
+    }
+
+
+def create_job(user_id: Optional[int], ticker: str, exchange: str, scan_type: str) -> dict:
+    jid = str(uuid.uuid4())[:12]
+    with get_session() as s:
+        j = AnalysisJob(job_id=jid, user_id=user_id, ticker=ticker.upper(),
+                        exchange=exchange, scan_type=scan_type, status="QUEUED",
+                        heartbeat_at=datetime.utcnow())
+        s.add(j)
+        s.commit()
+        return _job_to_dict(j)
+
+
+def get_job(job_id: str) -> Optional[dict]:
+    with get_session() as s:
+        j = s.get(AnalysisJob, job_id)
+        if not j:
+            return None
+        d = _job_to_dict(j)
+        if j.status == "SUCCEEDED" and j.result_json:
+            try:
+                d["result"] = json.loads(j.result_json)
+            except Exception:
+                d["result"] = None
+        return d
+
+
+def update_job(job_id: str, **fields) -> None:
+    if fields.get("status") in _JOB_TERMINAL:
+        fields.setdefault("finished_at", datetime.utcnow())
+    if fields.get("status") == "RUNNING":
+        fields.setdefault("started_at", datetime.utcnow())
+    fields.setdefault("heartbeat_at", datetime.utcnow())
+    with get_session() as s:
+        j = s.get(AnalysisJob, job_id)
+        if not j:
+            return
+        for k, v in fields.items():
+            setattr(j, k, v)
+        s.commit()
+
+
+def append_checkpoint(job_id: str, *, stage: str, agent: str,
+                      message: str, state: str, pct: int) -> None:
+    with get_session() as s:
+        j = s.get(AnalysisJob, job_id)
+        if not j:
+            return
+        cps = json.loads(j.checkpoints or "[]")
+        cps.append({"ts": datetime.utcnow().isoformat(), "stage": stage,
+                    "agent": agent, "message": message, "state": state})
+        j.checkpoints = json.dumps(cps, ensure_ascii=False)
+        j.stage = stage
+        j.progress_pct = max(j.progress_pct or 0, int(pct))
+        j.heartbeat_at = datetime.utcnow()
+        s.commit()
+
+
+def add_job_tokens(job_id: str, n: int) -> int:
+    with get_session() as s:
+        j = s.get(AnalysisJob, job_id)
+        if not j:
+            return 0
+        j.tokens_used = (j.tokens_used or 0) + int(n)
+        j.heartbeat_at = datetime.utcnow()
+        s.commit()
+        return j.tokens_used
+
+
+def get_active_job_for_user(user_id: Optional[int]) -> Optional[dict]:
+    if user_id is None:
+        return None
+    with get_session() as s:
+        j = (s.query(AnalysisJob)
+               .filter(AnalysisJob.user_id == user_id,
+                       AnalysisJob.status.in_(["QUEUED", "RUNNING"]))
+               .order_by(AnalysisJob.created_at.desc()).first())
+        return _job_to_dict(j) if j else None
+
+
+def sweep_stale_jobs(max_heartbeat_age_sec: int = 90) -> int:
+    """Crash recovery: mark QUEUED/RUNNING jobs with a stale heartbeat as FAILED."""
+    cutoff = datetime.utcnow() - timedelta(seconds=max_heartbeat_age_sec)
+    with get_session() as s:
+        stale = (s.query(AnalysisJob)
+                   .filter(AnalysisJob.status.in_(["QUEUED", "RUNNING"]),
+                           AnalysisJob.heartbeat_at < cutoff).all())
+        for j in stale:
+            j.status = "FAILED"
+            j.error = "Worker died (stale heartbeat / server restart)"
+            j.finished_at = datetime.utcnow()
+        s.commit()
+        return len(stale)
 
 
 def create_user(session: Session, username: str, password: str, display_name: str) -> Optional[User]:
