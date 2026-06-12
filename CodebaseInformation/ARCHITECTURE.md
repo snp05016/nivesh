@@ -240,6 +240,10 @@ Theme.*
 
 8. **Telemetry & Limits**: `CorrelationIDMiddleware` threads `X-Request-ID` through logs, and rate limiting upgraded to a sliding window deque per endpoint in `helpers.py`.
 
+9. **Robust Data Fetching**: Migrated from fragile `.info` endpoints to `yfinance.history` in `helpers.py` (`_yf_price`) ensuring reliable data ingestion for Indian tickers like ICICIBANK.
+
+10. **Dynamic Banknote Theming**: Upgraded `Theme.swift` and `ContentView` to propagate global dynamic UI changes on `ThemeManager` updates without app restarts, allowing instant swapping of the "neon" `securityGold` aesthetic.
+
 ---
 
 ## Glossary
