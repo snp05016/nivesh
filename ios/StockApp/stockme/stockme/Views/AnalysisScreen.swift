@@ -17,7 +17,7 @@ class AnalysisViewModel: ObservableObject {
 
     private var analysisTask: Task<Void, Never>?
 
-    func fetchAnalysis(ticker: String, userId: Int?, useMock: Bool, reportManager: LocalReportManager, deepScan: Bool = false) {
+    func fetchAnalysis(ticker: String, userId: Int?, useMock: Bool, reportManager: LocalReportManager, deepScan: Bool = false, scanType: String = "standard") {
         analysisTask?.cancel()
 
         analysisTask = Task {
@@ -50,7 +50,7 @@ class AnalysisViewModel: ObservableObject {
             if Task.isCancelled { return }
 
             do {
-                let result = try await NetworkManager.shared.analyze(ticker: ticker, userId: userId, useMock: useMock, deepScan: deepScan)
+                let result = try await NetworkManager.shared.analyze(ticker: ticker, userId: userId, useMock: useMock, deepScan: deepScan, scanType: scanType)
                 if !Task.isCancelled {
                     self.analysis = result
                     reportManager.saveReport(result)
@@ -227,6 +227,9 @@ struct AnalysisScreen: View {
                     case .deepScan:
                         let forbidden = Self.deepScanDisabledTickers.contains(ticker.uppercased())
                         viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: !forbidden)
+                    case .extremeScan:
+                        let forbidden = Self.deepScanDisabledTickers.contains(ticker.uppercased())
+                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: !forbidden, scanType: "extreme")
                     }
                 } else if forceCached, let cached = previousAnalysis {
                     viewModel.analysis = cached

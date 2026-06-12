@@ -45,11 +45,13 @@ private struct AnalyzeRequest: Encodable {
     let userId: Int?
     let useMock: Bool
     let deepScan: Bool
+    let scanType: String
     enum CodingKeys: String, CodingKey {
         case ticker, exchange
         case userId = "user_id"
         case useMock = "use_mock"
         case deepScan = "deep_scan"
+        case scanType = "scan_type"
     }
 }
 
@@ -219,14 +221,14 @@ class NetworkManager: ObservableObject {
 
     // MARK: - Analyze
 
-    func analyze(ticker: String, exchange: String = "NSE", userId: Int? = nil, useMock: Bool = false, deepScan: Bool = false) async throws -> StockAnalysis {
+    func analyze(ticker: String, exchange: String = "NSE", userId: Int? = nil, useMock: Bool = false, deepScan: Bool = false, scanType: String = "standard") async throws -> StockAnalysis {
         guard let url = URL(string: "\(baseURL)/analyze") else { throw NetworkError.invalidURL }
         let requestUrl = "\(baseURL)/analyze"
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.httpBody = try JSONEncoder().encode(AnalyzeRequest(ticker: ticker, exchange: exchange, userId: userId, useMock: useMock, deepScan: deepScan))
+        request.httpBody = try JSONEncoder().encode(AnalyzeRequest(ticker: ticker, exchange: exchange, userId: userId, useMock: useMock, deepScan: deepScan, scanType: scanType))
 
         let requestStart = Date()
         let (data, response): (Data, URLResponse)
