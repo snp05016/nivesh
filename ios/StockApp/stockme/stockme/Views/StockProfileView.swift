@@ -343,7 +343,7 @@ struct StockProfileView: View {
     @StateObject private var vm: StockProfileViewModel
     @State private var activeTab = 0
     @State private var showSMA: Set<Int> = [20, 50, 200]
-    @State private var macroContext: MacroContextResponse?
+    @State private var macroContext: MacroContextData?
     @State private var macroLoading = false
     @Environment(\.dismiss) var dismiss
 
@@ -1232,7 +1232,7 @@ struct StockProfileView: View {
     // MARK: -- Market Mood Gauge
 
     @ViewBuilder
-    private func macroMoodGauge(macro: MacroContextResponse) -> some View {
+    private func macroMoodGauge(macro: MacroContextData) -> some View {
         if let mood = macro.marketMood {
             VStack(spacing: Theme.Spacing.standard) {
                 Text("MARKET MOOD INDEX")
@@ -1306,7 +1306,7 @@ struct StockProfileView: View {
     // MARK: -- Macro Strip Card
 
     @ViewBuilder
-    private func macroStripCard(macro: MacroContextResponse) -> some View {
+    private func macroStripCard(macro: MacroContextData) -> some View {
         if let strip = macro.macroStrip {
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                 Text("MACRO INDICATORS")
@@ -1369,7 +1369,7 @@ struct StockProfileView: View {
     // MARK: -- Macro Impact List
 
     @ViewBuilder
-    private func macroImpactList(macro: MacroContextResponse) -> some View {
+    private func macroImpactList(macro: MacroContextData) -> some View {
         if let impacts = macro.stockImpact, !impacts.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                 Text("HOW MACRO AFFECTS \(ticker.uppercased())")
@@ -1433,7 +1433,7 @@ struct StockProfileView: View {
     // MARK: -- AI Macro Insight Card
 
     @ViewBuilder
-    private func macroAIInsightCard(macro: MacroContextResponse) -> some View {
+    private func macroAIInsightCard(macro: MacroContextData) -> some View {
         if let aiSummary = macro.aiSummary, !aiSummary.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                 HStack(spacing: Theme.Spacing.small) {
