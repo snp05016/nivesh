@@ -21,23 +21,24 @@ from helpers import _to_ns, _yf_price, _yf_fetch_info
 
 
 # ---------------------------------------------------------------------------
-# Dark professional theme constants
+# Dark professional theme constants — aligned with iOS Theme.swift palette
+# Canvas: #090B10 | Card: #111827 | Bull: #00D4AA | Bear: #E85555 | Gold: #5B90F6
 # ---------------------------------------------------------------------------
-BG_COLOR = "#1a1a2e"
-GRID_COLOR = "#2d2d44"
-TEXT_COLOR = "#e0e0e0"
-ACCENT_GREEN = "#00b894"
-ACCENT_RED = "#e74c3c"
-ACCENT_BLUE = "#0984e3"
-ACCENT_ORANGE = "#e17055"
-ACCENT_PURPLE = "#a29bfe"
-ACCENT_YELLOW = "#fdcb6e"
-ACCENT_TEAL = "#00cec9"
+BG_COLOR = "#090B10"          # Theme.canvas — deep navy-black
+GRID_COLOR = "#1E2540"        # Theme.surfaceFloat — subtle grid lines
+TEXT_COLOR = "#E8ECF0"        # Theme.inkPrimaryDark — near-white text
+ACCENT_GREEN = "#00D4AA"      # Theme.bullGreen — neon teal
+ACCENT_RED = "#E85555"        # Theme.bearRed — vivid red
+ACCENT_BLUE = "#5B90F6"       # Theme.securityGold (dark immersive accent)
+ACCENT_ORANGE = "#B08020"     # Theme.holdAmber — amber
+ACCENT_PURPLE = "#7060A0"     # Theme.NoteTint.hundredDark — lavender
+ACCENT_YELLOW = "#C8A800"     # Theme.NoteTint.twoHundredDark — bright yellow
+ACCENT_TEAL = "#00D4AA"       # bullGreen alias — teal
 
 CHART_COLORS = [
-    "#00b894", "#0984e3", "#e17055", "#a29bfe", "#fdcb6e",
-    "#00cec9", "#e74c3c", "#6c5ce7", "#fd79a8", "#55efc4",
-    "#fab1a0", "#81ecec", "#dfe6e9", "#ffeaa7", "#74b9ff",
+    "#00D4AA", "#5B90F6", "#E85555", "#7060A0", "#C8A800",
+    "#3A72CC", "#B8C840", "#8B5A42", "#7A8E8E", "#C050A0",
+    "#8899AA", "#556677", "#1E2540", "#00D4AA", "#5B90F6",
 ]
 
 # Approximate Nifty 50 sector weights for comparison chart

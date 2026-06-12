@@ -1262,7 +1262,7 @@ struct AnalysisScreen: View {
                                 .frame(width: 20, height: CGFloat(v / maxVal) * 60)
                                 .cornerRadius(2)
                             Text(yr.suffix(2))
-                                .font(.system(size: 8))
+                                .font(Theme.microLabel(size: 8))
                                 .foregroundStyle(Theme.inkTertiary)
                         }
                     }
@@ -1287,7 +1287,7 @@ struct AnalysisScreen: View {
                                 .frame(width: 24, height: max(4, CGFloat(val) * 1.2))
                                 .cornerRadius(2)
                             Text(String(date.suffix(5)))
-                                .font(.system(size: 7)).foregroundStyle(Theme.inkTertiary)
+                                .font(Theme.microLabel(size: 7)).foregroundStyle(Theme.inkTertiary)
                         }
                     }
                 }
@@ -1337,7 +1337,7 @@ struct AnalysisScreen: View {
                 .font(Theme.serialNumberFont(size: 14))
                 .foregroundStyle(Theme.inkPrimary)
             Text(label)
-                .font(.system(size: 8))
+                .font(Theme.microLabel(size: 8))
                 .foregroundStyle(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)

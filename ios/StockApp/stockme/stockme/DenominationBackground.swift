@@ -115,8 +115,26 @@ struct DenominationBackground: View {
     }
 
     var body: some View {
-        (colorScheme == .dark ? currentTheme.canvasDark : currentTheme.canvasLight)
+        let isDark = colorScheme == .dark
+        let baseColor = isDark ? currentTheme.canvasDark : currentTheme.canvasLight
+
+        ZStack {
+            baseColor
+                .ignoresSafeArea()
+
+            // Subtle diagonal gradient with the note's signature color
+            LinearGradient(
+                stops: [
+                    .init(color: tint.opacity(isDark ? 0.06 : 0.12), location: 0),
+                    .init(color: tint.opacity(isDark ? 0.02 : 0.04), location: 0.5),
+                    .init(color: .clear, location: 1),
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
             .ignoresSafeArea()
-            .animation(.easeInOut(duration: 0.6), value: selectedTheme)
+            .allowsHitTesting(false)
+        }
+        .animation(.easeInOut(duration: 0.6), value: selectedTheme)
     }
 }

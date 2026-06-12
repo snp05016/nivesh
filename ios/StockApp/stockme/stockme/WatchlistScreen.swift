@@ -155,7 +155,7 @@ struct WatchlistScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                .stroke(Theme.borderFine, lineWidth: 1)
         )
     }
 
