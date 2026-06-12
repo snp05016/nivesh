@@ -11,7 +11,7 @@ Upgrade the LangGraph pipeline to support a high-depth, high-cost "Extreme" scan
 
 ## 2. Model & Pipeline Configuration (`services/orchestrator.py` & `backend/config.py`)
 When `scan_type == "extreme"`:
-- **Full Pipeline Upgrade:** Override the `quick_think_llm` (which normally uses `deepseek-chat`) to use `SONNET_MODEL` (Claude 3.5 Sonnet / Claude 4 Pro) for all 8 agents (Market, News, Fundamentals, Bull, Bear, Trader, Risk, Portfolio Manager).
+- **Full Pipeline Upgrade:** Override the `quick_think_llm` (which normally uses `deepseek-chat`) to use the **DeepSeek V4 Pro** model (e.g., `deepseek-reasoner` or equivalent pro configuration) for all 8 agents (Market, News, Fundamentals, Bull, Bear, Trader, Risk, Portfolio Manager). The API key is already configured.
 - **Debate Depth:** Override the default LangGraph configuration to set `max_debate_rounds = 3` (up from 1) allowing the Bull and Bear agents to deeply interrogate each other.
 
 ## 3. Expanded Data Ingestion
