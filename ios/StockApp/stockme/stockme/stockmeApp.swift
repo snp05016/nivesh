@@ -42,9 +42,11 @@ struct stockmeApp: App {
     @StateObject private var reportManager = LocalReportManager()
     @StateObject private var tutorialManager = TutorialManager()
     @StateObject private var notificationManager = NotificationManager.shared
+    @StateObject private var engineManager = AnalysisEngineManager.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("hasAcceptedDisclaimer") private var hasAcceptedDisclaimer = false
     @AppStorage("hasSeenTutorial") private var hasSeenTutorial = false
+    @State private var enginePollingStarted = false
     @AppStorage("darkMode") private var darkMode = false
     @AppStorage("dev_welcome_notification") private var devWelcomeNotification = false
 
@@ -108,6 +110,7 @@ struct stockmeApp: App {
                 .environmentObject(authManager)
                 .environmentObject(reportManager)
                 .environmentObject(tutorialManager)
+                .environmentObject(engineManager)
                 .preferredColorScheme(darkMode ? .dark : nil)
                 .opacity(launchPhase == .mainInterface ? 1 : 0)
                 .scaleEffect(launchPhase == .mainInterface ? 1 : 1.02)

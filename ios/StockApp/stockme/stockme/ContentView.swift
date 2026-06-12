@@ -4,6 +4,7 @@ import UIKit
 struct ContentView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var tutorialManager: TutorialManager
+    @EnvironmentObject var engineManager: AnalysisEngineManager
     @State private var selectedTab = 0
 
     /// When true, the App-level launch handles the splash screen.
@@ -121,16 +122,25 @@ struct ContentView: View {
 private struct GlobalOverlayModifier: ViewModifier {
     @Binding var selectedTab: Int
     @ObservedObject var tutorialManager: TutorialManager
+    @EnvironmentObject var engineManager: AnalysisEngineManager
+    @State private var showEngineActivity = false
 
     func body(content: Content) -> some View {
         content
             .overlay(
                 Group {
+                    // v2 engine — global running pill
+                    if engineManager.isRunning {
+                        VStack { globalRunningPill; Spacer() }
+                    }
                     if tutorialManager.isShowingTutorial {
                         TutorialOverlayView()
                     }
                 }
             )
+            .sheet(isPresented: $showEngineActivity) {
+                EngineActivityView()
+            }
             .onChange(of: tutorialManager.currentStep) { _, step in
                 guard tutorialManager.isShowingTutorial else { return }
                 let tab: Int
@@ -149,6 +159,47 @@ private struct GlobalOverlayModifier: ViewModifier {
                     withAnimation(.easeInOut(duration: 0.25)) { selectedTab = tab }
                 }
             }
+
+    @ViewBuilder
+    private var globalRunningPill: some View {
+        Button {
+            HapticManager.selection()
+            showEngineActivity = true
+        } label: {
+            HStack(spacing: Theme.Spacing.tight) {
+                Circle()
+                    .fill(Theme.securityGold)
+                    .frame(width: 6, height: 6)
+                    .opacity(0.9)
+                Text(engineManager.ticker ?? "ANALYSIS")
+                    .font(Theme.officialStampFont(size: 10))
+                    .tracking(1.0)
+                    .foregroundStyle(Theme.securityGold)
+                if let stage = engineManager.stage {
+                    Text("·")
+                        .foregroundStyle(Theme.inkTertiary)
+                    Text(stage)
+                        .font(.caption2)
+                        .foregroundStyle(Theme.inkSecondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Text("\(Int(engineManager.progressPct))%")
+                    .font(Theme.serialNumberFont(size: 10))
+                    .foregroundStyle(Theme.securityGold)
+            }
+            .padding(.vertical, Theme.Spacing.tight)
+            .padding(.horizontal, Theme.Spacing.standard)
+            .background(Theme.securityGold.opacity(0.10))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
+                    .stroke(Theme.securityGold.opacity(0.35), lineWidth: 0.5)
+            )
+            .cornerRadius(Theme.CornerRadius.large)
+            .padding(.horizontal, Theme.screenPadding)
+            .padding(.top, Theme.Spacing.tight)
+        }
+        .buttonStyle(EKPressStyle())
     }
 }
 

@@ -87,8 +87,8 @@ class NetworkManager: ObservableObject {
 
     private init() {
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 1200 // 20 minutes
-        config.timeoutIntervalForResource = 1200 // 20 minutes
+        config.timeoutIntervalForRequest = 30   // was 1200 — connection-tied; v2 engine runs server-side
+        config.timeoutIntervalForResource = 120
         self.session = URLSession(configuration: config)
     }
 
@@ -322,6 +322,69 @@ class NetworkManager: ObservableObject {
             )
             throw NetworkError.analysisDiagnostic(info)
         }
+    }
+
+    // MARK: - v2 Analysis Engine (background job model)
+
+    func startAnalysisJob(ticker: String, exchange: String, userId: Int?, scanType: String) async throws -> StartJobResponse {
+        guard let url = URL(string: "\(baseURL)/analyze") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(StartJobRequest(ticker: ticker, exchange: exchange, userId: userId, scanType: scanType))
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        if http.statusCode == 409 {
+            // Already running — decode and return the existing job ID
+            return try JSONDecoder().decode(StartJobResponse.self, from: data)
+        }
+        guard (200...299).contains(http.statusCode) else {
+            throw NetworkError.serverError(http.statusCode, String(data: data, encoding: .utf8))
+        }
+        return try JSONDecoder().decode(StartJobResponse.self, from: data)
+    }
+
+    func pollJob(jobId: String, userId: Int?) async throws -> JobStatus {
+        var urlStr = "\(baseURL)/analyze/job/\(jobId)"
+        if let uid = userId { urlStr += "?user_id=\(uid)" }
+        guard let url = URL(string: urlStr) else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 10
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(http.statusCode) else {
+            throw NetworkError.serverError(http.statusCode, String(data: data, encoding: .utf8))
+        }
+        return try JSONDecoder().decode(JobStatus.self, from: data)
+    }
+
+    func cancelJob(jobId: String, userId: Int?) async throws {
+        var urlStr = "\(baseURL)/analyze/\(jobId)/cancel"
+        if let uid = userId { urlStr += "?user_id=\(uid)" }
+        guard let url = URL(string: urlStr) else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 10
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+    }
+
+    func getActiveJob(userId: Int) async throws -> JobStatus? {
+        guard let url = URL(string: "\(baseURL)/analyze/active?user_id=\(userId)") else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 10
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        let decoder = JSONDecoder()
+        // active returns either a JobStatus or {"status":"NONE"}
+        if let job = try? decoder.decode(JobStatus.self, from: data), job.ticker != nil || job.jobId != nil {
+            return job
+        }
+        return nil
     }
 
     // MARK: - Portfolio

@@ -88,6 +88,18 @@ struct StockAnalysis: Codable {
     let previousSignal: String?
     var advisorMatrix: [AdvisorInsightRow] = []
     let pricePerformance: PricePerformance?
+    // v2 extreme bundles — optional, present only for scan_type=="extreme"
+    let analysisTier: String?
+    let factorScores: FactorScores?
+    let piotroski: PiotroskiData?
+    let financialTrends: FinancialTrends?
+    let ownershipTrends: OwnershipTrends?
+    let peerComparison: [PeerRow]?
+    let scenarios: ScenarioBundle?
+    let valuationBands: ValuationBands?
+    let extendedThesis: ExtendedThesis?
+    let nicheInsights: [String]?
+    let governanceFlags: [GovernanceFlag]?
 
     enum CodingKeys: String, CodingKey {
         case ticker, signal, exchange, patterns
@@ -110,6 +122,17 @@ struct StockAnalysis: Codable {
         case previousSignal = "previous_signal"
         case advisorMatrix = "advisor_matrix"
         case pricePerformance = "price_performance"
+        case analysisTier = "analysis_tier"
+        case factorScores = "factor_scores"
+        case piotroski
+        case financialTrends = "financial_trends"
+        case ownershipTrends = "ownership_trends"
+        case peerComparison = "peer_comparison"
+        case scenarios
+        case valuationBands = "valuation_bands"
+        case extendedThesis = "extended_thesis"
+        case nicheInsights = "niche_insights"
+        case governanceFlags = "governance_flags"
     }
 
     init(from decoder: Decoder) throws {
@@ -137,6 +160,156 @@ struct StockAnalysis: Codable {
         previousSignal       = try c.decodeIfPresent(String.self,             forKey: .previousSignal)
         advisorMatrix        = (try? c.decodeIfPresent([AdvisorInsightRow].self, forKey: .advisorMatrix)) ?? []
         pricePerformance     = try c.decodeIfPresent(PricePerformance.self,   forKey: .pricePerformance)
+        // v2 extreme bundles — decodeIfPresent so standard analyses keep working
+        analysisTier         = try c.decodeIfPresent(String.self,            forKey: .analysisTier)
+        factorScores         = try c.decodeIfPresent(FactorScores.self,      forKey: .factorScores)
+        piotroski            = try c.decodeIfPresent(PiotroskiData.self,     forKey: .piotroski)
+        financialTrends      = try c.decodeIfPresent(FinancialTrends.self,   forKey: .financialTrends)
+        ownershipTrends      = try c.decodeIfPresent(OwnershipTrends.self,   forKey: .ownershipTrends)
+        peerComparison       = try c.decodeIfPresent([PeerRow].self,          forKey: .peerComparison)
+        scenarios            = try c.decodeIfPresent(ScenarioBundle.self,     forKey: .scenarios)
+        valuationBands       = try c.decodeIfPresent(ValuationBands.self,    forKey: .valuationBands)
+        extendedThesis       = try c.decodeIfPresent(ExtendedThesis.self,    forKey: .extendedThesis)
+        nicheInsights        = try c.decodeIfPresent([String].self,           forKey: .nicheInsights)
+        governanceFlags      = try c.decodeIfPresent([GovernanceFlag].self,   forKey: .governanceFlags)
+    }
+}
+
+// MARK: - v2 Engine — Job Status
+
+struct JobStatus: Codable {
+    let jobId: String
+    let userId: Int?
+    let ticker: String
+    let scanType: String?
+    let status: String          // QUEUED | RUNNING | SUCCEEDED | FAILED | CANCELLED | TIMEOUT
+    let stage: String?
+    let progressPct: Int?
+    let checkpoints: [CheckpointEvent]?
+    let tokensUsed: Int?
+    let error: String?
+    let result: StockAnalysis?  // present only when SUCCEEDED (full_json)
+
+    enum CodingKeys: String, CodingKey {
+        case jobId = "job_id"; case userId = "user_id"; case ticker; case scanType = "scan_type"
+        case status; case stage; case progressPct = "progress_pct"
+        case checkpoints; case tokensUsed = "tokens_used"; case error; case result
+    }
+}
+
+struct CheckpointEvent: Codable, Identifiable {
+    var id: String { "\(ts)_\(stage)" }
+    let ts: String
+    let stage: String
+    let agent: String
+    let message: String
+    let state: String       // running | ok | error
+}
+
+// MARK: - v2 Engine — Extreme Bundle Models
+
+struct FactorScores: Codable {
+    let value, quality, momentum, growth, lowVolatility: Int?
+    enum CodingKeys: String, CodingKey {
+        case value, quality, momentum, growth
+        case lowVolatility = "low_volatility"
+    }
+}
+
+struct ScenarioPoint: Codable {
+    let price3m, price12m, price36m: Double?
+    let probabilityPct: Int?
+    let narrative: String?
+    enum CodingKeys: String, CodingKey {
+        case price3m = "price_3m"; case price12m = "price_12m"; case price36m = "price_36m"
+        case probabilityPct = "probability_pct"; case narrative
+    }
+}
+
+struct ScenarioBundle: Codable {
+    let bull, base, bear: ScenarioPoint?
+}
+
+struct ValuationBands: Codable {
+    let currentPrice, fairValue, bullValue, bearValue: Double?
+    let method: String?
+    let peBand: PEBand?
+    enum CodingKeys: String, CodingKey {
+        case currentPrice = "current_price"; case fairValue = "fair_value"
+        case bullValue = "bull_value"; case bearValue = "bear_value"
+        case method; case peBand = "pe_band"
+    }
+}
+
+struct PEBand: Codable {
+    let low, mid, high: Double?
+}
+
+struct ExtendedThesis: Codable {
+    let bullDeepDive, bearDeepDive, managementQuality, competitiveMoat, sectorPositioning: String?
+    enum CodingKeys: String, CodingKey {
+        case bullDeepDive = "bull_deep_dive"; case bearDeepDive = "bear_deep_dive"
+        case managementQuality = "management_quality"; case competitiveMoat = "competitive_moat"
+        case sectorPositioning = "sector_positioning"
+    }
+}
+
+struct GovernanceFlag: Codable, Identifiable {
+    var id: String { flag ?? UUID().uuidString }
+    let flag: String?
+    let severity: String?
+    let detail: String?
+}
+
+struct FinancialTrends: Codable {
+    let years: [String]?
+    let revenueCr: [Double?]?
+    let netProfitCr: [Double?]?
+    let netMarginPct: [Double?]?
+    enum CodingKeys: String, CodingKey {
+        case years; case revenueCr = "revenue_cr"; case netProfitCr = "net_profit_cr"
+        case netMarginPct = "net_margin_pct"
+    }
+}
+
+struct OwnershipTrends: Codable {
+    let dates: [String]?
+    let promoterPledgedPct: [Double]?
+    enum CodingKeys: String, CodingKey {
+        case dates; case promoterPledgedPct = "promoter_pledged_pct"
+    }
+}
+
+struct PeerRow: Codable, Identifiable {
+    var id: String { ticker ?? UUID().uuidString }
+    let ticker: String?
+    let name: String?
+    let pe: Double?
+    let roePct: Double?
+    let revGrowthPct: Double?
+    let debtToEquity: Double?
+    let marketcapCr: Double?
+    enum CodingKeys: String, CodingKey {
+        case ticker, name, pe; case roePct = "roe_pct"; case revGrowthPct = "rev_growth_pct"
+        case debtToEquity = "debt_to_equity"; case marketcapCr = "marketcap_cr"
+    }
+}
+
+// MARK: - v2 Engine — Job request/response wrappers
+
+struct StartJobRequest: Encodable {
+    let ticker, exchange: String
+    let userId: Int?
+    let scanType: String
+    enum CodingKeys: String, CodingKey {
+        case ticker, exchange; case userId = "user_id"; case scanType = "scan_type"
+    }
+}
+
+struct StartJobResponse: Codable {
+    let jobId: String; let status: String; let ticker: String?
+    enum CodingKeys: String, CodingKey {
+        case jobId = "job_id"; case status; case ticker
     }
 }
 
