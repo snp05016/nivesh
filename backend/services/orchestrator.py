@@ -918,12 +918,17 @@ def analyze(
     user_id: int | None = None,
     deep_scan: bool = False,
     scan_type: str = "standard",
+    job_id: str | None = None,
 ) -> dict:
     exchange = exchange.upper()
     if exchange not in EXCHANGE_SUFFIX:
         raise ValueError(f"Unsupported exchange: {exchange}. Use NSE or BSE.")
     full_ticker = _resolve_ticker(ticker, exchange)
     analysis_date = date.today().strftime("%Y-%m-%d")
+
+    # Job-scoped progress relay (no-op when job_id is None, e.g. standard cache warms).
+    from services.checkpoints import CheckpointEmitter
+    emitter = CheckpointEmitter(job_id)
 
     # Fix 2.38: Generate anonymous session hash for unauthenticated requests.
     # Prevents duplicate LLM cycles from the same public session.
@@ -1129,6 +1134,8 @@ def analyze(
                 )
 
     print(f"[CACHE MISS] Generating new deep analysis for {full_ticker}...")
+    emitter.emit("gather", "Data Pipeline",
+                 "Fetching prices, fundamentals, pledging & news", pct=10)
 
     # Fetch pledging info for AI context
     pledging_data = "Unavailable"
@@ -1150,7 +1157,12 @@ def analyze(
     except:
         pass
 
+    emitter.emit("agents", "Multi-Agent Engine",
+                 "Running governance, market, news & fundamentals analysts + bull/bear debate",
+                 pct=25)
     raw_output, _ = run_trading_agents(full_ticker, analysis_date, scan_type)
+    emitter.emit("synthesis", "Research & Portfolio Managers",
+                 "Weighing the dialectical debate (bear 1.5x) into a final call", pct=60)
     raw_output += f"\n\nADDITIONAL DATA (MANDATORY TO INCLUDE IN fundamentals_snapshot):\nPromoter Pledging: {pledging_data}\n"
 
     # ── Deep Scan: PKScreener + FinBERT injection ────────────────────────────
@@ -1225,6 +1237,8 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
         except Exception as e:
             print(f"[DEEP-SCAN] FinBERT context build failed: {e}")
 
+    emitter.emit("format", "Reformatter",
+                 "Structuring the report into the final schema", pct=80)
     result = reformat_with_claude(
         raw_output, full_ticker, exchange, prior_analyses=prior, scan_type=scan_type
     )
@@ -1238,6 +1252,8 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
     # EXTREME superset — attach deterministic, code-computed graph bundles (real numbers
     # for the charts; the LLM already supplied the narrative blocks via EXTREME_ADDENDUM).
     if scan_type == "extreme":
+        emitter.emit("enrich", "Graph Engine",
+                     "Computing factor / Piotroski / valuation & ownership graphs", pct=92)
         try:
             from services.extreme_enrichers import build_extreme_bundles
             result.update(build_extreme_bundles(ticker.upper(), exchange))
