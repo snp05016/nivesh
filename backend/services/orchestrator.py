@@ -1008,71 +1008,71 @@ def analyze(
         # 2. Fetch deep history for AI context
         prior = get_all_ticker_history(session, ticker, user_id)
 
-        # 3. Smart Cache: skip for extreme scans — they're always fresh by design
-        if scan_type != "extreme" and prior:
-            last_analysis = prior[-1]
+    # 3. Smart Cache: skip for extreme scans — they're always fresh by design
+    if prior and scan_type != "extreme":
+        last_analysis = prior[-1]
         last_date_str = last_analysis.get("analysis_date")
         if last_date_str != analysis_date:
             try:
-                    ns_ticker = _to_ns(ticker)
-                    t = yf.Ticker(ns_ticker)
-                    recent_news = t.news[:5] if t.news else []
-                    if recent_news:
-                        print(
-                            f"[AI] Thinking: Fast-checking recent news to see if full analysis is needed..."
-                        )
-                        news_text = "\n".join(
-                            [f"- {n.get('title', '')}" for n in recent_news]
-                        )
+                ns_ticker = _to_ns(ticker)
+                t = yf.Ticker(ns_ticker)
+                recent_news = t.news[:5] if t.news else []
+                if recent_news:
+                    print(
+                        f"[AI] Thinking: Fast-checking recent news to see if full analysis is needed..."
+                    )
+                    news_text = "\n".join(
+                        [f"- {n.get('title', '')}" for n in recent_news]
+                    )
 
-                        # Fix 2.19: check for special dividends/bonus/splits in headlines
-                        # before Smart Cache Gate — these are ALWAYS major fundamental shifts
-                        import re as _cache_re
-                        _force_refresh_patterns = [
-                            r"special\s+dividend",
-                            r"bonus\s+(?:issue|share)",
-                            r"stock\s+split",
-                            r"rights\s+issue",
-                            r"buyback",
-                            r"delisting",
-                        ]
-                        _force_refresh = any(
-                            _cache_re.search(p, news_text, _cache_re.IGNORECASE)
-                            for p in _force_refresh_patterns
-                        )
+                    # Fix 2.19: check for special dividends/bonus/splits in headlines
+                    # before Smart Cache Gate — these are ALWAYS major fundamental shifts
+                    import re as _cache_re
+                    _force_refresh_patterns = [
+                        r"special\s+dividend",
+                        r"bonus\s+(?:issue|share)",
+                        r"stock\s+split",
+                        r"rights\s+issue",
+                        r"buyback",
+                        r"delisting",
+                    ]
+                    _force_refresh = any(
+                        _cache_re.search(p, news_text, _cache_re.IGNORECASE)
+                        for p in _force_refresh_patterns
+                    )
 
-                        # Smart cache gate → DeepSeek V4 Flash (Tier 1 bulk task)
-                        if os.getenv("DEEPSEEK_API_KEY") and not _force_refresh:
-                            prompt = (
-                                f"Stock: {full_ticker}\nLast analysis date: {last_date_str}\n"
-                                f"Recent News Headlines:\n{news_text}\n\n"
-                                "Based ONLY on these headlines, has there been a major fundamental "
-                                f"shift, severe shock, or significant trend-changing event for this "
-                                f"company since {last_date_str}? Answer strictly with a single word: 'YES' or 'NO'."
+                    # Smart cache gate → DeepSeek V4 Flash (Tier 1 bulk task)
+                    if os.getenv("DEEPSEEK_API_KEY") and not _force_refresh:
+                        prompt = (
+                            f"Stock: {full_ticker}\nLast analysis date: {last_date_str}\n"
+                            f"Recent News Headlines:\n{news_text}\n\n"
+                            "Based ONLY on these headlines, has there been a major fundamental "
+                            f"shift, severe shock, or significant trend-changing event for this "
+                            f"company since {last_date_str}? Answer strictly with a single word: 'YES' or 'NO'."
+                        )
+                        answer = (
+                            _deepseek_chat(
+                                [{"role": "user", "content": prompt}],
+                                max_tokens=10,
+                                temperature=0,
+                                log_endpoint="smart_cache",
                             )
-                            answer = (
-                                _deepseek_chat(
-                                    [{"role": "user", "content": prompt}],
-                                    max_tokens=10,
-                                    temperature=0,
-                                    log_endpoint="smart_cache",
-                                )
-                                .strip()
-                                .upper()
+                            .strip()
+                            .upper()
+                        )
+
+                        if "NO" in answer:
+                            print(
+                                f"[SMART CACHE] No major news changes for {full_ticker} since {last_date_str}. Reusing previous report to save credits."
                             )
+                            import copy
 
-                            if "NO" in answer:
-                                print(
-                                    f"[SMART CACHE] No major news changes for {full_ticker} since {last_date_str}. Reusing previous report to save credits."
-                                )
-                                import copy
+                            new_analysis = copy.deepcopy(last_analysis)
+                            new_analysis["analysis_date"] = analysis_date
 
-                                new_analysis = copy.deepcopy(last_analysis)
-                                new_analysis["analysis_date"] = analysis_date
-
-                                new_analysis = _normalize_response(new_analysis)
-                                new_analysis["ticker"] = ticker.upper()
-                                new_analysis["exchange"] = exchange
+                            new_analysis = _normalize_response(new_analysis)
+                            new_analysis["ticker"] = ticker.upper()
+                            new_analysis["exchange"] = exchange
                             new_analysis["_cache_type"] = "SMART CACHE"
                             try:
                                 with get_session() as session:
