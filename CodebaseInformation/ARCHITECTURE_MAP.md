@@ -56,35 +56,20 @@ To handle complex Indian market rules without prohibitive latency or cost, the s
 ## 1.5. Recent Architectural Evolution (June 2026)
 
 ### Backend Updates
-- **Caching**: Replaced `services/cache_service.py` with `services/cache_service.py` (using `redis.asyncio` with in-memory fallback).
+- **Caching**: Replaced `_dcache` with `services/cache_service.py` (using `redis.asyncio` with in-memory fallback).
 - **Scheduling**: Added `APScheduler` in `main.py` for automated cron jobs (harvesting news, youtube, block deals, portfolio snapshot).
 - **Alerts**: Replaced client-side polling for price alerts with a background APNs Webhook task.
 - **Models**: Added new SQLAlchemy models: `BlockDeal` and `FIIDIIFlow`.
 - **Telemetry**: Added `CorrelationIDMiddleware` to thread `X-Request-ID` across logs.
 - **Rate Limiting**: Upgraded rate limiter to use a sliding window deque per endpoint in `helpers.py`.
+- **Data Scraping**: Switched to `yfinance.history` in `helpers.py` (`_yf_price`) for reliable portfolio and watchlist pricing instead of fragile `.info` endpoint.
 
 ### iOS & Frontend Updates
 - **WidgetKit**: Added `NiveshWidgetExtension` for home screen widgets.
 - **New Screens**: Added `AnalysisHistoryScreen`, `InteractiveTutorialScreen`, `HomeLayoutEditorSheet`.
 - **Managers**: Added `WatchlistTagsManager` and `SpeechRecognizerManager`.
 - **Adaptation**: Enhanced iPad experience with `NavigationSplitView`.
-
-
-## 1.5. Recent Architectural Evolution (June 2026)
-
-### Backend Updates
-- **Caching**: Replaced `services/cache_service.py` with `services/cache_service.py` (using `redis.asyncio` with in-memory fallback).
-- **Scheduling**: Added `APScheduler` in `main.py` for automated cron jobs (harvesting news, youtube, block deals, portfolio snapshot).
-- **Alerts**: Replaced client-side polling for price alerts with a background APNs Webhook task.
-- **Models**: Added new SQLAlchemy models: `BlockDeal` and `FIIDIIFlow`.
-- **Telemetry**: Added `CorrelationIDMiddleware` to thread `X-Request-ID` across logs.
-- **Rate Limiting**: Upgraded rate limiter to use a sliding window deque per endpoint in `helpers.py`.
-
-### iOS & Frontend Updates
-- **WidgetKit**: Added `NiveshWidgetExtension` for home screen widgets.
-- **New Screens**: Added `AnalysisHistoryScreen`, `InteractiveTutorialScreen`, `HomeLayoutEditorSheet`.
-- **Managers**: Added `WatchlistTagsManager` and `SpeechRecognizerManager`.
-- **Adaptation**: Enhanced iPad experience with `NavigationSplitView`.
+- **Dynamic Theming**: Signature accent colors (neon teal / `Theme.securityGold`) and `UITabBarAppearance` now dynamically update entirely based on `ThemeManager.shared.current.accentDark` reflecting the chosen denomination theme without an app restart.
 
 ## 2. Complete Directory Structure
 
