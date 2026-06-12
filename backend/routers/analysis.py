@@ -519,30 +519,40 @@ async def analyze_endpoint(req: AnalyzeRequest):
 
 
 @router.get("/analyze/job/{job_id}")
-async def get_job_status(job_id: str):
-    """Poll a job: status, stage, progress_pct, checkpoints, and result when done."""
+async def get_job_status(job_id: str, user_id: int | None = None):
+    """Poll a job: status, stage, progress_pct, checkpoints, and result when done.
+    When user_id is provided, verifies the job belongs to that user (IDOR guard)."""
     import database
     job = database.get_job(job_id)
     if not job:
         return _JSONResponse(status_code=404, content={"error": "job not found"})
+    if user_id is not None and job.get("user_id") is not None and job["user_id"] != user_id:
+        return _JSONResponse(status_code=403, content={"error": "job does not belong to this user"})
     return job
 
 
 @router.get("/analyze/active")
-async def get_active_job(user_id: int):
-    """The user's current running/queued job — drives the app's global running indicator."""
+async def get_active_job(user_id: int | None = None):
+    """The user's current running/queued job — drives the app's global running indicator.
+    Requires user_id parameter; returns NONE when user_id is null/absent (IDOR guard)."""
     import database
+    if user_id is None:
+        return {"status": "NONE"}
     job = database.get_active_job_for_user(user_id)
     return job or {"status": "NONE"}
 
 
 @router.post("/analyze/{job_id}/cancel")
-async def cancel_job_endpoint(job_id: str):
-    """Cancel a running job (terminates the worker subprocess to stop credit spend)."""
+async def cancel_job_endpoint(job_id: str, user_id: int | None = None):
+    """Cancel a running job (terminates the worker subprocess to stop credit spend).
+    When user_id is provided, verifies the job belongs to that user before cancelling (IDOR guard)."""
     import database
     from services.job_manager import cancel_job
-    if not database.get_job(job_id):
+    job = database.get_job(job_id)
+    if not job:
         return _JSONResponse(status_code=404, content={"error": "job not found"})
+    if user_id is not None and job.get("user_id") is not None and job["user_id"] != user_id:
+        return _JSONResponse(status_code=403, content={"error": "job does not belong to this user"})
     cancel_job(job_id)
     return {"job_id": job_id, "status": "CANCELLED"}
 
