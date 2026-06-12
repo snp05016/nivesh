@@ -900,10 +900,10 @@ def stock_history_endpoint(ticker: str, exchange: str = "NSE", period: str = "1y
             c = float(row["Close"]); v = float(row.get("Volume", 0) or 0)
             prices.append({
                 "date": dt.strftime("%Y-%m-%d"),
-                "open": round(o, 2) if not (_m_stock.isnan(o) or _m_stock.isinf(o)) else None,
-                "high": round(h, 2) if not (_m_stock.isnan(h) or _m_stock.isinf(h)) else None,
-                "low": round(l, 2) if not (_m_stock.isnan(l) or _m_stock.isinf(l)) else None,
-                "close": round(c, 2) if not (_m_stock.isnan(c) or _m_stock.isinf(c)) else None,
+                "open": round(o, 2) if not (_m_stock.isnan(o) or _m_stock.isinf(o)) else 0,
+                "high": round(h, 2) if not (_m_stock.isnan(h) or _m_stock.isinf(h)) else 0,
+                "low": round(l, 2) if not (_m_stock.isnan(l) or _m_stock.isinf(l)) else 0,
+                "close": round(c, 2) if not (_m_stock.isnan(c) or _m_stock.isinf(c)) else 0,
                 "volume": v if not (_m_stock.isnan(v) or _m_stock.isinf(v)) else 0,
             })
 
@@ -1074,15 +1074,18 @@ def stock_profile_endpoint(ticker: str, exchange: str = "NSE"):
             price_history_data["error"] = "; ".join(failure_reasons)
             errors.append("price_history_unavailable")
         else:
+            import math as _m_sp
             prices = []
             for dt_val, row in df.iterrows():
+                o = float(row["Open"]); h = float(row["High"]); l = float(row["Low"])
+                c = float(row["Close"]); v = float(row.get("Volume", 0) or 0)
                 prices.append({
                     "date": dt_val.strftime("%Y-%m-%d") if hasattr(dt_val, "strftime") else str(dt_val)[:10],
-                    "open": round(float(row["Open"]), 2),
-                    "high": round(float(row["High"]), 2),
-                    "low": round(float(row["Low"]), 2),
-                    "close": round(float(row["Close"]), 2),
-                    "volume": float(row.get("Volume", 0) or 0),
+                    "open": round(o, 2) if not (_m_sp.isnan(o) or _m_sp.isinf(o)) else 0,
+                    "high": round(h, 2) if not (_m_sp.isnan(h) or _m_sp.isinf(h)) else 0,
+                    "low": round(l, 2) if not (_m_sp.isnan(l) or _m_sp.isinf(l)) else 0,
+                    "close": round(c, 2) if not (_m_sp.isnan(c) or _m_sp.isinf(c)) else 0,
+                    "volume": v if not (_m_sp.isnan(v) or _m_sp.isinf(v)) else 0,
                 })
             price_history_data["prices"] = prices
             try:
@@ -1164,14 +1167,14 @@ def stock_profile_endpoint(ticker: str, exchange: str = "NSE"):
         return v
 
     def _sanitize_for_json(obj):
-        """Recursively replace NaN/Inf with None so json.dumps never fails."""
+        """Recursively replace NaN/Inf with 0 so json.dumps never fails."""
         if isinstance(obj, dict):
             return {k: _sanitize_for_json(v) for k, v in obj.items()}
         if isinstance(obj, list):
             return [_sanitize_for_json(v) for v in obj]
         if isinstance(obj, float):
             if math.isnan(obj) or math.isinf(obj):
-                return None
+                return 0
         return obj
 
     result = {
