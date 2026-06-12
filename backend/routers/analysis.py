@@ -512,7 +512,27 @@ async def analyze_endpoint(req: AnalyzeRequest, request: Request):
         )
         p.start()
 
+        import time as _time_module
+        _start_time = _time_module.monotonic()
+        _timeout = 600 if req.scan_type == "extreme" else 300
+
         try:
+            while p.is_alive():
+                if _time_module.monotonic() - _start_time > _timeout:
+                    p.terminate()
+                    p.join(timeout=5)
+                    _dash_end_job(job_id, killed=True)
+                    return _build_analysis_error(
+                        error_code="TIMEOUT",
+                        error_title="Analysis Timed Out",
+                        error_detail=f"The analysis for {ticker} exceeded the {_timeout}s timeout for {req.scan_type} scan.",
+                        error_type="timeout",
+                        phase_failed="analyze_execution",
+                        ticker=ticker,
+                        suggested_action="RETRY",
+                        diagnostic_info=f"Worker PID {p.pid} exceeded {_timeout}s timeout. scan_type={req.scan_type}",
+                        http_status=504,
+                    )
             while p.is_alive():
                 if await request.is_disconnected():
                     p.terminate()
