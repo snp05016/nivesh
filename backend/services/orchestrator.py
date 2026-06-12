@@ -1008,9 +1008,9 @@ def analyze(
         # 2. Fetch deep history for AI context
         prior = get_all_ticker_history(session, ticker, user_id)
 
-    # 3. Smart Cache: Check if news warrants a new expensive analysis
-    if prior:
-        last_analysis = prior[-1]
+        # 3. Smart Cache: skip for extreme scans — they're always fresh by design
+        if scan_type != "extreme" and prior:
+            last_analysis = prior[-1]
         last_date_str = last_analysis.get("analysis_date")
         if last_date_str != analysis_date:
             try:
