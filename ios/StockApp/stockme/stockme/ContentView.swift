@@ -159,7 +159,6 @@ private struct GlobalOverlayModifier: ViewModifier {
                     withAnimation(.easeInOut(duration: 0.25)) { selectedTab = tab }
                 }
             }
-            }
     }
     @ViewBuilder
     private var globalRunningPill: some View {
