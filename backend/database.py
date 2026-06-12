@@ -936,6 +936,15 @@ def get_active_job_for_user(user_id: Optional[int]) -> Optional[dict]:
         return _job_to_dict(j) if j else None
 
 
+def list_active_jobs() -> list[dict]:
+    """All QUEUED/RUNNING jobs — for the live dashboard 'what's running' panel."""
+    with get_session() as s:
+        rows = (s.query(AnalysisJob)
+                  .filter(AnalysisJob.status.in_(["QUEUED", "RUNNING"]))
+                  .order_by(AnalysisJob.created_at.desc()).all())
+        return [_job_to_dict(j) for j in rows]
+
+
 def sweep_stale_jobs(max_heartbeat_age_sec: int = 90) -> int:
     """Crash recovery: mark QUEUED/RUNNING jobs with a stale heartbeat as FAILED."""
     cutoff = datetime.utcnow() - timedelta(seconds=max_heartbeat_age_sec)
