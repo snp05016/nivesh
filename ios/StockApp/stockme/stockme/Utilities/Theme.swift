@@ -28,21 +28,20 @@ enum Theme {
 
     // Kept for backward-compat — now always returns the dark value since palette is fixed dark
     static func adaptive(_ light: String, _ dark: String, alpha: CGFloat = 1) -> Color {
-        Color(light: Color(hex: light), dark: Color(hex: dark)).opacity(Double(alpha))
+        Color(uiColor(dark, alpha: alpha))
     }
 
-    // MARK: - The Canvas (color-scheme aware)
-    // Falls back to denomination canvas; defaults to Deep Navy / Warm Beige
+    // MARK: - The Canvas
 
-    static var canvas: Color { Color(light: ThemeManager.shared.current.canvasLight, dark: ThemeManager.shared.current.canvasDark) }
-    static var canvasDeep: Color { Color(light: ThemeManager.shared.current.canvasShadow.opacity(0.6), dark: ThemeManager.shared.current.canvasDeep) }
-    static var canvasShadow: Color { Color(light: ThemeManager.shared.current.canvasShadow.opacity(0.3), dark: ThemeManager.shared.current.canvasShadow) }
+    static var canvas: Color      { Color(uiColor("F5F0E8")) }       // warm beige (light) — same as dark for now
+    static var canvasDeep: Color  { Color(uiColor("EDE8DC")) }       // aged paper
+    static var canvasShadow: Color { Color(uiColor("D9D3C4")) }      // deeper paper
 
-    // MARK: - The Inks (color-scheme aware via ThemeManager)
+    // MARK: - The Inks
 
-    static var inkPrimary: Color { Color(light: ThemeManager.shared.current.inkPrimaryLight, dark: ThemeManager.shared.current.inkPrimaryDark) }
-    static var inkSecondary: Color { Color(light: ThemeManager.shared.current.inkSecondaryLight, dark: ThemeManager.shared.current.inkSecondaryDark) }
-    static var inkTertiary: Color { Color(light: ThemeManager.shared.current.inkTertiaryLight, dark: ThemeManager.shared.current.inkTertiaryDark) }
+    static var inkPrimary: Color   { Color(uiColor("1A1C20")) }      // near-black
+    static var inkSecondary: Color { Color(uiColor("445566")) }      // dark slate
+    static var inkTertiary: Color  { Color(uiColor("778899")) }      // light slate
 
     // MARK: - The Accents (neon teal — THE signature accent)
 
@@ -74,14 +73,13 @@ enum Theme {
     // MARK: - Denomination Tints (dark-mode fixed)
 
     enum NoteTint {
-        // Dark mode — vibrant on dark backgrounds
-        static let ten:        Color = Color(light: Color(hex: "8B5A42"), dark: Color(hex: "C08A6A"))         // Chocolate Brown — ₹10
-        static let twenty:     Color = Color(light: Color(hex: "8A9A30"), dark: Color(hex: "C8D850"))         // Greenish Yellow — ₹20
-        static let fifty:      Color = Color(light: Color(hex: "2A5CAA"), dark: Color(hex: "5A90EE"))         // Fluorescent Blue — ₹50
-        static let hundred:    Color = Color(light: Color(hex: "7060A0"), dark: Color(hex: "B0A0D8"))         // Lavender — ₹100
-        static let twoHundred: Color = Color(light: Color(hex: "A08000"), dark: Color(hex: "D8B800"))         // Bright Yellow — ₹200
-        static let fiveHundred:Color = Color(light: Color(hex: "5A6E6E"), dark: Color(hex: "9AAEAE"))         // Stone Grey — ₹500
-        static let twoThousand:Color = Color(light: Color(hex: "A03080"), dark: Color(hex: "D060B0"))         // Magenta (retired) — ₹2000
+        static let ten:        Color = Color(uiColor("8B5A42"))  // Chocolate Brown
+        static let twenty:     Color = Color(uiColor("8A9A30"))  // Greenish Yellow (darker for light mode)
+        static let fifty:      Color = Color(uiColor("2A5CAA"))  // Fluorescent Blue (darker for light mode)
+        static let hundred:    Color = Color(uiColor("7060A0"))  // Lavender (darker for light mode)
+        static let twoHundred: Color = Color(uiColor("A08000"))  // Bright Yellow (darker for light mode)
+        static let fiveHundred:Color = Color(uiColor("5A6E6E"))  // Stone Grey (darker for light mode)
+        static let twoThousand:Color = Color(uiColor("A03080"))  // Magenta (darker for light mode)
     }
 
     // MARK: - Borders
