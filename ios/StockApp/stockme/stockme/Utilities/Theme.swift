@@ -75,29 +75,54 @@ enum Theme {
     static let chartPromoter   = Color(uiColor("6A7AAA"))
     static let avatarBackground = cardBlueDeep
 
-    // MARK: - Denomination Tints (dark-mode fixed)
+    // MARK: - Denomination Tints (dual-mode: dark & light)
 
     enum NoteTint {
-        static let ten:        Color = Color(uiColor("8B5A42"))  // Chocolate Brown
-        static let twenty:     Color = Color(uiColor("8A9A30"))  // Greenish Yellow (darker for light mode)
-        static let fifty:      Color = Color(uiColor("2A5CAA"))  // Fluorescent Blue (darker for light mode)
-        static let hundred:    Color = Color(uiColor("7060A0"))  // Lavender (darker for light mode)
-        static let twoHundred: Color = Color(uiColor("A08000"))  // Bright Yellow (darker for light mode)
-        static let fiveHundred:Color = Color(uiColor("5A6E6E"))  // Stone Grey (darker for light mode)
-        static let twoThousand:Color = Color(uiColor("A03080"))  // Magenta (darker for light mode)
+        // Dark-mode tints (subtle on dark backgrounds — RBI note base colours)
+        private static let tenDark:        Color = Color(uiColor("8B5A42"))  // ₹10 Chocolate Brown
+        private static let twentyDark:     Color = Color(uiColor("B8C840"))  // ₹20 Greenish Yellow
+        private static let fiftyDark:      Color = Color(uiColor("3A72CC"))  // ₹50 Fluorescent Blue
+        private static let hundredDark:    Color = Color(uiColor("9080C0"))  // ₹100 Lavender
+        private static let twoHundredDark: Color = Color(uiColor("C8A800"))  // ₹200 Bright Yellow
+        private static let fiveHundredDark:Color = Color(uiColor("7A8E8E"))  // ₹500 Stone Grey
+        private static let twoThousandDark:Color = Color(uiColor("C050A0"))  // ₹2000 Magenta
+
+        // Light-mode tints (darker/more saturated for light backgrounds)
+        private static let tenLight:        Color = Color(uiColor("6B3A22"))  // ₹10 Darker chocolate
+        private static let twentyLight:     Color = Color(uiColor("6B8020"))  // ₹20 Olive green
+        private static let fiftyLight:      Color = Color(uiColor("1A4AA0"))  // ₹50 Deep blue
+        private static let hundredLight:    Color = Color(uiColor("6A50A0"))  // ₹100 Deep lavender
+        private static let twoHundredLight: Color = Color(uiColor("A88800"))  // ₹200 Dark gold
+        private static let fiveHundredLight:Color = Color(uiColor("5A6E6E"))  // ₹500 Dark stone
+        private static let twoThousandLight:Color = Color(uiColor("A03080"))  // ₹2000 Deep magenta
+
+        /// Scheme-aware accessors — pale on dark, saturated on light.
+        private static var isDark: Bool { UITraitCollection.current.userInterfaceStyle == .dark }
+
+        static var ten: Color        { isDark ? tenDark : tenLight }
+        static var twenty: Color     { isDark ? twentyDark : twentyLight }
+        static var fifty: Color      { isDark ? fiftyDark : fiftyLight }
+        static var hundred: Color    { isDark ? hundredDark : hundredLight }
+        static var twoHundred: Color { isDark ? twoHundredDark : twoHundredLight }
+        static var fiveHundred: Color{ isDark ? fiveHundredDark : fiveHundredLight }
+        static var twoThousand: Color{ isDark ? twoThousandDark : twoThousandLight }
     }
 
-    // MARK: - Borders
+    // MARK: - Borders (scheme-aware)
 
-    static var borderFine: Color { Color.white.opacity(0.04) }
-    static var borderSage: Color { Color.white.opacity(0.08) }
-    static let paperBorder  = Color.white.opacity(0.06)
-    static let paperTexture = Color.white.opacity(0.025)
+    private static var isDark: Bool { UITraitCollection.current.userInterfaceStyle == .dark }
 
-    // MARK: - Surface Hierarchy
+    static var borderFine: Color  { isDark ? Color.white.opacity(0.04) : Color.black.opacity(0.08) }
+    static var borderSage: Color  { isDark ? Color.white.opacity(0.08) : Color.black.opacity(0.12) }
+    static let paperBorder: Color = Color.white.opacity(0.06)  // RBI watermark border — dark-only by design
+    static let paperTexture: Color = Color.white.opacity(0.025)
 
-    static let surfaceElevated = Color(uiColor("1A2035"))   // cards one level above canvas
-    static let surfaceFloat    = Color(uiColor("1E2540"))   // modal sheets, dropdowns
+    // MARK: - Surface Hierarchy (scheme-aware)
+
+    /// Cards one level above canvas — delegates to ThemeManager.canvasDeep.
+    static var surfaceElevated: Color { ThemeManager.shared.canvasDeep(for: currentColorScheme) }
+    /// Modal sheets, dropdowns — slightly lighter than surfaceElevated.
+    static var surfaceFloat: Color { surfaceElevated.opacity(0.85) }
 
     // MARK: - Enhanced Borders
 
