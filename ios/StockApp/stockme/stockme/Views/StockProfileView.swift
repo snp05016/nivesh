@@ -1244,50 +1244,84 @@ struct StockProfileView: View {
                 let zoneColor: Color = {
                     switch mood.zone ?? "" {
                     case "EXTREME_FEAR": return Theme.bearRed
-                    case "FEAR": return Theme.bearRed.opacity(0.6)
+                    case "FEAR": return Theme.bearRed.opacity(0.7)
                     case "EXTREME_GREED": return Theme.bullGreen
-                    case "GREED": return Theme.bullGreen.opacity(0.6)
+                    case "GREED": return Theme.bullGreen.opacity(0.7)
                     default: return Theme.holdAmber
                     }
                 }()
 
                 ZStack {
-                    Circle()
-                        .trim(from: 0.25, to: 0.75)
-                        .stroke(
-                            AngularGradient(
-                                gradient: Gradient(colors: [
-                                    Theme.bearRed, Theme.bearRed.opacity(0.5),
-                                    Theme.holdAmber,
-                                    Theme.bullGreen.opacity(0.5), Theme.bullGreen
-                                ]),
-                                center: .center
-                            ),
-                            style: StrokeStyle(lineWidth: 12, lineCap: .round)
-                        )
-                        .frame(width: 140, height: 140)
-                        .rotationEffect(.degrees(180))
+                    // Background semi-circle arc — drawn in 5 colour segments
+                    // Arc runs from -90° (left = FEAR) to +90° (right = GREED), 0° at top = NEUTRAL
+                    ForEach(0..<5, id: \.self) { seg in
+                        let segStart = Double(seg) / 5.0
+                        let segEnd = Double(seg + 1) / 5.0
+                        let segColor: Color = {
+                            switch seg {
+                            case 0: return Theme.bearRed       // 0-20: Extreme Fear
+                            case 1: return Theme.bearRed.opacity(0.6)   // 20-40: Fear
+                            case 2: return Theme.holdAmber             // 40-60: Neutral
+                            case 3: return Theme.bullGreen.opacity(0.6) // 60-80: Greed
+                            default: return Theme.bullGreen            // 80-100: Extreme Greed
+                            }
+                        }()
+                        Circle()
+                            .trim(from: 0.25 + segStart * 0.5, to: 0.25 + segEnd * 0.5)
+                            .stroke(segColor, style: StrokeStyle(lineWidth: 14, lineCap: .butt))
+                            .frame(width: 160, height: 160)
+                            .rotationEffect(.degrees(180))
+                    }
 
-                    let angle = Angle(degrees: -90 + (score / 100.0 * 180))
+                    // Tick marks at 0, 25, 50, 75, 100
+                    ForEach([0, 25, 50, 75, 100], id: \.self) { tick in
+                        let tickAngle = Angle(degrees: -90 + (Double(tick) / 100.0 * 180))
+                        Rectangle()
+                            .fill(Theme.inkTertiary.opacity(0.3))
+                            .frame(width: 2, height: 12)
+                            .offset(y: -78)
+                            .rotationEffect(tickAngle)
+                    }
+
+                    // Needle pointing to current score
+                    let needleAngle = Angle(degrees: -90 + (score / 100.0 * 180))
                     Path { path in
-                        path.move(to: CGPoint(x: 70, y: 70))
-                        path.addLine(to: CGPoint(
-                            x: 70 + 55 * cos(angle.radians - .pi / 2),
-                            y: 70 + 55 * sin(angle.radians - .pi / 2)
-                        ))
+                        path.move(to: CGPoint(x: 0, y: 8))
+                        path.addLine(to: CGPoint(x: 0, y: -70))
                     }
-                    .stroke(Theme.inkPrimary, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .stroke(Theme.inkPrimary, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    .rotationEffect(needleAngle)
 
-                    VStack(spacing: 0) {
-                        Text("\(Int(score))")
-                            .font(Theme.serialNumberFont(size: 22, relativeTo: .title2))
-                            .foregroundStyle(zoneColor)
-                        Text(mood.zone?.replacingOccurrences(of: "_", with: " ") ?? "")
-                            .font(Theme.microLabel(size: 7))
-                            .foregroundStyle(Theme.inkTertiary)
-                    }
+                    // Center dot
+                    Circle()
+                        .fill(Theme.inkPrimary)
+                        .frame(width: 10, height: 10)
                 }
-                .frame(height: 100)
+                .frame(width: 160, height: 110)
+
+                VStack(spacing: Theme.Spacing.xSmall) {
+                    Text("\(Int(score))")
+                        .font(Theme.serialNumberFont(size: 28, relativeTo: .title))
+                        .foregroundStyle(zoneColor)
+                    Text(mood.zone?.replacingOccurrences(of: "_", with: " ") ?? "")
+                        .font(Theme.officialStampFont(size: 10))
+                        .tracking(1.0)
+                        .foregroundStyle(zoneColor)
+                }
+
+                // Tick labels
+                HStack {
+                    Text("0").font(Theme.microLabel(size: 8)).foregroundStyle(Theme.inkTertiary)
+                    Spacer()
+                    Text("25").font(Theme.microLabel(size: 8)).foregroundStyle(Theme.inkTertiary)
+                    Spacer()
+                    Text("50").font(Theme.microLabel(size: 8)).foregroundStyle(Theme.inkTertiary)
+                    Spacer()
+                    Text("75").font(Theme.microLabel(size: 8)).foregroundStyle(Theme.inkTertiary)
+                    Spacer()
+                    Text("100").font(Theme.microLabel(size: 8)).foregroundStyle(Theme.inkTertiary)
+                }
+                .padding(.horizontal, Theme.Spacing.small)
 
                 if let interp = mood.interpretation, !interp.isEmpty {
                     Text(interp)
