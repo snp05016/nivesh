@@ -465,13 +465,12 @@ async def harvest_single_advisor(advisor: dict, lookback_hours: int = 24) -> int
                 "%s: YouTube API returned %d videos", advisor_name, len(videos)
             )
         except RuntimeError as exc:
-            # Quota / auth error — abort this advisor
-            logger.error(
-                "YouTube API quota/auth error for %s — aborting: %s",
-                advisor_name,
-                exc,
+            # Quota / auth error — fall back to yt-dlp
+            logger.warning(
+                "YouTube API quota/auth error for %s, falling back to yt-dlp: %s",
+                advisor_name, exc
             )
-            return 0
+            videos = _fetch_videos_ytdlp(channel_id, lookback_hours)
         except Exception as exc:
             logger.warning(
                 "YouTube API fetch failed for %s, trying yt-dlp fallback: %s",
