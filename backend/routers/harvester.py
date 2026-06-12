@@ -1,29 +1,30 @@
 """
 Harvester endpoints — ported from nivesh-harvester/main.py into the main backend.
 
-All endpoints remain under the /harvester prefix. No auth required — same as
-the original standalone microservice.
+All data endpoints require auth. /sources is public (health check).
+Admin endpoints (trigger/stats) require admin auth.
 
 Endpoints:
-  GET  /harvester/feed?ticker=&limit=
-  GET  /harvester/governance/{ticker}
-  GET  /harvester/sources
-  GET  /harvester/search?q=
-  POST /harvester/trigger/scrape?source=&limit=
-  GET  /harvester/stats
+  GET  /harvester/feed?ticker=&limit=         — auth required
+  GET  /harvester/governance/{ticker}         — auth required
+  GET  /harvester/sources                     — PUBLIC (no auth)
+  GET  /harvester/search?q=                   — auth required
+  POST /harvester/trigger/scrape?source=&limit= — ADMIN only
+  GET  /harvester/stats                       — ADMIN only
 """
 
 from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Header, HTTPException
 
 from services.harvester_db import get_session as h_get_session, HarvestedCard, SourceHealth
 from services.harvester_sebi import harvest_sebi_filings
 from services.harvester_expert import scrape_all_expert_sources
 from services.expert_youtube_harvester import harvest_youtube_transcripts
 from services.harvester_reformatter import reformat_single, make_external_id
+from helpers import require_auth, require_admin
 
 logger = logging.getLogger("harvester.router")
 
@@ -84,8 +85,10 @@ def reformat_pending(limit: int = 50) -> int:
 def get_feed(
     ticker: str | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=100),
+    authorization: str = Header(None),
 ):
-    """Latest cards, newest first. Filtered by ticker when provided."""
+    """Latest cards, newest first. Filtered by ticker when provided. Auth required."""
+    require_auth(authorization)
     with h_get_session() as s:
         q = s.query(HarvestedCard)
         if ticker:
@@ -97,8 +100,9 @@ def get_feed(
 
 
 @router.get("/governance/{ticker}")
-def get_governance(ticker: str, limit: int = Query(default=20, ge=1, le=100)):
-    """GOVERNANCE cards for a specific ticker, newest first. Returns an array."""
+def get_governance(ticker: str, limit: int = Query(default=20, ge=1, le=100), authorization: str = Header(None)):
+    """GOVERNANCE cards for a specific ticker, newest first. Auth required."""
+    require_auth(authorization)
     with h_get_session() as s:
         q = s.query(HarvestedCard).filter(HarvestedCard.card_type == "GOVERNANCE")
         q = _ticker_filter(q, ticker)
@@ -115,8 +119,9 @@ def get_sources():
 
 
 @router.get("/search")
-def search(q: str = Query(..., min_length=1), limit: int = Query(default=30, ge=1, le=100)):
-    """Full-text search across titles and summaries."""
+def search(q: str = Query(..., min_length=1), limit: int = Query(default=30, ge=1, le=100), authorization: str = Header(None)):
+    """Full-text search across titles and summaries. Auth required."""
+    require_auth(authorization)
     needle = f"%{q.strip()}%"
     with h_get_session() as s:
         rows = (
@@ -138,8 +143,10 @@ def search(q: str = Query(..., min_length=1), limit: int = Query(default=30, ge=
 def trigger_scrape(
     source: str = Query(..., pattern="^(sebi|expert|youtube)$"),
     limit: int = Query(default=20, ge=1, le=100),
+    authorization: str = Header(None),
 ):
-    """Manually run one scrape job synchronously and return the counts."""
+    """Manually run one scrape job synchronously. Admin only."""
+    require_admin(authorization)
     try:
         if source == "sebi":
             new_cards = harvest_sebi_filings(limit=limit)
@@ -165,8 +172,9 @@ def trigger_scrape(
 
 
 @router.get("/stats")
-def stats():
-    """Aggregate counts: total, per source_type, per card_type, last runs."""
+def stats(authorization: str = Header(None)):
+    """Aggregate counts: total, per source_type, per card_type, last runs. Admin only."""
+    require_admin(authorization)
     with h_get_session() as s:
         total = s.query(HarvestedCard).count()
 
