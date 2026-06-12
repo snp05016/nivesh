@@ -141,7 +141,11 @@ class StockProfileViewModel: ObservableObject {
                     volume: nil,
                     avgVolume: nil,
                     priceHistory90d: nil,
-                    peVsAvg: nil
+                    peVsAvg: nil,
+                    asmGsmStatus: nil,
+                    promoterPledgedPct: nil,
+                    governanceScore: nil,
+                    governanceRedFlags: nil
                 )
                 if let qf = profile.quarterlyFinancials {
                     quarterlyFinancials = qf.quarters
