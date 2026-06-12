@@ -470,159 +470,81 @@ def _save_analysis_result(user_id: int | None, ticker: str, result: dict) -> Non
         print(f"[dash] Failed to persist analysis for {ticker}: {e}")
 
 
-@router.post("/analyze")
-async def analyze_endpoint(req: AnalyzeRequest, request: Request):
-    user_id = req.user_id
+@router.post("/analyze", status_code=202)
+async def analyze_endpoint(req: AnalyzeRequest):
+    """Start a background analysis job and return immediately (202).
+
+    v2 engine: the run is fully decoupled from this HTTP connection — the app polls
+    GET /analyze/job/{job_id}. Backgrounding / navigating / closing the app no longer
+    kills the run. One running job per user (guarded by the DB job state).
+    """
+    import database
+    from services.job_manager import spawn_job
+
     ticker = req.ticker.upper()
-    if user_id:
-        if not _acquire_analysis_slot(user_id):
-            return _build_analysis_error(
-                error_code="ALREADY_RUNNING",
-                error_title="Analysis Already Running",
-                error_detail=f"You already have an active analysis in progress for {ticker} (or another stock). Please wait for it to complete before starting a new one. This limit exists to prevent AI API credit waste. If you believe this is an error (e.g., server was restarted), the slot will auto-clear after 10 minutes.",
-                error_type="rate_limit",
-                phase_failed="duplicate_guard",
-                ticker=ticker,
-                suggested_action="WAIT",
-                diagnostic_info=f"User {user_id} already has entry in _running_analyses dict. Auto-clears after {_RUNNING_ANALYSES_STALENESS_SEC // 60} minutes of staleness.",
-                http_status=429,
-            )
-        sem = _get_analyze_semaphore(user_id)
-        if not sem.acquire(blocking=False):
-            _release_analysis_slot(user_id)
-            return _build_analysis_error(
-                error_code="CONCURRENCY_LIMITED",
-                error_title="Too Many Concurrent Analyses",
-                error_detail="You have reached the maximum of 2 concurrent analyses. Please wait for one of your running analyses to complete before starting a new one.",
-                error_type="rate_limit",
-                phase_failed="semaphore_acquire",
-                ticker=ticker,
-                suggested_action="WAIT",
-                diagnostic_info=f"Per-user semaphore ({_ANALYZE_MAX_CONCURRENT} max) exhausted for user {user_id}.",
-                http_status=429,
-            )
+
+    if req.user_id is not None:
+        active = database.get_active_job_for_user(req.user_id)
+        if active:
+            return _JSONResponse(status_code=409, content={
+                "error_code": "ALREADY_RUNNING",
+                "error_title": "Analysis Already Running",
+                "error_detail": (
+                    f"You already have an analysis in progress "
+                    f"({active['ticker']}, status {active['status']}). "
+                    f"Cancel it or wait for it to finish before starting another."
+                ),
+                "error_type": "rate_limit",
+                "job_id": active["job_id"],
+                "ticker": active["ticker"],
+                "suggested_action": "ATTACH_OR_CANCEL",
+            })
+
+    job = database.create_job(req.user_id, ticker, req.exchange, req.scan_type)
     try:
-        job_id = str(uuid.uuid4())[:12]
-        _dash_start_job(job_id, req.ticker, req.exchange, req.user_id)
+        spawn_job(job["job_id"], ticker, req.exchange,
+                  req.user_id, req.deep_scan, req.scan_type)
+    except Exception as e:
+        database.update_job(job["job_id"], status="FAILED",
+                            error=f"Failed to spawn worker: {e}")
+        return _JSONResponse(status_code=500, content={
+            "error_code": "SPAWN_FAILED",
+            "error_title": "Could Not Start Analysis",
+            "error_detail": str(e),
+            "job_id": job["job_id"],
+        })
 
-        queue = multiprocessing.Queue()
-        p = multiprocessing.Process(
-            target=_run_analysis_worker,
-            args=(queue, req.ticker, req.exchange, req.user_id, req.deep_scan, req.scan_type)
-        )
-        p.start()
+    return {"job_id": job["job_id"], "status": "QUEUED",
+            "ticker": ticker, "scan_type": req.scan_type}
 
-        import time as _time_module
-        _start_time = _time_module.monotonic()
-        _timeout = 1500 if req.scan_type == "extreme" else 600
 
-        try:
-            while p.is_alive():
-                if _time_module.monotonic() - _start_time > _timeout:
-                    p.terminate()
-                    p.join(timeout=5)
-                    _dash_end_job(job_id, killed=True)
-                    return _build_analysis_error(
-                        error_code="TIMEOUT",
-                        error_title="Analysis Timed Out",
-                        error_detail=f"The analysis for {ticker} exceeded the {_timeout}s timeout for {req.scan_type} scan.",
-                        error_type="timeout",
-                        phase_failed="analyze_execution",
-                        ticker=ticker,
-                        suggested_action="RETRY",
-                        diagnostic_info=f"Worker PID {p.pid} exceeded {_timeout}s timeout. scan_type={req.scan_type}",
-                        http_status=504,
-                    )
-            while p.is_alive():
-                if await request.is_disconnected():
-                    p.terminate()
-                    p.join()
-                    _dash_end_job(job_id, killed=True)
-                    return _build_analysis_error(
-                        error_code="CLIENT_DISCONNECTED",
-                        error_title="Client Disconnected During Analysis",
-                        error_detail="The app disconnected from the server while the AI was generating the report. The analysis was aborted to save AI API credits. Please try again when you have a stable connection.",
-                        error_type="connection",
-                        phase_failed="client_disconnect",
-                        ticker=ticker,
-                        suggested_action="RETRY",
-                        diagnostic_info=f"Request.is_disconnected() returned True during polling loop. Analysis subprocess (PID {p.pid}) was forcefully terminated.",
-                        http_status=499,
-                    )
+@router.get("/analyze/job/{job_id}")
+async def get_job_status(job_id: str):
+    """Poll a job: status, stage, progress_pct, checkpoints, and result when done."""
+    import database
+    job = database.get_job(job_id)
+    if not job:
+        return _JSONResponse(status_code=404, content={"error": "job not found"})
+    return job
 
-                if not queue.empty():
-                    res = queue.get()
-                    if res["status"] == "ok":
-                        result = res["result"]
-                        _dash_end_job(job_id, result=result)
-                        # Persist to DB so dashboard shows completed analysis
-                        _save_analysis_result(user_id, ticker, result)
-                        return result
-                    else:
-                        worker_error = res.get("error", "Unknown worker error")
-                        worker_phase = res.get("phase", "worker_execution")
-                        worker_diag = res.get("diagnostic", "")
-                        _dash_end_job(job_id, error=worker_error)
-                        return _build_analysis_error(
-                            error_code="AI_FAILURE",
-                            error_title="AI Analysis Generation Failed",
-                            error_detail=f"The analysis pipeline encountered an error while generating the report for {ticker}. An internal fallback was also attempted but the system could not produce a valid result.",
-                            error_type="ai_generation",
-                            phase_failed=worker_phase,
-                            ticker=ticker,
-                            suggested_action="RETRY",
-                            diagnostic_info=f"Subprocess error: {worker_error}\nPhase: {worker_phase}\n{worker_diag}",
-                            http_status=500,
-                        )
 
-                await asyncio.sleep(0.5)
+@router.get("/analyze/active")
+async def get_active_job(user_id: int):
+    """The user's current running/queued job — drives the app's global running indicator."""
+    import database
+    job = database.get_active_job_for_user(user_id)
+    return job or {"status": "NONE"}
 
-            if not queue.empty():
-                res = queue.get()
-                if res["status"] == "ok":
-                    result = res["result"]
-                    _dash_end_job(job_id, result=result)
-                    _save_analysis_result(user_id, ticker, result)
-                    return result
-                else:
-                    worker_error = res.get("error", "Unknown worker error")
-                    worker_phase = res.get("phase", "worker_execution")
-                    worker_diag = res.get("diagnostic", "")
-                    _dash_end_job(job_id, error=worker_error)
-                    return _build_analysis_error(
-                        error_code="AI_FAILURE",
-                        error_title="AI Analysis Generation Failed",
-                        error_detail=f"The analysis pipeline encountered an error while generating the report for {ticker}. The subprocess completed but returned an error.",
-                        error_type="ai_generation",
-                        phase_failed=worker_phase,
-                        ticker=ticker,
-                        suggested_action="RETRY",
-                        diagnostic_info=f"Subprocess error: {worker_error}\n{worker_diag}",
-                        http_status=500,
-                    )
 
-            _dash_end_job(job_id, error="Process unexpectedly exited")
-            return _build_analysis_error(
-                error_code="PROCESS_CRASHED",
-                error_title="AI Worker Process Terminated",
-                error_detail=f"The analysis worker process for {ticker} exited without producing any output. This usually means an internal dependency failed to load or the AI API call timed out without a response. This can happen if the Anthropic or DeepSeek APIs are temporarily unavailable.",
-                error_type="server",
-                phase_failed="worker_execution",
-                ticker=ticker,
-                suggested_action="RETRY",
-                diagnostic_info=f"Worker process PID {p.pid} exited with exit code {p.exitcode}. No data was placed on the multiprocessing queue before termination. Check server logs for import errors or API timeout traces.",
-                http_status=500,
-            )
-        finally:
-            if p.is_alive():
-                p.terminate()
-                p.join(timeout=5)
-                if p.is_alive():
-                    p.kill()
-                    p.join(timeout=2)
-    finally:
-        if user_id:
-            _release_analysis_slot(user_id)
+@router.post("/analyze/{job_id}/cancel")
+async def cancel_job_endpoint(job_id: str):
+    """Cancel a running job (terminates the worker subprocess to stop credit spend)."""
+    import database
+    from services.job_manager import cancel_job
+    if not database.get_job(job_id):
+        return _JSONResponse(status_code=404, content={"error": "job not found"})
+    cancel_job(job_id)
+    return {"job_id": job_id, "status": "CANCELLED"}
 
 
 # ---------------------------------------------------------------------------

@@ -386,6 +386,16 @@ app.include_router(harvest_router)
 @app.on_event("startup")
 async def _on_startup():
     start_scheduler()
+    # v2 engine crash recovery: any analysis job left RUNNING/QUEUED by a previous
+    # process (deploy/crash) has a dead worker → mark it FAILED so the app shows an
+    # honest error and the user can re-run.
+    try:
+        import database
+        swept = database.sweep_stale_jobs(90)
+        if swept:
+            logging.info("[startup] swept %d stale analysis jobs -> FAILED", swept)
+    except Exception as e:
+        logging.warning("[startup] analysis job sweep failed: %s", e)
     try:
         from services.harvester_db import init_harvester_db
         from services.harvest_worker import _seed_harvester_sources
@@ -408,7 +418,8 @@ async def _on_startup():
     threading.Thread(target=_prewarm_finbert, daemon=True).start()
     
     import os
-    import logging
+    # NOTE: `logging` is module-level (line ~124). A local `import logging` here
+    # made it function-local, breaking earlier logging.* calls (UnboundLocalError).
     if os.getenv("ENABLE_SCHEDULER", "false").lower() == "true":
         try:
             from apscheduler.schedulers.asyncio import AsyncIOScheduler
