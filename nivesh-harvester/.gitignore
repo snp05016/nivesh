@@ -1,0 +1,9 @@
+# Runtime artifacts — never commit
+venv/
+__pycache__/
+*.pyc
+*.pyo
+harvester.db
+harvester.db-journal
+*.log
+.env
