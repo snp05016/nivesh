@@ -31,22 +31,34 @@ enum Theme {
         Color(uiColor(dark, alpha: alpha))
     }
 
-    // MARK: - The Canvas
+    // MARK: - The Canvas (delegates to ThemeManager for per-denomination + light/dark)
 
-    static var canvas: Color      { Color(uiColor("F5F0E8")) }       // warm beige (light) — same as dark for now
-    static var canvasDeep: Color  { Color(uiColor("EDE8DC")) }       // aged paper
-    static var canvasShadow: Color { Color(uiColor("D9D3C4")) }      // deeper paper
+    static var canvas: Color      { ThemeManager.shared.canvas(for: currentScheme) }
+    static var canvasDeep: Color  { ThemeManager.shared.canvasDeep(for: currentScheme) }
+    static var canvasShadow: Color { ThemeManager.shared.canvasShadow(for: currentScheme) }
 
-    // MARK: - The Inks
+    // MARK: - The Inks (delegates to ThemeManager for per-denomination + light/dark)
 
-    static var inkPrimary: Color   { Color(uiColor("1A1C20")) }      // near-black
-    static var inkSecondary: Color { Color(uiColor("445566")) }      // dark slate
-    static var inkTertiary: Color  { Color(uiColor("778899")) }      // light slate
+    static var inkPrimary: Color   { ThemeManager.shared.inkPrimary(for: currentScheme) }
+    static var inkSecondary: Color { ThemeManager.shared.inkSecondary(for: currentScheme) }
+    static var inkTertiary: Color  { ThemeManager.shared.inkTertiary(for: currentScheme) }
 
-    // MARK: - The Accents (neon teal — THE signature accent)
+    // MARK: - The Accents
 
-    static var securityGold: Color { ThemeManager.shared.current.accentDark }
-    static var securityGoldLight: Color { ThemeManager.shared.current.accentLight }
+    static var securityGold: Color      { ThemeManager.shared.accent(for: currentScheme) }
+    static var securityGoldLight: Color { securityGold.opacity(0.13) }
+
+    // MARK: - Color Scheme Detection
+    private static var currentScheme: ColorScheme {
+        #if os(iOS)
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let style = scene.windows.first?.traitCollection.userInterfaceStyle
+        else { return .dark }
+        return style == .dark ? .dark : .light
+        #else
+        return .dark
+        #endif
+    }
 
     // MARK: - Market Signals
 
