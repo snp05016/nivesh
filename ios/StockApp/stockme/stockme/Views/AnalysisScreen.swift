@@ -152,6 +152,8 @@ struct AnalysisScreen: View {
     @AppStorage("analysisLastTab") private var savedLastTab: Int = 0
     @State private var deepScanEnabled: Bool = false
     @State private var isAnalyzing = false
+    // Extreme result: 0 = AI report, 1 = full stock profile (embedded verbatim).
+    @State private var extremeViewMode = 0
 
     @State private var livePrice: Double? = nil
     @State private var pricePollingTask: Task<Void, Never>? = nil
@@ -508,7 +510,51 @@ struct AnalysisScreen: View {
     // MARK: - Full Analysis (Redesigned)
 
     @ViewBuilder
+    @ViewBuilder
     private func renderFullAnalysis(_ analysis: StockAnalysis) -> some View {
+        if analysis.analysisTier == "extreme" {
+            // Extreme superset: switch between the AI report (with extra extreme
+            // charts) and the full StockProfile (embedded verbatim — same working
+            // logic: overview, governance, macro, charts, financials).
+            VStack(spacing: Theme.Spacing.none) {
+                extremeModeSwitcher
+                if extremeViewMode == 0 {
+                    aiReportScroll(analysis)
+                } else {
+                    StockProfileView(ticker: ticker, exchange: analysis.exchange ?? "NSE")
+                }
+            }
+        } else {
+            aiReportScroll(analysis)
+        }
+    }
+
+    private var extremeModeSwitcher: some View {
+        HStack(spacing: Theme.Spacing.small) {
+            ForEach(Array(["AI REPORT", "FULL PROFILE"].enumerated()), id: \.offset) { idx, label in
+                Button {
+                    HapticManager.selection()
+                    extremeViewMode = idx
+                } label: {
+                    Text(label)
+                        .font(Theme.sectionCapsLabel(size: 9))
+                        .tracking(1.5)
+                        .foregroundStyle(extremeViewMode == idx ? Theme.canvas : Theme.inkSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Theme.Spacing.tight)
+                        .background(
+                            RoundedRectangle(cornerRadius: Theme.CornerRadius.tight)
+                                .fill(extremeViewMode == idx ? Theme.securityGold : Theme.surfaceElevated)
+                        )
+                }
+                .buttonStyle(EKPressStyle())
+            }
+        }
+        .padding(.horizontal, Theme.screenPadding)
+        .padding(.vertical, Theme.Spacing.standard)
+    }
+
+    private func aiReportScroll(_ analysis: StockAnalysis) -> some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.none) {
                 // Immersive hero chart for this specific stock — full-bleed, very top.
@@ -526,6 +572,7 @@ struct AnalysisScreen: View {
                 timeHorizonSection(analysis)
                 riskFactorsSection(analysis)
                 fundamentalsSection(analysis)
+                if analysis.analysisTier == "extreme" { extremeChartSections(analysis) }
                 newsSection(analysis)
                 whatToWatchSection(analysis)
                 disclaimerSection(analysis)
