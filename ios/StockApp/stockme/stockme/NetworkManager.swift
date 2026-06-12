@@ -1152,3 +1152,45 @@ class NetworkManager: ObservableObject {
     }
 
 }
+
+// MARK: - Harvester API (Market Intelligence, port 8001)
+
+extension NetworkManager {
+    /// Same host as baseURL, but forced onto port 8001.
+    var harvesterBaseURL: String {
+        guard var comps = URLComponents(string: baseURL) else {
+            return baseURL + ":8001"
+        }
+        comps.port = 8001
+        comps.path = ""
+        return comps.string ?? (baseURL + ":8001")
+    }
+
+    func fetchHarvesterFeed(ticker: String? = nil, limit: Int = 20) async throws -> HarvesterFeedResponse {
+        var urlStr = "\(harvesterBaseURL)/harvester/feed?limit=\(limit)"
+        if let t = ticker, !t.isEmpty {
+            let enc = t.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? t
+            urlStr += "&ticker=\(enc)"
+        }
+        guard let url = URL(string: urlStr) else { throw NetworkError.invalidURL }
+        let (data, _) = try await URLSession.shared.data(from: url)
+        return try JSONDecoder().decode(HarvesterFeedResponse.self, from: data)
+    }
+
+    func fetchGovernanceCards(ticker: String) async throws -> [HarvestedCard] {
+        let enc = ticker.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ticker
+        guard let url = URL(string: "\(harvesterBaseURL)/harvester/governance/\(enc)") else {
+            throw NetworkError.invalidURL
+        }
+        let (data, _) = try await URLSession.shared.data(from: url)
+        return try JSONDecoder().decode([HarvestedCard].self, from: data)
+    }
+
+    func fetchHarvesterSources() async throws -> [HarvesterSourceStatus] {
+        guard let url = URL(string: "\(harvesterBaseURL)/harvester/sources") else {
+            throw NetworkError.invalidURL
+        }
+        let (data, _) = try await URLSession.shared.data(from: url)
+        return try JSONDecoder().decode([HarvesterSourceStatus].self, from: data)
+    }
+}

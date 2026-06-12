@@ -345,6 +345,7 @@ struct StockProfileView: View {
     @State private var showSMA: Set<Int> = [20, 50, 200]
     @State private var macroContext: MacroContextData?
     @State private var macroLoading = false
+    @State private var governanceCards: [HarvestedCard] = []
     @Environment(\.dismiss) var dismiss
 
     init(ticker: String, exchange: String = "NSE") {
@@ -811,12 +812,127 @@ struct StockProfileView: View {
                 } else {
                     emptyState(message: "Governance data unavailable")
                 }
+
+                // MARK: Regulatory & Rating Intelligence (Harvester)
+                GuillocheDivider()
+                harvesterGovernanceSection()
             }
             .padding(.horizontal, Theme.screenPadding)
             .padding(.vertical, Theme.Spacing.card)
         }
         .task { await vm.fetchOverview() }
         .task { await vm.fetchFinancials() }
+        .task { governanceCards = (try? await NetworkManager.shared.fetchGovernanceCards(ticker: ticker)) ?? [] }
+    }
+
+    // MARK: - Harvester Governance Section
+
+    @ViewBuilder
+    private func harvesterGovernanceSection() -> some View {
+        if !governanceCards.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                Text("REGULATORY & RATING INTELLIGENCE")
+                    .font(Theme.officialStampFont(size: 9))
+                    .tracking(1.5)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .padding(.horizontal, Theme.screenPadding)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Theme.Spacing.standard) {
+                        ForEach(governanceCards) { card in
+                            governanceCompactCard(card: card)
+                        }
+                    }
+                    .padding(.horizontal, Theme.screenPadding)
+                    .padding(.vertical, Theme.Spacing.small)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func governanceCompactCard(card: HarvestedCard) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+            // Credibility badge
+            HStack(spacing: Theme.Spacing.tight) {
+                Image(systemName: harvesterSourceIcon(for: card.sourceType))
+                    .font(Theme.officialStampFont(size: 9))
+                    .foregroundStyle(harvesterCredibilityColor(for: card.credibilityScore))
+                Text("\(harvesterShortLabel(for: card.sourceType)) • \(card.credibilityScore)/10")
+                    .font(Theme.serialNumberFont(size: 8))
+                    .foregroundStyle(harvesterCredibilityColor(for: card.credibilityScore))
+                    .padding(.horizontal, Theme.Spacing.tight)
+                    .padding(.vertical, 2)
+                    .background(harvesterCredibilityColor(for: card.credibilityScore).opacity(0.10))
+                    .cornerRadius(Theme.CornerRadius.small)
+            }
+
+            // Title
+            Text(card.title)
+                .font(Theme.engravedSerif(size: 12, weight: .bold))
+                .foregroundStyle(Theme.inkPrimary)
+                .lineLimit(2)
+
+            // 2-line summary
+            if let summary = card.reformattedSummary, !summary.isEmpty {
+                Text(summary)
+                    .font(Theme.engravedSerif(size: 11, weight: .regular))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .lineLimit(2)
+                    .lineSpacing(2)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(Theme.Spacing.card)
+        .frame(width: UIScreen.main.bounds.width * 0.7)
+        .banknoteCard()
+        .ekPress()
+        .onTapGesture {
+            if let url = URL(string: card.sourceUrl) {
+                UIApplication.shared.open(url)
+            }
+        }
+    }
+
+    // MARK: - Harvester helpers (private to StockProfileView)
+
+    private func harvesterShortLabel(for sourceType: String) -> String {
+        switch sourceType.uppercased() {
+        case "CRISIL_RATING": return "CRISIL"
+        case "ICRA_RATING": return "ICRA"
+        case "CARE_RATING": return "CARE"
+        case "INDIA_RATINGS": return "India Ratings"
+        case "FUND_MANAGER_INTERVIEW": return "CNBC Expert"
+        case "EXPERT_COLUMN": return "Columnist"
+        case "SEBI_FILING", "EXCHANGE_FILING": return "NSE Filing"
+        case "SEBI_RIA_NOTE": return "SEBI RIA"
+        case "AMFI_DATA": return "AMFI"
+        case "YOUTUBE": return "YouTube"
+        default: return sourceType.capitalized
+        }
+    }
+
+    private func harvesterSourceIcon(for sourceType: String) -> String {
+        switch sourceType.uppercased() {
+        case "SEBI_FILING", "EXCHANGE_FILING": return "building.columns.fill"
+        case "CRISIL_RATING", "ICRA_RATING", "CARE_RATING", "INDIA_RATINGS": return "checkmark.shield.fill"
+        case "FUND_MANAGER_INTERVIEW": return "person.fill.checkmark"
+        case "EXPERT_COLUMN": return "newspaper.fill"
+        case "SEBI_RIA_NOTE": return "person.badge.shield.checkmark.fill"
+        case "AMFI_DATA": return "chart.bar.doc.horizontal.fill"
+        case "YOUTUBE": return "play.rectangle.fill"
+        default: return "doc.text.fill"
+        }
+    }
+
+    private func harvesterCredibilityColor(for score: Int) -> Color {
+        switch score {
+        case 10: return Theme.bullGreen
+        case 8...9: return Theme.securityGold
+        case 6...7: return Theme.inkSecondary
+        default: return Theme.inkTertiary
+        }
     }
 
     // MARK: -- Surveillance Banner
