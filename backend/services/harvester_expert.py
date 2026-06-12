@@ -21,6 +21,7 @@ credibility_score, expert_credential.
 from __future__ import annotations
 
 import logging
+import os
 import re
 from typing import Optional
 
@@ -53,50 +54,74 @@ _BROWSER_HEADERS = {
 }
 _TIMEOUT = 15
 
-# ── Credit rating RSS feed definitions ─────────────────────────────────────
+# ── ScraperAPI proxy helper ──────────────────────────────────────────────────
+_SCRAPERAPI_KEY = os.environ.get("SCRAPERAPI_API_KEY", "").strip()
+_SCRAPERAPI_URL = "http://api.scraperapi.com"
+
+def _scraperapi_fetch(url: str, render_js: bool = False, timeout: int = 60) -> Optional[requests.Response]:
+    """Fetch a URL through ScraperAPI residential proxy.
+    Set render_js=True for JS-heavy SPAs (costs ~10x credits on free tier).
+    Returns None if key is missing or fetch fails.
+    """
+    if not _SCRAPERAPI_KEY:
+        return None
+    params = f"?api_key={_SCRAPERAPI_KEY}&url={url}"
+    if render_js:
+        params += "&render=true"
+    try:
+        resp = requests.get(f"{_SCRAPERAPI_URL}{params}", timeout=timeout)
+        if resp.status_code == 200 and resp.content:
+            return resp
+        logger.warning("ScraperAPI returned %d for %s", resp.status_code, url[:80])
+    except Exception as exc:
+        logger.warning("ScraperAPI fetch error for %s: %s", url[:80], exc)
+    return None
+
+
+# ── Credit rating press-release pages ─────────────────────────────────────────
+# RSS feeds discontinued by all Indian rating agencies (2024-2025).
+# Press-release pages are JS-rendered SPAs with active bot detection.
+# Strategy: attempt ScraperAPI JS render; if unavailable/running low on credits,
+# return 0 cards and let source health reflect the outage.
 _RATING_FEEDS = [
     {
-        "url": "https://www.crisil.com/en/home/newsroom/rss/rating-actions.html",
+        "url": "https://www.crisil.com/en/home/newsroom/press-releases.html",
         "source_type": "CRISIL_RATING",
         "source_name": "CRISIL Ratings",
     },
     {
-        "url": "https://www.icra.in/RSS/RSSFeeds.aspx?feed=pressreleases",
+        "url": "https://www.icra.in/Research/ListViewPressRelease",
         "source_type": "ICRA_RATING",
         "source_name": "ICRA Ratings",
     },
     {
-        "url": "https://www.careratings.com/rss/press-release",
+        "url": "https://www.careratings.com/press-release",
         "source_type": "CARE_RATING",
         "source_name": "CARE Ratings",
     },
     {
-        "url": "https://www.indiaratings.co.in/rss/pressreleases",
+        "url": "https://www.indiaratings.co.in/PressReleases",
         "source_type": "INDIA_RATINGS",
         "source_name": "India Ratings & Research",
     },
 ]
-_RATING_FEED_LIMIT = 15
+_RATING_FEED_LIMIT = 8
 
 # ── CNBC-TV18 listing pages ─────────────────────────────────────────────────
 _CNBC_LISTING_URLS = [
-    "https://www.cnbctv18.com/market/expert-view/",
     "https://www.cnbctv18.com/market/stocks/",
-    "https://www.cnbctv18.com/business/market/",
 ]
 _CNBC_SOURCE_TYPE = "FUND_MANAGER_INTERVIEW"
 _CNBC_SOURCE_NAME = "CNBC-TV18 Expert View"
-_CNBC_ARTICLE_LIMIT = 6
+_CNBC_ARTICLE_LIMIT = 4
 
 # ── Moneycontrol listing pages ──────────────────────────────────────────────
 _MC_LISTING_URLS = [
     "https://www.moneycontrol.com/news/business/stocks/",
-    "https://www.moneycontrol.com/news/opinion/",
-    "https://www.moneycontrol.com/news/business/markets/",
 ]
 _MC_SOURCE_TYPE = "EXPERT_COLUMN"
 _MC_SOURCE_NAME = "Moneycontrol Expert Columns"
-_MC_ARTICLE_LIMIT = 6
+_MC_ARTICLE_LIMIT = 4
 
 # Wire-service by-lines to skip (case-insensitive exact match after strip).
 _WIRE_SERVICE_AUTHORS = frozenset(
@@ -420,57 +445,76 @@ def _make_card(
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _scrape_rating_feed(feed_cfg: dict) -> list[dict]:
-    """Parse one credit-rating RSS feed and return raw cards."""
+    """Scrape one credit-rating press-release page and return raw cards.
+
+    Priority: ScraperAPI JS render → direct HTTP → mark unhealthy.
+    """
     url = feed_cfg["url"]
     source_type = feed_cfg["source_type"]
     source_name = feed_cfg["source_name"]
     cards: list[dict] = []
 
     try:
-        resp = _fetch(url)
+        # Layer 1: ScraperAPI with JS rendering (handles SPAs)
+        resp = _scraperapi_fetch(url, render_js=True, timeout=90)
         if resp is None:
-            # feedparser can also parse directly (tries its own request).
-            parsed = feedparser.parse(url)
-        else:
-            parsed = feedparser.parse(resp.text)
+            # Layer 2: direct HTTP (will likely return empty shell)
+            resp = _fetch(url)
 
-        entries = parsed.get("entries", [])[:_RATING_FEED_LIMIT]
-        if not entries:
-            logger.warning("No entries in rating feed: %s", url)
+        if resp is None:
+            logger.warning("Rating source %s: all fetch methods failed", source_name)
+            return cards
 
-        for entry in entries:
+        # Parse rendered HTML for article/press-release links
+        soup = BeautifulSoup(resp.text, "html.parser")
+        raw_links: list[str] = []
+        for a in soup.find_all("a", href=True):
+            href = a["href"].strip()
+            if not href or href.startswith("#") or href.startswith("javascript"):
+                continue
+            # Accept any same-domain link with 2+ path segments
+            from urllib.parse import urljoin, urlparse
+            full = urljoin(url, href)
+            parsed = urlparse(full)
+            path_segs = [p for p in parsed.path.split("/") if p]
+            if len(path_segs) >= 2 and parsed.scheme in ("http", "https"):
+                clean = full.split("?")[0].rstrip("/")
+                if clean not in raw_links:
+                    raw_links.append(clean)
+
+        # If no article links found in rendered HTML, try feedparser as last resort
+        if not raw_links:
+            logger.warning("Rating source %s: 0 article links in rendered HTML", source_name)
+            return cards
+
+        # Fetch each linked press release and extract content
+        for article_url in raw_links[:_RATING_FEED_LIMIT]:
             try:
-                title = _clean_text(entry.get("title", ""))
-                summary = _clean_text(
-                    entry.get("summary", "")
-                    or entry.get("description", "")
-                    or entry.get("content", [{}])[0].get("value", "")
-                )
-                raw_text = f"{title}. {summary}".strip() if summary else title
-                if not raw_text:
+                art_resp = _scraperapi_fetch(article_url, render_js=False, timeout=30) or _fetch(article_url)
+                if art_resp is None:
                     continue
-
-                link = entry.get("link", url)
-                published = entry.get("published", None) or entry.get("updated", None)
+                title = _extract_title(art_resp.text)
+                body = _extract_article_text(art_resp.text)
+                if not body or len(body) < 100:
+                    continue
 
                 cards.append(
                     _make_card(
                         source_type=source_type,
                         source_name=source_name,
-                        source_url=link,
+                        source_url=article_url,
                         title=title,
-                        raw_text=raw_text,
-                        published_at=published,
+                        raw_text=body,
                         original_author=None,
                     )
                 )
             except Exception as exc:
-                logger.warning("Error parsing rating entry from %s: %s", url, exc)
+                logger.warning("Rating article %s failed: %s", article_url, exc)
 
     except Exception as exc:
-        logger.warning("Rating feed %s failed: %s", url, exc)
+        logger.warning("Rating source %s failed: %s", source_name, exc)
 
-    logger.info("Rating feed %s: %d cards", source_name, len(cards))
+    logger.info("Rating source %s: %d cards", source_name, len(cards))
     return cards
 
 
@@ -499,7 +543,7 @@ def _scrape_cnbc_expert_views() -> list[dict]:
         if len(cards) >= _CNBC_ARTICLE_LIMIT:
             break
         try:
-            resp = _fetch(listing_url)
+            resp = _scraperapi_fetch(listing_url, render_js=True, timeout=90) or _fetch(listing_url)
             if resp is None:
                 continue
             links = _extract_article_links(resp.text, listing_url)
@@ -575,7 +619,7 @@ def _scrape_moneycontrol_expert_columns() -> list[dict]:
         if len(cards) >= _MC_ARTICLE_LIMIT:
             break
         try:
-            resp = _fetch(listing_url)
+            resp = _scraperapi_fetch(listing_url, render_js=True, timeout=90) or _fetch(listing_url)
             if resp is None:
                 continue
             links = _extract_article_links(resp.text, listing_url)
