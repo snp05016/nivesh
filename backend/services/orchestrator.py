@@ -885,7 +885,7 @@ def analyze(
 
     with get_session() as session:
         # 1. Query Cache: Check global history for today
-        cached_today = get_analysis_for_date(session, ticker, analysis_date)
+        cached_today = get_analysis_for_date(session, ticker, analysis_date, scan_type)
         if cached_today:
             print(
                 f"[CACHE HIT] Returning existing analysis for {full_ticker} on {analysis_date}"
@@ -1183,6 +1183,7 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
     result["ticker"] = ticker.upper()
     result["exchange"] = exchange
     result["_cache_type"] = "FULL AI"
+    result["scan_type"] = scan_type
 
     try:
         with get_session() as session:
@@ -1192,6 +1193,7 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
                 ticker.upper(),
                 result,
                 raw_output=raw_output,
+                scan_type=scan_type,
             )
             from datetime import timezone as _tz
 
