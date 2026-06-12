@@ -387,25 +387,33 @@ class OptimizedTradingAgentsGraph(TradingAgentsGraph):
 # ═════════════════════════════════════════════════════════════════════════════
 
 
-def build_ta_config() -> dict:
+def build_ta_config(scan_type: str = "standard") -> dict:
     config = DEFAULT_CONFIG.copy()
-    # Tier 1 (bulk agent nodes): DeepSeek V4 Flash via OpenAI-compatible API
-    # Tier 2 (Research Manager, Portfolio Manager): Claude Haiku 4.5
-    config["llm_provider"] = "deepseek"  # global fallback
-    config["deep_think_llm"] = HAIKU_MODEL  # Research Manager + Portfolio Manager
-    config["deep_think_provider"] = "anthropic"  # Force Anthropic for Haiku
-    config["quick_think_llm"] = DEEPSEEK_MODEL  # Market/News/Fundamentals/Bull/Bear/Trader/Debaters
-    config["quick_think_provider"] = "deepseek"  # Force DeepSeek for V4 Flash
-    config["max_debate_rounds"] = 1
-    config["max_risk_discuss_rounds"] = 1
-    config["max_tokens"] = 4000
+    if scan_type == "extreme":
+        # DeepSeek V4 Pro reasoning model for all agent nodes
+        config["quick_think_llm"] = "deepseek-reasoner"
+        config["quick_think_provider"] = "deepseek"
+        config["max_debate_rounds"] = 3
+        config["max_risk_discuss_rounds"] = 2
+        config["max_tokens"] = 8000
+    else:
+        # Tier 1 (bulk agent nodes): DeepSeek V4 Flash
+        # Tier 2 (Research Manager, Portfolio Manager): Claude Haiku 4.5
+        config["quick_think_llm"] = DEEPSEEK_MODEL
+        config["quick_think_provider"] = "deepseek"
+        config["max_debate_rounds"] = 1
+        config["max_risk_discuss_rounds"] = 1
+        config["max_tokens"] = 4000
+    config["llm_provider"] = "deepseek"
+    config["deep_think_llm"] = HAIKU_MODEL
+    config["deep_think_provider"] = "anthropic"
     return config
 
 
-def run_trading_agents(full_ticker: str, analysis_date: str) -> str:
+def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "standard") -> str:
     print(f"\n[AI] Initializing Analysis for {full_ticker}...")
     print(f"[AI] Thinking: Gathering market data and fundamental ratios...")
-    config = build_ta_config()
+    config = build_ta_config(scan_type)
     ta = OptimizedTradingAgentsGraph(
         selected_analysts=["governance", "market", "news", "fundamentals"],
         debug=True,  # Enable debug for terminal logs
@@ -740,6 +748,10 @@ def _normalize_response(result: dict) -> dict:
     if not isinstance(result.get("governance_red_flags"), list):
         result["governance_red_flags"] = []
 
+    # 14b. extreme_thesis_md — optional long-form markdown thesis from extreme scans
+    if not isinstance(result.get("extreme_thesis_md"), str):
+        result["extreme_thesis_md"] = ""
+
     # 15. analysis_date — must be string
     if not isinstance(result.get("analysis_date"), str):
         from datetime import date
@@ -856,6 +868,7 @@ def analyze(
     exchange: str,
     user_id: int | None = None,
     deep_scan: bool = False,
+    scan_type: str = "standard",
 ) -> dict:
     exchange = exchange.upper()
     if exchange not in EXCHANGE_SUFFIX:
@@ -1088,7 +1101,7 @@ def analyze(
     except:
         pass
 
-    raw_output = run_trading_agents(full_ticker, analysis_date)
+    raw_output = run_trading_agents(full_ticker, analysis_date, scan_type)
     raw_output += f"\n\nADDITIONAL DATA (MANDATORY TO INCLUDE IN fundamentals_snapshot):\nPromoter Pledging: {pledging_data}\n"
 
     # ── Deep Scan: PKScreener + FinBERT injection ────────────────────────────

@@ -1153,18 +1153,11 @@ class NetworkManager: ObservableObject {
 
 }
 
-// MARK: - Harvester API (Market Intelligence, port 8001)
+// MARK: - Harvester API (Market Intelligence — merged into port 8000)
 
 extension NetworkManager {
-    /// Same host as baseURL, but forced onto port 8001.
-    var harvesterBaseURL: String {
-        guard var comps = URLComponents(string: baseURL) else {
-            return baseURL + ":8001"
-        }
-        comps.port = 8001
-        comps.path = ""
-        return comps.string ?? (baseURL + ":8001")
-    }
+    /// Harvester endpoints are now served by the main backend on port 8000.
+    var harvesterBaseURL: String { baseURL }
 
     func fetchHarvesterFeed(ticker: String? = nil, limit: Int = 20) async throws -> HarvesterFeedResponse {
         var urlStr = "\(harvesterBaseURL)/harvester/feed?limit=\(limit)"

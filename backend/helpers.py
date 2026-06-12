@@ -531,6 +531,7 @@ class AnalyzeRequest(BaseModel):
     exchange: str = "NSE"
     user_id: Optional[int] = None
     deep_scan: bool = False
+    scan_type: str = "standard"
 
     @validator("ticker")
     def validate_ticker(cls, v):

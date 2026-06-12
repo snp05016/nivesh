@@ -355,6 +355,7 @@ async def _data_harvesting_error_handler(_req: _FRequest, exc: DataHarvestingErr
 # Import and register routers
 # ---------------------------------------------------------------------------
 from routers import auth, portfolio, market, analysis, alerts, user, dashboard, notifications
+from routers import harvester as harvester_router
 
 app.include_router(auth.router)
 app.include_router(portfolio.router)
@@ -364,6 +365,7 @@ app.include_router(alerts.router)
 app.include_router(user.router)
 app.include_router(dashboard.router)
 app.include_router(notifications.router)
+app.include_router(harvester_router.router)
 
 # ---------------------------------------------------------------------------
 # Static files — serve generated portfolio charts
@@ -384,6 +386,13 @@ app.include_router(harvest_router)
 @app.on_event("startup")
 async def _on_startup():
     start_scheduler()
+    try:
+        from services.harvester_db import init_harvester_db
+        from services.harvest_worker import _seed_harvester_sources
+        init_harvester_db()
+        _seed_harvester_sources()
+    except Exception as e:
+        logging.warning("Harvester DB init failed: %s", e)
     from routers.alerts import _price_alert_poller
     import asyncio
     asyncio.create_task(_price_alert_poller())
