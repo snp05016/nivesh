@@ -226,6 +226,9 @@ def _fetch_videos_ytdlp(channel_id: str, lookback_hours: int) -> list[dict]:
         "extract_flat": True,
         "playlistend": 10,
     }
+    _cookies_path = os.path.join(os.path.dirname(__file__), "..", "cookies.txt")
+    if os.path.exists(_cookies_path):
+        ydl_opts["cookiefile"] = _cookies_path
 
     cutoff = datetime.utcnow() - timedelta(hours=lookback_hours)
 
