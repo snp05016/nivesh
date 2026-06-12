@@ -345,6 +345,7 @@ struct StockProfileView: View {
     @State private var showSMA: Set<Int> = [20, 50, 200]
     @State private var macroContext: MacroContextData?
     @State private var macroLoading = false
+    @State private var chartPeriod = "1y"
     @State private var governanceCards: [HarvestedCard] = []
     @Environment(\.dismiss) var dismiss
 
@@ -374,6 +375,28 @@ struct StockProfileView: View {
                             currentPrice: price,
                             dates: dates
                         )
+                        .padding(.bottom, Theme.Spacing.standard)
+                        // Period selector below hero chart
+                        HStack(spacing: Theme.Spacing.tight) {
+                            ForEach(Array(zip(["1mo","3mo","6mo","1y","2y","5y","max"], ["1M","3M","6M","1Y","2Y","5Y","ALL"])), id: \.0) { period, label in
+                                Button {
+                                    HapticManager.selection()
+                                    chartPeriod = period
+                                    vm.fetchChart(period: period)
+                                } label: {
+                                    Text(label)
+                                        .font(Theme.officialStampFont(size: 8))
+                                        .tracking(0.8)
+                                        .foregroundStyle(chartPeriod == period ? Theme.securityGold : Theme.inkTertiary)
+                                        .padding(.horizontal, Theme.Spacing.medium)
+                                        .padding(.vertical, Theme.Spacing.small)
+                                        .background(chartPeriod == period ? Theme.securityGold.opacity(0.12) : Theme.canvasDeep)
+                                        .clipShape(Capsule())
+                                }
+                                .buttonStyle(EKPressStyle())
+                            }
+                        }
+                        .padding(.horizontal, Theme.screenPadding)
                         .padding(.bottom, Theme.Spacing.standard)
                     } else if vm.chartLoading {
                         RoundedRectangle(cornerRadius: Theme.CornerRadius.large)

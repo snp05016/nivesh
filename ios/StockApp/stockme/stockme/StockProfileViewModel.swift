@@ -45,7 +45,6 @@ class StockProfileViewModel: ObservableObject {
     }
 
     func fetchChart(period: String = "1y") async {
-        guard history == nil else { return }
         await MainActor.run {
             chartLoading = true
             chartError = nil
@@ -91,6 +90,7 @@ class StockProfileViewModel: ObservableObject {
         case "6mo": return 180
         case "2y": return 730
         case "5y": return 1825
+        case "max": return 3650
         default: return 365
         }
     }
