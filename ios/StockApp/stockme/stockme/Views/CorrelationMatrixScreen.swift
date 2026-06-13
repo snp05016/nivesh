@@ -271,6 +271,7 @@ struct CorrelationHeatmap: View {
                                 }
                             }
                         }
+                    }
                     .padding(.horizontal, Theme.screenPadding)
                 }
             }
