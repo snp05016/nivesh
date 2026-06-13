@@ -111,10 +111,14 @@ class StressTestViewModel: ObservableObject {
 struct StressTestScreen: View {
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var vm = StressTestViewModel()
+    @State private var showHelp = false
     
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.xLarge) {
+                HelpInlineButton(showHelp: $showHelp)
+                    .padding(.horizontal, Theme.screenPadding)
+                
                 // HERO
                 VStack(spacing: Theme.Spacing.standard) {
                     Text("Stress Test")
@@ -265,5 +269,6 @@ struct StressTestScreen: View {
         .background(Theme.canvas.edgesIgnoringSafeArea(.all))
         .navigationTitle("Stress Test")
         .navigationBarTitleDisplayMode(.inline)
+        .helpSheet(isPresented: $showHelp, title: FeatureHelp.stressTest.title, subtitle: FeatureHelp.stressTest.subtitle, sections: FeatureHelp.stressTest.sections)
     }
 }

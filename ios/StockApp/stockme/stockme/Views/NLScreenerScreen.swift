@@ -103,6 +103,7 @@ class NLScreenerViewModel: ObservableObject {
 // MARK: - View
 struct NLScreenerScreen: View {
     @StateObject private var viewModel = NLScreenerViewModel()
+    @State private var showHelp = false
     
     var body: some View {
         NavigationStack {
@@ -150,7 +151,9 @@ struct NLScreenerScreen: View {
             }
             .navigationTitle("NL Screener")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { HelpTypedButton(showHelp: $showHelp) } }
         }
+        .helpSheet(isPresented: $showHelp, title: FeatureHelp.nlScreener.title, subtitle: FeatureHelp.nlScreener.subtitle, sections: FeatureHelp.nlScreener.sections)
     }
     
     private var searchBar: some View {

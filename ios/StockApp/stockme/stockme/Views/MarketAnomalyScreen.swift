@@ -53,6 +53,7 @@ class MarketAnomalyViewModel: ObservableObject {
 
 struct MarketAnomalyScreen: View {
     @StateObject private var vm = MarketAnomalyViewModel()
+    @State private var showHelp = false
     
     var body: some View {
         NavigationStack {
@@ -127,7 +128,9 @@ struct MarketAnomalyScreen: View {
                     await vm.fetchAnomalies()
                 }
             }
+            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { HelpTypedButton(showHelp: $showHelp) } }
         }
+        .helpSheet(isPresented: $showHelp, title: FeatureHelp.anomalies.title, subtitle: FeatureHelp.anomalies.subtitle, sections: FeatureHelp.anomalies.sections)
     }
 }
 
