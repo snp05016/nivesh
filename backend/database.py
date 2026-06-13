@@ -801,8 +801,9 @@ def get_recent_analyses(
 
 def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_type: str = "standard") -> Optional[dict]:
     """Return the last analysis for ticker+scan_type regardless of date.
-    Includes a _staleness_hours field for the UI."""
+    Includes _staleness_hours, _staleness_label, _staleness_score, and _staleness_urgency."""
     from datetime import datetime as _dt, timezone as _tz
+    from services.staleness import compute_staleness as _cs
     row = (
         session.query(AnalysisHistory)
         .filter(
@@ -816,24 +817,29 @@ def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_
         return None
     res = json.loads(row.full_json)
     res["raw_output"] = row.raw_output
-    # Calculate staleness
+    res["_cached_scan_type"] = scan_type
     if row.created_at:
-        age_h = (_dt.now(_tz.utc) - row.created_at.replace(tzinfo=_tz.utc)).total_seconds() / 3600
-        res["_staleness_hours"] = round(age_h, 1)
-        if age_h < 6:
-            res["_staleness_label"] = "Fresh"
-        elif age_h < 48:
-            res["_staleness_label"] = "Aging"
-        else:
-            res["_staleness_label"] = "Stale"
+        result = _cs(
+            last_analysis_date=row.created_at,
+            price_change_7d_pct=float(res.get("7d_price_change_pct", 0) or 0),
+            signal=res.get("signal", "HOLD") or "HOLD",
+        )
+        res["_staleness_hours"] = round(
+            (_dt.now(_tz.utc) - row.created_at.replace(tzinfo=_tz.utc)).total_seconds() / 3600, 1
+        )
+        res["_staleness_label"] = result["urgency"].title()
+        res["_staleness_score"] = result["score"]
+        res["_staleness_urgency"] = result["urgency"]
+        res["_staleness_reason"] = result["reason"]
     return res
 
 
 def get_last_analysis_any_type(session: Session, ticker: str) -> Optional[dict]:
     """Return the most recent analysis for a ticker across all scan types.
-    Priority: extreme > deep > standard. Returns (scan_type, analysis_dict)."""
+    Priority: extreme > deep > standard. Returns analysis dict or None."""
     from datetime import datetime as _dt, timezone as _tz
-    for scan in ("extreme", "standard", "standard"):  # extreme first, then standard (deep uses standard scan_type)
+    from services.staleness import compute_staleness as _cs
+    for scan in ("extreme", "deep", "standard"):
         row = (
             session.query(AnalysisHistory)
             .filter(
@@ -848,14 +854,20 @@ def get_last_analysis_any_type(session: Session, ticker: str) -> Optional[dict]:
             res["raw_output"] = row.raw_output
             res["_cached_scan_type"] = scan
             if row.created_at:
-                age_h = (_dt.now(_tz.utc) - row.created_at.replace(tzinfo=_tz.utc)).total_seconds() / 3600
-                res["_staleness_hours"] = round(age_h, 1)
-                if age_h < 6: res["_staleness_label"] = "Fresh"
-                elif age_h < 48: res["_staleness_label"] = "Aging"
-                else: res["_staleness_label"] = "Stale"
+                result = _cs(
+                    last_analysis_date=row.created_at,
+                    price_change_7d_pct=float(res.get("7d_price_change_pct", 0) or 0),
+                    signal=res.get("signal", "HOLD") or "HOLD",
+                )
+                res["_staleness_hours"] = round(
+                    (_dt.now(_tz.utc) - row.created_at.replace(tzinfo=_tz.utc)).total_seconds() / 3600, 1
+                )
+                res["_staleness_label"] = result["urgency"].title()
+                res["_staleness_score"] = result["score"]
+                res["_staleness_urgency"] = result["urgency"]
+                res["_staleness_reason"] = result["reason"]
             return res
-    res["raw_output"] = row.raw_output
-    return res
+    return None
 
 
 def get_all_ticker_history(session: Session, ticker: str, user_id: Optional[int] = None) -> list[dict]:

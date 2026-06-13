@@ -484,18 +484,21 @@ async def analyze_endpoint(req: AnalyzeRequest):
     ticker = req.ticker.upper()
 
     # ── Cache check: return existing analysis instantly if available ──
+    # Priority: exact scan_type match, then any available type as fallback
     try:
-        from database import get_analysis_for_date, get_session
+        from database import get_analysis_for_date, get_last_analysis_any_type, get_session
         from datetime import date
         with get_session() as cache_session:
             cached = get_analysis_for_date(
                 cache_session, ticker, date.today().strftime("%Y-%m-%d"), req.scan_type
             )
+            if not cached:
+                cached = get_last_analysis_any_type(cache_session, ticker)
             if cached:
                 from services.orchestrator import _normalize_response, _inject_live_data
                 cached = _normalize_response(cached)
                 cached["_cache_type"] = "CACHE HIT"
-                cached["scan_type"] = req.scan_type
+                cached["scan_type"] = cached.get("_cached_scan_type", req.scan_type)
                 cached["ticker"] = ticker
                 cached["exchange"] = req.exchange
                 try:
@@ -578,6 +581,70 @@ async def cancel_job_endpoint(job_id: str, user_id: int | None = None):
         return _JSONResponse(status_code=403, content={"error": "job does not belong to this user"})
     cancel_job(job_id)
     return {"job_id": job_id, "status": "CANCELLED"}
+
+
+# ---------------------------------------------------------------------------
+# GET /analyze/cache-status/{ticker} — what's cached for a ticker
+# ---------------------------------------------------------------------------
+@router.get("/analyze/cache-status/{ticker}")
+async def cache_status(ticker: str, user_id: int | None = None):
+    """Return all cached analysis entries for a ticker with staleness info.
+    Does NOT trigger any analysis — read-only cache introspection."""
+    import database
+    from database import get_analysis_for_date, get_last_analysis_any_type, get_session
+    with get_session() as s:
+        entries = []
+        for st in ("extreme", "deep", "standard"):
+            entry = get_analysis_for_date(s, ticker.upper(), "", st)
+            if entry:
+                entries.append({
+                    "scan_type": st,
+                    "staleness_hours": entry.get("_staleness_hours"),
+                    "staleness_label": entry.get("_staleness_label"),
+                    "staleness_score": entry.get("_staleness_score"),
+                    "staleness_urgency": entry.get("_staleness_urgency"),
+                    "staleness_reason": entry.get("_staleness_reason"),
+                    "signal": entry.get("signal"),
+                    "confidence_pct": entry.get("confidence_pct"),
+                    "created_at": entry.get("created_at"),
+                })
+        best = get_last_analysis_any_type(s, ticker.upper())
+        return {
+            "ticker": ticker.upper(),
+            "cached_entries": entries,
+            "total_cached": len(entries),
+            "best_available": {
+                "scan_type": best.get("_cached_scan_type") if best else None,
+                "staleness_label": best.get("_staleness_label") if best else None,
+                "staleness_score": best.get("_staleness_score") if best else None,
+            } if best else None,
+        }
+
+
+# ---------------------------------------------------------------------------
+# POST /analyze/cache/{ticker}/invalidate — admin only cache invalidation
+# ---------------------------------------------------------------------------
+@router.post("/analyze/cache/{ticker}/invalidate")
+async def invalidate_cache(ticker: str, scan_type: str = "all", authorization: str = Header(None)):
+    """Admin endpoint to delete cached analyses for a ticker.
+    scan_type: 'all' (delete everything) or 'extreme'/'deep'/'standard'."""
+    require_admin(authorization)
+    import database
+    from database import get_session
+    with get_session() as s:
+        q = s.query(database.AnalysisHistory).filter(
+            database.AnalysisHistory.ticker == ticker.upper()
+        )
+        if scan_type != "all":
+            q = q.filter(database.AnalysisHistory.scan_type == scan_type)
+        count = q.count()
+        q.delete(synchronize_session="fetch")
+        s.commit()
+        return {
+            "ticker": ticker.upper(),
+            "scan_type": scan_type,
+            "deleted": count,
+        }
 
 
 # ---------------------------------------------------------------------------
