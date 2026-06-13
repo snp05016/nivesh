@@ -79,7 +79,8 @@ struct TermDefinitionSheet: View {
                             .font(.title3)
                             .foregroundStyle(Theme.inkTertiary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(EKPressStyle())
+                    .accessibilityLabel("Close definition")
                 }
             }
         }

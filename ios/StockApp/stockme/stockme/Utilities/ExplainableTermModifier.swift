@@ -5,7 +5,7 @@ struct ExplainableTermModifier: ViewModifier {
     @State private var showSheet = false
 
     func body(content: Content) -> some View {
-        if FinanceTerms.shared.lookup(term) != nil {
+        if let entry = FinanceTerms.shared.lookup(term) {
             Button {
                 HapticManager.selection()
                 showSheet = true
@@ -13,11 +13,10 @@ struct ExplainableTermModifier: ViewModifier {
                 content
                     .underline(true, color: Theme.securityGold.opacity(0.5))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(EKPressStyle())
+            .accessibilityHint("Tap to view definition")
             .sheet(isPresented: $showSheet) {
-                if let entry = FinanceTerms.shared.lookup(term) {
-                    TermDefinitionSheet(entry: entry)
-                }
+                TermDefinitionSheet(entry: entry)
             }
         } else {
             content
