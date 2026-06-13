@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Header, HTTPException, Depends
-from database import get_session, verify_access_token, Portfolio, get_current_user_id
+from fastapi import APIRouter, HTTPException, Depends
+from database import get_session, Portfolio
+from core.security import get_current_user_id
 from services.correlation_engine import compute_portfolio_correlation
 
 router = APIRouter(tags=["Portfolio"])
