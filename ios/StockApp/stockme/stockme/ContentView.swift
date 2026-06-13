@@ -96,6 +96,10 @@ struct ContentView: View {
             PortfolioScreen()
                 .tabItem { Label("Portfolio", systemImage: "briefcase.fill") }
                 .tag(4)
+
+            GlossaryBrowserView()
+                .tabItem { Label("Learn", systemImage: "book.pages") }
+                .tag(5)
         }
         .tint(Theme.securityGold)
         .toolbarBackground(Theme.canvasDeep, for: .tabBar)
@@ -112,6 +116,7 @@ struct ContentView: View {
             case 2: ExpertNetworkView()
             case 3: NewsMultimediaView()
             case 4: PortfolioScreen()
+            case 5: GlossaryBrowserView()
             default: HomeScreen()
             }
         }
