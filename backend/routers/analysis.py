@@ -483,6 +483,29 @@ async def analyze_endpoint(req: AnalyzeRequest):
 
     ticker = req.ticker.upper()
 
+    # ── Cache check: return existing analysis instantly if available ──
+    try:
+        from database import get_analysis_for_date, get_session
+        from datetime import date
+        with get_session() as cache_session:
+            cached = get_analysis_for_date(
+                cache_session, ticker, date.today().strftime("%Y-%m-%d"), req.scan_type
+            )
+            if cached:
+                from services.orchestrator import _normalize_response, _inject_live_data
+                cached = _normalize_response(cached)
+                cached["_cache_type"] = "CACHE HIT"
+                cached["scan_type"] = req.scan_type
+                cached["ticker"] = ticker
+                cached["exchange"] = req.exchange
+                try:
+                    cached = _inject_live_data(cached, ticker)
+                except Exception:
+                    pass
+                return cached
+    except Exception:
+        pass
+
     if req.user_id is not None:
         active = database.get_active_job_for_user_and_type(req.user_id, req.scan_type)
         if active:
