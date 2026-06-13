@@ -65,6 +65,7 @@ from database import (
     get_session,
     save_analysis,
     get_analysis_for_date,
+    get_last_analysis_any_type,
     get_all_ticker_history,
     AdvisorInsight,
     AnalysisHistory,
@@ -984,8 +985,10 @@ def analyze(
         user_id = abs(hash(_anon_key)) % (10 ** 8)
 
     with get_session() as session:
-        # 1. Query Cache: Check global history for today
+        # 1. Query Cache: exact scan_type match, then fallback to any type
         cached_today = get_analysis_for_date(session, ticker, analysis_date, scan_type)
+        if not cached_today:
+            cached_today = get_last_analysis_any_type(session, ticker)
         if cached_today:
             print(
                 f"[CACHE HIT] Returning existing analysis for {full_ticker} on {analysis_date}"
