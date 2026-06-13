@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct CorrelationItem: Codable, Identifiable {
     var id: String { "\(tickerA)-\(tickerB)" }

@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct MarketAnomaly: Identifiable, Codable {
     var id: String { ticker + anomaly_type }

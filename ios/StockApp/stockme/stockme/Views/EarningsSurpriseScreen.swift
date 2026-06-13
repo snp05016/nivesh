@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct EarningsSurprise: Codable, Identifiable {
     var id: String { ticker + quarter }

@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import Combine
 
 struct StressTestResponse: Codable {
     let results: [StressTestResult]
@@ -61,17 +62,13 @@ class StressTestViewModel: ObservableObject {
         HapticManager.selection()
     }
     
-    func runTest() {
+    func runTest(userId: Int, token: String) {
         guard !selectedScenarios.isEmpty else { return }
         isLoading = true
         errorMessage = nil
         
         Task {
             do {
-                guard let userId = AuthManager.shared.getUserId() else {
-                    throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not logged in"])
-                }
-                
                 guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/portfolio/stress-test") else {
                     throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
                 }
@@ -79,13 +76,10 @@ class StressTestViewModel: ObservableObject {
                 var request = URLRequest(url: url)
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                if let token = AuthManager.shared.getToken() {
-                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                } else {
-                    request.setValue(String(userId), forHTTPHeaderField: "user_id")
-                }
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
                 
                 let body: [String: Any] = [
+                    "user_id": userId,
                     "scenarios": Array(selectedScenarios),
                     "portfolio_id": "holdings"
                 ]
@@ -115,6 +109,7 @@ class StressTestViewModel: ObservableObject {
 }
 
 struct StressTestScreen: View {
+    @EnvironmentObject var authManager: AuthManager
     @StateObject private var vm = StressTestViewModel()
     
     var body: some View {
@@ -172,7 +167,7 @@ struct StressTestScreen: View {
                 
                 // RUN BUTTON
                 Button {
-                    vm.runTest()
+                    vm.runTest(userId: authManager.currentUser?.userId ?? 0, token: authManager.currentUser?.token ?? "")
                     HapticManager.impact(.medium)
                 } label: {
                     Text("Run Simulation")

@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct ChatMessage: Identifiable {
     let id = UUID()
