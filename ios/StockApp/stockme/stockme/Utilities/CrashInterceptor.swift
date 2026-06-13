@@ -1,6 +1,13 @@
 import Foundation
 import UIKit
 
+// Global bridge for C signal handlers — must be top-level to avoid context capture
+private var _niveshSignalBridgeImpl: ((Int32) -> Void)?
+
+private func _niveshSignalBridge(_ sig: Int32) {
+    _niveshSignalBridgeImpl?(sig)
+}
+
 enum CrashInterceptor {
     private static var didRegister = false
 
@@ -16,13 +23,10 @@ enum CrashInterceptor {
                    stackTrace: stack, viewPath: CrashGuard.lastViewPath)
         }
 
+        _niveshSignalBridgeImpl = { sig in handleSignal(sig) }
         let signals: [Int32] = [SIGABRT, SIGSEGV, SIGBUS, SIGILL, SIGTRAP, SIGFPE]
         for sig in signals {
-            var sa = sigaction()
-            sa.__sigaction_u.__sa_handler = { s in
-                CrashInterceptor.handleSignal(s)
-            }
-            sigaction(sig, &sa, nil)
+            signal(sig, _niveshSignalBridge)
         }
     }
 
