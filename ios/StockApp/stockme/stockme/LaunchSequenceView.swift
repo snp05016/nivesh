@@ -1,245 +1,218 @@
 import SwiftUI
 
-// MARK: - Launch Sequence View
+// MARK: - Launch Sequence View (v2 — Unified Timeline)
 
 struct LaunchSequenceView: View {
-    let onComplete: () -> Void
+    @Binding var isAnimationComplete: Bool
 
-    // Phase 1 — Guilloche
-    @State private var guillocheProgress: CGFloat = 0
+    @State private var timelineProgress: CGFloat = 0
+    @State private var dissolveOpacity: CGFloat = 1
+    @State private var triggerDissolve = false
 
-    // Phase 2 — Security thread
-    @State private var threadXFraction: CGFloat = 0
-    @State private var threadVisible = false
-    @State private var flashOpacity: CGFloat = 0
-
-    // Phase 3 — Wordmark
-    @State private var wordmarkOpacity: CGFloat = 0
-    @State private var hindiOpacity: CGFloat = 0
-
-    // Phase 4 — Subtitle
-    @State private var subtitleOpacity: CGFloat = 0
-    @State private var subtitleTracking: CGFloat = 6
-
-    // Phase 5 — Underline
-    @State private var wordmarkMeasuredWidth: CGFloat = 0
-    @State private var underlineWidth: CGFloat = 0
-
-    // Phase 7 — Dissolution
-    @State private var contentOpacity: CGFloat = 1
+    private let totalDuration: TimeInterval = 3.2
+    private let dissolveDuration: TimeInterval = 0.4
 
     var body: some View {
         ZStack {
-            // Persistent black — catches the dissolution fade
             Color.black.ignoresSafeArea()
 
             ZStack {
-                // ── Phase 1 ─────────────────────────────────────────────
-                LaunchGuillocheCanvas(progress: guillocheProgress)
+                // Guilloche canvas
+                LaunchGuillocheV2(progress: timelineProgress)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 120)
+                    .frame(height: 140)
 
-                // ── Phase 2 ─────────────────────────────────────────────
-                if threadVisible {
-                    LaunchThreadCanvas(
-                        xFraction: threadXFraction,
-                        flashOpacity: flashOpacity
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
-                }
-
-                // ── Phase 3–5 ────────────────────────────────────────────
-                VStack(spacing: Theme.Spacing.none) {
-                    // "NIVESH" — stamps in, never scales
-                    Text("NIVESH")
-                        .font(Theme.officialStampFont(size: 42, relativeTo: .largeTitle))
-                        .fontWeight(.black)
-                        .tracking(8)
-                        .foregroundStyle(Theme.inkPrimary)
-                        .opacity(wordmarkOpacity)
-                        .background(
-                            GeometryReader { geo in
-                                Color.clear.onAppear {
-                                    wordmarkMeasuredWidth = geo.size.width
-                                }
-                            }
-                        )
-
-                    // Phase 5 — underline grows from leading edge
-                    Rectangle()
-                        .fill(Theme.securityGold)
-                        .frame(width: underlineWidth, height: 0.75)
-                        .frame(width: wordmarkMeasuredWidth, alignment: .leading)
-                        .padding(.top, 12)
-
-                    // "निवेश"
-                    Text("निवेश")
-                        .font(Theme.hindiFont(size: 16, relativeTo: .subheadline))
-                        .foregroundStyle(Theme.inkSecondary)
-                        .opacity(hindiOpacity)
-                        .padding(.top, 6)
-
-                    // "RESERVE BANK OF INTELLIGENCE" — tracking collapses like a stamp
-                    Text("RESERVE BANK OF INTELLIGENCE")
-                        .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
-                        .foregroundStyle(Theme.inkTertiary)
-                        .modifier(LaunchTrackingModifier(tracking: subtitleTracking))
-                        .opacity(subtitleOpacity)
-                        .padding(.top, 8)
-                }
+                // Wordmark stack
+                wordmarkStack
             }
-            .opacity(contentOpacity)
+            .opacity(dissolveOpacity)
         }
         .preferredColorScheme(.dark)
-        .onAppear { runSequence() }
+        .onAppear { runTimeline() }
     }
 
-    private func runSequence() {
-        // Phase 1 — Guilloche emerges 0.4 → 2.2 s
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            withAnimation(.easeInOut(duration: 1.8)) { guillocheProgress = 1 }
-        }
+    // MARK: - Wordmark + subtitle + shimmer
 
-        // Phase 2 — Security thread 1.6 → 2.4 s (overlaps guilloche)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
-            threadVisible = true
-            threadXFraction = 0
-            withAnimation(.easeInOut(duration: 0.8)) { threadXFraction = 1 }
-        }
-        // Flash fires when thread crosses centre (~2.0 s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            flashOpacity = 1
-            withAnimation(.linear(duration: 0.2)) { flashOpacity = 0 }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.45) {
-            threadVisible = false
-        }
+    private var wordmarkStack: some View {
+        VStack(spacing: Theme.Spacing.none) {
+            // "NIVESH" — mask-scaled reveal from center
+            ZStack {
+                Text("NIVESH")
+                    .font(Font.custom("Georgia-Bold", size: 42, relativeTo: .largeTitle))
+                    .tracking(8)
+                    .foregroundStyle(Theme.inkPrimary)
+                    .opacity(wordmarkBaseOpacity)
+                    .mask(
+                        Color.black
+                            .frame(width: wordmarkMaskWidth, alignment: .leading)
+                            .frame(maxWidth: wordmarkMeasuredWidth, alignment: .leading)
+                    )
+            }
+            .background(
+                GeometryReader { geo in
+                    Color.clear.onAppear {
+                        wordmarkMeasuredWidth = geo.size.width
+                    }
+                }
+            )
 
-        // Phase 3a — "NIVESH" 2.2 s, 0.4 s easeOut
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
-            withAnimation(.easeOut(duration: 0.4)) { wordmarkOpacity = 1 }
-        }
+            // Shimmer underline
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(stops: [
+                            .init(color: .clear, location: 0),
+                            .init(color: .clear, location: shimmerPosition - 0.2),
+                            .init(color: Theme.securityGold, location: shimmerPosition),
+                            .init(color: .clear, location: shimmerPosition + 0.2),
+                            .init(color: .clear, location: 1),
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(width: wordmarkMeasuredWidth, height: 1.5)
+                .padding(.top, 14)
+                .opacity(shimmerOpacity)
 
-        // Phase 3b — "निवेश" 2.4 s, 0.35 s easeOut
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
-            withAnimation(.easeOut(duration: 0.35)) { hindiOpacity = 1 }
-        }
+            // "निवेश"
+            Text("निवेश")
+                .font(Font.custom("Georgia", size: 16, relativeTo: .subheadline).italic())
+                .foregroundStyle(Theme.inkSecondary)
+                .opacity(hindiOpacity)
+                .padding(.top, 8)
 
-        // Phase 4 — Subtitle stamp 2.9 s, tracking 6 → 2 with opacity
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.9) {
-            withAnimation(.easeOut(duration: 0.5)) {
-                subtitleOpacity = 1
-                subtitleTracking = 2
+            // "RESERVE BANK OF INTELLIGENCE"
+            Text("RESERVE BANK OF INTELLIGENCE")
+                .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
+                .foregroundStyle(Theme.inkTertiary)
+                .opacity(subtitleOpacity)
+                .padding(.top, 10)
+        }
+    }
+
+    // MARK: - Computed animation properties
+
+    @State private var wordmarkMeasuredWidth: CGFloat = 200
+
+    private var wordmarkBaseOpacity: CGFloat {
+        if timelineProgress < 0.15 { return 0 }
+        if timelineProgress < 0.25 { return (timelineProgress - 0.15) / 0.10 }
+        return 1
+    }
+
+    private var wordmarkMaskWidth: CGFloat {
+        if timelineProgress < 0.19 { return 0 }
+        if timelineProgress < 0.50 { return wordmarkMeasuredWidth * (timelineProgress - 0.19) / 0.31 }
+        return wordmarkMeasuredWidth
+    }
+
+    private var hindiOpacity: CGFloat {
+        if timelineProgress < 0.35 { return 0 }
+        if timelineProgress < 0.45 { return (timelineProgress - 0.35) / 0.10 }
+        return 1
+    }
+
+    private var subtitleOpacity: CGFloat {
+        if timelineProgress < 0.45 { return 0 }
+        if timelineProgress < 0.55 { return (timelineProgress - 0.45) / 0.10 }
+        return 1
+    }
+
+    private var shimmerOpacity: CGFloat {
+        if timelineProgress < 0.55 { return 0 }
+        if timelineProgress < 0.65 { return (timelineProgress - 0.55) / 0.10 }
+        return 1
+    }
+
+    private var shimmerPosition: CGFloat {
+        let t = timelineProgress
+        if t < 0.55 { return -0.2 }
+        // Sweep from -0.2 to 1.2 over the active shimmer window (0.55→1.0), loop via mod
+        let sweep = (t - 0.55) / 0.45 * 1.4 - 0.2
+        return sweep.truncatingRemainder(dividingBy: 1.4)
+    }
+
+    // MARK: - Timeline driver
+
+    private func runTimeline() {
+        let start = Date()
+        let interval = 1.0 / 60.0
+        Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
+            let elapsed = Date().timeIntervalSince(start)
+            let p = min(CGFloat(elapsed / totalDuration), 1.0)
+            timelineProgress = p
+
+            if p >= 1.0, !triggerDissolve {
+                triggerDissolve = true
+                timer.invalidate()
+                startDissolve()
             }
         }
+    }
 
-        // Phase 5 — Gold underline 3.5 s, 0.6 s easeInOut, leading edge
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
-            withAnimation(.easeInOut(duration: 0.6)) {
-                underlineWidth = wordmarkMeasuredWidth
+    private func startDissolve() {
+        let start = Date()
+        Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { timer in
+            let elapsed = Date().timeIntervalSince(start)
+            let d = min(CGFloat(elapsed / dissolveDuration), 1.0)
+            dissolveOpacity = 1.0 - d
+
+            if d >= 1.0 {
+                timer.invalidate()
+                isAnimationComplete = true
             }
-        }
-
-        // Phase 7 — Dissolution 5.0 s, 0.6 s easeIn → black
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-            withAnimation(.easeIn(duration: 0.6)) { contentOpacity = 0 }
-        }
-
-        // onComplete fires at 5.6 s — home screen reveals beneath
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.6) {
-            onComplete()
         }
     }
 }
 
-// MARK: - Animatable Tracking Modifier
+// MARK: - Guilloche Canvas V2 — Amplitude Envelope
 
-private struct LaunchTrackingModifier: AnimatableModifier {
-    var tracking: CGFloat
-
-    var animatableData: CGFloat {
-        get { tracking }
-        set { tracking = newValue }
-    }
-
-    func body(content: Content) -> some View {
-        content.tracking(tracking)
-    }
-}
-
-// MARK: - Guilloche Canvas
-// Three sine waves 120° apart, expand outward from screen centre.
-
-private struct LaunchGuillocheCanvas: View {
+private struct LaunchGuillocheV2: View {
     let progress: CGFloat
 
     var body: some View {
         Canvas { context, size in
+            guard progress > 0 else { return }
+
             let cx = size.width / 2
             let cy = size.height / 2
             let halfW = (size.width / 2) * progress
-            let amplitude: CGFloat = 8
-            let freq: Double = .pi * 20 / Double(size.width)
+            let amplitude: CGFloat = 10
+            let freq: Double = .pi * 18 / Double(size.width)
+            let x0 = max(cx - halfW, 0)
+            let x1 = min(cx + halfW, size.width)
+
+            guard x0 < x1 else { return }
 
             for phase in [0.0, Double.pi * 2 / 3, Double.pi * 4 / 3] {
                 var path = Path()
-                let x0 = cx - halfW
-                let x1 = cx + halfW
-                guard x0 < x1 else { continue }
+                let step: CGFloat = 1.5
 
-                path.move(to: CGPoint(
-                    x: x0,
-                    y: cy + CGFloat(sin(Double(x0) * freq + phase)) * amplitude
-                ))
-                var x = x0 + 1.5
+                // First point
+                let firstY = cy + envelopeAmplitude(x: x0, cx: cx, w: halfW, amp: amplitude, phase: phase, freq: freq)
+                path.move(to: CGPoint(x: x0, y: firstY))
+
+                var x = x0 + step
                 while x <= x1 {
-                    path.addLine(to: CGPoint(
-                        x: x,
-                        y: cy + CGFloat(sin(Double(x) * freq + phase)) * amplitude
-                    ))
-                    x += 1.5
+                    let y = cy + envelopeAmplitude(x: x, cx: cx, w: halfW, amp: amplitude, phase: phase, freq: freq)
+                    path.addLine(to: CGPoint(x: x, y: y))
+                    x += step
                 }
 
                 context.stroke(
                     path,
-                    with: .color(Theme.securityGold.opacity(0.18)),
+                    with: .color(Theme.securityGold.opacity(0.14)),
                     lineWidth: 0.75
                 )
             }
         }
     }
-}
 
-// MARK: - Thread Canvas
-// Vertical 1.5 pt security thread sweeps L→R; brief centre flash.
-
-private struct LaunchThreadCanvas: View {
-    let xFraction: CGFloat
-    let flashOpacity: CGFloat
-
-    var body: some View {
-        Canvas { context, size in
-            let x = size.width * xFraction
-
-            // Light catch as thread crosses centre
-            if flashOpacity > 0 {
-                let band = CGRect(
-                    x: size.width * 0.5 - 20,
-                    y: 0,
-                    width: 40,
-                    height: size.height
-                )
-                context.fill(
-                    Path(band),
-                    with: .color(Theme.securityGold.opacity(Double(flashOpacity) * 0.04))
-                )
-            }
-
-            // Thread line
-            let line = CGRect(x: x - 0.75, y: 0, width: 1.5, height: size.height)
-            context.fill(Path(line), with: .color(Theme.securityGold))
-        }
+    /// Amplitude modulated by a cosine window — waves collapse at edges
+    private func envelopeAmplitude(x: CGFloat, cx: CGFloat, w: CGFloat, amp: CGFloat, phase: Double, freq: Double) -> CGFloat {
+        let envelope = w > 0 ? 1.0 - abs(x - cx) / w : 0
+        let clamped = max(envelope, 0)
+        return CGFloat(sin(Double(x) * freq + phase)) * amp * clamped
     }
 }

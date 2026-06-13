@@ -6,6 +6,7 @@ struct ContentView: View {
     @EnvironmentObject var tutorialManager: TutorialManager
     @EnvironmentObject var engineManager: AnalysisEngineManager
     @State private var selectedTab = 0
+    @State private var launchAnimDone = false
 
     /// When true, the App-level launch handles the splash screen.
     /// ContentView renders immediately with no internal launch overlay.
@@ -58,14 +59,15 @@ struct ContentView: View {
             }
 
             if showLaunch {
-                LaunchSequenceView {
-                    showLaunch = false
-                }
-                .transition(.opacity)
-                .zIndex(10)
+                LaunchSequenceView(isAnimationComplete: $launchAnimDone)
+                    .transition(.opacity)
+                    .zIndex(10)
             }
         }
         .crashGuard("ContentView")
+        .onChange(of: launchAnimDone) { done in
+            if done { showLaunch = false }
+        }
         .onAppear {
             setupTabBarAppearance()
             engineManager.startWatching()
