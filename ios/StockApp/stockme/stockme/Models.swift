@@ -326,9 +326,31 @@ struct StartJobRequest: Encodable {
 }
 
 struct StartJobResponse: Codable {
-    let jobId: String; let status: String; let ticker: String?
+    let jobId: String?; let status: String?; let ticker: String?
+    var analysis: StockAnalysis?
+
     enum CodingKeys: String, CodingKey {
         case jobId = "job_id"; case status; case ticker
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        jobId = try c.decodeIfPresent(String.self, forKey: .jobId)
+        status = try c.decodeIfPresent(String.self, forKey: .status)
+        ticker = try c.decodeIfPresent(String.self, forKey: .ticker)
+        // If the response is a cache hit, it IS a StockAnalysis — try decoding it directly
+        if jobId == nil {
+            analysis = try? StockAnalysis(from: decoder)
+        } else {
+            analysis = nil
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(jobId, forKey: .jobId)
+        try c.encodeIfPresent(status, forKey: .status)
+        try c.encodeIfPresent(ticker, forKey: .ticker)
     }
 }
 
