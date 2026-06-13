@@ -15,7 +15,7 @@ struct CorrelationItem: Codable, Identifiable {
     }
 }
 
-struct SectorConcentration: Codable, Identifiable {
+struct CorrelationSector: Codable, Identifiable {
     var id: String { sector }
     let sector: String
     let weightPct: Double
@@ -44,7 +44,7 @@ struct DiversificationSuggestion: Codable, Identifiable {
 struct CorrelationResponse: Codable {
     let correlationMatrix: [CorrelationItem]
     let diversificationScore: Int
-    let sectorConcentration: [SectorConcentration]
+    let sectorConcentration: [CorrelationSector]
     let suggestions: [DiversificationSuggestion]
     
     enum CodingKeys: String, CodingKey {
@@ -276,7 +276,7 @@ struct HeatmapCell: View {
 }
 
 struct SectorConcentrationView: View {
-    let concentration: [SectorConcentration]
+    let concentration: [CorrelationSector]
     
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.card) {
