@@ -75,6 +75,7 @@ struct ContentView: View {
         .onChange(of: selectedTheme) { _, _ in
             setupTabBarAppearance()
         }
+        .withCopilot()
     }
 
     @ViewBuilder
@@ -263,6 +264,12 @@ enum MarketSection: String, Hashable, CaseIterable {
     case screener  = "screener"
     case alerts    = "alerts"
     case strategy  = "strategy"
+    case nl_screener = "nl_screener"
+    case correlation = "correlation"
+    case anomalies = "anomalies"
+    case sector_rotation = "sector_rotation"
+    case stress_test = "stress_test"
+    case earnings_surprise = "earnings_surprise"
 
     var icon: String {
         switch self {
@@ -272,6 +279,12 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .screener:  return "magnifyingglass.circle.fill"
         case .alerts:    return "bell.badge.fill"
         case .strategy:  return "flask.fill"
+        case .nl_screener: return "text.magnifyingglass"
+        case .correlation: return "squareshape.split.2x2"
+        case .anomalies: return "exclamationmark.triangle.fill"
+        case .sector_rotation: return "arrow.triangle.2.circlepath"
+        case .stress_test: return "bolt.trianglebadge.exclamationmark"
+        case .earnings_surprise: return "sparkles.rectangle"
         }
     }
     var hindi: String {
@@ -282,6 +295,12 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .screener:  return "शेयर खोज"
         case .alerts:    return "मूल्य चेतावनी"
         case .strategy:  return "रणनीति प्रयोगशाला"
+        case .nl_screener: return "प्राकृतिक भाषा खोज"
+        case .correlation: return "सहसंबंध मैट्रिक्स"
+        case .anomalies: return "बाज़ार विसंगतियाँ"
+        case .sector_rotation: return "सेक्टर रोटेशन"
+        case .stress_test: return "पोर्टफोलियो तनाव परीक्षण"
+        case .earnings_surprise: return "आय आश्चर्य"
         }
     }
     var englishTitle: String {
@@ -292,6 +311,12 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .screener:  return "SCREENER"
         case .alerts:    return "ALERTS"
         case .strategy:  return "STRATEGY LAB"
+        case .nl_screener: return "NL SCREENER"
+        case .correlation: return "CORRELATION MATRIX"
+        case .anomalies: return "ANOMALIES"
+        case .sector_rotation: return "SECTOR ROTATION"
+        case .stress_test: return "STRESS TEST"
+        case .earnings_surprise: return "EARNINGS SURPRISE"
         }
     }
     var subtitle: String {
@@ -302,6 +327,12 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .screener:  return "Stock Discovery"
         case .alerts:    return "Price Watch"
         case .strategy:  return "Backtest Strategies"
+        case .nl_screener: return "Search by Natural Language"
+        case .correlation: return "Cross-Asset Correlation"
+        case .anomalies: return "Market Anomalies"
+        case .sector_rotation: return "Sector Capital Flow"
+        case .stress_test: return "Portfolio Shock Analysis"
+        case .earnings_surprise: return "Earnings Surprise"
         }
     }
     var description: String {
@@ -312,6 +343,12 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .screener:  return "Search any NSE or BSE stock by name or ticker, preset screens, quick compare"
         case .alerts:    return "Target price triggers and surveillance flags for your entire watchlist"
         case .strategy:  return "Backtest pre-built and custom trading strategies against historical data"
+        case .nl_screener: return "Search stocks using natural language queries powered by AI"
+        case .correlation: return "Analyze correlation matrices to diversify portfolio risk"
+        case .anomalies: return "Scan the market for unusual volume, price, or order book anomalies"
+        case .sector_rotation: return "Track capital flow across different market sectors"
+        case .stress_test: return "Simulate portfolio performance under various macroeconomic shocks"
+        case .earnings_surprise: return "Track and predict positive and negative earnings surprises"
         }
     }
     var accentColor: Color {
@@ -322,6 +359,12 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .screener:  return Theme.inkSecondary
         case .alerts:    return Theme.bearRed
         case .strategy:  return Theme.avatarBlue
+        case .nl_screener: return Theme.securityGold
+        case .correlation: return Theme.avatarBlue
+        case .anomalies: return Theme.bearRed
+        case .sector_rotation: return Theme.bullGreen
+        case .stress_test: return Theme.bearRed
+        case .earnings_surprise: return Theme.securityGold
         }
     }
 }
@@ -647,6 +690,12 @@ struct MarketsView: View {
         case .screener:  SearchScreen()
         case .alerts:    AlertsScreen()
         case .strategy:  StrategyLabScreen()
+        case .nl_screener: NLScreenerScreen()
+        case .correlation: CorrelationMatrixScreen()
+        case .anomalies: MarketAnomalyScreen()
+        case .sector_rotation: SectorRotationScreen()
+        case .stress_test: StressTestScreen()
+        case .earnings_surprise: EarningsSurpriseScreen()
         }
     }
 

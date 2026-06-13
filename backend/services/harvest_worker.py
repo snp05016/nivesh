@@ -238,6 +238,18 @@ def start_scheduler():
             _dash_update_harvest("error_digest", "error", {"error": str(e)})
             logging.error(f"[error_digest] Error: {e}")
 
+    # ── NEW JOB 7: Market Anomaly Scanner ────────────────────────────────────
+    def _run_anomaly_scan():
+        _dash_update_harvest("anomaly_scan", "running")
+        try:
+            from services.anomaly_scanner import run_anomaly_scan
+            run_anomaly_scan()
+            _dash_update_harvest("anomaly_scan", "idle", {})
+            logging.info("[anomaly_scan] Hourly scan complete.")
+        except Exception as e:
+            _dash_update_harvest("anomaly_scan", "error", {"error": str(e)})
+            logging.error(f"[anomaly_scan] Error: {e}")
+
     # ── Wire all jobs ─────────────────────────────────────────────────────────
 
     _scheduler.add_job(_run_harvest_all_advisors,     "cron", hour=1,  minute=30)  # 1:30 AM IST
@@ -256,6 +268,7 @@ def start_scheduler():
     _scheduler.add_job(_run_piotroski_batch,      "cron", day_of_week="sun", hour=17, minute=30)  # Sun 11 PM IST
     _scheduler.add_job(_run_premarket_cache_warm, "cron", hour=3,  minute=30)             # 9:00 AM IST
     _scheduler.add_job(_run_error_digest,         "cron", hour=1,  minute=30)             # 7:00 AM IST
+    _scheduler.add_job(_run_anomaly_scan,         "cron", minute="0")
 
     # ── Harvester jobs (ScraperAPI-backed, rate-limited for free tier) ─────────
     _scheduler.add_job(_run_expert_harvest_bg, "interval", minutes=120, id="expert_harvest", replace_existing=True)
