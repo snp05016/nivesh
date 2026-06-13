@@ -108,8 +108,9 @@ class AnalysisViewModel: ObservableObject {
                                         if let resultData = raw["result"] {
                                             do {
                                                 let jsonData = try JSONSerialization.data(withJSONObject: resultData)
-                                                analysis = try JSONDecoder().decode(StockAnalysis.self, from: jsonData)
-                                                reportManager.saveReport(analysis!)
+                                                let decoded = try JSONDecoder().decode(StockAnalysis.self, from: jsonData)
+                                                analysis = decoded
+                                                reportManager.saveReport(decoded)
                                                 isLoading = false
                                             } catch {
                                                 print("[AnalysisScreen] StockAnalysis decode failed: \(error)")
@@ -549,7 +550,7 @@ struct AnalysisScreen: View {
                                 Text("KEY EXECUTIVES")
                                     .font(Theme.sectionCapsLabel(size: 8))
                                     .foregroundStyle(Theme.inkSecondary)
-                                ForEach(officers, id: \.self) { officer in
+                                ForEach(Array(officers.enumerated()), id: \.offset) { _, officer in
                                     Text("• \(officer.uppercased())")
                                         .font(Theme.monoTabular(size: 13))
                                         .foregroundStyle(Theme.inkPrimary)
@@ -1104,7 +1105,7 @@ struct AnalysisScreen: View {
                 SectionHeaderView(title: "WHAT TO WATCH")
             }
             VStack(spacing: Theme.Spacing.tight) {
-                ForEach(analysis.whatToWatch, id: \.self) { item in
+                ForEach(Array(analysis.whatToWatch.enumerated()), id: \.offset) { _, item in
                     HStack(alignment: .top, spacing: Theme.Spacing.medium) {
                         Circle().fill(Theme.goldPrimary).frame(width: 6, height: 6).padding(.top, Theme.Spacing.tight)
                         Text(stripEmoji(item))
@@ -2314,7 +2315,7 @@ private struct AnalysisNoteSection: View {
                 .foregroundStyle(Theme.inkPrimary)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                ForEach(items, id: \.self) { item in
+                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     HStack(alignment: .top, spacing: Theme.Spacing.standard) {
                         Rectangle()
                             .fill(color.opacity(0.5))
