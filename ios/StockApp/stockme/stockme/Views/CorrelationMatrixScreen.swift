@@ -60,10 +60,14 @@ struct CorrelationMatrixScreen: View {
     @State private var data: CorrelationResponse?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var showHelp = false
     
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.xLarge) {
+                HelpInlineButton(showHelp: $showHelp)
+                    .padding(.horizontal, Theme.screenPadding)
+                
                 if isLoading {
                     ProgressView("Calculating Matrix...")
                         .padding()
@@ -105,6 +109,7 @@ struct CorrelationMatrixScreen: View {
                 await loadDataAsync()
             }
         }
+        .helpSheet(isPresented: $showHelp, title: FeatureHelp.correlation.title, subtitle: FeatureHelp.correlation.subtitle, sections: FeatureHelp.correlation.sections)
     }
     
     private func loadDataAsync() async {
@@ -263,9 +268,10 @@ struct CorrelationHeatmap: View {
                                 
                                 ForEach(uniqueTickers, id: \.self) { t2 in
                                     HeatmapCell(t1: t1, t2: t2, matrix: matrix)
-                                }
-                            }
-                        }
+            }
+        }
+        .helpSheet(isPresented: $showHelp, title: FeatureHelp.correlation.title, subtitle: FeatureHelp.correlation.subtitle, sections: FeatureHelp.correlation.sections)
+    }
                     }
                     .padding(.horizontal, Theme.screenPadding)
                 }

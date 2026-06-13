@@ -75,11 +75,14 @@ class SectorRotationViewModel: ObservableObject {
 
 struct SectorRotationScreen: View {
     @StateObject private var viewModel = SectorRotationViewModel()
+    @State private var showHelp = false
     let periods = ["1m", "3m", "6m", "1y"]
     
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.large) {
+                HelpInlineButton(showHelp: $showHelp)
+                    .padding(.horizontal, Theme.screenPadding)
                 
                 // Period Selector
                 HStack(spacing: Theme.Spacing.standard) {
@@ -141,8 +144,9 @@ struct SectorRotationScreen: View {
                                     Text(sector.name.prefix(3).uppercased())
                                         .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                                         .foregroundColor(Theme.canvas)
-                                }
-                            }
+        }
+        .helpSheet(isPresented: $showHelp, title: FeatureHelp.sectorRotation.title, subtitle: FeatureHelp.sectorRotation.subtitle, sections: FeatureHelp.sectorRotation.sections)
+    }
                             
                             RuleMark(x: .value("Zero", 0.0))
                                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [4]))
