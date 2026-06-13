@@ -28,27 +28,40 @@ def compute_portfolio_correlation(holdings: list) -> dict:
     yf_tickers = [format_ticker_for_yf(t) for t in all_tickers]
     
     try:
-        data = yf.download(yf_tickers, period="6mo", interval="1d", group_by="ticker", threads=True, progress=False)
+        data = yf.download(yf_tickers, period="6mo", interval="1d", threads=True, progress=False)
     except Exception as e:
         logger.error(f"Error fetching data from yfinance: {e}")
         raise e
 
-    # Build prices dataframe
+    # Build prices dataframe from multi-level columns or flat columns
     prices = pd.DataFrame()
-    if isinstance(data.columns, pd.MultiIndex):
-        for orig, yf_t in zip(all_tickers, yf_tickers):
-            if yf_t in data.columns.levels[0] or yf_t in data.columns.levels[1]:
-                if yf_t in data.columns.get_level_values('Ticker'):
+    if data.empty:
+        return {
+            "correlation_matrix": [],
+            "diversification_score": 0,
+            "sector_concentration": [],
+            "suggestions": []
+        }
+    
+    # Extract Close prices for each ticker
+    for orig, yf_t in zip(all_tickers, yf_tickers):
+        try:
+            if isinstance(data.columns, pd.MultiIndex):
+                # Access via tuple: ('Close', 'RELIANCE.NS')
+                if ('Close', yf_t) in data.columns:
+                    prices[orig] = data[('Close', yf_t)]
+                elif 'Close' in data.columns and yf_t in data['Close'].columns:
                     prices[orig] = data['Close'][yf_t]
-    else:
-        # Fallback if only 1 ticker was downloaded (e.g., if holdings is empty but we fetch Nifty, or yf version diff)
-        if len(yf_tickers) == 1:
-            prices[all_tickers[0]] = data['Close']
-        else:
-            # If not multi-index but multiple tickers, columns are the tickers
-            for orig, yf_t in zip(all_tickers, yf_tickers):
-                if yf_t in data.columns:
+            else:
+                # Flat columns — each ticker has its own column name or ticker prefix
+                close_col = f"Close_{yf_t}" if f"Close_{yf_t}" in data.columns else yf_t
+                if close_col in data.columns:
+                    prices[orig] = data[close_col]
+                elif 'Close' in data.columns and yf_t in data.columns:
                     prices[orig] = data[yf_t]
+        except Exception:
+            logger.warning(f"Could not extract prices for {orig} ({yf_t}), skipping")
+            continue
 
     if prices.empty:
         return {
