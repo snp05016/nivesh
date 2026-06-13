@@ -7,36 +7,12 @@ struct NLScreenerRequest: Codable {
 }
 
 struct NLScreenerResponse: Codable {
-    let parsedFilters: [String: AnyCodable]
+    let parsedFilters: [String: String]?
     let results: [NLScreenerResult]
     
     enum CodingKeys: String, CodingKey {
         case parsedFilters = "parsed_filters"
         case results
-    }
-}
-
-struct AnyCodable: Codable, Hashable {
-    let value: String
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        if let intVal = try? container.decode(Int.self) {
-            value = String(intVal)
-        } else if let doubleVal = try? container.decode(Double.self) {
-            value = String(doubleVal)
-        } else if let stringVal = try? container.decode(String.self) {
-            value = stringVal
-        } else if let boolVal = try? container.decode(Bool.self) {
-            value = String(boolVal)
-        } else {
-            value = "Unknown"
-        }
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        try container.encode(value)
     }
 }
 
@@ -109,8 +85,8 @@ class NLScreenerViewModel: ObservableObject {
                 let apiResponse = try JSONDecoder().decode(NLScreenerResponse.self, from: data)
                 
                 var filterDict: [String: String] = [:]
-                for (key, val) in apiResponse.parsedFilters {
-                    filterDict[key] = val.value
+                for (key, val) in apiResponse.parsedFilters ?? [:] {
+                    filterDict[key] = val
                 }
                 
                 self.parsedFilters = filterDict
