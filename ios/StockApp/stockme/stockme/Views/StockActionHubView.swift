@@ -13,10 +13,11 @@ struct StockActionHubDest: Hashable {
 /// How the AI report should launch when pushed from the hub. When set on
 /// AnalysisScreen it bypasses the legacy "Cached Report Found" alert.
 enum AnalysisLaunchMode: Hashable {
-    case cached      // show the stored report, no network
-    case regenerate  // fresh standard analysis
+    case cached      // show the most recent cached report (priority: extreme > deep > standard)
+    case standard    // fresh standard analysis (V4 Flash, 1 round)
     case deepScan    // fresh analysis with PKScreener + FinBERT
-    case extremeScan // DeepSeek reasoning, 4 graph bundles, 10-min deep report
+    case extremeScan // DeepSeek V4 Pro, 3-round debate, long-form thesis
+    case regenerate  // re-run same type as cached report
 }
 
 /// Pushed from the hub to open the AI report in a specific mode.
@@ -41,6 +42,21 @@ struct StockActionHubView: View {
 
     private var cachedReport: StockAnalysis? {
         reportManager.getReport(for: dest.ticker)
+    }
+
+    private var cachedStaleness: (label: String, age: String, tier: String)? {
+        guard let cached = cachedReport else { return nil }
+        let tier = cached.analysisTier ?? "standard"
+        let fmt = DateFormatter()
+        fmt.dateFormat = "dd-MMM-yyyy"
+        let date = fmt.date(from: cached.analysisDate) ?? Date()
+        let hours = Date().timeIntervalSince(date) / 3600
+        let label = hours < 6 ? "Fresh" : hours < 48 ? "Aging" : "Stale"
+        let ageStr: String
+        if hours < 1 { ageStr = "\(Int(hours * 60))m ago" }
+        else if hours < 24 { ageStr = "\(Int(hours))h ago" }
+        else { ageStr = "\(Int(hours / 24))d ago" }
+        return (label, ageStr, tier)
     }
 
     private var deepScanForbidden: Bool {
@@ -72,48 +88,68 @@ struct StockActionHubView: View {
 
                     section(title: "AI ANALYSIS") {
                         VStack(spacing: Theme.Spacing.card) {
-                            if let cached = cachedReport {
+                            // View Cached — shows highest priority cached report
+                            if let cached = cachedReport, let stale = cachedStaleness {
+                                let tierLabel = stale.tier == "extreme" ? "EXTREME" : stale.tier == "deep" ? "DEEP" : "STANDARD"
+                                let tierColor: Color = stale.tier == "extreme" ? Theme.bearRed : stale.tier == "deep" ? Theme.goldPrimary : Theme.bullGreen
+
                                 actionCard(
                                     symbol: "doc.text.magnifyingglass",
                                     title: "View Cached Report",
-                                    subtitle: "Last analysed \(cached.analysisDate)",
-                                    tint: Theme.goldPrimary
+                                    subtitle: "\(tierLabel) · \(stale.age) · \(stale.label)",
+                                    tint: tierColor
                                 ) {
                                     path.append(AnalysisDest(ticker: dest.ticker, mode: .cached))
                                 }
                             }
 
+                            // Standard analysis
                             actionCard(
                                 symbol: "sparkles",
-                                title: "Regenerate",
-                                subtitle: "Fresh standard analysis",
+                                title: "Standard Analysis",
+                                subtitle: "DeepSeek V4 Flash · 1-round debate · fastest",
                                 tint: Theme.bullGreen
                             ) {
-                                path.append(AnalysisDest(ticker: dest.ticker, mode: .regenerate))
+                                path.append(AnalysisDest(ticker: dest.ticker, mode: .standard))
                             }
 
+                            // Deep Scan
                             actionCard(
                                 symbol: "scope",
                                 title: "Deep Scan",
                                 subtitle: deepScanForbidden
                                     ? "Unavailable for indices"
-                                    : "PKScreener + FinBERT, slower & deeper",
+                                    : "PKScreener + FinBERT · deeper fundamentals",
                                 tint: Theme.goldPrimary,
                                 disabled: deepScanForbidden
                             ) {
                                 path.append(AnalysisDest(ticker: dest.ticker, mode: .deepScan))
                             }
 
+                            // Extreme Analysis
                             actionCard(
                                 symbol: "flame.fill",
                                 title: "Extreme Analysis",
                                 subtitle: deepScanForbidden
                                     ? "Unavailable for indices"
-                                    : "DeepSeek V4 Pro · 3-round debate · 1000+ word thesis",
+                                    : "DeepSeek V4 Pro · 3-round debate · long-form thesis",
                                 tint: Theme.bearRed,
                                 disabled: deepScanForbidden
                             ) {
                                 path.append(AnalysisDest(ticker: dest.ticker, mode: .extremeScan))
+                            }
+
+                            // Regenerate (same type as cached)
+                            if cachedReport != nil {
+                                let cachedTier = cachedReport?.analysisTier ?? "standard"
+                                actionCard(
+                                    symbol: "arrow.triangle.2.circlepath",
+                                    title: "Regenerate",
+                                    subtitle: "Re-run as \(cachedTier.uppercased()) with fresh data",
+                                    tint: Theme.inkSecondary
+                                ) {
+                                    path.append(AnalysisDest(ticker: dest.ticker, mode: .regenerate))
+                                }
                             }
                         }
                     }

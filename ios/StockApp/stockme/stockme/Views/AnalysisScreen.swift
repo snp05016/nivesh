@@ -295,10 +295,16 @@ struct AnalysisScreen: View {
                     // Hub-driven launch: act directly, no alert.
                     switch mode {
                     case .cached:
+                        // Show highest-priority cache (extreme > deep > standard)
                         if let cached = previousAnalysis { viewModel.analysis = cached }
-                        else { viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: false) }
+                        else { viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: false, scanType: "standard") }
+                    case .standard:
+                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: false, scanType: "standard")
                     case .regenerate:
-                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: false)
+                        // Re-run at same tier as cached report
+                        let tier = previousAnalysis?.analysisTier ?? "standard"
+                        let isExtreme = tier == "extreme"
+                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: isExtreme, scanType: isExtreme ? "extreme" : "standard")
                     case .deepScan:
                         let forbidden = Self.deepScanDisabledTickers.contains(ticker.uppercased())
                         viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: !forbidden)
