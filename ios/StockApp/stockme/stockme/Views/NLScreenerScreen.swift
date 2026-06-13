@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 // MARK: - Models
 struct NLScreenerRequest: Codable {
