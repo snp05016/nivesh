@@ -127,6 +127,7 @@ struct GlossaryBrowserView: View {
                 }
             }
         }
+        .crashGuard("GlossaryBrowser")
         .navigationTitle("Glossary")
         .navigationBarTitleDisplayMode(.large)
         .onAppear { loadRecentlyViewed() }

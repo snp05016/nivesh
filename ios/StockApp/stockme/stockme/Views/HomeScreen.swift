@@ -722,6 +722,7 @@ struct HomeScreen: View {
                 }
             }
         }
+        .crashGuard("HomeScreen")
 
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {

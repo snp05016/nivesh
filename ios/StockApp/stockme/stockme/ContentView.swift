@@ -65,6 +65,7 @@ struct ContentView: View {
                 .zIndex(10)
             }
         }
+        .crashGuard("ContentView")
         .onAppear {
             setupTabBarAppearance()
             engineManager.startWatching()
