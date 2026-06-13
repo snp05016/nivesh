@@ -539,8 +539,8 @@ struct CopilotFloatingButtonModifier: ViewModifier {
                             .shadow(color: Theme.securityGold.opacity(0.4), radius: 8, x: 0, y: 4)
                     }
                     .buttonStyle(EKPressStyle())
-                    .padding(.trailing, Theme.screenPadding)
-                    .padding(.bottom, Theme.Spacing.xLarge + Theme.Spacing.standard)
+                    .padding(.trailing, Theme.screenPadding + Theme.Spacing.standard)
+                    .padding(.bottom, Theme.Spacing.xLarge + Theme.Spacing.large)
                 }
             }
         }
