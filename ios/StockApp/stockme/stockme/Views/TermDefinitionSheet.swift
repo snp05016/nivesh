@@ -42,7 +42,7 @@ struct TermDefinitionSheet: View {
                                 .tracking(1.2)
                                 .foregroundStyle(Theme.inkTertiary)
                             FlowLayout(spacing: Theme.Spacing.small) {
-                                ForEach(entry.relatedTerms, id: \.self) { related in
+                                ForEach(Array(entry.relatedTerms.enumerated()), id: \.offset) { _, related in
                                     if let relEntry = FinanceTerms.shared.lookup(related) {
                                         NavigationLink {
                                             TermDefinitionSheet(entry: relEntry)
@@ -91,9 +91,13 @@ private struct FlowLayout: Layout {
     let spacing: CGFloat
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let rows = arrange(proposal.width ?? 0, subviews)
-        let height = (rows.last?.first?.maxY ?? 0) * CGFloat(rows.count)
-        return CGSize(width: proposal.width ?? 0, height: height)
+        let width = proposal.width ?? UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        let rows = arrange(width, subviews)
+        let height = rows.reduce(0.0) { sum, row in
+            let rowH = row.map(\.maxY).max() ?? 0
+            return sum + rowH + (sum > 0 ? spacing : 0)
+        }
+        return CGSize(width: width, height: height)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
