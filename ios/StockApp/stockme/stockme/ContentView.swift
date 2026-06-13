@@ -216,6 +216,7 @@ enum MarketsTab: String, CaseIterable {
     case unlisted  = "UNLISTED"
     case screener  = "SCREENER"
     case alerts    = "ALERTS"
+    case strategy  = "STRATEGY LAB"
 }
 
 // MARK: - Markets Tab Bar
@@ -261,6 +262,7 @@ enum MarketSection: String, Hashable, CaseIterable {
     case unlisted  = "unlisted"
     case screener  = "screener"
     case alerts    = "alerts"
+    case strategy  = "strategy"
 
     var icon: String {
         switch self {
@@ -269,6 +271,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .unlisted:  return "building.2.fill"
         case .screener:  return "magnifyingglass.circle.fill"
         case .alerts:    return "bell.badge.fill"
+        case .strategy:  return "flask.fill"
         }
     }
     var hindi: String {
@@ -278,6 +281,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .unlisted:  return "असूचीबद्ध"
         case .screener:  return "शेयर खोज"
         case .alerts:    return "मूल्य चेतावनी"
+        case .strategy:  return "रणनीति प्रयोगशाला"
         }
     }
     var englishTitle: String {
@@ -287,6 +291,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .unlisted:  return "UNLISTED"
         case .screener:  return "SCREENER"
         case .alerts:    return "ALERTS"
+        case .strategy:  return "STRATEGY LAB"
         }
     }
     var subtitle: String {
@@ -296,6 +301,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .unlisted:  return "Pre-IPO Marketplace"
         case .screener:  return "Stock Discovery"
         case .alerts:    return "Price Watch"
+        case .strategy:  return "Backtest Strategies"
         }
     }
     var description: String {
@@ -305,6 +311,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .unlisted:  return "OTC price discovery for pre-IPO, SME board and upcoming listing advisory"
         case .screener:  return "Search any NSE or BSE stock by name or ticker, preset screens, quick compare"
         case .alerts:    return "Target price triggers and surveillance flags for your entire watchlist"
+        case .strategy:  return "Backtest pre-built and custom trading strategies against historical data"
         }
     }
     var accentColor: Color {
@@ -314,6 +321,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .unlisted:  return Theme.holdAmber
         case .screener:  return Theme.inkSecondary
         case .alerts:    return Theme.bearRed
+        case .strategy:  return Theme.avatarBlue
         }
     }
 }
@@ -363,6 +371,8 @@ struct MarketsView: View {
                             sectionPage(.screener)
                         case .alerts:
                             sectionPage(.alerts)
+                        case .strategy:
+                            sectionPage(.strategy)
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -636,6 +646,7 @@ struct MarketsView: View {
         case .unlisted:  PreIPOMarketplaceView()
         case .screener:  SearchScreen()
         case .alerts:    AlertsScreen()
+        case .strategy:  StrategyLabScreen()
         }
     }
 
