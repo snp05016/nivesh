@@ -48,21 +48,22 @@ def _deep_analysis_worker(queue, ticker: str, exchange: str, user_id: int):
         queue.put({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
 
 def _manage_tokens(conversation_history: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Summarize conversation if it gets too long, keeping the last 3 messages raw."""
+    """Summarize conversation if it gets too long, keeping system prompts and last 3 messages raw."""
     # Rough estimate: 1 token ~ 4 characters
-    total_chars = sum(len(msg.get("content", "")) for msg in conversation_history)
+    total_chars = sum(len(msg.get("content", "")) for msg in conversation_history if msg.get("role") != "system")
     
     if total_chars > 8000: # ~2000 tokens
         # We need to summarize
         recent_messages = conversation_history[-3:]
-        older_messages = conversation_history[:-3]
+        older_messages = [m for m in conversation_history[:-3] if m.get("role") != "system"]
+        system_messages = [m for m in conversation_history if m.get("role") == "system"]
         
         older_text = "\n".join([f"{m['role']}: {m['content']}" for m in older_messages])
         prompt = f"Summarize the following conversation history briefly:\n{older_text}"
         
         summary = deepseek_chat([{"role": "user", "content": prompt}])
         
-        managed_history = [
+        managed_history = system_messages + [
             {"role": "system", "content": f"Previous conversation summary: {summary}"}
         ] + recent_messages
         return managed_history
@@ -72,14 +73,23 @@ def process_copilot_request(user_message: str, conversation_history: List[Dict[s
     """Process the chat request using LangGraph-like flow."""
     managed_history = _manage_tokens(conversation_history)
     
+    # Inject system prompt with app navigation knowledge (kept outside token management)
+    nav_context = current_context.get("app_navigation", "")
+    system_prompt = {
+        "role": "system",
+        "content": f"You are the Nivesh AI Copilot, a helpful financial assistant that can discuss portfolio performance, analyze Indian stocks, explain market concepts, and guide users through the Nivesh app. When users ask where to find features, use the app navigation map below to provide clear directions (which tab, which section).\n\nAPP NAVIGATION MAP:\n{nav_context}"
+    }
+    managed_history = [system_prompt] + managed_history
+    
     # 1. Intent Router (DeepSeek - Tier 1)
     context_str = json.dumps(current_context)
     intent_prompt = f"""
 You are the Nivesh Financial Copilot Intent Router.
 Given the user's message and current context, determine the intent.
-Respond with EXACTLY ONE of the following words: GENERAL, PORTFOLIO, or DEEP_ANALYSIS.
+Respond with EXACTLY ONE of the following words: GENERAL, PORTFOLIO, DEEP_ANALYSIS, or NAVIGATION.
 If the user asks about their own holdings, performance, or portfolio, reply PORTFOLIO.
 If the user asks for a deep analysis, buy/sell recommendation, or detailed research on a specific stock, reply DEEP_ANALYSIS.
+If the user asks where to find something in the app, how to navigate, or what features exist, reply NAVIGATION.
 Otherwise, reply GENERAL.
 
 Context: {context_str}
@@ -134,6 +144,16 @@ User Message: {user_message}
                 p.terminate()
                 reply = f"Analysis for {ticker} timed out or failed."
                 
+    elif "NAVIGATION" in intent:
+        nav_context = current_context.get("app_navigation", "")
+        nav_prompt = f"""You are a Nivesh app guide. Use ONLY the following app navigation map to answer the user's question about where to find features. Be concise and specific — tell them which tab, section, and how to reach it. If the feature they ask about is not listed, say so politely and suggest related features.
+
+APP NAVIGATION MAP:
+{nav_context}
+
+User question: {user_message}"""
+        reply = deepseek_chat([{"role": "user", "content": nav_prompt}])
+        
     else: # GENERAL
         messages = managed_history + [{"role": "user", "content": f"Context: {context_str}\nMessage: {user_message}"}]
         reply = deepseek_chat(messages) # Fast response
