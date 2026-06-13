@@ -2225,3 +2225,27 @@ struct BrainstormIdea: Codable, Identifiable {
     let description: String
     let ticker: String?
 }
+
+struct CrashReport: Codable, Identifiable {
+    let id: String
+    let timestamp: String
+    let type: CrashType
+    let signalNumber: Int?
+    let signalName: String?
+    let exceptionName: String?
+    let exceptionReason: String?
+    let stackTrace: String
+    let viewPath: String?
+    let swiftFile: String?
+    let approxLine: String?
+    let device: String
+    let osVersion: String
+    let appVersion: String
+    let buildNumber: String
+    let classification: String
+}
+
+enum CrashType: String, Codable {
+    case signal
+    case exception
+}
