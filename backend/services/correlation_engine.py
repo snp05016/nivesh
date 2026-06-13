@@ -23,12 +23,12 @@ def compute_portfolio_correlation(holdings: list) -> dict:
     # Extract unique tickers
     tickers = list(set([h.ticker for h in holdings]))
     
-    # 1. Fetch 3yr daily price history for each holding + Nifty
+    # 1. Fetch 6mo daily price history for each holding + Nifty (faster than 3y)
     all_tickers = tickers + ["^NSEI"]
     yf_tickers = [format_ticker_for_yf(t) for t in all_tickers]
     
     try:
-        data = yf.download(yf_tickers, period="3y", interval="1d", group_by="ticker", threads=True, progress=False)
+        data = yf.download(yf_tickers, period="6mo", interval="1d", group_by="ticker", threads=True, progress=False)
     except Exception as e:
         logger.error(f"Error fetching data from yfinance: {e}")
         raise e
