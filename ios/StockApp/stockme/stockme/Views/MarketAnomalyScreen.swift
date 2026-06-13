@@ -37,7 +37,7 @@ class MarketAnomalyViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        guard let url = URL(string: "http://127.0.0.1:8000/api/v1/market/anomalies?limit=20") else { return }
+        guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/market/anomalies?limit=20") else { return }
         
         do {
             let (data, _) = try await URLSession.shared.data(from: url)

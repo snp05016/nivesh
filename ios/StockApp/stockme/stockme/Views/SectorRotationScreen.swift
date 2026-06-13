@@ -42,7 +42,7 @@ class SectorRotationViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        let urlStr = "http://localhost:8000/api/v1/market/sector-rotation?period=\(selectedPeriod)"
+        let urlStr = "\(NetworkManager.shared.baseURL)/api/v1/market/sector-rotation?period=\(selectedPeriod)"
         guard let url = URL(string: urlStr) else {
             self.errorMessage = "Invalid URL"
             self.isLoading = false
