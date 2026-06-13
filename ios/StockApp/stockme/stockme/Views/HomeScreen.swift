@@ -627,6 +627,7 @@ struct HomeScreen: View {
     @State private var showSearch: Bool = false
     @State private var searchText: String = ""
     @FocusState private var searchFocused: Bool
+    @State private var showGlossary = false
 
     // Stock tap action sheet (universal)
     @State private var stockTapTicker = ""
@@ -719,6 +720,11 @@ struct HomeScreen: View {
                 if let data = try? JSONEncoder().encode(newOrder) {
                     sectionOrderData = data
                 }
+            }
+        }
+        .sheet(isPresented: $showGlossary) {
+            NavigationStack {
+                GlossaryBrowserView()
             }
         }
         .onChange(of: showStockTapAction) { _, show in
@@ -2297,6 +2303,19 @@ extension HomeScreen {
                                 }
                             } label: {
                                 Image(systemName: "magnifyingglass")
+                                    .font(.title3.weight(.medium))
+                                    .foregroundStyle(Theme.securityGold)
+                                    .frame(width: 40, height: 40)
+                                    .background(Theme.securityGold.opacity(0.12))
+                                    .clipShape(Circle())
+                                    .overlay(Circle().stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
+                            }
+                            .buttonStyle(EKPressStyle())
+                            Button {
+                                HapticManager.selection()
+                                showGlossary = true
+                            } label: {
+                                Image(systemName: "book.pages")
                                     .font(.title3.weight(.medium))
                                     .foregroundStyle(Theme.securityGold)
                                     .frame(width: 40, height: 40)
