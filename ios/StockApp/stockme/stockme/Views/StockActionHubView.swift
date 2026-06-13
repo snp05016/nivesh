@@ -182,6 +182,7 @@ struct StockActionHubView: View {
         case .standard: return "standard"
         case .deepScan: return "deep"
         case .extremeScan: return "extreme"
+        case .cached: return "standard"
         }
     }
 
@@ -190,6 +191,7 @@ struct StockActionHubView: View {
         case .standard: return "Standard"
         case .deepScan: return "Deep"
         case .extremeScan: return "Extreme"
+        case .cached: return "Standard"
         }
     }
 
