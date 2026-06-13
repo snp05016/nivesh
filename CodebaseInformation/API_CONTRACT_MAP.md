@@ -453,7 +453,8 @@
 - **Swift Caller:** `NetworkManager.analyze(ticker:exchange:userId:useMock:deepScan:)` (NetworkManager.swift:176)
 - **Backend Receiver:** `routers/analysis.py → analyze()` (line 453)
 - **HTTP Method & Route:** `POST /analyze`
-- **Swift Request Body:** `AnalyzeRequest` (inline JSON: ticker, exchange, user_id, deep_scan)
+- **Swift Request Body:** `AnalyzeRequest` (inline JSON: ticker, exchange, user_id, deep_scan, scan_type)
+- **Cache Behavior:** Immediately returns a CACHE HIT with `_staleness_hours` and `_staleness_label` if a cached analysis for that scan_type exists, bypassing subprocess.
 - **Swift Response Model:** `StockAnalysis`
 - **Backend Request Schema:** `schemas/portfolio.py → AnalyzeRequest`
 - **Backend Response:** `dict` (full AI analysis JSON — multiprocessing with Queue)

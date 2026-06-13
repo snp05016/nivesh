@@ -25,7 +25,7 @@
 |----------|----------|-------------|---------|
 | **DeepSeek** | `deepseek-chat` (V4 Flash) via `api.deepseek.com/v1` | **Tier 1** — $0.00014/Kin, $0.00028/Kout | 8x LangGraph agents, smart cache gate, daily action, red flags, macro impact, trade journal stats, advisor stance extraction |
 | **Anthropic** | `claude-haiku-4-5-20251001` | **Tier 2** — $0.00025/Kin, $0.00125/Kout | Research Manager, Portfolio Manager (LangGraph), Morning Summary |
-| **Anthropic** | `claude-3-5-sonnet-latest` | **Tier 3** — $0.003/Kin, $0.015/Kout | Final reformatter (orchestrator), Batch analysis, PDF export narrative |
+| **Anthropic** | `claude-3-5-sonnet-latest` | **Tier 3** — $0.003/Kin, $0.015/Kout | Fallback reformatter, Batch analysis, PDF export narrative |
 
 **Local AI (zero credit cost):**
 - `services/sentiment_engine.py` — FinBERT (HuggingFace pipeline, CPU)
@@ -43,7 +43,7 @@
 |---------|----------|-------|------|-------------|
 | — | Helper `_deepseek_chat()` | DeepSeek V4 Flash | LOW | **RESOLVED — moved to `services/llm_utils.py`** (canonical single source). Imported by analysis.py. |
 | **202-232** | `_run_analysis_worker()` | LangGraph pipeline | **HIGH** | Subprocess worker for `POST /analyze`. Calls `services.orchestrator.analyze()` — the full multi-agent pipeline. |
-| **453-582** | `POST /analyze` | DeepSeek + Haiku + Sonnet | **HIGH** (~$0.03-0.08/req) | Spawns `multiprocessing.Process` → orchestrator.analyze(). Duplicate guard + semaphore (max 2/user). Kills subprocess on client disconnect to save credits. |
+| **453-582** | `POST /analyze` | DeepSeek + Haiku + (Sonnet fallback) | **LOW** (~$0.01-0.02/req) | Instant CACHE HIT returns immediately if analysis exists, saving 100% of LLM calls. Otherwise spawns `multiprocessing.Process`. Duplicate guard + semaphore (max 2/user). Kills subprocess on disconnect. |
 | **588-633** | `POST /analyze/batch` | Claude Sonnet | **HIGH** ($0.006-0.03/ticker) | Anthropic Message Batch. Each ticker gets full system prompt with ephemeral caching. No iOS call found. |
 | **639-672** | `GET /analyze/batch/{id}` | Anthropic (poll) | ZERO | Reads batch results. Credits consumed at submission time. |
 | **1316-1339** | `GET /daily-action/{user_id}` | DeepSeek V4 Flash | **LOW** ($0.00007) | 1-sentence "most important action today" from portfolio warnings/signals. `max_tokens=256`. |
@@ -84,7 +84,7 @@
 |---------|----------|-------|------|-------------|
 | — | `_deepseek_chat()` | DeepSeek V4 Flash | LOW | **RESOLVED — now imported from `services/llm_utils.py`** (canonical version). 5x token inflation + reasoning_content fallback. |
 | **439-451** | `run_trading_agents()` | DeepSeek + Haiku | **HIGH** | Instantiates `OptimizedTradingAgentsGraph` with 2-tier config. Calls `ta.propagate()` → 12 LLM invocations. |
-| **459-603** | `reformat_with_claude()` | Claude Sonnet (primary), DeepSeek (fallback) | **HIGH** (Sonnet) / LOW (DeepSeek) | **CANONICAL** — sole active reformatter. `tradingagents/.../reformatter.py:reformat_with_sonnet()` is deprecated dead code. 3x retry per phase. Uses prompt caching. |
+| **459-603** | `reformat_with_deepseek()` | DeepSeek (primary), Claude Sonnet (fallback) | **LOW** (DeepSeek) | **CANONICAL** — sole active reformatter. Uses DeepSeek for >95% of runs, falling back to Sonnet only on parse failure. |
 | **839-857** | Smart Cache Gate | DeepSeek V4 Flash | **VERY LOW** | Checks 5 news headlines for "major fundamental shift" — if NO, reuses cached analysis. `max_tokens=10`. |
 | **741-1093** | `analyze()` | All of the above | **HIGH** | Main entry. Smart cache → trading agents → reformat → normalize. Called from router subprocess. |
 
@@ -254,12 +254,12 @@ Layer 1: YouTube Transcript API (free). Layer 2: Local faster-whisper large-v3 (
 | Trader | DeepSeek | V4 Flash | 1 | ~$0.0003 |
 | Risk Debate (3 agents) | DeepSeek | V4 Flash | 3 | ~$0.0003ea = $0.0009 |
 | Portfolio Manager | Claude | Haiku 4.5 | 1 | ~$0.001 |
-| Reformat (orchestrator) | Claude | Sonnet | 1 | ~$0.005 |
+| Reformat (orchestrator) | DeepSeek | V4 Flash | 1 | ~$0.002 |
 | Reflection (post-run) | DeepSeek | V4 Flash | 1 | ~$0.0001 |
-| **TOTAL** | | | **~14 calls** | **~$0.011** |
+| **TOTAL** | | | **~9-14 calls** | **~$0.01-0.02** |
 
 **Cost ranges by endpoint:**
-- `POST /analyze` (full pipeline): **$0.008-0.015** per stock
+- `POST /analyze` (full pipeline): **$0.01-0.02** per stock (Standard is 1 debate round + skips sentiment. Governance fails skip 12 calls).
 - `POST /analyze/batch` (Sonnet per ticker): **$0.006-0.03** per ticker
 - Morning summary (Haiku): **~$0.0004** per user (cached 1h)
 - All DeepSeek-only endpoints: **$0.00007-0.0005** each

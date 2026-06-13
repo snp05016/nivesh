@@ -57,26 +57,79 @@ class AnalysisViewModel: ObservableObject {
 
             if Task.isCancelled { return }
 
-            // ── v2 engine: start background job, then poll ──
+            // ── v2 engine: start background job, then poll with fallback ──
             do {
                 let start = try await NetworkManager.shared.startAnalysisJob(
                     ticker: ticker, exchange: "NSE", userId: userId, scanType: scanType)
 
-                if start.status == "QUEUED" {
+                if let cachedAnalysis = start.analysis {
+                    await MainActor.run {
+                        analysis = cachedAnalysis
+                        reportManager.saveReport(cachedAnalysis)
+                        isLoading = false
+                    }
+                    return
+                }
+
+                if start.status == "QUEUED" || start.status == "RUNNING" || start.status == "ALREADY_RUNNING" {
                     jobId = start.jobId
-                    // Poll every 2s until terminal
+                    // Poll every 2s until terminal — try raw dict first, StockAnalysis fallback
                     pollJobTask = Task {
                         while !Task.isCancelled {
                             guard let jid = jobId else { break }
-                            if let polled = try? await NetworkManager.shared.pollJob(jobId: jid, userId: userId) {
+                            let rawJob = try? await NetworkManager.shared.pollJobRaw(jobId: jid, userId: userId)
+                            if let raw = rawJob {
+                                let polledStatus = raw["status"] as? String ?? ""
+                                let polledStage  = raw["stage"] as? String
+                                let polledPct    = raw["progress_pct"] as? Int
+                                let polledCheckpoints = raw["checkpoints"] as? [[String: Any]]
+                                let polledError  = raw["error"] as? String
+
                                 await MainActor.run {
-                                    jobStatus = polled
-                                    if let cps = polled.checkpoints { engineCheckpoints = cps }
-                                    if polled.status == "SUCCEEDED", let res = polled.result {
-                                        analysis = res; reportManager.saveReport(res); isLoading = false
-                                    } else if ["FAILED", "TIMEOUT", "CANCELLED"].contains(polled.status) {
+                                    jobStatus = JobStatus(
+                                        jobId: jid, userId: userId, ticker: ticker,
+                                        scanType: scanType, status: polledStatus,
+                                        stage: polledStage, progressPct: polledPct,
+                                        checkpoints: nil, tokensUsed: nil, error: polledError, result: nil
+                                    )
+                                    if let cps = polledCheckpoints {
+                                        engineCheckpoints = cps.compactMap { cp in
+                                            guard let stage = cp["stage"] as? String,
+                                                  let agent = cp["agent"] as? String,
+                                                  let msg = cp["message"] as? String else { return nil }
+                                            return CheckpointEvent(ts: cp["ts"] as? String ?? "", stage: stage, agent: agent, message: msg, state: cp["state"] as? String ?? "running")
+                                        }
+                                    }
+                                    isLoading = polledStatus != "SUCCEEDED" && polledStatus != "FAILED" && polledStatus != "TIMEOUT" && polledStatus != "CANCELLED"
+
+                                    if polledStatus == "SUCCEEDED" {
+                                        // Try StockAnalysis decode
+                                        if let resultData = raw["result"] {
+                                            do {
+                                                let jsonData = try JSONSerialization.data(withJSONObject: resultData)
+                                                let decoded = try JSONDecoder().decode(StockAnalysis.self, from: jsonData)
+                                                analysis = decoded
+                                                reportManager.saveReport(decoded)
+                                                isLoading = false
+                                            } catch {
+                                                print("[AnalysisScreen] StockAnalysis decode failed: \(error)")
+                                                // Show error with raw signal info so user sees something
+                                                let sigRaw = (resultData as? [String: Any])?["signal"] as? String ?? "?"
+                                                errorInfo = AnalysisErrorInfo(
+                                                    diagnostic: nil,
+                                                    rawError: "Decode failed but analysis complete. Signal: \(sigRaw)",
+                                                    httpStatusCode: 200, responseBody: "", responseHeaders: "",
+                                                    requestUrl: "/analyze/job/\(jid)", elapsedSeconds: 0,
+                                                    quickInfoElapsed: quickInfoElapsed, isRetryable: false,
+                                                    isMockMode: useMock, isDeepScan: deepScan)
+                                                isLoading = false
+                                            }
+                                        } else {
+                                            isLoading = false
+                                        }
+                                    } else if ["FAILED", "TIMEOUT", "CANCELLED"].contains(polledStatus) {
                                         errorInfo = AnalysisErrorInfo(
-                                            diagnostic: nil, rawError: polled.error ?? "analysis \(polled.status)",
+                                            diagnostic: nil, rawError: polledError ?? "analysis \(polledStatus)",
                                             httpStatusCode: 0, responseBody: "", responseHeaders: "",
                                             requestUrl: "/analyze/job/\(jid)", elapsedSeconds: 0,
                                             quickInfoElapsed: quickInfoElapsed, isRetryable: true,
@@ -84,7 +137,9 @@ class AnalysisViewModel: ObservableObject {
                                         isLoading = false
                                     }
                                 }
-                                if ["SUCCEEDED", "FAILED", "TIMEOUT", "CANCELLED"].contains(polled.status) { break }
+                            }
+                            if ["SUCCEEDED", "FAILED", "TIMEOUT", "CANCELLED"].contains(rawJob?["status"] as? String ?? "") {
+                                break
                             }
                             try? await Task.sleep(nanoseconds: 2_000_000_000)
                         }
@@ -113,7 +168,8 @@ class AnalysisViewModel: ObservableObject {
                 }
             }
 
-            if !Task.isCancelled { isLoading = false }
+            // v2 engine: isLoading stays true until the poll loop sets analysis/errorInfo
+            if jobId == nil, !Task.isCancelled { isLoading = false }
         }
     }
 
@@ -198,7 +254,6 @@ struct AnalysisScreen: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
-                    viewModel.cancelAnalysis()
                     dismiss()
                 } label: {
                     Image(systemName: "chevron.left")
@@ -250,10 +305,16 @@ struct AnalysisScreen: View {
                     // Hub-driven launch: act directly, no alert.
                     switch mode {
                     case .cached:
+                        // Show highest-priority cache (extreme > deep > standard)
                         if let cached = previousAnalysis { viewModel.analysis = cached }
-                        else { viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: false) }
+                        else { viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: false, scanType: "standard") }
+                    case .standard:
+                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: false, scanType: "standard")
                     case .regenerate:
-                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: false)
+                        // Re-run at same tier as cached report
+                        let tier = previousAnalysis?.analysisTier ?? "standard"
+                        let isExtreme = tier == "extreme"
+                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: isExtreme, scanType: isExtreme ? "extreme" : "standard")
                     case .deepScan:
                         let forbidden = Self.deepScanDisabledTickers.contains(ticker.uppercased())
                         viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: !forbidden)
@@ -482,7 +543,7 @@ struct AnalysisScreen: View {
                                 .foregroundStyle(Theme.inkSecondary)
                                 .lineSpacing(6)
                         }
-                        SectionDivider()
+                        GuillocheDivider()
                         if let officers = info.officers, !officers.isEmpty {
                             VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                                 Text("KEY EXECUTIVES")
@@ -658,7 +719,7 @@ struct AnalysisScreen: View {
                     Spacer()
                 }
             }
-            SectionDivider()
+            GuillocheDivider()
             if let prices = viewModel.quickInfo?.priceHistory90d, !prices.isEmpty {
                 PriceHistoryChart(
                     prices: prices,
@@ -682,7 +743,7 @@ struct AnalysisScreen: View {
                 }
                 Spacer()
             }
-            SectionDivider()
+            GuillocheDivider()
             HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                 Text("₹").font(Theme.engravedSerif(size: 24, weight: .bold)).foregroundStyle(Theme.goldPrimary)
                 Text((info.price ?? 0.0).inrFormatted.replacingOccurrences(of: "₹", with: ""))
@@ -706,7 +767,7 @@ struct AnalysisScreen: View {
 
     private func aiVerdictCard(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.none) {
-            SectionDivider()
+            GuillocheDivider()
             VStack(alignment: .leading, spacing: Theme.Spacing.card) {
                 HStack {
                     Text("AI VERDICT").font(Theme.sectionCapsLabel()).tracking(1.5).foregroundStyle(Theme.inkPrimary)
@@ -725,7 +786,7 @@ struct AnalysisScreen: View {
                 }
                 VStack(spacing: Theme.Spacing.small) {
                     Text("CONFIDENCE").font(Theme.microLabel()).foregroundStyle(Theme.inkTertiary)
-                        .financeTerm("Confidence Score")
+                        .explainableTerm("Confidence Score")
                     HStack(spacing: Theme.Spacing.xSmall) {
                         ForEach(0..<5, id: \.self) { i in
                             RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
@@ -745,12 +806,35 @@ struct AnalysisScreen: View {
                 Text("Analysis by Nivesh AI · Dalal Street weighted")
                     .font(Theme.microLabel(size: 9)).foregroundStyle(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, alignment: .center)
+
+                // Scan type + cache badge
+                HStack(spacing: Theme.Spacing.tight) {
+                    if let tier = analysis.analysisTier {
+                        Text(tier.uppercased())
+                            .font(Theme.microLabel(size: 7))
+                            .foregroundStyle(tier == "extreme" ? Theme.bearRed : Theme.inkTertiary)
+                            .padding(.horizontal, Theme.Spacing.tight)
+                            .padding(.vertical, 2)
+                            .background((tier == "extreme" ? Theme.bearRed : Theme.inkSecondary).opacity(0.12))
+                            .clipShape(Capsule())
+                    }
+                    if let js = viewModel.jobStatus {
+                        let cacheType = js.status == "SUCCEEDED" ? "generated" : js.status.lowercased()
+                        Text(cacheType)
+                            .font(Theme.microLabel(size: 7))
+                            .foregroundStyle(js.status == "SUCCEEDED" ? Theme.bullGreen : Theme.inkTertiary)
+                            .padding(.horizontal, Theme.Spacing.tight)
+                            .padding(.vertical, 2)
+                            .background(js.status == "SUCCEEDED" ? Theme.bullGreen.opacity(0.12) : Theme.inkSecondary.opacity(0.06))
+                            .clipShape(Capsule())
+                    }
+                }
             }
             .padding(Theme.Spacing.cardInset)
             .background(Theme.surfaceElevated)
             .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderStrong, lineWidth: 1))
             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
-            SectionDivider()
+            GuillocheDivider()
         }
     }
 
@@ -1011,7 +1095,7 @@ struct AnalysisScreen: View {
     private func newsSection(_ analysis: StockAnalysis) -> some View {
         if let news = analysis.recentNews, !news.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                SectionDivider()
+                GuillocheDivider()
                 HStack {
                     Text("RECENT NEWS")
                         .font(Theme.officialStampFont(size: 9))
@@ -1408,7 +1492,7 @@ struct AnalysisScreen: View {
 
     private func disclaimerSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            SectionDivider()
+            GuillocheDivider()
             Text(stripEmoji(analysis.disclaimer))
                 .font(Theme.microLabel(size: 9)).foregroundStyle(Theme.inkTertiary)
                 .lineSpacing(4).frame(maxWidth: .infinity, alignment: .leading)
@@ -1482,7 +1566,7 @@ struct AnalysisScreen: View {
                             }
                             Spacer()
                         }
-                        SectionDivider()
+                        GuillocheDivider()
                         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                             HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                                 Text("₹")
@@ -1529,7 +1613,7 @@ struct AnalysisScreen: View {
                         }
                     }
 
-                    SectionDivider()
+                    GuillocheDivider()
 
                     Text(info.suggestedActionText)
                         .font(.footnote.weight(.medium))
@@ -1844,7 +1928,7 @@ private struct AnalysisMetricCell: View {
             Text(label)
                 .font(Theme.officialStampFont(size: 8)).tracking(1.2)
                 .foregroundStyle(Theme.inkTertiary)
-                .financeTerm(term)
+                .explainableTerm(term)
             Text(value)
                 .font(Theme.serialNumberFont(size: 14, relativeTo: .footnote).weight(.bold))
                 .foregroundStyle(Theme.inkPrimary)
@@ -1880,7 +1964,7 @@ private struct KeyFactorCard: View {
                         .foregroundStyle(Theme.inkPrimary)
                 }
             }
-            SectionDivider()
+            GuillocheDivider()
             Text(text)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Theme.inkSecondary)
@@ -2103,7 +2187,7 @@ private struct ConfidenceCard: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text("CONFIDENCE SCORE")
                         .font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkSecondary)
-                        .financeTerm("Confidence Score")
+                        .explainableTerm("Confidence Score")
                     Text(label)
                         .font(Theme.engravedSerif(size: 15, weight: .bold)).foregroundStyle(color)
                 }
@@ -2214,7 +2298,7 @@ private struct GlossarySheet: View {
                     Text(term)
                         .font(Theme.engravedSerif(size: 22, weight: .bold))
                         .foregroundStyle(Theme.inkPrimary)
-                    SectionDivider()
+                    GuillocheDivider()
                     Text(glossaryDefinitions[term] ?? "No definition available for this term.")
                         .font(.body.weight(.medium))
                         .foregroundStyle(Theme.inkSecondary)
@@ -2318,7 +2402,7 @@ struct NewsReaderView: View {
                         .font(Theme.serialNumberFont(size: 11))
                         .foregroundStyle(Theme.inkTertiary)
 
-                        SectionDivider()
+                        GuillocheDivider()
 
                         if let summary = item.summary, !summary.isEmpty {
                             Text(summary)

@@ -358,6 +358,17 @@ class NetworkManager: ObservableObject {
         return try JSONDecoder().decode(JobStatus.self, from: data)
     }
 
+    /// Poll a job but return raw dict — no StockAnalysis decode. Resilient to schema changes.
+    func pollJobRaw(jobId: String, userId: Int?) async throws -> [String: Any]? {
+        var urlStr = "\(baseURL)/analyze/job/\(jobId)"
+        if let uid = userId { urlStr += "?user_id=\(uid)" }
+        guard let url = URL(string: urlStr) else { return nil }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 10
+        let (data, _) = try await session.data(for: request)
+        return try JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
+
     func cancelJob(jobId: String, userId: Int?) async throws {
         var urlStr = "\(baseURL)/analyze/\(jobId)/cancel"
         if let uid = userId { urlStr += "?user_id=\(uid)" }
@@ -1260,5 +1271,25 @@ extension NetworkManager {
         }
         let (data, _) = try await URLSession.shared.data(from: url)
         return try JSONDecoder().decode([HarvesterSourceStatus].self, from: data)
+    }
+
+    func brainstorm(topic: String, riskTolerance: String) async throws -> BrainstormResponse {
+        guard let url = URL(string: "\(baseURL)/brainstorm") else {
+            throw NetworkError.invalidURL
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let body = ["topic": topic, "risk_tolerance": riskTolerance]
+        request.httpBody = try JSONEncoder().encode(body)
+        
+        let (data, resp) = try await session.data(for: request)
+        if let httpResp = resp as? HTTPURLResponse, httpResp.statusCode != 200 {
+            throw NetworkError.invalidResponse
+        }
+        return try JSONDecoder().decode(BrainstormResponse.self, from: data)
     }
 }
