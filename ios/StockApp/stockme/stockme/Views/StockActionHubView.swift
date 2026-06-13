@@ -10,17 +10,15 @@ struct StockActionHubDest: Hashable {
     var exchange: String = "NSE"
 }
 
-/// How the AI report should launch when pushed from the hub. When set on
-/// AnalysisScreen it bypasses the legacy "Cached Report Found" alert.
+/// How the AI report should launch when pushed from the hub.
 enum AnalysisLaunchMode: Hashable {
-    case cached      // show the most recent cached report (priority: extreme > deep > standard)
     case standard    // fresh standard analysis (V4 Flash, 1 round)
     case deepScan    // fresh analysis with PKScreener + FinBERT
     case extremeScan // DeepSeek V4 Pro, 3-round debate, long-form thesis
-    case regenerate  // re-run same type as cached report
+    case cached      // internal — show locally cached report (used by alert)
 }
 
-/// Pushed from the hub to open the AI report in a specific mode.
+/// Pushed from the hub to open the AI report.
 struct AnalysisDest: Hashable {
     let ticker: String
     let mode: AnalysisLaunchMode
@@ -28,8 +26,6 @@ struct AnalysisDest: Hashable {
 
 // MARK: - Stock Action Hub
 
-/// Full-screen, in-screen chooser shown after tapping a stock. Offers the
-/// stock profile and the three AI analysis modes as banknote cards — no dialogs.
 struct StockActionHubView: View {
     let dest: StockActionHubDest
     @Binding var path: NavigationPath
@@ -37,6 +33,8 @@ struct StockActionHubView: View {
     @EnvironmentObject var reportManager: LocalReportManager
 
     @State private var showHowItWorks = false
+    @State private var showCacheAlert = false
+    @State private var pendingMode: AnalysisLaunchMode = .standard
 
     private static let deepScanDisabledTickers: Set<String> = [
         "NIFTY", "SENSEX", "BANKNIFTY", "NIFTYBANK", "INDIAVIX",
@@ -46,37 +44,23 @@ struct StockActionHubView: View {
         reportManager.getReport(for: dest.ticker)
     }
 
-    private var cachedStaleness: (label: String, age: String, tier: String, score: Int)? {
-        guard let cached = cachedReport else { return nil }
-        let tier = cached.cachedScanType ?? cached.analysisTier ?? "standard"
-        // Prefer backend-computed staleness (from _staleness_* fields in JSON)
-        if let backendLabel = cached.stalenessLabel,
-           let backendScore = cached.stalenessScore {
-            let ageStr: String
-            if let hours = cached.stalenessHours {
-                if hours < 1 { ageStr = "\(Int(hours * 60))m ago" }
-                else if hours < 24 { ageStr = "\(Int(hours))h ago" }
-                else { ageStr = "\(Int(hours / 24))d ago" }
-            } else {
-                ageStr = ""
-            }
-            return (backendLabel, ageStr, tier, backendScore)
-        }
-        // Fallback: client-local staleness from analysisDate
-        let fmt = DateFormatter()
-        fmt.dateFormat = "dd-MMM-yyyy"
-        let date = fmt.date(from: cached.analysisDate) ?? Date()
-        let hours = Date().timeIntervalSince(date) / 3600
-        let label = hours < 6 ? "Fresh" : hours < 48 ? "Aging" : "Stale"
-        let ageStr: String
-        if hours < 1 { ageStr = "\(Int(hours * 60))m ago" }
-        else if hours < 24 { ageStr = "\(Int(hours))h ago" }
-        else { ageStr = "\(Int(hours / 24))d ago" }
-        return (label, ageStr, tier, 0)
+    private var cachedScanType: String {
+        cachedReport?.cachedScanType ?? cachedReport?.analysisTier ?? "standard"
     }
 
     private var deepScanForbidden: Bool {
         Self.deepScanDisabledTickers.contains(dest.ticker.uppercased())
+    }
+
+    /// Returns a human-readable staleness string for the cached report, or nil if no cache
+    private func stalenessSuffix(for cached: StockAnalysis) -> String {
+        guard let hours = cached.stalenessHours else { return "" }
+        let label = cached.stalenessLabel ?? "Fresh"
+        let age: String
+        if hours < 1 { age = "\(Int(hours * 60))m ago" }
+        else if hours < 24 { age = "\(Int(hours))h ago" }
+        else { age = "\(Int(hours / 24))d ago" }
+        return "\(label) · \(age)"
     }
 
     var body: some View {
@@ -118,64 +102,40 @@ struct StockActionHubView: View {
                         }
 
                         VStack(spacing: Theme.Spacing.card) {
-                            if let cached = cachedReport, let stale = cachedStaleness {
-                                let tierLabel = stale.tier == "extreme" ? "EXTREME" : stale.tier == "deep" ? "DEEP" : "STANDARD"
-                                let tierColor: Color = stale.tier == "extreme" ? Theme.bearRed : stale.tier == "deep" ? Theme.goldPrimary : Theme.bullGreen
-                                let stalenessSuffix = stale.score > 0 ? " · score: \(stale.score)" : ""
-
-                                actionCard(
-                                    symbol: "doc.text.magnifyingglass",
-                                    title: "View Cached Report",
-                                    subtitle: "\(tierLabel) · \(stale.age) · \(stale.label)\(stalenessSuffix)",
-                                    tint: tierColor
-                                ) {
-                                    path.append(AnalysisDest(ticker: dest.ticker, mode: .cached))
-                                }
-                            }
-
+                            // Standard analysis
                             actionCard(
                                 symbol: "sparkles",
                                 title: "Standard Analysis",
-                                subtitle: "DeepSeek V4 Flash · 1-round debate · fastest",
+                                subtitle: standardSubtitle,
                                 tint: Theme.bullGreen
                             ) {
-                                path.append(AnalysisDest(ticker: dest.ticker, mode: .standard))
+                                tapAnalysis(mode: .standard)
                             }
 
+                            // Deep Scan
                             actionCard(
                                 symbol: "scope",
                                 title: "Deep Scan",
                                 subtitle: deepScanForbidden
                                     ? "Unavailable for indices"
-                                    : "PKScreener + FinBERT · deeper fundamentals",
+                                    : deepSubtitle,
                                 tint: Theme.goldPrimary,
                                 disabled: deepScanForbidden
                             ) {
-                                path.append(AnalysisDest(ticker: dest.ticker, mode: .deepScan))
+                                tapAnalysis(mode: .deepScan)
                             }
 
+                            // Extreme Analysis
                             actionCard(
                                 symbol: "flame.fill",
                                 title: "Extreme Analysis",
                                 subtitle: deepScanForbidden
                                     ? "Unavailable for indices"
-                                    : "DeepSeek V4 Pro · 3-round debate · long-form thesis",
+                                    : extremeSubtitle,
                                 tint: Theme.bearRed,
                                 disabled: deepScanForbidden
                             ) {
-                                path.append(AnalysisDest(ticker: dest.ticker, mode: .extremeScan))
-                            }
-
-                            if cachedReport != nil {
-                                let cachedTier = cachedReport?.analysisTier ?? "standard"
-                                actionCard(
-                                    symbol: "arrow.triangle.2.circlepath",
-                                    title: "Regenerate",
-                                    subtitle: "Re-run as \(cachedTier.uppercased()) with fresh data",
-                                    tint: Theme.inkSecondary
-                                ) {
-                                    path.append(AnalysisDest(ticker: dest.ticker, mode: .regenerate))
-                                }
+                                tapAnalysis(mode: .extremeScan)
                             }
                         }
                     }
@@ -187,13 +147,81 @@ struct StockActionHubView: View {
             }
         }
         .sheet(isPresented: $showHowItWorks) {
-            NavigationStack {
-                AIHowItWorksView()
+            NavigationStack { AIHowItWorksView() }
+        }
+        .confirmationDialog("Cached Report Found", isPresented: $showCacheAlert, titleVisibility: .visible) {
+            Button("View Cached Report") {
+                path.append(AnalysisDest(ticker: dest.ticker, mode: .cached))
             }
+            Button("Regenerate", role: .destructive) {
+                path.append(AnalysisDest(ticker: dest.ticker, mode: pendingMode))
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("A \(pendingModeLabel) analysis already exists. View the cached report or generate a fresh one?")
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.canvas, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+    }
+
+    // MARK: - Cache-check logic
+
+    private func tapAnalysis(mode: AnalysisLaunchMode) {
+        let cacheType = scanTypeFor(mode)
+        if cachedReport != nil && cachedScanType == cacheType {
+            pendingMode = mode
+            showCacheAlert = true
+        } else {
+            path.append(AnalysisDest(ticker: dest.ticker, mode: mode))
+        }
+    }
+
+    private func scanTypeFor(_ mode: AnalysisLaunchMode) -> String {
+        switch mode {
+        case .standard: return "standard"
+        case .deepScan: return "deep"
+        case .extremeScan: return "extreme"
+        }
+    }
+
+    private var pendingModeLabel: String {
+        switch pendingMode {
+        case .standard: return "Standard"
+        case .deepScan: return "Deep"
+        case .extremeScan: return "Extreme"
+        }
+    }
+
+    // MARK: - Subtitles with cache info
+
+    private var standardSubtitle: String {
+        if let cached = cachedReport, cachedScanType == "standard", let suffix = cachedStalenessQuick(cached) {
+            return "DeepSeek V4 Flash · 1-round debate · fastest\nCached: \(suffix)"
+        }
+        return "DeepSeek V4 Flash · 1-round debate · fastest"
+    }
+
+    private var deepSubtitle: String {
+        if let cached = cachedReport, cachedScanType == "deep", let suffix = cachedStalenessQuick(cached) {
+            return "PKScreener + FinBERT · deeper fundamentals\nCached: \(suffix)"
+        }
+        return "PKScreener + FinBERT · deeper fundamentals"
+    }
+
+    private var extremeSubtitle: String {
+        if let cached = cachedReport, cachedScanType == "extreme", let suffix = cachedStalenessQuick(cached) {
+            return "DeepSeek V4 Pro · 3-round debate · long-form thesis\nCached: \(suffix)"
+        }
+        return "DeepSeek V4 Pro · 3-round debate · long-form thesis"
+    }
+
+    private func cachedStalenessQuick(_ cached: StockAnalysis) -> String? {
+        guard let hours = cached.stalenessHours else { return nil }
+        let label = cached.stalenessLabel ?? "Fresh"
+        if hours < 1 { return "\(label) · \(Int(hours * 60))m ago" }
+        else if hours < 24 { return "\(label) · \(Int(hours))h ago" }
+        else { return "\(label) · \(Int(hours / 24))d ago" }
     }
 
     // MARK: - Header
