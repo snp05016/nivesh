@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends
 from database import get_session, Portfolio
-from core.security import get_current_user_id
+from core.security import require_auth
 from services.correlation_engine import compute_portfolio_correlation
 
 router = APIRouter(tags=["Portfolio"])
 
 @router.get("/portfolio/correlation")
-def get_portfolio_correlation(portfolio_id: str, user_id: int = Depends(get_current_user_id)):
+def get_portfolio_correlation(portfolio_id: str, user_id: int = Depends(require_auth)):
     if portfolio_id != "holdings":
         raise HTTPException(status_code=400, detail="Only 'holdings' portfolio_id is supported")
         
