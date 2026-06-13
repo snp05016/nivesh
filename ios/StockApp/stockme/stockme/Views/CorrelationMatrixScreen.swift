@@ -56,6 +56,7 @@ struct CorrelationResponse: Codable {
 }
 
 struct CorrelationMatrixScreen: View {
+    @EnvironmentObject var authManager: AuthManager
     @State private var data: CorrelationResponse?
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -113,11 +114,11 @@ struct CorrelationMatrixScreen: View {
         }
         
         do {
-            guard let token = KeychainManager.shared.read(key: "auth_token") else {
+            guard let token = authManager.currentUser?.token else {
                 throw URLError(.userAuthenticationRequired)
             }
             
-            let url = URL(string: "\(Config.baseURL)/portfolio/correlation?portfolio_id=holdings")!
+            let url = URL(string: "\(NetworkManager.shared.baseURL)/portfolio/correlation?portfolio_id=holdings")!
             var req = URLRequest(url: url)
             req.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             
