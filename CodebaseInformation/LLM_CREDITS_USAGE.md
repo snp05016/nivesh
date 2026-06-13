@@ -43,7 +43,7 @@
 |---------|----------|-------|------|-------------|
 | — | Helper `_deepseek_chat()` | DeepSeek V4 Flash | LOW | **RESOLVED — moved to `services/llm_utils.py`** (canonical single source). Imported by analysis.py. |
 | **202-232** | `_run_analysis_worker()` | LangGraph pipeline | **HIGH** | Subprocess worker for `POST /analyze`. Calls `services.orchestrator.analyze()` — the full multi-agent pipeline. |
-| **453-582** | `POST /analyze` | DeepSeek + Haiku + (Sonnet fallback) | **LOW** (~$0.01-0.02/req) | Spawns `multiprocessing.Process` → orchestrator.analyze(). Duplicate guard + semaphore (max 2/user). Kills subprocess on disconnect. Caches repeat runs <30m. |
+| **453-582** | `POST /analyze` | DeepSeek + Haiku + (Sonnet fallback) | **LOW** (~$0.01-0.02/req) | Instant CACHE HIT returns immediately if analysis exists, saving 100% of LLM calls. Otherwise spawns `multiprocessing.Process`. Duplicate guard + semaphore (max 2/user). Kills subprocess on disconnect. |
 | **588-633** | `POST /analyze/batch` | Claude Sonnet | **HIGH** ($0.006-0.03/ticker) | Anthropic Message Batch. Each ticker gets full system prompt with ephemeral caching. No iOS call found. |
 | **639-672** | `GET /analyze/batch/{id}` | Anthropic (poll) | ZERO | Reads batch results. Credits consumed at submission time. |
 | **1316-1339** | `GET /daily-action/{user_id}` | DeepSeek V4 Flash | **LOW** ($0.00007) | 1-sentence "most important action today" from portfolio warnings/signals. `max_tokens=256`. |
