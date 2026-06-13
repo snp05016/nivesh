@@ -2,53 +2,6 @@ import SwiftUI
 import Charts
 import UIKit
 
-// MARK: - Glossary Term System (Phase 4)
-
-struct GlossaryTermModifier: ViewModifier {
-    let term: String
-    let definition: String
-    @State private var showPopover = false
-
-    func body(content: Content) -> some View {
-        content
-            .onLongPressGesture(minimumDuration: 0.4) {
-                HapticManager.impact(.medium)
-                showPopover = true
-            }
-            .popover(isPresented: $showPopover, arrowEdge: .top) {
-                GlossaryPopoverView(term: term, definition: definition)
-                    .presentationCompactAdaptation(.popover)
-            }
-    }
-}
-
-private struct GlossaryPopoverView: View {
-    let term: String
-    let definition: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-            Text(term.uppercased())
-                .font(Theme.officialStampFont(size: 10))
-                .tracking(1.5)
-                .foregroundStyle(Theme.securityGold)
-            Text(definition)
-                .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .body))
-                .foregroundStyle(Theme.inkPrimary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(Theme.Spacing.card)
-        .frame(maxWidth: 260)
-        .background(Theme.canvasDeep)
-    }
-}
-
-extension View {
-    func glossaryTerm(_ term: String, definition: String) -> some View {
-        modifier(GlossaryTermModifier(term: term, definition: definition))
-    }
-}
-
 // MARK: - Interactive Price Chart (Phase 3)
 
 struct InteractivePriceChartView: View {
@@ -136,7 +89,7 @@ struct InteractivePriceChartView: View {
                                 .font(Theme.serialNumberFont(size: 12))
                                 .foregroundStyle(up ? Theme.bullGreen : Theme.bearRed)
                         }
-                        .glossaryTerm("Period Return", definition: "Total price change from the first to the last visible bar in the selected time window, expressed as a percentage.")
+                        .explainableTerm("Period Return")
                     }
                 }
             }
@@ -609,7 +562,7 @@ struct StockProfileView: View {
                         .font(Theme.officialStampFont(size: 8))
                         .tracking(1.0)
                         .foregroundStyle(Theme.inkTertiary)
-                        .financeTerm(label)
+                        .explainableTerm(label)
                     Text(value)
                         .font(Theme.serialNumberFont(size: 14, relativeTo: .body))
                         .foregroundStyle(Theme.inkPrimary)
@@ -617,7 +570,7 @@ struct StockProfileView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(Theme.Spacing.standard)
                 .banknoteCard()
-                .glossaryTerm(glossaryTerm, definition: glossaryDef)
+                .explainableTerm(glossaryTerm)
             }
         }
 
@@ -638,7 +591,7 @@ struct StockProfileView: View {
             }
             .padding(Theme.Spacing.standard)
             .banknoteCard()
-            .glossaryTerm("AI SIGNAL", definition: "Signal computed by a dialectical debate between a Bull researcher and a Bear researcher, with Bear findings weighted 1.5× to preserve capital.")
+            .explainableTerm("Signal")
         }
     }
 
@@ -679,7 +632,7 @@ struct StockProfileView: View {
                     Text("BUY").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                 }
                 .frame(maxWidth: .infinity)
-                .glossaryTerm("BUY", definition: "Analysts recommending to purchase the stock, expecting price appreciation.")
+                .explainableTerm("Signal")
 
                 VStack(spacing: Theme.Spacing.xSmall) {
                     Text("\(ratings.hold)")
@@ -696,7 +649,7 @@ struct StockProfileView: View {
                     Text("SELL").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                 }
                 .frame(maxWidth: .infinity)
-                .glossaryTerm("SELL", definition: "Analysts recommending to exit the position, expecting price decline or better alternatives.")
+                .explainableTerm("Signal")
             }
             .padding(Theme.Spacing.card)
             .banknoteCard()
@@ -1001,7 +954,7 @@ struct StockProfileView: View {
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
-        .glossaryTerm("ASM/GSM", definition: "SEBI surveillance lists. GSM = Graded Surveillance Measure (strictest — delivery-only trading). ASM = Additional Surveillance Measure (higher margins). Being on either list is a governance red flag — exchanges apply these when they detect unusual price/volume or potential manipulation.")
+        .explainableTerm("ASM/GSM")
     }
 
     // MARK: -- AI Governance Score Card
@@ -1114,7 +1067,7 @@ struct StockProfileView: View {
                             .font(Theme.microLabel(size: 9))
                             .foregroundStyle(Theme.inkTertiary)
                     }
-                    .glossaryTerm("PROMOTER PLEDGING", definition: "Percentage of promoter shares pledged as collateral for loans. Above 30% = forced-liquidation risk — if the stock drops, lenders sell pledged shares, causing a cascade. Above 50% is considered extremely dangerous by Dalal Street veterans.")
+                    .explainableTerm("Promoter Pledging")
                 }
             }
 
@@ -1262,7 +1215,7 @@ struct StockProfileView: View {
             }
             .padding(Theme.Spacing.card)
             .banknoteCard()
-            .glossaryTerm("KEY OFFICERS", definition: "Senior leadership listed in the company's public filings. Track changes here — a sudden departure of the CFO, Managing Director, or CEO without clear succession is a Tier-1 governance red flag. Multiple departures within 6 months indicate boardroom instability.")
+            .explainableTerm("KEY OFFICERS")
         }
     }
 
@@ -1332,7 +1285,7 @@ struct StockProfileView: View {
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
-        .glossaryTerm("DEBT TO EQUITY", definition: "Total debt divided by shareholders' equity. Below 1.0 = low leverage, financially conservative. 1.0–2.0 = moderate leverage, acceptable for capital-intensive sectors. Above 2.0 = high financial risk — interest payments consume earnings, vulnerable to rate hikes. Infrastructure/metals can sustain higher D/E; for other sectors, D/E >1.5 is a governance concern.")
+        .explainableTerm("Debt/Equity")
     }
 
     // MARK: - Tab: Macro
@@ -1472,7 +1425,7 @@ struct StockProfileView: View {
             }
             .padding(Theme.Spacing.card)
             .banknoteCard()
-            .glossaryTerm("MARKET MOOD INDEX", definition: "A composite gauge based on India VIX, FII/DII flow direction, and Nifty momentum. Extreme Fear (<30) = historically good entry zones. Extreme Greed (>70) = caution zone, retail euphoria often precedes corrections. Derived from Tickertape's MMI methodology adapted for Indian markets.")
+            .explainableTerm("MMI")
         }
     }
 
@@ -1949,7 +1902,7 @@ struct StockProfileView: View {
                 .font(Theme.officialStampFont(size: 9))
                 .tracking(1.5)
                 .foregroundStyle(Theme.inkTertiary)
-                .glossaryTerm("PAT", definition: "Profit After Tax — net earnings after all expenses, interest, and taxes are deducted. The bottom-line profit available to shareholders.")
+                .explainableTerm("PAT")
 
             Chart {
                 ForEach(quarters, id: \.label) { q in
@@ -2226,24 +2179,26 @@ struct StockProfileView: View {
             .frame(height: UIScreen.main.bounds.height * 0.25)
 
             HStack {
-                glossaryTermInline("ROE", definition: "Return on Equity — measures how efficiently a company generates profit from shareholders' money. Higher = better capital deployment.")
+                HStack(spacing: Theme.Spacing.small) {
+                    Circle().fill(Theme.securityGold.opacity(0.3)).frame(width: 4, height: 4)
+                    Text("ROE")
+                        .font(Theme.microLabel(size: 9))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+                .explainableTerm("ROE")
                 Spacer()
-                glossaryTermInline("ROCE", definition: "Return on Capital Employed — measures how efficiently a company generates profit from its total capital. Higher = better capital deployment.")
+                HStack(spacing: Theme.Spacing.small) {
+                    Circle().fill(Theme.securityGold.opacity(0.3)).frame(width: 4, height: 4)
+                    Text("ROCE")
+                        .font(Theme.microLabel(size: 9))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+                .explainableTerm("ROCE")
             }
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
         }
-    }
-
-    private func glossaryTermInline(_ term: String, definition: String) -> some View {
-        HStack(spacing: Theme.Spacing.small) {
-            Circle().fill(Theme.securityGold.opacity(0.3)).frame(width: 4, height: 4)
-            Text(term)
-                .font(Theme.microLabel(size: 9))
-                .foregroundStyle(Theme.inkTertiary)
-        }
-        .glossaryTerm(term, definition: definition)
     }
 
     // MARK: - Tab: Financials
@@ -2293,7 +2248,7 @@ struct StockProfileView: View {
                     .frame(width: colW * 0.36, alignment: .trailing)
             }
             .padding(.horizontal, Theme.Spacing.medium)
-            .glossaryTerm("PAT", definition: "Profit After Tax — the net earnings of the company after all expenses and taxes, also called Net Profit.")
+            .explainableTerm("PAT")
 
             ForEach(shown) { q in
                 HStack(spacing: Theme.Spacing.none) {
@@ -2336,7 +2291,7 @@ struct StockProfileView: View {
                             .foregroundStyle(fScore >= 7 ? Theme.bullGreen : fScore >= 4 ? Theme.holdAmber : Theme.bearRed)
                     }
                 }
-                .glossaryTerm("PIOTROSKI F-SCORE", definition: "A 9-point financial health score. Scores 0–3 indicate weak financials, 4–6 are neutral, and 7–9 indicate strong fundamentals. Developed by Joseph Piotroski to identify financially sound value stocks.")
+                .explainableTerm("Piotroski Score")
                 Spacer()
                 VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                     if let grade = data.grade {
