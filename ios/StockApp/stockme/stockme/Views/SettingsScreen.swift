@@ -87,216 +87,211 @@ struct SettingsScreen: View {
             ZStack {
                 DenominationBackground(denomination: .fifty)
 
-                ScrollView {
-                    VStack(spacing: Theme.Spacing.xLarge) {
-                        // User profile note
+                List {
+                    Section {
                         if let user = authManager.currentUser {
-                            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                                Text("प्रमाणित उपयोगकर्ता / VERIFIED USER")
-                                    .font(Theme.officialStampFont(size: 8))
-                                    .foregroundStyle(Theme.inkSecondary)
-
-                                HStack(spacing: Theme.Spacing.card) {
-                                    ZStack {
-                                        Rectangle()
-                                            .fill(Theme.avatarBackground)
-                                            .frame(width: UIScreen.main.bounds.width * 0.16, height: UIScreen.main.bounds.width * 0.20)
-                                            .overlay(
-                                            Text(String(user.displayName.prefix(1)))
-                                                .font(.title.weight(.bold))
-                                                .foregroundStyle(Theme.inkPrimary.opacity(0.2))
-                                        )
-                                    Color.orange.opacity(0.04)
-                                    }
-                                    .overlay(Rectangle().stroke(Theme.borderFine, lineWidth: 0.5))
-
-                                    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                                        Text(user.displayName.uppercased())
-                                            .font(Theme.engravedSerif(size: 20, weight: .bold))
-                                            .foregroundStyle(Theme.inkPrimary)
-                                        Text("REGISTRY ID: 00\(user.userId)7249")
-                                            .font(Theme.serialNumberFont(size: 11))
-                                            .foregroundStyle(Theme.inkSecondary)
-                                    }
-                                    Spacer()
-
-                                    BanknoteSignalBadge(text: "AUTH", color: Theme.securityGold, rotation: -4)
+                            HStack(spacing: Theme.Spacing.card) {
+                                ZStack {
+                                    Circle().fill(Theme.securityGold).frame(width: 44, height: 44)
+                                    Text(String(user.displayName.prefix(1)).uppercased())
+                                        .font(Theme.serialNumberFont(size: 18, relativeTo: .body).weight(.semibold))
+                                        .foregroundStyle(Theme.canvas)
                                 }
-                            }
-                            .padding(Theme.Spacing.large)
-                            .banknoteCard()
-                            .padding(.horizontal, Theme.screenPadding)
-                            .padding(.top, Theme.Spacing.standard)
-                        }
-
-                        VStack(spacing: Theme.Spacing.large) {
-                            SettingsNoteGroup(title: "App Preferences", hindi: "ऐप प्राथमिकताएं") {
-                                ToggleNoteRow(icon: "moon.fill", color: .indigo, title: "Dark Inks", isOn: $darkMode)
-                                PickerNoteRow(icon: "faceid", color: Theme.bullGreen, title: "Security Threads (Face ID)", selection: $biometricTimeoutRaw, options: ["immediately", "1min", "5min", "15min", "never"])
-                                ToggleNoteRow(icon: "waveform.badge.magnifyingglass", color: Theme.securityGold, title: "Deep Scan by Default", isOn: $defaultDeepScan)
-                                DatePickerNoteRow(icon: "clock.fill", color: Theme.securityGold, title: "Morning Brief Time", selection: morningBriefDate)
-                                PickerNoteRow(icon: "bell.fill", color: Theme.bearRed, title: "Notification Sound", selection: $notificationSound, options: ["Default", "rupee_rustle.mp3"])
-                            }
-
-                            SettingsNoteGroup(title: "Denomination Theme", hindi: "मुद्रा थीम") {
-                                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                                    Text("DENOMINATION THEME")
-                                        .font(Theme.officialStampFont(size: 9)).tracking(1.5)
-                                        .foregroundStyle(Theme.inkTertiary)
-
-                                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())],
-                                              spacing: Theme.Spacing.standard) {
-                                        ForEach(AppTheme.allCases, id: \.self) { theme in
-                                            Button(action: {
-                                                HapticManager.impact(.medium)
-                                                withAnimation(.spring(response: 0.40, dampingFraction: 0.72)) {
-                                                    selectedThemeRaw = theme.rawValue
-                                                    ThemeManager.shared.current = theme
-                                                }
-                                            }) {
-                                                HStack(spacing: Theme.Spacing.medium) {
-                                                    Circle()
-                                                        .fill(theme.swatchColor)
-                                                        .frame(width: 20, height: 20)
-                                                        .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 0.5))
-                                                    Text(theme.displayName)
-                                                        .font(Theme.engravedSerif(size: 12, weight: .regular, relativeTo: .footnote))
-                                                        .foregroundStyle(Theme.inkPrimary)
-                                                        .lineLimit(1)
-                                                    Spacer()
-                                                    if selectedThemeRaw == theme.rawValue {
-                                                        Image(systemName: "checkmark")
-                                                            .font(.caption.weight(.bold))
-                                                            .foregroundStyle(Theme.securityGold)
-                                                            .transition(.scale.combined(with: .opacity))
-                                                    }
-                                                }
-                                                .padding(Theme.Spacing.standard)
-                                                .background(selectedThemeRaw == theme.rawValue
-                                                            ? Theme.securityGold.opacity(0.08) : Theme.canvasDeep)
-                                                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
-                                                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                                                    .stroke(selectedThemeRaw == theme.rawValue
-                                                            ? Theme.securityGold.opacity(0.4) : Theme.borderFine, lineWidth: 0.5))
-                                            }
-                                            .buttonStyle(EKPressStyle())
-                                        }
-                                    }
-                                    .animation(.spring(response: 0.40, dampingFraction: 0.72), value: selectedThemeRaw)
-                                }
-                                .padding(.vertical, Theme.Spacing.standard)
-                            }
-
-                            SettingsNoteGroup(title: "Data Registry", hindi: "डेटा रजिस्ट्री") {
-                                PickerNoteRow(icon: "indianrupeesign", color: Theme.bullGreen, title: "Currency Format", selection: $currencyDisplay, options: ["Lakhs/Crores", "Absolute"])
-                                AutoRefreshNoteRow(icon: "arrow.triangle.2.circlepath", color: Theme.securityGold, title: "Home Auto-Refresh", selection: $homeAutoRefreshSeconds)
-                            }
-
-                            SettingsNoteGroup(title: "Archives", hindi: "अभिलेखागार") {
-                                HStack {
-                                    SettingIcon(icon: "trash.fill", color: Theme.bearRed)
-                                    Text("VOID ALL RECORDS")
-                                        .font(Theme.officialStampFont(size: 9))
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(user.displayName)
+                                        .font(Theme.engravedSerif(size: 15, weight: .semibold))
                                         .foregroundStyle(Theme.inkPrimary)
-                                    Spacer()
-                                    Text("\(reportManager.savedReports.count)")
-                                        .font(Theme.serialNumberFont(size: 14))
-                                        .foregroundStyle(Theme.inkSecondary)
+                                    Text("Registry #\(String(user.userId))-AUTH")
+                                        .font(Theme.serialNumberFont(size: 9))
+                                        .foregroundStyle(Theme.inkTertiary)
                                 }
-                                .padding(.vertical, Theme.Spacing.standard)
-                                .contentShape(Rectangle())
-                                .onTapGesture { showClearHistoryAlert = true }
                             }
-
-                            SettingsNoteGroup(title: "Server Connection", hindi: "सर्वर कनेक्शन") {
-                                HStack {
-                                    SettingIcon(icon: "network", color: Theme.securityGold)
-                                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                                        Text("SERVER URL")
-                                            .font(Theme.officialStampFont(size: 9))
-                                            .foregroundStyle(Theme.inkPrimary)
-                                        Text(NetworkManager.shared.baseURL)
-                                            .font(Theme.serialNumberFont(size: 10))
-                                            .foregroundStyle(Theme.inkTertiary)
-                                            .lineLimit(1)
-                                    }
-                                    Spacer()
-                                    Button("Change") {
-                                        serverURLDraft = NetworkManager.shared.baseURL
-                                        serverTestResult = nil
-                                        showServerURLSheet = true
-                                    }
-                                    .font(Theme.officialStampFont(size: 9))
-                                    .foregroundStyle(Theme.securityGold)
-                                }
-                                .padding(.vertical, Theme.Spacing.standard)
-                                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
-                                ToggleNoteRow(icon: "bell.badge", color: Theme.securityGold, title: "IPO Alerts", isOn: $ipoAlerts)
-                            }
-
-                            // Logout stamp
-                            Button(action: { authManager.logout() }) {
-                                HStack {
-                                    Spacer()
-                                    Text("VOID SESSION / SIGN OUT")
-                                        .font(Theme.officialStampFont(size: 9))
-                                        .foregroundStyle(Theme.bearRed)
-                                    Spacer()
-                                }
-                                .padding(.vertical, Theme.Spacing.card)
-                                .banknoteCard()
-                            }
-
-                            if showDevTools {
-                                devToolsSection
-                            }
-
-                            // Official seal footer
-                            VStack(spacing: Theme.Spacing.medium) {
-                                Image(systemName: "laurel.leading")
-                                    .font(.title)
-                                    .foregroundStyle(Theme.inkSecondary.opacity(0.1))
-
-                                Text("NIVESH OFFICIAL TENDER v1.0")
-                                    .font(Theme.officialStampFont(size: 8))
-                                    .foregroundStyle(Theme.inkTertiary)
-                                    .onTapGesture(count: 3) {
-                                        let gen = UIImpactFeedbackGenerator(style: .heavy)
-                                        gen.impactOccurred()
-                                        showDevTools.toggle()
-                                    }
-                            }
-                            .padding(.top, Theme.Spacing.screen)
                         }
-                        .padding(.horizontal, Theme.screenPadding)
 
-                        Spacer(minLength: 40)
+                        PickerNoteRow(icon: "sparkles", color: Theme.securityGold, title: "Default Scan Type", selection: $defaultScanType, options: ["Ask Every Time", "Standard", "Deep", "Extreme"])
+                        ToggleNoteRow(icon: "bolt.fill", color: Theme.bullGreen, title: "Auto-run on Stock Tap", isOn: $autoRunOnTap)
+                        PickerNoteRow(icon: "shield.checkered", color: Theme.securityGold, title: "Risk Tolerance", selection: $riskTolerance, options: ["Conservative", "Moderate", "Aggressive"])
+                        PickerNoteRow(icon: "building.2", color: Theme.inkSecondary, title: "Default Exchange", selection: $defaultExchange, options: ["Auto", "NSE", "BSE"])
+                        NavigationLink(destination: SectorBlacklistView()) {
+                            HStack {
+                                SettingIcon(icon: "tag", color: Theme.inkSecondary)
+                                Text("SECTOR BLACKLIST")
+                                    .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
+                                Spacer()
+                            }
+                            .padding(.vertical, Theme.Spacing.standard)
+                        }
+                        PickerNoteRow(icon: "chart.bar", color: Theme.inkSecondary, title: "Min Market Cap", selection: $minMarketCap, options: ["Any", "Large (>20K Cr)", "Mid (5-20K Cr)", "Small (<5K Cr)"])
+                    } header: {
+                        Text("TRADING PREFERENCES").font(Theme.officialStampFont(size: 9)).tracking(1.5)
+                    }
+
+                    Section {
+                        ToggleNoteRow(icon: "bell.badge", color: Theme.bearRed, title: "Signal Change Alerts", isOn: $signalChangeAlerts)
+                        DatePickerNoteRow(icon: "clock.fill", color: Theme.securityGold, title: "Morning Brief Time", selection: morningBriefDate)
+                        PickerNoteRow(icon: "speaker.wave.2", color: Theme.bearRed, title: "Notification Sound", selection: $notificationSound, options: ["Default", "rupee_rustle.mp3"])
+                        NavigationLink(destination: QuietHoursView()) {
+                            HStack {
+                                SettingIcon(icon: "moon.zzz", color: Theme.inkSecondary)
+                                Text("QUIET HOURS")
+                                    .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
+                                Spacer()
+                            }
+                            .padding(.vertical, Theme.Spacing.standard)
+                        }
+                    } header: {
+                        Text("NOTIFICATIONS").font(Theme.officialStampFont(size: 9)).tracking(1.5)
+                    }
+
+                    Section {
+                        ToggleNoteRow(icon: "waveform.badge.magnifyingglass", color: Theme.securityGold, title: "Deep Scan by Default", isOn: $defaultDeepScan)
+                        ToggleNoteRow(icon: "arrow.triangle.2.circlepath", color: Theme.bearRed, title: "Auto-regenerate Stale", isOn: $autoRegenerateStale)
+                        PickerNoteRow(icon: "gauge.with.dots.needle.33percent", color: Theme.bullGreen, title: "Min Confidence Alert", selection: $minConfidenceAlert, options: ["50%", "65%", "75%", "90%"])
+                        PickerNoteRow(icon: "globe", color: Theme.inkSecondary, title: "Analysis Language", selection: $analysisLanguage, options: ["English", "Hindi", "Hinglish"])
+                        PickerNoteRow(icon: "arrow.triangle.branch", color: Theme.securityGold, title: "Debate Rounds", selection: $debateRounds, options: ["1", "2", "3"])
+                        ToggleNoteRow(icon: "shield.lefthalf.filled", color: Theme.inkSecondary, title: "Show Governance First", isOn: $showGovernanceFirst)
+                        ToggleNoteRow(icon: "arrow.up.circle", color: Theme.bullGreen, title: "Alert on BUY", isOn: $alertOnBuy)
+                        ToggleNoteRow(icon: "arrow.down.circle", color: Theme.bearRed, title: "Alert on SELL", isOn: $alertOnSell)
+                        ToggleNoteRow(icon: "pause.circle", color: Theme.holdAmber, title: "Mute HOLD Signals", isOn: $muteHoldSignals)
+                    } header: {
+                        Text("AI & ANALYSIS").font(Theme.officialStampFont(size: 9)).tracking(1.5)
+                    }
+
+                    Section {
+                        // Denomination theme
+                        ForEach(AppTheme.allCases, id: \.self) { theme in
+                            HStack {
+                                Circle().fill(theme == .darkImmersive ? Color(uiColor:"C8A800") : Color(uiColor:"8B5A42")).frame(width: 24, height: 24)
+                                Text(verbatim: theme == .darkImmersive ? "₹200 Dark" : "₹10 Classic")
+                                    .font(Theme.engravedSerif(size: 14)).foregroundStyle(Theme.inkPrimary)
+                                Spacer()
+                                if theme.rawValue == selectedThemeRaw {
+                                    Image(systemName: "checkmark").foregroundStyle(Theme.securityGold)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                HapticManager.impact(.medium)
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.72)) {
+                                    selectedThemeRaw = theme.rawValue
+                                    ThemeManager.shared.current = theme
+                                }
+                            }
+                        }
+
+                        ToggleNoteRow(icon: "moon.fill", color: .indigo, title: "Dark Inks", isOn: $darkMode)
+                        PickerNoteRow(icon: "textformat.size", color: Theme.inkSecondary, title: "Font Size", selection: $fontSize, options: ["Small", "Standard", "Large"])
+                        PickerNoteRow(icon: "rectangle.3.group", color: Theme.inkSecondary, title: "Layout Density", selection: $layoutDensity, options: ["Compact", "Standard", "Spacious"])
+                        PickerNoteRow(icon: "chart.xyaxis.line", color: Theme.securityGold, title: "Default Chart Range", selection: $defaultChartRange, options: ["1M", "3M", "6M", "1Y"])
+                        ToggleNoteRow(icon: "hare", color: Theme.inkSecondary, title: "Reduce Animations", isOn: $reduceAnimations)
+                        ToggleNoteRow(icon: "character.bubble", color: Theme.inkSecondary, title: "Show Hindi Labels", isOn: $showHindiLabels)
+                    } header: {
+                        Text("APPEARANCE").font(Theme.officialStampFont(size: 9)).tracking(1.5)
+                    }
+
+                    Section {
+                        NavigationLink(destination: ReportManagerView(reportManager: reportManager)) {
+                            HStack {
+                                SettingIcon(icon: "doc.text", color: Theme.securityGold)
+                                Text("SAVED REPORTS")
+                                    .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
+                                Spacer()
+                                Text("\(reportManager.savedReports.count)")
+                                    .font(Theme.serialNumberFont(size: 11)).foregroundStyle(Theme.inkTertiary)
+                            }
+                            .padding(.vertical, Theme.Spacing.standard)
+                        }
+                        Button {
+                            HapticManager.selection()
+                            URLCache.shared.removeAllCachedResponses()
+                        } label: {
+                            HStack {
+                                SettingIcon(icon: "photo.on.rectangle.angled", color: Theme.inkSecondary)
+                                Text("CLEAR IMAGE CACHE")
+                                    .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
+                                Spacer()
+                            }
+                            .padding(.vertical, Theme.Spacing.standard)
+                        }
+                        Button {
+                            HapticManager.selection()
+                            reportManager.savedReports.removeAll()
+                        } label: {
+                            HStack {
+                                SettingIcon(icon: "brain.head.profile", color: Theme.bearRed)
+                                Text("CLEAR ANALYSIS CACHE")
+                                    .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
+                                Spacer()
+                            }
+                            .padding(.vertical, Theme.Spacing.standard)
+                        }
+                        ToggleNoteRow(icon: "eye.slash", color: Theme.inkSecondary, title: "Hide Portfolio Values", isOn: $hidePortfolioValues)
+                        ToggleNoteRow(icon: "touchid", color: Theme.securityGold, title: "Biometric for Trades", isOn: $biometricTradeLock)
+                    } header: {
+                        Text("DATA & PRIVACY").font(Theme.officialStampFont(size: 9)).tracking(1.5)
+                    }
+
+                    Section {
+                        PickerNoteRow(icon: "indianrupeesign", color: Theme.securityGold, title: "Currency Format", selection: $currencyDisplay, options: ["Lakhs/Crores", "Absolute"])
+                        PickerNoteRow(icon: "arrow.triangle.2.circlepath", color: Theme.inkSecondary, title: "Home Auto-refresh", selection: $homeAutoRefreshSeconds, options: ["0", "30", "60", "120"])
+                        ToggleNoteRow(icon: "newspaper", color: Theme.securityGold, title: "IPO Alerts", isOn: $ipoAlerts)
+                        Button(role: .destructive) { showClearHistoryAlert = true } label: {
+                            HStack {
+                                SettingIcon(icon: "trash", color: Theme.bearRed)
+                                Text("VOID ALL RECORDS").font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.bearRed)
+                                Spacer()
+                            }
+                            .padding(.vertical, Theme.Spacing.standard)
+                        }
+                        Button(role: .destructive) { authManager.logout() } label: {
+                            HStack {
+                                SettingIcon(icon: "door.right.hand.open", color: Theme.bearRed)
+                                Text("VOID SESSION").font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.bearRed)
+                                Spacer()
+                            }
+                            .padding(.vertical, Theme.Spacing.standard)
+                        }
+                    } header: {
+                        Text("ACCOUNT").font(Theme.officialStampFont(size: 9)).tracking(1.5)
+                    }
+
+                    if showDevTools {
+                        Section {
+                            Button("Push Test Notification") { showTestNotifSheet = true }
+                            Button("Push Morning Summary Now") { pushMorningSummary() }
+                        } header: {
+                            Text("DEVELOPER TOOLS").font(Theme.officialStampFont(size: 9)).tracking(1.5)
+                        }
                     }
                 }
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
             }
-            .navigationTitle("Registry Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Theme.canvasDeep, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .alert("Void History", isPresented: $showClearHistoryAlert) {
-                Button("Cancel", role: .cancel) { }
-                Button("Void All", role: .destructive) {
-                    let reportsToDelete = reportManager.savedReports
-                    for report in reportsToDelete {
-                        reportManager.deleteReport(ticker: report.ticker)
-                    }
-                }
-            } message: {
-                Text("Are you sure you want to permanently void all locally saved AI analysis reports? This action cannot be reversed.")
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.large)
+            .alert("Void All Records?", isPresented: $showClearHistoryAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Void", role: .destructive) { reportManager.savedReports.removeAll() }
             }
         }
-        .sheet(isPresented: $showServerURLSheet) {
-            ServerURLSheet(
-                draft: $serverURLDraft,
-                testResult: $serverTestResult,
-                testLoading: $serverTestLoading
-            ) { newURL in
-                NetworkManager.shared.updateBaseURL(newURL)
+    }
+
+    private func pushMorningSummary() {
+        Task {
+            do {
+                let payload = try await NetworkManager.shared.sendMorningSummaryNotification()
+                NetworkManager.shared.scheduleLocalNotification(
+                    title: payload.title,
+                    body: payload.body,
+                    userInfo: payload.data.map {
+                        Dictionary(uniqueKeysWithValues: $0.map { ($0.key, $0.value as Any) })
+                    } ?? [:]
+                )
+                notifToastMessage = "Morning summary sent"
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { notifToastMessage = nil }
+            } catch {
+                notifToastMessage = "Failed: \(error.localizedDescription)"
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { notifToastMessage = nil }
             }
         }
     }
@@ -650,36 +645,6 @@ struct SettingsScreen: View {
     }
 }
 
-private struct SettingsNoteGroup<Content: View>: View {
-    let title: String
-    let hindi: String
-    let content: Content
-
-    init(title: String, hindi: String, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.hindi = hindi
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-            HStack(alignment: .bottom, spacing: Theme.Spacing.tight) {
-                Text(hindi)
-                    .font(Theme.hindiFont(size: 9))
-                    .foregroundStyle(Theme.inkSecondary)
-                Text(title.uppercased())
-                    .font(Theme.officialStampFont(size: 9))
-                    .foregroundStyle(Theme.inkPrimary)
-            }
-            .padding(.horizontal, Theme.Spacing.small)
-
-            VStack(spacing: Theme.Spacing.none) { content }
-                .padding(.horizontal, Theme.Spacing.card)
-                .banknoteCard()
-        }
-    }
-}
-
 private struct SettingIcon: View {
     let icon: String
     let color: Color
@@ -738,56 +703,6 @@ private struct PickerNoteRow: View {
                 }
             }
             .tint(Theme.inkSecondary)
-        }
-        .padding(.vertical, Theme.Spacing.standard)
-        Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
-    }
-}
-
-private struct AutoRefreshNoteRow: View {
-    let icon: String
-    let color: Color
-    let title: String
-    @Binding var selection: String
-
-    private let intervals: [(label: String, value: String)] = [
-        ("Manual", "0"),
-        ("5 seconds", "5"),
-        ("15 seconds", "15"),
-        ("30 seconds", "30"),
-        ("60 seconds", "60")
-    ]
-
-    private var selectedLabel: String {
-        intervals.first(where: { $0.value == selection })?.label ?? "Manual"
-    }
-
-    var body: some View {
-        HStack {
-            SettingIcon(icon: icon, color: color)
-            Text(title.uppercased())
-                .font(Theme.officialStampFont(size: 9))
-                .foregroundStyle(Theme.inkPrimary)
-            Spacer()
-            Menu {
-                ForEach(intervals, id: \.value) { option in
-                    Button {
-                        HapticManager.selection()
-                        selection = option.value
-                    } label: {
-                        HStack {
-                            Text(option.label)
-                            if selection == option.value {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-            } label: {
-                Text(selectedLabel)
-                    .font(Theme.serialNumberFont(size: 13))
-                    .foregroundStyle(Theme.inkSecondary)
-            }
         }
         .padding(.vertical, Theme.Spacing.standard)
         Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
