@@ -627,6 +627,16 @@ struct HomeScreen: View {
     @State private var showSearch: Bool = false
     @State private var searchText: String = ""
     @FocusState private var searchFocused: Bool
+    @AppStorage("morningBriefShownDate") private var morningBriefShownDate = ""
+    @State private var briefDismissed = false
+
+    private var shouldShowBriefToday: Bool {
+        let today = DateFormatter()
+        today.dateFormat = "yyyy-MM-dd"
+        let todayStr = today.string(from: Date())
+        if morningBriefShownDate != todayStr { briefDismissed = false }
+        return !briefDismissed && viewModel.morningBriefData != nil
+    }
     @State private var showGlossary = false
 
     // Stock tap action sheet (universal)
