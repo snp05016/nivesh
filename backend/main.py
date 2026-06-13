@@ -365,6 +365,7 @@ from routers import auth, portfolio, market, analysis, alerts, user, dashboard, 
 from routers import harvester as harvester_router
 
 app.include_router(auth.router)
+app.include_router(correlation.router)
 app.include_router(portfolio.router)
 app.include_router(market.router)
 app.include_router(analysis.router)
@@ -377,7 +378,6 @@ app.include_router(brainstorming.router)
 app.include_router(strategy.router)
 app.include_router(copilot.router)
 app.include_router(anomalies.router)
-app.include_router(correlation.router)
 app.include_router(nl_screener.router)
 app.include_router(stress_test.router)
 app.include_router(sector_rotation.router, prefix="/api/v1")
