@@ -778,7 +778,7 @@ struct AnalysisScreen: View {
                 }
                 VStack(spacing: Theme.Spacing.small) {
                     Text("CONFIDENCE").font(Theme.microLabel()).foregroundStyle(Theme.inkTertiary)
-                        .financeTerm("Confidence Score")
+                        .explainableTerm("Confidence Score")
                     HStack(spacing: Theme.Spacing.xSmall) {
                         ForEach(0..<5, id: \.self) { i in
                             RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
@@ -2069,7 +2069,7 @@ private struct AnalysisMetricCell: View {
             Text(label)
                 .font(Theme.officialStampFont(size: 8)).tracking(1.2)
                 .foregroundStyle(Theme.inkTertiary)
-                .financeTerm(term)
+                .explainableTerm(term)
             Text(value)
                 .font(Theme.serialNumberFont(size: 14, relativeTo: .footnote).weight(.bold))
                 .foregroundStyle(Theme.inkPrimary)
@@ -2328,7 +2328,7 @@ private struct ConfidenceCard: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text("CONFIDENCE SCORE")
                         .font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkSecondary)
-                        .financeTerm("Confidence Score")
+                        .explainableTerm("Confidence Score")
                     Text(label)
                         .font(Theme.engravedSerif(size: 15, weight: .bold)).foregroundStyle(color)
                 }
