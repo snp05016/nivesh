@@ -60,15 +60,9 @@ struct LaunchSequenceView: View {
             Rectangle()
                 .fill(
                     LinearGradient(
-                        gradient: Gradient(stops: [
-                            .init(color: .clear, location: 0),
-                            .init(color: .clear, location: shimmerPosition - 0.2),
-                            .init(color: Theme.securityGold, location: shimmerPosition),
-                            .init(color: .clear, location: shimmerPosition + 0.2),
-                            .init(color: .clear, location: 1),
-                        ]),
-                        startPoint: .leading,
-                        endPoint: .trailing
+                        gradient: Gradient(colors: [.clear, Theme.securityGold, .clear]),
+                        startPoint: UnitPoint(x: shimmerPosition - 0.15, y: 0.5),
+                        endPoint: UnitPoint(x: shimmerPosition + 0.15, y: 0.5)
                     )
                 )
                 .frame(width: wordmarkMeasuredWidth, height: 1.5)
@@ -126,11 +120,8 @@ struct LaunchSequenceView: View {
     }
 
     private var shimmerPosition: CGFloat {
-        let t = timelineProgress
-        if t < 0.55 { return -0.2 }
-        // Sweep from -0.2 to 1.2 over the active shimmer window (0.55→1.0), loop via mod
-        let sweep = (t - 0.55) / 0.45 * 1.4 - 0.2
-        return sweep.truncatingRemainder(dividingBy: 1.4)
+        guard timelineProgress >= 0.55 else { return -0.5 }
+        return (timelineProgress - 0.55) / 0.45 * 2.0 - 0.5
     }
 
     // MARK: - Timeline driver
