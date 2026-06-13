@@ -13,7 +13,17 @@ struct CopilotScreen: View {
     @Environment(\.dismiss) var dismiss
     @State private var messageText: String = ""
     @State private var messages: [ChatMessage] = [
-        ChatMessage(role: "assistant", content: "How can I assist you with your financial analysis today?", contextCards: nil)
+        ChatMessage(role: "assistant", content: """
+        I am your Nivesh AI Copilot. Here is what I can help you with:
+        
+        \u{2022} Portfolio Insights — Ask about your holdings, P&L, or risk exposure
+        \u{2022} Stock Analysis — Request deep research on any NSE stock (e.g. \"Analyze RELIANCE\")
+        \u{2022} App Navigation — Ask where any feature lives (e.g. \"Where is the Correlation Matrix?\")
+        \u{2022} Market Terms — Tap underlined terms anywhere in the app, or ask me to explain concepts
+        \u{2022} Market Intel — Ask about sector trends, indices, or upcoming earnings
+        
+        How can I help you today?
+        """, contextCards: nil)
     ]
     @State private var isTyping: Bool = false
     @State private var dotOffset: CGFloat = 0
@@ -221,7 +231,7 @@ struct CopilotScreen: View {
         let requestBody: [String: Any] = [
             "user_message": userMessage,
             "conversation_history": history,
-            "current_context": currentContext ?? [:]
+            "current_context": (currentContext ?? [:]).merging(Self.appNavigationContext) { _, new in new }
         ]
         
         guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/copilot/chat") else {
@@ -294,7 +304,40 @@ struct AnyCodable: Codable {
 struct CopilotFloatingButtonModifier: ViewModifier {
     @State private var isShowingCopilot = false
     let currentContext: [String: Any]?
-    
+
+    /// Hardcoded app navigation map so the copilot can guide users to any feature.
+    private static let appNavigationContext: [String: Any] = [
+        "app_navigation": """
+        TAB BAR (5 tabs at bottom):
+        Tab 1 - Home: Main dashboard, market indices, morning brief, quick analysis access.
+        Tab 2 - Markets: Hub for all analytical tools. Contains sub-sections:
+          - Overview: Cards showing all market tools
+          - Earnings Dashboard: YoY growth, earnings calendar, beat/miss, post-result movers
+          - Technical Momentum Scanner: OI trends, golden/death cross, sector rotation signals
+          - Pre-IPO Marketplace: OTC price discovery, SME board, unlisted shares
+          - Screener: Standard stock discovery, search by name/ticker, preset screens
+          - Alerts: Price watch, target triggers, surveillance flags
+          - Strategy Lab: Backtest trading strategies against historical data
+          - NL Screener: Natural language stock search (e.g. "profitable midcaps with zero debt")
+          - Correlation Matrix: Cross-asset correlation heat-map for portfolio diversification
+          - Market Anomalies: Unusual volume spikes, price breakouts, order book surveillance
+          - Sector Rotation: Capital flow heat-map across NSE sectors
+          - Stress Test: Portfolio shock simulation under macroeconomic scenarios
+          - Earnings Surprise: Historical beats/misses + current quarter estimates
+        Tab 3 - Ideas: Expert stock ideas, curated research, thematic baskets from SEBI-registered advisors.
+        Tab 4 - News: Multimedia news feed, articles, real-time financial newswire.
+        Tab 5 - Portfolio: Holdings, net worth, daily P&L, transaction history, allocation breakdown, risk analysis, red flags, trade journal, exports (Excel/PDF).
+        
+        ADDITIONAL FEATURES:
+        - AI Copilot (floating sparkles button): Available everywhere via the gold sparkles icon in bottom-right corner.
+        - Stock Analysis: Tap any stock to open StockActionHubView with 5 analysis types (Quick Scan, Standard, Deep Dive, Technical Only, Fundamental Only).
+        - Settings (gear icon on Home screen): Server URL, theme (dark/light), biometric lock, dev tools (triple-tap profile card).
+        - Glossary: Tap underlined terms anywhere to see definitions. Full glossary in Settings > Learn Financial Terms.
+        - AI How It Works: Pipeline explainer accessible from StockActionHubView info button.
+        - Morning Brief: Daily AI-generated portfolio summary card on Home screen.
+        """
+    ]
+
     func body(content: Content) -> some View {
         ZStack {
             content
