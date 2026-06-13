@@ -18,6 +18,35 @@ struct SettingsScreen: View {
     @AppStorage("notificationSound") private var notificationSound = "Default"
     @AppStorage("selectedTheme") private var selectedThemeRaw = AppTheme.darkImmersive.rawValue
 
+    // Trading Preferences
+    @AppStorage("nivesh_defaultScanType") private var defaultScanType = "ask"
+    @AppStorage("nivesh_autoRunOnTap") private var autoRunOnTap = false
+    @AppStorage("nivesh_riskTolerance") private var riskTolerance = "Moderate"
+    @AppStorage("nivesh_defaultExchange") private var defaultExchange = "Auto"
+    @AppStorage("nivesh_minMarketCap") private var minMarketCap = "Any"
+    @AppStorage("nivesh_signalChangeAlerts") private var signalChangeAlerts = false
+
+    // AI & Analysis
+    @AppStorage("nivesh_autoRegenerateStale") private var autoRegenerateStale = false
+    @AppStorage("nivesh_minConfidenceAlert") private var minConfidenceAlert = "50%"
+    @AppStorage("nivesh_analysisLanguage") private var analysisLanguage = "English"
+    @AppStorage("nivesh_debateRounds") private var debateRounds = "1"
+    @AppStorage("nivesh_showGovernanceFirst") private var showGovernanceFirst = false
+    @AppStorage("nivesh_alertOnBuy") private var alertOnBuy = true
+    @AppStorage("nivesh_alertOnSell") private var alertOnSell = true
+    @AppStorage("nivesh_muteHoldSignals") private var muteHoldSignals = false
+
+    // Appearance
+    @AppStorage("nivesh_fontSize") private var fontSize = "Standard"
+    @AppStorage("nivesh_layoutDensity") private var layoutDensity = "Standard"
+    @AppStorage("nivesh_defaultChartRange") private var defaultChartRange = "1M"
+    @AppStorage("nivesh_reduceAnimations") private var reduceAnimations = false
+    @AppStorage("nivesh_showHindiLabels") private var showHindiLabels = true
+
+    // Data & Privacy
+    @AppStorage("nivesh_hidePortfolioValues") private var hidePortfolioValues = false
+    @AppStorage("nivesh_biometricTradeLock") private var biometricTradeLock = false
+
     @StateObject private var notificationManager = NotificationManager.shared
 
     @State private var showClearHistoryAlert = false
