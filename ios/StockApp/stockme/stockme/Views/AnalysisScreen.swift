@@ -62,6 +62,16 @@ class AnalysisViewModel: ObservableObject {
                 let start = try await NetworkManager.shared.startAnalysisJob(
                     ticker: ticker, exchange: "NSE", userId: userId, scanType: scanType)
 
+                // Cache hit: backend returned full analysis directly (no job needed)
+                if let cachedAnalysis = start.analysis {
+                    await MainActor.run {
+                        analysis = cachedAnalysis
+                        reportManager.saveReport(cachedAnalysis)
+                        isLoading = false
+                    }
+                    return
+                }
+
                 if start.status == "QUEUED" || start.status == "RUNNING" || start.status == "ALREADY_RUNNING" {
                     jobId = start.jobId
                     // Poll every 2s until terminal — try raw dict first, StockAnalysis fallback
