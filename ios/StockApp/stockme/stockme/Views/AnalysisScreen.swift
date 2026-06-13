@@ -62,7 +62,6 @@ class AnalysisViewModel: ObservableObject {
                 let start = try await NetworkManager.shared.startAnalysisJob(
                     ticker: ticker, exchange: "NSE", userId: userId, scanType: scanType)
 
-                // Cache hit: backend returned full analysis directly (no job needed)
                 if let cachedAnalysis = start.analysis {
                     await MainActor.run {
                         analysis = cachedAnalysis
@@ -251,7 +250,6 @@ struct AnalysisScreen: View {
                 renderErrorState(errorInfo)
             }
         }
-        .crashGuard("AnalysisScreen")
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
@@ -551,7 +549,7 @@ struct AnalysisScreen: View {
                                 Text("KEY EXECUTIVES")
                                     .font(Theme.sectionCapsLabel(size: 8))
                                     .foregroundStyle(Theme.inkSecondary)
-                                ForEach(Array(officers.enumerated()), id: \.offset) { _, officer in
+                                ForEach(officers, id: \.self) { officer in
                                     Text("• \(officer.uppercased())")
                                         .font(Theme.monoTabular(size: 13))
                                         .foregroundStyle(Theme.inkPrimary)
@@ -625,8 +623,6 @@ struct AnalysisScreen: View {
 
                 VStack(spacing: Theme.Spacing.sectionGap) {
                     stockHeaderSection(analysis)
-                    ExplainThisSignalCard(analysis: analysis)
-                        .padding(.bottom, Theme.Spacing.small)
                     aiVerdictCard(analysis)
                 if let prev = previousAnalysis, prev.analysisDate != analysis.analysisDate {
                     whatChangedSection(analysis, previous: prev)
@@ -640,10 +636,6 @@ struct AnalysisScreen: View {
                 newsSection(analysis)
                 whatToWatchSection(analysis)
                 disclaimerSection(analysis)
-                if analysis.analysisTier == "extreme" {
-                    DossierFooter()
-                        .padding(.top, Theme.Spacing.large)
-                }
                 Spacer(minLength: 100)
                 }
                 .padding(.horizontal, Theme.screenPadding)
@@ -657,11 +649,7 @@ struct AnalysisScreen: View {
     private func signalTimelineSection(_ analysis: StockAnalysis) -> some View {
         if let prices = viewModel.quickInfo?.priceHistory90d, !prices.isEmpty {
             VStack(spacing: Theme.Spacing.standard) {
-                if analysis.analysisTier == "extreme" {
-                    DossierSectionHeader(title: "SIGNAL ACCURACY TIMELINE")
-                } else {
-                    SectionHeaderView(title: "SIGNAL ACCURACY TIMELINE")
-                }
+                SectionHeaderView(title: "SIGNAL ACCURACY TIMELINE")
                 AnalysisHistoryTimelineView(ticker: ticker, priceHistory: prices)
             }
         }
@@ -671,10 +659,6 @@ struct AnalysisScreen: View {
 
     private func stockHeaderSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            if analysis.analysisTier == "extreme" {
-                DossierSectionHeader(title: "SUBJECT PROFILE")
-                    .padding(.bottom, Theme.Spacing.small)
-            }
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text(analysis.companyName)
@@ -783,20 +767,11 @@ struct AnalysisScreen: View {
 
     private func aiVerdictCard(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.none) {
-            if analysis.analysisTier == "extreme" {
-                DossierSectionHeader(title: "AI VERDICT")
-                    .padding(.bottom, Theme.Spacing.medium)
-            } else {
-                SectionDivider()
-            }
+            SectionDivider()
             VStack(alignment: .leading, spacing: Theme.Spacing.card) {
                 HStack {
-                    if analysis.analysisTier != "extreme" {
-                        Text("AI VERDICT").font(Theme.sectionCapsLabel()).tracking(1.5).foregroundStyle(Theme.inkPrimary)
-                        Spacer()
-                    } else {
-                        Spacer()
-                    }
+                    Text("AI VERDICT").font(Theme.sectionCapsLabel()).tracking(1.5).foregroundStyle(Theme.inkPrimary)
+                    Spacer()
                     Text(analysis.analysisDate).font(Theme.microLabel()).foregroundStyle(Theme.inkTertiary)
                 }
                 HStack(spacing: Theme.Spacing.standard) {
@@ -811,7 +786,7 @@ struct AnalysisScreen: View {
                 }
                 VStack(spacing: Theme.Spacing.small) {
                     Text("CONFIDENCE").font(Theme.microLabel()).foregroundStyle(Theme.inkTertiary)
-                        .explainableTerm("Confidence Score")
+                        .financeTerm("Confidence Score")
                     HStack(spacing: Theme.Spacing.xSmall) {
                         ForEach(0..<5, id: \.self) { i in
                             RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
@@ -910,11 +885,7 @@ struct AnalysisScreen: View {
 
     private func dialecticDebateSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            if analysis.analysisTier == "extreme" {
-                DossierSectionHeader(title: "DIALECTIC DEBATE")
-            } else {
-                SectionHeaderView(title: "DIALECTICAL ANALYSIS")
-            }
+            SectionHeaderView(title: "DIALECTICAL ANALYSIS")
             HStack(alignment: .top, spacing: Theme.Spacing.tight) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                     HStack(spacing: Theme.Spacing.small) {
@@ -970,11 +941,7 @@ struct AnalysisScreen: View {
 
     private func timeHorizonSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            if analysis.analysisTier == "extreme" {
-                DossierSectionHeader(title: "TIME HORIZONS")
-            } else {
-                SectionHeaderView(title: "PRICE PROJECTIONS")
-            }
+            SectionHeaderView(title: "PRICE PROJECTIONS")
             HStack(spacing: Theme.Spacing.card) {
                 horizonCard(label: "3M", target: analysis.targetPrices.shortTerm3m, upside: analysis.upsideDownsidePct.shortTerm)
                 horizonCard(label: "12M", target: analysis.targetPrices.mediumTerm12m, upside: analysis.upsideDownsidePct.mediumTerm, featured: true)
@@ -1007,15 +974,7 @@ struct AnalysisScreen: View {
 
     private func riskFactorsSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            if analysis.analysisTier == "extreme" {
-                ClassifiedStamp("CLASSIFIED", size: 56)
-                    .frame(maxWidth: .infinity, alignment: .topTrailing)
-                    .offset(x: -8, y: -8)
-                    .zIndex(1)
-                DossierSectionHeader(title: "RISK FACTORS")
-            } else {
-                SectionHeaderView(title: "RISK FACTORS")
-            }
+            SectionHeaderView(title: "RISK FACTORS")
             VStack(spacing: Theme.Spacing.tight) {
                 ForEach(Array(analysis.keyRisks.enumerated()), id: \.offset) { idx, risk in
                     let severity: SeverityDot.Severity = idx == 0 ? .high : (idx == 1 ? .medium : .low)
@@ -1042,15 +1001,7 @@ struct AnalysisScreen: View {
 
     private func fundamentalsSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            if analysis.analysisTier == "extreme" {
-                ClassifiedStamp("CONFIDENTIAL", size: 56)
-                    .frame(maxWidth: .infinity, alignment: .topTrailing)
-                    .offset(x: -8, y: -8)
-                    .zIndex(1)
-                DossierSectionHeader(title: "FUNDAMENTALS")
-            } else {
-                SectionHeaderView(title: "FUNDAMENTALS")
-            }
+            SectionHeaderView(title: "FUNDAMENTALS")
 
             // Screen C — 3-column numeric metric grid with long-press term tooltips
             if let info = viewModel.quickInfo {
@@ -1100,13 +1051,9 @@ struct AnalysisScreen: View {
 
     private func whatToWatchSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            if analysis.analysisTier == "extreme" {
-                DossierSectionHeader(title: "SURVEILLANCE WATCHLIST")
-            } else {
-                SectionHeaderView(title: "WHAT TO WATCH")
-            }
+            SectionHeaderView(title: "WHAT TO WATCH")
             VStack(spacing: Theme.Spacing.tight) {
-                ForEach(Array(analysis.whatToWatch.enumerated()), id: \.offset) { _, item in
+                ForEach(analysis.whatToWatch, id: \.self) { item in
                     HStack(alignment: .top, spacing: Theme.Spacing.medium) {
                         Circle().fill(Theme.goldPrimary).frame(width: 6, height: 6).padding(.top, Theme.Spacing.tight)
                         Text(stripEmoji(item))
@@ -1148,26 +1095,16 @@ struct AnalysisScreen: View {
     private func newsSection(_ analysis: StockAnalysis) -> some View {
         if let news = analysis.recentNews, !news.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                if analysis.analysisTier == "extreme" {
-                    DossierSectionHeader(title: "SIGNALS INTELLIGENCE")
-                    HStack {
-                        Spacer()
-                        Text("\(news.count) articles")
-                            .font(Theme.microLabel(size: 9))
-                            .foregroundStyle(Theme.inkTertiary)
-                    }
-                } else {
-                    SectionDivider()
-                    HStack {
-                        Text("RECENT NEWS")
-                            .font(Theme.officialStampFont(size: 9))
-                            .tracking(1.5)
-                            .foregroundStyle(Theme.inkSecondary)
-                        Spacer()
-                        Text("\(news.count) articles")
-                            .font(Theme.microLabel(size: 9))
-                            .foregroundStyle(Theme.inkTertiary)
-                    }
+                SectionDivider()
+                HStack {
+                    Text("RECENT NEWS")
+                        .font(Theme.officialStampFont(size: 9))
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.inkSecondary)
+                    Spacer()
+                    Text("\(news.count) articles")
+                        .font(Theme.microLabel(size: 9))
+                        .foregroundStyle(Theme.inkTertiary)
                 }
                 ForEach(news.prefix(5)) { item in
                     NewsItemCard(item: item)
@@ -1180,8 +1117,6 @@ struct AnalysisScreen: View {
 
     @ViewBuilder
     private func extremeChartSections(_ analysis: StockAnalysis) -> some View {
-        DossierSectionHeader(title: "BONUS CHARTS")
-            .padding(.bottom, Theme.Spacing.small)
         // Factor Radar + Scenarios
         if let fs = analysis.factorScores {
             VStack(alignment: .leading, spacing: Theme.Spacing.card) {
@@ -1557,11 +1492,7 @@ struct AnalysisScreen: View {
 
     private func disclaimerSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            if analysis.analysisTier == "extreme" {
-                DossierSectionHeader(title: "DISCLAIMER")
-            } else {
-                SectionDivider()
-            }
+            SectionDivider()
             Text(stripEmoji(analysis.disclaimer))
                 .font(Theme.microLabel(size: 9)).foregroundStyle(Theme.inkTertiary)
                 .lineSpacing(4).frame(maxWidth: .infinity, alignment: .leading)
@@ -1894,155 +1825,6 @@ struct AnalysisScreen: View {
     }
 }
 
-// MARK: - Explain This Signal Card
-
-private struct ExplainThisSignalCard: View {
-    let analysis: StockAnalysis
-    @State private var isCollapsed: Bool
-
-    init(analysis: StockAnalysis) {
-        self.analysis = analysis
-        self._isCollapsed = State(initialValue: UserDefaults.standard.bool(forKey: "explain_collapsed_\(analysis.ticker)"))
-    }
-
-    var body: some View {
-        VStack(spacing: Theme.Spacing.none) {
-            Button {
-                HapticManager.selection()
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    isCollapsed.toggle()
-                    UserDefaults.standard.set(isCollapsed, forKey: "explain_collapsed_\(analysis.ticker)")
-                }
-            } label: {
-                HStack {
-                    Image(systemName: "lightbulb.fill")
-                        .foregroundStyle(Theme.securityGold)
-                        .font(.title3)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(signalTitle)
-                            .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .body))
-                            .foregroundStyle(Theme.securityGold)
-                        if isCollapsed {
-                            Text("Tap to understand this signal")
-                                .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .caption))
-                                .foregroundStyle(Theme.inkTertiary)
-                        }
-                    }
-
-                    Spacer()
-
-                    Image(systemName: isCollapsed ? "chevron.down" : "chevron.up")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.inkTertiary)
-                }
-                .padding(Theme.Spacing.card)
-                .banknoteCard()
-            }
-            .buttonStyle(EKPressStyle())
-
-            if !isCollapsed {
-                VStack(alignment: .leading, spacing: Theme.Spacing.card) {
-                    Text("In simple terms:")
-                        .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
-                        .foregroundStyle(Theme.inkPrimary)
-
-                    if !analysis.bullCase.isEmpty {
-                        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                            Label("What's Going Well", systemImage: "checkmark.circle.fill")
-                                .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .callout))
-                                .foregroundStyle(Theme.bullGreen)
-                            ForEach(Array(analysis.bullCase.prefix(4).enumerated()), id: \.offset) { _, point in
-                                HStack(alignment: .top, spacing: Theme.Spacing.small) {
-                                    Text("•")
-                                        .foregroundStyle(Theme.bullGreen)
-                                    Text(point)
-                                        .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
-                                        .foregroundStyle(Theme.inkSecondary)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                        .lineSpacing(3)
-                                }
-                            }
-                        }
-                    }
-
-                    if let flags = analysis.governanceFlags, !flags.isEmpty {
-                        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                            Label("Governance Alert", systemImage: "exclamationmark.shield.fill")
-                                .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .callout))
-                                .foregroundStyle(Theme.bearRed)
-                            ForEach(flags.prefix(3), id: \.id) { flag in
-                                HStack(alignment: .top, spacing: Theme.Spacing.small) {
-                                    Text("⚠")
-                                    Text(flag.detail ?? flag.flag ?? "")
-                                        .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
-                                        .foregroundStyle(Theme.inkSecondary)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                        .lineSpacing(3)
-                                }
-                            }
-                        }
-                    }
-
-                    let watchItems = analysis.keyRisks.prefix(3) + analysis.whatToWatch.prefix(2)
-                    if !watchItems.isEmpty {
-                        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                            Label("What to Watch", systemImage: "exclamationmark.triangle.fill")
-                                .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .callout))
-                                .foregroundStyle(Theme.bearRed)
-                            ForEach(Array(watchItems.enumerated()), id: \.offset) { _, point in
-                                HStack(alignment: .top, spacing: Theme.Spacing.small) {
-                                    Text("•")
-                                        .foregroundStyle(Theme.bearRed)
-                                    Text(point)
-                                        .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
-                                        .foregroundStyle(Theme.inkSecondary)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                        .lineSpacing(3)
-                                }
-                            }
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                        Label("Confidence: \(analysis.confidencePercent)%", systemImage: "gauge.with.dots.needle.33percent")
-                            .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .callout))
-                            .foregroundStyle(Theme.inkPrimary)
-                        if let rationale = analysis.confidenceRationale, !rationale.isEmpty {
-                            Text(rationale)
-                                .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
-                                .foregroundStyle(Theme.inkSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .lineSpacing(3)
-                        }
-                    }
-
-                    Text("Underlined terms are tappable for definitions")
-                        .font(Theme.microLabel(size: 9))
-                        .foregroundStyle(Theme.inkTertiary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
-                .padding(Theme.Spacing.card)
-                .padding(.top, 0)
-                .banknoteCard()
-                .padding(.top, Theme.Spacing.small)
-            }
-        }
-        .padding(.horizontal, Theme.screenPadding)
-    }
-
-    private var signalTitle: String {
-        switch analysis.signal {
-        case .bullish: return "Why Is This a BUY?"
-        case .cautiously_bullish: return "Why Is This Cautiously Bullish?"
-        case .neutral: return "Why Is This NEUTRAL?"
-        case .hold: return "Why Is This a HOLD?"
-        case .cautiously_bearish: return "Why Is This Cautiously Bearish?"
-        case .bearish: return "Why Is This a SELL?"
-        }
-    }
-}
-
 // MARK: - Macro Impact Banner
 
 private struct MacroImpactBanner: View {
@@ -2146,7 +1928,7 @@ private struct AnalysisMetricCell: View {
             Text(label)
                 .font(Theme.officialStampFont(size: 8)).tracking(1.2)
                 .foregroundStyle(Theme.inkTertiary)
-                .explainableTerm(term)
+                .financeTerm(term)
             Text(value)
                 .font(Theme.serialNumberFont(size: 14, relativeTo: .footnote).weight(.bold))
                 .foregroundStyle(Theme.inkPrimary)
@@ -2316,7 +2098,7 @@ private struct AnalysisNoteSection: View {
                 .foregroundStyle(Theme.inkPrimary)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                ForEach(items, id: \.self) { item in
                     HStack(alignment: .top, spacing: Theme.Spacing.standard) {
                         Rectangle()
                             .fill(color.opacity(0.5))
@@ -2405,7 +2187,7 @@ private struct ConfidenceCard: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text("CONFIDENCE SCORE")
                         .font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkSecondary)
-                        .explainableTerm("Confidence Score")
+                        .financeTerm("Confidence Score")
                     Text(label)
                         .font(Theme.engravedSerif(size: 15, weight: .bold)).foregroundStyle(color)
                 }
@@ -2738,95 +2520,6 @@ private struct CollapsibleSection<Content: View>: View {
                 .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight))
             }
         }
-    }
-}
-
-// MARK: - Dossier Components
-
-private struct DossierSectionHeader: View {
-    let title: String
-    @State private var revealed = false
-
-    var body: some View {
-        if revealed {
-            Text(title.uppercased())
-                .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
-                .tracking(2)
-                .foregroundStyle(Theme.inkPrimary)
-                .transition(.opacity.combined(with: .move(edge: .leading)))
-        } else {
-            HStack(spacing: 0) {
-                Text("████████  ")
-                    .font(Theme.serialNumberFont(size: 10, relativeTo: .caption))
-                    .foregroundStyle(Theme.bearRed.opacity(0.5))
-                Text(title.uppercased())
-                    .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
-                    .tracking(2)
-                    .foregroundStyle(Theme.bearRed.opacity(0.4))
-                    .strikethrough(true, color: Theme.bearRed.opacity(0.3))
-            }
-            .padding(.horizontal, Theme.Spacing.small)
-            .padding(.vertical, Theme.Spacing.tight)
-            .background(Theme.bearRed.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
-            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.bearRed.opacity(0.15), lineWidth: 0.5))
-            .onAppear {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.7).delay(0.15)) {
-                    revealed = true
-                }
-            }
-        }
-    }
-}
-
-private struct ClassifiedStamp: View {
-    let text: String
-    let size: CGFloat
-
-    init(_ text: String = "CLASSIFIED", size: CGFloat = 64) {
-        self.text = text
-        self.size = size
-    }
-
-    var body: some View {
-        Text(text.uppercased())
-            .font(Theme.officialStampFont(size: 6, relativeTo: .caption2))
-            .tracking(2)
-            .foregroundStyle(Theme.bearRed.opacity(0.18))
-            .frame(width: size, height: size)
-            .overlay(
-                Circle()
-                    .strokeBorder(Theme.bearRed.opacity(0.12), style: StrokeStyle(lineWidth: 1.5, dash: [4, 2]))
-            )
-            .rotationEffect(.degrees(-12))
-    }
-}
-
-private struct DossierFooter: View {
-    var body: some View {
-        VStack(spacing: Theme.Spacing.xSmall) {
-            GuillocheDivider()
-            HStack {
-                Text("DOCUMENT END")
-                    .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
-                    .tracking(1.5)
-                    .foregroundStyle(Theme.inkTertiary)
-                Text("·")
-                    .foregroundStyle(Theme.inkTertiary)
-                Text("Nivesh AI Research Desk")
-                    .font(Theme.engravedSerif(size: 8, weight: .regular, relativeTo: .caption2))
-                    .foregroundStyle(Theme.inkTertiary)
-                Text("·")
-                    .foregroundStyle(Theme.inkTertiary)
-                Text("UNCLASSIFIED")
-                    .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
-                    .tracking(1)
-                    .foregroundStyle(Theme.bullGreen.opacity(0.5))
-            }
-            .frame(maxWidth: .infinity, alignment: .center)
-        }
-        .padding(.horizontal, Theme.screenPadding)
-        .padding(.vertical, Theme.Spacing.standard)
     }
 }
 // Item 14: MagnificationGesture added in StockCharts.swift
