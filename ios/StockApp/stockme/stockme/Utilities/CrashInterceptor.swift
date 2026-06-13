@@ -1,12 +1,12 @@
 import Foundation
 import UIKit
 
-// Global bridge for C signal handlers — must be top-level to avoid context capture
-private var _niveshSignalBridgeImpl: ((Int32) -> Void)?
+// Global bridges for C function pointers — must be top-level, zero context capture
+private var _exceptionBridge: ((NSException) -> Void)?
+private var _signalBridge: ((Int32) -> Void)?
 
-private func _niveshSignalBridge(_ sig: Int32) {
-    _niveshSignalBridgeImpl?(sig)
-}
+private func _niveshOnException(_ e: NSException) { _exceptionBridge?(e) }
+private func _niveshOnSignal(_ sig: Int32)        { _signalBridge?(sig) }
 
 enum CrashInterceptor {
     private static var didRegister = false
@@ -15,18 +15,21 @@ enum CrashInterceptor {
         guard !didRegister else { return }
         didRegister = true
 
-        NSSetUncaughtExceptionHandler { exception in
+        // ObjC exception handler — via global bridge (C function pointer)
+        _exceptionBridge = { exception in
             let name = exception.name.rawValue
             let reason = exception.reason ?? ""
             let stack = exception.callStackSymbols.prefix(20).joined(separator: "\n")
             record(type: .exception, signal: nil, name: name, reason: reason,
                    stackTrace: stack, viewPath: CrashGuard.lastViewPath)
         }
+        NSSetUncaughtExceptionHandler(_niveshOnException)
 
-        _niveshSignalBridgeImpl = { sig in handleSignal(sig) }
+        // POSIX signal handlers — via global bridge (C function pointer)
+        _signalBridge = { sig in handleSignal(sig) }
         let signals: [Int32] = [SIGABRT, SIGSEGV, SIGBUS, SIGILL, SIGTRAP, SIGFPE]
         for sig in signals {
-            signal(sig, _niveshSignalBridge)
+            signal(sig, _niveshOnSignal)
         }
     }
 
