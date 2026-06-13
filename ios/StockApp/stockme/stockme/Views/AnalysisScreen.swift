@@ -2663,4 +2663,93 @@ private struct CollapsibleSection<Content: View>: View {
         }
     }
 }
+
+// MARK: - Dossier Components
+
+private struct DossierSectionHeader: View {
+    let title: String
+    @State private var revealed = false
+
+    var body: some View {
+        if revealed {
+            Text(title.uppercased())
+                .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
+                .tracking(2)
+                .foregroundStyle(Theme.inkPrimary)
+                .transition(.opacity.combined(with: .move(edge: .leading)))
+        } else {
+            HStack(spacing: 0) {
+                Text("████████  ")
+                    .font(Theme.serialNumberFont(size: 10, relativeTo: .caption))
+                    .foregroundStyle(Theme.bearRed.opacity(0.5))
+                Text(title.uppercased())
+                    .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
+                    .tracking(2)
+                    .foregroundStyle(Theme.bearRed.opacity(0.4))
+                    .strikethrough(true, color: Theme.bearRed.opacity(0.3))
+            }
+            .padding(.horizontal, Theme.Spacing.small)
+            .padding(.vertical, Theme.Spacing.tight)
+            .background(Theme.bearRed.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
+            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.bearRed.opacity(0.15), lineWidth: 0.5))
+            .onAppear {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.7).delay(0.15)) {
+                    revealed = true
+                }
+            }
+        }
+    }
+}
+
+private struct ClassifiedStamp: View {
+    let text: String
+    let size: CGFloat
+
+    init(_ text: String = "CLASSIFIED", size: CGFloat = 64) {
+        self.text = text
+        self.size = size
+    }
+
+    var body: some View {
+        Text(text.uppercased())
+            .font(Theme.officialStampFont(size: 6, relativeTo: .caption2))
+            .tracking(2)
+            .foregroundStyle(Theme.bearRed.opacity(0.18))
+            .frame(width: size, height: size)
+            .overlay(
+                Circle()
+                    .strokeBorder(Theme.bearRed.opacity(0.12), style: StrokeStyle(lineWidth: 1.5, dash: [4, 2]))
+            )
+            .rotationEffect(.degrees(-12))
+    }
+}
+
+private struct DossierFooter: View {
+    var body: some View {
+        VStack(spacing: Theme.Spacing.xSmall) {
+            GuillocheDivider()
+            HStack {
+                Text("DOCUMENT END")
+                    .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
+                    .tracking(1.5)
+                    .foregroundStyle(Theme.inkTertiary)
+                Text("·")
+                    .foregroundStyle(Theme.inkTertiary)
+                Text("Nivesh AI Research Desk")
+                    .font(Theme.engravedSerif(size: 8, weight: .regular, relativeTo: .caption2))
+                    .foregroundStyle(Theme.inkTertiary)
+                Text("·")
+                    .foregroundStyle(Theme.inkTertiary)
+                Text("UNCLASSIFIED")
+                    .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
+                    .tracking(1)
+                    .foregroundStyle(Theme.bullGreen.opacity(0.5))
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .padding(.horizontal, Theme.screenPadding)
+        .padding(.vertical, Theme.Spacing.standard)
+    }
+}
 // Item 14: MagnificationGesture added in StockCharts.swift
