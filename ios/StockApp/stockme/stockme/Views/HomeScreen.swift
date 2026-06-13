@@ -628,14 +628,12 @@ struct HomeScreen: View {
     @State private var searchText: String = ""
     @FocusState private var searchFocused: Bool
     @AppStorage("morningBriefShownDate") private var morningBriefShownDate = ""
-    @State private var briefDismissed = false
 
     private var shouldShowBriefToday: Bool {
         let today = DateFormatter()
         today.dateFormat = "yyyy-MM-dd"
         let todayStr = today.string(from: Date())
-        if morningBriefShownDate != todayStr { briefDismissed = false }
-        return !briefDismissed && viewModel.morningBriefData != nil
+        return morningBriefShownDate != todayStr && viewModel.morningBriefData != nil
     }
     @State private var showGlossary = false
 
@@ -728,20 +726,24 @@ struct HomeScreen: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 if viewModel.morningBriefData != nil {
+                    let todayStr: String = {
+                        let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
+                        return df.string(from: Date())
+                    }()
+                    let isDismissedToday = morningBriefShownDate == todayStr
                     Button {
                         HapticManager.selection()
-                        if briefDismissed {
-                            briefDismissed = false
+                        if isDismissedToday {
                             morningBriefShownDate = ""
                         }
                     } label: {
                         ZStack(alignment: .topTrailing) {
                             Image(systemName: "newspaper")
                                 .font(.title3.weight(.medium))
-                                .foregroundStyle(briefDismissed ? Theme.inkTertiary : Theme.securityGold)
+                                .foregroundStyle(isDismissedToday ? Theme.inkTertiary : Theme.securityGold)
                                 .frame(width: 28, height: 28)
 
-                            if briefDismissed {
+                            if isDismissedToday {
                                 let moodColor: Color = {
                                     switch viewModel.morningBriefData?.mood {
                                     case "positive": return Theme.bullGreen
@@ -2727,7 +2729,6 @@ extension HomeScreen {
                                 Button {
                                     HapticManager.selection()
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                        briefDismissed = true
                                         let df = DateFormatter()
                                         df.dateFormat = "yyyy-MM-dd"
                                         morningBriefShownDate = df.string(from: Date())
