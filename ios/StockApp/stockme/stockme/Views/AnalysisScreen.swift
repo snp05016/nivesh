@@ -613,6 +613,8 @@ struct AnalysisScreen: View {
 
                 VStack(spacing: Theme.Spacing.sectionGap) {
                     stockHeaderSection(analysis)
+                    ExplainThisSignalCard(analysis: analysis)
+                        .padding(.bottom, Theme.Spacing.small)
                     aiVerdictCard(analysis)
                 if let prev = previousAnalysis, prev.analysisDate != analysis.analysisDate {
                     whatChangedSection(analysis, previous: prev)
@@ -1811,6 +1813,155 @@ struct AnalysisScreen: View {
                 Spacer(minLength: 80)
             }
             .padding(.horizontal, Theme.screenPadding)
+        }
+    }
+}
+
+// MARK: - Explain This Signal Card
+
+private struct ExplainThisSignalCard: View {
+    let analysis: StockAnalysis
+    @State private var isCollapsed: Bool
+
+    init(analysis: StockAnalysis) {
+        self.analysis = analysis
+        self._isCollapsed = State(initialValue: UserDefaults.standard.bool(forKey: "explain_collapsed_\(analysis.ticker)"))
+    }
+
+    var body: some View {
+        VStack(spacing: Theme.Spacing.none) {
+            Button {
+                HapticManager.selection()
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    isCollapsed.toggle()
+                    UserDefaults.standard.set(isCollapsed, forKey: "explain_collapsed_\(analysis.ticker)")
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "lightbulb.fill")
+                        .foregroundStyle(Theme.securityGold)
+                        .font(.title3)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(signalTitle)
+                            .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .body))
+                            .foregroundStyle(Theme.securityGold)
+                        if isCollapsed {
+                            Text("Tap to understand this signal")
+                                .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .caption))
+                                .foregroundStyle(Theme.inkTertiary)
+                        }
+                    }
+
+                    Spacer()
+
+                    Image(systemName: isCollapsed ? "chevron.down" : "chevron.up")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+                .padding(Theme.Spacing.card)
+                .banknoteCard()
+            }
+            .buttonStyle(EKPressStyle())
+
+            if !isCollapsed {
+                VStack(alignment: .leading, spacing: Theme.Spacing.card) {
+                    Text("In simple terms:")
+                        .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
+                        .foregroundStyle(Theme.inkPrimary)
+
+                    if !analysis.bullCase.isEmpty {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                            Label("What's Going Well", systemImage: "checkmark.circle.fill")
+                                .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .callout))
+                                .foregroundStyle(Theme.bullGreen)
+                            ForEach(analysis.bullCase.prefix(4), id: \.self) { point in
+                                HStack(alignment: .top, spacing: Theme.Spacing.small) {
+                                    Text("•")
+                                        .foregroundStyle(Theme.bullGreen)
+                                    Text(point)
+                                        .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
+                                        .foregroundStyle(Theme.inkSecondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .lineSpacing(3)
+                                }
+                            }
+                        }
+                    }
+
+                    if let flags = analysis.governanceFlags, !flags.isEmpty {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                            Label("Governance Alert", systemImage: "exclamationmark.shield.fill")
+                                .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .callout))
+                                .foregroundStyle(Theme.bearRed)
+                            ForEach(flags.prefix(3), id: \.id) { flag in
+                                HStack(alignment: .top, spacing: Theme.Spacing.small) {
+                                    Text("⚠")
+                                    Text(flag.detail ?? flag.flag ?? "")
+                                        .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
+                                        .foregroundStyle(Theme.inkSecondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .lineSpacing(3)
+                                }
+                            }
+                        }
+                    }
+
+                    let watchItems = analysis.keyRisks.prefix(3) + analysis.whatToWatch.prefix(2)
+                    if !watchItems.isEmpty {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                            Label("What to Watch", systemImage: "exclamationmark.triangle.fill")
+                                .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .callout))
+                                .foregroundStyle(Theme.bearRed)
+                            ForEach(Array(watchItems.prefix(5)), id: \.self) { point in
+                                HStack(alignment: .top, spacing: Theme.Spacing.small) {
+                                    Text("•")
+                                        .foregroundStyle(Theme.bearRed)
+                                    Text(point)
+                                        .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
+                                        .foregroundStyle(Theme.inkSecondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .lineSpacing(3)
+                                }
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                        Label("Confidence: \(analysis.confidencePercent)%", systemImage: "gauge.with.dots.needle.33percent")
+                            .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .callout))
+                            .foregroundStyle(Theme.inkPrimary)
+                        if let rationale = analysis.confidenceRationale, !rationale.isEmpty {
+                            Text(rationale)
+                                .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
+                                .foregroundStyle(Theme.inkSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .lineSpacing(3)
+                        }
+                    }
+
+                    Text("Underlined terms are tappable for definitions")
+                        .font(Theme.microLabel(size: 9))
+                        .foregroundStyle(Theme.inkTertiary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+                .padding(Theme.Spacing.card)
+                .padding(.top, 0)
+                .banknoteCard()
+                .padding(.top, Theme.Spacing.small)
+            }
+        }
+        .padding(.horizontal, Theme.screenPadding)
+    }
+
+    private var signalTitle: String {
+        switch analysis.signal {
+        case .bullish: return "Why Is This a BUY?"
+        case .cautiously_bullish: return "Why Is This Cautiously Bullish?"
+        case .neutral: return "Why Is This NEUTRAL?"
+        case .hold: return "Why Is This a HOLD?"
+        case .cautiously_bearish: return "Why Is This Cautiously Bearish?"
+        case .bearish: return "Why Is This a SELL?"
         }
     }
 }
