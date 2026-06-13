@@ -94,37 +94,29 @@ class AnalysisViewModel: ObservableObject {
                                     isLoading = polledStatus != "SUCCEEDED" && polledStatus != "FAILED" && polledStatus != "TIMEOUT" && polledStatus != "CANCELLED"
 
                                     if polledStatus == "SUCCEEDED" {
-                                        // Try StockAnalysis decode; fall back to raw notification
+                                        // Try StockAnalysis decode
                                         if let resultData = raw["result"] {
                                             do {
                                                 let jsonData = try JSONSerialization.data(withJSONObject: resultData)
-                                                let res = try JSONDecoder().decode(StockAnalysis.self, from: jsonData)
-                                                analysis = res; reportManager.saveReport(res)
+                                                analysis = try JSONDecoder().decode(StockAnalysis.self, from: jsonData)
+                                                reportManager.saveReport(analysis!)
+                                                isLoading = false
                                             } catch {
-                                                print("[AnalysisScreen] StockAnalysis decode failed: \(error). Showing raw info.")
-                                                // Create a minimal analysis from raw dict so user sees something
-                                                if let rd = resultData as? [String: Any] {
-                                                    let sigRaw = rd["signal"] as? String ?? "UNKNOWN"
-                                                    analysis = StockAnalysis(
-                                                        ticker: ticker, companyName: rd["company_name"] as? String ?? ticker,
-                                                        exchange: exchange, analysisDate: rd["analysis_date"] as? String ?? "",
-                                                        signal: Signal(rawValue: sigRaw) ?? .hold,
-                                                        confidencePercent: rd["confidence_pct"] as? Int ?? 0,
-                                                        currentPriceInr: rd["current_price_inr"] as? Double ?? 0,
-                                                        targetPrices: TargetPrices(shortTerm3m: 0, mediumTerm12m: 0, longTerm36m: 0),
-                                                        upsideDownsidePct: UpsideDownsidePct(shortTerm: 0, mediumTerm: 0, longTerm: 0),
-                                                        bullCase: rd["bull_case"] as? [String] ?? [],
-                                                        bearCase: rd["bear_case"] as? [String] ?? [],
-                                                        keyRisks: rd["key_risks"] as? [String] ?? [],
-                                                        keyFactors: KeyFactors(managementQuality: "N/A", geopoliticalContext: "N/A", promoterFiiDiiActivity: "N/A", turnaroundStory: "N/A", fundamentalsSummary: "N/A", globalMacroImpact: "N/A", newsSentiment: "N/A", indianMarketSentiment: nil),
-                                                        fundamentalsSnapshot: FundamentalsSnapshot(peRatio: nil, debtToEquity: nil, promoterHoldingPct: nil, fiiHoldingPct: nil, diiHoldingPct: nil, revenueTtmCrores: nil, ebitdaMarginPct: nil, patTtmCrores: nil, roePct: nil, rocePct: nil, marketCapCrores: nil),
-                                                        whatToWatch: rd["what_to_watch"] as? [String] ?? [],
-                                                        disclaimer: rd["disclaimer"] as? String ?? "Analysis complete",
-                                                        advisorMatrix: [])
-                                                }
+                                                print("[AnalysisScreen] StockAnalysis decode failed: \(error)")
+                                                // Show error with raw signal info so user sees something
+                                                let sigRaw = (resultData as? [String: Any])?["signal"] as? String ?? "?"
+                                                errorInfo = AnalysisErrorInfo(
+                                                    diagnostic: nil,
+                                                    rawError: "Decode failed but analysis complete. Signal: \(sigRaw)",
+                                                    httpStatusCode: 200, responseBody: "", responseHeaders: "",
+                                                    requestUrl: "/analyze/job/\(jid)", elapsedSeconds: 0,
+                                                    quickInfoElapsed: quickInfoElapsed, isRetryable: false,
+                                                    isMockMode: useMock, isDeepScan: deepScan)
+                                                isLoading = false
                                             }
+                                        } else {
+                                            isLoading = false
                                         }
-                                        isLoading = false
                                     } else if ["FAILED", "TIMEOUT", "CANCELLED"].contains(polledStatus) {
                                         errorInfo = AnalysisErrorInfo(
                                             diagnostic: nil, rawError: polledError ?? "analysis \(polledStatus)",
@@ -142,6 +134,7 @@ class AnalysisViewModel: ObservableObject {
                             try? await Task.sleep(nanoseconds: 2_000_000_000)
                         }
                     }
+                }
             } catch {
                 if !Task.isCancelled {
                     if let networkError = error as? NetworkError,
