@@ -44,9 +44,23 @@ struct StockActionHubView: View {
         reportManager.getReport(for: dest.ticker)
     }
 
-    private var cachedStaleness: (label: String, age: String, tier: String)? {
+    private var cachedStaleness: (label: String, age: String, tier: String, score: Int)? {
         guard let cached = cachedReport else { return nil }
-        let tier = cached.analysisTier ?? "standard"
+        let tier = cached.cachedScanType ?? cached.analysisTier ?? "standard"
+        // Prefer backend-computed staleness (from _staleness_* fields in JSON)
+        if let backendLabel = cached.stalenessLabel,
+           let backendScore = cached.stalenessScore {
+            let ageStr: String
+            if let hours = cached.stalenessHours {
+                if hours < 1 { ageStr = "\(Int(hours * 60))m ago" }
+                else if hours < 24 { ageStr = "\(Int(hours))h ago" }
+                else { ageStr = "\(Int(hours / 24))d ago" }
+            } else {
+                ageStr = ""
+            }
+            return (backendLabel, ageStr, tier, backendScore)
+        }
+        // Fallback: client-local staleness from analysisDate
         let fmt = DateFormatter()
         fmt.dateFormat = "dd-MMM-yyyy"
         let date = fmt.date(from: cached.analysisDate) ?? Date()
@@ -56,7 +70,7 @@ struct StockActionHubView: View {
         if hours < 1 { ageStr = "\(Int(hours * 60))m ago" }
         else if hours < 24 { ageStr = "\(Int(hours))h ago" }
         else { ageStr = "\(Int(hours / 24))d ago" }
-        return (label, ageStr, tier)
+        return (label, ageStr, tier, 0)
     }
 
     private var deepScanForbidden: Bool {
@@ -92,11 +106,12 @@ struct StockActionHubView: View {
                             if let cached = cachedReport, let stale = cachedStaleness {
                                 let tierLabel = stale.tier == "extreme" ? "EXTREME" : stale.tier == "deep" ? "DEEP" : "STANDARD"
                                 let tierColor: Color = stale.tier == "extreme" ? Theme.bearRed : stale.tier == "deep" ? Theme.goldPrimary : Theme.bullGreen
+                                let stalenessSuffix = stale.score > 0 ? " · score: \(stale.score)" : ""
 
                                 actionCard(
                                     symbol: "doc.text.magnifyingglass",
                                     title: "View Cached Report",
-                                    subtitle: "\(tierLabel) · \(stale.age) · \(stale.label)",
+                                    subtitle: "\(tierLabel) · \(stale.age) · \(stale.label)\(stalenessSuffix)",
                                     tint: tierColor
                                 ) {
                                     path.append(AnalysisDest(ticker: dest.ticker, mode: .cached))

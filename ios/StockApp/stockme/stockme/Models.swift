@@ -100,6 +100,13 @@ struct StockAnalysis: Codable {
     let extendedThesis: ExtendedThesis?
     let nicheInsights: [String]?
     let governanceFlags: [GovernanceFlag]?
+    // Backend-computed staleness (set by get_analysis_for_date / get_last_analysis_any_type)
+    let stalenessLabel: String?
+    let stalenessScore: Int?
+    let stalenessUrgency: String?
+    let stalenessHours: Double?
+    let stalenessReason: String?
+    let cachedScanType: String?
 
     enum CodingKeys: String, CodingKey {
         case ticker, signal, exchange, patterns
@@ -133,6 +140,12 @@ struct StockAnalysis: Codable {
         case extendedThesis = "extended_thesis"
         case nicheInsights = "niche_insights"
         case governanceFlags = "governance_flags"
+        case stalenessLabel = "_staleness_label"
+        case stalenessScore = "_staleness_score"
+        case stalenessUrgency = "_staleness_urgency"
+        case stalenessHours = "_staleness_hours"
+        case stalenessReason = "_staleness_reason"
+        case cachedScanType = "_cached_scan_type"
     }
 
     init(from decoder: Decoder) throws {
@@ -172,6 +185,12 @@ struct StockAnalysis: Codable {
         extendedThesis       = try c.decodeIfPresent(ExtendedThesis.self,    forKey: .extendedThesis)
         nicheInsights        = try c.decodeIfPresent([String].self,           forKey: .nicheInsights)
         governanceFlags      = try c.decodeIfPresent([GovernanceFlag].self,   forKey: .governanceFlags)
+        stalenessLabel       = try c.decodeIfPresent(String.self,             forKey: .stalenessLabel)
+        stalenessScore       = try c.decodeIfPresent(Int.self,                forKey: .stalenessScore)
+        stalenessUrgency     = try c.decodeIfPresent(String.self,             forKey: .stalenessUrgency)
+        stalenessHours       = try c.decodeIfPresent(Double.self,             forKey: .stalenessHours)
+        stalenessReason      = try c.decodeIfPresent(String.self,             forKey: .stalenessReason)
+        cachedScanType       = try c.decodeIfPresent(String.self,             forKey: .cachedScanType)
     }
 }
 
