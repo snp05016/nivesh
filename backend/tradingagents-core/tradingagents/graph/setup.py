@@ -244,7 +244,15 @@ class GraphSetup:
                 )
                 workflow.add_edge(spec.tool_node, spec.agent_node)
 
-                if i < len(plan.specs) - 1:
+                if spec.key == "governance":
+                    # Governance fast-track: clear → either next analyst or PM (skip pipeline on FAIL)
+                    workflow.add_conditional_edges(
+                        spec.clear_node,
+                        self.conditional_logic.should_fast_track_governance,
+                        {"Market Analyst": plan.specs[1].agent_node if len(plan.specs) > 1 else "Bull Researcher",
+                         "Portfolio Manager": "Portfolio Manager"},
+                    )
+                elif i < len(plan.specs) - 1:
                     workflow.add_edge(spec.clear_node, plan.specs[i + 1].agent_node)
                 else:
                     workflow.add_edge(spec.clear_node, "Bull Researcher")

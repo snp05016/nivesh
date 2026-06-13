@@ -100,6 +100,13 @@ struct StockAnalysis: Codable {
     let extendedThesis: ExtendedThesis?
     let nicheInsights: [String]?
     let governanceFlags: [GovernanceFlag]?
+    // Backend-computed staleness (set by get_analysis_for_date / get_last_analysis_any_type)
+    let stalenessLabel: String?
+    let stalenessScore: Int?
+    let stalenessUrgency: String?
+    let stalenessHours: Double?
+    let stalenessReason: String?
+    let cachedScanType: String?
 
     enum CodingKeys: String, CodingKey {
         case ticker, signal, exchange, patterns
@@ -133,6 +140,12 @@ struct StockAnalysis: Codable {
         case extendedThesis = "extended_thesis"
         case nicheInsights = "niche_insights"
         case governanceFlags = "governance_flags"
+        case stalenessLabel = "_staleness_label"
+        case stalenessScore = "_staleness_score"
+        case stalenessUrgency = "_staleness_urgency"
+        case stalenessHours = "_staleness_hours"
+        case stalenessReason = "_staleness_reason"
+        case cachedScanType = "_cached_scan_type"
     }
 
     init(from decoder: Decoder) throws {
@@ -172,6 +185,12 @@ struct StockAnalysis: Codable {
         extendedThesis       = try c.decodeIfPresent(ExtendedThesis.self,    forKey: .extendedThesis)
         nicheInsights        = try c.decodeIfPresent([String].self,           forKey: .nicheInsights)
         governanceFlags      = try c.decodeIfPresent([GovernanceFlag].self,   forKey: .governanceFlags)
+        stalenessLabel       = try c.decodeIfPresent(String.self,             forKey: .stalenessLabel)
+        stalenessScore       = try c.decodeIfPresent(Int.self,                forKey: .stalenessScore)
+        stalenessUrgency     = try c.decodeIfPresent(String.self,             forKey: .stalenessUrgency)
+        stalenessHours       = try c.decodeIfPresent(Double.self,             forKey: .stalenessHours)
+        stalenessReason      = try c.decodeIfPresent(String.self,             forKey: .stalenessReason)
+        cachedScanType       = try c.decodeIfPresent(String.self,             forKey: .cachedScanType)
     }
 }
 
@@ -307,9 +326,31 @@ struct StartJobRequest: Encodable {
 }
 
 struct StartJobResponse: Codable {
-    let jobId: String; let status: String; let ticker: String?
+    let jobId: String?; let status: String?; let ticker: String?
+    var analysis: StockAnalysis?
+
     enum CodingKeys: String, CodingKey {
         case jobId = "job_id"; case status; case ticker
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        jobId = try c.decodeIfPresent(String.self, forKey: .jobId)
+        status = try c.decodeIfPresent(String.self, forKey: .status)
+        ticker = try c.decodeIfPresent(String.self, forKey: .ticker)
+        // If the response is a cache hit, it IS a StockAnalysis — try decoding it directly
+        if jobId == nil {
+            analysis = try? StockAnalysis(from: decoder)
+        } else {
+            analysis = nil
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(jobId, forKey: .jobId)
+        try c.encodeIfPresent(status, forKey: .status)
+        try c.encodeIfPresent(ticker, forKey: .ticker)
     }
 }
 
@@ -2173,3 +2214,38 @@ struct HarvesterSourceStatus: Codable, Identifiable {
     }
 }
 
+
+struct BrainstormResponse: Codable {
+    let ideas: [BrainstormIdea]
+}
+
+struct BrainstormIdea: Codable, Identifiable {
+    var id: String { ticker ?? title }
+    let title: String
+    let description: String
+    let ticker: String?
+}
+
+struct CrashReport: Codable, Identifiable {
+    let id: String
+    let timestamp: String
+    let type: CrashType
+    let signalNumber: Int?
+    let signalName: String?
+    let exceptionName: String?
+    let exceptionReason: String?
+    let stackTrace: String
+    let viewPath: String?
+    let swiftFile: String?
+    let approxLine: String?
+    let device: String
+    let osVersion: String
+    let appVersion: String
+    let buildNumber: String
+    let classification: String
+}
+
+enum CrashType: String, Codable {
+    case signal
+    case exception
+}

@@ -10,12 +10,15 @@ Nivesh is a full-stack Indian stock market intelligence platform. It combines a 
 ### Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
+|
+11. **Cost Reduction Pipeline**: Replaced Claude Sonnet with DeepSeek for JSON reformatting, skipping full graph on Governance FAIL, and trimming tokens/agents for standard scans, achieving a ~80% per-analysis cost drop.
+
+-------|-----------|
 | Backend | Python 3.14, FastAPI, SQLAlchemy, PostgreSQL |
 | AI Pipeline | LangGraph, Claude Sonnet/Haiku, DeepSeek V4 Flash |
-| iOS | SwiftUI, AVFoundation, Charts, WidgetKit, WidgetKit |
+| iOS | SwiftUI, AVFoundation, Charts, WidgetKit |
 | Data | yfinance, PKScreener, FinBERT, matplotlib |
-| Infra | DigitalOcean, multiprocessing, SSE streaming, Redis, APNs, Redis, APNs |
+| Infra | DigitalOcean, multiprocessing, SSE streaming, Redis, APNs |
 
 ---
 
@@ -80,15 +83,16 @@ graph TB
 ```
 User taps "Analyze" (iOS)
   → POST /api/v1/analyze (routers/analysis.py)
-  → mp.Process spawns _run_analysis_worker
+  → Cache check: returns existing analysis instantly if available (with _staleness_hours and _cache_type="CACHE HIT")
+  → (If not cached) mp.Process spawns _run_analysis_worker
   → services/orchestrator.analyze()
   → Cache check (get_analysis_for_date)
-  → Smart cache gate (DeepSeek V4 Flash YES/NO)
+  → Repeat Cache (30m) OR Smart cache gate (DeepSeek V4 Flash YES/NO)
   → run_trading_agents() — LangGraph propagation
     → Market Analyst → News Analyst → Fundamentals Analyst
-    → Bull Researcher ↔ Bear Researcher debate
+    → Bull Researcher ↔ Bear Researcher debate (1-3 rounds)
     → Trader → Risk Committee → Portfolio Manager
-  → reformat_with_claude() — Claude Sonnet → DeepSeek fallback
+  → reformat_with_deepseek() — DeepSeek V4 Flash → Claude Sonnet fallback
   → _normalize_response() — iOS-safe type sanitization
   → save_analysis() — persist to PostgreSQL
   → Response returned to iOS
@@ -194,15 +198,6 @@ TabView (5 primary tabs)
 • SpeechRecognizerManager, iPad NavigationSplitView adaptation
 ```
 
-
-### New Components & Extensions
-```
-• NiveshWidgetExtension (WidgetKit)
-• AnalysisHistoryScreen, InteractiveTutorialScreen
-• HomeLayoutEditorSheet, WatchlistTagsManager
-• SpeechRecognizerManager, iPad NavigationSplitView adaptation
-```
-
 ### Design System (Theme.swift)
 ```
 Theme.*
@@ -226,7 +221,7 @@ Theme.*
 
 1. **Multiprocessing for AI**: Analysis runs in a separate process to avoid blocking the FastAPI event loop. The worker re-imports services/orchestrator.py — sessions are NOT passed across process boundaries.
 
-2. **Smart Cache Gate**: Before expensive multi-agent runs, DeepSeek V4 Flash performs a cheap YES/NO check on recent news. If no major changes, returns cached analysis — saves ~$0.50 per query.
+2. **Repeat Cache & Smart Cache Gate**: Before expensive multi-agent runs, DeepSeek V4 Flash performs a cheap YES/NO check on recent news. If no major changes, returns cached analysis — saves ~$0.50 per query. Exact 30-minute repeats cost $0.
 
 3. **Dual-mode Screener**: Local presets use in-memory feed data (fast but limited). Backend presets cross-reference 4 services (piotroski, pkscreener, factor_engine, yfinance) for institutional-grade screening.
 

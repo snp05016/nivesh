@@ -627,6 +627,15 @@ struct HomeScreen: View {
     @State private var showSearch: Bool = false
     @State private var searchText: String = ""
     @FocusState private var searchFocused: Bool
+    @AppStorage("morningBriefShownDate") private var morningBriefShownDate = ""
+
+    private var shouldShowBriefToday: Bool {
+        let today = DateFormatter()
+        today.dateFormat = "yyyy-MM-dd"
+        let todayStr = today.string(from: Date())
+        return morningBriefShownDate != todayStr && viewModel.morningBriefData != nil
+    }
+    @State private var showGlossary = false
 
     // Stock tap action sheet (universal)
     @State private var stockTapTicker = ""
@@ -713,12 +722,58 @@ struct HomeScreen: View {
                 }
             }
         }
+        .crashGuard("HomeScreen")
+
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                if viewModel.morningBriefData != nil {
+                    let todayStr: String = {
+                        let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
+                        return df.string(from: Date())
+                    }()
+                    let isDismissedToday = morningBriefShownDate == todayStr
+                    Button {
+                        HapticManager.selection()
+                        if isDismissedToday {
+                            morningBriefShownDate = ""
+                        }
+                    } label: {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: "newspaper")
+                                .font(.title3.weight(.medium))
+                                .foregroundStyle(isDismissedToday ? Theme.inkTertiary : Theme.securityGold)
+                                .frame(width: 28, height: 28)
+
+                            if isDismissedToday {
+                                let moodColor: Color = {
+                                    switch viewModel.morningBriefData?.mood {
+                                    case "positive": return Theme.bullGreen
+                                    case "negative": return Theme.bearRed
+                                    default: return Theme.holdAmber
+                                    }
+                                }()
+                                Circle()
+                                    .fill(moodColor)
+                                    .frame(width: 7, height: 7)
+                                    .offset(x: 4, y: -4)
+                            }
+                        }
+                    }
+                    .buttonStyle(EKPressStyle())
+                }
+            }
+        }
 
         .sheet(isPresented: $showingEditLayout) {
             HomeLayoutEditorSheet(activeOrder: activeSectionOrder) { newOrder in
                 if let data = try? JSONEncoder().encode(newOrder) {
                     sectionOrderData = data
                 }
+            }
+        }
+        .sheet(isPresented: $showGlossary) {
+            NavigationStack {
+                GlossaryBrowserView()
             }
         }
         .onChange(of: showStockTapAction) { _, show in
@@ -2305,6 +2360,19 @@ extension HomeScreen {
                                     .overlay(Circle().stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
                             }
                             .buttonStyle(EKPressStyle())
+                            Button {
+                                HapticManager.selection()
+                                showGlossary = true
+                            } label: {
+                                Image(systemName: "book.pages")
+                                    .font(.title3.weight(.medium))
+                                    .foregroundStyle(Theme.securityGold)
+                                    .frame(width: 40, height: 40)
+                                    .background(Theme.securityGold.opacity(0.12))
+                                    .clipShape(Circle())
+                                    .overlay(Circle().stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
+                            }
+                            .buttonStyle(EKPressStyle())
                             NavigationLink(destination: SettingsScreen()) {
                                 ZStack {
                                     Circle()
@@ -2590,17 +2658,111 @@ extension HomeScreen {
                 }
                 .id(HomeSectionID.sectors.rawValue)
         case .morning:
-// ── Section 6: Morning Brief ──────────────────────
-                VStack(spacing: Theme.Spacing.card) {
-                    SectionHeader(title: "Morning Brief", hindiTitle: "प्रातःकालीन सारांश")
-                    if let briefData = viewModel.morningBriefData {
-                        MorningDecreeCard(briefData: briefData)
-                            .padding(.horizontal, Theme.screenPadding)
-                    } else {
-                        DashboardLoadingCard(label: "Morning Brief", isLoading: viewModel.isLoading)
+            if shouldShowBriefToday, let briefData = viewModel.morningBriefData {
+                let moodColor: Color = {
+                    switch briefData.mood {
+                    case "positive": return Theme.bullGreen
+                    case "negative": return Theme.bearRed
+                    default: return Theme.holdAmber
                     }
+                }()
+
+                VStack(spacing: Theme.Spacing.none) {
+                    HStack(alignment: .center, spacing: Theme.Spacing.none) {
+                        Rectangle()
+                            .fill(moodColor)
+                            .frame(width: 4)
+                            .frame(maxHeight: .infinity)
+
+                        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                            HStack(spacing: Theme.Spacing.tight) {
+                                Circle().fill(moodColor).frame(width: 8, height: 8)
+                                Text("MARKETS OPEN")
+                                    .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+                                    .tracking(1.2)
+                                    .foregroundStyle(Theme.inkSecondary)
+                                Text("·").foregroundStyle(Theme.inkTertiary)
+                                Text(Date().formatted(.dateTime.day().month(.abbreviated).hour().minute()))
+                                    .font(Theme.serialNumberFont(size: 9, relativeTo: .caption2))
+                                    .foregroundStyle(Theme.inkTertiary)
+                            }
+
+                            Text(briefData.mood == "positive" ? "Market mood: POSITIVE" :
+                                 briefData.mood == "negative" ? "Market mood: NEGATIVE" : "Market mood: NEUTRAL")
+                                .font(Theme.engravedSerif(size: 15, weight: .bold, relativeTo: .headline))
+                                .foregroundStyle(Theme.inkPrimary)
+
+                            Text(briefData.summary)
+                                .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .body))
+                                .foregroundStyle(Theme.inkSecondary)
+                                .lineSpacing(4)
+                                .lineLimit(3)
+
+                            if let priority = briefData.priorityItems, !priority.isEmpty {
+                                        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                                            ForEach(Array(priority.prefix(2))) { item in
+                                                HStack(spacing: Theme.Spacing.small) {
+                                                    Text("⚠").font(.caption2)
+                                                    Text(item.message)
+                                                        .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .caption))
+                                                        .foregroundStyle(Theme.inkSecondary)
+                                                        .lineLimit(1)
+                                                }
+                                            }
+                                        }
+                            }
+
+                            HStack(spacing: Theme.Spacing.standard) {
+                                Button {
+                                    HapticManager.selection()
+                                } label: {
+                                    Text("READ FULL BRIEF")
+                                        .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+                                        .tracking(1)
+                                        .foregroundStyle(Theme.securityGold)
+                                        .padding(.horizontal, Theme.Spacing.standard)
+                                        .padding(.vertical, Theme.Spacing.small)
+                                        .background(Theme.securityGold.opacity(0.1))
+                                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight))
+                                }
+                                .buttonStyle(EKPressStyle())
+
+                                Button {
+                                    HapticManager.selection()
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        let df = DateFormatter()
+                                        df.dateFormat = "yyyy-MM-dd"
+                                        morningBriefShownDate = df.string(from: Date())
+                                    }
+                                } label: {
+                                    Text("✕ DISMISS")
+                                        .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+                                        .tracking(1)
+                                        .foregroundStyle(Theme.inkTertiary)
+                                }
+                                .buttonStyle(EKPressStyle())
+                            }
+                        }
+                        .padding(Theme.Spacing.card)
+                    }
+                    .banknoteCard()
+                    .padding(.horizontal, Theme.screenPadding)
                 }
                 .id(HomeSectionID.morning.rawValue)
+            } else if let briefData = viewModel.morningBriefData {
+                VStack(spacing: Theme.Spacing.card) {
+                    SectionHeader(title: "Morning Brief", hindiTitle: "प्रातःकालीन सारांश")
+                    MorningDecreeCard(briefData: briefData)
+                        .padding(.horizontal, Theme.screenPadding)
+                }
+                .id(HomeSectionID.morning.rawValue)
+            } else {
+                VStack(spacing: Theme.Spacing.card) {
+                    SectionHeader(title: "Morning Brief", hindiTitle: "प्रातःकालीन सारांश")
+                    DashboardLoadingCard(label: "Morning Brief", isLoading: viewModel.isLoading)
+                }
+                .id(HomeSectionID.morning.rawValue)
+            }
         case .news:
 // ── Section 6a: NEWS FEED ─────────────────────────
                 VStack(alignment: .leading, spacing: Theme.Spacing.standard) {

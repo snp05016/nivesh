@@ -800,15 +800,14 @@ def get_recent_analyses(
 
 
 def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_type: str = "standard") -> Optional[dict]:
-    # Fix 2.40: Use 24h rolling time delta instead of absolute calendar day
-    # boundary. An analysis from 23:30 yesterday is still valid at 00:30 today.
-    from datetime import datetime as _dt, timedelta as _td
-    cutoff_24h = _dt.utcnow() - _td(hours=24)
+    """Return the last analysis for ticker+scan_type regardless of date.
+    Includes _staleness_hours, _staleness_label, _staleness_score, and _staleness_urgency."""
+    from datetime import datetime as _dt, timezone as _tz
+    from services.staleness import compute_staleness as _cs
     row = (
         session.query(AnalysisHistory)
         .filter(
             AnalysisHistory.ticker == ticker.upper(),
-            AnalysisHistory.analysis_date == target_date,
             AnalysisHistory.scan_type == scan_type,
         )
         .order_by(AnalysisHistory.created_at.desc())
@@ -816,11 +815,59 @@ def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_
     )
     if not row:
         return None
-    if row.created_at and row.created_at < cutoff_24h:
-        return None
     res = json.loads(row.full_json)
     res["raw_output"] = row.raw_output
+    res["_cached_scan_type"] = scan_type
+    if row.created_at:
+        result = _cs(
+            last_analysis_date=row.created_at,
+            price_change_7d_pct=float(res.get("7d_price_change_pct", 0) or 0),
+            signal=res.get("signal", "HOLD") or "HOLD",
+        )
+        res["_staleness_hours"] = round(
+            (_dt.now(_tz.utc) - row.created_at.replace(tzinfo=_tz.utc)).total_seconds() / 3600, 1
+        )
+        res["_staleness_label"] = result["urgency"].title()
+        res["_staleness_score"] = result["score"]
+        res["_staleness_urgency"] = result["urgency"]
+        res["_staleness_reason"] = result["reason"]
     return res
+
+
+def get_last_analysis_any_type(session: Session, ticker: str) -> Optional[dict]:
+    """Return the most recent analysis for a ticker across all scan types.
+    Priority: extreme > deep > standard. Returns analysis dict or None."""
+    from datetime import datetime as _dt, timezone as _tz
+    from services.staleness import compute_staleness as _cs
+    for scan in ("extreme", "deep", "standard"):
+        row = (
+            session.query(AnalysisHistory)
+            .filter(
+                AnalysisHistory.ticker == ticker.upper(),
+                AnalysisHistory.scan_type == scan,
+            )
+            .order_by(AnalysisHistory.created_at.desc())
+            .first()
+        )
+        if row:
+            res = json.loads(row.full_json)
+            res["raw_output"] = row.raw_output
+            res["_cached_scan_type"] = scan
+            if row.created_at:
+                result = _cs(
+                    last_analysis_date=row.created_at,
+                    price_change_7d_pct=float(res.get("7d_price_change_pct", 0) or 0),
+                    signal=res.get("signal", "HOLD") or "HOLD",
+                )
+                res["_staleness_hours"] = round(
+                    (_dt.now(_tz.utc) - row.created_at.replace(tzinfo=_tz.utc)).total_seconds() / 3600, 1
+                )
+                res["_staleness_label"] = result["urgency"].title()
+                res["_staleness_score"] = result["score"]
+                res["_staleness_urgency"] = result["urgency"]
+                res["_staleness_reason"] = result["reason"]
+            return res
+    return None
 
 
 def get_all_ticker_history(session: Session, ticker: str, user_id: Optional[int] = None) -> list[dict]:
