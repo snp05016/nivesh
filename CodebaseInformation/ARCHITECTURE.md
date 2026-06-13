@@ -83,7 +83,8 @@ graph TB
 ```
 User taps "Analyze" (iOS)
   → POST /api/v1/analyze (routers/analysis.py)
-  → mp.Process spawns _run_analysis_worker
+  → Cache check: returns existing analysis instantly if available (with _staleness_hours and _cache_type="CACHE HIT")
+  → (If not cached) mp.Process spawns _run_analysis_worker
   → services/orchestrator.analyze()
   → Cache check (get_analysis_for_date)
   → Repeat Cache (30m) OR Smart cache gate (DeepSeek V4 Flash YES/NO)

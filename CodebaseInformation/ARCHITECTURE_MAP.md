@@ -66,6 +66,7 @@ To handle complex Indian market rules without prohibitive latency or cost, the s
 ### iOS & Frontend Updates
 - **WidgetKit**: Added `NiveshWidgetExtension`.
 - **New Screens**: Added `AnalysisHistoryScreen`, `InteractiveTutorialScreen`, `HomeLayoutEditorSheet`.
+- **Analysis UX**: Added 5-button AI analysis hub (`StockActionHubView`), scan type & cache status badges, and bulletproof polling with raw dict fallback.
 - **Managers**: Added `WatchlistTagsManager`, `SpeechRecognizerManager`.
 - **Adaptation**: Enhanced iPad experience with `NavigationSplitView`.
 
