@@ -57,26 +57,77 @@ class AnalysisViewModel: ObservableObject {
 
             if Task.isCancelled { return }
 
-            // ── v2 engine: start background job, then poll ──
+            // ── v2 engine: start background job, then poll with fallback ──
             do {
                 let start = try await NetworkManager.shared.startAnalysisJob(
                     ticker: ticker, exchange: "NSE", userId: userId, scanType: scanType)
 
-                if start.status == "QUEUED" {
+                if start.status == "QUEUED" || start.status == "RUNNING" || start.status == "ALREADY_RUNNING" {
                     jobId = start.jobId
-                    // Poll every 2s until terminal
+                    // Poll every 2s until terminal — try raw dict first, StockAnalysis fallback
                     pollJobTask = Task {
                         while !Task.isCancelled {
                             guard let jid = jobId else { break }
-                            if let polled = try? await NetworkManager.shared.pollJob(jobId: jid, userId: userId) {
+                            let rawJob = try? await NetworkManager.shared.pollJobRaw(jobId: jid, userId: userId)
+                            if let raw = rawJob {
+                                let polledStatus = raw["status"] as? String ?? ""
+                                let polledStage  = raw["stage"] as? String
+                                let polledPct    = raw["progress_pct"] as? Int
+                                let polledCheckpoints = raw["checkpoints"] as? [[String: Any]]
+                                let polledError  = raw["error"] as? String
+
                                 await MainActor.run {
-                                    jobStatus = polled
-                                    if let cps = polled.checkpoints { engineCheckpoints = cps }
-                                    if polled.status == "SUCCEEDED", let res = polled.result {
-                                        analysis = res; reportManager.saveReport(res); isLoading = false
-                                    } else if ["FAILED", "TIMEOUT", "CANCELLED"].contains(polled.status) {
+                                    jobStatus = JobStatus(
+                                        jobId: jid, userId: userId, ticker: ticker,
+                                        scanType: scanType, status: polledStatus,
+                                        stage: polledStage, progressPct: polledPct,
+                                        checkpoints: nil, tokensUsed: nil, error: polledError, result: nil
+                                    )
+                                    if let cps = polledCheckpoints {
+                                        engineCheckpoints = cps.compactMap { cp in
+                                            guard let stage = cp["stage"] as? String,
+                                                  let agent = cp["agent"] as? String,
+                                                  let msg = cp["message"] as? String else { return nil }
+                                            return CheckpointEvent(ts: cp["ts"] as? String ?? "", stage: stage, agent: agent, message: msg, state: cp["state"] as? String ?? "running")
+                                        }
+                                    }
+                                    isLoading = polledStatus != "SUCCEEDED" && polledStatus != "FAILED" && polledStatus != "TIMEOUT" && polledStatus != "CANCELLED"
+
+                                    if polledStatus == "SUCCEEDED" {
+                                        // Try StockAnalysis decode; fall back to raw notification
+                                        if let resultData = raw["result"] {
+                                            do {
+                                                let jsonData = try JSONSerialization.data(withJSONObject: resultData)
+                                                let res = try JSONDecoder().decode(StockAnalysis.self, from: jsonData)
+                                                analysis = res; reportManager.saveReport(res)
+                                            } catch {
+                                                print("[AnalysisScreen] StockAnalysis decode failed: \(error). Showing raw info.")
+                                                // Create a minimal analysis from raw dict so user sees something
+                                                if let rd = resultData as? [String: Any] {
+                                                    let sigRaw = rd["signal"] as? String ?? "UNKNOWN"
+                                                    analysis = StockAnalysis(
+                                                        ticker: ticker, companyName: rd["company_name"] as? String ?? ticker,
+                                                        exchange: exchange, analysisDate: rd["analysis_date"] as? String ?? "",
+                                                        signal: Signal(rawValue: sigRaw) ?? .hold,
+                                                        confidencePercent: rd["confidence_pct"] as? Int ?? 0,
+                                                        currentPriceInr: rd["current_price_inr"] as? Double ?? 0,
+                                                        targetPrices: TargetPrices(shortTerm3m: 0, mediumTerm12m: 0, longTerm36m: 0),
+                                                        upsideDownsidePct: UpsideDownsidePct(shortTerm: 0, mediumTerm: 0, longTerm: 0),
+                                                        bullCase: rd["bull_case"] as? [String] ?? [],
+                                                        bearCase: rd["bear_case"] as? [String] ?? [],
+                                                        keyRisks: rd["key_risks"] as? [String] ?? [],
+                                                        keyFactors: KeyFactors(managementQuality: "N/A", geopoliticalContext: "N/A", promoterFiiDiiActivity: "N/A", turnaroundStory: "N/A", fundamentalsSummary: "N/A", globalMacroImpact: "N/A", newsSentiment: "N/A", indianMarketSentiment: nil),
+                                                        fundamentalsSnapshot: FundamentalsSnapshot(peRatio: nil, debtToEquity: nil, promoterHoldingPct: nil, fiiHoldingPct: nil, diiHoldingPct: nil, revenueTtmCrores: nil, ebitdaMarginPct: nil, patTtmCrores: nil, roePct: nil, rocePct: nil, marketCapCrores: nil),
+                                                        whatToWatch: rd["what_to_watch"] as? [String] ?? [],
+                                                        disclaimer: rd["disclaimer"] as? String ?? "Analysis complete",
+                                                        advisorMatrix: [])
+                                                }
+                                            }
+                                        }
+                                        isLoading = false
+                                    } else if ["FAILED", "TIMEOUT", "CANCELLED"].contains(polledStatus) {
                                         errorInfo = AnalysisErrorInfo(
-                                            diagnostic: nil, rawError: polled.error ?? "analysis \(polled.status)",
+                                            diagnostic: nil, rawError: polledError ?? "analysis \(polledStatus)",
                                             httpStatusCode: 0, responseBody: "", responseHeaders: "",
                                             requestUrl: "/analyze/job/\(jid)", elapsedSeconds: 0,
                                             quickInfoElapsed: quickInfoElapsed, isRetryable: true,
@@ -84,12 +135,13 @@ class AnalysisViewModel: ObservableObject {
                                         isLoading = false
                                     }
                                 }
-                                if ["SUCCEEDED", "FAILED", "TIMEOUT", "CANCELLED"].contains(polled.status) { break }
+                            }
+                            if ["SUCCEEDED", "FAILED", "TIMEOUT", "CANCELLED"].contains(rawJob?["status"] as? String ?? "") {
+                                break
                             }
                             try? await Task.sleep(nanoseconds: 2_000_000_000)
                         }
                     }
-                }
             } catch {
                 if !Task.isCancelled {
                     if let networkError = error as? NetworkError,
