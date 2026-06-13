@@ -1950,7 +1950,7 @@ private struct ExplainThisSignalCard: View {
                             Label("What's Going Well", systemImage: "checkmark.circle.fill")
                                 .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .callout))
                                 .foregroundStyle(Theme.bullGreen)
-                            ForEach(analysis.bullCase.prefix(4), id: \.self) { point in
+                            ForEach(Array(analysis.bullCase.prefix(4).enumerated()), id: \.offset) { _, point in
                                 HStack(alignment: .top, spacing: Theme.Spacing.small) {
                                     Text("•")
                                         .foregroundStyle(Theme.bullGreen)
@@ -1988,7 +1988,7 @@ private struct ExplainThisSignalCard: View {
                             Label("What to Watch", systemImage: "exclamationmark.triangle.fill")
                                 .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .callout))
                                 .foregroundStyle(Theme.bearRed)
-                            ForEach(Array(watchItems.prefix(5)), id: \.self) { point in
+                            ForEach(Array(watchItems.enumerated()), id: \.offset) { _, point in
                                 HStack(alignment: .top, spacing: Theme.Spacing.small) {
                                     Text("•")
                                         .foregroundStyle(Theme.bearRed)
