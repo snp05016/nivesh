@@ -2214,3 +2214,14 @@ struct HarvesterSourceStatus: Codable, Identifiable {
     }
 }
 
+
+struct BrainstormResponse: Codable {
+    let ideas: [BrainstormIdea]
+}
+
+struct BrainstormIdea: Codable, Identifiable {
+    var id: String { ticker ?? title }
+    let title: String
+    let description: String
+    let ticker: String?
+}
