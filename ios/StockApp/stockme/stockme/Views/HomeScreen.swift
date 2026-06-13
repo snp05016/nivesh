@@ -2696,17 +2696,17 @@ extension HomeScreen {
                                 .lineLimit(3)
 
                             if let priority = briefData.priorityItems, !priority.isEmpty {
-                                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                                    ForEach(priority.prefix(2), id: \.self) { item in
-                                        HStack(spacing: Theme.Spacing.small) {
-                                            Text("⚠").font(.caption2)
-                                            Text(item)
-                                                .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .caption))
-                                                .foregroundStyle(Theme.inkSecondary)
-                                                .lineLimit(1)
+                                        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                                            ForEach(Array(priority.prefix(2))) { item in
+                                                HStack(spacing: Theme.Spacing.small) {
+                                                    Text("⚠").font(.caption2)
+                                                    Text(item.message)
+                                                        .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .caption))
+                                                        .foregroundStyle(Theme.inkSecondary)
+                                                        .lineLimit(1)
+                                                }
+                                            }
                                         }
-                                    }
-                                }
                             }
 
                             HStack(spacing: Theme.Spacing.standard) {
