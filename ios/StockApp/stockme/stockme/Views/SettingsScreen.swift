@@ -161,9 +161,8 @@ struct SettingsScreen: View {
                         // Denomination theme
                         ForEach(AppTheme.allCases, id: \.self) { theme in
                             HStack {
-                                Circle().fill(theme == .darkImmersive ? Color(uiColor:"C8A800") : Color(uiColor:"8B5A42")).frame(width: 24, height: 24)
-                                Text(verbatim: theme == .darkImmersive ? "₹200 Dark" : "₹10 Classic")
-                                    .font(Theme.engravedSerif(size: 14)).foregroundStyle(Theme.inkPrimary)
+                                Circle().fill(theme.swatchColor).frame(width: 24, height: 24)
+                                Text(theme.displayName).font(Theme.engravedSerif(size: 14)).foregroundStyle(Theme.inkPrimary)
                                 Spacer()
                                 if theme.rawValue == selectedThemeRaw {
                                     Image(systemName: "checkmark").foregroundStyle(Theme.securityGold)
