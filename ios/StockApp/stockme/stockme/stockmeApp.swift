@@ -47,6 +47,7 @@ struct stockmeApp: App {
     @AppStorage("hasAcceptedDisclaimer") private var hasAcceptedDisclaimer = false
     @AppStorage("hasSeenTutorial") private var hasSeenTutorial = false
     @State private var enginePollingStarted = false
+    @State private var launchAnimDone = false
     @AppStorage("nivesh_crashCountSeen") private var crashCountSeen: Int = 0
     @State private var newCrashesSinceLastBoot: Int = 0
     @AppStorage("darkMode") private var darkMode = false
@@ -119,15 +120,18 @@ struct stockmeApp: App {
 
                 // ── Launch overlay ───────────────────────────────────────
                 if launchPhase == .loading {
-                    LaunchSequenceView {
-                        withAnimation(.spring(response: 0.45, dampingFraction: 0.8, blendDuration: 0)) {
-                            launchPhase = .mainInterface
-                        }
-                    }
-                    .transition(.opacity)
+                    LaunchSequenceView(isAnimationComplete: $launchAnimDone)
+                        .transition(.opacity)
                 }
             }
             .animation(.spring(response: 0.45, dampingFraction: 0.8, blendDuration: 0), value: launchPhase)
+            .onChange(of: launchAnimDone) { done in
+                if done {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.8, blendDuration: 0)) {
+                        launchPhase = .mainInterface
+                    }
+                }
+            }
             .task {
                 await performAsyncBoot()
             }
