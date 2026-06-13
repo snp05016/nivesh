@@ -1272,4 +1272,24 @@ extension NetworkManager {
         let (data, _) = try await URLSession.shared.data(from: url)
         return try JSONDecoder().decode([HarvesterSourceStatus].self, from: data)
     }
+
+    func brainstorm(topic: String, riskTolerance: String) async throws -> BrainstormResponse {
+        guard let url = URL(string: "\(baseURL)/brainstorm") else {
+            throw NetworkError.invalidURL
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let body = ["topic": topic, "risk_tolerance": riskTolerance]
+        request.httpBody = try JSONEncoder().encode(body)
+        
+        let (data, resp) = try await session.data(for: request)
+        if let httpResp = resp as? HTTPURLResponse, httpResp.statusCode != 200 {
+            throw NetworkError.invalidResponse
+        }
+        return try JSONDecoder().decode(BrainstormResponse.self, from: data)
+    }
 }
