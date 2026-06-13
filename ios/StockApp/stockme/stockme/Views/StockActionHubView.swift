@@ -36,6 +36,8 @@ struct StockActionHubView: View {
 
     @EnvironmentObject var reportManager: LocalReportManager
 
+    @State private var showHowItWorks = false
+
     private static let deepScanDisabledTickers: Set<String> = [
         "NIFTY", "SENSEX", "BANKNIFTY", "NIFTYBANK", "INDIAVIX",
     ]
@@ -100,9 +102,22 @@ struct StockActionHubView: View {
                     GuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
-                    section(title: "AI ANALYSIS") {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.card) {
+                        HStack {
+                            SectionHeaderView(title: "AI ANALYSIS")
+                            Spacer()
+                            Button {
+                                HapticManager.selection()
+                                showHowItWorks = true
+                            } label: {
+                                Image(systemName: "info.circle")
+                                    .font(.title3)
+                                    .foregroundStyle(Theme.securityGold)
+                            }
+                            .buttonStyle(EKPressStyle())
+                        }
+
                         VStack(spacing: Theme.Spacing.card) {
-                            // View Cached — shows highest priority cached report
                             if let cached = cachedReport, let stale = cachedStaleness {
                                 let tierLabel = stale.tier == "extreme" ? "EXTREME" : stale.tier == "deep" ? "DEEP" : "STANDARD"
                                 let tierColor: Color = stale.tier == "extreme" ? Theme.bearRed : stale.tier == "deep" ? Theme.goldPrimary : Theme.bullGreen
@@ -118,7 +133,6 @@ struct StockActionHubView: View {
                                 }
                             }
 
-                            // Standard analysis
                             actionCard(
                                 symbol: "sparkles",
                                 title: "Standard Analysis",
@@ -128,7 +142,6 @@ struct StockActionHubView: View {
                                 path.append(AnalysisDest(ticker: dest.ticker, mode: .standard))
                             }
 
-                            // Deep Scan
                             actionCard(
                                 symbol: "scope",
                                 title: "Deep Scan",
@@ -141,7 +154,6 @@ struct StockActionHubView: View {
                                 path.append(AnalysisDest(ticker: dest.ticker, mode: .deepScan))
                             }
 
-                            // Extreme Analysis
                             actionCard(
                                 symbol: "flame.fill",
                                 title: "Extreme Analysis",
@@ -154,7 +166,6 @@ struct StockActionHubView: View {
                                 path.append(AnalysisDest(ticker: dest.ticker, mode: .extremeScan))
                             }
 
-                            // Regenerate (same type as cached)
                             if cachedReport != nil {
                                 let cachedTier = cachedReport?.analysisTier ?? "standard"
                                 actionCard(
@@ -168,10 +179,16 @@ struct StockActionHubView: View {
                             }
                         }
                     }
+                    .padding(.horizontal, Theme.screenPadding)
 
                     Spacer(minLength: 80)
                 }
                 .padding(.top, Theme.Spacing.large)
+            }
+        }
+        .sheet(isPresented: $showHowItWorks) {
+            NavigationStack {
+                AIHowItWorksView()
             }
         }
         .navigationBarTitleDisplayMode(.inline)
