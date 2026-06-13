@@ -68,7 +68,7 @@ class NLScreenerViewModel: ObservableObject {
         
         Task {
             do {
-                guard let url = URL(string: "http://127.0.0.1:8000/api/v1/screener/natural-language") else { return }
+                guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/screener/natural-language") else { return }
                 var request = URLRequest(url: url)
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")

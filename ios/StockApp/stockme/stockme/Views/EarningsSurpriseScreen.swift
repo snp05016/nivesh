@@ -23,7 +23,7 @@ class EarningsSurpriseViewModel: ObservableObject {
     @Published var isCalendarView: Bool = false
 
     func fetchSurprises() {
-        guard let url = URL(string: "http://127.0.0.1:8000/api/v1/earnings/surprises?period=current_quarter") else { return }
+        guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/earnings/surprises?period=current_quarter") else { return }
         
         self.isLoading = true
         self.errorMessage = nil

@@ -9,6 +9,7 @@ struct ChatMessage: Identifiable {
 }
 
 struct CopilotScreen: View {
+    @EnvironmentObject var authManager: AuthManager
     @Environment(\.dismiss) var dismiss
     @State private var messageText: String = ""
     @State private var messages: [ChatMessage] = [
@@ -223,15 +224,16 @@ struct CopilotScreen: View {
             "current_context": currentContext ?? [:]
         ]
         
-        guard let url = URL(string: "http://localhost:8000/api/v1/copilot/chat") else {
+        guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/copilot/chat") else {
             throw URLError(.badURL)
         }
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        // NOTE: In a real app, AuthManager token needs to be added here.
-        // Assuming AuthManager.shared or similar exists, but we'll leave the header to the NetworkManager generally.
+        if let token = authManager.currentUser?.token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody, options: [])
         
         let (data, response) = try await URLSession.shared.data(for: request)
