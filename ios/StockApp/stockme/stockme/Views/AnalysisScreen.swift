@@ -628,6 +628,10 @@ struct AnalysisScreen: View {
                 newsSection(analysis)
                 whatToWatchSection(analysis)
                 disclaimerSection(analysis)
+                if analysis.analysisTier == "extreme" {
+                    DossierFooter()
+                        .padding(.top, Theme.Spacing.large)
+                }
                 Spacer(minLength: 100)
                 }
                 .padding(.horizontal, Theme.screenPadding)
@@ -641,7 +645,11 @@ struct AnalysisScreen: View {
     private func signalTimelineSection(_ analysis: StockAnalysis) -> some View {
         if let prices = viewModel.quickInfo?.priceHistory90d, !prices.isEmpty {
             VStack(spacing: Theme.Spacing.standard) {
-                SectionHeaderView(title: "SIGNAL ACCURACY TIMELINE")
+                if analysis.analysisTier == "extreme" {
+                    DossierSectionHeader(title: "SIGNAL ACCURACY TIMELINE")
+                } else {
+                    SectionHeaderView(title: "SIGNAL ACCURACY TIMELINE")
+                }
                 AnalysisHistoryTimelineView(ticker: ticker, priceHistory: prices)
             }
         }
@@ -651,6 +659,10 @@ struct AnalysisScreen: View {
 
     private func stockHeaderSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
+            if analysis.analysisTier == "extreme" {
+                DossierSectionHeader(title: "SUBJECT PROFILE")
+                    .padding(.bottom, Theme.Spacing.small)
+            }
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text(analysis.companyName)
@@ -759,11 +771,20 @@ struct AnalysisScreen: View {
 
     private func aiVerdictCard(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.none) {
-            SectionDivider()
+            if analysis.analysisTier == "extreme" {
+                DossierSectionHeader(title: "AI VERDICT")
+                    .padding(.bottom, Theme.Spacing.medium)
+            } else {
+                SectionDivider()
+            }
             VStack(alignment: .leading, spacing: Theme.Spacing.card) {
                 HStack {
-                    Text("AI VERDICT").font(Theme.sectionCapsLabel()).tracking(1.5).foregroundStyle(Theme.inkPrimary)
-                    Spacer()
+                    if analysis.analysisTier != "extreme" {
+                        Text("AI VERDICT").font(Theme.sectionCapsLabel()).tracking(1.5).foregroundStyle(Theme.inkPrimary)
+                        Spacer()
+                    } else {
+                        Spacer()
+                    }
                     Text(analysis.analysisDate).font(Theme.microLabel()).foregroundStyle(Theme.inkTertiary)
                 }
                 HStack(spacing: Theme.Spacing.standard) {
@@ -877,7 +898,11 @@ struct AnalysisScreen: View {
 
     private func dialecticDebateSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            SectionHeaderView(title: "DIALECTICAL ANALYSIS")
+            if analysis.analysisTier == "extreme" {
+                DossierSectionHeader(title: "DIALECTIC DEBATE")
+            } else {
+                SectionHeaderView(title: "DIALECTICAL ANALYSIS")
+            }
             HStack(alignment: .top, spacing: Theme.Spacing.tight) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                     HStack(spacing: Theme.Spacing.small) {
@@ -933,7 +958,11 @@ struct AnalysisScreen: View {
 
     private func timeHorizonSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            SectionHeaderView(title: "PRICE PROJECTIONS")
+            if analysis.analysisTier == "extreme" {
+                DossierSectionHeader(title: "TIME HORIZONS")
+            } else {
+                SectionHeaderView(title: "PRICE PROJECTIONS")
+            }
             HStack(spacing: Theme.Spacing.card) {
                 horizonCard(label: "3M", target: analysis.targetPrices.shortTerm3m, upside: analysis.upsideDownsidePct.shortTerm)
                 horizonCard(label: "12M", target: analysis.targetPrices.mediumTerm12m, upside: analysis.upsideDownsidePct.mediumTerm, featured: true)
@@ -966,7 +995,15 @@ struct AnalysisScreen: View {
 
     private func riskFactorsSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            SectionHeaderView(title: "RISK FACTORS")
+            if analysis.analysisTier == "extreme" {
+                ClassifiedStamp("CLASSIFIED", size: 56)
+                    .frame(maxWidth: .infinity, alignment: .topTrailing)
+                    .offset(x: -8, y: -8)
+                    .zIndex(1)
+                DossierSectionHeader(title: "RISK FACTORS")
+            } else {
+                SectionHeaderView(title: "RISK FACTORS")
+            }
             VStack(spacing: Theme.Spacing.tight) {
                 ForEach(Array(analysis.keyRisks.enumerated()), id: \.offset) { idx, risk in
                     let severity: SeverityDot.Severity = idx == 0 ? .high : (idx == 1 ? .medium : .low)
@@ -993,7 +1030,15 @@ struct AnalysisScreen: View {
 
     private func fundamentalsSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            SectionHeaderView(title: "FUNDAMENTALS")
+            if analysis.analysisTier == "extreme" {
+                ClassifiedStamp("CONFIDENTIAL", size: 56)
+                    .frame(maxWidth: .infinity, alignment: .topTrailing)
+                    .offset(x: -8, y: -8)
+                    .zIndex(1)
+                DossierSectionHeader(title: "FUNDAMENTALS")
+            } else {
+                SectionHeaderView(title: "FUNDAMENTALS")
+            }
 
             // Screen C — 3-column numeric metric grid with long-press term tooltips
             if let info = viewModel.quickInfo {
@@ -1043,7 +1088,11 @@ struct AnalysisScreen: View {
 
     private func whatToWatchSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            SectionHeaderView(title: "WHAT TO WATCH")
+            if analysis.analysisTier == "extreme" {
+                DossierSectionHeader(title: "SURVEILLANCE WATCHLIST")
+            } else {
+                SectionHeaderView(title: "WHAT TO WATCH")
+            }
             VStack(spacing: Theme.Spacing.tight) {
                 ForEach(analysis.whatToWatch, id: \.self) { item in
                     HStack(alignment: .top, spacing: Theme.Spacing.medium) {
@@ -1087,16 +1136,26 @@ struct AnalysisScreen: View {
     private func newsSection(_ analysis: StockAnalysis) -> some View {
         if let news = analysis.recentNews, !news.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                SectionDivider()
-                HStack {
-                    Text("RECENT NEWS")
-                        .font(Theme.officialStampFont(size: 9))
-                        .tracking(1.5)
-                        .foregroundStyle(Theme.inkSecondary)
-                    Spacer()
-                    Text("\(news.count) articles")
-                        .font(Theme.microLabel(size: 9))
-                        .foregroundStyle(Theme.inkTertiary)
+                if analysis.analysisTier == "extreme" {
+                    DossierSectionHeader(title: "SIGNALS INTELLIGENCE")
+                    HStack {
+                        Spacer()
+                        Text("\(news.count) articles")
+                            .font(Theme.microLabel(size: 9))
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
+                } else {
+                    SectionDivider()
+                    HStack {
+                        Text("RECENT NEWS")
+                            .font(Theme.officialStampFont(size: 9))
+                            .tracking(1.5)
+                            .foregroundStyle(Theme.inkSecondary)
+                        Spacer()
+                        Text("\(news.count) articles")
+                            .font(Theme.microLabel(size: 9))
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
                 }
                 ForEach(news.prefix(5)) { item in
                     NewsItemCard(item: item)
@@ -1109,6 +1168,8 @@ struct AnalysisScreen: View {
 
     @ViewBuilder
     private func extremeChartSections(_ analysis: StockAnalysis) -> some View {
+        DossierSectionHeader(title: "BONUS CHARTS")
+            .padding(.bottom, Theme.Spacing.small)
         // Factor Radar + Scenarios
         if let fs = analysis.factorScores {
             VStack(alignment: .leading, spacing: Theme.Spacing.card) {
@@ -1484,7 +1545,11 @@ struct AnalysisScreen: View {
 
     private func disclaimerSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            SectionDivider()
+            if analysis.analysisTier == "extreme" {
+                DossierSectionHeader(title: "DISCLAIMER")
+            } else {
+                SectionDivider()
+            }
             Text(stripEmoji(analysis.disclaimer))
                 .font(Theme.microLabel(size: 9)).foregroundStyle(Theme.inkTertiary)
                 .lineSpacing(4).frame(maxWidth: .infinity, alignment: .leading)
