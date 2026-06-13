@@ -61,6 +61,26 @@ struct SettingsScreen: View {
                             SettingsNavRow(icon: "person.crop.circle.fill", color: Theme.inkPrimary, title: "Account & System", route: .account, isLast: !showDevTools)
                             
                             if showDevTools {
+                                NavigationLink(destination: CrashLabView()) {
+                                    HStack {
+                                        SettingIcon(icon: "exclamationmark.shield.fill", color: Theme.bearRed)
+                                        Text("CRASH LAB (\(CrashLog.shared.count()))")
+                                            .font(Theme.officialStampFont(size: 9))
+                                            .foregroundStyle(Theme.inkPrimary)
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(Theme.inkTertiary.opacity(0.5))
+                                    }
+                                    .padding(.vertical, Theme.Spacing.standard)
+                                    .padding(.horizontal, Theme.Spacing.card)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+
+                                GuillocheDivider()
+                                    .padding(.leading, Theme.Spacing.card + 32 + Theme.Spacing.card)
+
                                 SettingsNavRow(icon: "hammer.fill", color: Theme.bearRed, title: "Developer Tools", route: .devTools, isLast: true)
                             }
                         }
