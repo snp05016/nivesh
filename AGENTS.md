@@ -73,6 +73,13 @@ Refuse when a request:
 - **Incremental verification** — AI output passes `_normalize_response()` before client. Process spawn = health-check loop. DB sessions use `get_session()` with rollback.
 - **Zero magic** — No bare `except:`, no untyped dict access without `.get(key, default)`, no silent fallthroughs. `_SIGNAL_MAP` is SOLE authority for signal strings.
 
+### 1.4 Sequential Subagent Pipeline (Subagent-Driven Development)
+When executing complex tasks, you MUST deploy a team of specialized subagents working sequentially to maintain context hygiene:
+1. **The Builder Agent:** Focuses strictly on writing the core implementation (e.g., backend logic, SwiftUI views).
+2. **The Reviewer Agent:** A separate subagent spawned specifically to perform a rigorous code quality review. It checks for architectural compliance, Banknote Aesthetic usage, correct Indian numbering, and zero magic strings.
+3. **The Verifier/Tester Agent:** Ensures the system actually runs locally without missing modules, syntax errors, or circular imports.
+Do not attempt to write, review, and verify massive features in a single context window. Divide and conquer.
+
 ---
 
 ## 2. Pillar I: Frontend Guardrails (SwiftUI & Banknote Aesthetic)
