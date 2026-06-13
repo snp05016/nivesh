@@ -308,16 +308,16 @@ struct CopilotFloatingButtonModifier: ViewModifier {
                         isShowingCopilot = true
                     }) {
                         Image(systemName: "sparkles")
-                            .font(.system(size: 24, weight: .bold)) // Only SF symbol sizes
+                            .font(.system(size: 20, weight: .bold)) // Only SF symbol sizes
                             .foregroundColor(Theme.canvas)
-                            .padding(Theme.Spacing.large)
+                            .padding(Theme.Spacing.card)
                             .background(Theme.securityGold)
                             .clipShape(Circle())
                             .shadow(color: Theme.securityGold.opacity(0.4), radius: 8, x: 0, y: 4)
                     }
                     .buttonStyle(EKPressStyle())
                     .padding(.trailing, Theme.screenPadding)
-                    .padding(.bottom, Theme.Spacing.xLarge)
+                    .padding(.bottom, Theme.Spacing.xLarge + Theme.Spacing.standard)
                 }
             }
         }
