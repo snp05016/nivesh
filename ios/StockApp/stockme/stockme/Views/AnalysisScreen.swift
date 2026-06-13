@@ -543,7 +543,7 @@ struct AnalysisScreen: View {
                                 .foregroundStyle(Theme.inkSecondary)
                                 .lineSpacing(6)
                         }
-                        SectionDivider()
+                        GuillocheDivider()
                         if let officers = info.officers, !officers.isEmpty {
                             VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                                 Text("KEY EXECUTIVES")
@@ -719,7 +719,7 @@ struct AnalysisScreen: View {
                     Spacer()
                 }
             }
-            SectionDivider()
+            GuillocheDivider()
             if let prices = viewModel.quickInfo?.priceHistory90d, !prices.isEmpty {
                 PriceHistoryChart(
                     prices: prices,
@@ -743,7 +743,7 @@ struct AnalysisScreen: View {
                 }
                 Spacer()
             }
-            SectionDivider()
+            GuillocheDivider()
             HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                 Text("₹").font(Theme.engravedSerif(size: 24, weight: .bold)).foregroundStyle(Theme.goldPrimary)
                 Text((info.price ?? 0.0).inrFormatted.replacingOccurrences(of: "₹", with: ""))
@@ -767,7 +767,7 @@ struct AnalysisScreen: View {
 
     private func aiVerdictCard(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.none) {
-            SectionDivider()
+            GuillocheDivider()
             VStack(alignment: .leading, spacing: Theme.Spacing.card) {
                 HStack {
                     Text("AI VERDICT").font(Theme.sectionCapsLabel()).tracking(1.5).foregroundStyle(Theme.inkPrimary)
@@ -786,7 +786,7 @@ struct AnalysisScreen: View {
                 }
                 VStack(spacing: Theme.Spacing.small) {
                     Text("CONFIDENCE").font(Theme.microLabel()).foregroundStyle(Theme.inkTertiary)
-                        .financeTerm("Confidence Score")
+                        .explainableTerm("Confidence Score")
                     HStack(spacing: Theme.Spacing.xSmall) {
                         ForEach(0..<5, id: \.self) { i in
                             RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
@@ -834,7 +834,7 @@ struct AnalysisScreen: View {
             .background(Theme.surfaceElevated)
             .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderStrong, lineWidth: 1))
             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
-            SectionDivider()
+            GuillocheDivider()
         }
     }
 
@@ -1095,7 +1095,7 @@ struct AnalysisScreen: View {
     private func newsSection(_ analysis: StockAnalysis) -> some View {
         if let news = analysis.recentNews, !news.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                SectionDivider()
+                GuillocheDivider()
                 HStack {
                     Text("RECENT NEWS")
                         .font(Theme.officialStampFont(size: 9))
@@ -1492,7 +1492,7 @@ struct AnalysisScreen: View {
 
     private func disclaimerSection(_ analysis: StockAnalysis) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
-            SectionDivider()
+            GuillocheDivider()
             Text(stripEmoji(analysis.disclaimer))
                 .font(Theme.microLabel(size: 9)).foregroundStyle(Theme.inkTertiary)
                 .lineSpacing(4).frame(maxWidth: .infinity, alignment: .leading)
@@ -1566,7 +1566,7 @@ struct AnalysisScreen: View {
                             }
                             Spacer()
                         }
-                        SectionDivider()
+                        GuillocheDivider()
                         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                             HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                                 Text("₹")
@@ -1613,7 +1613,7 @@ struct AnalysisScreen: View {
                         }
                     }
 
-                    SectionDivider()
+                    GuillocheDivider()
 
                     Text(info.suggestedActionText)
                         .font(.footnote.weight(.medium))
@@ -1928,7 +1928,7 @@ private struct AnalysisMetricCell: View {
             Text(label)
                 .font(Theme.officialStampFont(size: 8)).tracking(1.2)
                 .foregroundStyle(Theme.inkTertiary)
-                .financeTerm(term)
+                .explainableTerm(term)
             Text(value)
                 .font(Theme.serialNumberFont(size: 14, relativeTo: .footnote).weight(.bold))
                 .foregroundStyle(Theme.inkPrimary)
@@ -1964,7 +1964,7 @@ private struct KeyFactorCard: View {
                         .foregroundStyle(Theme.inkPrimary)
                 }
             }
-            SectionDivider()
+            GuillocheDivider()
             Text(text)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Theme.inkSecondary)
@@ -2187,7 +2187,7 @@ private struct ConfidenceCard: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text("CONFIDENCE SCORE")
                         .font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkSecondary)
-                        .financeTerm("Confidence Score")
+                        .explainableTerm("Confidence Score")
                     Text(label)
                         .font(Theme.engravedSerif(size: 15, weight: .bold)).foregroundStyle(color)
                 }
@@ -2298,7 +2298,7 @@ private struct GlossarySheet: View {
                     Text(term)
                         .font(Theme.engravedSerif(size: 22, weight: .bold))
                         .foregroundStyle(Theme.inkPrimary)
-                    SectionDivider()
+                    GuillocheDivider()
                     Text(glossaryDefinitions[term] ?? "No definition available for this term.")
                         .font(.body.weight(.medium))
                         .foregroundStyle(Theme.inkSecondary)
@@ -2402,7 +2402,7 @@ struct NewsReaderView: View {
                         .font(Theme.serialNumberFont(size: 11))
                         .foregroundStyle(Theme.inkTertiary)
 
-                        SectionDivider()
+                        GuillocheDivider()
 
                         if let summary = item.summary, !summary.isEmpty {
                             Text(summary)
