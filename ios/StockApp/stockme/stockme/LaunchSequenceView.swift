@@ -35,7 +35,7 @@ struct LaunchSequenceView: View {
 
     private var wordmarkStack: some View {
         VStack(spacing: Theme.Spacing.none) {
-            // "NIVESH" — mask-scaled reveal
+            // "NIVESH" — mask-scaled reveal from center
             ZStack {
                 Text("NIVESH")
                     .font(Font.custom("Georgia-Bold", size: 42, relativeTo: .largeTitle))
@@ -43,11 +43,9 @@ struct LaunchSequenceView: View {
                     .foregroundStyle(Theme.inkPrimary)
                     .opacity(wordmarkBaseOpacity)
                     .mask(
-                        HStack(spacing: 0) {
-                            Color.black
-                                .frame(width: wordmarkMaskWidth, alignment: .leading)
-                        }
-                        .frame(width: 300, alignment: .leading)
+                        Color.black
+                            .frame(width: wordmarkMaskWidth, alignment: .leading)
+                            .frame(maxWidth: wordmarkMeasuredWidth, alignment: .leading)
                     )
             }
             .background(
