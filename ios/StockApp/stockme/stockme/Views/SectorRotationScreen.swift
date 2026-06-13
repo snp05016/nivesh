@@ -144,9 +144,8 @@ struct SectorRotationScreen: View {
                                     Text(sector.name.prefix(3).uppercased())
                                         .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                                         .foregroundColor(Theme.canvas)
-        }
-        .helpSheet(isPresented: $showHelp, title: FeatureHelp.sectorRotation.title, subtitle: FeatureHelp.sectorRotation.subtitle, sections: FeatureHelp.sectorRotation.sections)
-    }
+                                }
+                            }
                             
                             RuleMark(x: .value("Zero", 0.0))
                                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [4]))
@@ -198,6 +197,7 @@ struct SectorRotationScreen: View {
                 viewModel.fetchRotation()
             }
         }
+        .helpSheet(isPresented: $showHelp, title: FeatureHelp.sectorRotation.title, subtitle: FeatureHelp.sectorRotation.subtitle, sections: FeatureHelp.sectorRotation.sections)
     }
     
     private func quadrantColor(_ quad: String) -> Color {

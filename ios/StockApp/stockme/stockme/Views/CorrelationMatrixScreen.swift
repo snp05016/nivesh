@@ -268,11 +268,9 @@ struct CorrelationHeatmap: View {
                                 
                                 ForEach(uniqueTickers, id: \.self) { t2 in
                                     HeatmapCell(t1: t1, t2: t2, matrix: matrix)
-            }
-        }
-        .helpSheet(isPresented: $showHelp, title: FeatureHelp.correlation.title, subtitle: FeatureHelp.correlation.subtitle, sections: FeatureHelp.correlation.sections)
-    }
-                    }
+                                }
+                            }
+                        }
                     .padding(.horizontal, Theme.screenPadding)
                 }
             }
