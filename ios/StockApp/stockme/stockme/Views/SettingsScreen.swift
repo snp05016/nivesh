@@ -70,6 +70,7 @@ struct SettingsScreen: View {
                     .padding(.vertical, Theme.Spacing.large)
                 }
             }
+            .crashGuard("SettingsScreen")
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
             .navigationDestination(for: SettingsRoute.self) { route in

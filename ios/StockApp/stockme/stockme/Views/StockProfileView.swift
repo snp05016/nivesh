@@ -474,6 +474,7 @@ struct StockProfileView: View {
                     .frame(maxHeight: .infinity)
                 }
             }
+            .crashGuard("StockProfile")
             .navigationTitle(ticker.uppercased())
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)  // we provide our own chevron; hide the system one

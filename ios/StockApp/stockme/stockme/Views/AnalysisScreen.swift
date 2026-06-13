@@ -251,6 +251,7 @@ struct AnalysisScreen: View {
                 renderErrorState(errorInfo)
             }
         }
+        .crashGuard("AnalysisScreen")
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
