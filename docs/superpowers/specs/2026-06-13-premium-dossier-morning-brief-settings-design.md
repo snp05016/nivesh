@@ -10,10 +10,9 @@
 
 ### Visual Language
 - **Redaction bar section headers**: Each section title renders as a black bar with struck-through text on scroll-enter, then animates (spring, 0.4s) to reveal the actual title. Implemented via `RedactionSectionHeader(title:)` ViewModifier that watches scroll position.
-- **Classified circular stamps**: `riskFactorsSection`, governance components, and `fundamentalsSection` get a red `CLASSIFIED` or `CONFIDENTIAL` circular stamp overlay in the top-right corner. `heroChartSection` gets "SATELLITE IMAGERY" stamp.
-- **"TOP SECRET // EYES ONLY" watermark**: `aiVerdictCard` background gets a subtle, semi-transparent watermark text at 6° rotation.
+- **Classified circular stamps**: `riskFactorsSection`, governance components, and `fundamentalsSection` get a red `CLASSIFIED` or `CONFIDENTIAL` circular stamp overlay in the top-right corner. `heroChartSection` gets "SATELLITE IMAGERY" stamp. No watermark behind `aiVerdictCard` text — readability over ornamentation.
 - **Document footer**: Below `disclaimerSection`, a dossier-style footer: "DOCUMENT END · Nivesh AI Research Desk · Classification: UNCLASSIFIED".
-- **Aged-paper background**: Slightly warmer tint on `DenominationBackground`. Subtle typewriter-texture `.opacity(0.02)` overlay.
+- **Aged-paper background**: Slightly warmer tint on `DenominationBackground`. Subtle typewriter-texture `.opacity(0.02)` overlay. Must preserve high text contrast — no tinting on text areas.
 
 ### Implementation
 - New components (in-file private structs):
@@ -22,7 +21,6 @@
   - `DossierFooter()` — end-of-document footer
 - Modified sections:
   - `heroChartSection` → add stamp
-  - `aiVerdictCard` → add watermark
   - All 10+ section headers → replace with `DossierSectionHeader`
   - `riskFactorsSection`, `fundamentalsSection` → add stamp
 - `extremeModeSwitcher` → unchanged
@@ -30,64 +28,82 @@
 
 ---
 
-## Stream B: Morning Brief — Full-Screen Alert + FAB
+## Stream B: Morning Brief — Prominent Card + Nav Bar Icon
 
-**Goal:** Morning Brief appears as a full-screen modern alert on first app open after configured time. After dismiss, a floating FAB persists on HomeScreen showing mood dot. Zero new API calls.
+**Goal:** Render the Morning Brief as a prominent, dismissible card pinned at the top of the HomeScreen feed. A static icon in the top navigation bar provides quick access. Zero new API calls.
 
-**Files:** `HomeScreen.swift`, new file `MorningBriefAlertView.swift`
+**Files:** `HomeScreen.swift` only (no new files)
 
 ### Behavior
-- `@AppStorage("morningBriefShownDate")` — stores `"2026-06-13"` last-shown date
-- `@AppStorage("morningBriefTime")` — existing setting, default "08:00"
-- On `HomeScreen.onAppear`: if `morningBriefShownDate != today` AND `currentTime >= morningBriefTime` → show full-screen alert
+- `@AppStorage("morningBriefShownDate")` — stores `"2026-06-13"` last-dismissed date
+- On `HomeScreen.onAppear`: if `morningBriefShownDate != today` AND `morningBriefData != nil` → show the prominent card at the top of the feed
+- Card is NOT a modal/overlay — it's a section in the ScrollView, pinned as the first card
 - Does NOT fetch new data — uses existing `viewModel.morningBriefData`
-- If data hasn't loaded yet when onAppear fires, show after data arrives (use `onChange(of: viewModel.morningBriefData)`)
+- If data hasn't loaded yet when onAppear fires, card appears when data arrives (`onChange`)
 
-### Full-Screen Alert (`MorningBriefAlertView.swift`)
-- `DenominationBackground(.twoHundred)` backdrop
-- Top: "⚡ MARKETS OPEN" with date and time in `officialStampFont`
-- Center: Large banknote card with:
-  - Mood-colored top strip (green/red/amber based on `briefData.mood`)
-  - "📊 MARKET MOOD" label
-  - Mood text in `engravedSerif` large
-  - Summary text (scrollable if long)
-  - Divider
-  - Priority items list (if present)
-  - "GOT IT" button at bottom — `EKPressStyle`, gold fill
-- Bottom: "Nivesh AI · [date] [time]" attribution
-- Dismissible via swipe-down (`.interactiveDismissDisabled(false)`) or button
+### Prominent Dismissible Card (Rendered in `renderSection(id: .top)`)
+Replaces the current `SectionHeader(title: "Morning Brief")` + `MorningDecreeCard` in the `.morning` section. Instead, an eye-catching card rendered at position zero in the feed:
 
-### FAB (Floating Action Button)
-- Renders only after brief has been shown AND before market close (15:30 IST)
-- Position: `.overlay(alignment: .bottomTrailing)` on HomeScreen's outer ZStack
-- Visual: 52×52pt circle, `Theme.surfaceElevated`, 2pt `Theme.securityGold` border, `book.pages` icon
-- Mood-colored dot: 10pt circle at top-right of button (green/red/amber)
-- Tap: sets `showMorningBrief = true`, opens the full-screen alert again
-- Fade-in animation on first appear after dismiss
+```
+┌──────────────────────────────────┐
+│  🟢 MARKETS OPEN · June 13 09:15│  ← mood dot + dateline
+│                                  │
+│  Market mood: CAUTIOUSLY POSITIVE│
+│  FIIs returned with ₹2,400 Cr   │
+│  buying. Global cues mixed...   │  ← summary (3 lines max)
+│  Key Q4 results today: TCS...   │
+│                                  │
+│  ────────────────────────────── │
+│  ⚠ TCS Q4 expected +8% YoY      │  ← priority items (2 lines max)
+│  ⚠ SEBI deadline on Finflix     │
+│                                  │
+│  [READ FULL BRIEF]    [✕ DISMISS]│  ← action buttons
+└──────────────────────────────────┘
+```
+
+**Card details:**
+- Mood-colored left-edge accent strip (green/red/amber, 4pt wide)
+- "MARKETS OPEN" dateline with mood dot in `officialStampFont`
+- Summary: `engravedSerif`, 3-line limit with "...READ FULL BRIEF" link
+- Priority items: up to 2 shown inline
+- Two buttons at bottom:
+  - "READ FULL BRIEF" — expands card inline to show full brief content (or navigates to existing `MorningDecreeCard` full view)
+  - "✕ DISMISS" — hides the card for the day, sets `morningBriefShownDate = today`
+- Dismiss animation: card collapses with `.transition(.move(edge: .top).combined(with: .opacity))`
+- After dismiss: card is gone until next day
+
+### Static Nav Bar Icon
+- Rendered in HomeScreen's `.toolbar` at `.navigationBarLeading` position
+- Visual: `newspaper` SF Symbol in `Theme.securityGold`, 28×28pt tap target
+- Shows only when `viewModel.morningBriefData != nil`
+- Tap: if card is dismissed/re-hidden today, shows it again. If card is already visible, scrolls to it via `ScrollViewReader`
+- Mood-colored dot (6pt) at top-right corner of the icon when brief is unread/new
 
 ### State
 ```
-@State private var showMorningBrief = false
+@State private var briefDismissed = false
 @AppStorage("morningBriefShownDate") private var briefShownDate = ""
 ```
+- `briefDismissed` resets to `false` when date changes (today != briefShownDate)
+- Card visibility: `!briefDismissed && briefData != nil`
 
 ---
 
-## Stream C: Settings — 4-Tab Banking Console
+## Stream C: Settings — Native iOS Grouped List
 
-**Goal:** Expand SettingsScreen with 4 tabs and 30+ new settings. All `@AppStorage` — no backend.
+**Goal:** Expand SettingsScreen with 30+ new settings organized into standard iOS grouped `List` sections. All `@AppStorage` — no backend.
 
 **File:** `ios/StockApp/stockme/stockme/Views/SettingsScreen.swift`
 
-### Tab Bar
-- Internal pill-tab switcher (same pattern as `extremeModeSwitcher` in AnalysisScreen)
-- Tabs: **Profile · Analysis · Appearance · Data**
-- Active tab: `Theme.securityGold` fill, `Theme.canvas` text
-- Inactive: `Theme.surfaceElevated` fill, `Theme.inkSecondary` text
+### Layout
+- Standard iOS `List` with `.insetGrouped` style
+- Divided into labeled `Section` groups — no custom tab bar
+- Each section has a `Section { ... } header: { ... }` with header text in `Theme.officialStampFont`
+- Scrollable vertically, native iOS look with Banknote Aesthetic skin (colors, fonts, card style)
 
-### Tab Content — New Settings (Bold = NEW)
+### Section Content — New Settings (Bold = NEW)
 
-#### Tab 1: PROFILE
+#### Section: TRADING PREFERENCES
 | Setting | Type | Key | Options |
 |---------|------|-----|---------|
 | User card | Display | — | Existing, unchanged |
@@ -103,7 +119,7 @@
 | Notification Sound | Picker | `notificationSound` | Existing (unchanged) |
 | **Quiet Hours** | Navigation | — | Opens `QuietHoursView` (start/end picker) |
 
-#### Tab 2: ANALYSIS
+#### Section: AI & ANALYSIS
 | Setting | Type | Key | Options |
 |---------|------|-----|---------|
 | Deep Scan by Default | Toggle | `deepScanByDefault` | Existing (unchanged) |
@@ -116,7 +132,7 @@
 | Alert on SELL | Toggle | `alertOnSell` | true |
 | Mute HOLD | Toggle | `muteHoldSignals` | false |
 
-#### Tab 3: APPEARANCE
+#### Section: APPEARANCE
 | Setting | Type | Key | Options |
 |---------|------|-----|---------|
 | Denomination Theme | Grid | `selectedTheme` | Existing, unchanged |
@@ -127,7 +143,7 @@
 | **Reduce Animations** | Toggle | `reduceAnimations` | false |
 | **Show Hindi Labels** | Toggle | `showHindiLabels` | true |
 
-#### Tab 4: DATA
+#### Section: DATA & PRIVACY
 | Setting | Type | Key | Options |
 |---------|------|-----|---------|
 | **Saved Reports** | Navigation | — | Opens report manager |
@@ -136,15 +152,22 @@
 | **Export Portfolio CSV** | Button | — | Share sheet |
 | Face ID Lock | Toggle | `faceIdLock` | Existing (unchanged) |
 | **Hide Portfolio Values** | Toggle | `hidePortfolioValues` | false |
-| **Scramble P&L on Tilt** | Toggle | `scramblePnL` | false |
 | **Biometric for Trades** | Toggle | `biometricTradeLock` | false |
 | Currency Format | Picker | `currencyFormat` | Existing (unchanged) |
 | Home Auto-Refresh | Picker | `homeAutoRefreshSeconds` | Existing (unchanged) |
 | Server URL | Navigation | — | Existing (unchanged) |
+
+#### Section: ACCOUNT
+| Setting | Type | Key | Options |
+|---------|------|-----|---------|
 | Void All Records | Button | — | Existing, unchanged |
 | Void Session | Button | — | Existing, unchanged |
 | IPO Alerts | Toggle | `ipoAlertsEnabled` | Existing (unchanged) |
-| Dev Tools | Hidden | — | Existing (unchanged) |
+
+#### Section: DEVELOPER (hidden, triple-tap to reveal)
+| Setting | Type | Key | Options |
+|---------|------|-----|---------|
+| Dev Tools | — | — | Existing, unchanged |
 
 ### New Sub-Screens
 - `SectorBlacklistView.swift` — toggle chips for sectors (Banking, IT, Pharma, Auto, FMCG, Metals, Energy, Realty, Media, PSU)
@@ -152,10 +175,10 @@
 - `ReportManagerView.swift` — list saved reports with delete swipe, counts per ticker
 
 ### Design Pattern (Consistency)
-- All rows use existing `SettingsNoteGroup`, `ToggleNoteRow`, `PickerNoteRow` patterns
-- Tabs use `extremeModeSwitcher`-style pill buttons
+- ALL rows use existing `SettingsNoteGroup`, `ToggleNoteRow`, `PickerNoteRow` patterns
 - All new @AppStorage keys prefixed with `nivesh_` (existing convention)
 - Sub-screens use `NavigationLink` from parent, `NavigationStack` + `DenominationBackground` inside
+- No custom pill switcher — standard iOS `List` navigation
 
 ---
 
@@ -163,19 +186,21 @@
 
 ### Team 1: Extreme Dossier (1 subagent)
 - New components: `DossierSectionHeader`, `ClassifiedStamp`, `DossierFooter`
-- Modify: `heroChartSection`, `aiVerdictCard`, all section headers in `aiReportScroll`
+- Modify: `heroChartSection`, all section headers in `aiReportScroll`
 - File: `AnalysisScreen.swift` only
+- Note: No watermark on `aiVerdictCard`
 
 ### Team 2: Morning Brief (1 subagent)
-- New file: `MorningBriefAlertView.swift`
-- Modify: `HomeScreen.swift` (add FAB, sheet trigger, state)
+- Modify: `HomeScreen.swift` (prominent card section + toolbar icon + state)
+- No new files needed
 - Zero API changes
 
 ### Team 3: Settings Expansion (2 subagents)
-- Subagent 3A: Settings screen restructure (tabs, all new rows in main SettingsScreen.swift)
-- Subagent 3B: Sub-screens (SectorBlacklistView, QuietHoursView, ReportManagerView)
+- Subagent 3A: Restructure `SettingsScreen.swift` — convert to `List` with `Section` groups, add all new rows
+- Subagent 3B: New sub-screens (`SectorBlacklistView`, `QuietHoursView`, `ReportManagerView`)
 - File: `SettingsScreen.swift` + 3 new files
+- Note: No "Scramble P&L on Tilt" setting
 
-**Order:** All 3 streams are independent. Can run in parallel. Stream C's subagents 3A and 3B must be sequential (3B depends on 3A's tab structure).
+**Order:** All 3 streams are independent. Can run in parallel. Stream C's subagents 3A and 3B must be sequential (3B depends on 3A's NavigationLink destinations).
 
 ---
