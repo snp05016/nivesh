@@ -115,17 +115,29 @@ struct CorrelationMatrixScreen: View {
         
         do {
             guard let token = authManager.currentUser?.token else {
-                throw URLError(.userAuthenticationRequired)
+                await MainActor.run {
+                    self.errorMessage = "Sign in required to view portfolio correlation."
+                    self.isLoading = false
+                }
+                return
             }
             
             let url = URL(string: "\(NetworkManager.shared.baseURL)/portfolio/correlation?portfolio_id=holdings")!
-            var req = URLRequest(url: url)
+            var req = URLRequest(url: url, timeoutInterval: 90)
             req.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             
             let (respData, res) = try await URLSession.shared.data(for: req)
             
-            guard let http = res as? HTTPURLResponse, http.statusCode == 200 else {
-                throw URLError(.badServerResponse)
+            guard let http = res as? HTTPURLResponse else {
+                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid server response."])
+            }
+            
+            if http.statusCode == 401 {
+                throw NSError(domain: "", code: 401, userInfo: [NSLocalizedDescriptionKey: "Session expired. Please sign in again."])
+            }
+            
+            guard http.statusCode == 200 else {
+                throw NSError(domain: "", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "Server returned status \(http.statusCode)."])
             }
             
             let decoded = try JSONDecoder().decode(CorrelationResponse.self, from: respData)
@@ -134,8 +146,24 @@ struct CorrelationMatrixScreen: View {
                 self.isLoading = false
             }
         } catch {
+            let nsErr = error as NSError
+            let msg: String
+            if nsErr.domain == NSURLErrorDomain {
+                switch nsErr.code {
+                case NSURLErrorTimedOut:
+                    msg = "Server is taking too long. Large portfolios may need more time — please try again."
+                case NSURLErrorCannotConnectToHost, NSURLErrorNetworkConnectionLost:
+                    msg = "Cannot reach server. Check your internet connection."
+                case NSURLErrorNotConnectedToInternet:
+                    msg = "No internet connection."
+                default:
+                    msg = error.localizedDescription
+                }
+            } else {
+                msg = nsErr.localizedDescription
+            }
             await MainActor.run {
-                self.errorMessage = error.localizedDescription
+                self.errorMessage = msg
                 self.isLoading = false
             }
         }
