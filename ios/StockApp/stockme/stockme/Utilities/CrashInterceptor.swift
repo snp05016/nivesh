@@ -26,13 +26,13 @@ enum CrashInterceptor {
         }
     }
 
-    private static func handleSignal(_ signal: Int32) {
-        let name = String(cString: strsignal(signal))
+    private static func handleSignal(_ sig: Int32) {
+        let name = String(cString: strsignal(sig))
         let stack = Thread.callStackSymbols.prefix(40).joined(separator: "\n")
-        record(type: .signal, signal: signal, name: name, reason: nil,
+        record(type: .signal, signal: sig, name: name, reason: nil,
                stackTrace: stack, viewPath: CrashGuard.lastViewPath)
-        signal = SIG_DFL
-        raise(signal)
+        signal(sig, SIG_DFL)
+        raise(sig)
     }
 
     static func record(type: CrashType, signal: Int32?, name: String, reason: String?,
