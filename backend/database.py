@@ -800,15 +800,13 @@ def get_recent_analyses(
 
 
 def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_type: str = "standard") -> Optional[dict]:
-    # Fix 2.40: Use 24h rolling time delta instead of absolute calendar day
-    # boundary. An analysis from 23:30 yesterday is still valid at 00:30 today.
-    from datetime import datetime as _dt, timedelta as _td
-    cutoff_24h = _dt.utcnow() - _td(hours=24)
+    """Return the last analysis for ticker+scan_type regardless of date.
+    Includes a _staleness_hours field for the UI."""
+    from datetime import datetime as _dt, timezone as _tz
     row = (
         session.query(AnalysisHistory)
         .filter(
             AnalysisHistory.ticker == ticker.upper(),
-            AnalysisHistory.analysis_date == target_date,
             AnalysisHistory.scan_type == scan_type,
         )
         .order_by(AnalysisHistory.created_at.desc())
@@ -816,9 +814,46 @@ def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_
     )
     if not row:
         return None
-    if row.created_at and row.created_at < cutoff_24h:
-        return None
     res = json.loads(row.full_json)
+    res["raw_output"] = row.raw_output
+    # Calculate staleness
+    if row.created_at:
+        age_h = (_dt.now(_tz.utc) - row.created_at.replace(tzinfo=_tz.utc)).total_seconds() / 3600
+        res["_staleness_hours"] = round(age_h, 1)
+        if age_h < 6:
+            res["_staleness_label"] = "Fresh"
+        elif age_h < 48:
+            res["_staleness_label"] = "Aging"
+        else:
+            res["_staleness_label"] = "Stale"
+    return res
+
+
+def get_last_analysis_any_type(session: Session, ticker: str) -> Optional[dict]:
+    """Return the most recent analysis for a ticker across all scan types.
+    Priority: extreme > deep > standard. Returns (scan_type, analysis_dict)."""
+    from datetime import datetime as _dt, timezone as _tz
+    for scan in ("extreme", "standard", "standard"):  # extreme first, then standard (deep uses standard scan_type)
+        row = (
+            session.query(AnalysisHistory)
+            .filter(
+                AnalysisHistory.ticker == ticker.upper(),
+                AnalysisHistory.scan_type == scan,
+            )
+            .order_by(AnalysisHistory.created_at.desc())
+            .first()
+        )
+        if row:
+            res = json.loads(row.full_json)
+            res["raw_output"] = row.raw_output
+            res["_cached_scan_type"] = scan
+            if row.created_at:
+                age_h = (_dt.now(_tz.utc) - row.created_at.replace(tzinfo=_tz.utc)).total_seconds() / 3600
+                res["_staleness_hours"] = round(age_h, 1)
+                if age_h < 6: res["_staleness_label"] = "Fresh"
+                elif age_h < 48: res["_staleness_label"] = "Aging"
+                else: res["_staleness_label"] = "Stale"
+            return res
     res["raw_output"] = row.raw_output
     return res
 
