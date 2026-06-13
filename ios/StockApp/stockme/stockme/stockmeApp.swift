@@ -47,6 +47,8 @@ struct stockmeApp: App {
     @AppStorage("hasAcceptedDisclaimer") private var hasAcceptedDisclaimer = false
     @AppStorage("hasSeenTutorial") private var hasSeenTutorial = false
     @State private var enginePollingStarted = false
+    @AppStorage("nivesh_crashCountSeen") private var crashCountSeen: Int = 0
+    @State private var newCrashesSinceLastBoot: Int = 0
     @AppStorage("darkMode") private var darkMode = false
     @AppStorage("dev_welcome_notification") private var devWelcomeNotification = false
 
@@ -131,6 +133,10 @@ struct stockmeApp: App {
             }
             .onAppear {
                 Task { await notificationManager.requestAuthorization() }
+                let currentCrashes = CrashLog.shared.count()
+                if currentCrashes > crashCountSeen {
+                    newCrashesSinceLastBoot = currentCrashes - crashCountSeen
+                }
                 // Initial lock on cold launch — only if biometrics enabled
                 if biometricsEnabled && !isAuthenticating {
                     isBiometricLocked = true
