@@ -797,6 +797,29 @@ struct AnalysisScreen: View {
                 Text("Analysis by Nivesh AI · Dalal Street weighted")
                     .font(Theme.microLabel(size: 9)).foregroundStyle(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, alignment: .center)
+
+                // Scan type + cache badge
+                HStack(spacing: Theme.Spacing.tight) {
+                    if let tier = analysis.analysisTier {
+                        Text(tier.uppercased())
+                            .font(Theme.microLabel(size: 7))
+                            .foregroundStyle(tier == "extreme" ? Theme.bearRed : Theme.inkTertiary)
+                            .padding(.horizontal, Theme.Spacing.tight)
+                            .padding(.vertical, 2)
+                            .background((tier == "extreme" ? Theme.bearRed : Theme.inkSecondary).opacity(0.12))
+                            .clipShape(Capsule())
+                    }
+                    if let js = viewModel.jobStatus {
+                        let cacheType = js.status == "SUCCEEDED" ? "generated" : js.status.lowercased()
+                        Text(cacheType)
+                            .font(Theme.microLabel(size: 7))
+                            .foregroundStyle(js.status == "SUCCEEDED" ? Theme.bullGreen : Theme.inkTertiary)
+                            .padding(.horizontal, Theme.Spacing.tight)
+                            .padding(.vertical, 2)
+                            .background(js.status == "SUCCEEDED" ? Theme.bullGreen.opacity(0.12) : Theme.inkSecondary.opacity(0.06))
+                            .clipShape(Capsule())
+                    }
+                }
             }
             .padding(Theme.Spacing.cardInset)
             .background(Theme.surfaceElevated)
