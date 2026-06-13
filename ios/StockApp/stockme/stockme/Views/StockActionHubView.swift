@@ -12,10 +12,11 @@ struct StockActionHubDest: Hashable {
 
 /// How the AI report should launch when pushed from the hub.
 enum AnalysisLaunchMode: Hashable {
-    case standard    // fresh standard analysis (V4 Flash, 1 round)
-    case deepScan    // fresh analysis with PKScreener + FinBERT
-    case extremeScan // DeepSeek V4 Pro, 3-round debate, long-form thesis
-    case cached      // internal — show locally cached report (used by alert)
+    case standard
+    case deepScan
+    case extremeScan
+    case cached
+    case regenerate
 }
 
 /// Pushed from the hub to open the AI report.
@@ -182,7 +183,7 @@ struct StockActionHubView: View {
         case .standard: return "standard"
         case .deepScan: return "deep"
         case .extremeScan: return "extreme"
-        case .cached: return "standard"
+        case .cached, .regenerate: return "standard"
         }
     }
 
@@ -191,7 +192,7 @@ struct StockActionHubView: View {
         case .standard: return "Standard"
         case .deepScan: return "Deep"
         case .extremeScan: return "Extreme"
-        case .cached: return "Standard"
+        case .cached, .regenerate: return "Standard"
         }
     }
 
