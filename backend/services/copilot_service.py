@@ -1,7 +1,7 @@
 import json
 import re
 import multiprocessing
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from database import get_session
 from services.llm_utils import deepseek_chat, HAIKU_MODEL
@@ -69,8 +69,9 @@ def _manage_tokens(conversation_history: List[Dict[str, Any]]) -> List[Dict[str,
         return managed_history
     return conversation_history
 
-def process_copilot_request(user_message: str, conversation_history: List[Dict[str, Any]], current_context: Dict[str, Any], user_id: int) -> Dict[str, Any]:
+def process_copilot_request(user_message: str, conversation_history: List[Dict[str, Any]], current_context: Dict[str, Any], user_id: Optional[int]) -> Dict[str, Any]:
     """Process the chat request using LangGraph-like flow."""
+    user_id = user_id or 0  # Default for unauthenticated users
     managed_history = _manage_tokens(conversation_history)
     
     # Inject system prompt with app navigation knowledge (kept outside token management)

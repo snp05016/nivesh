@@ -25,7 +25,7 @@ class CopilotResponse(BaseModel):
 async def copilot_chat(
     req: CopilotRequest,
     background_tasks: BackgroundTasks,
-    user_id: int = Depends(get_current_user_id)
+    user_id: Optional[int] = Depends(get_current_user_id)
 ):
     """
     Handle chat request. For fast intent resolution, we run it directly.
