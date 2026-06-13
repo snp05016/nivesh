@@ -358,6 +358,17 @@ class NetworkManager: ObservableObject {
         return try JSONDecoder().decode(JobStatus.self, from: data)
     }
 
+    /// Poll a job but return raw dict — no StockAnalysis decode. Resilient to schema changes.
+    func pollJobRaw(jobId: String, userId: Int?) async throws -> [String: Any]? {
+        var urlStr = "\(baseURL)/analyze/job/\(jobId)"
+        if let uid = userId { urlStr += "?user_id=\(uid)" }
+        guard let url = URL(string: urlStr) else { return nil }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 10
+        let (data, _) = try await session.data(for: request)
+        return try JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
+
     func cancelJob(jobId: String, userId: Int?) async throws {
         var urlStr = "\(baseURL)/analyze/\(jobId)/cancel"
         if let uid = userId { urlStr += "?user_id=\(uid)" }
