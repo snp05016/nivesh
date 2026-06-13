@@ -70,6 +70,23 @@ To handle complex Indian market rules without prohibitive latency or cost, the s
 - **Managers**: Added `WatchlistTagsManager`, `SpeechRecognizerManager`.
 - **Adaptation**: Enhanced iPad experience with `NavigationSplitView`.
 
+
+## 1.6. Advanced Quantitative Features (June 2026)
+
+### Backend Updates
+- **Copilot**: Global AI assistant `routers/copilot.py` and `services/copilot_service.py`.
+- **Stress Test**: Portfolio shock analysis `routers/stress_test.py`.
+- **NL Screener**: Natural language stock discovery `routers/nl_screener.py`.
+- **Correlation Matrix**: Cross-asset trailing matrix `routers/correlation.py`.
+- **Anomaly Scanner**: APScheduler integrated scanner `routers/anomalies.py`.
+- **Sector Rotation**: Sector flow analysis `routers/sector_rotation.py`.
+- **Earnings Surprise**: Tracks beats/misses `routers/earnings_surprise.py`.
+
+### iOS & Frontend Updates
+- **Global Views**: Added `.withCopilot()` to `ContentView`.
+- **New Screens**: Added `StressTestScreen`, `NLScreenerScreen`, `CorrelationMatrixScreen`, `MarketAnomalyScreen`, `SectorRotationScreen`, `EarningsSurpriseScreen`.
+- **Integration**: Mapped new tools natively into `MarketSection` in `ContentView.swift`.
+
 ## 2. Complete Directory Structure
 
 ```

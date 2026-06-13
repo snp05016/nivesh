@@ -987,3 +987,50 @@
    - Dev/debug tools (push-mock, token-stats)
 
 5. **✅ Zero orphaned Swift calls.** Every Swift `URLSession` call has a matching backend route. No 404s expected.
+
+## Domain: Copilot
+
+### Chat
+- **Swift Caller:** `NetworkManager.chatCopilot(...)`
+- **Backend Receiver:** `routers/copilot.py → copilot_chat()`
+- **HTTP Method & Route:** `POST /api/v1/copilot/chat`
+- **Bridge Status:** ✅ Match
+
+## Domain: Quantitative Tools
+
+### NL Screener
+- **Swift Caller:** `NetworkManager.queryNLScreener(...)`
+- **Backend Receiver:** `routers/nl_screener.py → query_screener()`
+- **HTTP Method & Route:** `POST /api/v1/nl-screener/query`
+- **Bridge Status:** ✅ Match
+
+### Correlation Matrix
+- **Swift Caller:** `NetworkManager.getCorrelationMatrix(...)`
+- **Backend Receiver:** `routers/correlation.py → get_correlation()`
+- **HTTP Method & Route:** `GET /portfolio/correlation`
+- **Bridge Status:** ✅ Match
+
+### Market Anomalies
+- **Swift Caller:** `NetworkManager.getAnomalies(...)`
+- **Backend Receiver:** `routers/anomalies.py → get_anomalies()`
+- **HTTP Method & Route:** `GET /anomalies`
+- **Bridge Status:** ✅ Match
+
+### Sector Rotation
+- **Swift Caller:** `NetworkManager.getSectorRotation(...)`
+- **Backend Receiver:** `routers/sector_rotation.py → get_sector_rotation()`
+- **HTTP Method & Route:** `GET /api/v1/sector-rotation`
+- **Bridge Status:** ✅ Match
+
+### Stress Test
+- **Swift Caller:** `NetworkManager.runStressTest(...)`
+- **Backend Receiver:** `routers/stress_test.py → run_stress_test()`
+- **HTTP Method & Route:** `POST /portfolio/stress-test`
+- **Bridge Status:** ✅ Match
+
+### Earnings Surprise
+- **Swift Caller:** `NetworkManager.getEarningsSurprise(...)`
+- **Backend Receiver:** `routers/earnings_surprise.py → get_surprises()`
+- **HTTP Method & Route:** `GET /api/v1/earnings/surprises`
+- **Bridge Status:** ✅ Match
+

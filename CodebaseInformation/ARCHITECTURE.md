@@ -248,3 +248,5 @@ Theme.*
 - **Smart Cache Gate**: DeepSeek V4 Flash checks if recent news warrants full analysis before spending Claude credits.
 - **Response Normalization**: Every LLM output passes through `_extract_json_from_text()` → `_normalize_response()` → `_ban_western_scale()` before iOS.
 - **GuillocheDivider**: Sinusoidal wave divider mimicking anti-counterfeiting patterns on banknotes.
+
+9. **7 Advanced Agentic Features**: Seamless integration of 7 major LLM-driven components (Copilot, NL Screener, Stress Test, Correlation, Anomalies, Sector Rotation, Earnings). Deeply integrated across FastAPI and SwiftUI matching the Banknote Aesthetic token system.
