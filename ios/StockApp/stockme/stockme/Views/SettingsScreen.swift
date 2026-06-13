@@ -76,7 +76,7 @@ struct SettingsScreen: View {
                                     .padding(.horizontal, Theme.Spacing.card)
                                     .contentShape(Rectangle())
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(EKPressStyle())
 
                                 GuillocheDivider()
                                     .padding(.leading, Theme.Spacing.card + 32 + Theme.Spacing.card)
@@ -152,6 +152,6 @@ private struct SettingsNavRow: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(EKPressStyle())
     }
 }
