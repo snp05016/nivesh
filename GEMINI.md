@@ -282,6 +282,21 @@ After committing and pushing your code, you MUST deploy and verify on the remote
 
 ---
 
+## 6.6 SwiftUI Stack Overflow Prevention (CRITICAL)
+
+Inline `@ViewBuilder` functions with `func someSection() -> some View` cause `chkstk_darwin` crashes when SwiftUI inlines the nested view tree into one massive type. Every VStack/HStack/ZStack in the view crashes with the same `EXC_BAD_ACCESS` address.
+
+**Rules:**
+1. Convert inline `-> some View` functions >5 lines into separate `View` structs.
+2. Use `LazyVStack` inside `ScrollView` to reduce initial stack depth.
+3. If same crash address in every stack: copy `@Published` model to `@State` via `.onReceive($publisher)`.
+4. `DenominationBackground` + ZStack can corrupt view tree — fall back to `Theme.canvas`.
+5. Files >1000 lines: extract into `Views/FeatureName/` subfolder structs.
+
+**Refusal:** `REFUSED — AGENTS.md §6.6: Inline view function too large`
+
+---
+
 ## 7. Glossary
 
 **Banknote Aesthetic:** UI mimicking physical currency — aged-paper backgrounds, security gold accents, double-border cards, serif typography (Georgia), haptic feedback, GuillocheDivider separators.

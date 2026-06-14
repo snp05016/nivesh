@@ -286,6 +286,45 @@ After committing and pushing your code, you MUST deploy and verify on the remote
 
 ---
 
+## 6.6 SwiftUI Stack Overflow Prevention (CRITICAL)
+
+When a SwiftUI view calls multiple inline `@ViewBuilder` functions (e.g., `func someSection() -> some View`), SwiftUI inlines the entire nested view tree into one massive type signature on the call stack. This causes `chkstk_darwin` / `EXC_BAD_ACCESS` crashes with the same address across every VStack/HStack/ZStack in the view.
+
+### Rules (NON-NEGOTIABLE)
+
+1. **NEVER use inline `func -> some View` for sections larger than 5 lines.** Convert to separate `View` structs. Each struct creates a boundary with its own stack frame.
+
+2. **Inside `ScrollView`, prefer `LazyVStack` over `VStack`** — LazyVStack only builds visible children, reducing initial stack depth.
+
+3. **If the same `EXC_BAD_ACCESS` address appears across multiple stacks**, the `@Published` model object is being deallocated mid-render. Copy to `@State` and sync via `.onReceive(publisher) { ... }`.
+
+4. **`DenominationBackground` + `BanknoteWatermark` inside ZStack can corrupt view tree.** If crashes occur, fall back to `Theme.canvas.ignoresSafeArea()`.
+
+5. **Files with >1000 lines** — extract independent sections into `Views/FeatureName/` subfolder structs.
+
+### Fix Template
+```swift
+// BEFORE (crashes)
+private func extremeChartSections(_ a: A) -> some View {
+    Group { ... 100+ lines ... }
+}
+
+// AFTER (safe)
+struct ExtremeChartSections: View {
+    let analysis: StockAnalysis
+    var body: some View { Group { ... } }
+}
+```
+
+### Refusal Template
+```
+REFUSED — AGENTS.md §6.6: Inline view function too large
+Convert `func {name}() -> some View` to `struct {Name}: View`.
+Inline functions >5 lines cause chkstk_darwin stack overflow.
+```
+
+---
+
 ## 7. Glossary
 
 **Banknote Aesthetic:** UI mimicking physical currency — aged-paper backgrounds, security gold accents, double-border cards, serif typography (Georgia), haptic feedback, GuillocheDivider separators.
@@ -301,3 +340,5 @@ After committing and pushing your code, you MUST deploy and verify on the remote
 **Response Normalization:** Pipeline: extract JSON → parse → `_normalize_response()` → `_ban_western_scale()`. Guarantees all required fields exist with correct types.
 
 **EKPressStyle:** ButtonStyle (BanknoteDesignSystem.swift:5-18) — 0.97 scale + 0.88 opacity spring animation. All interactive elements MUST use it.
+
+**chkstk_darwin Crash:** SwiftUI stack overflow from inline `-> some View` functions. Same `EXC_BAD_ACCESS` address appears in every VStack/HStack/ZStack. Fix: convert to separate View structs (§6.6).
