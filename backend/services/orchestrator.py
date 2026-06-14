@@ -1610,14 +1610,18 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
         from services.microstructure_engine import compute_pcr_gex
         from services.sector_rotation import compute_rrg_quadrant
         from services.filings_extractor import extract_auditor_info
-        from services.nse_data_provider import get_delivery_data
+        from services.nse_data_provider import get_delivery_data, get_price_history
 
         base_symbol = ticker.upper()
         ns_ticker_for_cal = _to_ns(ticker)
 
-        price_df, regime_indicators = compute_indicators(base_symbol)
-        current_price_raw = float(regime_indicators.get("close_current", 0) or 0)
-        regime_state = regime_indicators.get("regime_state", "Unknown")
+        price_df = get_price_history(base_symbol, period_days=252)
+        regime_indicators = compute_indicators(price_df, ticker=base_symbol) if price_df is not None else {}
+        current_price_raw = float(regime_indicators.get("price_vs_sma50_pct", 0) or 0)
+        # Derive close price from price_df if available
+        if price_df is not None and not price_df.empty:
+            current_price_raw = float(price_df["Close"].iloc[-1])
+        regime_state = regime_indicators.get("regime_state_label", "Unknown")
         regime_mult = regime_indicators.get("regime_confidence_multiplier", 1.0)
 
         agent_reports = {
