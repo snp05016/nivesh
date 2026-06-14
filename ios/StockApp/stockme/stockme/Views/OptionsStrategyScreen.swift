@@ -339,7 +339,7 @@ struct OptionsStrategyScreen: View {
                     .tracking(1.0)
                     .foregroundStyle(Theme.inkTertiary)
                 Spacer()
-                Text("NET \(premium >= 0 ? "CREDIT" : "DEBIT"): \(IndianFormatter.price(abs(premium)))")
+                Text("NET \(premium >= 0 ? "CREDIT" : "DEBIT"): \(IndianFormatter.price(premium))")
                     .font(Theme.serialNumberFont(size: 10, relativeTo: .caption))
                     .foregroundStyle(premium >= 0 ? Theme.bullGreen : Theme.bearRed)
             }
@@ -566,7 +566,7 @@ struct OptionsStrategyScreen: View {
                 .padding(Theme.screenPadding)
                 .padding(.bottom, Theme.sectionSpacing)
             }
-            .background(Theme.canvas)
+            .background(DenominationBackground(denomination: .twoHundred))
             .navigationTitle("How to Use")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -715,30 +715,4 @@ struct OptionsStrategyScreen: View {
         }
     }
 }
-
-// MARK: - API Fetch
-
-    private func fetchFromAPI() {
-        isLoading = true
-        errorMessage = nil
-        Task {
-            do {
-                let apiLegs = legs.map { $0.toAPILeg() }
-                let result = try await NetworkManager.shared.getOptionsPayoff(
-                    spotPrice: parsedSpot,
-                    legs: apiLegs
-                )
-                await MainActor.run {
-                    response = result
-                    isLoading = false
-                    errorMessage = nil
-                }
-            } catch {
-                await MainActor.run {
-                    errorMessage = error.localizedDescription
-                    isLoading = false
-                }
-            }
-        }
-    }
 }
