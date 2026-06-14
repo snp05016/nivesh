@@ -18,7 +18,7 @@ import asyncio
 import random
 import math
 from datetime import datetime, date, timedelta
-from fastapi import APIRouter, HTTPException, Header, Request
+from fastapi import APIRouter, HTTPException, Header, Request, Query
 import yfinance as yf
 from services.scraper import (
     fetch_market_pulse, fetch_momentum, fetch_macro_alternatives,
@@ -143,7 +143,8 @@ def dividend_history_endpoint(ticker: str, exchange: str = "NSE"):
 def mutual_fund_nav_endpoint(scheme_code: str):
     try:
         import requests
-        resp = requests.get(f"https://api.mfapi.in/mf/{scheme_code}", timeout=10)
+        from config.settings import HTTP_DEFAULT_TIMEOUT as _HTTP_TIMEOUT
+        resp = requests.get(f"https://api.mfapi.in/mf/{scheme_code}", timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail="Failed to fetch MF data")
         
@@ -178,11 +179,15 @@ def mutual_fund_nav_endpoint(scheme_code: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/block-deals/{ticker}")
-def block_deals_endpoint(ticker: str):
+def block_deals_endpoint(
+    ticker: str,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
     from database import BlockDeal
     try:
         with get_session() as db:
-            deals = db.query(BlockDeal).filter(BlockDeal.ticker == ticker.upper()).order_by(BlockDeal.date.desc()).limit(20).all()
+            deals = db.query(BlockDeal).filter(BlockDeal.ticker == ticker.upper()).order_by(BlockDeal.date.desc()).offset(offset).limit(limit).all()
             return {
                 "ticker": ticker,
                 "deals": [
@@ -199,11 +204,14 @@ def block_deals_endpoint(ticker: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/fii-dii-flow")
-def fii_dii_flow_endpoint():
+def fii_dii_flow_endpoint(
+    limit: int = Query(default=30, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
     from database import FIIDIIFlow
     try:
         with get_session() as db:
-            flows = db.query(FIIDIIFlow).order_by(FIIDIIFlow.date.desc()).limit(30).all()
+            flows = db.query(FIIDIIFlow).order_by(FIIDIIFlow.date.desc()).offset(offset).limit(limit).all()
             # Try to parse dates properly if needed or just return them
             return {
                 "flows": [
