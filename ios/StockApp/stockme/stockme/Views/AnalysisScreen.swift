@@ -220,6 +220,9 @@ struct AnalysisScreen: View {
     @State private var heroDates: [Date] = []
     @State private var heroLoading = false
     @State private var heroPeriod = "1y"
+    
+    // Retained copy of analysis to prevent EXC_BAD_ACCESS from view model dealloc
+    @State private var retainedAnalysis: StockAnalysis? = nil
 
     private static let deepScanDisabledTickers: Set<String> = [
         "NIFTY", "SENSEX", "BANKNIFTY", "NIFTYBANK", "INDIAVIX",
@@ -241,7 +244,7 @@ struct AnalysisScreen: View {
         ZStack {
             Theme.canvas.ignoresSafeArea()
             
-            if let analysis = viewModel.analysis {
+            if let analysis = retainedAnalysis {
                 renderFullAnalysis(analysis)
             } else if viewModel.isLoading || showingRegenerateAlert {
                 renderLoadingState()
@@ -333,6 +336,9 @@ struct AnalysisScreen: View {
             fetchHeroHistory(period: heroPeriod)
         }
         .onChange(of: activeTab) { _, val in savedLastTab = val }
+        .onReceive(viewModel.$analysis) { newValue in
+            retainedAnalysis = newValue
+        }
         .onDisappear {
             // v2 engine: analysis runs server-side — do NOT cancel. Just stop price polling.
             pricePollingTask?.cancel()
