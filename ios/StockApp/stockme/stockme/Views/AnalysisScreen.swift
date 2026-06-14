@@ -1108,7 +1108,7 @@ private struct PerforationBar: View {
 
 // MARK: - News Item Card
 
-private struct NewsItemCard: View {
+struct NewsItemCard: View {
     let item: NewsItem
     @State private var showingReader = false
 
