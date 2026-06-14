@@ -1234,9 +1234,8 @@ struct AnalysisScreen: View {
             .padding(.vertical, Theme.Spacing.tight)
         }
         
-        // ── New: Calibration Engine Sections (BETTER_AI_ANALYSIS_PROMPT) ──
-        
-        if let cc = analysis.confidenceCalibration, let note = cc.calibrationNote, !note.isEmpty, note != "Calibration engine did not run." {
+        if let cc = analysis.confidenceCalibration, let note = cc.calibrationNote,
+           !note.isEmpty, note != "Calibration engine did not run." {
             GuillocheDivider().padding(.horizontal, Theme.screenPadding)
             VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 SectionHeaderView(title: "CONFIDENCE CALIBRATION")
@@ -1271,8 +1270,8 @@ struct AnalysisScreen: View {
         }
         
         if let mm = analysis.marketMicrostructure {
-            let hasData = mm.deliverySignal != nil && mm.deliverySignal != "NEUTRAL"
-                       || mm.dealerRegime != nil && mm.dealerRegime != "NEUTRAL"
+            let hasData = (mm.deliverySignal != nil && mm.deliverySignal != "NEUTRAL")
+                       || (mm.dealerRegime != nil && mm.dealerRegime != "NEUTRAL")
                        || mm.minskyanFlag == true
             if hasData {
                 GuillocheDivider().padding(.horizontal, Theme.screenPadding)
@@ -1280,13 +1279,15 @@ struct AnalysisScreen: View {
                     SectionHeaderView(title: "MARKET MICROSTRUCTURE")
                     HStack(spacing: Theme.Spacing.card) {
                         if let ds = mm.deliverySignal, ds != "NEUTRAL" {
-                            microChip(label: "DELIVERY", value: ds, color: ds == "ACCUMULATION" ? Theme.bullGreen : Theme.bearRed)
+                            microChip(label: "DELIVERY", value: ds,
+                                      color: ds == "ACCUMULATION" ? Theme.bullGreen : Theme.bearRed)
                         }
                         if let dr = mm.dealerRegime, dr != "NEUTRAL" {
-                            microChip(label: "DEALER", value: dr.replacingOccurrences(of: "_", with: " "), color: dr == "LONG_GAMMA" ? Theme.holdAmber : Theme.bullGreen)
+                            microChip(label: "DEALER", value: dr.replacingOccurrences(of: "_", with: " "),
+                                      color: dr == "LONG_GAMMA" ? Theme.holdAmber : Theme.bullGreen)
                         }
                         if mm.minskyanFlag == true {
-                            microChip(label: "MINSKYAN", value: "⚠️", color: Theme.bearRed)
+                            microChip(label: "MINSKYAN", value: "WARN", color: Theme.bearRed)
                         }
                         Spacer()
                     }
@@ -1327,7 +1328,7 @@ struct AnalysisScreen: View {
             GuillocheDivider().padding(.horizontal, Theme.screenPadding)
             VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 SectionHeaderView(title: "HISTORICAL ANALOGUES")
-                Text("\(ha.kFound ?? 0) similar setups found | \(String(format: "%.0f", (ha.historicalWinRatePct ?? 0)*100))% win rate")
+                Text("\(ha.kFound ?? 0) similar setups found")
                     .font(Theme.serialNumberFont(size: 13, relativeTo: .caption))
                     .foregroundStyle(Theme.inkPrimary)
                 if let summary = ha.analogueSummary, !summary.isEmpty {
@@ -1347,7 +1348,7 @@ struct AnalysisScreen: View {
             GuillocheDivider().padding(.horizontal, Theme.screenPadding)
             VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 SectionHeaderView(title: "AUDITOR")
-                Text("\(name) · \(at.tenureYears ?? 0) yrs · \(at.isBig4 == true ? "Big 4" : "Non-Big 4")")
+                Text("\(name) - \(at.tenureYears ?? 0) yrs - \(at.isBig4 == true ? "Big 4" : "Non-Big 4")")
                     .font(Theme.serialNumberFont(size: 13, relativeTo: .caption))
                     .foregroundStyle(at.isBig4 == true ? Theme.bullGreen : Theme.inkSecondary)
             }
@@ -1376,7 +1377,7 @@ struct AnalysisScreen: View {
     }
     
     private func microChip(label: String, value: String, color: Color) -> some View {
-        VStack(spacing: 2) {
+        VStack(spacing: Theme.Spacing.xSmall) {
             Text(label)
                 .font(Theme.microLabel(size: 7, relativeTo: .caption2))
                 .foregroundStyle(Theme.inkTertiary)
