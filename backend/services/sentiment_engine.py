@@ -12,33 +12,25 @@ _classifier = None
 
 
 def get_classifier():
-    """Load FinBERT once and cache it. Thread-safe for single-process use.
-    Tries yiyanghkust/finbert-tone first, falls back to ProsusAI/finbert."""
+    """Load FinBERT once and cache it. Thread-safe for single-process use."""
     global _classifier
     if _classifier is None:
-        _models = [
-            ("yiyanghkust/finbert-tone", {}),
-            ("ProsusAI/finbert", {}),
-        ]
-        for model_name, extra_kwargs in _models:
-            try:
-                from transformers import pipeline
-                logger.info(f"Loading FinBERT model: {model_name}...")
-                _classifier = pipeline(
-                    "text-classification",
-                    model=model_name,
-                    device=-1,
-                    truncation=True,
-                    max_length=512,
-                    **extra_kwargs,
-                )
-                logger.info(f"FinBERT loaded successfully ({model_name}).")
-                break
-            except Exception as e:
-                logger.warning(f"FinBERT model '{model_name}' failed: {e}")
-                _classifier = None
-        if _classifier is None:
-            logger.warning("All FinBERT models failed. Sentiment scoring will return Neutral.")
+        try:
+            from transformers import pipeline
+            # yiyanghkust/finbert-tone incompatible with transformers 5.x
+            # ProsusAI/finbert is PyTorch-native and actively maintained
+            logger.info("Loading FinBERT model (ProsusAI/finbert)...")
+            _classifier = pipeline(
+                "text-classification",
+                model="ProsusAI/finbert",
+                device=-1,
+                truncation=True,
+                max_length=512,
+            )
+            logger.info("FinBERT loaded successfully (ProsusAI/finbert).")
+        except Exception as e:
+            logger.warning(f"FinBERT load failed: {e}")
+            _classifier = None
     return _classifier
 
 
