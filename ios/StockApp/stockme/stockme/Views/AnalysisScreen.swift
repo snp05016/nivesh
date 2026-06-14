@@ -621,7 +621,21 @@ struct AnalysisScreen: View {
             AnalysisCoreSections(analysis: analysis, previousAnalysis: previousAnalysis, ticker: ticker, livePrice: livePrice, viewModel: viewModel)
                 .padding(.horizontal, Theme.screenPadding)
                 .padding(.top, Theme.Spacing.standard)
-            
+
+            // ML Hybrid Pipeline — Regime Warning
+            if let regime = analysis.marketRegime, !regime.isEmpty {
+                RegimeWarningBanner(regime: regime)
+                    .padding(.horizontal, Theme.screenPadding)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            // ML Hybrid Pipeline — Quantitative Drivers
+            if let drivers = analysis.quantitativeDrivers, !drivers.isEmpty {
+                QuantitativeDriversCard(drivers: drivers)
+                    .padding(.horizontal, Theme.screenPadding)
+                    .transition(.opacity)
+            }
+
             if isExtreme {
                 AnalysisExtremeSections(analysis: analysis, previousAnalysis: previousAnalysis, viewModel: viewModel)
                     .padding(.horizontal, Theme.screenPadding)

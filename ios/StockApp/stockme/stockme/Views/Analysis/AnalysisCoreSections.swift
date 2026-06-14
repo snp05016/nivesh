@@ -104,7 +104,10 @@ struct AnalysisCoreSections: View {
 
     private var aiVerdictCardView: some View {
         let sig = analysis.signal.rawValue
-        let conf = analysis.confidencePercent
+        // Prefer calibrated confidence from quant engine; fall back to legacy confidencePercent
+        let conf = analysis.calibratedConfidence != nil
+            ? Int((analysis.calibratedConfidence ?? 0) * 100)
+            : analysis.confidencePercent
         let summ = analysis.keyFactors.fundamentalsSummary
         let tier = analysis.analysisTier
         let segs = confidenceSegments(conf)
