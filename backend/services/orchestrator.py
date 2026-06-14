@@ -552,7 +552,10 @@ def reformat_with_deepseek(
     # Task 06: Use only the final conclusion block instead of full 8000-char dump
     reformatter_input = _extract_final_conclusion(raw_output, max_chars=2000)
 
-    for attempt in range(2):
+    # Task 47: Robust error handling with exponential backoff and dead-letter logging
+    _dlq_log = Path("logs/deepseek_failures.jsonl")
+
+    for attempt in range(3):
         try:
             system_prompt = INDIAN_MARKET_SYSTEM_PROMPT
             if is_extreme:
@@ -566,6 +569,8 @@ def reformat_with_deepseek(
                 temperature=0,
                 log_endpoint="reformat_deepseek",
             )
+            if not ds_raw:
+                raise ValueError("Empty DeepSeek response")
             result = _extract_json_from_text(ds_raw)
             if result:
                 parsed = _json_loads(result)
@@ -573,14 +578,30 @@ def reformat_with_deepseek(
                     parsed = _normalize_response(parsed)
                     parsed["reformat_model"] = "deepseek-flash"
                     return parsed
-            # Parse failed — try again
-        except Exception:
-            continue
+            # Parse succeeded but no signal — treat as soft failure, retry
+            raise ValueError(f"Parsed JSON missing 'signal' field (attempt {attempt + 1})")
+        except Exception as _ds_err:
+            if attempt == 2:
+                # Dead-letter: log failure for later inspection / replay
+                try:
+                    _dlq_log.parent.mkdir(parents=True, exist_ok=True)
+                    with open(_dlq_log, "a") as _dlq_f:
+                        _dlq_f.write(
+                            _json_dumps({
+                                "ticker": full_ticker,
+                                "error": str(_ds_err),
+                                "ts": time.time(),
+                            }) + "\n"
+                        )
+                except Exception as _dlq_write_err:
+                    print(f"[DLQ] Failed to write dead-letter entry: {_dlq_write_err}")
+                break
+            time.sleep(2 ** attempt)  # 1s, 2s before final attempt
 
-    # DeepSeek failed twice — fall back to Claude Sonnet (expensive, reliable)
+    # All attempts exhausted — fall back to Claude Sonnet (expensive, reliable)
     import logging
     logging.getLogger("orchestrator").warning(
-        f"[reformat_fallback] {full_ticker}: DeepSeek reformat failed after 2 attempts, falling back to Claude Sonnet"
+        f"[reformat_fallback] {full_ticker}: DeepSeek reformat failed after 3 attempts, falling back to Claude Sonnet"
     )
     return reformat_with_claude(raw_output, full_ticker, exchange, prior_analyses, scan_type)
 
