@@ -176,11 +176,13 @@ class TradingAgentsGraph:
 
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:
         """Create tool nodes for different data sources using abstract methods."""
+        from services.orchestrator import search_filings  # lazy import to avoid circular dependency
         return {
             "governance": ToolNode(
                 [
                     get_news,
                     get_insider_transactions,
+                    search_filings,
                 ]
             ),
             "market": ToolNode(
@@ -203,6 +205,7 @@ class TradingAgentsGraph:
                     get_news,
                     get_global_news,
                     get_insider_transactions,
+                    search_filings,
                 ]
             ),
             "fundamentals": ToolNode(
