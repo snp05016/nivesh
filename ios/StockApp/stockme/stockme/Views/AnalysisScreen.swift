@@ -578,7 +578,7 @@ struct AnalysisScreen: View {
     @ViewBuilder
     private func renderFullAnalysis(_ analysis: StockAnalysis) -> some View {
         if analysis.analysisTier == "extreme" {
-            VStack(spacing: Theme.Spacing.none) {
+            Group {
                 extremeModeSwitcher
                 if extremeViewMode == 0 {
                     aiReportScroll(analysis)
@@ -622,7 +622,7 @@ struct AnalysisScreen: View {
             heroChartSection(analysis)
                 .padding(.bottom, Theme.Spacing.standard)
             
-            VStack(spacing: Theme.sectionSpacing) {
+            LazyVStack(spacing: Theme.sectionSpacing) {
                 stockHeaderSection(analysis)
                 aiVerdictCard(analysis)
                 if let prev = previousAnalysis, prev.analysisDate != analysis.analysisDate {
