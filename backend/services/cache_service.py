@@ -96,36 +96,52 @@ class CacheService:
 
 cache = CacheService()
 
+def _run_async_in_thread(coro):
+    """Run an async coroutine in a fresh event loop inside a separate thread.
+    Always works — regardless of whether the caller's thread has a running loop."""
+    import threading as _thd
+    result = [None]
+    error = [None]
+
+    def _runner():
+        try:
+            _loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(_loop)
+            result[0] = _loop.run_until_complete(coro)
+        except Exception as e:
+            error[0] = e
+
+    t = _thd.Thread(target=_runner)
+    t.start()
+    t.join(timeout=10)
+    if error[0]:
+        raise error[0]
+    return result[0]
+
+
 def sync_get(namespace: str, key: str) -> Optional[Any]:
     try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-    if loop.is_running():
-        # Fallback to dict if we are in a running loop and cannot await
+        return _run_async_in_thread(cache.get(namespace, key))
+    except Exception:
+        # Ultimate fallback: per-process dict
         if namespace in cache._fallback_cache and key in cache._fallback_cache[namespace]:
             expiry, val = cache._fallback_cache[namespace][key]
             if time.time() < expiry:
                 return val
             del cache._fallback_cache[namespace][key]
         return None
-    return loop.run_until_complete(cache.get(namespace, key))
+
 
 def sync_set(namespace: str, key: str, value: Any, ttl: Optional[int] = None) -> None:
     try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-    if loop.is_running():
-        if namespace not in cache._fallback_cache:
-            cache._fallback_cache[namespace] = {}
-        cache._fallback_cache[namespace][key] = (time.time() + (ttl or cache.ttl_map.get(namespace, 3600)), value)
+        _run_async_in_thread(cache.set(namespace, key, value, ttl))
         return
-    loop.run_until_complete(cache.set(namespace, key, value, ttl))
+    except Exception:
+        pass
+    # Fallback: per-process dict
+    if namespace not in cache._fallback_cache:
+        cache._fallback_cache[namespace] = {}
+    cache._fallback_cache[namespace][key] = (time.time() + (ttl or cache.ttl_map.get(namespace, 3600)), value)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
