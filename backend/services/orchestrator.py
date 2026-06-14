@@ -554,6 +554,7 @@ def build_ta_config(scan_type: str = "standard") -> dict:
         config["max_tokens"] = 1000              # cost reduction: 1000×5=5000 effective
         config["recursion_limit"] = 80           # standard: tighter budget than extreme (still safe)
         config["max_recur_limit"] = 80
+        config["analyst_tool_loop_cap"] = 2      # cap agent↔tool loop iterations (prevents timeout)
     config["llm_provider"] = "deepseek"
     config["deep_think_llm"] = HAIKU_MODEL
     config["deep_think_provider"] = "anthropic"
