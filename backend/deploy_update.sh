@@ -1,8 +1,9 @@
 #!/bin/bash
 set -e
 
-DROPLET_IP="165.22.221.18"
-DROPLET_PATH="/root/nivesh"
+DROPLET_IP="192.168.1.122"
+DROPLET_USER="saumyapatel"
+DROPLET_PATH="/home/saumyapatel/Desktop/nivesh"
 
 echo "🚀 Deploying Nivesh update..."
 
@@ -20,7 +21,7 @@ fi
 
 # Step 2 — pull and restart on droplet
 echo "🔄 Pulling on server and restarting..."
-ssh root@$DROPLET_IP "
+ssh $DROPLET_USER@$DROPLET_IP "
   git config --global --add safe.directory $DROPLET_PATH &&
   cd $DROPLET_PATH &&
   git remote set-url github git@github.com:snp05016/nivesh.git 2>/dev/null || git remote add github git@github.com:snp05016/nivesh.git &&

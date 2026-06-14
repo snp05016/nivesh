@@ -3,7 +3,7 @@
 # poll the v2 job API to completion. Local tool; talks to the remote API.
 set -euo pipefail
 
-HOST="http://165.22.221.18"   # matches iOS NetworkManager.defaultURL (port 80)
+HOST="http://192.168.1.122:8000"   # matches iOS NetworkManager.defaultURL
 TICKER=""; MODE="normal"; USER_ID=""; EXCHANGE="NSE"; TIMEOUT=""
 
 usage() {
