@@ -100,6 +100,13 @@ struct StockAnalysis: Codable {
     let extendedThesis: ExtendedThesis?
     let nicheInsights: [String]?
     let governanceFlags: [GovernanceFlag]?
+    // New calibration engine fields
+    let confidenceCalibration: ConfidenceCalibration?
+    let targetPriceBounds: TargetPriceBounds?
+    let historicalAnalogues: HistoricalAnalogues?
+    let marketMicrostructure: MarketMicrostructure?
+    let sectorMomentum: SectorMomentum?
+    let auditorTenure: AuditorTenure?
     // Backend-computed staleness (set by get_analysis_for_date / get_last_analysis_any_type)
     let stalenessLabel: String?
     let stalenessScore: Int?
@@ -140,6 +147,12 @@ struct StockAnalysis: Codable {
         case extendedThesis = "extended_thesis"
         case nicheInsights = "niche_insights"
         case governanceFlags = "governance_flags"
+        case confidenceCalibration = "confidence_calibration"
+        case targetPriceBounds = "target_price_bounds"
+        case historicalAnalogues = "historical_analogues"
+        case marketMicrostructure = "market_microstructure"
+        case sectorMomentum = "sector_momentum"
+        case auditorTenure = "auditor_tenure"
         case stalenessLabel = "_staleness_label"
         case stalenessScore = "_staleness_score"
         case stalenessUrgency = "_staleness_urgency"
@@ -185,6 +198,12 @@ struct StockAnalysis: Codable {
         extendedThesis       = try c.decodeIfPresent(ExtendedThesis.self,    forKey: .extendedThesis)
         nicheInsights        = try c.decodeIfPresent([String].self,           forKey: .nicheInsights)
         governanceFlags      = try c.decodeIfPresent([GovernanceFlag].self,   forKey: .governanceFlags)
+        confidenceCalibration = try c.decodeIfPresent(ConfidenceCalibration.self, forKey: .confidenceCalibration)
+        targetPriceBounds     = try c.decodeIfPresent(TargetPriceBounds.self, forKey: .targetPriceBounds)
+        historicalAnalogues   = try c.decodeIfPresent(HistoricalAnalogues.self, forKey: .historicalAnalogues)
+        marketMicrostructure  = try c.decodeIfPresent(MarketMicrostructure.self, forKey: .marketMicrostructure)
+        sectorMomentum        = try c.decodeIfPresent(SectorMomentum.self, forKey: .sectorMomentum)
+        auditorTenure         = try c.decodeIfPresent(AuditorTenure.self, forKey: .auditorTenure)
         stalenessLabel       = try c.decodeIfPresent(String.self,             forKey: .stalenessLabel)
         stalenessScore       = try c.decodeIfPresent(Int.self,                forKey: .stalenessScore)
         stalenessUrgency     = try c.decodeIfPresent(String.self,             forKey: .stalenessUrgency)
@@ -278,6 +297,99 @@ struct GovernanceFlag: Codable, Identifiable {
     let flag: String?
     let severity: String?
     let detail: String?
+}
+
+// MARK: — New Calibration Engine Fields (BETTER_AI_ANALYSIS_PROMPT)
+
+struct ConfidenceCalibration: Codable {
+    let rawLlmConfidence: Int?
+    let signalAgreementRatio: Double?
+    let regimeState: String?
+    let regimeMultiplier: Double?
+    let calibrationNote: String?
+    enum CodingKeys: String, CodingKey {
+        case rawLlmConfidence = "raw_llm_confidence"
+        case signalAgreementRatio = "signal_agreement_ratio"
+        case regimeState = "regime_state"
+        case regimeMultiplier = "regime_multiplier"
+        case calibrationNote = "calibration_note"
+    }
+}
+
+struct TargetPriceBound: Codable {
+    let lower: Double?
+    let mid: Double?
+    let upper: Double?
+    let coveragePct: Int?
+    enum CodingKeys: String, CodingKey {
+        case lower, mid, upper
+        case coveragePct = "coverage_pct"
+    }
+}
+
+struct TargetPriceBounds: Codable {
+    let shortTerm3m: TargetPriceBound?
+    let mediumTerm12m: TargetPriceBound?
+    let longTerm36m: TargetPriceBound?
+    enum CodingKeys: String, CodingKey {
+        case shortTerm3m = "short_term_3m"
+        case mediumTerm12m = "medium_term_12m"
+        case longTerm36m = "long_term_36m"
+    }
+}
+
+struct HistoricalAnalogues: Codable {
+    let kFound: Int?
+    let historicalWinRatePct: Double?
+    let avgReturnOnWinsPct: Double?
+    let analogueSummary: String?
+    enum CodingKeys: String, CodingKey {
+        case kFound = "k_found"
+        case historicalWinRatePct = "historical_win_rate_pct"
+        case avgReturnOnWinsPct = "avg_return_on_wins_pct"
+        case analogueSummary = "analogue_summary"
+    }
+}
+
+struct MarketMicrostructure: Codable {
+    let deliveryPct: Double?
+    let deliverySignal: String?
+    let oiPcr: Double?
+    let volumePcr: Double?
+    let dealerRegime: String?
+    let minskyanFlag: Bool?
+    let minskyanScore: Double?
+    enum CodingKeys: String, CodingKey {
+        case deliveryPct = "delivery_pct"
+        case deliverySignal = "delivery_signal"
+        case oiPcr = "oi_pcr"
+        case volumePcr = "volume_pcr"
+        case dealerRegime = "dealer_regime"
+        case minskyanFlag = "minskyan_flag"
+        case minskyanScore = "minskyan_score"
+    }
+}
+
+struct SectorMomentum: Codable {
+    let rrgQuadrant: String?
+    let rsRatio: Double?
+    let rsMomentum: Double?
+    enum CodingKeys: String, CodingKey {
+        case rrgQuadrant = "rrg_quadrant"
+        case rsRatio = "rs_ratio"
+        case rsMomentum = "rs_momentum"
+    }
+}
+
+struct AuditorTenure: Codable {
+    let auditorName: String?
+    let tenureYears: Int?
+    let isBig4: Bool?
+    enum CodingKeys: String, CodingKey {
+        case auditorName = "auditor_name"
+        case tenureYears = "tenure_years"
+        case isBig4 = "is_big4"
+    }
 }
 
 struct FinancialTrends: Codable {
