@@ -297,8 +297,17 @@ def upsert_device_token(user_id: int, device_token: str, platform: str = "ios") 
 
 
 # ---------------------------------------------------------------------------
-# YFinance Helpers
+# YFinance Helpers (Task 34: tenacity exponential backoff)
 # ---------------------------------------------------------------------------
+try:
+    from tenacity import retry, stop_after_attempt, wait_exponential
+    _TENACITY_AVAILABLE = True
+except ImportError:
+    _TENACITY_AVAILABLE = False
+
+from config.settings import YF_BACKOFF_MULTIPLIER as _YF_BACKOFF_MULTIPLIER
+
+
 def _yf_fetch_info(sym: str) -> dict:
     import random
     for attempt in range(3):
@@ -309,7 +318,7 @@ def _yf_fetch_info(sym: str) -> dict:
         except Exception as e:
             print(f"[YF] Attempt {attempt+1} failed for {sym}: {e}")
             if attempt < 2:
-                sleep_time = (1.5 * (2 ** attempt)) + (random.random() * 0.5)
+                sleep_time = (_YF_BACKOFF_MULTIPLIER * (2 ** attempt)) + (random.random() * 0.5)
                 time.sleep(sleep_time)
     return {}
 
@@ -796,7 +805,7 @@ def _get_indices_data() -> dict:
                 except Exception as e:
                     print(f"[YF] Indices attempt {attempt+1} failed for {ticker}: {e}")
                     if attempt < 2:
-                        time.sleep((1.0 * (2 ** attempt)) + (random.random() * 0.2))
+                        time.sleep((_YF_BACKOFF_MULTIPLIER * (2 ** attempt)) + (random.random() * 0.2))
             
             if current is None or math.isnan(current):
                 continue
