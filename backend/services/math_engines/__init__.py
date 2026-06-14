@@ -40,6 +40,10 @@ def _lazy_import(module: str, names: list):
     "portfolio_correlation", ["compute_correlation_matrix", "optimize_portfolio_weights"]
 )
 (compute_auditor_risk_score,) = _lazy_import("auditor_risk", ["compute_auditor_risk_score"])
+(compute_correlation_matrix, optimize_portfolio_weights) = _lazy_import(
+    "portfolio_correlation", ["compute_correlation_matrix", "optimize_portfolio_weights"]
+)
+(compute_auditor_risk_score,) = _lazy_import("auditor_risk", ["compute_auditor_risk_score"])
 
 __all__ = [
     "compute_piotroski_fscore", "compute_beneish_mscore",
