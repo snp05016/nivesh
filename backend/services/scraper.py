@@ -10,6 +10,7 @@ import os
 import time
 import logging
 import math
+import threading
 from collections import OrderedDict
 from datetime import datetime
 from typing import Any
@@ -21,30 +22,47 @@ from bs4 import BeautifulSoup
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# TTL Cache — 15-minute in-memory store with LRU eviction
+# TTL LRU Cache — thread-safe, 15-minute TTL with bounded LRU eviction
 # ---------------------------------------------------------------------------
 
-_CACHE: OrderedDict[str, dict] = OrderedDict()
-_TTL_SECONDS = 900  # 15 minutes
-_CACHE_MAX_SIZE = 50
+class TTLLRUCache:
+    """Thread-safe LRU cache with per-entry TTL expiration."""
+
+    def __init__(self, maxsize: int = 256, ttl: int = 3600):
+        self._cache: OrderedDict = OrderedDict()
+        self._lock = threading.Lock()
+        self._maxsize = maxsize
+        self._ttl = ttl
+
+    def get(self, key: str) -> Any | None:
+        with self._lock:
+            if key not in self._cache:
+                return None
+            value, ts = self._cache[key]
+            if time.monotonic() - ts > self._ttl:
+                del self._cache[key]
+                return None
+            self._cache.move_to_end(key)
+            return value
+
+    def set(self, key: str, value: Any) -> None:
+        with self._lock:
+            if key in self._cache:
+                self._cache.move_to_end(key)
+            self._cache[key] = (value, time.monotonic())
+            if len(self._cache) > self._maxsize:
+                self._cache.popitem(last=False)
+
+
+_CACHE = TTLLRUCache(maxsize=256, ttl=900)  # 15-minute TTL, 256 max entries
 
 
 def _cache_get(key: str) -> Any | None:
-    entry = _CACHE.get(key)
-    if entry and (time.time() - entry["ts"]) < _TTL_SECONDS:
-        _CACHE.move_to_end(key)
-        return entry["data"]
-    if entry:
-        _CACHE.pop(key, None)
-    return None
+    return _CACHE.get(key)
 
 
 def _cache_set(key: str, data: Any) -> None:
-    _CACHE.pop(key, None)
-    _CACHE[key] = {"data": data, "ts": time.time()}
-    _CACHE.move_to_end(key)
-    while len(_CACHE) > _CACHE_MAX_SIZE:
-        _CACHE.popitem(last=False)
+    _CACHE.set(key, data)
 
 
 # ---------------------------------------------------------------------------
