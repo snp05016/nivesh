@@ -1114,7 +1114,9 @@ def _inject_piotroski(result: dict, ticker: str):
 def _inject_live_data(result: dict, ticker: str) -> dict:
     """Refresh current price, recent news, and 3M/6M/12M price performance.
     Called on every return path so cached reports never show stale market data.
+    Returns a shallow copy — does NOT mutate the input dict (task 53).
     """
+    result = dict(result)  # shallow copy — never mutate caller's dict
     ns_ticker = _to_ns(ticker)
 
     # 1. Current price — always fetch live
