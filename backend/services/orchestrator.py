@@ -16,6 +16,7 @@ import copy
 import math
 import time
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -1392,21 +1393,44 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
             "fundamentals": final_state.get("fundamentals_report", ""),
             "news": final_state.get("news_report", ""),
         } if isinstance(final_state, dict) else {}
-        agreement_data = compute_signal_agreement(agent_reports)
 
-        delivery_data = get_delivery_data(base_symbol)
-        microstructure_data = compute_pcr_gex(base_symbol)
-        rrg_data = compute_rrg_quadrant(base_symbol)
-        minskyan_data = compute_minskyan_risk(dii_ytd=0, fii_ytd=0)
-        bear_data = apply_bear_asymmetry(raw_output)
-        auditor_data = extract_auditor_info(ns_ticker_for_cal)
-        analogue_data = find_historical_analogues(ns_ticker_for_cal, {
-            "rsi_14": regime_indicators.get("rsi_14", 50),
-            "price_vs_sma50_pct": regime_indicators.get("price_vs_sma50_pct", 0),
-            "hist_vol_21_annualized": regime_indicators.get("hist_vol_21_annualized", 25),
-            "momentum_score": regime_indicators.get("momentum_score", 0),
-        })
-        conformal_data = compute_conformal_bounds(ns_ticker_for_cal, current_price_raw, price_df)
+        # Parallelize all independent calibration HTTP/DB calls with ThreadPoolExecutor
+        _cal_tasks = {
+            "agreement": lambda: compute_signal_agreement(agent_reports),
+            "delivery":  lambda: get_delivery_data(base_symbol),
+            "microstructure": lambda: compute_pcr_gex(base_symbol),
+            "rrg":       lambda: compute_rrg_quadrant(base_symbol),
+            "minskyan":  lambda: compute_minskyan_risk(dii_ytd=0, fii_ytd=0),
+            "bear":      lambda: apply_bear_asymmetry(raw_output),
+            "auditor":   lambda: extract_auditor_info(ns_ticker_for_cal),
+            "analogues": lambda: find_historical_analogues(ns_ticker_for_cal, {
+                "rsi_14": regime_indicators.get("rsi_14", 50),
+                "price_vs_sma50_pct": regime_indicators.get("price_vs_sma50_pct", 0),
+                "hist_vol_21_annualized": regime_indicators.get("hist_vol_21_annualized", 25),
+                "momentum_score": regime_indicators.get("momentum_score", 0),
+            }),
+            "conformal": lambda: compute_conformal_bounds(ns_ticker_for_cal, current_price_raw, price_df),
+        }
+        _cal_results: dict = {}
+        with ThreadPoolExecutor(max_workers=8) as _cal_executor:
+            _cal_futures = {_cal_executor.submit(fn): name for name, fn in _cal_tasks.items()}
+            for _fut in as_completed(_cal_futures):
+                _cal_name = _cal_futures[_fut]
+                try:
+                    _cal_results[_cal_name] = _fut.result()
+                except Exception as _cal_task_err:
+                    print(f"[CALIBRATION] Task '{_cal_name}' failed: {_cal_task_err}")
+                    _cal_results[_cal_name] = {}
+
+        agreement_data    = _cal_results.get("agreement", {})
+        delivery_data     = _cal_results.get("delivery", {})
+        microstructure_data = _cal_results.get("microstructure", {})
+        rrg_data          = _cal_results.get("rrg", {})
+        minskyan_data     = _cal_results.get("minskyan", {})
+        bear_data         = _cal_results.get("bear", {})
+        auditor_data      = _cal_results.get("auditor", {})
+        analogue_data     = _cal_results.get("analogues", {})
+        conformal_data    = _cal_results.get("conformal", {})
 
         calibration_block = f"""
 === CALIBRATION ENGINE OUTPUT (AUTHORITATIVE) ===
