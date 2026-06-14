@@ -6,6 +6,7 @@ struct AnalysisCoreSections: View {
     let ticker: String
     let livePrice: Double?
     @ObservedObject var viewModel: AnalysisViewModel
+    @State private var showFullSummary = false
 
     var body: some View {
         LazyVStack(spacing: Theme.sectionSpacing) {
@@ -145,11 +146,28 @@ struct AnalysisCoreSections: View {
                 }
             }
 
-            Text(summ)
-                .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
-                .foregroundStyle(Theme.inkSecondary)
-                .lineSpacing(6)
-                .lineLimit(4)
+            Button {
+                HapticManager.selection()
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    showFullSummary.toggle()
+                }
+            } label: {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                    Text(summ)
+                        .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
+                        .foregroundStyle(Theme.inkSecondary)
+                        .lineSpacing(6)
+                        .lineLimit(showFullSummary ? nil : 4)
+                        .multilineTextAlignment(.leading)
+                    HStack {
+                        Spacer()
+                        Text(showFullSummary ? "Show less" : "Tap to read more")
+                            .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+                            .foregroundStyle(Theme.securityGold)
+                    }
+                }
+            }
+            .buttonStyle(EKPressStyle())
 
             VStack(spacing: Theme.Spacing.medium) {
                 horizonRow(label: "3 MONTHS", target: analysis.targetPrices.shortTerm3m, upside: analysis.upsideDownsidePct.shortTerm)
