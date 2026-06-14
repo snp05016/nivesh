@@ -239,9 +239,8 @@ struct AnalysisScreen: View {
 
     var body: some View {
         ZStack {
-            DenominationBackground(denomination: .hundred)
-            BanknoteWatermark(text: "CONFIDENTIAL", size: 100, opacity: 0.018, alignment: .center)
-
+            Theme.canvas.ignoresSafeArea()
+            
             if let analysis = viewModel.analysis {
                 renderFullAnalysis(analysis)
             } else if viewModel.isLoading || showingRegenerateAlert {
@@ -570,12 +569,8 @@ struct AnalysisScreen: View {
 
     // MARK: - Full Analysis (Redesigned)
 
-    @ViewBuilder
     private func renderFullAnalysis(_ analysis: StockAnalysis) -> some View {
         if analysis.analysisTier == "extreme" {
-            // Extreme superset: switch between the AI report (with extra extreme
-            // charts) and the full StockProfile (embedded verbatim — same working
-            // logic: overview, governance, macro, charts, financials).
             VStack(spacing: Theme.Spacing.none) {
                 extremeModeSwitcher
                 if extremeViewMode == 0 {
@@ -615,15 +610,14 @@ struct AnalysisScreen: View {
     }
 
     private func aiReportScroll(_ analysis: StockAnalysis) -> some View {
-        ScrollView {
-            VStack(spacing: Theme.Spacing.none) {
-                // Immersive hero chart for this specific stock — full-bleed, very top.
-                heroChartSection(analysis)
-                    .padding(.bottom, Theme.Spacing.standard)
-
-                VStack(spacing: Theme.Spacing.sectionGap) {
-                    stockHeaderSection(analysis)
-                    aiVerdictCard(analysis)
+        let isExtreme = analysis.analysisTier == "extreme"
+        return ScrollView {
+            heroChartSection(analysis)
+                .padding(.bottom, Theme.Spacing.standard)
+            
+            VStack(spacing: Theme.sectionSpacing) {
+                stockHeaderSection(analysis)
+                aiVerdictCard(analysis)
                 if let prev = previousAnalysis, prev.analysisDate != analysis.analysisDate {
                     whatChangedSection(analysis, previous: prev)
                 }
@@ -632,15 +626,14 @@ struct AnalysisScreen: View {
                 timeHorizonSection(analysis)
                 riskFactorsSection(analysis)
                 fundamentalsSection(analysis)
-                if analysis.analysisTier == "extreme" { extremeChartSections(analysis) }
+                if isExtreme { extremeChartSections(analysis) }
                 newsSection(analysis)
                 whatToWatchSection(analysis)
                 disclaimerSection(analysis)
                 Spacer(minLength: 100)
-                }
-                .padding(.horizontal, Theme.screenPadding)
-                .padding(.top, Theme.Spacing.standard)
             }
+            .padding(.horizontal, Theme.screenPadding)
+            .padding(.top, Theme.Spacing.standard)
         }
     }
 
@@ -766,10 +759,11 @@ struct AnalysisScreen: View {
     // MARK: -- AI Verdict Card (Hero)
 
     private func aiVerdictCard(_ analysis: StockAnalysis) -> some View {
-        let signal = analysis.signal.rawValue
-        let confidence = analysis.confidencePercent
-        let summary = analysis.keyFactors.fundamentalsSummary
+        let sig = analysis.signal.rawValue
+        let conf = analysis.confidencePercent
+        let summ = analysis.keyFactors.fundamentalsSummary
         let tier = analysis.analysisTier
+        let segs = confidenceSegments(conf)
         
         return VStack(alignment: .leading, spacing: Theme.Spacing.card) {
             HStack {
@@ -784,7 +778,7 @@ struct AnalysisScreen: View {
             }
             
             HStack(spacing: Theme.Spacing.standard) {
-                Text(signal)
+                Text(sig)
                     .font(Theme.engravedSerif(size: 18, weight: .bold))
                     .foregroundStyle(signalBadgeTextColor(analysis.signal))
                     .padding(.horizontal, Theme.Spacing.card)
@@ -792,24 +786,23 @@ struct AnalysisScreen: View {
                     .background(signalBadgeBgColor(analysis.signal))
                     .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.pill))
                 Spacer()
-                ConfidenceArcView(score: confidence, size: 64)
+                ConfidenceArcView(score: conf, size: 64)
             }
             
-            VStack(spacing: Theme.Spacing.small) {
-                Text("CONFIDENCE")
-                    .font(Theme.microLabel())
-                    .foregroundStyle(Theme.inkTertiary)
-                    .explainableTerm("Confidence Score")
-                HStack(spacing: Theme.Spacing.xSmall) {
-                    ForEach(0..<5, id: \.self) { i in
-                        RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                            .fill(i < confidenceSegments(confidence) ? Theme.goldPrimary : Theme.inkTertiary.opacity(0.15))
-                            .frame(height: 6)
-                    }
+            Text("CONFIDENCE")
+                .font(Theme.microLabel())
+                .foregroundStyle(Theme.inkTertiary)
+                .explainableTerm("Confidence Score")
+            
+            HStack(spacing: Theme.Spacing.xSmall) {
+                ForEach(0..<5, id: \.self) { i in
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                        .fill(i < segs ? Theme.goldPrimary : Theme.inkTertiary.opacity(0.15))
+                        .frame(height: 6)
                 }
             }
             
-            Text(summary)
+            Text(summ)
                 .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
                 .foregroundStyle(Theme.inkSecondary)
                 .lineSpacing(6)
@@ -836,8 +829,8 @@ struct AnalysisScreen: View {
                         .background((t == "extreme" ? Theme.bearRed : Theme.inkSecondary).opacity(0.12))
                         .clipShape(Capsule())
                     if let js = viewModel.jobStatus {
-                        let ctype = js.status == "SUCCEEDED" ? "generated" : js.status.lowercased()
-                        Text(ctype)
+                        let cs = js.status == "SUCCEEDED" ? "generated" : js.status.lowercased()
+                        Text(cs)
                             .font(Theme.microLabel(size: 7))
                             .foregroundStyle(js.status == "SUCCEEDED" ? Theme.bullGreen : Theme.inkTertiary)
                             .padding(.horizontal, Theme.Spacing.tight)
