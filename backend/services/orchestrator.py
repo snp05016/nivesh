@@ -1496,6 +1496,26 @@ def analyze(
     except:
         pass
 
+    # ── ML Hybrid Pipeline: Quantitative Engine (teacher-student flow) ───
+    # Runs deterministic math BEFORE LangGraph agents.
+    # Results injected into the agent state AND final normalization.
+    try:
+        from services.quant_engine import QuantitativeEngine
+        quant_engine = QuantitativeEngine(ticker)
+        quant_payload = asyncio.get_event_loop().run_until_complete(
+            quant_engine.run_full_pipeline()
+        )
+    except Exception as e:
+        print(f"[Orchestrator] QuantEngine failed for {ticker}: {e}")
+        quant_payload = {
+            "market_regime": "Data Unavailable",
+            "calibrated_confidence": 0.0,
+            "conformal_target_upper_3m": None,
+            "conformal_target_lower_3m": None,
+            "quantitative_drivers": {},
+            "tail_risk_flags": {},
+        }
+
     emitter.emit("agents", "Multi-Agent Engine",
                  "Running governance, market, news & fundamentals analysts + bull/bear debate",
                  pct=25)
@@ -1669,7 +1689,7 @@ Bounds 3M: {conformal_data.get('short_term_3m', {}).get('lower', 'N/A')}–{conf
     result = reformat_with_deepseek(
         raw_output, full_ticker, exchange, prior_analyses=prior, scan_type=scan_type
     )
-    result = _normalize_response(result, scan_type)
+    result = _normalize_response(result, scan_type, quant_payload)
     result["ticker"] = ticker.upper()
     result["exchange"] = exchange
     result["_cache_type"] = "FULL AI"
