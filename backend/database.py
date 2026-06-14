@@ -18,7 +18,7 @@ from typing import Optional
 from contextlib import contextmanager
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, Float, Integer, String, Text,
+    Boolean, Column, DateTime, Float, Integer, JSON, String, Text,
     ForeignKey, Index, UniqueConstraint, create_engine, event,
 )
 from sqlalchemy.orm import DeclarativeBase, Session, relationship, sessionmaker
@@ -151,6 +151,13 @@ class AnalysisHistory(Base):
     outcome_delta_pct    = Column(Float, nullable=True)   # % price change since analysis
     was_correct          = Column(Boolean, nullable=True)  # signal matched price direction
     outcome_checked_at   = Column(DateTime, nullable=True)
+    # ML Hybrid Pipeline — quantitative engine columns (added 2026-06-14)
+    market_regime               = Column(String, default="Transition")
+    calibrated_confidence       = Column(Float, default=0.0)
+    conformal_target_upper_3m   = Column(Float, nullable=True)
+    conformal_target_lower_3m   = Column(Float, nullable=True)
+    quantitative_drivers        = Column(JSON, default=dict)
+    tail_risk_flags             = Column(JSON, default=dict)
     created_at     = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="analysis_history")
