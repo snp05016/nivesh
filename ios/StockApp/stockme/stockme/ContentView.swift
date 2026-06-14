@@ -270,6 +270,7 @@ enum MarketSection: String, Hashable, CaseIterable {
     case sector_rotation = "sector_rotation"
     case stress_test = "stress_test"
     case earnings_surprise = "earnings_surprise"
+    case options_strategy = "options_strategy"
 
     var icon: String {
         switch self {
@@ -285,6 +286,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .sector_rotation: return "arrow.triangle.2.circlepath"
         case .stress_test: return "bolt.trianglebadge.exclamationmark"
         case .earnings_surprise: return "sparkles.rectangle"
+        case .options_strategy: return "chart.line.flip.horizontal"
         }
     }
     var hindi: String {
@@ -301,6 +303,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .sector_rotation: return "सेक्टर रोटेशन"
         case .stress_test: return "पोर्टफोलियो तनाव परीक्षण"
         case .earnings_surprise: return "आय आश्चर्य"
+        case .options_strategy: return "विकल्प रणनीति"
         }
     }
     var englishTitle: String {
@@ -317,6 +320,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .sector_rotation: return "SECTOR ROTATION"
         case .stress_test: return "STRESS TEST"
         case .earnings_surprise: return "EARNINGS SURPRISE"
+        case .options_strategy: return "OPTIONS STRATEGY"
         }
     }
     var subtitle: String {
@@ -333,6 +337,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .sector_rotation: return "Sector Capital Flow"
         case .stress_test: return "Portfolio Shock Analysis"
         case .earnings_surprise: return "Earnings Surprise"
+        case .options_strategy: return "Payoff Visualizer"
         }
     }
     var description: String {
@@ -349,6 +354,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .sector_rotation: return "Track capital flow across different market sectors"
         case .stress_test: return "Simulate portfolio performance under various macroeconomic shocks"
         case .earnings_surprise: return "Track and predict positive and negative earnings surprises"
+        case .options_strategy: return "Build multi-leg options strategies with interactive P&L payoff charts"
         }
     }
     var accentColor: Color {
@@ -365,6 +371,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .sector_rotation: return Theme.bullGreen
         case .stress_test: return Theme.bearRed
         case .earnings_surprise: return Theme.securityGold
+        case .options_strategy: return Theme.bullGreen
         }
     }
 }
@@ -696,6 +703,7 @@ struct MarketsView: View {
         case .sector_rotation: SectorRotationScreen()
         case .stress_test: StressTestScreen()
         case .earnings_surprise: EarningsSurpriseScreen()
+        case .options_strategy: OptionsStrategyScreen()
         }
     }
 

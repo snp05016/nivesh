@@ -1227,6 +1227,32 @@ class NetworkManager: ObservableObject {
         }
     }
 
+    // MARK: - Options Strategy
+
+    func getOptionsPayoff(spotPrice: Double, legs: [OptionLeg]) async throws -> OptionsPayoffResponse {
+        let endpoint = "/api/v1/options/payoff"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 15
+
+        let body = OptionsPayoffRequest(spotPrice: spotPrice, legs: legs)
+        request.httpBody = try JSONEncoder().encode(body)
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        return try JSONDecoder().decode(OptionsPayoffResponse.self, from: data)
+    }
+
 }
 
 // MARK: - Harvester API (Market Intelligence — merged into port 8000)
