@@ -1233,9 +1233,169 @@ struct AnalysisScreen: View {
             }
             .padding(.vertical, Theme.Spacing.tight)
         }
+        
+        // ── New: Calibration Engine Sections (BETTER_AI_ANALYSIS_PROMPT) ──
+        
+        if let cc = analysis.confidenceCalibration, let note = cc.calibrationNote, !note.isEmpty, note != "Calibration engine did not run." {
+            GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                SectionHeaderView(title: "CONFIDENCE CALIBRATION")
+                Text(stripEmoji(note))
+                    .font(Theme.engravedSerif(size: 12, relativeTo: .caption))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .lineSpacing(3)
+                    .padding(Theme.Spacing.card)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .banknoteCard()
+                    .padding(.horizontal, Theme.screenPadding)
+            }
+            .padding(.vertical, Theme.Spacing.tight)
+        }
+        
+        if let tb = analysis.targetPriceBounds,
+           let st = tb.shortTerm3m, let mt = tb.mediumTerm12m, let lt = tb.longTerm36m,
+           (st.mid ?? 0) > 0 {
+            GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                SectionHeaderView(title: "TARGET PRICE RANGE (90% CONFIDENCE)")
+                HStack(spacing: Theme.Spacing.standard) {
+                    priceBoundsColumn("3M", st)
+                    priceBoundsColumn("12M", mt)
+                    priceBoundsColumn("36M", lt)
+                }
+                .padding(Theme.Spacing.card)
+                .banknoteCard()
+                .padding(.horizontal, Theme.screenPadding)
+            }
+            .padding(.vertical, Theme.Spacing.tight)
+        }
+        
+        if let mm = analysis.marketMicrostructure {
+            let hasData = mm.deliverySignal != nil && mm.deliverySignal != "NEUTRAL"
+                       || mm.dealerRegime != nil && mm.dealerRegime != "NEUTRAL"
+                       || mm.minskyanFlag == true
+            if hasData {
+                GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                    SectionHeaderView(title: "MARKET MICROSTRUCTURE")
+                    HStack(spacing: Theme.Spacing.card) {
+                        if let ds = mm.deliverySignal, ds != "NEUTRAL" {
+                            microChip(label: "DELIVERY", value: ds, color: ds == "ACCUMULATION" ? Theme.bullGreen : Theme.bearRed)
+                        }
+                        if let dr = mm.dealerRegime, dr != "NEUTRAL" {
+                            microChip(label: "DEALER", value: dr.replacingOccurrences(of: "_", with: " "), color: dr == "LONG_GAMMA" ? Theme.holdAmber : Theme.bullGreen)
+                        }
+                        if mm.minskyanFlag == true {
+                            microChip(label: "MINSKYAN", value: "⚠️", color: Theme.bearRed)
+                        }
+                        Spacer()
+                    }
+                    .padding(Theme.Spacing.card)
+                    .banknoteCard()
+                    .padding(.horizontal, Theme.screenPadding)
+                }
+                .padding(.vertical, Theme.Spacing.tight)
+            }
+        }
+        
+        if let sm = analysis.sectorMomentum, let q = sm.rrgQuadrant, q != "Unknown" {
+            GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                SectionHeaderView(title: "SECTOR MOMENTUM (RRG)")
+                HStack {
+                    Text(q.uppercased())
+                        .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
+                        .tracking(1.0)
+                        .padding(.horizontal, Theme.Spacing.medium)
+                        .padding(.vertical, Theme.Spacing.xSmall)
+                        .background(rrgColor(q).opacity(0.1))
+                        .foregroundStyle(rrgColor(q))
+                        .clipShape(Capsule())
+                    Spacer()
+                    Text("RS: \(String(format: "%.0f", sm.rsRatio ?? 0))")
+                        .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
+                        .foregroundStyle(Theme.inkSecondary)
+                }
+                .padding(Theme.Spacing.card)
+                .banknoteCard()
+                .padding(.horizontal, Theme.screenPadding)
+            }
+            .padding(.vertical, Theme.Spacing.tight)
+        }
+        
+        if let ha = analysis.historicalAnalogues, (ha.kFound ?? 0) > 0 {
+            GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                SectionHeaderView(title: "HISTORICAL ANALOGUES")
+                Text("\(ha.kFound ?? 0) similar setups found | \(String(format: "%.0f", (ha.historicalWinRatePct ?? 0)*100))% win rate")
+                    .font(Theme.serialNumberFont(size: 13, relativeTo: .caption))
+                    .foregroundStyle(Theme.inkPrimary)
+                if let summary = ha.analogueSummary, !summary.isEmpty {
+                    Text(stripEmoji(summary))
+                        .font(Theme.engravedSerif(size: 12, relativeTo: .caption))
+                        .foregroundStyle(Theme.inkSecondary)
+                        .lineSpacing(3)
+                }
+            }
+            .padding(Theme.Spacing.card)
+            .banknoteCard()
+            .padding(.horizontal, Theme.screenPadding)
+            .padding(.vertical, Theme.Spacing.tight)
+        }
+        
+        if let at = analysis.auditorTenure, let name = at.auditorName {
+            GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                SectionHeaderView(title: "AUDITOR")
+                Text("\(name) · \(at.tenureYears ?? 0) yrs · \(at.isBig4 == true ? "Big 4" : "Non-Big 4")")
+                    .font(Theme.serialNumberFont(size: 13, relativeTo: .caption))
+                    .foregroundStyle(at.isBig4 == true ? Theme.bullGreen : Theme.inkSecondary)
+            }
+            .padding(Theme.Spacing.card)
+            .banknoteCard()
+            .padding(.horizontal, Theme.screenPadding)
+            .padding(.vertical, Theme.Spacing.tight)
+        }
     }
 
-    // MARK: - Extreme Sub-Views
+    // MARK: - New Calibration Sub-Views
+    
+    private func priceBoundsColumn(_ label: String, _ b: TargetPriceBound) -> some View {
+        VStack(spacing: Theme.Spacing.xSmall) {
+            Text(label)
+                .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+                .foregroundStyle(Theme.inkTertiary)
+            Text(IndianFormatter.priceCompact(b.mid ?? 0))
+                .font(Theme.serialNumberFont(size: 16, relativeTo: .callout))
+                .foregroundStyle(Theme.inkPrimary)
+            Text("\(IndianFormatter.priceCompact(b.lower ?? 0)) – \(IndianFormatter.priceCompact(b.upper ?? 0))")
+                .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
+                .foregroundStyle(Theme.inkTertiary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+    
+    private func microChip(label: String, value: String, color: Color) -> some View {
+        VStack(spacing: 2) {
+            Text(label)
+                .font(Theme.microLabel(size: 7, relativeTo: .caption2))
+                .foregroundStyle(Theme.inkTertiary)
+            Text(value)
+                .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+                .tracking(0.5)
+                .foregroundStyle(color)
+        }
+    }
+    
+    private func rrgColor(_ quadrant: String) -> Color {
+        switch quadrant {
+        case "Leading":   return Theme.bullGreen
+        case "Improving": return Theme.securityGold
+        case "Weakening": return Theme.holdAmber
+        case "Lagging":   return Theme.bearRed
+        default:          return Theme.inkTertiary
+        }
+    }
 
     private func factorScoreGrid(_ fs: FactorScores) -> some View {
         let items: [(String, Int?, Color)] = [
