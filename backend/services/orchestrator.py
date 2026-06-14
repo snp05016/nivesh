@@ -552,6 +552,8 @@ def build_ta_config(scan_type: str = "standard") -> dict:
         config["max_debate_rounds"] = 1
         config["max_risk_discuss_rounds"] = 1
         config["max_tokens"] = 1000              # cost reduction: 1000×5=5000 effective
+        config["recursion_limit"] = 80           # standard: tighter budget than extreme (still safe)
+        config["max_recur_limit"] = 80
     config["llm_provider"] = "deepseek"
     config["deep_think_llm"] = HAIKU_MODEL
     config["deep_think_provider"] = "anthropic"
