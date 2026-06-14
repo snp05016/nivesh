@@ -272,7 +272,7 @@ struct OptionsStrategyScreen: View {
             .background(Theme.securityGold.opacity(0.06))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                    .stroke(Theme.securityGold.opacity(0.25), lineWidth: 0.5, dash: [4, 4])
+                    .stroke(Theme.securityGold.opacity(0.25), style: StrokeStyle(lineWidth: 0.5, dash: [4, 4]))
             )
             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
         }
@@ -465,17 +465,24 @@ struct OptionsStrategyScreen: View {
                 }
                 .chartOverlay { proxy in
                     GeometryReader { geo in
-                        let plotFrame = geo[.plotFrame ?? .plot]
                         Path { path in
                             guard let xPos = proxy.position(forX: parsedSpot) else { return }
-                            path.move(to: CGPoint(x: xPos, y: plotFrame.minY))
-                            path.addLine(to: CGPoint(x: xPos, y: plotFrame.maxY))
+                            path.move(to: CGPoint(x: xPos, y: geo.frame(in: .local).minY))
+                            path.addLine(to: CGPoint(x: xPos, y: geo.frame(in: .local).maxY))
                         }
                         .stroke(Theme.securityGold.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
                     }
                 }
-                .chartYAxisLabel("P&L (₹)", font: Theme.microLabel(size: 9), foregroundStyle: Theme.inkTertiary)
-                .chartXAxisLabel("Underlying Price (₹)", font: Theme.microLabel(size: 9), foregroundStyle: Theme.inkTertiary)
+                .chartYAxisLabel {
+                    Text("P&L (₹)")
+                        .font(Theme.microLabel(size: 9, relativeTo: .caption2))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+                .chartXAxisLabel {
+                    Text("Underlying Price (₹)")
+                        .font(Theme.microLabel(size: 9, relativeTo: .caption2))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
                 .frame(height: UIScreen.main.bounds.height * 0.42)
                 .padding(Theme.Spacing.card)
                 .banknoteCard()
