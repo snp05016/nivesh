@@ -551,8 +551,9 @@ class AnalyzeRequest(BaseModel):
     def validate_ticker(cls, v):
         import re
         v = v.strip().upper()
-        if not re.match(r'^[A-Z0-9.&]{1,20}$', v):
-            raise ValueError("Invalid ticker format")
+        # Task 58: strict validation — allow alphanumeric plus &, -, .
+        if not re.match(r'^[A-Za-z0-9&\-\.]{1,20}$', v):
+            raise ValueError("Ticker contains invalid characters")
         return v
 
     @validator("exchange")

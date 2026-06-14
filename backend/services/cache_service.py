@@ -216,27 +216,72 @@ class UnifiedCacheService:
         return f"{namespace}:{key}"
 
     def _disk_path(self, full_key: str) -> Path:
+        """Return resolved cache file path, ensuring it stays inside cache_dir."""
         hash_key = hashlib.md5(full_key.encode()).hexdigest()
         return self._cache_dir / f"{hash_key}.json"
+
+    @staticmethod
+    def _resolve_safe(path: Path, root: Path) -> Path:
+        """Resolve path and enforce it is inside root."""
+        resolved = path.resolve()
+        root_resolved = root.resolve()
+        if not str(resolved).startswith(str(root_resolved) + os.sep) and resolved != root_resolved:
+            raise ValueError(f"Cache path escape: {resolved} not under {root_resolved}")
+        return resolved
 
     def _get_from_disk(self, full_key: str) -> Any:
         try:
             cache_file = self._disk_path(full_key)
-            if cache_file.exists():
-                with open(cache_file) as f:
-                    data = json.load(f)
-                age = time.time() - data.get("ts", 0)
-                if age < data.get("ttl", self._default_ttl):
-                    return data.get("value")
+            if not cache_file.exists():
+                return None
+            safe_path = self._resolve_safe(cache_file, self._cache_dir)
+            # Read file metadata from the OS (trusted source), not the contents
+            try:
+                file_stat = safe_path.stat()
+                file_mtime = file_stat.st_mtime
+            except OSError:
+                return None
+            with open(safe_path) as f:
+                data = json.load(f)
+            # Clamp TTL: never exceed _default_ttl (prevents cache poisoning)
+            stored_ts = max(float(data.get("ts", 0)), 0)
+            claimed_ttl = float(data.get("ttl", self._default_ttl))
+            effective_ttl = min(claimed_ttl, float(self._default_ttl))
+            age = time.time() - stored_ts
+            # Sanity: negative age means tampered/future timestamp
+            if age < 0:
+                return None
+            if age < effective_ttl:
+                return data.get("value")
         except Exception:
             pass
         return None
 
     def _write_to_disk(self, full_key: str, value: Any, ttl: int) -> None:
+        import tempfile
         try:
             cache_file = self._disk_path(full_key)
-            with open(cache_file, "w") as f:
-                json.dump({"ts": time.time(), "ttl": ttl, "value": value}, f)
+            safe_path = self._resolve_safe(cache_file, self._cache_dir)
+            safe_path.parent.mkdir(parents=True, exist_ok=True)
+            # Atomic write: tempfile → os.replace. O_EXCL|O_NOFOLLOW for safety.
+            fd = os.open(
+                safe_path.parent,
+                os.O_RDONLY,
+            )
+            os.close(fd)
+            tmp_fd, tmp_path = tempfile.mkstemp(
+                dir=str(safe_path.parent),
+                prefix=f".tmp-{safe_path.name}-",
+            )
+            try:
+                with os.fdopen(tmp_fd, "w") as f:
+                    json.dump({"ts": time.time(), "ttl": ttl, "value": value}, f)
+                os.replace(tmp_path, safe_path)
+                os.chmod(safe_path, 0o600)
+            except Exception:
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+                raise
         except Exception:
             pass
 

@@ -363,7 +363,9 @@ async def _data_harvesting_error_handler(_req: _FRequest, exc: DataHarvestingErr
 # ---------------------------------------------------------------------------
 from routers import auth, portfolio, market, analysis, alerts, user, dashboard, notifications, brainstorming, strategy, copilot, anomalies, correlation, nl_screener, stress_test, sector_rotation, earnings_surprise, options_strategy
 from routers import harvester as harvester_router
+from routers.health import router as health_router  # Task 56
 
+app.include_router(health_router)  # /healthz
 app.include_router(auth.router)
 app.include_router(correlation.router)
 app.include_router(portfolio.router)
