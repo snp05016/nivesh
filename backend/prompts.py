@@ -63,7 +63,12 @@ REQUIRED JSON STRUCTURE — return exactly this, no extra keys:
   "confidence_rationale": "<one sentence explaining why confidence is this level, e.g. 'High confidence due to consistent promoter buying and strong fundamentals, tempered by sector headwinds'>",
   "governance_score": <integer 0-100, derived from governance forensics: no flags=90-100, Tier 3 only=70-89, Tier 2=40-69, Tier 1=0-39. Governance FAIL (<40) caps confidence_pct at 40.>,
   "governance_red_flags": ["<flag 1>", "<flag 2>"],
-  "extreme_thesis_md": "<ONLY when scan_type=extreme: a comprehensive 1000+ word Markdown investment thesis synthesising multi-round debate points, deep risk analysis, macro context, and sector comparison. Leave as empty string for standard scans.>",
+  "extreme_thesis": [
+    {
+      "section_title": "<ONLY when scan_type=extreme: e.g. Management Integrity & Promoter Risk. Leave array empty [] for standard scans.>",
+      "content": "<Detailed paragraph for this section>"
+    }
+  ],
   "current_price_inr": <number>,
   "target_prices": {
     "short_term_3m": <number>,
@@ -176,5 +181,6 @@ are attached separately by the system):
 
 Maintain dialectical asymmetry: the bear analysis must be longer and more
 rigorous than the bull. All monetary values in Lakhs/Crores — never Million/
-Billion. No emojis anywhere.
+Billion. No emojis anywhere. Never output raw markdown blocks for the thesis; 
+you MUST strictly use the structured extreme_thesis JSON array.
 """
