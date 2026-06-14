@@ -114,6 +114,27 @@ struct StockAnalysis: Codable {
     let stalenessHours: Double?
     let stalenessReason: String?
     let cachedScanType: String?
+    // ML Hybrid Pipeline — quant engine fields
+    let marketRegime: String?
+    let calibratedConfidence: Double?
+    let conformalTargetUpper3m: Double?
+    let conformalTargetLower3m: Double?
+    let quantitativeDrivers: [String: Double]?
+    let tailRiskFlags: [String: Bool]?
+
+    // MARK: - Computed Helpers
+
+    /// Prefer calibrated confidence from quant engine; fall back to legacy confidencePct
+    var displayConfidence: Double {
+        if let cc = calibratedConfidence {
+            return cc
+        }
+        return Double(confidencePercent) / 100.0
+    }
+
+    var hasQuantData: Bool {
+        return calibratedConfidence != nil && quantitativeDrivers != nil
+    }
 
     enum CodingKeys: String, CodingKey {
         case ticker, signal, exchange, patterns
@@ -159,6 +180,12 @@ struct StockAnalysis: Codable {
         case stalenessHours = "_staleness_hours"
         case stalenessReason = "_staleness_reason"
         case cachedScanType = "_cached_scan_type"
+        case marketRegime = "market_regime"
+        case calibratedConfidence = "calibrated_confidence"
+        case conformalTargetUpper3m = "conformal_target_upper_3m"
+        case conformalTargetLower3m = "conformal_target_lower_3m"
+        case quantitativeDrivers = "quantitative_drivers"
+        case tailRiskFlags = "tail_risk_flags"
     }
 
     init(from decoder: Decoder) throws {
@@ -209,7 +236,13 @@ struct StockAnalysis: Codable {
         stalenessUrgency     = try c.decodeIfPresent(String.self,             forKey: .stalenessUrgency)
         stalenessHours       = try c.decodeIfPresent(Double.self,             forKey: .stalenessHours)
         stalenessReason      = try c.decodeIfPresent(String.self,             forKey: .stalenessReason)
-        cachedScanType       = try c.decodeIfPresent(String.self,             forKey: .cachedScanType)
+        cachedScanType          = try c.decodeIfPresent(String.self,                forKey: .cachedScanType)
+        marketRegime            = try c.decodeIfPresent(String.self,                forKey: .marketRegime)
+        calibratedConfidence    = try c.decodeIfPresent(Double.self,                forKey: .calibratedConfidence)
+        conformalTargetUpper3m  = try c.decodeIfPresent(Double.self,                forKey: .conformalTargetUpper3m)
+        conformalTargetLower3m  = try c.decodeIfPresent(Double.self,                forKey: .conformalTargetLower3m)
+        quantitativeDrivers     = try c.decodeIfPresent([String: Double].self,       forKey: .quantitativeDrivers)
+        tailRiskFlags           = try c.decodeIfPresent([String: Bool].self,        forKey: .tailRiskFlags)
     }
 }
 
