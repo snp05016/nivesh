@@ -1669,18 +1669,22 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
         analogue_data     = _cal_results.get("analogues", {})
         conformal_data    = _cal_results.get("conformal", {})
 
+        def _nf(v, default=0):
+            """Return default if v is None, else v. Prevents None.__format__ errors."""
+            return default if v is None else v
+
         calibration_block = f"""
 === CALIBRATION ENGINE OUTPUT (AUTHORITATIVE) ===
-Signal Agreement: {agreement_data.get('agreement_ratio', 0.5):.2f}
-Regime: {regime_state} (x{regime_mult:.2f})
-Delivery: {delivery_data.get('delivery_signal', 'NEUTRAL')} ({delivery_data.get('delivery_pct_latest', 0):.1f}% #)
-Dealer: {microstructure_data.get('dealer_regime', 'NEUTRAL')} PCR: {microstructure_data.get('oi_pcr', 0):.2f}
-RRG: {rrg_data.get('rrg_quadrant', 'Unknown')}
-Minskyan: {minskyan_data.get('minskyan_flag', False)} ({minskyan_data.get('minskyan_score', 0):.2f})
-Bear Adj: {bear_data.get('adjustment', 0):+.3f}
-Auditor: {auditor_data.get('auditor_name', '')} ({auditor_data.get('tenure_years', 0)}y Big-4:{auditor_data.get('is_big4', False)})
-Analogues: {analogue_data.get('k_found', 0)} WR:{analogue_data.get('historical_win_rate_pct', 'N/A')}%
-Bounds 3M: {conformal_data.get('short_term_3m', {}).get('lower', 'N/A')}–{conformal_data.get('short_term_3m', {}).get('upper', 'N/A')}
+Signal Agreement: {_nf(agreement_data.get('agreement_ratio'), 0.5):.2f}
+Regime: {regime_state} (x{_nf(regime_mult, 1.0):.2f})
+Delivery: {_nf(delivery_data.get('delivery_signal'), 'NEUTRAL')} ({_nf(delivery_data.get('delivery_pct_latest'), 0):.1f}% #)
+Dealer: {_nf(microstructure_data.get('dealer_regime'), 'NEUTRAL')} PCR: {_nf(microstructure_data.get('oi_pcr'), 0):.2f}
+RRG: {_nf(rrg_data.get('rrg_quadrant'), 'Unknown')}
+Minskyan: {_nf(minskyan_data.get('minskyan_flag'), False)} ({_nf(minskyan_data.get('minskyan_score'), 0):.2f})
+Bear Adj: {_nf(bear_data.get('adjustment'), 0):+.3f}
+Auditor: {_nf(auditor_data.get('auditor_name'), '')} ({_nf(auditor_data.get('tenure_years'), 0)}y Big-4:{_nf(auditor_data.get('is_big4'), False)})
+Analogues: {_nf(analogue_data.get('k_found'), 0)} WR:{_nf(analogue_data.get('historical_win_rate_pct'), 'N/A')}%
+Bounds 3M: {_nf((conformal_data.get('short_term_3m') or {}).get('lower'), 'N/A')}–{_nf((conformal_data.get('short_term_3m') or {}).get('upper'), 'N/A')}
 === END CALIBRATION ===
 """
         raw_output = calibration_block + "\n\n" + raw_output
