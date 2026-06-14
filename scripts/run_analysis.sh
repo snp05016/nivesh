@@ -33,9 +33,9 @@ case "$MODE" in
   *) echo "Invalid --mode: $MODE"; usage;;
 esac
 
-# Safe upper-limit timeout: extreme 600s, others 300s (override with --timeout).
+# Safe upper-limit timeout: extreme 1200s (20 min), others 600s (10 min) (override with --timeout).
 if [[ -z "$TIMEOUT" ]]; then
-  [[ "$SCAN_TYPE" == "extreme" ]] && TIMEOUT=600 || TIMEOUT=300
+  [[ "$SCAN_TYPE" == "extreme" ]] && TIMEOUT=1200 || TIMEOUT=600
 fi
 
 jqget() { python3 -c "import sys,json
