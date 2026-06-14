@@ -426,8 +426,8 @@ def build_ta_config(scan_type: str = "standard") -> dict:
         config["max_debate_rounds"] = 2          # was 3 — runaway fix
         config["max_risk_discuss_rounds"] = 1    # was 2 — runaway fix
         config["max_tokens"] = 4000              # cost reduction: extreme keeps depth
-        config["recursion_limit"] = 40           # explicit LangGraph bound (no infinite loops)
-        config["max_recur_limit"] = 40           # trading_graph key name (actual limit applied)
+        config["recursion_limit"] = 150          # explicit LangGraph bound (no infinite loops)
+        config["max_recur_limit"] = 150          # trading_graph key name (actual limit applied)
         config["analyst_tool_loop_cap"] = 3      # cap agent↔tool loop iterations
     else:
         # Tier 1 (bulk agent nodes): DeepSeek V4 Flash
