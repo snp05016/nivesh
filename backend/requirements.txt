@@ -53,6 +53,7 @@ fpdf2>=2.8.1
 # Firecrawl scraping SDK (optional — falls back to direct scraping without API key)
 firecrawl-py>=1.5.0
 newspaper3k>=0.2.8
+lxml_html_clean>=0.4.0
 
 # YouTube / audio intelligence (Task 1.8)
 yt-dlp>=2024.12.13
