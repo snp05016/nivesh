@@ -86,6 +86,10 @@ def compute_indicators(df: pd.DataFrame, ticker: str = "") -> dict:
         "trend_regime": "NEUTRAL",
         "volatility_regime": "NORMAL",
         "momentum_score": 0,
+        "regime_state": None,
+        "regime_state_label": None,
+        "regime_confidence_multiplier": None,
+        "regime_description": None,
     }
 
     if df is None or len(df) < 50:
@@ -244,6 +248,13 @@ def compute_indicators(df: pd.DataFrame, ticker: str = "") -> dict:
         roc_contrib = min(max(roc_v * 2, -50), 50)
         result["momentum_score"] = round(min(max(rsi_contrib + roc_contrib, -100), 100))
 
+        # ── HMM Market Regime Detection (GAP 2) ─────────────────────────────
+        regime = detect_market_regime(close)
+        result["regime_state"] = regime["state"]
+        result["regime_state_label"] = regime["state_label"]
+        result["regime_confidence_multiplier"] = regime["confidence_multiplier"]
+        result["regime_description"] = regime["regime_description"]
+
     except Exception as e:
         logger.error(f"[factor_engine] {ticker}: Computation error: {e}", exc_info=True)
 
@@ -288,6 +299,11 @@ def format_for_prompt(indicators: dict) -> str:
         f"  HV-21 Ann.:       {r.get('hist_vol_21_annualized', 'N/A')}%",
         f"  Volatility Regime:{r.get('volatility_regime', 'NORMAL')}",
         "",
+        "MARKET REGIME (HMM):",
+        f"  Regime State:     {r.get('regime_state', 'N/A')} ({r.get('regime_state_label', 'N/A')})",
+        f"  Description:      {r.get('regime_description', 'N/A')}",
+        f"  Conf Multiplier:  {r.get('regime_confidence_multiplier', 1.0)}x",
+        "",
         "VOLUME:",
         f"  Volume Ratio:     {r.get('volume_ratio', 'N/A')}x 20-day avg",
         f"  OBV Trend:        {'Accumulation' if (r.get('obv') or 0) > 0 else 'Distribution'}",
@@ -298,3 +314,142 @@ def format_for_prompt(indicators: dict) -> str:
         "=== END PRE-COMPUTED INDICATORS ===",
     ]
     return "\n".join(lines)
+
+
+def detect_market_regime(close_series: pd.Series) -> dict:
+    """
+    Detect market regime using HMM on EGARCH(1,1) conditional volatility.
+
+    Trains a 3-state GaussianHMM on rolling EGARCH(1,1) conditional vol.
+    State 0 = Stable (lowest mean vol), State 2 = Crisis (highest mean vol).
+
+    Falls back to hist_vol_21_annualized thresholds if hmmlearn/arch
+    are unavailable.
+
+    Returns:
+        dict with keys: state, state_label, confidence_multiplier,
+        regime_description
+    """
+    default = {
+        "state": 1,
+        "state_label": "NORMAL",
+        "confidence_multiplier": 1.0,
+        "regime_description": "Unknown regime (insufficient data)",
+    }
+
+    if close_series is None or len(close_series) < 50:
+        return default
+
+    # Try HMM-backed regime detection
+    try:
+        from hmmlearn.hmm import GaussianHMM
+
+        try:
+            from arch import arch_model
+            ARCH_AVAILABLE = True
+        except ImportError:
+            ARCH_AVAILABLE = False
+
+        log_ret = np.log(close_series / close_series.shift(1)).dropna() * 100
+
+        if ARCH_AVAILABLE and len(log_ret) >= 60:
+            am = arch_model(log_ret, vol="EGARCH", p=1, q=1, dist="normal")
+            res = am.fit(disp="off", show_warning=False)
+            cond_vol = res.conditional_volatility.dropna().values.reshape(-1, 1)
+        else:
+            hv_series = log_ret.rolling(21).std().dropna() * np.sqrt(252)
+            cond_vol = hv_series.values.reshape(-1, 1)
+
+        if len(cond_vol) < 10:
+            return default
+
+        model = GaussianHMM(
+            n_components=3,
+            covariance_type="full",
+            random_state=42,
+            n_iter=500,
+            tol=1e-4,
+        )
+        model.fit(cond_vol)
+        hidden_states = model.predict(cond_vol)
+
+        # Map states: 0 = lowest vol (Stable), 2 = highest vol (Crisis)
+        state_means = {}
+        for s in range(3):
+            mask = hidden_states == s
+            state_means[s] = float(np.mean(cond_vol[mask])) if mask.sum() > 0 else 0.0
+
+        sorted_states = sorted(state_means, key=state_means.get)
+        stable_idx = sorted_states[0]
+        crisis_idx = sorted_states[-1]
+        normal_idx = sorted_states[1]
+
+        mapping = {stable_idx: 0, normal_idx: 1, crisis_idx: 2}
+        current_state_raw = int(hidden_states[-1])
+        mapped_state = mapping.get(current_state_raw, 1)
+
+        current_vol = float(cond_vol[-1, 0])
+        stable_mean = state_means.get(stable_idx, current_vol)
+        crisis_mean = state_means.get(crisis_idx, current_vol)
+
+        if crisis_mean > stable_mean:
+            raw_mult = 1.0 + (current_vol - stable_mean) / (crisis_mean - stable_mean) * 0.5
+        else:
+            raw_mult = 1.0
+        confidence_multiplier = round(min(max(raw_mult, 0.5), 1.5), 2)
+
+        if mapped_state == 0:
+            state_label = "STABLE"
+            description = "Low-volatility regime; normal position sizing applies."
+        elif mapped_state == 2:
+            state_label = "CRISIS"
+            description = "High-volatility regime; reduce position size and tighten stops."
+        else:
+            state_label = "NORMAL"
+            description = "Moderate-volatility regime; standard risk parameters."
+
+        return {
+            "state": mapped_state,
+            "state_label": state_label,
+            "confidence_multiplier": confidence_multiplier,
+            "regime_description": description,
+        }
+
+    except Exception as exc:
+        logger.debug(f"[factor_engine] HMM regime detection failed: {exc}")
+
+    # Fallback: hist_vol_21_annualized thresholds
+    try:
+        log_ret = np.log(close_series / close_series.shift(1)).dropna()
+        hv = float(log_ret.rolling(21).std().iloc[-1]) * np.sqrt(252) * 100
+
+        if hv > 60:
+            return {
+                "state": 2,
+                "state_label": "CRISIS",
+                "confidence_multiplier": 0.6,
+                "regime_description": "High-volatility regime (fallback: HV-21 > 60)",
+            }
+        elif hv > 40:
+            return {
+                "state": 1,
+                "state_label": "NORMAL",
+                "confidence_multiplier": 0.8,
+                "regime_description": "Elevated volatility (fallback: HV-21 40-60)",
+            }
+        elif hv < 15:
+            return {
+                "state": 0,
+                "state_label": "STABLE",
+                "confidence_multiplier": 1.0,
+                "regime_description": "Low-volatility regime (fallback: HV-21 < 15)",
+            }
+        else:
+            return {
+                "state": 1,
+                "state_label": "NORMAL",
+                "confidence_multiplier": 1.0,
+                "regime_description": "Normal volatility (fallback: HV-21 15-40)",
+            }
+    except Exception:
+        return default

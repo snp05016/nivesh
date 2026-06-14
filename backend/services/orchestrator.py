@@ -442,13 +442,13 @@ def build_ta_config(scan_type: str = "standard") -> dict:
     return config
 
 
-def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "standard") -> str:
+def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "standard") -> tuple:
     print(f"\n[AI] Initializing Analysis for {full_ticker}...")
     print(f"[AI] Thinking: Gathering market data and fundamental ratios...")
     config = build_ta_config(scan_type)
     ta = OptimizedTradingAgentsGraph(
         selected_analysts=["governance", "market", "news", "fundamentals"],
-        debug=True,  # Enable debug for terminal logs
+        debug=True,
         config=config,
     )
     print(f"[AI] Thinking: Running Agent Graph propagation...")
@@ -462,11 +462,10 @@ def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "s
     # Collect checkpoint progress events from agent nodes
     from tradingagents.graph.setup import get_progress_events as _get_prog
     progress = _get_prog()
-    # Store in module-level shared dict for SSE streaming
     with _analysis_progress_lock:
         _analysis_progress[full_ticker] = progress
 
-    return output, progress
+    return output, progress, final_state
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -871,6 +870,68 @@ def _normalize_response(result: dict, scan_type: str = "standard") -> dict:
         result.setdefault("niche_insights", [])
         result.setdefault("governance_flags", [])
 
+    # 17. confidence_calibration — must be dict with all subfields
+    if not isinstance(result.get("confidence_calibration"), dict):
+        result["confidence_calibration"] = {
+            "raw_llm_confidence": result.get("confidence_pct", 0),
+            "signal_agreement_ratio": 0.5,
+            "regime_state": "Unknown",
+            "regime_multiplier": 1.0,
+            "calibration_note": "Calibration engine did not run.",
+        }
+
+    # 18. target_price_bounds — conformal prediction intervals
+    if not isinstance(result.get("target_price_bounds"), dict):
+        result["target_price_bounds"] = {}
+    tp = result["target_price_bounds"]
+    for horizon in ("short_term_3m", "medium_term_12m", "long_term_36m"):
+        if not isinstance(tp.get(horizon), dict):
+            tp[horizon] = {"lower": 0.0, "mid": 0.0, "upper": 0.0, "coverage_pct": 90}
+        else:
+            for k in ("lower", "mid", "upper"):
+                try:
+                    tp[horizon][k] = float(tp[horizon].get(k, 0.0))
+                except (ValueError, TypeError):
+                    tp[horizon][k] = 0.0
+            tp[horizon].setdefault("coverage_pct", 90)
+
+    # 19. historical_analogues — KNN analogue search results
+    if not isinstance(result.get("historical_analogues"), dict):
+        result["historical_analogues"] = {
+            "k_found": 0,
+            "historical_win_rate_pct": None,
+            "avg_return_on_wins_pct": None,
+            "analogue_summary": "No historical analogues available.",
+        }
+
+    # 20. market_microstructure — delivery, PCR, GEX, Minskyan
+    if not isinstance(result.get("market_microstructure"), dict):
+        result["market_microstructure"] = {
+            "delivery_pct": None,
+            "delivery_signal": "NEUTRAL",
+            "oi_pcr": None,
+            "volume_pcr": None,
+            "dealer_regime": "NEUTRAL",
+            "minskyan_flag": False,
+            "minskyan_score": None,
+        }
+
+    # 21. sector_momentum — RRG quadrant
+    if not isinstance(result.get("sector_momentum"), dict):
+        result["sector_momentum"] = {
+            "rrg_quadrant": "Unknown",
+            "rs_ratio": None,
+            "rs_momentum": None,
+        }
+
+    # 22. auditor_tenure
+    if not isinstance(result.get("auditor_tenure"), dict):
+        result["auditor_tenure"] = {
+            "auditor_name": None,
+            "tenure_years": None,
+            "is_big4": None,
+        }
+
     return result
 
 
@@ -1226,7 +1287,7 @@ def analyze(
     emitter.emit("agents", "Multi-Agent Engine",
                  "Running governance, market, news & fundamentals analysts + bull/bear debate",
                  pct=25)
-    raw_output, _ = run_trading_agents(full_ticker, analysis_date, scan_type)
+    raw_output, _, final_state = run_trading_agents(full_ticker, analysis_date, scan_type)
     emitter.emit("synthesis", "Research & Portfolio Managers",
                  "Weighing the dialectical debate (bear 1.5x) into a final call", pct=60)
     raw_output += f"\n\nADDITIONAL DATA (MANDATORY TO INCLUDE IN fundamentals_snapshot):\nPromoter Pledging: {pledging_data}\n"
@@ -1302,6 +1363,68 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
                     raw_output += f"\n\n{finbert_context}"
         except Exception as e:
             print(f"[DEEP-SCAN] FinBERT context build failed: {e}")
+
+    # ── Confidence Calibration Pipeline ─────────────────────────────────────
+    try:
+        from services.factor_engine import compute_indicators
+        from services.confidence_engine import (
+            compute_signal_agreement, compute_conformal_bounds,
+            find_historical_analogues, apply_bear_asymmetry,
+        )
+        from services.macro_modifiers import compute_minskyan_risk
+        from services.microstructure_engine import compute_pcr_gex
+        from services.sector_rotation import compute_rrg_quadrant
+        from services.filings_extractor import extract_auditor_info
+        from services.nse_data_provider import get_delivery_data
+
+        base_symbol = ticker.upper()
+        ns_ticker_for_cal = _to_ns(ticker)
+
+        price_df, regime_indicators = compute_indicators(base_symbol)
+        current_price_raw = float(regime_indicators.get("close_current", 0) or 0)
+        regime_state = regime_indicators.get("regime_state", "Unknown")
+        regime_mult = regime_indicators.get("regime_confidence_multiplier", 1.0)
+
+        agent_reports = {
+            "governance": final_state.get("governance_report", ""),
+            "market": final_state.get("market_report", ""),
+            "fundamentals": final_state.get("fundamentals_report", ""),
+            "news": final_state.get("news_report", ""),
+        } if isinstance(final_state, dict) else {}
+        agreement_data = compute_signal_agreement(agent_reports)
+
+        delivery_data = get_delivery_data(base_symbol)
+        microstructure_data = compute_pcr_gex(base_symbol)
+        rrg_data = compute_rrg_quadrant(base_symbol)
+        minskyan_data = compute_minskyan_risk(dii_ytd=0, fii_ytd=0)
+        bear_data = apply_bear_asymmetry(raw_output)
+        auditor_data = extract_auditor_info(ns_ticker_for_cal)
+        analogue_data = find_historical_analogues(ns_ticker_for_cal, {
+            "rsi_14": regime_indicators.get("rsi_14", 50),
+            "price_vs_sma50_pct": regime_indicators.get("price_vs_sma50_pct", 0),
+            "hist_vol_21_annualized": regime_indicators.get("hist_vol_21_annualized", 25),
+            "momentum_score": regime_indicators.get("momentum_score", 0),
+        })
+        conformal_data = compute_conformal_bounds(ns_ticker_for_cal, current_price_raw, price_df)
+
+        calibration_block = f"""
+=== CALIBRATION ENGINE OUTPUT (AUTHORITATIVE) ===
+Signal Agreement: {agreement_data.get('agreement_ratio', 0.5):.2f}
+Regime: {regime_state} (x{regime_mult:.2f})
+Delivery: {delivery_data.get('delivery_signal', 'NEUTRAL')} ({delivery_data.get('delivery_pct_latest', 0):.1f}% #)
+Dealer: {microstructure_data.get('dealer_regime', 'NEUTRAL')} PCR: {microstructure_data.get('oi_pcr', 0):.2f}
+RRG: {rrg_data.get('rrg_quadrant', 'Unknown')}
+Minskyan: {minskyan_data.get('minskyan_flag', False)} ({minskyan_data.get('minskyan_score', 0):.2f})
+Bear Adj: {bear_data.get('adjustment', 0):+.3f}
+Auditor: {auditor_data.get('auditor_name', '')} ({auditor_data.get('tenure_years', 0)}y Big-4:{auditor_data.get('is_big4', False)})
+Analogues: {analogue_data.get('k_found', 0)} WR:{analogue_data.get('historical_win_rate_pct', 'N/A')}%
+Bounds 3M: {conformal_data.get('short_term_3m', {}).get('lower', 'N/A')}–{conformal_data.get('short_term_3m', {}).get('upper', 'N/A')}
+=== END CALIBRATION ===
+"""
+        raw_output = calibration_block + "\n\n" + raw_output
+    except Exception as _cal_err:
+        print(f"[CALIBRATION] Pipeline failed: {_cal_err}")
+        # Continue without calibration — reformatter will run unmodified
 
     emitter.emit("format", "Reformatter",
                  "Structuring the report into the final schema", pct=80)

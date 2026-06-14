@@ -336,3 +336,97 @@ def download_bhavcopy(target_date: date | None = None) -> dict:
     cache_set("bhavcopy", cache_key, payload)
     logger.info(f"[bhavcopy] Cached {len(eq_rows)} EQ rows for {date_str} (source={source})")
     return {"date": date_str, "rows": len(eq_rows), "cached": False, "source": source}
+
+
+def get_delivery_data(symbol: str, days: int = 10) -> dict:
+    """
+    Fetch NSE delivery percentage for a symbol — GAP 3 signal.
+    Tries NSE quote-equity API first; falls back to jugaad-data bhavcopy.
+    Returns delivery signal with confidence modifier.
+    """
+    import requests
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+        "Referer": "https://www.nseindia.com",
+    }
+
+    delivery_pct_latest = None
+    delivery_pct_5d_avg = None
+
+    # ── Attempt 1: NSE quote-equity API ───────────────────────────────────────
+    try:
+        url = f"https://www.nseindia.com/api/quote-equity?symbol={symbol}&section=trade_info"
+        resp = requests.get(url, headers=headers, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            security_info = data.get("securityInfo", {})
+            delivery_pct_latest = security_info.get("deliveryPercentage")
+            weekly = data.get("weeklyDeliveryData", {})
+            if weekly and "deliveryPercentage" in weekly:
+                values = weekly["deliveryPercentage"]
+                if isinstance(values, list) and len(values) >= 5:
+                    delivery_pct_5d_avg = sum(float(v or 0) for v in values[-5:]) / 5
+            elif delivery_pct_latest is not None:
+                delivery_pct_5d_avg = delivery_pct_latest
+    except Exception as e:
+        logger.warning(f"[nse_data_provider] NSE quote-equity API failed for {symbol}: {e}")
+
+    # ── Attempt 2: jugaad-data bhavcopy ──────────────────────────────────────
+    if delivery_pct_latest is None and _JUGAAD_AVAILABLE:
+        try:
+            from jugaad_data.nse import stock_df
+            from datetime import date, timedelta
+
+            end_date = date.today()
+            start_date = end_date - timedelta(days=days * 2)
+            df = stock_df(symbol=symbol, from_date=start_date, to_date=end_date, series="EQ")
+            if df is not None and len(df) > 0:
+                if "DELIVERY_PERC" in df.columns:
+                    values = df["DELIVERY_PERC"].dropna().tail(days)
+                    if len(values) > 0:
+                        delivery_pct_latest = float(values.iloc[-1])
+                        window = values.tail(min(5, len(values)))
+                        delivery_pct_5d_avg = float(window.mean())
+                elif "DELIVERY_QTY" in df.columns and "TOTTRDQTY" in df.columns:
+                    recent = df.tail(days)
+                    pcts = []
+                    for _, row in recent.iterrows():
+                        tot = row.get("TOTTRDQTY", 0) or 0
+                        dq = row.get("DELIVERY_QTY", 0) or 0
+                        if tot > 0:
+                            pcts.append(float(dq) / float(tot) * 100)
+                    if pcts:
+                        delivery_pct_latest = pcts[-1]
+                        window = pcts[-5:] if len(pcts) >= 5 else pcts
+                        delivery_pct_5d_avg = sum(window) / len(window)
+        except Exception as e:
+            logger.warning(f"[nse_data_provider] jugaad-data delivery failed for {symbol}: {e}")
+
+    # ── Determine price trend ────────────────────────────────────────────────
+    price_rising = None
+    try:
+        hist = get_price_history(symbol, period_days=20)
+        if hist is not None and len(hist) >= 5:
+            price_rising = float(hist["Close"].iloc[-1]) > float(hist["Close"].iloc[-5])
+    except Exception as e:
+        logger.warning(f"[nse_data_provider] price trend check failed for {symbol}: {e}")
+
+    # ── Apply signal rules ──────────────────────────────────────────────────
+    delivery_signal = "NEUTRAL"
+    delivery_confidence_modifier = 0.0
+
+    if delivery_pct_latest is not None and price_rising is not None:
+        if delivery_pct_latest > 60 and price_rising:
+            delivery_signal = "ACCUMULATION"
+            delivery_confidence_modifier = 5.0
+        elif delivery_pct_latest < 25 and price_rising:
+            delivery_signal = "DISTRIBUTION"
+            delivery_confidence_modifier = -10.0
+
+    return {
+        "delivery_pct_latest": delivery_pct_latest,
+        "delivery_pct_5d_avg": delivery_pct_5d_avg,
+        "delivery_signal": delivery_signal,
+        "delivery_confidence_modifier": delivery_confidence_modifier,
+    }

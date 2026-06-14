@@ -78,3 +78,9 @@ langchain-text-splitters>=1.0.0
 langchain-openai>=1.0.0
 stockstats>=0.6.0
 langgraph-checkpoint-sqlite>=3.0.0
+
+# Confidence Calibration & Market Microstructure
+hmmlearn>=0.3.3
+arch>=6.3.0
+scikit-learn>=1.5.0
+scipy>=1.13.0
