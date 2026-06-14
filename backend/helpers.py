@@ -767,67 +767,74 @@ _INDICES_TICKERS = [
     ("USDINR=X",   "USD/INR"),
 ]
 
-_indices_cache: dict = {"data": None, "ts": 0}
 # Task 39: TTL from central config
 from config.settings import INDICES_CACHE_TTL as _INDICES_CACHE_TTL
 
 
-def _get_indices_data() -> dict:
-    """Fetch and cache market indices data. Used by both /market-indices and /morning-summary."""
-    now = time.time()
-    if _indices_cache["data"] is not None and (now - _indices_cache["ts"]) < _INDICES_CACHE_TTL:
-        return _indices_cache["data"]
-
-    result = []
-    for ticker, name in _INDICES_TICKERS:
+def _fetch_single_index(ticker: str, name: str) -> dict | None:
+    """Fetch a single index ticker. Returns dict or None on failure."""
+    import random as _random
+    current = None
+    prev_close = None
+    for attempt in range(3):
         try:
-            current = None
-            prev_close = None
-            for attempt in range(3):
-                try:
-                    t = yf.Ticker(ticker)
-                    info = t.fast_info
-                    current = getattr(info, "last_price", None)
-                    prev_close = getattr(info, "previous_close", None)
-                    
-                    if current is None or prev_close is None or math.isnan(current):
-                        full_info = t.info
-                        current = full_info.get("currentPrice") or full_info.get("regularMarketPrice")
-                        prev_close = full_info.get("previousClose") or full_info.get("regularMarketPreviousClose")
-                    
-                    if current is None or math.isnan(current):
-                        hist = t.history(period="5d")
-                        if not hist.empty and len(hist) >= 2:
-                            current = float(hist["Close"].iloc[-1])
-                            prev_close = float(hist["Close"].iloc[-2])
-                    
-                    if current is not None and not math.isnan(current):
-                        break
-                except Exception as e:
-                    print(f"[YF] Indices attempt {attempt+1} failed for {ticker}: {e}")
-                    if attempt < 2:
-                        time.sleep((_YF_BACKOFF_MULTIPLIER * (2 ** attempt)) + (random.random() * 0.2))
-            
+            t = yf.Ticker(ticker)
+            info = t.fast_info
+            current = getattr(info, "last_price", None)
+            prev_close = getattr(info, "previous_close", None)
+
+            if current is None or prev_close is None or math.isnan(current):
+                full_info = t.info
+                current = full_info.get("currentPrice") or full_info.get("regularMarketPrice")
+                prev_close = full_info.get("previousClose") or full_info.get("regularMarketPreviousClose")
+
             if current is None or math.isnan(current):
-                continue
-            
-            change_abs = round(current - (prev_close or 0), 4)
-            change_pct = round((change_abs / prev_close) * 100, 4) if prev_close else 0.0
-            result.append({
-                "name": name,
-                "ticker": ticker,
-                "value": round(float(current), 4),
-                "change_pct": change_pct,
-                "change_abs": change_abs,
-            })
+                hist = t.history(period="5d")
+                if not hist.empty and len(hist) >= 2:
+                    current = float(hist["Close"].iloc[-1])
+                    prev_close = float(hist["Close"].iloc[-2])
+
+            if current is not None and not math.isnan(current):
+                break
         except Exception as e:
-            print(f"[indices] Skipping {ticker}: {e}")
-            continue
+            if attempt < 2:
+                time.sleep((1.5 * (2 ** attempt)) + (_random.random() * 0.2))
+
+    if current is None or math.isnan(current):
+        return None
+
+    change_abs = round(current - (prev_close or 0), 4)
+    change_pct = round((change_abs / prev_close) * 100, 4) if prev_close else 0.0
+    return {
+        "name": name,
+        "ticker": ticker,
+        "value": round(float(current), 4),
+        "change_pct": change_pct,
+        "change_abs": change_abs,
+    }
+
+
+def _get_indices_data() -> dict:
+    """Fetch and cache market indices via Redis (shared across all workers).
+    Fetches 6 indices in parallel via ThreadPoolExecutor."""
+    # Redis-backed cache
+    cached = _dcache_get("indices", "all")
+    if cached is not None:
+        return cached
+
+    # Parallel fetch of all 6 indices
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    result = []
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        futures = {pool.submit(_fetch_single_index, t, n): n for t, n in _INDICES_TICKERS}
+        for f in as_completed(futures):
+            entry = f.result()
+            if entry is not None:
+                result.append(entry)
 
     payload = {
         "indices": result,
         "fetched_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
     }
-    _indices_cache["data"] = payload
-    _indices_cache["ts"] = now
+    _dcache_set("indices", "all", payload, ttl=_INDICES_CACHE_TTL)
     return payload
