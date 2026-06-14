@@ -211,10 +211,13 @@ from langchain_core.tools import tool
 
 @tool
 def search_filings(query: str, ticker: str) -> str:
-    """Semantically search the vector DB for earnings calls and SEC/NSE filings."""
-    # STUB: RAG architecture for unstructured text using FAISS/Qdrant
-    # This tool is intended for Bear/Bull researchers to access unstructured text.
-    return f"STUB: 3 most relevant textual chunks for '{query}' on {ticker} from vector DB."
+    """Search the vector database for news articles, earnings calls, and advisor
+    analysis related to {ticker}. Use this to find qualitative signals like
+    management guidance concerns, auditor red flags, promoter issues, or
+    governance problems not visible in structured financial data.
+    Returns top 3 most relevant text chunks with dates and sources."""
+    from services.rag_tools import search_vector_db
+    return search_vector_db(query, ticker, limit=3)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -295,7 +298,7 @@ class OptimizedGraphSetup(GraphSetup):
                 self.quick_thinking_llm,
                 GOVERNANCE_ANALYST_PERSONA,
                 "governance",
-                [get_news, get_insider_transactions],
+                [get_news, get_insider_transactions, search_filings],
             ),
             "market": lambda: create_optimized_analyst_node(
                 self.quick_thinking_llm,
@@ -307,7 +310,7 @@ class OptimizedGraphSetup(GraphSetup):
                 self.quick_thinking_llm,
                 NEWS_ANALYST_PERSONA,
                 "news",
-                [get_news, get_global_news, get_insider_transactions],
+                [get_news, get_global_news, get_insider_transactions, search_filings],
             ),
             "fundamentals": lambda: create_optimized_analyst_node(
                 self.quick_thinking_llm,
