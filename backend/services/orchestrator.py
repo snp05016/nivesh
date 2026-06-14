@@ -1505,9 +1505,14 @@ def analyze(
     try:
         from services.quant_engine import QuantitativeEngine
         quant_engine = QuantitativeEngine(ticker)
-        quant_payload = asyncio.get_event_loop().run_until_complete(
+        # Use new_event_loop() — get_event_loop() raises RuntimeError in
+        # multiprocessing subprocesses where no loop has been set.
+        _quant_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(_quant_loop)
+        quant_payload = _quant_loop.run_until_complete(
             quant_engine.run_full_pipeline()
         )
+        _quant_loop.close()
     except Exception as e:
         print(f"[Orchestrator] QuantEngine failed for {ticker}: {e}")
         quant_payload = {
