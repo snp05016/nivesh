@@ -67,7 +67,7 @@ class NetworkManager: ObservableObject {
     static let serverURLKey = "serverBaseURL"
     /// Home WiFi default. After DigitalOcean deploy, update via Settings tab —
     /// no rebuild needed (stored in UserDefaults).
-    static let defaultURL   = "http://165.22.221.18"
+    static let defaultURL   = "http://192.168.1.122"
 
     var baseURL: String {
         // Priority: UserDefaults override (set in Settings screen) → compile-time default.
