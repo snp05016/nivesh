@@ -573,8 +573,9 @@ struct AnalysisScreen: View {
     @ViewBuilder
     private func renderFullAnalysis(_ analysis: StockAnalysis) -> some View {
         if analysis.analysisTier == "extreme" {
-            Group {
+            VStack(spacing: Theme.Spacing.none) {
                 extremeModeSwitcher
+                    .background(Theme.canvas)
                 if extremeViewMode == 0 {
                     aiReportScroll(analysis)
                 } else {
