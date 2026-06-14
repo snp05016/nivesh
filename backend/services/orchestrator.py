@@ -1540,9 +1540,14 @@ Bounds 3M: {conformal_data.get('short_term_3m', {}).get('lower', 'N/A')}–{conf
         except Exception as _enrich_err:
             print(f"[EXTREME] enrichment failed for {ticker}: {_enrich_err}")
 
-    try:
+    # Task 08: Decouple DB reads (save + advisor fetch) from main analysis thread.
+    # Both DB operations run in separate threads inside ThreadPoolExecutor.
+    from datetime import timezone as _tz
+    _cutoff = datetime.now(_tz.utc).replace(tzinfo=None) - timedelta(days=14)
+
+    def _save_and_fetch_advisors():
         with get_session() as session:
-            result = save_analysis(
+            saved = save_analysis(
                 session,
                 user_id,
                 ticker.upper(),
@@ -1550,10 +1555,7 @@ Bounds 3M: {conformal_data.get('short_term_3m', {}).get('lower', 'N/A')}–{conf
                 raw_output=raw_output,
                 scan_type=scan_type,
             )
-            from datetime import timezone as _tz
-
-            _cutoff = datetime.now(_tz.utc).replace(tzinfo=None) - timedelta(days=14)
-            _advisor_rows = (
+            rows = (
                 session.query(AdvisorInsight)
                 .filter(
                     AdvisorInsight.ticker == ticker.upper(),
@@ -1563,24 +1565,32 @@ Bounds 3M: {conformal_data.get('short_term_3m', {}).get('lower', 'N/A')}–{conf
                 .limit(10)
                 .all()
             )
+            # Detach rows from session before returning (avoid DetachedInstanceError)
+            advisor_list = [
+                {
+                    "advisor_name": r.advisor_name,
+                    "stance": r.stance,
+                    "confidence": r.confidence,
+                    "catalyst_summary": r.catalyst_summary,
+                    "video_title": r.video_title,
+                    "video_url": r.video_url,
+                    "published_at": r.published_at.isoformat() if r.published_at else None,
+                    "transcript_source": r.transcript_source,
+                }
+                for r in rows
+            ]
+            return saved, advisor_list
+
+    try:
+        with ThreadPoolExecutor(max_workers=1) as _db_executor:
+            _db_future = _db_executor.submit(_save_and_fetch_advisors)
+            result, _advisor_rows_dicts = _db_future.result()
     except Exception as e:
         print(
             f"[WARN] save_analysis failed for {ticker}, returning result anyway: {e}"
         )
-        _advisor_rows = []
-    result["advisor_matrix"] = [
-        {
-            "advisor_name": r.advisor_name,
-            "stance": r.stance,
-            "confidence": r.confidence,
-            "catalyst_summary": r.catalyst_summary,
-            "video_title": r.video_title,
-            "video_url": r.video_url,
-            "published_at": r.published_at.isoformat() if r.published_at else None,
-            "transcript_source": r.transcript_source,
-        }
-        for r in _advisor_rows
-    ]
+        _advisor_rows_dicts = []
+    result["advisor_matrix"] = _advisor_rows_dicts
 
     # Add deep scan metadata
     result["deep_scan_used"] = deep_scan_used
