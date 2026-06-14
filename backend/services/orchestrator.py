@@ -331,9 +331,27 @@ class OptimizedGraphSetup(GraphSetup):
         bear_researcher_node = create_bear_researcher(self.quick_thinking_llm)
         research_manager_node = create_research_manager(self.deep_thinking_llm)
         trader_node = create_trader(self.quick_thinking_llm)
-        aggressive_analyst = create_aggressive_debator(self.quick_thinking_llm)
-        neutral_analyst = create_neutral_debator(self.quick_thinking_llm)
-        conservative_analyst = create_conservative_debator(self.quick_thinking_llm)
+
+        # Task 07: Wrap risk analyst nodes to enforce 400-word response limit.
+        # We post-process by prepending a word-limit directive via a bounded LLM
+        # wrapper that appends the directive to the state prompt string.
+        _WORD_LIMIT_DIRECTIVE = "\n\nIMPORTANT: Respond in exactly 400 words or fewer."
+
+        def _word_limited_llm(base_llm):
+            """Return a thin wrapper that appends 400-word directive to all invocations."""
+            class _BoundedLLM:
+                def invoke(self, prompt: str):
+                    if isinstance(prompt, str):
+                        prompt = prompt + _WORD_LIMIT_DIRECTIVE
+                    return base_llm.invoke(prompt)
+                # Forward all other attribute access to base LLM
+                def __getattr__(self, name):
+                    return getattr(base_llm, name)
+            return _BoundedLLM()
+
+        aggressive_analyst = create_aggressive_debator(_word_limited_llm(self.quick_thinking_llm))
+        neutral_analyst = create_neutral_debator(_word_limited_llm(self.quick_thinking_llm))
+        conservative_analyst = create_conservative_debator(_word_limited_llm(self.quick_thinking_llm))
         portfolio_manager_node = create_portfolio_manager(self.deep_thinking_llm)
 
         workflow = StateGraph(AgentState)
