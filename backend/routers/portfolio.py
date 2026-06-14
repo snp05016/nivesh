@@ -137,11 +137,13 @@ _INDICES_CACHE_TTL = 300  # 5 minutes
 
 
 def _get_indices_data() -> dict:
-    """Fetch and cache market indices data. Used by both /market-indices and /morning-summary."""
-    now = time.time()
-    if _indices_cache["data"] is not None and (now - _indices_cache["ts"]) < _INDICES_CACHE_TTL:
-        return _indices_cache["data"]
+    """Fetch and cache market indices data via Redis (shared across all workers)."""
+    # ── Redis-backed: check cache first ──
+    cached = _dcache_get("indices", "all")
+    if cached is not None:
+        return cached
 
+    now = time.time()
     result = []
     for ticker, name in _INDICES_TICKERS:
         try:
@@ -153,30 +155,30 @@ def _get_indices_data() -> dict:
                     info = t.fast_info
                     current = getattr(info, "last_price", None)
                     prev_close = getattr(info, "previous_close", None)
-                    
+
                     if current is None or prev_close is None or math.isnan(current):
                         # Fallback 1: Standard info
                         full_info = t.info
                         current = full_info.get("currentPrice") or full_info.get("regularMarketPrice")
                         prev_close = full_info.get("previousClose") or full_info.get("regularMarketPreviousClose")
-                    
+
                     if current is None or math.isnan(current):
                         # Fallback 2: History (Reliable for indices)
                         hist = t.history(period="5d")
                         if not hist.empty and len(hist) >= 2:
                             current = float(hist["Close"].iloc[-1])
                             prev_close = float(hist["Close"].iloc[-2])
-                    
+
                     if current is not None and not math.isnan(current):
                         break
                 except Exception as e:
                     print(f"[YF] Indices attempt {attempt+1} failed for {ticker}: {e}")
                     if attempt < 2:
                         time.sleep((1.0 * (2 ** attempt)) + (random.random() * 0.2))
-            
+
             if current is None or math.isnan(current):
                 continue
-            
+
             change_abs = round(current - (prev_close or 0), 4)
             change_pct = round((change_abs / prev_close) * 100, 4) if prev_close else 0.0
             result.append({
@@ -194,8 +196,7 @@ def _get_indices_data() -> dict:
         "indices": result,
         "fetched_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
     }
-    _indices_cache["data"] = payload
-    _indices_cache["ts"] = now
+    _dcache_set("indices", "all", payload, ttl=_INDICES_CACHE_TTL)
     return payload
 
 
@@ -404,13 +405,9 @@ def portfolio_stress_test(user_id: int):
 # ---------------------------------------------------------------------------
 # Local caches & helpers needed by endpoints
 # ---------------------------------------------------------------------------
-_morning_cache: dict = {}  # {user_id: {"data": {...}, "ts": float}}
 _MORNING_CACHE_TTL = 7200  # 2 hours
-
-_macro_impact_cache: dict[int, tuple[float, dict]] = {}  # {user_id: (expiry_ts, data)}
 _MACRO_IMPACT_TTL = 7200  # 2 hours
 
-_asm_gsm_cache = {"data": {}, "ts": 0}
 _ASM_GSM_CACHE_TTL = 21600  # 6 hours
 
 
@@ -430,11 +427,11 @@ def _nse_session():
 
 
 def _get_asm_gsm_lists():
-    """Fetch and cache ASM/GSM lists from NSE."""
-    global _asm_gsm_cache
-    now = time.time()
-    if _asm_gsm_cache["ts"] > 0 and (now - _asm_gsm_cache["ts"]) < _ASM_GSM_CACHE_TTL:
-        return _asm_gsm_cache["data"]
+    """Fetch and cache ASM/GSM lists from NSE (Redis-backed, shared across workers)."""
+    # Check Redis cache first
+    cached = _dcache_get("asm_gsm", "lists")
+    if cached is not None:
+        return cached
 
     print("[NSE] Refreshing ASM/GSM lists...")
     data = {"ASM": set(), "GSM": set()}
@@ -446,7 +443,7 @@ def _get_asm_gsm_lists():
             for item in resp.json().get("data", []):
                 sym = item.get("symbol")
                 if sym: data["ASM"].add(sym.upper())
-        
+
         # ASM Short Term
         resp = session.get("https://www.nseindia.com/api/surveillance-asm-list?index=shortTerm", timeout=10)
         if resp.status_code == 200:
@@ -461,8 +458,10 @@ def _get_asm_gsm_lists():
                 sym = item.get("symbol")
                 if sym: data["GSM"].add(sym.upper())
 
-        _asm_gsm_cache = {"data": data, "ts": now}
-        return data
+        # Convert sets to sorted lists for JSON serialization
+        redis_data = {"ASM": sorted(data["ASM"]), "GSM": sorted(data["GSM"])}
+        _dcache_set("asm_gsm", "lists", redis_data, ttl=_ASM_GSM_CACHE_TTL)
+        return data  # keep returning sets for in-memory callers
     except Exception as e:
         print(f"[NSE] ASM/GSM fetch failed: {e}")
         return data
@@ -662,15 +661,10 @@ def morning_summary_endpoint(user_id: int, authorization: str = Header(None)):
     now = time.time()
 
     # Check in-memory cache first
-    cached = _morning_cache.get(user_id)
-    if cached and (now - cached["ts"]) < _MORNING_CACHE_TTL:
-        return cached["data"]
-
-    # Check disk_cache for a pre-generated brief (populated by 6:30 AM nightly job)
-    pregen = _dcache_get("morning_brief", str(user_id))
-    if pregen and isinstance(pregen, dict):
-        _morning_cache[user_id] = {"data": pregen, "ts": now}
-        return pregen
+    # Redis-backed shared cache (works across all 12 workers)
+    cached = _dcache_get("morning_brief", str(user_id))
+    if cached and isinstance(cached, dict):
+        return cached
 
     generated_at = datetime.utcnow().strftime("%H:%M")
 
@@ -783,7 +777,7 @@ mood must be exactly: "positive", "cautious", or "negative"
         api_key = os.getenv("ANTHROPIC_API_KEY")
         HAIKU_MODEL = "claude-haiku-4-5-20251001"
         if not api_key or api_key == "placeholder":
-            _morning_cache[user_id] = {"data": fallback, "ts": now}
+            _dcache_set("morning_brief", str(user_id), fallback, ttl=_MORNING_CACHE_TTL)
             return fallback
 
         client = anthropic.Anthropic(api_key=api_key)
@@ -877,14 +871,14 @@ mood must be exactly: "positive", "cautious", or "negative"
         priority_items.sort(key=lambda x: x["priority"])
         result["priority_items"] = priority_items
 
-        _morning_cache[user_id] = {"data": result, "ts": now}
+        _dcache_set("morning_brief", str(user_id), result, ttl=_MORNING_CACHE_TTL)
         return result
 
     except HTTPException:
         raise
     except Exception as e:
         print(f"[morning-summary] Error: {e}")
-        _morning_cache[user_id] = {"data": fallback, "ts": now}
+        _dcache_set("morning_brief", str(user_id), fallback, ttl=_MORNING_CACHE_TTL)
         return fallback
 
 
@@ -2175,9 +2169,9 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         now = time.time()
-        cached = _macro_impact_cache.get(user_id)
-        if cached and now < cached[0]:
-            return cached[1]
+        cached = _dcache_get("macro_impact", str(user_id))
+        if cached is not None:
+            return cached
 
         with get_session() as session:
             user = session.get(User, user_id)
@@ -2243,7 +2237,7 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
             "impacts": impacts,
             "generated_at": datetime.utcnow().isoformat(),
         }
-        _macro_impact_cache[user_id] = (now + _MACRO_IMPACT_TTL, result)
+        _dcache_set("macro_impact", str(user_id), result, ttl=_MACRO_IMPACT_TTL)
         return result
     except HTTPException:
         raise
