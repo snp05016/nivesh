@@ -204,6 +204,20 @@ def _extract_json_from_text(text: str) -> str:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
+# RAG Architecture (Stub)
+# ═════════════════════════════════════════════════════════════════════════════
+
+from langchain_core.tools import tool
+
+@tool
+def search_filings(query: str, ticker: str) -> str:
+    """Semantically search the vector DB for earnings calls and SEC/NSE filings."""
+    # STUB: RAG architecture for unstructured text using FAISS/Qdrant
+    # This tool is intended for Bear/Bull researchers to access unstructured text.
+    return f"STUB: 3 most relevant textual chunks for '{query}' on {ticker} from vector DB."
+
+
+# ═════════════════════════════════════════════════════════════════════════════
 # Optimized Analyst Node Factory
 # ═════════════════════════════════════════════════════════════════════════════
 
@@ -773,7 +787,7 @@ def _normalize_response(result: dict, scan_type: str = "standard") -> dict:
             ud[key] = 0.0
 
     # 6. Array fields — must be non-null list
-    for arr_key in ("bull_case", "bear_case", "key_risks", "what_to_watch"):
+    for arr_key in ("bull_case", "bear_case", "key_risks", "what_to_watch", "extreme_thesis"):
         if not isinstance(result.get(arr_key), list):
             result[arr_key] = []
 
@@ -834,9 +848,9 @@ def _normalize_response(result: dict, scan_type: str = "standard") -> dict:
     if not isinstance(result.get("governance_red_flags"), list):
         result["governance_red_flags"] = []
 
-    # 14b. extreme_thesis_md — optional long-form markdown thesis from extreme scans
-    if not isinstance(result.get("extreme_thesis_md"), str):
-        result["extreme_thesis_md"] = ""
+    # 14b. extreme_thesis — optional structured array from extreme scans
+    if not isinstance(result.get("extreme_thesis"), list):
+        result["extreme_thesis"] = []
 
     # 15. analysis_date — must be string
     if not isinstance(result.get("analysis_date"), str):

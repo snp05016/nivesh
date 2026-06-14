@@ -81,31 +81,123 @@ def process_nl_query(query: str) -> dict[str, Any]:
         logger.error(f"Failed to parse NL query: {e}")
         filters = {}
 
-    # Map to custom logic by fetching a subset of top NSE tickers to evaluate
-    tickers = [
-        "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", 
-        "ITC.NS", "SBI.NS", "BHARTIARTL.NS", "SUNPHARMA.NS", "CIPLA.NS", 
-        "HINDUNILVR.NS", "BAJFINANCE.NS", "KOTAKBANK.NS", "MARUTI.NS"
-    ]
+    query_parts = ["SELECT ticker FROM stock_universe WHERE 1=1"]
+    params = {}
     
-    results = []
-    for t in tickers:
+    if filters.get("pe_max") is not None:
+        query_parts.append("AND pe <= :pe_max")
+        params["pe_max"] = filters["pe_max"]
+    if filters.get("pe_min") is not None:
+        query_parts.append("AND pe >= :pe_min")
+        params["pe_min"] = filters["pe_min"]
+    if filters.get("market_cap_min") is not None:
+        query_parts.append("AND market_cap >= :market_cap_min")
+        params["market_cap_min"] = filters["market_cap_min"]
+    if filters.get("market_cap_max") is not None:
+        query_parts.append("AND market_cap <= :market_cap_max")
+        params["market_cap_max"] = filters["market_cap_max"]
+    if filters.get("promoter_holding_min") is not None:
+        query_parts.append("AND promoter_holding >= :promoter_holding_min")
+        params["promoter_holding_min"] = filters["promoter_holding_min"]
+    if filters.get("fii_holding_min") is not None:
+        query_parts.append("AND fii_holding >= :fii_holding_min")
+        params["fii_holding_min"] = filters["fii_holding_min"]
+    if filters.get("dii_holding_min") is not None:
+        query_parts.append("AND dii_holding >= :dii_holding_min")
+        params["dii_holding_min"] = filters["dii_holding_min"]
+    if filters.get("roce_min") is not None:
+        query_parts.append("AND roce >= :roce_min")
+        params["roce_min"] = filters["roce_min"]
+    if filters.get("roe_min") is not None:
+        query_parts.append("AND roe >= :roe_min")
+        params["roe_min"] = filters["roe_min"]
+    if filters.get("debt_to_equity_max") is not None:
+        query_parts.append("AND debt_to_equity <= :debt_to_equity_max")
+        params["debt_to_equity_max"] = filters["debt_to_equity_max"]
+    if filters.get("ebitda_margin_min") is not None:
+        query_parts.append("AND ebitda_margin >= :ebitda_margin_min")
+        params["ebitda_margin_min"] = filters["ebitda_margin_min"]
+    if filters.get("dividend_yield_min") is not None:
+        query_parts.append("AND dividend_yield >= :dividend_yield_min")
+        params["dividend_yield_min"] = filters["dividend_yield_min"]
+    if filters.get("price_change_3m_min") is not None:
+        query_parts.append("AND price_change_3m >= :price_change_3m_min")
+        params["price_change_3m_min"] = filters["price_change_3m_min"]
+    if filters.get("price_change_1y_min") is not None:
+        query_parts.append("AND price_change_1y >= :price_change_1y_min")
+        params["price_change_1y_min"] = filters["price_change_1y_min"]
+    if filters.get("rsi_min") is not None:
+        query_parts.append("AND rsi >= :rsi_min")
+        params["rsi_min"] = filters["rsi_min"]
+    if filters.get("rsi_max") is not None:
+        query_parts.append("AND rsi <= :rsi_max")
+        params["rsi_max"] = filters["rsi_max"]
+    if filters.get("sector"):
+        query_parts.append("AND LOWER(sector) LIKE :sector")
+        params["sector"] = f"%{filters['sector'].lower()}%"
+    if filters.get("industry"):
+        query_parts.append("AND LOWER(industry) LIKE :industry")
+        params["industry"] = f"%{filters['industry'].lower()}%"
+    if filters.get("keyword"):
+        query_parts.append("AND (LOWER(company_name) LIKE :kw OR LOWER(description) LIKE :kw)")
+        params["kw"] = f"%{filters['keyword'].lower()}%"
+    
+    query_parts.append("ORDER BY market_cap DESC LIMIT 10")
+    sql_query = " ".join(query_parts)
+
+    tickers = []
+    try:
+        from database import get_session
+        from sqlalchemy import text
+        with get_session() as session:
+            rows = session.execute(text(sql_query), params).fetchall()
+            tickers = [row[0] for row in rows]
+    except Exception as e:
+        logger.error(f"DB query failed: {e}")
+
+    # Fallback if DB is empty or fails
+    if not tickers:
+        tickers = [
+            "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", 
+            "ITC.NS", "SBI.NS", "BHARTIARTL.NS", "SUNPHARMA.NS", "CIPLA.NS", 
+            "HINDUNILVR.NS", "BAJFINANCE.NS", "KOTAKBANK.NS", "MARUTI.NS"
+        ]
+    
+    import asyncio
+    async def fetch_ticker_info(t: str) -> tuple[str, dict]:
         try:
-            info = yf.Ticker(t).info
-            if not info or "shortName" not in info:
-                continue
-            
-            is_match, reason, score = _evaluate_stock(info, filters)
-            if is_match:
-                results.append({
-                    "ticker": t,
-                    "company": info.get("shortName", t),
-                    "score": round(score, 1),
-                    "reason": reason,
-                    "sector": info.get("sector", "Unknown")
-                })
+            return t, await asyncio.to_thread(lambda: yf.Ticker(t).info)
         except Exception:
+            return t, {}
+
+    async def fetch_all(ts: list[str]):
+        tasks = [fetch_ticker_info(t) for t in ts]
+        return await asyncio.gather(*tasks)
+    
+    try:
+        # Avoid "asyncio.run() cannot be called from a running event loop"
+        # in case router is running in one
+        loop = asyncio.get_running_loop()
+        import nest_asyncio
+        nest_asyncio.apply()
+        ticker_infos = loop.run_until_complete(fetch_all(tickers))
+    except RuntimeError:
+        ticker_infos = asyncio.run(fetch_all(tickers))
+
+    results = []
+    for t, info in ticker_infos:
+        if not info or "shortName" not in info:
             continue
+        
+        is_match, reason, score = _evaluate_stock(info, filters)
+        if is_match:
+            results.append({
+                "ticker": t,
+                "company": info.get("shortName", t),
+                "score": round(score, 1),
+                "reason": reason,
+                "sector": info.get("sector", "Unknown")
+            })
             
     # Sort results by score descending
     results.sort(key=lambda x: x["score"], reverse=True)

@@ -186,9 +186,22 @@ def compute_portfolio_correlation(holdings: list) -> dict:
             if not np.isnan(corr_val):
                 correlation_list.append([cols[i], cols[j], round(float(corr_val), 3)])
 
-    ticker_sectors: dict[str, str] = {}
-    for t in tickers:
-        ticker_sectors[t] = _fetch_sector(t)
+    import asyncio
+    async def _fetch_sector_async(t: str):
+        return t, await asyncio.to_thread(_fetch_sector, t)
+        
+    async def _fetch_all_sectors(ts: list):
+        return await asyncio.gather(*[_fetch_sector_async(t) for t in ts])
+        
+    try:
+        loop = asyncio.get_running_loop()
+        import nest_asyncio
+        nest_asyncio.apply()
+        sector_results = loop.run_until_complete(_fetch_all_sectors(tickers))
+    except RuntimeError:
+        sector_results = asyncio.run(_fetch_all_sectors(tickers))
+        
+    ticker_sectors: dict[str, str] = dict(sector_results)
 
     sector_weights: dict[str, float] = defaultdict(float)
     sector_holdings: dict[str, list] = defaultdict(list)
