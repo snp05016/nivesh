@@ -35,6 +35,11 @@ def compute_staleness(
     price_change_7d_pct: float,
     signal: str = "HOLD",
     is_ex_dividend: bool = False,
+    governance_event_detected: bool = False,
+    pledge_spike_pct: float = 0.0,
+    vix_spike: bool = False,
+    earnings_window: bool = False,
+    fii_outflow_crores: float = 0.0,
 ) -> dict:
     score = 0
     reasons = []
@@ -81,6 +86,25 @@ def compute_staleness(
     elif sig == "BULLISH" and price_change_7d_pct < -5:
         score += 15
         reasons.append("price falling against BULLISH signal")
+
+    # ── Enhanced staleness triggers (GAP 9) ──
+    if governance_event_detected:
+        score = 100
+        reasons.append("governance event detected")
+    else:
+        if pledge_spike_pct > 5:
+            score += 30
+            reasons.append(f"pledge spike of {pledge_spike_pct:.1f}%")
+        if vix_spike:
+            score += 20
+            reasons.append("VIX spike detected")
+        if fii_outflow_crores > 5000:
+            score += 15
+            reasons.append(f"FII outflow of ₹{fii_outflow_crores:.0f} Cr")
+
+    if earnings_window:
+        score = max(score, 20)
+        reasons.append("within earnings window")
 
     score = min(score, 100)
 
