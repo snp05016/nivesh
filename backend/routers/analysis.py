@@ -129,56 +129,10 @@ def batch_analysis(req: BatchAnalyzeRequest):
 
 # ---------------------------------------------------------------------------
 # NSE session + ASM/GSM helpers
+# Delegate to helpers._get_asm_gsm_lists (Redis-backed, shared across workers)
 # ---------------------------------------------------------------------------
-_asm_gsm_cache = {"data": {}, "ts": 0}
-_ASM_GSM_CACHE_TTL = 21600  # 6 hours
-
-def _nse_session():
-    import requests
-    s = requests.Session()
-    s.headers.update({
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Referer": "https://www.nseindia.com/",
-    })
-    try:
-        s.get("https://www.nseindia.com", timeout=8)
-    except: pass
-    return s
-
-def _get_asm_gsm_lists():
-    global _asm_gsm_cache
-    now = time.time()
-    if _asm_gsm_cache["ts"] > 0 and (now - _asm_gsm_cache["ts"]) < _ASM_GSM_CACHE_TTL:
-        return _asm_gsm_cache["data"]
-
-    print("[NSE] Refreshing ASM/GSM lists...")
-    data = {"ASM": set(), "GSM": set()}
-    try:
-        session = _nse_session()
-        resp = session.get("https://www.nseindia.com/api/surveillance-asm-list?index=longTerm", timeout=10)
-        if resp.status_code == 200:
-            for item in resp.json().get("data", []):
-                sym = item.get("symbol")
-                if sym: data["ASM"].add(sym.upper())
-        
-        resp = session.get("https://www.nseindia.com/api/surveillance-asm-list?index=shortTerm", timeout=10)
-        if resp.status_code == 200:
-            for item in resp.json().get("data", []):
-                sym = item.get("symbol")
-                if sym: data["ASM"].add(sym.upper())
-
-        resp = session.get("https://www.nseindia.com/api/surveillance-gsm-list", timeout=10)
-        if resp.status_code == 200:
-            for item in resp.json().get("data", []):
-                sym = item.get("symbol")
-                if sym: data["GSM"].add(sym.upper())
-
-        _asm_gsm_cache = {"data": data, "ts": now}
-        return data
-    except Exception as e:
-        print(f"[NSE] ASM/GSM fetch failed: {e}")
-        return data
+from helpers import _get_asm_gsm_lists as _helpers_asm_gsm
+_get_asm_gsm_lists = _helpers_asm_gsm
 
 # ---------------------------------------------------------------------------
 # Analysis worker (runs in subprocess)
