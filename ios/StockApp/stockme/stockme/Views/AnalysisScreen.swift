@@ -766,61 +766,78 @@ struct AnalysisScreen: View {
     // MARK: -- AI Verdict Card (Hero)
 
     private func aiVerdictCard(_ analysis: StockAnalysis) -> some View {
-        VStack(spacing: Theme.Spacing.none) {
-            GuillocheDivider()
-            VStack(alignment: .leading, spacing: Theme.Spacing.card) {
-                HStack {
-                    Text("AI VERDICT").font(Theme.sectionCapsLabel()).tracking(1.5).foregroundStyle(Theme.inkPrimary)
-                    Spacer()
-                    Text(analysis.analysisDate).font(Theme.microLabel()).foregroundStyle(Theme.inkTertiary)
-                }
-                HStack(spacing: Theme.Spacing.standard) {
-                    Text(analysis.signal.rawValue)
-                        .font(Theme.engravedSerif(size: 18, weight: .bold))
-                        .foregroundStyle(signalBadgeTextColor(analysis.signal))
-                        .padding(.horizontal, Theme.Spacing.card).padding(.vertical, Theme.Spacing.medium)
-                        .background(signalBadgeBgColor(analysis.signal))
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.pill))
-                    Spacer()
-                    ConfidenceArcView(score: analysis.confidencePercent, size: 64)
-                }
-                VStack(spacing: Theme.Spacing.small) {
-                    Text("CONFIDENCE").font(Theme.microLabel()).foregroundStyle(Theme.inkTertiary)
-                        .explainableTerm("Confidence Score")
-                    HStack(spacing: Theme.Spacing.xSmall) {
-                        ForEach(0..<5, id: \.self) { i in
-                            RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                                .fill(i < confidenceSegments(analysis.confidencePercent) ? Theme.goldPrimary : Theme.inkTertiary.opacity(0.15))
-                                .frame(height: 6)
-                        }
+        let signal = analysis.signal.rawValue
+        let confidence = analysis.confidencePercent
+        let summary = analysis.keyFactors.fundamentalsSummary
+        let tier = analysis.analysisTier
+        
+        return VStack(alignment: .leading, spacing: Theme.Spacing.card) {
+            HStack {
+                Text("AI VERDICT")
+                    .font(Theme.sectionCapsLabel())
+                    .tracking(1.5)
+                    .foregroundStyle(Theme.inkPrimary)
+                Spacer()
+                Text(analysis.analysisDate)
+                    .font(Theme.microLabel())
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+            
+            HStack(spacing: Theme.Spacing.standard) {
+                Text(signal)
+                    .font(Theme.engravedSerif(size: 18, weight: .bold))
+                    .foregroundStyle(signalBadgeTextColor(analysis.signal))
+                    .padding(.horizontal, Theme.Spacing.card)
+                    .padding(.vertical, Theme.Spacing.medium)
+                    .background(signalBadgeBgColor(analysis.signal))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.pill))
+                Spacer()
+                ConfidenceArcView(score: confidence, size: 64)
+            }
+            
+            VStack(spacing: Theme.Spacing.small) {
+                Text("CONFIDENCE")
+                    .font(Theme.microLabel())
+                    .foregroundStyle(Theme.inkTertiary)
+                    .explainableTerm("Confidence Score")
+                HStack(spacing: Theme.Spacing.xSmall) {
+                    ForEach(0..<5, id: \.self) { i in
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                            .fill(i < confidenceSegments(confidence) ? Theme.goldPrimary : Theme.inkTertiary.opacity(0.15))
+                            .frame(height: 6)
                     }
                 }
-                Text(analysis.keyFactors.fundamentalsSummary)
-                    .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
-                    .foregroundStyle(Theme.inkSecondary).lineSpacing(6).lineLimit(4)
-                VStack(spacing: Theme.Spacing.medium) {
-                    horizonRow(label: "3 MONTHS", target: analysis.targetPrices.shortTerm3m, upside: analysis.upsideDownsidePct.shortTerm)
-                    horizonRow(label: "12 MONTHS", target: analysis.targetPrices.mediumTerm12m, upside: analysis.upsideDownsidePct.mediumTerm, featured: true)
-                    horizonRow(label: "3 YEARS", target: analysis.targetPrices.longTerm36m, upside: analysis.upsideDownsidePct.longTerm)
-                }
-                Text("Analysis by Nivesh AI · Dalal Street weighted")
-                    .font(Theme.microLabel(size: 9)).foregroundStyle(Theme.inkTertiary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-
-                // Scan type + cache badge
+            }
+            
+            Text(summary)
+                .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
+                .foregroundStyle(Theme.inkSecondary)
+                .lineSpacing(6)
+                .lineLimit(4)
+            
+            VStack(spacing: Theme.Spacing.medium) {
+                horizonRow(label: "3 MONTHS", target: analysis.targetPrices.shortTerm3m, upside: analysis.upsideDownsidePct.shortTerm)
+                horizonRow(label: "12 MONTHS", target: analysis.targetPrices.mediumTerm12m, upside: analysis.upsideDownsidePct.mediumTerm, featured: true)
+                horizonRow(label: "3 YEARS", target: analysis.targetPrices.longTerm36m, upside: analysis.upsideDownsidePct.longTerm)
+            }
+            
+            Text("Analysis by Nivesh AI \u{2024} Dalal Street weighted")
+                .font(Theme.microLabel(size: 9))
+                .foregroundStyle(Theme.inkTertiary)
+                .frame(maxWidth: .infinity, alignment: .center)
+            
+            if let t = tier {
                 HStack(spacing: Theme.Spacing.tight) {
-                    if let tier = analysis.analysisTier {
-                        Text(tier.uppercased())
-                            .font(Theme.microLabel(size: 7))
-                            .foregroundStyle(tier == "extreme" ? Theme.bearRed : Theme.inkTertiary)
-                            .padding(.horizontal, Theme.Spacing.tight)
-                            .padding(.vertical, 2)
-                            .background((tier == "extreme" ? Theme.bearRed : Theme.inkSecondary).opacity(0.12))
-                            .clipShape(Capsule())
-                    }
+                    Text(t.uppercased())
+                        .font(Theme.microLabel(size: 7))
+                        .foregroundStyle(t == "extreme" ? Theme.bearRed : Theme.inkTertiary)
+                        .padding(.horizontal, Theme.Spacing.tight)
+                        .padding(.vertical, 2)
+                        .background((t == "extreme" ? Theme.bearRed : Theme.inkSecondary).opacity(0.12))
+                        .clipShape(Capsule())
                     if let js = viewModel.jobStatus {
-                        let cacheType = js.status == "SUCCEEDED" ? "generated" : js.status.lowercased()
-                        Text(cacheType)
+                        let ctype = js.status == "SUCCEEDED" ? "generated" : js.status.lowercased()
+                        Text(ctype)
                             .font(Theme.microLabel(size: 7))
                             .foregroundStyle(js.status == "SUCCEEDED" ? Theme.bullGreen : Theme.inkTertiary)
                             .padding(.horizontal, Theme.Spacing.tight)
@@ -830,12 +847,11 @@ struct AnalysisScreen: View {
                     }
                 }
             }
-            .padding(Theme.Spacing.cardInset)
-            .background(Theme.surfaceElevated)
-            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderStrong, lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
-            GuillocheDivider()
         }
+        .padding(Theme.Spacing.cardInset)
+        .background(Theme.surfaceElevated)
+        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderStrong, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
     }
 
     private func horizonRow(label: String, target: Double, upside: Double, featured: Bool = false) -> some View {
