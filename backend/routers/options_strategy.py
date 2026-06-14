@@ -7,7 +7,7 @@ All business logic delegated to services/options_engine.py.
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Literal
+from typing import List, Optional
 import logging
 
 from services.options_engine import compute_options_payoff
