@@ -396,7 +396,6 @@ app.mount("/charts", StaticFiles(directory=_charts_dir), name="charts")
 # Admin Harvest Endpoints & Scheduler — imported from harvest_worker (Phase 3)
 # ---------------------------------------------------------------------------
 from services.harvest_worker import router as harvest_router, start_scheduler, stop_scheduler
-from services.rag_ingestion import ingest_new, ingest_all
 
 app.include_router(harvest_router)
 
@@ -435,6 +434,17 @@ async def _on_startup():
             logging.warning(f"FinBERT pre-warm failed (non-fatal): {e}")
     threading.Thread(target=_prewarm_finbert, daemon=True).start()
     
+    # Initial RAG vector ingestion at startup (always runs, regardless of scheduler)
+    def _startup_ingest():
+        try:
+            logging.info("Starting initial RAG ingestion...")
+            from services.rag_ingestion import ingest_all
+            count = ingest_all()
+            logging.info("Initial RAG ingestion complete: %d chunks", count)
+        except Exception as e:
+            logging.warning("Initial RAG ingestion failed (non-blocking): %s", e)
+    threading.Thread(target=_startup_ingest, daemon=True).start()
+    
     import os
     # NOTE: `logging` is module-level (line ~124). A local `import logging` here
     # made it function-local, breaking earlier logging.* calls (UnboundLocalError).
@@ -443,19 +453,12 @@ async def _on_startup():
             from apscheduler.schedulers.asyncio import AsyncIOScheduler
             from services.harvest_worker import harvest_youtube_metadata, harvest_news
             from services.portfolio_snapshot import snapshot_all_users
+            from services.rag_ingestion import ingest_new
             
             scheduler = AsyncIOScheduler()
             scheduler.add_job(harvest_youtube_metadata, "cron", hour=0, minute=30)
             scheduler.add_job(harvest_news, "cron", hour=1, minute=30)
             scheduler.add_job(snapshot_all_users, "cron", hour=16, minute=30)
-
-            # Initial RAG vector ingestion at startup
-            try:
-                logging.info("Starting initial RAG ingestion...")
-                ingest_all()
-                logging.info("Initial RAG ingestion complete")
-            except Exception as e:
-                logging.warning("Initial RAG ingestion failed (non-blocking): %s", e)
 
             # Nightly RAG refresh at 2 AM
             scheduler.add_job(ingest_new, "cron", hour=2, minute=0, id="rag_ingestion")
