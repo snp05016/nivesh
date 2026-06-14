@@ -348,7 +348,7 @@ struct AnalysisCoreSections: View {
                             .foregroundStyle(Theme.inkPrimary).lineSpacing(3)
                     }
                     .padding(Theme.Spacing.card).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Theme.surfaceElevated)
+                    .background( Theme.surfaceElevated)
                     .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                     .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(Theme.borderSubtle, lineWidth: 0.5))
                 }
