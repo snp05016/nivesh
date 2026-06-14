@@ -1,103 +1,144 @@
 """
-Vector Store — ChromaDB singleton for Nivesh RAG pipeline.
+Vector Store — pgvector (PostgreSQL) singleton for Nivesh RAG pipeline.
 
-Provides thread-safe access to a persistent ChromaDB vector store.
-AGENTS.md §3.4: All module-level mutable state uses threading.Lock.
+Replaces ChromaDB with PostgreSQL + pgvector extension.
+AGENTS.md §3.4: Module-level mutable state uses threading.Lock.
 """
 import os
-import time
 import threading
 import logging
-import chromadb
-from chromadb.config import Settings as ChromaSettings
+import psycopg2
+from psycopg2.extras import RealDictCursor, execute_values
+from pgvector.psycopg2 import register_vector
 
 logger = logging.getLogger(__name__)
 
-COLLECTION_NAME = "nivesh_filings"
+TABLE_NAME = "nivesh_filings"
 EMBEDDING_DIM = 384
 _store_lock = threading.Lock()
-_client: "chromadb.ClientAPI | None" = None
-_collection: "chromadb.Collection | None" = None
+_conn: "psycopg2.extensions.connection | None" = None
 _initialised = False
 
 
-def _get_client() -> "chromadb.ClientAPI":
-    global _client
-    if _client is None:
-        persist_dir = os.path.join(os.path.dirname(__file__), "..", "chroma_db")
-        os.makedirs(persist_dir, exist_ok=True)
-        _client = chromadb.PersistentClient(
-            path=persist_dir,
-            settings=ChromaSettings(anonymized_telemetry=False),
+def _get_conn() -> "psycopg2.extensions.connection":
+    global _conn
+    if _conn is None or _conn.closed:
+        db_name = os.getenv("RAG_DB_NAME", "nivesh")
+        db_user = os.getenv("RAG_DB_USER", "saumyapatel")
+        db_pass = os.getenv("RAG_DB_PASS", "nivesh123")
+        db_host = os.getenv("RAG_DB_HOST", "127.0.0.1")
+        _conn = psycopg2.connect(
+            dbname=db_name, user=db_user, password=db_pass, host=db_host
         )
-        logger.info("ChromaDB client initialised at %s", persist_dir)
-    return _client
-
-
-def get_collection() -> "chromadb.Collection":
-    global _collection, _initialised
-    with _store_lock:
-        if _collection is None:
-            client = _get_client()
-            _collection = client.get_or_create_collection(
-                name=COLLECTION_NAME,
-                metadata={"hnsw:space": "cosine"},
-            )
-            _initialised = True
-            logger.info("Collection '%s' ready", COLLECTION_NAME)
-    return _collection
+        _conn.autocommit = True
+        register_vector(_conn)
+        logger.info("pgvector connection established to %s", db_name)
+    return _conn
 
 
 def init_store() -> bool:
-    """Initialise ChromaDB with retry for multi-worker race conditions.
-    Returns True if initialisation succeeded, False if it failed after retries."""
+    """Initialise pgvector table. Returns True on success."""
     global _initialised
     if _initialised:
         return True
-    for attempt in range(5):
-        try:
-            get_collection()
-            return True
-        except Exception as e:
-            if "table collections already exists" in str(e) or "already exists" in str(e).lower():
-                logger.info("ChromaDB init race (attempt %d/5), retrying in 2s...", attempt + 1)
-                time.sleep(2)
-            else:
-                logger.warning("ChromaDB init failed (attempt %d/5): %s", attempt + 1, e)
-                return False
-    logger.error("ChromaDB init failed after 5 attempts")
-    return False
+    try:
+        conn = _get_conn()
+        with _store_lock, conn.cursor() as cur:
+            cur.execute(f"""
+                CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+                    id TEXT PRIMARY KEY,
+                    ticker TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    doc_type TEXT NOT NULL,
+                    source TEXT NOT NULL,
+                    chunk_idx INTEGER NOT NULL,
+                    embedding VECTOR({EMBEDDING_DIM}),
+                    document TEXT NOT NULL
+                )
+            """)
+            cur.execute(f"""
+                CREATE INDEX IF NOT EXISTS idx_{TABLE_NAME}_ticker
+                ON {TABLE_NAME} (ticker)
+            """)
+            _initialised = True
+            logger.info("pgvector table '%s' ready", TABLE_NAME)
+        return True
+    except Exception as e:
+        logger.error("pgvector init failed: %s", e)
+        return False
 
 
 def upsert_documents(ids: list[str], documents: list[str],
                      metadatas: list[dict], embeddings: list[list[float]]) -> None:
-    """Upsert chunks into ChromaDB. All lists must be same length."""
+    """Upsert chunks into pgvector. All lists must be same length."""
     if not ids:
         return
-    collection = get_collection()
-    with _store_lock:
-        collection.upsert(ids=ids, documents=documents,
-                          metadatas=metadatas, embeddings=embeddings)
+    conn = _get_conn()
+    with _store_lock, conn.cursor() as cur:
+        rows = []
+        for i in range(len(ids)):
+            m = metadatas[i] if i < len(metadatas) else {}
+            emb = embeddings[i] if i < len(embeddings) else None
+            rows.append((
+                ids[i],
+                m.get("ticker", ""),
+                m.get("date", ""),
+                m.get("doc_type", ""),
+                m.get("source", ""),
+                m.get("chunk_idx", 0),
+                emb,
+                documents[i] if i < len(documents) else "",
+            ))
+        execute_values(cur, f"""
+            INSERT INTO {TABLE_NAME} (id, ticker, date, doc_type, source, chunk_idx, embedding, document)
+            VALUES %s
+            ON CONFLICT (id) DO UPDATE SET
+                ticker = EXCLUDED.ticker,
+                date = EXCLUDED.date,
+                doc_type = EXCLUDED.doc_type,
+                source = EXCLUDED.source,
+                chunk_idx = EXCLUDED.chunk_idx,
+                embedding = EXCLUDED.embedding,
+                document = EXCLUDED.document
+        """, rows)
     logger.debug("Upserted %d documents", len(ids))
 
 
 def query_collection(query_embedding: list[float], ticker: str,
                      limit: int = 3) -> dict:
-    """Query ChromaDB with metadata pre-filter on ticker."""
-    collection = get_collection()
-    with _store_lock:
-        results = collection.query(
-            query_embeddings=[query_embedding],
-            n_results=limit,
-            where={"ticker": ticker},
-            include=["documents", "metadatas", "distances"],
-        )
-    return results
+    """Query pgvector with ticker filter and cosine similarity."""
+    conn = _get_conn()
+    with _store_lock, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(f"""
+            SELECT ticker, date, doc_type, source, chunk_idx, document,
+                   1 - (embedding <=> %s::vector) AS similarity
+            FROM {TABLE_NAME}
+            WHERE ticker = %s
+            ORDER BY embedding <=> %s::vector
+            LIMIT %s
+        """, (query_embedding, ticker, query_embedding, limit))
+        rows = cur.fetchall()
+
+    documents = [r["document"] for r in rows] if rows else []
+    metadatas = [{
+        "ticker": r["ticker"], "date": r["date"],
+        "doc_type": r["doc_type"], "source": r["source"],
+        "chunk_idx": r["chunk_idx"],
+    } for r in rows] if rows else []
+
+    return {
+        "documents": [documents],
+        "metadatas": [metadatas],
+        "distances": [[round(1 - r["similarity"], 4) for r in rows]] if rows else [[]],
+    }
 
 
 def collection_count() -> int:
-    """Return number of documents in the collection."""
+    """Return number of documents in the table."""
     try:
-        return get_collection().count()
+        conn = _get_conn()
+        with _store_lock, conn.cursor() as cur:
+            cur.execute(f"SELECT COUNT(*) FROM {TABLE_NAME}")
+            return cur.fetchone()[0]
     except Exception:
         return 0
