@@ -10,14 +10,48 @@ from typing import Any, Optional
 import redis.asyncio as redis
 import asyncio
 
+# ── pandas/numpy-safe JSON encoder ──────────────────────────────────────────
+# redis-py 5+ validates argument types strictly. Pandas Timestamp / numpy
+# scalars fail json.dumps AND fail raw Redis set() calls.
+# We provide a custom encoder and a safe-dumps wrapper used everywhere.
+
+
+class _SafeJSONEncoder(json.JSONEncoder):
+    """JSON encoder that converts common scientific/ML types to native Python."""
+
+    def default(self, o):
+        try:
+            import pandas as _pd
+            import numpy as _np
+            if isinstance(o, (_pd.Timestamp, _pd.Timedelta)):
+                return str(o)
+            if isinstance(o, _np.integer):
+                return int(o)
+            if isinstance(o, _np.floating):
+                if _np.isnan(o):
+                    return None
+                return float(o)
+            if isinstance(o, _np.ndarray):
+                return o.tolist()
+        except ImportError:
+            pass
+        return super().default(o)
+
+
+def _safe_json_dumps(obj: Any) -> str:
+    """Serialize to JSON, handling pandas/numpy types."""
+    return json.dumps(obj, cls=_SafeJSONEncoder)
+
+
 logger = logging.getLogger(__name__)
 
 class CacheService:
     def __init__(self, redis_url="redis://localhost:6379"):
         self.redis_url = redis_url
         self._redis: Optional[redis.Redis] = None
+        self._redis_loop_id: Optional[int] = None  # track which loop created the connection
         self._fallback_cache: dict[str, dict[str, tuple[float, Any]]] = {}
-        
+
         self.ttl_map = {
             "quick-info": 300,
             "sector": 900,
@@ -30,13 +64,32 @@ class CacheService:
         }
 
     async def get_redis(self) -> Optional[redis.Redis]:
+        """Return a Redis connection valid for the current event loop.
+        Recreates the connection if the event loop has changed (e.g. sync bridge)."""
+        import asyncio as _aio
+        try:
+            current_loop_id = id(_aio.get_running_loop())
+        except RuntimeError:
+            current_loop_id = None
+
+        if self._redis is not None and self._redis_loop_id != current_loop_id:
+            # Loop changed — close old connection lazily, create fresh one
+            try:
+                await self._redis.aclose()
+            except Exception:
+                pass
+            self._redis = None
+            self._redis_loop_id = None
+
         if self._redis is None:
             try:
                 self._redis = redis.from_url(self.redis_url, decode_responses=True)
+                self._redis_loop_id = current_loop_id
                 await self._redis.ping()
             except Exception as e:
                 logger.warning(f"Redis unavailable, falling back to dict: {e}")
                 self._redis = None
+                self._redis_loop_id = None
         return self._redis
 
     async def get(self, namespace: str, key: str) -> Optional[Any]:
@@ -70,7 +123,7 @@ class CacheService:
             
         if r:
             try:
-                await r.set(full_key, json.dumps(value), ex=ttl)
+                await r.set(full_key, _safe_json_dumps(value), ex=ttl)
                 return
             except Exception as e:
                 logger.warning(f"Redis set error, falling back: {e}")
@@ -291,7 +344,7 @@ class UnifiedCacheService:
             )
             try:
                 with os.fdopen(tmp_fd, "w") as f:
-                    json.dump({"ts": time.time(), "ttl": ttl, "value": value}, f)
+                    json.dump({"ts": time.time(), "ttl": ttl, "value": value}, f, cls=_SafeJSONEncoder)
                 os.replace(tmp_path, safe_path)
                 os.chmod(safe_path, 0o600)
             except Exception:
