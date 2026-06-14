@@ -475,6 +475,30 @@ def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "s
 # ═════════════════════════════════════════════════════════════════════════════
 
 
+def _extract_final_conclusion(raw_output: str, max_chars: int = 2000) -> str:
+    """Extract the most decision-relevant section of raw agent output.
+
+    Prefers the Portfolio Manager final decision block (last paragraph after
+    'FINAL TRANSACTION PROPOSAL') or falls back to the last max_chars characters.
+    This reduces DeepSeek reformatter input from ~8000 chars to ~2000 chars.
+    """
+    import re as _re
+    # Try to find the Portfolio Manager / final proposal section
+    _pm_patterns = [
+        r"FINAL TRANSACTION PROPOSAL.*",
+        r"Portfolio Manager.*",
+        r"PORTFOLIO MANAGER.*",
+        r"FINAL DECISION.*",
+    ]
+    for pat in _pm_patterns:
+        m = _re.search(pat, raw_output, _re.DOTALL | _re.IGNORECASE)
+        if m:
+            extracted = m.group(0)
+            return extracted[:max_chars]
+    # Fallback: last max_chars of output (richest signal is always at the end)
+    return raw_output[-max_chars:]
+
+
 def reformat_with_deepseek(
     raw_output: str,
     full_ticker: str,
@@ -486,6 +510,8 @@ def reformat_with_deepseek(
     Falls back to Claude Sonnet only on parse failure."""
 
     is_extreme = scan_type == "extreme"
+    # Task 06: Use only the final conclusion block instead of full 8000-char dump
+    reformatter_input = _extract_final_conclusion(raw_output, max_chars=2000)
 
     for attempt in range(2):
         try:
@@ -495,7 +521,7 @@ def reformat_with_deepseek(
             ds_raw = _deepseek_chat(
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Reformat the following analysis for {full_ticker} ({exchange}) into the prescribed JSON format.\n\n{raw_output[:8000]}"},
+                    {"role": "user", "content": f"Reformat the following analysis for {full_ticker} ({exchange}) into the prescribed JSON format.\n\n{reformatter_input}"},
                 ],
                 max_tokens=2000 if is_extreme else 1000,
                 temperature=0,
