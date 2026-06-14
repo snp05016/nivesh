@@ -271,7 +271,11 @@ Commit after EVERY small task or phase. Incremental, reviewable checkpoints.
 
 **When:** After each discrete task (e.g. "added search bar" → commit, "added results list" → commit), each phase (frontend done, backend done, integration done), and after the final task.
 
-**Format:** `<verb> <component>: <brief description>` (e.g. `Add SearchScreen: voice search`, `Fix market.py: screener rate limit`)
+**Format:** Conventional commits — `type(scope): description` (e.g. `feat(ios): add voice search to SearchScreen`, `fix(backend): screener rate limiting`)
+
+**Types:** `feat` (new feature), `fix` (bug fix), `chore` (refactor/deps/config), `docs` (documentation/help/guides), `style` (UI polish/theming), `perf` (performance)
+
+**Scopes:** `ios`, `backend`, `copilot`, `earnings`, `correlation`, `stress-test`, `nl-screener`, `anomalies`, `sector-rotation`, `settings`, `home`, `portfolio`, `markets`, `analysis`
 
 **Pre-commit:** Run `gitnexus_detect_changes()`, review `git status` + `git diff --stat`, NO secrets/.env/binary assets, NO xcodebuild artifacts.
 
