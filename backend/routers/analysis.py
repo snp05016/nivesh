@@ -41,21 +41,20 @@ router = APIRouter(tags=["Analysis"])
 from services.llm_utils import deepseek_chat, SONNET_MODEL, DEEPSEEK_MODEL
 _deepseek_chat = deepseek_chat  # backward-compat alias
 
-SECTOR_PE_MAP = {
-    "Technology": 35, "Financial Services": 18, "Energy": 12,
-    "Healthcare": 28, "Consumer Cyclical": 25, "Industrials": 22,
-    "Basic Materials": 15, "Consumer Defensive": 30, "Utilities": 20,
-    "Real Estate": 20, "Communication Services": 22,
-}
+# Task 31: import SECTOR_PE_MAP from central config
+from config.settings import (
+    SECTOR_PE_MAP,
+    ADVISOR_INSIGHTS_LOOKBACK_DAYS,
+    YF_CIRCUIT_THRESHOLD as _YF_CIRCUIT_THRESHOLD,
+    YF_CIRCUIT_TIMEOUT as _YF_CIRCUIT_TIMEOUT,
+)
 
 _BULLISH_SIGNALS = {"BULLISH", "CAUTIOUSLY BULLISH"}
 _BEARISH_SIGNALS = {"BEARISH", "CAUTIOUSLY BEARISH"}
 
-# Circuit breaker for yfinance-dependent endpoints
+# Circuit breaker for yfinance-dependent endpoints (Task 38: values now from settings)
 _yf_circuit_failures = 0
 _yf_circuit_open_until = 0.0
-_YF_CIRCUIT_THRESHOLD = 3
-_YF_CIRCUIT_TIMEOUT = 300  # 5 minutes
 
 # ---------------------------------------------------------------------------
 # DeepSeek helpers — now imported from services.llm_utils (single source)
@@ -1017,7 +1016,7 @@ def screener_endpoint(preset: str):
                 from datetime import timedelta
                 with get_session() as session:
                     pk_signals = session.query(PKScreenerSignal).filter(
-                        PKScreenerSignal.signal_date >= (datetime.utcnow() - timedelta(days=14)).strftime("%Y-%m-%d"),
+                        PKScreenerSignal.signal_date >= (datetime.utcnow() - timedelta(days=ADVISOR_INSIGHTS_LOOKBACK_DAYS)).strftime("%Y-%m-%d"),
                     ).all()
                     # Map ticker -> latest screener signal
                     pk_map: dict[str, PKScreenerSignal] = {}
