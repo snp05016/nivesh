@@ -5,6 +5,7 @@ Handles quick-info, analyze, batch analysis, technical signals, home feed, scree
 import os
 import json
 import time as _time
+import time
 import asyncio
 import multiprocessing
 import math
