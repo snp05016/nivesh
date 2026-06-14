@@ -5,4 +5,4 @@ set -euo pipefail
 
 TICKER="${1:?Usage: bash scripts/show_analysis.sh TICKER}"
 
-ssh root@165.22.221.18 /root/nivesh/venv/bin/python3 /root/nivesh/backend/scripts/show_result.py "${TICKER}"
+ssh saumyapatel@192.168.1.122 /home/saumyapatel/Desktop/nivesh/venv/bin/python3 /home/saumyapatel/Desktop/nivesh/backend/scripts/show_result.py "${TICKER}"
