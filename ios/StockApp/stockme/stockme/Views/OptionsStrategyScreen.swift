@@ -715,4 +715,3 @@ struct OptionsStrategyScreen: View {
         }
     }
 }
-}
