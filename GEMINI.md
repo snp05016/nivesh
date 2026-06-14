@@ -277,8 +277,8 @@ Commit after EVERY small task or phase. Incremental, reviewable checkpoints.
 
 ### 6.5 Deployment & Remote Verification
 After committing and pushing your code, you MUST deploy and verify on the remote server by executing commands non-interactively. NEVER open an interactive SSH session.
-1. Pull latest code remotely: `ssh root@165.22.221.18 "cd /path/to/project && git pull"`
-2. Run tests remotely: `ssh root@165.22.221.18 "cd /path/to/project && pytest"` (or relevant verification command)
+1. Pull latest code remotely: `ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && git pull"`
+2. Run tests remotely: `ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && pytest"` (or relevant verification command)
 
 ---
 
