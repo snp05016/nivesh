@@ -1284,7 +1284,7 @@ struct AnalysisScreen: View {
                         }
                         if let dr = mm.dealerRegime, dr != "NEUTRAL" {
                             microChip(label: "DEALER", value: dr.replacingOccurrences(of: "_", with: " "),
-                                      color: dr == "LONG_GAMMA" ? Theme.holdAmber : Theme.bullGreen)
+                                      color: dr == "LONG_GAMMA" ? Theme.holdAmber : Theme.bearRed)
                         }
                         if mm.minskyanFlag == true {
                             microChip(label: "MINSKYAN", value: "WARN", color: Theme.bearRed)
