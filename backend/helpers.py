@@ -30,11 +30,17 @@ from database import (
 )
 
 # ---------------------------------------------------------------------------
-# Exchange & Ticker Constants
+# Exchange & Ticker Constants (Task 33: suffixes now env-overridable)
 # ---------------------------------------------------------------------------
-EXCHANGE_SUFFIX = {"NSE": ".NS", "BSE": ".BO"}
+import os as _os
+EXCHANGE_SUFFIXES = {
+    "NSE": _os.getenv("NSE_SUFFIX", ".NS"),
+    "BSE": _os.getenv("BSE_SUFFIX", ".BO"),
+}
+# Backward-compat alias
+EXCHANGE_SUFFIX = EXCHANGE_SUFFIXES
 
-NSE_TICKERS = {t: f"{t}.NS" for t in [
+NSE_TICKERS = {t: f"{t}{EXCHANGE_SUFFIXES['NSE']}" for t in [
     "RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "HINDUNILVR",
     "ITC", "SBIN", "BHARTIARTL", "KOTAKBANK", "LT", "AXISBANK",
     "BAJFINANCE", "ASIANPAINT", "MARUTI", "HCLTECH", "SUNPHARMA",
@@ -66,10 +72,8 @@ NSE_TICKERS = {t: f"{t}.NS" for t in [
     "MPHASIS", "LTTS", "POLYCAB", "HAL", "APOLLO",
 ]}
 
-NSE_TICKER_OVERRIDES = {
-    "JITFINFRA": "JITFINFRA.NS",
-    "GAUDIUMIVF": "GAUDIUMIVF.NS",
-}
+# Task 42: ticker overrides loaded from config (supports JSON file override via env)
+from config.settings import NSE_TICKER_OVERRIDES
 
 # ---------------------------------------------------------------------------
 # Dashboard state (used by middleware and admin endpoints)
@@ -416,7 +420,8 @@ from services.disk_cache import get as _dcache_get, set as _dcache_set, stats as
 
 _quick_info_cache: dict[str, tuple[float, dict]] = {}
 _quick_info_lock = threading.Lock()
-_QUICK_INFO_TTL = 900
+# Task 39: TTL from central config
+from config.settings import QUICK_INFO_TTL as _QUICK_INFO_TTL
 
 # ---------------------------------------------------------------------------
 # Concurrency Limiter for AI Operations
@@ -657,21 +662,28 @@ import math
 def _nse_session():
     """Bootstrap a session with NSE cookies."""
     import requests
+    # Task 40: rotate User-Agent with fake-useragent; fallback to static string
+    try:
+        from fake_useragent import UserAgent as _UA
+        _user_agent = _UA().random
+    except Exception:
+        _user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
     s = requests.Session()
     s.headers.update({
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        "User-Agent": _user_agent,
         "Accept": "application/json, text/plain, */*",
         "Referer": "https://www.nseindia.com/",
     })
     try:
-        s.get("https://www.nseindia.com", timeout=8)
+        s.get("https://www.nseindia.com", timeout=_HTTP_DEFAULT_TIMEOUT)
     except: pass
     return s
 
 
 _asm_gsm_cache = {"data": {}, "ts": 0}
 _asm_gsm_lock = threading.Lock()
-_ASM_GSM_CACHE_TTL = 21600  # 6 hours
+# Task 39: TTL from central config
+from config.settings import ASM_GSM_CACHE_TTL as _ASM_GSM_CACHE_TTL, HTTP_DEFAULT_TIMEOUT as _HTTP_DEFAULT_TIMEOUT
 
 
 def _get_asm_gsm_lists():
@@ -686,19 +698,19 @@ def _get_asm_gsm_lists():
     data = {"ASM": set(), "GSM": set()}
     try:
         session = _nse_session()
-        resp = session.get("https://www.nseindia.com/api/surveillance-asm-list?index=longTerm", timeout=10)
-        if resp.status_code == 200:
-            for item in resp.json().get("data", []):
-                sym = item.get("symbol")
-                if sym: data["ASM"].add(sym.upper())
-        
-        resp = session.get("https://www.nseindia.com/api/surveillance-asm-list?index=shortTerm", timeout=10)
+        resp = session.get("https://www.nseindia.com/api/surveillance-asm-list?index=longTerm", timeout=_HTTP_DEFAULT_TIMEOUT)
         if resp.status_code == 200:
             for item in resp.json().get("data", []):
                 sym = item.get("symbol")
                 if sym: data["ASM"].add(sym.upper())
 
-        resp = session.get("https://www.nseindia.com/api/surveillance-gsm-list", timeout=10)
+        resp = session.get("https://www.nseindia.com/api/surveillance-asm-list?index=shortTerm", timeout=_HTTP_DEFAULT_TIMEOUT)
+        if resp.status_code == 200:
+            for item in resp.json().get("data", []):
+                sym = item.get("symbol")
+                if sym: data["ASM"].add(sym.upper())
+
+        resp = session.get("https://www.nseindia.com/api/surveillance-gsm-list", timeout=_HTTP_DEFAULT_TIMEOUT)
         if resp.status_code == 200:
             for item in resp.json().get("data", []):
                 sym = item.get("symbol")
@@ -746,7 +758,8 @@ _INDICES_TICKERS = [
 ]
 
 _indices_cache: dict = {"data": None, "ts": 0}
-_INDICES_CACHE_TTL = 300  # 5 minutes
+# Task 39: TTL from central config
+from config.settings import INDICES_CACHE_TTL as _INDICES_CACHE_TTL
 
 
 def _get_indices_data() -> dict:
