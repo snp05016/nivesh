@@ -332,7 +332,7 @@ struct OptionsStrategyScreen: View {
 
     private func localMetricsCard(_ m: (Double, Double, [Double], Double)) -> some View {
         let premium = m.3
-        VStack(spacing: Theme.Spacing.medium) {
+        return VStack(spacing: Theme.Spacing.medium) {
             HStack {
                 Text("LOCAL — \(legs.count) LEG\(legs.count > 1 ? "S" : "")")
                     .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
