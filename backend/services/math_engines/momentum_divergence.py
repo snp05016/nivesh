@@ -1,0 +1,360 @@
+"""
+Task 17 — Momentum Divergence Detection.
+
+Detects:
+  - RSI divergence (bullish/bearish)
+  - MACD crossover signals
+  - Bollinger Band squeeze (low volatility → breakout incoming)
+"""
+
+from __future__ import annotations
+import math
+from typing import Optional
+
+
+def _compute_rsi(prices: list[float], period: int = 14) -> list[Optional[float]]:
+    """Compute RSI series. Returns None for positions with insufficient data."""
+    if len(prices) < period + 1:
+        return [None] * len(prices)
+
+    rsi: list[Optional[float]] = [None] * period
+    gains = []
+    losses = []
+
+    for i in range(1, period + 1):
+        change = prices[i] - prices[i - 1]
+        gains.append(max(change, 0))
+        losses.append(max(-change, 0))
+
+    avg_gain = sum(gains) / period
+    avg_loss = sum(losses) / period
+
+    def _rsi_from_avg(ag: float, al: float) -> float:
+        if al == 0:
+            return 100.0
+        rs = ag / al
+        return 100.0 - (100.0 / (1.0 + rs))
+
+    rsi.append(_rsi_from_avg(avg_gain, avg_loss))
+
+    for i in range(period + 1, len(prices)):
+        change = prices[i] - prices[i - 1]
+        gain = max(change, 0)
+        loss = max(-change, 0)
+        avg_gain = (avg_gain * (period - 1) + gain) / period
+        avg_loss = (avg_loss * (period - 1) + loss) / period
+        rsi.append(_rsi_from_avg(avg_gain, avg_loss))
+
+    return rsi
+
+
+def _ema(values: list[float], period: int) -> list[Optional[float]]:
+    """Exponential moving average. Returns None for early positions."""
+    if len(values) < period:
+        return [None] * len(values)
+
+    k = 2.0 / (period + 1)
+    result: list[Optional[float]] = [None] * (period - 1)
+    seed = sum(values[:period]) / period
+    result.append(seed)
+
+    for v in values[period:]:
+        result.append(result[-1] * (1 - k) + v * k)  # type: ignore[operator]
+
+    return result
+
+
+def detect_rsi_divergence(prices: list[float], rsi_period: int = 14) -> dict:
+    """
+    Detect bullish/bearish RSI divergence.
+
+    Bullish divergence: price makes lower low, RSI makes higher low.
+    Bearish divergence: price makes higher high, RSI makes lower high.
+
+    Args:
+        prices: chronological list of closing prices.
+        rsi_period: RSI calculation period (default 14).
+
+    Returns:
+        dict with 'bullish_divergence', 'bearish_divergence', 'latest_rsi',
+        'signal', 'description'
+    """
+    if len(prices) < rsi_period + 5:
+        return {
+            "bullish_divergence": False,
+            "bearish_divergence": False,
+            "latest_rsi": None,
+            "signal": "NEUTRAL",
+            "description": "Insufficient data",
+        }
+
+    rsi_series = _compute_rsi(prices, rsi_period)
+    valid_rsi = [(i, r) for i, r in enumerate(rsi_series) if r is not None]
+
+    if len(valid_rsi) < 5:
+        return {
+            "bullish_divergence": False,
+            "bearish_divergence": False,
+            "latest_rsi": None,
+            "signal": "NEUTRAL",
+            "description": "Insufficient RSI data",
+        }
+
+    # Look at last N periods for divergence
+    n = min(20, len(valid_rsi))
+    recent_idx = [x[0] for x in valid_rsi[-n:]]
+    recent_prices = [prices[i] for i in recent_idx]
+    recent_rsi = [x[1] for x in valid_rsi[-n:]]
+
+    # Identify price swing lows and highs
+    def find_local_extrema(series: list[float]) -> tuple[list[int], list[int]]:
+        lows, highs = [], []
+        for i in range(1, len(series) - 1):
+            if series[i] < series[i - 1] and series[i] < series[i + 1]:
+                lows.append(i)
+            if series[i] > series[i - 1] and series[i] > series[i + 1]:
+                highs.append(i)
+        return lows, highs
+
+    p_lows, p_highs = find_local_extrema(recent_prices)
+    r_lows, r_highs = find_local_extrema(recent_rsi)
+
+    bullish_divergence = False
+    bearish_divergence = False
+
+    # Bullish: price lower low but RSI higher low
+    if len(p_lows) >= 2 and len(r_lows) >= 2:
+        pl1, pl2 = p_lows[-2], p_lows[-1]
+        if recent_prices[pl2] < recent_prices[pl1] and recent_rsi[pl2] > recent_rsi[pl1]:
+            bullish_divergence = True
+
+    # Bearish: price higher high but RSI lower high
+    if len(p_highs) >= 2 and len(r_highs) >= 2:
+        ph1, ph2 = p_highs[-2], p_highs[-1]
+        if recent_prices[ph2] > recent_prices[ph1] and recent_rsi[ph2] < recent_rsi[ph1]:
+            bearish_divergence = True
+
+    latest_rsi = valid_rsi[-1][1] if valid_rsi else None
+
+    if bullish_divergence and not bearish_divergence:
+        signal = "BULLISH"
+        description = "Price lower low with RSI higher low — potential reversal upward"
+    elif bearish_divergence and not bullish_divergence:
+        signal = "BEARISH"
+        description = "Price higher high with RSI lower high — potential reversal downward"
+    elif bullish_divergence and bearish_divergence:
+        signal = "MIXED"
+        description = "Conflicting divergence signals"
+    else:
+        signal = "NEUTRAL"
+        description = "No divergence detected"
+
+    return {
+        "bullish_divergence": bullish_divergence,
+        "bearish_divergence": bearish_divergence,
+        "latest_rsi": round(latest_rsi, 2) if latest_rsi is not None else None,
+        "signal": signal,
+        "description": description,
+        "rsi_overbought": (latest_rsi or 50) > 70,
+        "rsi_oversold": (latest_rsi or 50) < 30,
+    }
+
+
+def detect_macd_crossover(prices: list[float]) -> dict:
+    """
+    Detect MACD crossover signals (12/26/9 standard parameters).
+
+    Args:
+        prices: chronological list of closing prices.
+
+    Returns:
+        dict with 'signal' (BULLISH/BEARISH/NEUTRAL), 'macd', 'signal_line',
+        'histogram', 'crossover' (bool), 'crossover_direction'
+    """
+    if len(prices) < 35:
+        return {
+            "signal": "NEUTRAL",
+            "macd": None,
+            "signal_line": None,
+            "histogram": None,
+            "crossover": False,
+            "crossover_direction": None,
+            "description": "Insufficient data (need 35+ prices)",
+        }
+
+    ema12 = _ema(prices, 12)
+    ema26 = _ema(prices, 26)
+
+    macd_line: list[Optional[float]] = []
+    for e12, e26 in zip(ema12, ema26):
+        if e12 is not None and e26 is not None:
+            macd_line.append(e12 - e26)
+        else:
+            macd_line.append(None)
+
+    valid_macd = [m for m in macd_line if m is not None]
+    if len(valid_macd) < 9:
+        return {
+            "signal": "NEUTRAL",
+            "macd": None,
+            "signal_line": None,
+            "histogram": None,
+            "crossover": False,
+            "crossover_direction": None,
+            "description": "Insufficient MACD data",
+        }
+
+    signal_ema = _ema(valid_macd, 9)
+    valid_signal = [(m, s) for m, s in zip(valid_macd, signal_ema) if s is not None]
+
+    if len(valid_signal) < 2:
+        return {
+            "signal": "NEUTRAL",
+            "macd": None,
+            "signal_line": None,
+            "histogram": None,
+            "crossover": False,
+            "crossover_direction": None,
+            "description": "Insufficient signal line data",
+        }
+
+    prev_macd, prev_sig = valid_signal[-2]
+    curr_macd, curr_sig = valid_signal[-1]
+    histogram = curr_macd - curr_sig
+    prev_histogram = prev_macd - prev_sig
+
+    crossover = (prev_histogram < 0 and histogram > 0) or (prev_histogram > 0 and histogram < 0)
+
+    if prev_histogram < 0 and histogram > 0:
+        crossover_direction = "BULLISH"
+        signal = "BULLISH"
+        description = "MACD crossed above signal line — bullish momentum"
+    elif prev_histogram > 0 and histogram < 0:
+        crossover_direction = "BEARISH"
+        signal = "BEARISH"
+        description = "MACD crossed below signal line — bearish momentum"
+    else:
+        crossover_direction = None
+        signal = "BULLISH" if histogram > 0 else "BEARISH"
+        description = f"No crossover. MACD {'above' if histogram > 0 else 'below'} signal line"
+
+    return {
+        "signal": signal,
+        "macd": round(curr_macd, 4),
+        "signal_line": round(curr_sig, 4),
+        "histogram": round(histogram, 4),
+        "crossover": crossover,
+        "crossover_direction": crossover_direction,
+        "description": description,
+    }
+
+
+def detect_bollinger_squeeze(
+    prices: list[float], period: int = 20, std_dev: float = 2.0
+) -> dict:
+    """
+    Detect Bollinger Band squeeze (low volatility → breakout incoming).
+
+    Squeeze is when bandwidth is at multi-period low.
+
+    Args:
+        prices: chronological list of closing prices.
+        period: moving average period (default 20).
+        std_dev: standard deviation multiplier (default 2.0).
+
+    Returns:
+        dict with 'squeeze' (bool), 'bandwidth', 'upper', 'lower', 'middle',
+        'signal', 'description'
+    """
+    if len(prices) < period + 10:
+        return {
+            "squeeze": False,
+            "bandwidth": None,
+            "upper": None,
+            "lower": None,
+            "middle": None,
+            "signal": "NEUTRAL",
+            "description": "Insufficient data",
+        }
+
+    # Compute rolling Bollinger Bands
+    bandwidths = []
+    for i in range(period, len(prices) + 1):
+        window = prices[i - period : i]
+        mean = sum(window) / period
+        variance = sum((x - mean) ** 2 for x in window) / period
+        sd = math.sqrt(variance)
+        upper = mean + std_dev * sd
+        lower = mean - std_dev * sd
+        bw = (upper - lower) / mean if mean else 0
+        bandwidths.append((mean, upper, lower, bw))
+
+    if not bandwidths:
+        return {
+            "squeeze": False,
+            "bandwidth": None,
+            "upper": None,
+            "lower": None,
+            "middle": None,
+            "signal": "NEUTRAL",
+            "description": "No bands computed",
+        }
+
+    current_mean, current_upper, current_lower, current_bw = bandwidths[-1]
+
+    # Squeeze: current bandwidth is in bottom 20% of recent range
+    lookback_bws = [b[3] for b in bandwidths[-20:]]
+    bw_min = min(lookback_bws)
+    bw_max = max(lookback_bws)
+    bw_range = bw_max - bw_min if bw_max > bw_min else 1
+
+    squeeze_threshold = bw_min + 0.2 * bw_range
+    squeeze = current_bw <= squeeze_threshold
+
+    # Direction hint: is price above or below middle band?
+    current_price = prices[-1]
+    direction_hint = "UPWARD" if current_price > current_mean else "DOWNWARD"
+
+    if squeeze:
+        signal = "SQUEEZE"
+        description = f"Bollinger squeeze detected — expect {direction_hint} breakout"
+    else:
+        signal = "NEUTRAL"
+        description = "No squeeze — normal volatility"
+
+    return {
+        "squeeze": squeeze,
+        "bandwidth": round(current_bw, 4),
+        "upper": round(current_upper, 2),
+        "lower": round(current_lower, 2),
+        "middle": round(current_mean, 2),
+        "signal": signal,
+        "direction_hint": direction_hint,
+        "description": description,
+        "current_price": round(current_price, 2),
+        "price_vs_upper": round((current_price - current_upper) / current_upper * 100, 2),
+    }
+
+
+if __name__ == "__main__":
+    import random
+    random.seed(42)
+
+    # Simulate 60 days of prices with a slight uptrend
+    prices = [100.0]
+    for _ in range(59):
+        prices.append(prices[-1] * (1 + random.uniform(-0.02, 0.025)))
+
+    rsi_result = detect_rsi_divergence(prices)
+    print(f"RSI divergence: {rsi_result['signal']} — {rsi_result['description']}")
+    assert rsi_result["signal"] in {"BULLISH", "BEARISH", "NEUTRAL", "MIXED"}
+
+    macd_result = detect_macd_crossover(prices)
+    print(f"MACD: {macd_result['signal']} — {macd_result['description']}")
+    assert macd_result["signal"] in {"BULLISH", "BEARISH", "NEUTRAL"}
+
+    bb_result = detect_bollinger_squeeze(prices)
+    print(f"Bollinger: {bb_result['signal']} — {bb_result['description']}")
+    assert bb_result["signal"] in {"SQUEEZE", "NEUTRAL"}
+
+    print("All momentum_divergence tests passed.")
