@@ -238,27 +238,59 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
             return _disk_hit
 
         full_ticker = _resolve_ticker(ticker, exchange)
-        
-        import time
-        import random
-        info = {}
-        t = None
-        for attempt in range(3):
-            try:
-                t = yf.Ticker(full_ticker)
-                info = t.info
-                if info and (info.get("currentPrice") or info.get("regularMarketPrice")):
-                    break
-            except Exception as e:
-                print(f"[YF] Quick info attempt {attempt+1} failed for {full_ticker}: {e}")
-                if attempt < 2:
-                    time.sleep((1.5 * (2 ** attempt)) + (random.random() * 0.5))
-        
-        if not info:
-            t = yf.Ticker(full_ticker)
-            info = t.info or {}
 
-        hist = t.history(period="1y")
+        # ── PARALLEL: fetch info + history + news concurrently (Task: concurrency bottleneck) ──
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        import random
+
+        def _fetch_info():
+            info_result = {}
+            for attempt in range(3):
+                try:
+                    tk = yf.Ticker(full_ticker)
+                    info_result = tk.info
+                    if info_result and (info_result.get("currentPrice") or info_result.get("regularMarketPrice")):
+                        return info_result
+                except Exception as ex:
+                    if attempt < 2:
+                        time.sleep((1.5 * (2 ** attempt)) + (random.random() * 0.5))
+            try:
+                return yf.Ticker(full_ticker).info or {}
+            except Exception:
+                return {}
+
+        def _fetch_history():
+            try:
+                tk = yf.Ticker(full_ticker)
+                return tk.history(period="1y")
+            except Exception:
+                import pandas as pd
+                return pd.DataFrame()
+
+        def _fetch_news():
+            try:
+                tk = yf.Ticker(full_ticker)
+                return tk.news if hasattr(tk, "news") and tk.news else []
+            except Exception:
+                return []
+
+        with ThreadPoolExecutor(max_workers=3) as _pool:
+            _futures = {
+                _pool.submit(_fetch_info): "info",
+                _pool.submit(_fetch_history): "history",
+                _pool.submit(_fetch_news): "news",
+            }
+            _results = {}
+            for _f in as_completed(_futures):
+                _results[_futures[_f]] = _f.result()
+
+        info = _results.get("info", {})
+        hist = _results.get("history")
+        if hist is None:
+            import pandas as _pd
+            hist = _pd.DataFrame()
+        raw_news = _results.get("news", [])
+
         sparkline = [round(float(p), 2) for p in hist["Close"].tolist()[-30:] if not math.isnan(float(p))] if not hist.empty else []
 
         price_history_90d = []
@@ -273,18 +305,17 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                     "volume": int(row["Volume"]) if not math.isnan(float(row["Volume"])) else 0,
                 })
 
-        raw_news = t.news if hasattr(t, "news") and t.news else []
         recent_news = []
         for item in raw_news[:8]:
             content = item.get("content", {})
             pub = content.get("pubDate") or item.get("providerPublishTime", 0)
             if isinstance(pub, str):
                 try:
-                    from datetime import datetime, timezone
+                    from datetime import datetime, timezone as _tz
                     pub = int(datetime.fromisoformat(pub.replace("Z", "+00:00")).timestamp())
                 except Exception:
                     pub = 0
-            
+
             image_url = None
             thumbnail = content.get("thumbnail", {})
             if thumbnail:
@@ -311,46 +342,75 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
 
         pe_current = info.get("trailingPE") or info.get("forwardPE")
         pe_vs_avg = None
+        dividends = []
+        corporate_actions = []
+
+        # ── PARALLEL: fetch enrichments (3y history, earnings, dividends, actions) in one batch ──
         try:
-            hist_3y = t.history(period="3y")
-            earnings = t.earnings_history
-            if earnings is not None and not earnings.empty and pe_current:
-                pe_history = t.info.get("fiveYearAvgDividendYield")
-                fin = t.quarterly_financials
+            _et = yf.Ticker(full_ticker)
+
+            def _fetch_pe_data():
+                try:
+                    h3y = _et.history(period="3y")
+                    ern = _et.earnings_history
+                    fin = _et.quarterly_financials
+                    return h3y, ern, fin
+                except Exception:
+                    return None, None, None
+
+            def _fetch_divs():
+                try:
+                    d = _et.dividends
+                    return d if d is not None and not d.empty else None
+                except Exception:
+                    return None
+
+            def _fetch_actions():
+                try:
+                    a = _et.actions
+                    return a if a is not None and not a.empty else None
+                except Exception:
+                    return None
+
+            with ThreadPoolExecutor(max_workers=3) as _pool2:
+                _f2 = {
+                    _pool2.submit(_fetch_pe_data): "pe",
+                    _pool2.submit(_fetch_divs): "divs",
+                    _pool2.submit(_fetch_actions): "actions",
+                }
+                _r2 = {}
+                for _f in as_completed(_f2):
+                    _r2[_f2[_f]] = _f.result()
+
+            hist_3y, earnings, fin = _r2.get("pe", (None, None, None))
+            div = _r2.get("divs")
+            actions = _r2.get("actions")
+
+            if hist_3y is not None and not hist_3y.empty and earnings is not None and not earnings.empty and pe_current:
                 if fin is not None and not fin.empty and "Basic EPS" in fin.index:
                     eps_ttm = fin.loc["Basic EPS"].dropna().head(4).sum()
                     if eps_ttm and eps_ttm > 0 and pe_current:
-                        hist_prices = t.history(period="3y")["Close"].dropna()
-                        if not hist_prices.empty:
-                            avg_price_3y = float(hist_prices.mean())
+                        hp = hist_3y["Close"].dropna()
+                        if not hp.empty:
+                            avg_price_3y = float(hp.mean())
                             avg_pe_3y = round(avg_price_3y / float(eps_ttm), 1)
                             pct_diff = round((pe_current - avg_pe_3y) / avg_pe_3y * 100, 1)
                             pe_vs_avg = {"current_pe": round(pe_current, 1), "avg_pe_3y": avg_pe_3y, "pct_vs_avg": pct_diff}
-        except Exception:
-            pass
 
-        dividends = []
-        try:
-            div = t.dividends
-            if div is not None and not div.empty:
+            if div is not None:
                 div_df = div.resample("Y").sum()
                 for dt, amt in div_df.tail(5).items():
                     if not math.isnan(float(amt)) and float(amt) > 0:
                         dividends.append({"year": dt.year, "amount": round(float(amt), 2)})
-        except Exception:
-            pass
 
-        corporate_actions = []
-        try:
-            actions = t.actions
-            if actions is not None and not actions.empty:
+            if actions is not None:
                 for dt, row in actions.tail(10).iterrows():
                     splits = float(row.get("Stock Splits", 0))
-                    divs = float(row.get("Dividends", 0))
+                    divs_amt = float(row.get("Dividends", 0))
                     if splits > 0:
                         corporate_actions.append({"date": dt.strftime("%d-%b-%Y"), "type": "split", "detail": f"Stock split {splits}:1"})
-                    if divs > 0:
-                        corporate_actions.append({"date": dt.strftime("%d-%b-%Y"), "type": "dividend", "detail": f"Dividend ₹{round(divs,2)}"})
+                    if divs_amt > 0:
+                        corporate_actions.append({"date": dt.strftime("%d-%b-%Y"), "type": "dividend", "detail": f"Dividend ₹{round(divs_amt,2)}"})
         except Exception:
             pass
 
