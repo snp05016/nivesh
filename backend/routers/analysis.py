@@ -1492,7 +1492,7 @@ def token_stats_endpoint(authorization: str = Header(None)):
         SONNET_INPUT_RATE  = 0.003 / 1_000_000
         SONNET_OUTPUT_RATE = 0.015 / 1_000_000
 
-        if not TOKEN_LOG_PATH.exists():
+        if not os.path.exists(TOKEN_LOG_PATH):
             return {
                 "total_cost_usd": 0.0,
                 "total_calls": 0,
