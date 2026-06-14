@@ -1233,30 +1233,6 @@ struct AnalysisScreen: View {
             }
             .padding(.vertical, Theme.Spacing.tight)
         }
-        
-        if let cc = analysis.confidenceCalibration,
-           let note = cc.calibrationNote,
-           !note.isEmpty,
-           note != "Calibration engine did not run." {
-            GuillocheDivider().padding(.horizontal, Theme.screenPadding)
-            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                SectionHeaderView(title: "CONFIDENCE CALIBRATION")
-                HStack(alignment: .top, spacing: Theme.Spacing.medium) {
-                    Rectangle()
-                        .fill(Theme.securityGold)
-                        .frame(width: 3)
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
-                    Text(stripEmoji(note))
-                        .font(Theme.engravedSerif(size: 12, relativeTo: .caption))
-                        .foregroundStyle(Theme.inkSecondary)
-                        .lineSpacing(3)
-                    Spacer()
-                }
-            }
-            .padding(Theme.Spacing.card)
-            .banknoteCard()
-            .padding(.horizontal, Theme.screenPadding)
-        }
     }
 
     private func factorScoreGrid(_ fs: FactorScores) -> some View {
