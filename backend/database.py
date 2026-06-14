@@ -8,7 +8,11 @@ import os
 import secrets
 import uuid
 import bcrypt
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
+
+# Task 50: timezone-aware UTC helper replacing deprecated datetime.utcnow()
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 from pathlib import Path
 from typing import Optional
 from contextlib import contextmanager
@@ -27,11 +31,13 @@ _DEFAULT_SQLITE = f"sqlite:///{Path(__file__).parent / 'stockapp.db'}"
 DATABASE_URL = os.getenv("DATABASE_URL", _DEFAULT_SQLITE)
 
 if DATABASE_URL.startswith("postgresql"):
+    # Task 48: improved connection pool settings
     ENGINE = create_engine(
         DATABASE_URL,
-        pool_size=5,
-        max_overflow=10,
-        pool_pre_ping=True,   # detect dropped connections
+        pool_size=10,
+        max_overflow=20,
+        pool_pre_ping=True,
+        pool_recycle=3600,
         echo=False,
     )
 else:
