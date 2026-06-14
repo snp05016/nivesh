@@ -430,3 +430,55 @@ def get_delivery_data(symbol: str, days: int = 10) -> dict:
         "delivery_signal": delivery_signal,
         "delivery_confidence_modifier": delivery_confidence_modifier,
     }
+
+
+# ── Concurrency utility: batch fetch price_history + fundamentals + delivery ────
+
+def batch_fetch_all(ticker: str, exchange: str = "NSE", period_days: int = 365) -> dict:
+    """
+    Fetch price_history, fundamentals, and delivery_data in parallel.
+    Collapses ~12s of sequential yfinance/jugaad calls into ~4s (the slowest fetch).
+
+    Returns a dict with keys: ticker, exchange, price_history, fundamentals, delivery.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    result = {"ticker": ticker, "exchange": exchange}
+
+    def _history():
+        return get_price_history(ticker, period_days, exchange)
+
+    def _fundamentals():
+        return get_fundamentals(ticker, exchange)
+
+    def _delivery():
+        return get_delivery_data(ticker, days=10)
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = {
+            pool.submit(_history): "price_history",
+            pool.submit(_fundamentals): "fundamentals",
+            pool.submit(_delivery): "delivery",
+        }
+        for f in as_completed(futures):
+            result[futures[f]] = f.result()
+
+    return result
+
+
+def batch_fetch_history_only(tickers: list[str], period_days: int = 365, exchange: str = "NSE") -> dict[str, any]:
+    """
+    Fetch price history for multiple tickers in parallel.
+    Useful for portfolio views that need N stocks' charts simultaneously.
+
+    Returns dict keyed by ticker.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    results = {}
+    with ThreadPoolExecutor(max_workers=min(len(tickers), 16)) as pool:
+        futures = {pool.submit(get_price_history, t, period_days, exchange): t for t in tickers}
+        for f in as_completed(futures):
+            ticker_key = futures[f]
+            results[ticker_key] = f.result()
+    return results
