@@ -895,7 +895,7 @@ def _sanitize_nan_inf(obj):
     return obj
 
 
-def _normalize_response(result: dict, scan_type: str = "standard") -> dict:
+def _normalize_response(result: dict, scan_type: str = "standard", quant_payload: dict = None) -> dict:
     """Sanitize AI analysis response to ensure all iOS-required fields exist with correct types.
     Handles null values, missing fields, type mismatches, NaN/Inf->null, and float->int coercion.
     When scan_type == "extreme", additionally guarantees the extreme superset blocks exist
@@ -1092,6 +1092,36 @@ def _normalize_response(result: dict, scan_type: str = "standard") -> dict:
             "tenure_years": None,
             "is_big4": None,
         }
+
+    # 23. Western scale validation — ban Million/Billion/Trillion in output
+    try:
+        from main import _ban_western_scale
+        _ban_western_scale(json.dumps(result, ensure_ascii=False),
+                          company_name=result.get("company_name", ""))
+    except ValueError:
+        pass  # validation only — never crash normalization
+
+    # 24. ML Hybrid Pipeline — inject quantitative engine payload
+    #     (LLM cannot override these math-derived values)
+    if quant_payload:
+        result["market_regime"] = quant_payload.get(
+            "market_regime", "Unknown"
+        )
+        result["calibrated_confidence"] = quant_payload.get(
+            "calibrated_confidence", 0.0
+        )
+        result["conformal_target_upper_3m"] = quant_payload.get(
+            "conformal_target_upper_3m"
+        )
+        result["conformal_target_lower_3m"] = quant_payload.get(
+            "conformal_target_lower_3m"
+        )
+        result["quantitative_drivers"] = quant_payload.get(
+            "quantitative_drivers", {}
+        )
+        result["tail_risk_flags"] = quant_payload.get(
+            "tail_risk_flags", {}
+        )
 
     return result
 
