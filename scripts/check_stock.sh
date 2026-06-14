@@ -9,4 +9,4 @@ set -euo pipefail
 
 MODE="${1:-running}"
 
-ssh saumyapatel@192.168.1.122 /home/saumyapatel/Desktop/nivesh/venv/bin/python3 /home/saumyapatel/Desktop/nivesh/backend/scripts/check_jobs.py "${MODE}"
+ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh/backend && PYTHONPATH=.:../tradingagents-core ../venv/bin/python3 scripts/check_jobs.py \"${MODE}\""
