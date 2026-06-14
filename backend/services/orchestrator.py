@@ -1266,6 +1266,25 @@ def analyze(
     emitter.emit("gather", "Data Pipeline",
                  "Fetching prices, fundamentals, pledging & news", pct=10)
 
+    # Task 03: Start yfinance pre-fetch in background so it overlaps with pledging + agent run
+    _prefetch_data: dict = {}
+    _prefetch_done = threading.Event()
+
+    def _prefetch_worker(t_ticker: str) -> None:
+        try:
+            _prefetch_data["history"] = yf.download(t_ticker, period="1y", auto_adjust=True, progress=False)
+            _prefetch_data["fast_info"] = yf.Ticker(t_ticker).fast_info
+        except Exception as _pf_err:
+            print(f"[PREFETCH] Background fetch failed for {t_ticker}: {_pf_err}")
+        finally:
+            _prefetch_done.set()
+
+    _ns_ticker_prefetch = _to_ns(full_ticker.split(".")[0])
+    _pf_thread = threading.Thread(
+        target=_prefetch_worker, args=(_ns_ticker_prefetch,), daemon=True
+    )
+    _pf_thread.start()
+
     # Fetch pledging info for AI context
     pledging_data = "Unavailable"
     try:
@@ -1450,6 +1469,9 @@ Bounds 3M: {conformal_data.get('short_term_3m', {}).get('lower', 'N/A')}–{conf
     except Exception as _cal_err:
         print(f"[CALIBRATION] Pipeline failed: {_cal_err}")
         # Continue without calibration — reformatter will run unmodified
+
+    # Wait for background prefetch to complete (started at top of analyze())
+    _prefetch_done.wait(timeout=30)
 
     emitter.emit("format", "Reformatter",
                  "Structuring the report into the final schema", pct=80)
