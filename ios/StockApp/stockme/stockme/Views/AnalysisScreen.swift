@@ -1203,6 +1203,7 @@ struct AnalysisScreen: View {
                 }
             }
             .padding(Theme.Spacing.card)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .banknoteCard()
             .padding(.horizontal, Theme.screenPadding)
         }
@@ -1232,6 +1233,66 @@ struct AnalysisScreen: View {
                 }
             }
             .padding(.vertical, Theme.Spacing.tight)
+        }
+        
+        if let cc = analysis.confidenceCalibration,
+           let note = cc.calibrationNote, !note.isEmpty,
+           note != "Calibration engine did not run." {
+            GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                SectionHeaderView(title: "CONFIDENCE CALIBRATION")
+                Text(stripEmoji(note))
+                    .font(Theme.engravedSerif(size: 12, relativeTo: .caption))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(Theme.Spacing.card)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .banknoteCard()
+            .padding(.horizontal, Theme.screenPadding)
+        }
+        
+        if let tb = analysis.targetPriceBounds {
+            let st = tb.shortTerm3m
+            let mt = tb.mediumTerm12m
+            let lt = tb.longTerm36m
+            let stMid = st?.mid ?? 0
+            let mtMid = mt?.mid ?? 0
+            let ltMid = lt?.mid ?? 0
+            if stMid > 0 || mtMid > 0 || ltMid > 0 {
+                GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                    SectionHeaderView(title: "TARGET PRICE BOUNDS (90%)")
+                    HStack(spacing: Theme.Spacing.standard) {
+                        if stMid > 0 {
+                            VStack(spacing: Theme.Spacing.xSmall) {
+                                Text("3M").font(Theme.officialStampFont(size: 9, relativeTo: .caption2)).foregroundStyle(Theme.inkTertiary)
+                                Text(IndianFormatter.priceCompact(stMid)).font(Theme.serialNumberFont(size: 16, relativeTo: .callout)).foregroundStyle(Theme.inkPrimary)
+                                Text("\(IndianFormatter.priceCompact(st?.lower ?? 0)) – \(IndianFormatter.priceCompact(st?.upper ?? 0))").font(Theme.serialNumberFont(size: 10, relativeTo: .caption2)).foregroundStyle(Theme.inkTertiary)
+                            }.frame(maxWidth: .infinity)
+                        }
+                        if mtMid > 0 {
+                            VStack(spacing: Theme.Spacing.xSmall) {
+                                Text("12M").font(Theme.officialStampFont(size: 9, relativeTo: .caption2)).foregroundStyle(Theme.inkTertiary)
+                                Text(IndianFormatter.priceCompact(mtMid)).font(Theme.serialNumberFont(size: 16, relativeTo: .callout)).foregroundStyle(Theme.inkPrimary)
+                                Text("\(IndianFormatter.priceCompact(mt?.lower ?? 0)) – \(IndianFormatter.priceCompact(mt?.upper ?? 0))").font(Theme.serialNumberFont(size: 10, relativeTo: .caption2)).foregroundStyle(Theme.inkTertiary)
+                            }.frame(maxWidth: .infinity)
+                        }
+                        if ltMid > 0 {
+                            VStack(spacing: Theme.Spacing.xSmall) {
+                                Text("36M").font(Theme.officialStampFont(size: 9, relativeTo: .caption2)).foregroundStyle(Theme.inkTertiary)
+                                Text(IndianFormatter.priceCompact(ltMid)).font(Theme.serialNumberFont(size: 16, relativeTo: .callout)).foregroundStyle(Theme.inkPrimary)
+                                Text("\(IndianFormatter.priceCompact(lt?.lower ?? 0)) – \(IndianFormatter.priceCompact(lt?.upper ?? 0))").font(Theme.serialNumberFont(size: 10, relativeTo: .caption2)).foregroundStyle(Theme.inkTertiary)
+                            }.frame(maxWidth: .infinity)
+                        }
+                    }
+                }
+                .padding(Theme.Spacing.card)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .banknoteCard()
+                .padding(.horizontal, Theme.screenPadding)
+            }
         }
     }
 
