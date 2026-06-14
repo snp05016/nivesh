@@ -437,6 +437,10 @@ async def _on_startup():
     # Initial RAG vector ingestion at startup (always runs, regardless of scheduler)
     def _startup_ingest():
         try:
+            from services.vector_store import init_store
+            if not init_store():
+                logging.warning("ChromaDB init failed, skipping RAG ingestion")
+                return
             logging.info("Starting initial RAG ingestion...")
             from services.rag_ingestion import ingest_all
             count = ingest_all()

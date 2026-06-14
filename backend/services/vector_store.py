@@ -5,6 +5,7 @@ Provides thread-safe access to a persistent ChromaDB vector store.
 AGENTS.md §3.4: All module-level mutable state uses threading.Lock.
 """
 import os
+import time
 import threading
 import logging
 import chromadb
@@ -17,6 +18,7 @@ EMBEDDING_DIM = 384
 _store_lock = threading.Lock()
 _client: "chromadb.ClientAPI | None" = None
 _collection: "chromadb.Collection | None" = None
+_initialised = False
 
 
 def _get_client() -> "chromadb.ClientAPI":
@@ -33,7 +35,7 @@ def _get_client() -> "chromadb.ClientAPI":
 
 
 def get_collection() -> "chromadb.Collection":
-    global _collection
+    global _collection, _initialised
     with _store_lock:
         if _collection is None:
             client = _get_client()
@@ -41,8 +43,30 @@ def get_collection() -> "chromadb.Collection":
                 name=COLLECTION_NAME,
                 metadata={"hnsw:space": "cosine"},
             )
+            _initialised = True
             logger.info("Collection '%s' ready", COLLECTION_NAME)
     return _collection
+
+
+def init_store() -> bool:
+    """Initialise ChromaDB with retry for multi-worker race conditions.
+    Returns True if initialisation succeeded, False if it failed after retries."""
+    global _initialised
+    if _initialised:
+        return True
+    for attempt in range(5):
+        try:
+            get_collection()
+            return True
+        except Exception as e:
+            if "table collections already exists" in str(e) or "already exists" in str(e).lower():
+                logger.info("ChromaDB init race (attempt %d/5), retrying in 2s...", attempt + 1)
+                time.sleep(2)
+            else:
+                logger.warning("ChromaDB init failed (attempt %d/5): %s", attempt + 1, e)
+                return False
+    logger.error("ChromaDB init failed after 5 attempts")
+    return False
 
 
 def upsert_documents(ids: list[str], documents: list[str],
