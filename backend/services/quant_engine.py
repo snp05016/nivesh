@@ -124,8 +124,9 @@ class QuantitativeEngine:
 
             piotroski_score = 5  # default neutral
             if isinstance(f_score_result, dict):
-                piotroski_score = f_score_result.get("f_score", 5)
-            elif isinstance(f_score_result, (int, float)):
+                raw = f_score_result.get("f_score", 5)
+                piotroski_score = int(raw) if raw is not None else 5
+            elif isinstance(f_score_result, (int, float)) and not math.isnan(float(f_score_result)):
                 piotroski_score = int(f_score_result)
 
             promoter_pledge = fund.get("promoter_pledging_pct") or 0.0
@@ -233,8 +234,15 @@ class QuantitativeEngine:
         Drivers with |contribution| <= 0.05 are filtered out as noise.
         """
         f_score = fundamental_data.get("piotroski_score", 5)
+        if f_score is None or (isinstance(f_score, float) and math.isnan(f_score)):
+            f_score = 5
+        f_score = int(f_score)
         promoter_pledge = fundamental_data.get("promoter_pledge_pct", 0.0)
+        if promoter_pledge is None or (isinstance(promoter_pledge, float) and math.isnan(promoter_pledge)):
+            promoter_pledge = 0.0
         rsi_14 = market_data.get("rsi_14", 50.0)
+        if rsi_14 is None or (isinstance(rsi_14, float) and math.isnan(rsi_14)):
+            rsi_14 = 50.0
 
         shap_drivers: Dict[str, float] = {}
 
