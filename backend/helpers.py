@@ -690,19 +690,16 @@ def _nse_session():
     return s
 
 
-_asm_gsm_cache = {"data": {}, "ts": 0}
-_asm_gsm_lock = threading.Lock()
 # Task 39: TTL from central config
 from config.settings import ASM_GSM_CACHE_TTL as _ASM_GSM_CACHE_TTL, HTTP_DEFAULT_TIMEOUT as _HTTP_DEFAULT_TIMEOUT
 
 
 def _get_asm_gsm_lists():
-    """Fetch and cache ASM/GSM lists from NSE. Thread-safe."""
-    global _asm_gsm_cache
-    now = time.time()
-    with _asm_gsm_lock:
-        if _asm_gsm_cache["ts"] > 0 and (now - _asm_gsm_cache["ts"]) < _ASM_GSM_CACHE_TTL:
-            return _asm_gsm_cache["data"]
+    """Fetch and cache ASM/GSM lists from NSE (Redis-backed, shared across workers)."""
+    # Check Redis cache first
+    cached = _dcache_get("asm_gsm", "lists")
+    if cached is not None:
+        return cached
 
     print("[NSE] Refreshing ASM/GSM lists...")
     data = {"ASM": set(), "GSM": set()}
@@ -726,8 +723,9 @@ def _get_asm_gsm_lists():
                 sym = item.get("symbol")
                 if sym: data["GSM"].add(sym.upper())
 
-        with _asm_gsm_lock:
-            _asm_gsm_cache = {"data": data, "ts": now}
+        # Store as sorted lists (JSON-safe) in Redis
+        redis_data = {"ASM": sorted(data["ASM"]), "GSM": sorted(data["GSM"])}
+        _dcache_set("asm_gsm", "lists", redis_data, ttl=_ASM_GSM_CACHE_TTL)
         return data
     except Exception as e:
         print(f"[NSE] ASM/GSM fetch failed: {e}")
@@ -735,22 +733,18 @@ def _get_asm_gsm_lists():
 
 
 def _evict_asm_gsm_ticker(ticker: str) -> bool:
-    """Force-evict a single ticker from the ASM/GSM surveillance cache.
-    Use when a company exits regulatory watchlists and the stale flag
-    should be cleared immediately without waiting for TTL expiry.
-    Returns True if ticker was found and removed, False otherwise.
-    Thread-safe — uses _asm_gsm_lock.
-    """
+    """Evict a ticker from ASM/GSM cache by rebuilding without it. Redis-backed."""
     ticker = ticker.upper().strip()
+    cached = _dcache_get("asm_gsm", "lists")
+    if not cached:
+        return False
     removed = False
-    with _asm_gsm_lock:
-        data = _asm_gsm_cache.get("data", {})
-        for section in ("ASM", "GSM"):
-            if ticker in data.get(section, set()):
-                data[section].discard(ticker)
-                removed = True
-        if removed:
-            _asm_gsm_cache["data"] = data
+    for section in ("ASM", "GSM"):
+        if ticker in cached.get(section, []):
+            cached[section] = [t for t in cached[section] if t != ticker]
+            removed = True
+    if removed:
+        _dcache_set("asm_gsm", "lists", cached, ttl=_ASM_GSM_CACHE_TTL)
     return removed
 
 
