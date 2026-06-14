@@ -1030,7 +1030,7 @@ private struct MacroChip: View {
 
 // MARK: - Analysis Metric Cell (Screen C 3-col grid)
 
-private struct AnalysisMetricCell: View {
+struct AnalysisMetricCell: View {
     let label: String
     let term: String
     let value: String
