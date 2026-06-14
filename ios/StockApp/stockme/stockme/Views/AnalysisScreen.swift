@@ -569,6 +569,7 @@ struct AnalysisScreen: View {
 
     // MARK: - Full Analysis (Redesigned)
 
+    @ViewBuilder
     private func renderFullAnalysis(_ analysis: StockAnalysis) -> some View {
         if analysis.analysisTier == "extreme" {
             VStack(spacing: Theme.Spacing.none) {
