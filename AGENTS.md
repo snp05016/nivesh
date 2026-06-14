@@ -279,6 +279,12 @@ Commit after EVERY small task or phase. Incremental, reviewable checkpoints.
 
 **Pre-commit:** Run `gitnexus_detect_changes()`, review `git status` + `git diff --stat`, NO secrets/.env/binary assets, NO xcodebuild artifacts.
 
+### 6.5 Deployment & Remote Verification
+After committing and pushing your code, you MUST deploy and verify on the remote server:
+1. Connect via SSH: `ssh root@165.22.221.18`
+2. Pull the latest working branch onto the server.
+3. Execute integration tests and verify that everything works correctly directly from the remote environment.
+
 ---
 
 ## 7. Glossary
