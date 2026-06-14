@@ -793,6 +793,13 @@ def save_analysis(session: Session, user_id: Optional[int], ticker: str, result:
         raw_output=raw_output,
         full_json=json.dumps(result),
         scan_type=scan_type,
+        # ML Hybrid Pipeline fields
+        market_regime=result.get("market_regime", "Transition"),
+        calibrated_confidence=result.get("calibrated_confidence", 0.0),
+        conformal_target_upper_3m=result.get("conformal_target_upper_3m"),
+        conformal_target_lower_3m=result.get("conformal_target_lower_3m"),
+        quantitative_drivers=result.get("quantitative_drivers", {}),
+        tail_risk_flags=result.get("tail_risk_flags", {}),
     )
     session.add(record)
     session.commit()
