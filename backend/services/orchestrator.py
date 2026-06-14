@@ -11,7 +11,6 @@ All state is DB-backed or passed as arguments — no module-level shared mutable
 """
 
 import os
-import json
 import copy
 import math
 import time
@@ -19,6 +18,28 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta
 from pathlib import Path
+
+# Task 14: Use orjson for fast JSON serialization when available
+try:
+    import orjson as _json_lib
+    _FAST_JSON = True
+    # orjson.dumps returns bytes; provide helpers that match json module API
+    def _json_dumps(obj, **kwargs) -> str:
+        opts = 0
+        if kwargs.get("sort_keys"):
+            opts |= _json_lib.OPT_SORT_KEYS
+        return _json_lib.dumps(obj, option=opts if opts else None).decode()
+    def _json_loads(s):
+        return _json_lib.loads(s)
+except ImportError:
+    import json as _json_lib  # type: ignore[no-redef]
+    _FAST_JSON = False
+    def _json_dumps(obj, **kwargs) -> str:  # type: ignore[misc]
+        return _json_lib.dumps(obj, **kwargs)
+    def _json_loads(s):  # type: ignore[misc]
+        return _json_lib.loads(s)
+
+import json  # kept for local import compat inside functions
 
 # ---------------------------------------------------------------------------
 # Load environment
@@ -547,8 +568,7 @@ def reformat_with_deepseek(
             )
             result = _extract_json_from_text(ds_raw)
             if result:
-                import json
-                parsed = json.loads(result)
+                parsed = _json_loads(result)
                 if isinstance(parsed, dict) and parsed.get("signal"):
                     parsed = _normalize_response(parsed)
                     parsed["reformat_model"] = "deepseek-flash"
@@ -576,7 +596,6 @@ def reformat_with_claude(
     Tries Claude Sonnet first, falls back to DeepSeek V4 Flash if Claude fails,
     then applies _normalize_response to guarantee iOS-safe output.
     """
-    import json
     import time
 
     # Deterministic serialization for breakpoint 2
@@ -592,7 +611,7 @@ def reformat_with_claude(
                     "target_3m": p.get("target_prices", {}).get("short_term_3m"),
                 }
             )
-        serialized_history = json.dumps(history_points, sort_keys=True)
+        serialized_history = _json_dumps(history_points, sort_keys=True)
 
     is_extreme = scan_type == "extreme"
     reformat_max_tokens = 8000 if is_extreme else 4000
@@ -666,7 +685,7 @@ def reformat_with_claude(
                 )
                 _log_token_usage("reformat", response.usage)
                 raw_json = _extract_json_from_text(response.content[0].text)
-                parsed = json.loads(raw_json)
+                parsed = _json_loads(raw_json)
                 validated = _validate_parsed(parsed)
                 if validated is not None:
                     return validated
