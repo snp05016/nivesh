@@ -16,6 +16,7 @@ import json
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from database import SessionLocal, Portfolio, PortfolioValuationHistory, User, AnalysisHistory
+from services.llm_utils import contains_devanagari
 
 logger = logging.getLogger(__name__)
 
@@ -238,6 +239,13 @@ async def pregen_morning_briefs_all_users() -> dict:
                 if not brief:
                     brief = {
                         "summary": "• Market data loaded. Brief generation failed — please refresh.",
+                        "movers": mover_tickers,
+                        "mood": "cautious",
+                    }
+                elif contains_devanagari(brief.get("summary", "")):
+                    logger.warning("[morning_brief] Rejected Hindi pre-generated brief for user_id=%s", user.id)
+                    brief = {
+                        "summary": "• Market data loaded. Brief generation returned non-English text - please refresh.",
                         "movers": mover_tickers,
                         "mood": "cautious",
                     }
