@@ -16,7 +16,7 @@ import logging
 import requests
 import yt_dlp
 from datetime import datetime
-from database import SessionLocal, YouTubeVideo, Portfolio
+from database import get_session, YouTubeVideo, Portfolio
 
 logger = logging.getLogger(__name__)
 
@@ -332,36 +332,34 @@ async def harvest_youtube_metadata() -> dict:
     Nightly channel sweep. Fetches latest videos from all SEBI-registered channels.
     Uses API v3 if available, falls back to yt-dlp per channel.
     """
-    db = SessionLocal()
     total_added = 0
     channels_ok = 0
 
-    try:
-        for channel in CHANNEL_REGISTRY:
-            videos = _fetch_channel_via_api(channel, max_videos=10)
-            if not videos:
-                videos = _fetch_channel_via_ytdlp(channel, max_videos=10)
+    with get_session() as db:
+        try:
+            for channel in CHANNEL_REGISTRY:
+                videos = _fetch_channel_via_api(channel, max_videos=10)
+                if not videos:
+                    videos = _fetch_channel_via_ytdlp(channel, max_videos=10)
 
-            if not videos:
-                logger.warning(f"[Harvest] No videos returned for {channel['name']}")
-                continue
+                if not videos:
+                    logger.warning(f"[Harvest] No videos returned for {channel['name']}")
+                    continue
 
-            channels_ok += 1
-            added = 0
-            for v in videos:
-                if _upsert_video(db, v):
-                    added += 1
+                channels_ok += 1
+                added = 0
+                for v in videos:
+                    if _upsert_video(db, v):
+                        added += 1
 
-            db.commit()
-            logger.info(f"[Harvest] {channel['name']}: {added} new videos added")
-            total_added += added
-            time.sleep(0.5)
+                db.commit()
+                logger.info(f"[Harvest] {channel['name']}: {added} new videos added")
+                total_added += added
+                time.sleep(0.5)
 
-    except Exception as e:
-        logger.error(f"[Harvest ERROR] {e}")
-        db.rollback()
-    finally:
-        db.close()
+        except Exception as e:
+            logger.error(f"[Harvest ERROR] {e}")
+            db.rollback()
 
     return {
         "channels_processed": channels_ok,
@@ -467,51 +465,49 @@ async def harvest_portfolio_videos() -> dict:
       - Inserts new results tagged with matched_ticker
     Rate-limited: 1.2s sleep between tickers.
     """
-    db = SessionLocal()
     total_added = 0
 
-    try:
-        holdings = db.query(Portfolio).all()
-        tickers = sorted(set(h.ticker.upper() for h in holdings))
+    with get_session() as db:
+        try:
+            holdings = db.query(Portfolio).all()
+            tickers = sorted(set(h.ticker.upper() for h in holdings))
 
-        if not tickers:
-            logger.info("[Portfolio Harvest] No holdings found — skipping")
-            return {"tickers_processed": 0, "videos_added": 0}
+            if not tickers:
+                logger.info("[Portfolio Harvest] No holdings found — skipping")
+                return {"tickers_processed": 0, "videos_added": 0}
 
-        logger.info(f"[Portfolio Harvest] Processing {len(tickers)} tickers")
-        by_ticker = {}
+            logger.info(f"[Portfolio Harvest] Processing {len(tickers)} tickers")
+            by_ticker = {}
 
-        for ticker in tickers:
-            company_name = get_company_name(ticker)
-            # Fetch more candidates so we have enough to filter after 50k+ view threshold
-            videos = search_videos_for_ticker(ticker, company_name, max_results=10)
+            for ticker in tickers:
+                company_name = get_company_name(ticker)
+                # Fetch more candidates so we have enough to filter after 50k+ view threshold
+                videos = search_videos_for_ticker(ticker, company_name, max_results=10)
 
-            # Only persist search results with 50k+ views — channel-registry videos bypass this
-            quality_videos = [
-                v for v in videos
-                if v.get("source") != "ytdlp_search" or int(v.get("view_count") or 0) >= 50_000
-            ]
+                # Only persist search results with 50k+ views — channel-registry videos bypass this
+                quality_videos = [
+                    v for v in videos
+                    if v.get("source") != "ytdlp_search" or int(v.get("view_count") or 0) >= 50_000
+                ]
 
-            added = 0
-            for v in quality_videos:
-                v["matched_ticker"] = ticker
-                if _upsert_video(db, v):
-                    added += 1
+                added = 0
+                for v in quality_videos:
+                    v["matched_ticker"] = ticker
+                    if _upsert_video(db, v):
+                        added += 1
 
-            if added > 0:
-                db.commit()
+                if added > 0:
+                    db.commit()
 
-            by_ticker[ticker] = added
-            total_added += added
-            logger.info(f"[Portfolio Harvest] {ticker} ({company_name}): {added} new")
-            time.sleep(1.2)
+                by_ticker[ticker] = added
+                total_added += added
+                logger.info(f"[Portfolio Harvest] {ticker} ({company_name}): {added} new")
+                time.sleep(1.2)
 
-    except Exception as e:
-        logger.error(f"[Portfolio Harvest ERROR] {e}")
-        db.rollback()
-        return {"tickers_processed": 0, "videos_added": 0, "error": str(e)}
-    finally:
-        db.close()
+        except Exception as e:
+            logger.error(f"[Portfolio Harvest ERROR] {e}")
+            db.rollback()
+            return {"tickers_processed": 0, "videos_added": 0, "error": str(e)}
 
     return {
         "tickers_processed": len(tickers),

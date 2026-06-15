@@ -21,7 +21,9 @@ class EarningsSurpriseHistory(Base):
     serial_pattern = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-Base.metadata.create_all(bind=ENGINE)
+# NOTE: EarningsSurpriseHistory is registered in Base.metadata via this module's import.
+# create_all() is called centrally by database.init_db() — do NOT call it here at import time.
+# Ideally, move EarningsSurpriseHistory class definition into database.py to keep schema central.
 
 async def compute_surprise_for_ticker(ticker: str):
     # 1. Fetch estimates

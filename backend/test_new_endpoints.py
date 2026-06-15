@@ -213,7 +213,7 @@ def test_db_schema():
     print("\n=== DB Schema ===")
     try:
         import sqlite3
-        conn = sqlite3.connect(Path(__file__).parent / "stockapp.db")
+        conn = sqlite3.connect(":memory:")
         tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         expected = {"users", "portfolio", "analysis_history", "signal_events", "price_targets", "trade_journal"}
         missing = expected - tables

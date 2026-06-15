@@ -129,37 +129,33 @@ def batch_refresh_piotroski() -> dict:
     """
     import sys, os
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-    from database import SessionLocal, Portfolio
+    from database import get_session, Portfolio
     from services.disk_cache import set as cache_set
 
-    db = SessionLocal()
     refreshed = 0
     failed = 0
     skipped = 0
     MAX_TICKERS = 50
 
-    try:
+    with get_session() as db:
         # Collect unique tickers from all user holdings + watchlists
         rows = db.query(Portfolio.ticker).distinct().all()
         tickers = list({r.ticker for r in rows})
 
-        if len(tickers) > MAX_TICKERS:
-            logger.info(f"[piotroski_batch] Capping {len(tickers)} tickers to {MAX_TICKERS}")
-            tickers = tickers[:MAX_TICKERS]
+    if len(tickers) > MAX_TICKERS:
+        logger.info(f"[piotroski_batch] Capping {len(tickers)} tickers to {MAX_TICKERS}")
+        tickers = tickers[:MAX_TICKERS]
 
-        for ticker in tickers:
-            try:
-                result = compute_piotroski(ticker)
-                result["ticker"] = ticker
-                cache_set("piotroski", ticker, result)
-                refreshed += 1
-                logger.info(f"[piotroski_batch] {ticker}: {result.get('grade', 'N/A')} (f={result.get('f_score')})")
-            except Exception as e:
-                failed += 1
-                logger.warning(f"[piotroski_batch] {ticker} failed: {e}")
-
-    finally:
-        db.close()
+    for ticker in tickers:
+        try:
+            result = compute_piotroski(ticker)
+            result["ticker"] = ticker
+            cache_set("piotroski", ticker, result)
+            refreshed += 1
+            logger.info(f"[piotroski_batch] {ticker}: {result.get('grade', 'N/A')} (f={result.get('f_score')})")
+        except Exception as e:
+            failed += 1
+            logger.warning(f"[piotroski_batch] {ticker} failed: {e}")
 
     logger.info(f"[piotroski_batch] Done: refreshed={refreshed} failed={failed} skipped={skipped}")
     return {"refreshed": refreshed, "failed": failed, "skipped": skipped}

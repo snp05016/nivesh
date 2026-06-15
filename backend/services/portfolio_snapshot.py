@@ -15,7 +15,7 @@ import os
 import json
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from database import SessionLocal, Portfolio, PortfolioValuationHistory, User, AnalysisHistory
+from database import get_session, Portfolio, PortfolioValuationHistory, User, AnalysisHistory
 from services.llm_utils import contains_devanagari
 
 logger = logging.getLogger(__name__)
@@ -37,19 +37,18 @@ def get_current_price(ticker: str) -> float | None:
 
 async def snapshot_all_users():
     """Take valuation snapshot for all users."""
-    db = SessionLocal()
     today_str = date.today().isoformat()
 
+    # Fetch NIFTY close for benchmark outside the per-user loop
     try:
-        users = db.query(User).all()
+        nifty = yf.Ticker("^NSEI")
+        nifty_hist = nifty.history(period="2d")
+        nifty_close = float(nifty_hist["Close"].iloc[-1]) if not nifty_hist.empty else None
+    except Exception:
+        nifty_close = None
 
-        # Fetch NIFTY close for benchmark
-        try:
-            nifty = yf.Ticker("^NSEI")
-            nifty_hist = nifty.history(period="2d")
-            nifty_close = float(nifty_hist["Close"].iloc[-1]) if not nifty_hist.empty else None
-        except Exception:
-            nifty_close = None
+    with get_session() as db:
+        users = db.query(User).all()
 
         for user in users:
             try:
@@ -101,9 +100,6 @@ async def snapshot_all_users():
                 db.rollback()
                 continue
 
-    finally:
-        db.close()
-
 
 async def pregen_morning_briefs_all_users() -> dict:
     """
@@ -119,9 +115,8 @@ async def pregen_morning_briefs_all_users() -> dict:
     generated = 0
     skipped = 0
     errors = 0
-    db = SessionLocal()
 
-    try:
+    with get_session() as db:
         users = db.query(User).all()
 
         for user in users:
@@ -261,9 +256,6 @@ async def pregen_morning_briefs_all_users() -> dict:
                 errors += 1
                 logger.error(f"[morning_brief] Error for user_id={user.id}: {e}")
                 continue
-
-    finally:
-        db.close()
 
     logger.info(
         f"[morning_brief] Pre-gen complete: generated={generated} skipped={skipped} errors={errors}"

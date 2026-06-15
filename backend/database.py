@@ -54,6 +54,7 @@ else:
         dbapi_conn.execute("PRAGMA journal_mode=WAL")
         dbapi_conn.execute("PRAGMA synchronous=NORMAL")
         dbapi_conn.execute("PRAGMA busy_timeout=5000")
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
 
 SessionLocal = sessionmaker(bind=ENGINE, autoflush=False, autocommit=False)
 
@@ -129,6 +130,12 @@ class Portfolio(Base):
 
     user = relationship("User", back_populates="portfolio")
 
+    __table_args__ = (
+        Index("ix_portfolio_user_id", "user_id"),
+        Index("ix_portfolio_user_ticker", "user_id", "ticker"),
+        Index("ix_portfolio_group", "user_id", "group_name"),
+    )
+
 
 class AnalysisHistory(Base):
     __tablename__ = "analysis_history"
@@ -162,6 +169,14 @@ class AnalysisHistory(Base):
     created_at     = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="analysis_history")
+
+    __table_args__ = (
+        Index("ix_analysis_history_user_id", "user_id"),
+        Index("ix_analysis_history_ticker", "ticker"),
+        Index("ix_analysis_history_scan_type", "scan_type"),
+        Index("ix_analysis_history_created_at", "created_at"),
+        Index("ix_analysis_history_ticker_user", "ticker", "user_id"),
+    )
 
 
 class SignalEvent(Base):

@@ -20,7 +20,7 @@ with patch('main._check_rate_limit', return_value=True):
 
 def reset_rate_limiter():
     """Reset rate limiter state between tests."""
-    from main import _rate_limit_store
+    from helpers import _rate_limit_store
     _rate_limit_store.clear()
 
 
