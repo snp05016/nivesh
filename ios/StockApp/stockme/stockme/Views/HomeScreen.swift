@@ -649,7 +649,7 @@ struct HomeScreen: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ZStack {
-                DenominationBackground(denomination: .fiveHundred)
+                Theme.canvas.ignoresSafeArea()
 
                 ScrollViewReader { proxy in
                     ScrollView {
