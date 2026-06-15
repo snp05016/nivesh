@@ -77,7 +77,7 @@ struct ADBreathBar: View {
     let advancing: Int
     let declining: Int
 
-    var advancingRatio: CGFloat {
+    private var advancingRatio: CGFloat {
         let total = CGFloat(advancing + declining)
         guard total > 0 else { return 0.5 }
         return CGFloat(advancing) / total
@@ -95,7 +95,7 @@ struct ADBreathBar: View {
                     .fill(bearRed.opacity(0.15))
                     .frame(maxWidth: .infinity)
 
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                BreadthFillShape(ratio: advancingRatio)
                     .fill(
                         LinearGradient(
                             colors: [bullGreen.opacity(0.9), bullGreen.opacity(0.6)],
@@ -103,7 +103,6 @@ struct ADBreathBar: View {
                             endPoint: .trailing
                         )
                     )
-                    .frame(width: UIScreen.main.bounds.width * advancingRatio)
             }
             .frame(height: 8)
             .cornerRadius(Theme.CornerRadius.small)
@@ -124,6 +123,21 @@ struct ADBreathBar: View {
                 }
             }
         }
+    }
+}
+
+private struct BreadthFillShape: Shape {
+    let ratio: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        let clamped = min(max(ratio, 0), 1)
+        let fillRect = CGRect(
+            x: rect.minX,
+            y: rect.minY,
+            width: rect.width * clamped,
+            height: rect.height
+        )
+        return Path(roundedRect: fillRect, cornerRadius: Theme.CornerRadius.small)
     }
 }
 
@@ -978,9 +992,6 @@ private struct MorningDecreeCard: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.none) {
                     // Header
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                        Text("प्रातःकालीन सारांश")
-                            .font(.caption2)
-                            .foregroundStyle(Theme.inkSecondary)
                         HStack {
                             Text("MORNING BRIEF")
                                 .font(.caption.weight(.semibold)).monospaced()
@@ -1285,28 +1296,6 @@ private struct MarketPulseDashCard: View {
                     if pulse.advances + pulse.declines > 0 {
                         ADBreathBar(advancing: pulse.advances, declining: pulse.declines)
                             .padding(.horizontal, cardHPad)
-                        HStack {
-                            HStack(spacing: Theme.Spacing.xSmall) {
-                                Image(systemName: "arrow.up")
-                                    .font(.caption2.weight(.bold))
-                                    .foregroundStyle(Theme.bullGreen)
-                                Text("\(pulse.advances) Advancing")
-                                    .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
-                                    .foregroundStyle(Theme.bullGreen)
-                            }
-                            Spacer()
-                            HStack(spacing: Theme.Spacing.xSmall) {
-                                Text("\(pulse.declines) Declining")
-                                    .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
-                                    .foregroundStyle(Theme.bearRed)
-                                Image(systemName: "arrow.down")
-                                    .font(.caption2.weight(.bold))
-                                    .foregroundStyle(Theme.bearRed)
-                            }
-                        }
-                        .padding(.horizontal, cardHPad)
-                        .padding(.top, Theme.Spacing.xSmall)
-                        .padding(.bottom, Theme.Spacing.small)
                     }
 
                     // Fine rule
@@ -2754,7 +2743,6 @@ extension HomeScreen {
                 .id(HomeSectionID.morning.rawValue)
             } else if let briefData = viewModel.morningBriefData {
                 VStack(spacing: Theme.Spacing.card) {
-                    SectionHeader(title: "Morning Brief", hindiTitle: "Morning Summary")
                     MorningDecreeCard(briefData: briefData)
                         .padding(.horizontal, Theme.screenPadding)
                 }
@@ -2762,7 +2750,7 @@ extension HomeScreen {
             } else {
                 VStack(spacing: Theme.Spacing.card) {
                     SectionHeader(title: "Morning Brief", hindiTitle: "Morning Summary")
-                    DashboardLoadingCard(label: "Morning Brief", isLoading: viewModel.isLoading)
+                    DashboardLoadingCard(label: "latest brief", isLoading: viewModel.isLoading)
                 }
                 .id(HomeSectionID.morning.rawValue)
             }
@@ -2969,7 +2957,6 @@ extension HomeScreen {
         case .marketPulse:
 // ── Section 8: Market Pulse ───────────────────────
                 VStack(spacing: Theme.Spacing.standard) {
-                        SectionHeader(title: "Market Pulse", hindiTitle: "बाजार की नब्ज")
                     if let pulse = viewModel.dashboard?.pulse {
                         MarketPulseDashCard(pulse: pulse)
                         if pulse.advances + pulse.declines > 0 {
@@ -2977,7 +2964,8 @@ extension HomeScreen {
                             MarketMoodGauge(ratio: ratio)
                         }
                     } else {
-                        DashboardLoadingCard(label: "Market Pulse", isLoading: viewModel.dashboardLoading)
+                        SectionHeader(title: "Market Pulse", hindiTitle: "बाजार की नब्ज")
+                        DashboardLoadingCard(label: "dashboard data", isLoading: viewModel.dashboardLoading)
                     }
                 }
                 .id(HomeSectionID.marketPulse.rawValue)
@@ -2985,11 +2973,11 @@ extension HomeScreen {
         case .momentum:
 // ── Section 9: Momentum ───────────────────────────
                 VStack(spacing: Theme.Spacing.standard) {
-                        SectionHeader(title: "Momentum Scan", hindiTitle: "गति विश्लेषण")
                     if let momentum = viewModel.dashboard?.momentum {
                         MomentumDashCard(momentum: momentum)
                     } else {
-                        DashboardLoadingCard(label: "Momentum Scan", isLoading: viewModel.dashboardLoading)
+                        SectionHeader(title: "Momentum Scan", hindiTitle: "गति विश्लेषण")
+                        DashboardLoadingCard(label: "signal data", isLoading: viewModel.dashboardLoading)
                     }
                 }
                 .id(HomeSectionID.momentum.rawValue)
@@ -2997,10 +2985,10 @@ extension HomeScreen {
         case .macroAlt:
 // ── Section 10: Macro & Alternatives ─────────────
                 VStack(spacing: Theme.Spacing.standard) {
-                        SectionHeader(title: "Macro & Alternatives", hindiTitle: "वृहद अर्थव्यवस्था")
                     if let macro = viewModel.dashboard?.macro {
                         MacroDashCard(macro: macro)
                     } else {
+                        SectionHeader(title: "Macro & Alternatives", hindiTitle: "वृहद अर्थव्यवस्था")
                         DashboardLoadingCard(label: "Macro Data", isLoading: viewModel.dashboardLoading)
                     }
                 }
@@ -3009,11 +2997,11 @@ extension HomeScreen {
         case .institutional:
 // ── Section 11: Institutional Flow ───────────────
                 VStack(spacing: Theme.Spacing.standard) {
-                        SectionHeader(title: "Institutional Allocation", hindiTitle: "संस्थागत प्रवाह")
                     if let inst = viewModel.dashboard?.institutional {
                         InstitutionalDashCard(flow: inst)
                     } else {
-                        DashboardLoadingCard(label: "Institutional Flow", isLoading: viewModel.dashboardLoading)
+                        SectionHeader(title: "Institutional Allocation", hindiTitle: "संस्थागत प्रवाह")
+                        DashboardLoadingCard(label: "flow data", isLoading: viewModel.dashboardLoading)
                     }
                 }
                 .id(HomeSectionID.institutional.rawValue)

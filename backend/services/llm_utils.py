@@ -18,6 +18,7 @@ import openai as _openai_lib
 
 # Regex to strip unparsed DeepSeek thinking tags from output (fix 2.27)
 _THINK_TAG_RE = re.compile(r"</?think(?:ing)?>", re.IGNORECASE)
+_DEVANAGARI_RE = re.compile(r"[\u0900-\u097F]")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # Model constants — canonical definitions
@@ -26,6 +27,11 @@ _THINK_TAG_RE = re.compile(r"</?think(?:ing)?>", re.IGNORECASE)
 HAIKU_MODEL = "claude-haiku-4-5-20251001"  # Tier 2 — synthesis agents
 SONNET_MODEL = "claude-sonnet-4-6"          # Tier 3 — final reformatter only (3.5 alias retired/404)
 DEEPSEEK_MODEL = "deepseek-chat"            # Tier 1 — bulk agent tasks
+
+
+def contains_devanagari(text: object) -> bool:
+    """Return True when AI text contains Hindi/Devanagari script."""
+    return isinstance(text, str) and bool(_DEVANAGARI_RE.search(text))
 
 
 # ═════════════════════════════════════════════════════════════════════════════

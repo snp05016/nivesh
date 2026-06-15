@@ -45,6 +45,7 @@ import os
 
 from services.staleness import compute_staleness
 from services.piotroski import compute_piotroski
+from services.llm_utils import contains_devanagari
 
 
 def _adjust_for_splits(ticker: str, buy_price: float, quantity: float, buy_date: str) -> tuple:
@@ -664,7 +665,8 @@ def morning_summary_endpoint(user_id: int, authorization: str = Header(None)):
     # Redis-backed shared cache (works across all 12 workers)
     cached = _dcache_get("morning_brief", str(user_id))
     if cached and isinstance(cached, dict):
-        return cached
+        if not contains_devanagari(cached.get("summary", "")):
+            return cached
 
     generated_at = datetime.utcnow().strftime("%H:%M")
 
@@ -804,6 +806,11 @@ mood must be exactly: "positive", "cautious", or "negative"
             parsed = fallback
 
         raw_summary = parsed.get("summary", fallback["summary"])
+        if contains_devanagari(raw_summary):
+            print("[MORNING] Rejected Hindi morning brief output; using English fallback.")
+            parsed = fallback
+            raw_summary = fallback["summary"]
+
         # Normalize inline bullets ("• A • B • C") to newline-separated ("• A\n• B\n• C")
         if raw_summary and "\n" not in raw_summary and raw_summary.count("•") > 1:
             parts = [p.strip() for p in raw_summary.split("•") if p.strip()]
