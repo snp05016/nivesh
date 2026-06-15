@@ -16,8 +16,8 @@ struct NewsTabView: View {
                 if vm.overviewLoading {
                     SPSkeletonBlock(rows: 5)
                 } else if let news = vm.quickInfo?.recentNews, !news.isEmpty {
-                    ForEach(news) { item in
-                        NewsCardView(item: item)
+                    ForEach(news) { article in
+                        SPNewsCardView(article: article)
                     }
                 } else {
                     SPEmptyStateView(message: "No recent news for this stock")
@@ -30,13 +30,13 @@ struct NewsTabView: View {
     }
 }
 
-struct NewsCardView: View {
-    let item: NewsItem
+struct SPNewsCardView: View {
+    let article: NewsItem
 
     var body: some View {
-        Link(destination: URL(string: item.link) ?? URL(string: "https://www.google.com")!) {
+        Link(destination: URL(string: article.link) ?? URL(string: "https://www.google.com")!) {
             HStack(alignment: .top, spacing: Theme.Spacing.card) {
-                if let urlStr = item.imageUrl, let url = URL(string: urlStr) {
+                if let urlStr = article.imageUrl, let url = URL(string: urlStr) {
                     AsyncImage(url: url) { image in
                         image.resizable().aspectRatio(contentMode: .fill)
                     } placeholder: {
@@ -47,17 +47,17 @@ struct NewsCardView: View {
                 }
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                    Text(item.title)
+                    Text(article.title)
                         .font(Theme.engravedSerif(size: 14, weight: .semibold, relativeTo: .subheadline))
                         .foregroundStyle(Theme.inkPrimary)
                         .multilineTextAlignment(.leading)
                         .lineLimit(3)
                     HStack(spacing: Theme.Spacing.tight) {
-                        Text(item.publisher.uppercased())
+                        Text(article.publisher.uppercased())
                             .font(Theme.officialStampFont(size: 8))
                             .tracking(1.0)
                             .foregroundStyle(Theme.securityGold)
-                        if let t = item.publishTime {
+                        if let t = article.publishTime {
                             Text("•").foregroundStyle(Theme.inkTertiary)
                             Text(Date(timeIntervalSince1970: TimeInterval(t)), style: .relative)
                                 .font(Theme.officialStampFont(size: 8))

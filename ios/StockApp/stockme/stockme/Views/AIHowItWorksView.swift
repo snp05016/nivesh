@@ -4,24 +4,24 @@ struct AIHowItWorksView: View {
     @State private var expandedStep: Int? = nil
 
     private let steps: [(icon: String, title: String, short: String, detail: String)] = [
-        ("antenna.radiowaves.left.and.right", "Harvest Data",
+        ("antenna.radiowaves.left.and.right", "Data Harvesting",
          "Gathers real-time data about this stock",
-         "Nivesh initiates a highly concurrent data harvesting process to fetch the latest market state. It simultaneously queries NSE servers for live price ticks, pulls deep historical trends, scrapes financial statements (balance sheet, cash flow, income statement), and extracts promoter pledging and shareholding patterns. Concurrently, it fetches the last 7 days of global and local news, scoring each headline through a FinBERT sentiment model to assess market tailwinds or headwinds. This rich, multi-dimensional dataset forms the foundational ground-truth for the AI agents."),
+         "Nivesh initiates a highly concurrent data harvesting process to fetch the latest market state. It simultaneously queries NSE servers for live price ticks, pulls deep historical trends, scrapes financial statements, and extracts promoter pledging patterns. Concurrently, it fetches the last 7 days of global news, scoring each headline through a FinBERT sentiment model."),
         ("bolt.fill", "Smart Cache Gate",
          "Computes staleness to save time",
-         "Before engaging the heavy AI pipeline, the Smart Cache Gate computes a Staleness Score (0–100) based on three factors: Time Elapsed since last analysis, Price Volatility, and News Sentiment Shifts. If the score is below 20 (Fresh), Nivesh instantly serves the cached report (under 100ms). If it's between 20-44 (Aging), it might trigger a fast update via a smaller model. Only if the score exceeds 45, or if major corporate actions like stock splits or special dividends are detected, does the full deep-scan pipeline run."),
-        ("brain.head.profile", "Analyst Committee",
+         "Before engaging the heavy pipeline, the Smart Cache Gate computes a Staleness Score (0–100) based on Time Elapsed, Price Volatility, and News Sentiment Shifts. If the score is below 20, Nivesh instantly serves the cached report. If it exceeds 45, the deep-scan pipeline runs."),
+        ("function", "The Quantitative Engine",
+         "Deterministic mathematical modeling",
+         "Before any AI reads text, Nivesh's Machine Learning engine crunches the numbers. It computes the broader market volatility regime, mathematically bounds the target prices using historical standard deviation, and isolates exactly which financial features (like P/E or RSI) are driving the stock. This strict statistical layer entirely eliminates AI hallucination."),
+        ("brain.head.profile", "The Analyst Committee",
          "Parallel execution of 5 specialized agents",
-         "Nivesh deploys a LangGraph-based multi-agent framework. Five specialized AI agents analyze the data concurrently: The Market Analyst examines technical charts, RSI, MACD, and price action; The Sentiment Analyst gauges public mood and FinBERT scores; The News Analyst reads recent events and earnings calls; The Fundamentals Analyst breaks down P/E, ROE, debt, and computes the Piotroski F-Score; The Governance Analyst checks for promoter pledging risks, insider trading, and SEBI ASM/GSM lists. Each agent independently drafts a specialized report."),
+         "Once the mathematical probability is locked in, Nivesh deploys a LangGraph-based AI framework. Five specialized agents—Market, Sentiment, News, Fundamentals, and Governance—concurrently read through earnings calls, news, and SEBI filings to provide human-readable context explaining the 'why' behind the Quantitative Engine's math."),
         ("arrow.triangle.branch", "Dialectical Debate (Bull vs Bear)",
          "Adversarial testing of the investment thesis",
-         "Nivesh employs Dialectical Asymmetry to protect your capital. A Bullish Researcher and a Bearish Researcher engage in a rigorous debate using the 5 committee reports as evidence. The Bear is deliberately given a 1.5× weight advantage and a longer, more critical prompt. The burden of proof strictly lies with the Bull. This adversarial setup ensures that any BUY signal has survived intense scrutiny regarding valuation risks, governance flags, and market headwinds."),
-        ("person.text.rectangle.fill", "Portfolio Manager",
-         "Synthesizes debate into a final verdict",
-         "A senior AI Portfolio Manager agent reviews the entire debate transcript and all individual analyst reports. It evaluates the Bear's critiques against the Bull's defenses. Based on this synthesis, it assigns a final categorical signal: BUY, CAUTIOUSLY BULLISH, HOLD, CAUTIOUSLY BEARISH, or SELL. It also generates a confidence percentage (0-100%), sets precise 3-month, 12-month, and 36-month target prices, and drafts the definitive Bull Case, Bear Case, and Key Risks."),
-        ("checkmark.seal.fill", "Normalization & Formatting",
-         "Ensures architectural compliance",
-         "The raw AI output is strictly validated against the Nivesh Architectural Ordinance. The payload passes through a JSON extraction pipeline to guarantee 20+ required fields exist with correct data types. A specialized filter completely bans Western numbering (Millions/Billions) and enforces Indian formats (Lakhs/Crores). Finally, all emojis are stripped for a professional Banknote Aesthetic, ensuring the report is structured, safe, and easily readable on your device."),
+         "A Bullish Researcher and a Bearish Researcher engage in a rigorous debate. The Bear is deliberately given a 1.5× weight advantage and aggressively weaponizes any tail-risks flagged by the Quantitative Engine (like auditor resignations or excessive pledging). The burden of proof strictly lies with the Bull."),
+        ("person.text.rectangle.fill", "The Portfolio Manager",
+         "Final synthesis & Calibration",
+         "A senior AI Portfolio Manager reviews the math and the debate transcript. It synthesizes the final report and outputs a 'Mathematically Calibrated Confidence' score. Unlike standard AI apps that simply guess, this confidence percentage is rigorously calibrated using Venn-Abers probabilities against historical backtests.")
     ]
 
     private let factors: [(category: String, items: [String])] = [
@@ -30,6 +30,13 @@ struct AIHowItWorksView: View {
         ("Ownership & Governance", ["Promoter holding & pledging", "FII & DII activity", "Insider transactions", "SEBI actions & ASM/GSM status", "Related-party transactions"]),
         ("Market Sentiment", ["News sentiment analysis", "Social media & retail mood", "Earnings call tone", "Brokerage upgrades/downgrades"]),
         ("Macro Economy", ["Crude oil prices", "USD/INR exchange rate", "RBI repo rate", "India VIX (fear index)", "FII/DII flow trends"]),
+    ]
+
+    private let mathFormulas: [(title: String, formula: String, explanation: String)] = [
+        ("Regime Volatility (HMM Proxy)", "σ_annual = StdDev(R_30d) × √252", "Calculates the 30-day trailing volatility. If σ > 22%, the backend triggers a 'Crisis Regime', automatically slashing fundamental confidence multipliers and pivoting to momentum features."),
+        ("Conformal Price Bounds", "P_target = P_current × (1 ± (σ_daily × √63 × 1.645))", "Computes the 3-month (63 trading days) target price boundaries. It uses the 90% confidence Z-score (1.645) to guarantee targets are strictly bounded by historical variance, destroying LLM hallucination."),
+        ("SHAP Base Score", "S_base = Σ (w_i × f_i) / n", "Aggregates structural features (Piotroski F-Score, RSI, Debt/Equity). Each feature f_i is mapped to a strictly bounded [-1.0, 1.0] modifier depending on historical correlation w_i."),
+        ("Venn-Abers Calibration", "C_final = max(0.05, min(0.95, (S_base × R_mult) - T_penalty))", "The final calibrated probability. It takes the base SHAP score, multiplies it by the Regime Multiplier (R_mult), and subtracts absolute Tail Risk Penalties (T_penalty) like excessive promoter pledging.")
     ]
 
     var body: some View {
@@ -61,6 +68,11 @@ struct AIHowItWorksView: View {
                     GuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
+                    mathematicsSection
+
+                    GuillocheDivider()
+                        .padding(.horizontal, Theme.screenPadding)
+
                     whatItAnalysesSection
 
                     Spacer(minLength: 80)
@@ -76,11 +88,11 @@ struct AIHowItWorksView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-            Text("Nivesh uses a committee of 8 AI agents to analyse each stock through a dialectical debate process.")
+            Text("Nivesh uses a hybrid Quantitative Machine Learning framework combined with 8 AI agents to analyse each stock.")
                 .font(Theme.engravedSerif(size: 15, weight: .regular, relativeTo: .body))
                 .foregroundStyle(Theme.inkPrimary)
                 .lineSpacing(5)
-            Text("The Bear researcher is weighted 1.5× to be conservative — earning money is harder than losing it.")
+            Text("The math engine calculates the probabilities, and the AI committee debates the qualitative risks. The Bear researcher is weighted 1.5× to be conservative.")
                 .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
                 .foregroundStyle(Theme.inkSecondary)
                 .lineSpacing(4)
@@ -159,15 +171,15 @@ struct AIHowItWorksView: View {
                 Text("Standard")
                     .font(Theme.serialNumberFont(size: 13, relativeTo: .caption))
                     .foregroundStyle(Theme.bullGreen)
-                Text("30–60 seconds")
+                Text("1–3 seconds")
                     .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .caption))
                     .foregroundStyle(Theme.inkSecondary)
                 Text("·")
                     .foregroundStyle(Theme.inkTertiary)
-                Text("Extreme")
+                Text("Deep Scan")
                     .font(Theme.serialNumberFont(size: 13, relativeTo: .caption))
                     .foregroundStyle(Theme.bearRed)
-                Text("3–5 minutes")
+                Text("60–120 seconds")
                     .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .caption))
                     .foregroundStyle(Theme.inkSecondary)
             }
@@ -201,6 +213,40 @@ struct AIHowItWorksView: View {
                 }
                 .padding(.horizontal, Theme.screenPadding)
             }
+        }
+    }
+
+    private var mathematicsSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            Text("THE BACKEND MATHEMATICS")
+                .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+                .tracking(1.2)
+                .foregroundStyle(Theme.inkTertiary)
+                .padding(.horizontal, Theme.screenPadding)
+
+            VStack(spacing: Theme.Spacing.card) {
+                ForEach(mathFormulas, id: \.title) { math in
+                    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                        Text(math.title.uppercased())
+                            .font(Theme.microLabel(size: 8))
+                            .foregroundStyle(Theme.securityGold)
+
+                        Text(math.formula)
+                            .font(Theme.serialNumberFont(size: 13, relativeTo: .body))
+                            .foregroundStyle(Theme.bullGreen)
+                            .padding(Theme.Spacing.small)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.bullGreen.opacity(0.08))
+                            .cornerRadius(Theme.CornerRadius.small)
+
+                        Text(math.explanation)
+                            .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .lineSpacing(4)
+                    }
+                }
+            }
+            .padding(.horizontal, Theme.screenPadding)
         }
     }
 }

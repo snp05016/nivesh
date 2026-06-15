@@ -1152,7 +1152,7 @@ struct NewsReaderView: View {
 
 // MARK: - Diagnostic Error Helpers
 
-private struct TraceRow: View {
+struct TraceRow: View {
     let label: String
     let value: String
 
@@ -1171,7 +1171,7 @@ private struct TraceRow: View {
     }
 }
 
-private struct CollapsibleSection<Content: View>: View {
+struct CollapsibleSection<Content: View>: View {
     let header: String
     @ViewBuilder let content: () -> Content
     @State private var expanded = false
