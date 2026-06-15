@@ -132,7 +132,9 @@ User Message: {user_message}
             try:
                 res = q.get(timeout=60)
                 p.join()
-                
+                q.close()
+                q.join_thread()
+
                 if res["status"] == "ok":
                     analysis_data = res["result"]
                     signal = analysis_data.get("signal", "UNKNOWN")
@@ -143,6 +145,9 @@ User Message: {user_message}
                     reply = f"I encountered an error analyzing {ticker}: {res.get('error')}"
             except Exception as e:
                 p.terminate()
+                p.join(timeout=2)
+                q.close()
+                q.join_thread()
                 reply = f"Analysis for {ticker} timed out or failed."
                 
     elif "NAVIGATION" in intent:

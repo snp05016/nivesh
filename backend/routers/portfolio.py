@@ -128,7 +128,7 @@ _INDICES_TICKERS = [
     ("^BSESN",     "Sensex"),
     ("^NSEBANK",   "Nifty Bank"),
     ("^CNXIT",     "Nifty IT"),
-    ("^CNXMIDCAP", "Nifty Midcap 100"),
+    ("^NSEMDCP50",  "Nifty Midcap 100"),
     ("USDINR=X",   "USD/INR"),
 ]
 
