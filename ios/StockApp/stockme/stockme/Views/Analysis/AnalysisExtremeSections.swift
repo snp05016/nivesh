@@ -187,31 +187,32 @@ struct AnalysisExtremeSections: View {
     }
 
     private func factorScoreGrid(_ fs: FactorScores) -> some View {
-        let items: [(String, Int?, Color)] = [
-            ("Value", fs.value, .blue), ("Quality", fs.quality, .green),
-            ("Momentum", fs.momentum, .orange), ("Growth", fs.growth, .purple),
-            ("Low Vol", fs.lowVolatility, .teal)
+        let items: [(String, Int?)] = [
+            ("Value", fs.value), ("Quality", fs.quality),
+            ("Momentum", fs.momentum), ("Growth", fs.growth),
+            ("Low Vol", fs.lowVolatility)
         ]
+        // §2.5: no GeometryReader inside HStack. Compute bar width directly.
+        // Screen - 2×screenPadding - labelWidth(80) - valueWidth(32) - 2×defaultSpacing(8)
+        let barWidth = UIScreen.main.bounds.width - 2 * Theme.screenPadding - 80 - 32 - 16
         return VStack(spacing: Theme.Spacing.standard) {
-            ForEach(items, id: \.0) { label, score, _ in
+            ForEach(items, id: \.0) { label, score in
                 HStack {
                     Text(label)
                         .font(.caption).foregroundStyle(Theme.inkSecondary)
                         .frame(width: 80, alignment: .leading)
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Theme.inkTertiary.opacity(0.12))
+                            .frame(width: barWidth, height: 8)
+                        if let s = score {
                             RoundedRectangle(cornerRadius: 2)
-                                .fill(Theme.inkTertiary.opacity(0.12))
-                                .frame(height: 8)
-                            if let s = score {
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(Theme.securityGold)
-                                    .frame(width: geo.size.width * CGFloat(s) / 100.0, height: 8)
-                                    .animation(.easeOut(duration: 0.5), value: s)
-                            }
+                                .fill(Theme.securityGold)
+                                .frame(width: barWidth * CGFloat(s) / 100.0, height: 8)
+                                .animation(.easeOut(duration: 0.5), value: s)
                         }
                     }
-                    .frame(height: 8)
+                    .frame(width: barWidth, height: 8)
                     Text(score.map { "\($0)" } ?? "-")
                         .font(Theme.serialNumberFont(size: 12))
                         .foregroundStyle(Theme.inkPrimary)

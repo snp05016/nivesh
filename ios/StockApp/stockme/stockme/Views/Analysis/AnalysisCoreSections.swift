@@ -318,20 +318,26 @@ struct AnalysisCoreSections: View {
             SectionHeaderView(title: "FUNDAMENTALS")
 
             if let info = viewModel.quickInfo {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())],
-                          spacing: Theme.Spacing.standard) {
-                    AnalysisMetricCell(label: "P/E", term: "P/E Ratio",
-                                       value: info.peRatio.map { String(format: "%.1f", $0) } ?? "\u{2014}")
-                    AnalysisMetricCell(label: "DEBT/EQ", term: "Debt/Equity",
-                                       value: info.debtToEquity.map { String(format: "%.2f", $0) } ?? "\u{2014}")
-                    AnalysisMetricCell(label: "PROMOTER", term: "Promoter Pledging",
-                                       value: info.promoterHoldingPct.map { String(format: "%.1f%%", $0) } ?? "\u{2014}")
-                    AnalysisMetricCell(label: "52W HIGH", term: "52W High",
-                                       value: info.week52High.map { IndianFormatter.price($0) } ?? "\u{2014}")
-                    AnalysisMetricCell(label: "52W LOW", term: "52W Low",
-                                       value: info.week52Low.map { IndianFormatter.price($0) } ?? "\u{2014}")
-                    AnalysisMetricCell(label: "VOLUME", term: "Bulk Deal",
-                                       value: info.volume.map { "\($0)" } ?? "\u{2014}")
+                // Eager 3-col layout (2 rows). A LazyVGrid here nests a vertical-lazy
+                // container inside the parent LazyVStack/ScrollView (same-axis), which
+                // causes main-thread layout thrash and a scroll hang at this section.
+                VStack(spacing: Theme.Spacing.standard) {
+                    HStack(spacing: Theme.Spacing.standard) {
+                        AnalysisMetricCell(label: "P/E", term: "P/E Ratio",
+                                           value: info.peRatio.map { String(format: "%.1f", $0) } ?? "\u{2014}")
+                        AnalysisMetricCell(label: "DEBT/EQ", term: "Debt/Equity",
+                                           value: info.debtToEquity.map { String(format: "%.2f", $0) } ?? "\u{2014}")
+                        AnalysisMetricCell(label: "PROMOTER", term: "Promoter Pledging",
+                                           value: info.promoterHoldingPct.map { String(format: "%.1f%%", $0) } ?? "\u{2014}")
+                    }
+                    HStack(spacing: Theme.Spacing.standard) {
+                        AnalysisMetricCell(label: "52W HIGH", term: "52W High",
+                                           value: info.week52High.map { IndianFormatter.price($0) } ?? "\u{2014}")
+                        AnalysisMetricCell(label: "52W LOW", term: "52W Low",
+                                           value: info.week52Low.map { IndianFormatter.price($0) } ?? "\u{2014}")
+                        AnalysisMetricCell(label: "VOLUME", term: "Bulk Deal",
+                                           value: info.volume.map { "\($0)" } ?? "\u{2014}")
+                    }
                 }
             }
 
@@ -363,22 +369,7 @@ struct AnalysisCoreSections: View {
     private var newsSectionView: some View {
         Group {
             if let news = analysis.recentNews, !news.isEmpty {
-                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                    GuillocheDivider()
-                    HStack {
-                        Text("RECENT NEWS")
-                            .font(Theme.officialStampFont(size: 9))
-                            .tracking(1.5)
-                            .foregroundStyle(Theme.inkSecondary)
-                        Spacer()
-                        Text("\(news.count) articles")
-                            .font(Theme.microLabel(size: 9))
-                            .foregroundStyle(Theme.inkTertiary)
-                    }
-                    ForEach(news.prefix(5)) { item in
-                        NewsItemCard(item: item)
-                    }
-                }
+                NewsSectionView(news: news)
             }
         }
     }

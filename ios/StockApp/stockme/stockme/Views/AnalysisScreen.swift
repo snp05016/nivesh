@@ -1125,12 +1125,12 @@ private struct PerforationBar: View {
 
 struct NewsItemCard: View {
     let item: NewsItem
-    @State private var showingReader = false
+    let onTap: () -> Void
 
     var body: some View {
         Button {
             HapticManager.impact(.light)
-            showingReader = true
+            onTap()
         } label: {
             HStack(spacing: Theme.Spacing.card) {
                 if let urlStr = item.imageUrl, let url = URL(string: urlStr) {
@@ -1164,7 +1164,33 @@ struct NewsItemCard: View {
             .banknoteCard()
         }
         .buttonStyle(.plain)
-        .fullScreenCover(isPresented: $showingReader) {
+    }
+}
+
+// MARK: - News Section (extracted per AGENTS.md §6.6 — owns single hoisted cover)
+
+struct NewsSectionView: View {
+    let news: [NewsItem]
+    @State private var selectedNews: NewsItem?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            GuillocheDivider()
+            HStack {
+                Text("RECENT NEWS")
+                    .font(Theme.officialStampFont(size: 9))
+                    .tracking(1.5)
+                    .foregroundStyle(Theme.inkSecondary)
+                Spacer()
+                Text("\(news.count) articles")
+                    .font(Theme.microLabel(size: 9))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+            ForEach(news.prefix(5)) { item in
+                NewsItemCard(item: item) { selectedNews = item }
+            }
+        }
+        .fullScreenCover(item: $selectedNews) { item in
             NewsReaderView(item: item)
         }
     }
@@ -1494,18 +1520,17 @@ struct NewsReaderView: View {
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
-        GeometryReader { geo in
             NavigationStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Theme.Spacing.screen) {
-                        // Hero Image
+                        // Hero Image (proportional height — no GeometryReader per AGENTS.md §2.5/§6.6)
                         if let urlStr = item.imageUrl, let url = URL(string: urlStr) {
                             AsyncImage(url: url) { image in
                                 image.resizable().aspectRatio(contentMode: .fill)
                             } placeholder: {
                                 Rectangle().fill(Theme.inkSecondary.opacity(0.1))
                             }
-                            .frame(height: geo.size.height * 0.28)
+                            .frame(height: UIScreen.main.bounds.height * 0.28)
                             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
                             .padding(.horizontal, Theme.screenPadding)
                         }
@@ -1589,7 +1614,6 @@ struct NewsReaderView: View {
                     .accessibilityLabel("Close")
                 }
             }
-        }
         }
     }
 }
