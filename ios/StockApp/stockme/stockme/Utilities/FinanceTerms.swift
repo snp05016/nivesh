@@ -494,6 +494,174 @@ final class FinanceTerms {
             + "your overall performance independent of individual stock movements.",
             .portfolio, ["XIRR"])
 
+        // ── Quant, Dashboard & Advanced Market Terms ──────────────────
+        add("Calibrated Confidence",
+            "A confidence score adjusted by statistical calibration so the percentage reflects "
+            + "how often similar past setups actually worked.",
+            "A raw BUY probability of 78% may become 66% calibrated confidence if similar "
+            + "high-volatility setups historically failed more often than expected.",
+            .aiAnalysis, ["Confidence Score", "Market Regime", "Conformal Bounds"])
+
+        add("Quantitative Engine",
+            "The math-first layer that scores price action, fundamentals, volatility, and "
+            + "market regime before AI agents write the final explanation.",
+            "If the Quantitative Engine flags weak base probability and high tail risk, the "
+            + "AI report should stay cautious even when news sentiment looks positive.",
+            .aiAnalysis, ["Base Probability", "Tail Risk", "Calibrated Confidence"])
+
+        add("Base Probability",
+            "The starting statistical probability for a signal before macro regime, risk, "
+            + "and model-calibration adjustments are applied.",
+            "A stock can start with 61% base probability, then fall to 54% after weak market "
+            + "regime and high volatility penalties.",
+            .aiAnalysis, ["Calibrated Confidence", "Regime Multiplier"])
+
+        add("Conformal Bounds",
+            "A statistically derived range around a forecast that shows where the target "
+            + "price is expected to land with a defined confidence level.",
+            "A 90% conformal range of ₹920 to ₹1,060 means past model errors suggest the "
+            + "true outcome often stays inside that band.",
+            .aiAnalysis, ["Target Price", "Calibrated Confidence"])
+
+        add("SHAP Drivers",
+            "Feature-attribution signals that explain which inputs pushed a model's score "
+            + "up or down.",
+            "Positive SHAP drivers may include improving ROCE and rising delivery volume; "
+            + "negative drivers may include expensive P/E and weak breadth.",
+            .aiAnalysis, ["Quantitative Engine", "ROCE", "Delivery Percentage"])
+
+        add("Market Regime",
+            "The current broad-market condition, such as risk-on, risk-off, trending, or "
+            + "high-volatility. It changes how much confidence a signal deserves.",
+            "A bullish stock setup in a risk-off market regime gets lower conviction than "
+            + "the same setup during broad index strength.",
+            .risk, ["VIX", "Market Pulse", "Regime Multiplier"])
+
+        add("Tail Risk",
+            "The risk of an unusually large adverse move that normal volatility metrics may "
+            + "understate.",
+            "A stock with stable daily moves can still have high tail risk if promoter "
+            + "pledging or event risk could trigger a sharp gap down.",
+            .risk, ["VIX", "Promoter Pledging", "Conformal Bounds"])
+
+        add("Minskyan Risk",
+            "A fragility warning that markets may have become overconfident after a long "
+            + "stable period, making leverage and crowded trades dangerous.",
+            "Low volatility plus rising leverage can create Minskyan risk: calm conditions "
+            + "look safe until one shock causes forced selling.",
+            .risk, ["Tail Risk", "VIX"])
+
+        add("Regime Multiplier",
+            "A market-condition adjustment that raises or lowers confidence depending on "
+            + "whether the broader market favours risk-taking.",
+            "In a risk-off regime, a BUY signal may get a 0.85× multiplier; in a strong "
+            + "trend regime, it may receive a positive adjustment.",
+            .aiAnalysis, ["Market Regime", "Calibrated Confidence"])
+
+        add("PCR",
+            "Short for Put/Call Ratio — put option open interest divided by call option "
+            + "open interest.",
+            "A NIFTY PCR near 0.7 can show aggressive call writing or bullish positioning, "
+            + "while extreme readings need confirmation from price action.",
+            .marketMechanics, ["Put/Call Ratio", "Open Interest"])
+
+        add("GEX",
+            "Gamma exposure — an options-market measure of how dealer hedging can amplify "
+            + "or dampen index moves near large option strikes.",
+            "High positive GEX around 23,500 can pin NIFTY near that level; negative GEX "
+            + "can make intraday moves sharper.",
+            .marketMechanics, ["Open Interest", "PCR"])
+
+        add("Delivery Percentage",
+            "The share of traded volume that was taken into delivery instead of squared "
+            + "off intraday. Higher delivery can indicate stronger accumulation.",
+            "A price rise with delivery percentage above 55% is stronger than the same "
+            + "move driven mostly by intraday trades.",
+            .marketMechanics, ["Volume", "Bulk Deal"])
+
+        add("Advance/Decline Breadth",
+            "The number of advancing stocks compared with declining stocks. It shows "
+            + "whether index moves are broad or narrow.",
+            "If NIFTY is up but only 35% of stocks are advancing, breadth is weak and the "
+            + "rally may be fragile.",
+            .marketMechanics, ["Market Pulse", "Market Regime"])
+
+        add("Market Pulse",
+            "A quick read of current market internals such as index direction, breadth, "
+            + "volatility, and sector participation.",
+            "A positive Market Pulse combines rising indices, broad advances, lower VIX, "
+            + "and leadership from multiple sectors.",
+            .marketMechanics, ["Advance/Decline Breadth", "VIX", "Market Regime"])
+
+        add("Momentum Scan",
+            "A screen that looks for stocks or sectors with strong recent price movement, "
+            + "volume confirmation, and trend quality.",
+            "A Momentum Scan may surface stocks above their 50-DMA with rising volume and "
+            + "positive relative strength versus NIFTY.",
+            .charts, ["SMA", "Volume", "Nifty Benchmark"])
+
+        add("Candlestick",
+            "A chart mark showing open, high, low, and close for a period. The body shows "
+            + "open-to-close movement; the wick shows the full traded range.",
+            "A long lower wick after a sell-off can show buyers stepped in aggressively "
+            + "near support.",
+            .charts, ["Support", "Resistance", "Volume"])
+
+        add("Period Return",
+            "The percentage change between the first and last price in the selected chart "
+            + "period.",
+            "If a stock rises from ₹900 to ₹990 over the selected 3-month period, its "
+            + "period return is +10%.",
+            .charts, ["CAGR", "Absolute Return"])
+
+        add("Nifty Benchmark",
+            "A normalized NIFTY comparison line used to judge whether a stock is beating "
+            + "or lagging the broader market.",
+            "If the stock line rises faster than the NIFTY benchmark line, the stock is "
+            + "showing relative strength.",
+            .charts, ["Market Regime", "Period Return"])
+
+        add("Golden Cross",
+            "A bullish moving-average pattern where a shorter average, usually 50-DMA, "
+            + "crosses above a longer average, usually 200-DMA.",
+            "A 50-DMA crossing above the 200-DMA after months of base-building can confirm "
+            + "a stronger medium-term trend.",
+            .charts, ["50-DMA", "200-DMA", "SMA"])
+
+        add("Death Cross",
+            "A bearish moving-average pattern where a shorter average, usually 50-DMA, "
+            + "crosses below a longer average, usually 200-DMA.",
+            "A death cross after weak earnings warns that a downtrend may be broadening.",
+            .charts, ["50-DMA", "200-DMA", "SMA"])
+
+        add("RRG Quadrant",
+            "Relative Rotation Graph quadrant showing whether a sector is leading, "
+            + "weakening, lagging, or improving versus a benchmark.",
+            "A sector moving from Improving to Leading on an RRG often signals strengthening "
+            + "relative momentum.",
+            .charts, ["Nifty Benchmark", "Momentum Scan"])
+
+        add("PAT Margin",
+            "Profit After Tax as a percentage of revenue. It shows how much final profit "
+            + "the company keeps from each rupee of sales.",
+            "PAT margin of 14% means the company keeps ₹14 as final profit for every ₹100 "
+            + "of revenue after all costs and taxes.",
+            .fundamentals, ["PAT", "Revenue", "Net Profit Margin"])
+
+        add("Macro & Alternatives",
+            "A dashboard view that combines macro indicators with non-equity signals such "
+            + "as oil, currency, gold, bonds, and volatility.",
+            "If USD/INR weakens, Brent rises, and bond yields climb together, Macro & "
+            + "Alternatives may warn of pressure on import-heavy sectors.",
+            .macro, ["Brent Crude", "USD/INR", "VIX"])
+
+        add("Institutional Allocation",
+            "How FIIs, DIIs, mutual funds, and other large investors are positioned across "
+            + "stocks, sectors, or asset classes.",
+            "Rising institutional allocation to banks while reducing IT exposure can signal "
+            + "where professional capital expects better risk-adjusted returns.",
+            .ownership, ["FII", "DII", "Institutional Ownership"])
+
         self.dict = d
     }
 

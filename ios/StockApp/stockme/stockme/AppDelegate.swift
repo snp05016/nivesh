@@ -50,4 +50,5 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
 extension Notification.Name {
     static let openStockAnalysis = Notification.Name("openStockAnalysis")
+    static let watchlistUpdated = Notification.Name("watchlistUpdated")
 }

@@ -60,16 +60,16 @@ struct InteractivePriceChartView: View {
                     Spacer()
                     VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                         HStack(spacing: Theme.Spacing.small) {
-                            Text("H").font(.caption2).foregroundStyle(Theme.inkTertiary)
+                            Text("H").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                             Text(IndianFormatter.price(p.high)).font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.bullGreen)
                         }
                         HStack(spacing: Theme.Spacing.small) {
-                            Text("L").font(.caption2).foregroundStyle(Theme.inkTertiary)
+                            Text("L").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                             Text(IndianFormatter.price(p.low)).font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.bearRed)
                         }
                     }
                     VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
-                        Text("VOL").font(.caption2).foregroundStyle(Theme.inkTertiary)
+                        Text("VOL").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                         Text(IndianFormatter.priceCompact(p.volume)).font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.inkSecondary)
                     }
                 } else if let last = filteredPrices.last {
@@ -84,7 +84,7 @@ struct InteractivePriceChartView: View {
                         let returnPct = (last.close - first.close) / first.close * 100
                         let up = returnPct >= 0
                         VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
-                            Text("PERIOD RETURN").font(.caption2).foregroundStyle(Theme.inkTertiary)
+                            Text("PERIOD RETURN").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                             Text(String(format: "%@%.2f%%", up ? "+" : "", returnPct))
                                 .font(Theme.serialNumberFont(size: 12))
                                 .foregroundStyle(up ? Theme.bullGreen : Theme.bearRed)
@@ -235,7 +235,7 @@ struct InteractivePriceChartView: View {
                 }
                 .chartYAxis(.hidden)
                 .chartXAxis(.hidden)
-                .frame(height: 32)
+                .frame(height: UIScreen.main.bounds.height * 0.045)
                 .padding(.horizontal, Theme.Spacing.small)
             }
 
@@ -254,6 +254,7 @@ struct InteractivePriceChartView: View {
                     .padding(.vertical, Theme.Spacing.small)
                     .background(selectedPeriod == period ? Theme.securityGold.opacity(0.12) : Color.clear)
                     .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
+                    .buttonStyle(EKPressStyle())
                 }
 
                 Spacer()
@@ -268,6 +269,7 @@ struct InteractivePriceChartView: View {
                         .foregroundStyle(Theme.inkSecondary)
                 }
                 .padding(.horizontal, Theme.Spacing.medium)
+                .buttonStyle(EKPressStyle())
 
                 // Nifty benchmark toggle
                 Button {
@@ -281,6 +283,7 @@ struct InteractivePriceChartView: View {
                         .strikethrough(!showNifty, color: Theme.inkTertiary)
                 }
                 .padding(.trailing, Theme.Spacing.medium)
+                .buttonStyle(EKPressStyle())
             }
             .padding(.horizontal, Theme.Spacing.card)
         }
@@ -1851,6 +1854,16 @@ struct StockProfileView: View {
                 .tracking(1.5)
                 .foregroundStyle(Theme.inkTertiary)
 
+            HStack(spacing: Theme.Spacing.standard) {
+                if let latest = quarters.last {
+                    compactChartValue(label: "LATEST", value: IndianFormatter.priceCompact(latest.revenue), color: Theme.securityGold)
+                }
+                if let first = quarters.first, let latest = quarters.last, first.revenue != 0 {
+                    let growth = ((latest.revenue - first.revenue) / abs(first.revenue)) * 100
+                    compactChartValue(label: "8Q CHANGE", value: String(format: "%+.1f%%", growth), color: growth >= 0 ? Theme.bullGreen : Theme.bearRed)
+                }
+            }
+
             Chart {
                 ForEach(quarters, id: \.label) { q in
                     BarMark(
@@ -1858,33 +1871,24 @@ struct StockProfileView: View {
                         y: .value("Revenue", q.revenue)
                     )
                     .foregroundStyle(Theme.securityGold.opacity(0.85))
-
-                    if q.revenue > 0 {
-                        PointMark(
-                            x: .value("Quarter", q.label),
-                            y: .value("Revenue", q.revenue)
-                        )
-                        .symbolSize(30)
-                        .foregroundStyle(Theme.securityGold)
-                        .annotation(position: .top) {
-                            Text(IndianFormatter.priceCompact(q.revenue))
-                                .font(Theme.microLabel(size: 8))
-                                .foregroundStyle(Theme.inkSecondary)
-                        }
-                    }
                 }
             }
             .chartXAxis {
-                AxisMarks { _ in
+                AxisMarks(values: .automatic(desiredCount: 4)) { _ in
                     AxisValueLabel()
+                        .font(Theme.microLabel(size: 8))
+                        .foregroundStyle(Theme.inkTertiary)
                 }
             }
             .chartYAxis {
                 AxisMarks { value in
-                    AxisValueLabel()
-                }
-                AxisMarks { _ in
-                    AxisValueLabel()
+                    AxisValueLabel {
+                        if let v = value.as(Double.self) {
+                            Text(IndianFormatter.priceCompact(v))
+                                .font(Theme.microLabel(size: 8))
+                                .foregroundStyle(Theme.inkTertiary)
+                        }
+                    }
                 }
             }
             .frame(height: UIScreen.main.bounds.height * 0.25)
@@ -1905,6 +1909,16 @@ struct StockProfileView: View {
                 .foregroundStyle(Theme.inkTertiary)
                 .explainableTerm("PAT")
 
+            HStack(spacing: Theme.Spacing.standard) {
+                if let latest = quarters.last {
+                    compactChartValue(label: "LATEST", value: IndianFormatter.priceCompact(latest.netProfit), color: latest.netProfit >= 0 ? Theme.bullGreen : Theme.bearRed)
+                }
+                if let first = quarters.first, let latest = quarters.last, first.netProfit != 0 {
+                    let growth = ((latest.netProfit - first.netProfit) / abs(first.netProfit)) * 100
+                    compactChartValue(label: "8Q CHANGE", value: String(format: "%+.1f%%", growth), color: growth >= 0 ? Theme.bullGreen : Theme.bearRed)
+                }
+            }
+
             Chart {
                 ForEach(quarters, id: \.label) { q in
                     BarMark(
@@ -1912,34 +1926,27 @@ struct StockProfileView: View {
                         y: .value("PAT", q.netProfit)
                     )
                     .foregroundStyle(by: .value("Sign", q.netProfit >= 0 ? "positive" : "negative"))
-
-                    PointMark(
-                        x: .value("Quarter", q.label),
-                        y: .value("PAT", q.netProfit)
-                    )
-                    .symbolSize(30)
-                    .foregroundStyle(q.netProfit >= 0 ? Theme.bullGreen : Theme.bearRed)
-                    .annotation(position: q.netProfit >= 0 ? .top : .bottom) {
-                        Text(IndianFormatter.priceCompact(q.netProfit))
-                            .font(Theme.microLabel(size: 8))
-                            .foregroundStyle(Theme.inkSecondary)
-                    }
                 }
                 RuleMark(y: .value("Zero", 0))
                     .foregroundStyle(Theme.inkTertiary.opacity(0.4))
             }
             .chartForegroundStyleScale(["positive": Theme.bullGreen, "negative": Theme.bearRed])
             .chartXAxis {
-                AxisMarks { _ in
+                AxisMarks(values: .automatic(desiredCount: 4)) { _ in
                     AxisValueLabel()
+                        .font(Theme.microLabel(size: 8))
+                        .foregroundStyle(Theme.inkTertiary)
                 }
             }
             .chartYAxis {
                 AxisMarks { value in
-                    AxisValueLabel()
-                }
-                AxisMarks { _ in
-                    AxisValueLabel()
+                    AxisValueLabel {
+                        if let v = value.as(Double.self) {
+                            Text(IndianFormatter.priceCompact(v))
+                                .font(Theme.microLabel(size: 8))
+                                .foregroundStyle(Theme.inkTertiary)
+                        }
+                    }
                 }
             }
             .frame(height: UIScreen.main.bounds.height * 0.25)
@@ -2010,6 +2017,10 @@ struct StockProfileView: View {
         let fii = qInfo.fiiHoldingPct ?? 0
         let dii = qInfo.diiHoldingPct ?? 0
         let publicHolding = max(0, 100 - promoter - fii - dii)
+        let legendColumns = [
+            GridItem(.flexible(), spacing: Theme.Spacing.standard),
+            GridItem(.flexible(), spacing: Theme.Spacing.standard)
+        ]
 
         if promoter > 0 || fii > 0 || dii > 0 {
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
@@ -2033,10 +2044,10 @@ struct StockProfileView: View {
                     AxisValueLabel()
                 }
             }
-            .frame(height: 44)
+            .frame(height: UIScreen.main.bounds.height * 0.08)
 
             // Legend
-            HStack(spacing: Theme.Spacing.standard) {
+            LazyVGrid(columns: legendColumns, alignment: .leading, spacing: Theme.Spacing.small) {
                 legendDot(color: Theme.securityGold, label: "Promoter", value: promoter)
                 legendDot(color: Theme.bullGreen, label: "FII", value: fii)
                 legendDot(color: Theme.avatarBlue, label: "DII", value: dii)
@@ -2050,11 +2061,30 @@ struct StockProfileView: View {
 
     private func legendDot(color: Color, label: String, value: Double) -> some View {
         HStack(spacing: Theme.Spacing.small) {
-            Circle().fill(color).frame(width: 8, height: 8)
+            Circle().fill(color).frame(width: Theme.Spacing.medium, height: Theme.Spacing.medium)
             Text("\(label) \(String(format: "%.1f", value))%")
                 .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
                 .foregroundStyle(Theme.inkSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
         }
+    }
+
+    private func compactChartValue(label: String, value: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+            Text(label)
+                .font(Theme.officialStampFont(size: 8))
+                .tracking(0.8)
+                .foregroundStyle(Theme.inkTertiary)
+            Text(value)
+                .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
+                .foregroundStyle(color)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, Theme.Spacing.tight)
+        .padding(.horizontal, Theme.Spacing.standard)
+        .background(Theme.canvasDeep)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight))
     }
 
     // MARK: - Chart 8: Promoter Holding History
