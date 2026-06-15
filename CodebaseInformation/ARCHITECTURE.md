@@ -1,7 +1,8 @@
-# Nivesh — Architecture Map
+# Nivesh — Architecture Blueprint
 
-> Generated from GitNexus knowledge graph. 275 files, 11,614 symbols, 179 execution flows.
-> Index: ⚠️ 47 commits behind HEAD (stale — some recent refactors may not be reflected)
+> **Authority:** Nivesh Architectural Ordinance
+> **Generated:** June 2026
+> **Scope:** High-level summary of the Nivesh architecture stack.
 
 ## Overview
 
@@ -10,243 +11,44 @@ Nivesh is a full-stack Indian stock market intelligence platform. It combines a 
 ### Tech Stack
 
 | Layer | Technology |
-|
-11. **Cost Reduction Pipeline**: Replaced Claude Sonnet with DeepSeek for JSON reformatting, skipping full graph on Governance FAIL, and trimming tokens/agents for standard scans, achieving a ~80% per-analysis cost drop.
-
--------|-----------|
-| Backend | Python 3.14, FastAPI, SQLAlchemy, PostgreSQL |
-| AI Pipeline | LangGraph, Claude Sonnet/Haiku, DeepSeek V4 Flash |
+|-------|-----------|
+| Backend | Python 3.10+, FastAPI, SQLAlchemy, PostgreSQL |
+| AI Pipeline | LangGraph, Claude Sonnet/Haiku, DeepSeek |
 | iOS | SwiftUI, AVFoundation, Charts, WidgetKit |
-| Data | yfinance, PKScreener, FinBERT, matplotlib |
-| Infra | DigitalOcean, multiprocessing, SSE streaming, Redis, APNs |
+| Data | yfinance, PKScreener, FinBERT, matplotlib, jugaad-data |
+| Infra | DigitalOcean, multiprocessing, Redis, APNs, Celery |
 
 ---
 
-## Functional Areas (15 clusters)
+## 1. Frontend Architecture (iOS - SwiftUI)
 
-```mermaid
-graph TB
-    subgraph Backend["Backend (401 symbols)"]
-        main["main.py — App entry, CorrelationIDMiddleware, APScheduler cron jobs"]
-        orchestrator["services/orchestrator.py — AI pipeline"]
-        routers["routers/ (9 files) — HTTP controllers"]
-        services["services/ (20 files) — Business logic"]
-        database["database.py — ORM, get_session()"]
-    end
+The frontend strictly enforces the **Banknote Aesthetic**, mimicking Indian currency logic through components like `GuillocheDivider`, `EKPressStyle` (haptics), and `BanknoteSignalBadge`.
 
-    subgraph iOS["iOS / Stockme (72 symbols)"]
-        views["Views/ (25 files) — Screens"]
-        components["Components/ (6 files) — Reusable cards"]
-        utilities["Utilities/ (6 files) — Theme, Formatters"]
-        network["NetworkManager — API client"]
-        models["Models — Codable structs"]
-    end
-
-    subgraph AI["AI Pipeline (30 symbols)"]
-        langgraph["LangGraph — Agent orchestration"]
-        agents["Bull/Bear/Trader — Debate agents"]
-        reformat["reformat_with_claude — JSON sanitizer"]
-    end
-
-    subgraph Data["Data Layer"]
-        yf["yfinance — Market data"]
-        pk["PKScreener — Technical scans"]
-        finbert["FinBERT — Sentiment analysis"]
-        charts["portfolio_charts.py — matplotlib charts"]
-    end
-
-    iOS --> Backend
-    Backend --> AI
-    Backend --> Data
-    AI --> Data
-```
-
-### Cluster Cohesion
-
-| Cluster | Symbols | Cohesion |
-|---------|---------|----------|
-| Backend | 401 | 68% |
-| Tests | 338 | 88% |
-| Services | 82 | 81% |
-| Stockme (iOS) | 72 | 87% |
-| Views (iOS) | 71 | 85% |
-| Routers | 62 | 89% |
-| Dataflows | 62 | 84% |
-| LLM Clients | 30 | 96% |
+- **Navigation:** Deeply integrated TabView (Home, Markets, Ideas, News, Portfolio) with a Sidebar (`MarketsView`) mapping to an extensible `MarketSection` enum.
+- **Data Flow:** Unidirectional data flow. Extensive use of `@StateObject` ViewModels and global `@EnvironmentObject` (like `AuthManager`).
+- **Core Screen Features:** 
+  - `AnalysisScreen`: Renders the output of the multi-agent AI debate.
+  - `CopilotScreen`: Global AI assistant.
+  - Custom data visualization tools (Correlation Matrix, Sector Rotation, Options Strategy).
 
 ---
 
-## Key Execution Flows
+## 2. Backend Architecture (FastAPI)
 
-### 1. AI Analysis Pipeline (10 steps)
+Built on the **Controller-Service-Repository** pattern.
 
-```
-User taps "Analyze" (iOS)
-  → POST /api/v1/analyze (routers/analysis.py)
-  → Cache check: returns existing analysis instantly if available (with _staleness_hours and _cache_type="CACHE HIT")
-  → (If not cached) mp.Process spawns _run_analysis_worker
-  → services/orchestrator.analyze()
-  → Cache check (get_analysis_for_date)
-  → Repeat Cache (30m) OR Smart cache gate (DeepSeek V4 Flash YES/NO)
-  → run_trading_agents() — LangGraph propagation
-    → Market Analyst → News Analyst → Fundamentals Analyst
-    → Bull Researcher ↔ Bear Researcher debate (1-3 rounds)
-    → Trader → Risk Committee → Portfolio Manager
-  → reformat_with_deepseek() — DeepSeek V4 Flash → Claude Sonnet fallback
-  → _normalize_response() — iOS-safe type sanitization
-  → save_analysis() — persist to PostgreSQL
-  → Response returned to iOS
-```
-
-### 2. Portfolio Data Flow (6 steps)
-
-```
-iOS PortfolioScreen loads
-  → GET /api/v1/portfolio (routers/portfolio.py)
-  → PortfolioValuationHistory (PostgreSQL)
-  → yfinance _yf_price() — live prices per holding
-  → IndianFormatter — Lakhs/Crores conversion
-  → SwiftUI: PortfolioHeroNote + RiskCard + Charts
-  → Optional: matplotlib portfolio charts (portfolio_charts.py)
-```
-
-### 3. Screener Pipeline (5 steps)
-
-```
-iOS SearchScreen selects preset
-  → GET /api/v1/screener?preset=<id> (routers/analysis.py)
-  → 8 presets: quality_value, ghar_ghar_modi, earnings_pioneers,
-    institutional_capitulation, promoter_conviction, fii_accumulation,
-    turnaround, 52w_low_bullish
-  → Cross-references: piotroski.py, pkscreener_runner.py,
-    factor_engine.py, yfinance fundamental data
-  → Returns ScreenerResult[] with reason + metrics
-  → iOS: Glass pill strip + staggered row animation
-```
-
-### 4. Real-time Dashboard (SSE)
-
-```
-iOS connects to SSE stream
-  → GET /api/v1/dashboard/stream?user_id=&ticker=
-  → Server-sent events: agent progress, market indices, alerts
-  → iOS: DialecticProgressView shows live agent timeline
-  → Fallback: pre-defined 6-stage sequential animation
-```
-
-### 5. Portfolio Charts (matplotlib + caching)
-
-```
-iOS requests charts
-  → GET /api/v1/portfolio/charts/{user_id}
-  → 24h disk cache check (meta_{user_id}.json)
-  → ThreadPoolExecutor runs generate_portfolio_charts()
-  → 11 matplotlib charts: Sector, P&L, Holdings, Value History,
-    Price Scatter, Distribution, Waterfall, Nifty Compare,
-    Gainers/Losers, Concentration, Risk/Reward
-  → AsyncImage loads PNGs from /charts/ endpoint
-```
+- **Controllers (`routers/`)**: Validate HTTP requests, manage rate limiting (sliding window), and spawn async/multiprocessing tasks. **No business logic or DB calls are allowed here.**
+- **Services (`services/`)**: Orchestrate all LangGraph flows, external data fetching (`nse_data_provider.py`), and mathematical engines (`microstructure_engine.py`, `macro_modifiers.py`).
+- **Repository**: Managed via SQLAlchemy `get_session()` context managers to ensure thread-safe database interactions.
+- **Global State**: Strictly controlled using `threading.Lock()` for any module-level mutable variables.
 
 ---
 
-## Controller-Service-Repository Architecture
+## 3. AI Pipeline Architecture (LangGraph)
 
-```
-┌─────────────────────────────────────────────────┐
-│  CONTROLLERS (routers/)                          │
-│  • HTTP validation, sliding window rate limiting (helpers.py deque), auth          │
-│  • Spawn multiprocessing.Process for AI tasks    │
-│  • 9 routers: analysis, portfolio, auth,         │
-│    market, alerts, user, dashboard,              │
-│    notifications, admin                          │
-├─────────────────────────────────────────────────┤
-│  SERVICES (services/)                             │
-│  • All business logic, LLM orchestration         │
-│  • 21 services: orchestrator, cache_service (Redis + in-memory), sentiment_engine,   │
-│    piotroski, pkscreener_runner, factor_engine,  │
-│    options_scraper, portfolio_snapshot, etc.      │
-├─────────────────────────────────────────────────┤
-│  REPOSITORY (database.py)                        │
-│  • SQLAlchemy ORM with get_session() context mgr │
-│  • Models: Portfolio, AnalysisHistory, User,      │
-│    SignalEvent, PriceTarget, TradeJournal, BlockDeal, FIIDIIFlow, etc.   │
-│  • Auto rollback on exception                    │
-│  • NOT picklable — no cross-process sessions      │
-└─────────────────────────────────────────────────┘
-```
+Uses a **Dialectical Asymmetry** model to simulate a hedge fund committee:
 
----
-
-## iOS Architecture
-
-### Navigation Shell
-```
-TabView (5 primary tabs)
-  ├── HomeScreen — Portfolio metrics, indices, news, advisory
-  ├── MarketsView — Earnings, IPO, Technical, Screener, Alerts
-  ├── ExpertNetworkView — Research, analyst ratings
-  ├── NewsMultimediaView — News carousel, video podcasts
-  └── PortfolioScreen — Holdings, watchlist, charts, calendar
-```
-
-
-### New Components & Extensions
-```
-• NiveshWidgetExtension (WidgetKit)
-• AnalysisHistoryScreen, InteractiveTutorialScreen
-• HomeLayoutEditorSheet, WatchlistTagsManager
-• SpeechRecognizerManager, iPad NavigationSplitView adaptation
-```
-
-### Design System (Theme.swift)
-```
-Theme.*
-  ├── Colors: canvas, canvasDeep, inkPrimary/Secondary/Tertiary
-  ├── Accents: securityGold, bullGreen, bearRed, holdAmber
-  ├── Spacing: xSmall(2)→xLarge(32) — 8pt grid
-  ├── CornerRadius: small(4)→card(16)
-  ├── Fonts: engravedSerif, serialNumberFont, officialStampFont, hindiFont
-  └── Modifiers: banknoteCard(), glassCard(), shimmerPlaceholder()
-```
-
-### AGENTS.md Rules Enforced
-- §2.1: Zero raw hex colors — all via Theme tokens
-- §2.6: GeometryReader banned in ScrollView/HStack
-- §2.7: Max 5-level component depth, unidirectional data flow
-- §2.9: 10 Commandments of High-Impact Financial UI
-
----
-
-## Key Design Decisions
-
-1. **Multiprocessing for AI**: Analysis runs in a separate process to avoid blocking the FastAPI event loop. The worker re-imports services/orchestrator.py — sessions are NOT passed across process boundaries.
-
-2. **Repeat Cache & Smart Cache Gate**: Before expensive multi-agent runs, DeepSeek V4 Flash performs a cheap YES/NO check on recent news. If no major changes, returns cached analysis — saves ~$0.50 per query. Exact 30-minute repeats cost $0.
-
-3. **Dual-mode Screener**: Local presets use in-memory feed data (fast but limited). Backend presets cross-reference 4 services (piotroski, pkscreener, factor_engine, yfinance) for institutional-grade screening.
-
-4. **SSE Fallback**: DialecticProgressView connects to SSE for real-time agent progress. If endpoint unreachable, falls back to pre-defined 6-stage sequential animation.
-
-5. **Chart Caching**: matplotlib charts are generated async in ThreadPoolExecutor, cached 24h on disk with metadata JSON. Subsequent requests serve instantly.
-
-6. **Background Tasks over Polling**: Client-side polling for price alerts replaced with an APNs Webhook background task to conserve battery and reduce server load.
-
-7. **Resilient Caching**: `_dcache` replaced with `services/cache_service.py` featuring `redis.asyncio` with an automatic in-memory fallback.
-
-8. **Telemetry & Limits**: `CorrelationIDMiddleware` threads `X-Request-ID` through logs, and rate limiting upgraded to a sliding window deque per endpoint in `helpers.py`.
-
-9. **Robust Data Fetching**: Migrated from fragile `.info` endpoints to `yfinance.history` in `helpers.py` (`_yf_price`) ensuring reliable data ingestion for Indian tickers like ICICIBANK.
-
-10. **Dynamic Banknote Theming**: Upgraded `Theme.swift` and `ContentView` to propagate global dynamic UI changes on `ThemeManager` updates without app restarts, allowing instant swapping of the "neon" `securityGold` aesthetic.
-
----
-
-## Glossary
-
-- **Banknote Aesthetic**: UI design mimicking physical currency — aged paper backgrounds, security gold accents, double-border strokes, serif typography, guilloche dividers.
-- **Dialectical Asymmetry**: Bear researcher carries 1.5× weight advantage over Bull researcher in final signal computation.
-- **Smart Cache Gate**: DeepSeek V4 Flash checks if recent news warrants full analysis before spending Claude credits.
-- **Response Normalization**: Every LLM output passes through `_extract_json_from_text()` → `_normalize_response()` → `_ban_western_scale()` before iOS.
-- **GuillocheDivider**: Sinusoidal wave divider mimicking anti-counterfeiting patterns on banknotes.
-
-9. **7 Advanced Agentic Features**: Seamless integration of 7 major LLM-driven components (Copilot, NL Screener, Stress Test, Correlation, Anomalies, Sector Rotation, Earnings). Deeply integrated across FastAPI and SwiftUI matching the Banknote Aesthetic token system.
+1. **Smart Cache Gate**: DeepSeek runs a high-speed check to determine if the fundamental data has shifted enough to warrant a re-run.
+2. **Debate Agents**: Bull and Bear researchers analyze the data. The Bear prompt is intentionally longer and carries a 1.5x weight advantage to offset LLM positivity bias.
+3. **Committee Review**: Risk Committee and Portfolio Manager agents review the debate and output JSON conforming strictly to Nivesh schemas.
+4. **Normalization**: Output is run through `_normalize_response()` and `_ban_western_scale()` to guarantee clean Indian formatting (Lakhs/Crores) before saving to PostgreSQL.

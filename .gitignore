@@ -9,7 +9,8 @@ serviceAccountKey.json
 *.p12
 *.pfx
 *.keystore
-
+*.agents
+*.codex
 # Python
 .venv/
 venv/

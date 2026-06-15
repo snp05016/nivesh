@@ -156,15 +156,15 @@ enum FeatureHelp {
         subtitle: "A correlation matrix measures how your holdings move together. Lower correlation = better diversification.",
         sections: [
             HelpSection(icon: "squareshape.split.2x2", title: "Reading the Heatmap",
-                detail: "Each cell shows the correlation between two stocks from -1 to 1. +1 means they move identically — bad for diversification. 0 means no relationship. -1 means they move in opposite directions — ideal for hedging."),
+                detail: "Each cell shows the correlation between two stocks from -1 to 1. A +1 score means they move identically in the market — which is bad for diversification. A 0 score means there is no relationship in their price movements. A -1 score means they move in exact opposite directions — providing an ideal hedge."),
             HelpSection(icon: "shield.checkered", title: "Diversification Score",
-                detail: "Scored 0–100. A score above 70 is excellent — your holdings are spread across different sectors and have low correlation. Below 40 signals your portfolio is concentrated and vulnerable to sector-wide shocks."),
+                detail: "Your portfolio receives a computed score from 0–100 based on the average correlation. A score above 70 is excellent, meaning your holdings are well distributed across uncorrelated sectors. A score below 40 signals dangerous concentration, leaving you vulnerable to sector-wide macroeconomic shocks."),
             HelpSection(icon: "chart.pie.fill", title: "Sector Concentration",
-                detail: "Shows what percentage of your portfolio is in each sector. If any single sector exceeds 40%, your portfolio is over-concentrated. Adding stocks from healthcare, FMCG, or IT can improve your score."),
+                detail: "Calculates the percentage weight of your portfolio invested in each sector. To prevent catastrophic drawdowns, no single sector should ideally exceed 40% of your total holding. The tool identifies over-exposure and recommends defensive sectors like FMCG or Healthcare to balance risk."),
             HelpSection(icon: "lightbulb.fill", title: "Smart Suggestions",
-                detail: "Nivesh suggests which sectors to add to improve your diversification. Each suggestion includes the expected improvement in your diversification score if you add a stock from that sector."),
+                detail: "Nivesh runs a hypothetical optimization algorithm in the background to suggest which sectors would most effectively lower your portfolio's overall correlation matrix. It predicts the exact numerical improvement in your Diversification Score if you allocate capital to the suggested sectors."),
             HelpSection(icon: "clock.arrow.circlepath", title: "How It's Calculated",
-                detail: "Uses 6 months of daily price data for all your holdings plus Nifty 50. Computes daily returns, then runs numpy's corrcoef to calculate pairwise correlations. Sectors are fetched from yfinance company info."),
+                detail: "The backend pulls 6 months of daily historical price data for all your active holdings plus the Nifty 50 benchmark. It computes the daily logarithmic returns, then runs a Pearson correlation coefficient matrix using numpy. Sector data is dynamically fetched from the yfinance company info endpoint."),
         ]
     )
     
@@ -173,13 +173,13 @@ enum FeatureHelp {
         subtitle: "Simulates how your portfolio would perform under extreme economic scenarios — recession, inflation, interest rate shocks, and more.",
         sections: [
             HelpSection(icon: "bolt.trianglebadge.exclamationmark", title: "Tornado Chart",
-                detail: "Each horizontal bar shows the impact of one scenario on your portfolio. Green bars = positive impact (your portfolio gains), red bars = negative (your portfolio loses). The longer the bar, the bigger the impact."),
+                detail: "Visualizes the expected drawdown or gain via horizontal bars for each modeled scenario. Green bars represent a net positive impact (your portfolio gains value), while red bars represent a net negative impact (your portfolio loses value). The length indicates the absolute magnitude of the shock."),
             HelpSection(icon: "chart.bar.fill", title: "Reading Bar Values",
-                detail: "Impact percentages show the expected change in your portfolio value. A bar showing -12% means the scenario would drop your portfolio by 12%. The amount in rupees (₹) is also shown for clarity."),
-            HelpSection(icon: "list.bullet.rectangle.portrait", title: "8 Scenarios",
-                detail: "Tests cover: Recession, Inflation Spike, Crude Oil Shock, Interest Rate Hike (RBI), Currency Crash (INR), Global Market Selloff, Domestic Political Crisis, and COVID-style Black Swan. Each is modeled with historical data from similar events."),
+                detail: "Impact percentages reflect the expected drawdown. For instance, a bar showing -12% means a specific macroeconomic shock is statistically projected to erase 12% of your portfolio's value. The equivalent fiat value in INR (₹) is dynamically calculated against your current holding value."),
+            HelpSection(icon: "list.bullet.rectangle.portrait", title: "8 Macro Scenarios",
+                detail: "The engine runs deterministic simulations covering: Recession, Inflation Spikes, Crude Oil Shocks, RBI Interest Rate Hikes, INR Currency Depreciation, Global Market Selloffs, Domestic Political Crises, and COVID-style Black Swan events. Each model applies historical beta and sector sensitivity parameters to your specific stocks."),
             HelpSection(icon: "arrow.up.and.down.text.horizontal", title: "Holding-Level Detail",
-                detail: "Tap any scenario bar to see how EACH of your holdings performs individually. This helps identify which stocks are most vulnerable to specific shocks — useful for hedging decisions."),
+                detail: "By tapping a specific scenario, you can drill down into a micro-view that reveals how EACH individual stock in your portfolio contributes to the shock. This enables precision hedging by identifying exactly which holding is dragging your portfolio down under specific conditions."),
         ]
     )
     
@@ -187,14 +187,14 @@ enum FeatureHelp {
         title: "NL Screener Guide",
         subtitle: "Search for stocks using plain English — no need to remember complex screener filters or checkbox combinations.",
         sections: [
-            HelpSection(icon: "text.magnifyingglass", title: "How to Query",
-                detail: "Type naturally: \"Show me midcap pharma companies with low debt and high growth\", \"Large cap banks with promoter holding above 50%\", or \"IT stocks with PE under 20 and good dividend yield\". The AI parses your intent into precise filters."),
-            HelpSection(icon: "slider.horizontal.3", title: "Parsed Filters",
-                detail: "The AI extracts key parameters from your query: sector, market cap range, PE limits, debt-to-equity ceiling, promoter holding minimum, ROE/ROCE thresholds, and more. You can see exactly what filters were extracted."),
-            HelpSection(icon: "list.number", title: "Match Scoring",
-                detail: "Each result gets a match score (0–100). Higher scores mean the stock fits your criteria more closely. Results are sorted from best match to weakest, so the most relevant stocks appear first."),
-            HelpSection(icon: "clock.arrow.circlepath", title: "Cached Results",
-                detail: "Results are cached for 1 hour. If you run the same query within an hour, you get instant results without waiting for the AI to re-analyze. Fresh queries hit the AI pipeline and take 5–15 seconds."),
+            HelpSection(icon: "text.magnifyingglass", title: "Natural Language Processing",
+                detail: "Type your query naturally in plain English. The AI parses your intent into precise database filters. E.g., \"Show me midcap pharma companies with low debt and high growth\" or \"Large cap banks with promoter holding above 50%\". It understands complex financial jargon and translates it to SQL-like queries."),
+            HelpSection(icon: "slider.horizontal.3", title: "Parameter Extraction",
+                detail: "The NLP engine extracts exact numerical thresholds and sector mappings from your text: market cap ranges (e.g., 'midcap' -> 5000-20000 Cr), PE limits, debt-to-equity ceilings, promoter holding minimums, and ROE/ROCE thresholds. You can inspect the exact extracted filters directly in the UI."),
+            HelpSection(icon: "list.number", title: "Relevance Scoring",
+                detail: "Each result is assigned a computed match score (0–100) based on how strictly it satisfies your multi-variate constraints. Hard constraints (e.g., 'PE under 20') filter stocks out, while soft constraints (e.g., 'good dividend yield') rank them higher. Results are sorted by relevance."),
+            HelpSection(icon: "clock.arrow.circlepath", title: "Instant Caching",
+                detail: "To optimize response times and save LLM credits, screener queries are intelligently cached on the backend for 1 hour. If you submit a semantically identical query, the backend returns the cached payload instantly. Fresh, complex queries bypass the cache and hit the LangGraph pipeline, taking 5–15 seconds."),
         ]
     )
     
@@ -203,13 +203,13 @@ enum FeatureHelp {
         subtitle: "A real-time surveillance system that scans the market for unusual activity — volume spikes, price breakouts, and order book irregularities.",
         sections: [
             HelpSection(icon: "exclamationmark.triangle.fill", title: "Anomaly Types",
-                detail: "Volume Spike: Trading volume 3× above 20-day average. Price Breakout: Close beyond 2 Bollinger Bands. Order Book: Unusual bid-ask spreads or depth imbalances. Gap Up/Down: Opening price gap exceeding 3% from previous close."),
+                detail: "Monitors critical deviations: Volume Spikes (trading volume exceeding 3× the 20-day average), Price Breakouts (closing beyond 2 standard deviations on Bollinger Bands), Order Book irregularities (unusual bid-ask spreads or depth imbalances), and Gap Up/Downs (opening price deviating >3% from prior close)."),
             HelpSection(icon: "chart.line.flaktrends.xyaxis", title: "Severity Levels",
-                detail: "HIGH: Requires immediate attention — statistically rare event. MEDIUM: Unusual but may have explanations. LOW: Mild deviation from normal ranges. Filter by severity to focus on the most actionable signals."),
-            HelpSection(icon: "clock.arrow.2.circlepath", title: "Auto-Scanning",
-                detail: "The anomaly scanner runs automatically every hour on the server. It monitors the top 20 NSE stocks and flags any irregularities. You see results immediately when opening the screen — no need to trigger a scan manually."),
+                detail: "Anomalies are bucketed: HIGH signals a statistically rare, >3 sigma event requiring immediate attention. MEDIUM signals unusual but explainable variance. LOW represents mild deviation from moving averages. You can filter by severity to separate noise from actionable alpha."),
+            HelpSection(icon: "clock.arrow.2.circlepath", title: "Auto-Scanning & Cron",
+                detail: "The backend anomaly scanner runs as an asynchronous cron job every hour, continuously tracking the top NSE stocks to flag statistical irregularities in real-time. When you open the view, you are served pre-computed findings immediately without triggering heavy real-time scans."),
             HelpSection(icon: "arrowshape.turn.up.right.fill", title: "Action Steps",
-                detail: "Volume spikes may signal insider activity or pending news. Price breakouts can indicate trend changes. Use these signals with other analysis (fundamentals, sentiment) before making trading decisions. Anomalies are alerts, not recommendations."),
+                detail: "Institutional volume spikes often precede major news or earnings beats. Bollinger breakouts indicate potential trend reversals. These technical flags should be strictly corroborated with the AI Analyst Committee's fundamental reporting before executing trades. Anomalies provide alerts, not guarantees."),
         ]
     )
     
@@ -218,13 +218,13 @@ enum FeatureHelp {
         subtitle: "Tracks institutional money flow across NSE sectors. Spot which sectors are heating up and which are cooling down before the crowd.",
         sections: [
             HelpSection(icon: "arrow.triangle.2.circlepath", title: "The 4 Quadrants",
-                detail: "Leaders: High return + positive momentum (buying continues). Improving: Low return but momentum turning positive (early entry opportunity). Fading: High return but momentum declining (consider taking profits). Laggards: Low return + negative momentum (avoid or wait)."),
+                detail: "Sectors are classified dynamically into 4 states: Leaders (high returns + positive momentum, buying accelerates), Improving (low returns but momentum turning positive, indicating early entry), Fading (high returns but declining momentum, indicating profit booking), and Laggards (low returns + negative momentum, avoid)."),
             HelpSection(icon: "chart.line.uptrend.xyaxis", title: "Reading Momentum",
-                detail: "Momentum score shows the rate of change in sector returns. A score of +5 means strong upward acceleration. -3 means deceleration. Watch for quadrant transitions — when a sector moves from Improving to Leaders, that's a bullish signal."),
-            HelpSection(icon: "building.2.fill", title: "FII & DII Flows",
-                detail: "Foreign Institutional Investor (FII) and Domestic Institutional Investor (DII) flows show where the big money is going. High institutional conviction (70+) means both FIIs and DIIs are buying the sector — a powerful endorsement."),
-            HelpSection(icon: "calendar", title: "Time Periods",
-                detail: "Toggle between 1 month, 3 months, 6 months, and 1 year views. Shorter periods show recent momentum shifts. Longer periods filter out noise and reveal structural trends. Use 3-month for tactical allocation, 1-year for strategic decisions."),
+                detail: "The Momentum Score represents the first derivative (rate of change) of sector returns. A +5 score shows explosive upward acceleration, while -3 indicates deceleration. The true signal lies in quadrant transitions—a sector shifting from 'Improving' to 'Leaders' is a classic bullish indicator."),
+            HelpSection(icon: "building.2.fill", title: "Institutional Confluence",
+                detail: "Evaluates the combined net flow of Foreign Institutional Investors (FII) and Domestic Institutional Investors (DII). A high institutional conviction score (>70) means both FIIs and DIIs are aggressively deploying capital into the sector, providing a massive liquidity tailwind."),
+            HelpSection(icon: "calendar", title: "Time Horizon Filtering",
+                detail: "Allows toggling between 1M, 3M, 6M, and 1Y lookback windows. Shorter timeframes expose recent momentum rotation, while the 1-year view filters out noise to reveal macro structural trends. Traders use 3M for tactical swings, while investors use 1Y for strategic core allocations."),
         ]
     )
 }
