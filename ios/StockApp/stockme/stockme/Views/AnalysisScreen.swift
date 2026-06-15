@@ -380,45 +380,6 @@ struct AnalysisScreen: View {
         }
     }
 
-    @ViewBuilder
-    private func heroChartSection(_ analysis: StockAnalysis) -> some View {
-        if !heroPrices.isEmpty {
-            let price = livePrice ?? viewModel.quickInfo?.price ?? heroPrices.last ?? 0
-            let changePct = viewModel.quickInfo?.changePercent ?? 0
-            ImmersiveStockHeroChart(
-                prices: heroPrices,
-                changePercent: changePct,
-                currentPrice: price,
-                dates: heroDates
-            )
-            HStack(spacing: Theme.Spacing.tight) {
-                ForEach(Array(zip(["1mo","3mo","6mo","1y","2y","5y","max"], ["1M","3M","6M","1Y","2Y","5Y","ALL"])), id: \.0) { period, label in
-                    Button {
-                        HapticManager.selection()
-                        heroPeriod = period
-                        fetchHeroHistory(period: period)
-                    } label: {
-                        Text(label)
-                            .font(Theme.officialStampFont(size: 8))
-                            .tracking(0.8)
-                            .foregroundStyle(heroPeriod == period ? Theme.securityGold : Theme.inkTertiary)
-                            .padding(.horizontal, Theme.Spacing.tight)
-                            .padding(.vertical, Theme.Spacing.xSmall)
-                            .background(heroPeriod == period ? Theme.securityGold.opacity(0.12) : Theme.canvasDeep)
-                            .clipShape(Capsule())
-                    }
-                    .buttonStyle(EKPressStyle())
-                }
-            }
-            .padding(.top, Theme.Spacing.standard)
-        } else if heroLoading {
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
-                .fill(Theme.inkTertiary.opacity(0.08))
-                .frame(height: UIScreen.main.bounds.height * 0.26)
-                .shimmerPlaceholder(isLoading: true)
-        }
-    }
-
     // MARK: - Live price polling
 
     private func startPricePolling() {
@@ -471,484 +432,55 @@ struct AnalysisScreen: View {
         }
     }
 
-    // MARK: - Loading State (Redesigned)
+    // MARK: - Loading State
 
-    @ViewBuilder
     private func renderLoadingState() -> some View {
-        ScrollView {
-            VStack(spacing: Theme.Spacing.sectionGap) {
-                if let info = viewModel.quickInfo {
-                    stockHeaderCard(info: info)
-                }
-                VStack(spacing: Theme.Spacing.screen) {
-                    let scanType = viewModel.jobStatus?.scanType ?? "standard"
-                    if viewModel.isLoading || viewModel.jobStatus != nil {
-                        HStack(spacing: Theme.Spacing.tight) {
-                            Image(systemName: scanType == "extreme" ? "tornado" : "waveform.badge.magnifyingglass")
-                                .font(Theme.microLabel())
-                            Text(scanType == "extreme" ? "EXTREME ANALYSIS ACTIVE" : "ANALYSIS ACTIVE")
-                                .font(Theme.sectionCapsLabel(size: 8))
-                                .tracking(1.5)
-                        }
-                        .foregroundStyle(Theme.goldPrimary)
-                        .padding(.horizontal, Theme.Spacing.standard)
-                        .padding(.vertical, Theme.Spacing.tight)
-                        .background(Theme.goldMuted.opacity(0.5))
-                        .clipShape(Capsule())
-                        .overlay(Capsule().stroke(Theme.goldMuted, lineWidth: 0.5))
-                    }
-
-                    // v2 engine — live checkpoints from the polled job
-                    if !viewModel.engineCheckpoints.isEmpty {
-                        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                            Text("ENGINE ACTIVITY")
-                                .font(Theme.officialStampFont(size: 10))
-                                .foregroundStyle(Theme.inkTertiary)
-                            ForEach(viewModel.engineCheckpoints.reversed().prefix(6)) { event in
-                                CheckpointRow(event: event)
-                            }
-                        }
-                        .padding(Theme.Spacing.card)
-                        .background(Theme.canvasDeep)
-                        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
-                            .stroke(Theme.borderFine, lineWidth: 0.5))
-                        .cornerRadius(Theme.CornerRadius.card)
-                    } else {
-                        DialecticProgressView(
-                            userId: authManager.currentUser?.userId,
-                            ticker: ticker
-                        )
-                    }
-
-                    Button(action: {
-                        HapticManager.impact(.rigid)
-                        viewModel.cancelAnalysis()
-                    }) {
-                        Text("CANCEL ANALYSIS")
-                            .font(Theme.sectionCapsLabel(size: 9))
-                            .foregroundStyle(Theme.dataNegative)
-                            .padding(.vertical, Theme.Spacing.medium)
-                            .padding(.horizontal, Theme.Spacing.screen)
-                            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                                .stroke(Theme.dataNegative.opacity(0.3), lineWidth: 1))
-                    }
-                }
-                .padding(.top, Theme.Spacing.screen)
-                if let info = viewModel.quickInfo {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.screen) {
-                        SectionHeaderView(title: "COMPANY PROFILE")
-                        if let desc = info.description {
-                            Text(desc)
-                                .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
-                                .foregroundStyle(Theme.inkSecondary)
-                                .lineSpacing(6)
-                        }
-                        GuillocheDivider()
-                        if let officers = info.officers, !officers.isEmpty {
-                            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                                Text("KEY EXECUTIVES")
-                                    .font(Theme.sectionCapsLabel(size: 8))
-                                    .foregroundStyle(Theme.inkSecondary)
-                                ForEach(officers, id: \.self) { officer in
-                                    Text("• \(officer.uppercased())")
-                                        .font(Theme.monoTabular(size: 13))
-                                        .foregroundStyle(Theme.inkPrimary)
-                                }
-                            }
-                        }
-                    }
-                    .padding(Theme.Spacing.card)
-                    .background(Theme.surfaceElevated)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
-                    .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderSubtle, lineWidth: 0.5))
-                }
+        AnalysisLoadingStateView(
+            viewModel: viewModel,
+            ticker: ticker,
+            userId: authManager.currentUser?.userId,
+            onCancel: {
+                HapticManager.impact(.rigid)
+                viewModel.cancelAnalysis()
             }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.bottom, 100)
-        }
+        )
     }
 
-    // MARK: - Full Analysis (Redesigned)
+    // MARK: - Full Analysis
 
-    @ViewBuilder
     private func renderFullAnalysis(_ analysis: StockAnalysis) -> some View {
-        if analysis.analysisTier == "extreme" {
-            VStack(spacing: Theme.Spacing.none) {
-                extremeModeSwitcher
-                    .background(Theme.canvas)
-                if extremeViewMode == 0 {
-                    aiReportScroll(analysis)
-                } else {
-                    StockProfileView(ticker: ticker, exchange: analysis.exchange ?? "NSE")
-                }
-            }
-        } else {
-            aiReportScroll(analysis)
-        }
+        AnalysisFullView(
+            analysis: analysis,
+            previousAnalysis: previousAnalysis,
+            ticker: ticker,
+            livePrice: livePrice,
+            viewModel: viewModel,
+            extremeViewMode: $extremeViewMode,
+            heroPrices: heroPrices,
+            heroDates: heroDates,
+            heroLoading: heroLoading,
+            heroPeriod: $heroPeriod,
+            onPeriodChange: { period in fetchHeroHistory(period: period) }
+        )
     }
 
-    private var extremeModeSwitcher: some View {
-        HStack(spacing: Theme.Spacing.small) {
-            ForEach(Array(["AI REPORT", "FULL PROFILE"].enumerated()), id: \.offset) { idx, label in
-                Button {
-                    HapticManager.selection()
-                    extremeViewMode = idx
-                } label: {
-                    Text(label)
-                        .font(Theme.sectionCapsLabel(size: 9))
-                        .tracking(1.5)
-                        .foregroundStyle(extremeViewMode == idx ? Theme.canvas : Theme.inkSecondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, Theme.Spacing.tight)
-                        .background(
-                            RoundedRectangle(cornerRadius: Theme.CornerRadius.tight)
-                                .fill(extremeViewMode == idx ? Theme.securityGold : Theme.surfaceElevated)
-                        )
-                }
-                .buttonStyle(EKPressStyle())
-            }
-        }
-        .padding(.horizontal, Theme.screenPadding)
-        .padding(.vertical, Theme.Spacing.standard)
-    }
-
-    private func aiReportScroll(_ analysis: StockAnalysis) -> some View {
-        let isExtreme = analysis.analysisTier == "extreme"
-        return ScrollView {
-            heroChartSection(analysis)
-                .padding(.bottom, Theme.Spacing.standard)
-            
-            AnalysisCoreSections(analysis: analysis, previousAnalysis: previousAnalysis, ticker: ticker, livePrice: livePrice, viewModel: viewModel)
-                .padding(.horizontal, Theme.screenPadding)
-                .padding(.top, Theme.Spacing.standard)
-
-            // ML Hybrid Pipeline — Regime Warning
-            if let regime = analysis.marketRegime, !regime.isEmpty {
-                RegimeWarningBanner(regime: regime)
-                    .padding(.horizontal, Theme.screenPadding)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-
-            // ML Hybrid Pipeline — Quantitative Drivers
-            if let drivers = analysis.quantitativeDrivers, !drivers.isEmpty {
-                QuantitativeDriversCard(drivers: drivers)
-                    .padding(.horizontal, Theme.screenPadding)
-                    .transition(.opacity)
-            }
-
-            if isExtreme {
-                AnalysisExtremeSections(analysis: analysis, previousAnalysis: previousAnalysis, viewModel: viewModel)
-                    .padding(.horizontal, Theme.screenPadding)
-            }
-            
-            Spacer(minLength: 100)
-        }
-    }
-
-    private func stockHeaderCard(info: QuickInfo) -> some View {
-        VStack(spacing: Theme.Spacing.standard) {
-            HStack(spacing: Theme.Spacing.card) {
-                StockIcon(ticker: info.ticker, signal: info.signal)
-                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                    Text(info.ticker).font(Theme.serialNumberFont(size: 24)).foregroundStyle(Theme.inkPrimary)
-                    Text(info.sector ?? info.industry ?? "").font(Theme.microLabel()).foregroundStyle(Theme.inkSecondary)
-                }
-                Spacer()
-            }
-            GuillocheDivider()
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
-                Text("₹").font(Theme.engravedSerif(size: 24, weight: .bold)).foregroundStyle(Theme.goldPrimary)
-                Text((info.price ?? 0.0).inrFormatted.replacingOccurrences(of: "₹", with: ""))
-                    .font(Theme.dataLarge()).foregroundStyle(Theme.inkPrimary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            HStack(spacing: Theme.Spacing.medium) {
-                Text("\((info.change ?? 0.0) >= 0 ? "+" : "")\((info.change ?? 0.0).inrFormatted)")
-                Text("(\((info.changePercent ?? 0.0).percentFormatted))")
-            }
-            .font(Theme.monoTabular(size: 16))
-            .foregroundStyle((info.change ?? 0.0) >= 0 ? Theme.dataPositive : Theme.dataNegative)
-        }
-        .padding(Theme.Spacing.card)
-        .background(Theme.surfaceElevated)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
-        .padding(.top, Theme.Spacing.screen)
-    }
+    // MARK: - Error State
 
     private func renderErrorState(_ info: AnalysisErrorInfo) -> some View {
-        ScrollView {
-            VStack(spacing: Theme.Spacing.screen) {
-                // ── Stock Header Card ──────────────────────────────────
-                if let qi = viewModel.quickInfo {
-                    VStack(spacing: Theme.Spacing.card) {
-                        HStack(spacing: Theme.Spacing.card) {
-                            StockIcon(ticker: qi.ticker, signal: qi.signal)
-                            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                                Text(qi.ticker)
-                                    .font(Theme.serialNumberFont(size: 24))
-                                    .foregroundStyle(Theme.inkPrimary)
-                                Text("OFFICIAL QUOTATION")
-                                    .font(Theme.officialStampFont(size: 9))
-                                    .foregroundStyle(Theme.inkSecondary)
-                            }
-                            Spacer()
-                        }
-                        GuillocheDivider()
-                        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
-                                Text("₹")
-                                    .font(Theme.engravedSerif(size: 24, weight: .bold))
-                                    .foregroundStyle(Theme.securityGold)
-                                Text((qi.price ?? 0.0).inrFormatted.replacingOccurrences(of: "₹", with: ""))
-                                    .font(Theme.serialNumberFont(size: 44))
-                                    .foregroundStyle(Theme.inkPrimary)
-                            }
-                            HStack(spacing: Theme.Spacing.medium) {
-                                Text("\((qi.change ?? 0.0) >= 0 ? "+" : "")\((qi.change ?? 0.0).inrFormatted)")
-                                Text("(\((qi.changePercent ?? 0.0).percentFormatted))")
-                            }
-                            .font(Theme.serialNumberFont(size: 16))
-                            .foregroundStyle((qi.change ?? 0.0) >= 0 ? Theme.bullGreen : Theme.bearRed)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(Theme.Spacing.large)
-                        .banknoteCard()
-                    }
-                    .padding(.top, 20)
-                }
-
-                // ── Error Summary Card ─────────────────────────────────
-                VStack(spacing: Theme.Spacing.card) {
-                    HStack(spacing: Theme.Spacing.standard) {
-                        Image(systemName: info.iconName)
-                            .font(.title)
-                            .foregroundStyle(info.isRateLimit ? Theme.holdAmber : Theme.bearRed)
-                        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                            Text(info.displayTitle)
-                                .font(Theme.engravedSerif(size: 16, weight: .bold))
-                                .foregroundStyle(Theme.inkPrimary)
-                            BanknoteSignalBadge(text: info.badgeText, color: info.isRateLimit ? Theme.holdAmber : Theme.bearRed, rotation: -3)
-                        }
-                        Spacer()
-                        if let code = info.diagnostic?.errorCode {
-                            Text(code)
-                                .font(Theme.officialStampFont(size: 8))
-                                .foregroundStyle(Theme.inkTertiary)
-                                .padding(.horizontal, 8).padding(.vertical, 4)
-                                .background(Theme.inkTertiary.opacity(0.1))
-                                .clipShape(Capsule())
-                        }
-                    }
-
-                    GuillocheDivider()
-
-                    Text(info.suggestedActionText)
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(info.isRateLimit ? Theme.holdAmber : Theme.securityGold)
-                        .lineSpacing(4)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .padding(Theme.Spacing.screen)
-                .banknoteCard()
-
-                // ── What Went Wrong ────────────────────────────────────
-                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                    Label {
-                        Text("WHAT WENT WRONG")
-                            .font(Theme.officialStampFont(size: 9))
-                            .foregroundStyle(Theme.inkPrimary)
-                    } icon: {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundStyle(Theme.bearRed)
-                            .font(.footnote)
-                    }
-
-                    Text(info.displayDetail)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Theme.inkSecondary)
-                        .lineSpacing(5)
-
-                    if let phase = info.diagnostic?.phaseFailed {
-                        HStack(spacing: Theme.Spacing.tight) {
-                            Text("FAILED PHASE:")
-                                .font(Theme.officialStampFont(size: 8))
-                                .foregroundStyle(Theme.inkTertiary)
-                            Text(phase.replacingOccurrences(of: "_", with: " ").uppercased())
-                                .font(Theme.serialNumberFont(size: 10))
-                                .foregroundStyle(Theme.bearRed)
-                        }
-                    }
-                }
-                .padding(Theme.Spacing.screen)
-                .banknoteCard()
-
-                // ── Performance Trace ──────────────────────────────────
-                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                    Label {
-                        Text("PERFORMANCE TRACE")
-                            .font(Theme.officialStampFont(size: 9))
-                            .foregroundStyle(Theme.inkPrimary)
-                    } icon: {
-                        Image(systemName: "stopwatch")
-                            .foregroundStyle(Theme.securityGold)
-                            .font(.footnote)
-                    }
-
-                    VStack(spacing: Theme.Spacing.medium) {
-                        HStack {
-                            Text("Total elapsed:")
-                                .font(Theme.serialNumberFont(size: 11))
-                                .foregroundStyle(Theme.inkTertiary)
-                            Spacer()
-                            Text(String(format: "%.1fs", info.elapsedSeconds))
-                                .font(Theme.serialNumberFont(size: 11))
-                                .foregroundStyle(info.elapsedSeconds > 30 ? Theme.bearRed : Theme.inkPrimary)
-                        }
-                        if let qiElapsed = info.quickInfoElapsed {
-                            HStack {
-                                Text("Parallel data fetch:")
-                                    .font(Theme.serialNumberFont(size: 11))
-                                    .foregroundStyle(Theme.inkTertiary)
-                                Spacer()
-                                Text(String(format: "%.1fs", qiElapsed))
-                                    .font(Theme.serialNumberFont(size: 11))
-                                    .foregroundStyle(Theme.bullGreen)
-                            }
-                            let analyzeElapsed = info.elapsedSeconds - qiElapsed
-                            if analyzeElapsed > 0 {
-                                HStack {
-                                    Text("Analyze API call:")
-                                        .font(Theme.serialNumberFont(size: 11))
-                                        .foregroundStyle(Theme.inkTertiary)
-                                    Spacer()
-                                    Text(String(format: "%.1fs", analyzeElapsed))
-                                        .font(Theme.serialNumberFont(size: 11))
-                                        .foregroundStyle(Theme.bearRed)
-                                }
-                            }
-                        }
-                        if let ts = info.diagnostic?.timestamp {
-                            HStack {
-                                Text("Failed at:")
-                                    .font(Theme.serialNumberFont(size: 11))
-                                    .foregroundStyle(Theme.inkTertiary)
-                                Spacer()
-                                Text(ts)
-                                    .font(Theme.serialNumberFont(size: 10))
-                                    .foregroundStyle(Theme.inkSecondary)
-                            }
-                        }
-                    }
-                }
-                .padding(Theme.Spacing.screen)
-                .banknoteCard()
-
-                // ── Network Trace ──────────────────────────────────────
-                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                    Label {
-                        Text("NETWORK TRACE")
-                            .font(Theme.officialStampFont(size: 9))
-                            .foregroundStyle(Theme.inkPrimary)
-                    } icon: {
-                        Image(systemName: "network")
-                            .foregroundStyle(Theme.inkSecondary)
-                            .font(.footnote)
-                    }
-
-                    VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                        TraceRow(label: "URL", value: info.requestUrl)
-                        TraceRow(label: "Method", value: "POST")
-                        TraceRow(label: "HTTP Status", value: "\(info.httpStatusCode)")
-                        if !info.responseHeaders.isEmpty {
-                            CollapsibleSection(header: "RESPONSE HEADERS") {
-                                Text(info.responseHeaders)
-                                    .font(Theme.serialNumberFont(size: 10))
-                                    .foregroundStyle(Theme.inkTertiary)
-                                    .lineSpacing(3)
-                            }
-                        }
-                        if !info.responseBody.isEmpty {
-                            CollapsibleSection(header: "RAW RESPONSE BODY") {
-                                Text(info.responseBody)
-                                    .font(Theme.serialNumberFont(size: 10))
-                                    .foregroundStyle(Theme.inkTertiary)
-                                    .lineSpacing(3)
-                            }
-                        }
-                    }
-                }
-                .padding(Theme.Spacing.screen)
-                .banknoteCard()
-
-                // ── Backend Diagnostic ─────────────────────────────────
-                if let diagInfo = info.diagnostic?.diagnosticInfo, !diagInfo.isEmpty {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                        Label {
-                            Text("BACKEND DIAGNOSTIC")
-                                .font(Theme.officialStampFont(size: 9))
-                                .foregroundStyle(Theme.inkPrimary)
-                        } icon: {
-                            Image(systemName: "gearshape.2")
-                                .foregroundStyle(Theme.holdAmber)
-                                .font(.footnote)
-                        }
-
-                        CollapsibleSection(header: "SERVER TRACE (tap to expand)") {
-                            Text(diagInfo)
-                                .font(Theme.serialNumberFont(size: 10))
-                                .foregroundStyle(Theme.inkTertiary)
-                                .lineSpacing(4)
-                        }
-                    }
-                    .padding(Theme.Spacing.screen)
-                    .banknoteCard()
-                }
-
-                // ── Client Context ─────────────────────────────────────
-                VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                    Label {
-                        Text("CLIENT CONTEXT")
-                            .font(Theme.officialStampFont(size: 9))
-                            .foregroundStyle(Theme.inkPrimary)
-                    } icon: {
-                        Image(systemName: "iphone")
-                            .foregroundStyle(Theme.inkSecondary)
-                            .font(.footnote)
-                    }
-
-                    VStack(spacing: Theme.Spacing.tight) {
-                        TraceRow(label: "App", value: "StockMe v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?.?.?")")
-                        TraceRow(label: "Mock Mode", value: info.isMockMode ? "ON" : "OFF")
-                        TraceRow(label: "Deep Scan", value: info.isDeepScan ? "ON" : "OFF")
-                        TraceRow(label: "Base URL", value: info.requestUrl)
-                    }
-                }
-                .padding(Theme.Spacing.screen)
-                .banknoteCard()
-
-                // ── Action Buttons ─────────────────────────────────────
-                VStack(spacing: Theme.Spacing.standard) {
-                    Button(action: {
-                        HapticManager.impact(.medium)
-                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: deepScanEnabled)
-                    }) {
-                        HStack(spacing: Theme.Spacing.medium) {
-                            Image(systemName: "arrow.clockwise")
-                            Text("RETRY ANALYSIS")
-                        }
-                        .font(Theme.officialStampFont(size: 10))
-                        .foregroundStyle(Theme.inkPrimary)
-                        .padding(.vertical, 14)
-                        .frame(maxWidth: .infinity)
-                        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.inkPrimary, lineWidth: 1))
-                    }
-                }
-                .padding(.top, 8)
-
-                Spacer(minLength: 80)
+        AnalysisErrorStateView(
+            info: info,
+            quickInfo: viewModel.quickInfo,
+            onRetry: {
+                HapticManager.impact(.medium)
+                viewModel.fetchAnalysis(
+                    ticker: ticker,
+                    userId: authManager.currentUser?.userId,
+                    useMock: useMockAI,
+                    reportManager: reportManager,
+                    deepScan: deepScanEnabled
+                )
             }
-            .padding(.horizontal, Theme.screenPadding)
-        }
+        )
     }
 }
 

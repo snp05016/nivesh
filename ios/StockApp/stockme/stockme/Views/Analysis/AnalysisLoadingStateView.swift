@@ -1,0 +1,131 @@
+import SwiftUI
+
+struct AnalysisLoadingStateView: View {
+    @ObservedObject var viewModel: AnalysisViewModel
+    let ticker: String
+    let userId: Int?
+    let onCancel: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: Theme.Spacing.sectionGap) {
+                if let info = viewModel.quickInfo {
+                    AnalysisStockHeaderCard(info: info)
+                }
+                VStack(spacing: Theme.Spacing.screen) {
+                    let scanType = viewModel.jobStatus?.scanType ?? "standard"
+                    if viewModel.isLoading || viewModel.jobStatus != nil {
+                        HStack(spacing: Theme.Spacing.tight) {
+                            Image(systemName: scanType == "extreme" ? "tornado" : "waveform.badge.magnifyingglass")
+                                .font(Theme.microLabel())
+                            Text(scanType == "extreme" ? "EXTREME ANALYSIS ACTIVE" : "ANALYSIS ACTIVE")
+                                .font(Theme.sectionCapsLabel(size: 8))
+                                .tracking(1.5)
+                        }
+                        .foregroundStyle(Theme.goldPrimary)
+                        .padding(.horizontal, Theme.Spacing.standard)
+                        .padding(.vertical, Theme.Spacing.tight)
+                        .background(Theme.goldMuted.opacity(0.5))
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(Theme.goldMuted, lineWidth: 0.5))
+                    }
+
+                    if !viewModel.engineCheckpoints.isEmpty {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                            Text("ENGINE ACTIVITY")
+                                .font(Theme.officialStampFont(size: 10))
+                                .foregroundStyle(Theme.inkTertiary)
+                            ForEach(viewModel.engineCheckpoints.reversed().prefix(6)) { event in
+                                CheckpointRow(event: event)
+                            }
+                        }
+                        .padding(Theme.Spacing.card)
+                        .background(Theme.canvasDeep)
+                        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
+                            .stroke(Theme.borderFine, lineWidth: 0.5))
+                        .cornerRadius(Theme.CornerRadius.card)
+                    } else {
+                        DialecticProgressView(
+                            userId: userId,
+                            ticker: ticker
+                        )
+                    }
+
+                    Button(action: onCancel) {
+                        Text("CANCEL ANALYSIS")
+                            .font(Theme.sectionCapsLabel(size: 9))
+                            .foregroundStyle(Theme.dataNegative)
+                            .padding(.vertical, Theme.Spacing.medium)
+                            .padding(.horizontal, Theme.Spacing.screen)
+                            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                .stroke(Theme.dataNegative.opacity(0.3), lineWidth: 1))
+                    }
+                }
+                .padding(.top, Theme.Spacing.screen)
+                if let info = viewModel.quickInfo {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.screen) {
+                        SectionHeaderView(title: "COMPANY PROFILE")
+                        if let desc = info.description {
+                            Text(desc)
+                                .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
+                                .foregroundStyle(Theme.inkSecondary)
+                                .lineSpacing(6)
+                        }
+                        GuillocheDivider()
+                        if let officers = info.officers, !officers.isEmpty {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                                Text("KEY EXECUTIVES")
+                                    .font(Theme.sectionCapsLabel(size: 8))
+                                    .foregroundStyle(Theme.inkSecondary)
+                                ForEach(officers, id: \.self) { officer in
+                                    Text("• \(officer.uppercased())")
+                                        .font(Theme.monoTabular(size: 13))
+                                        .foregroundStyle(Theme.inkPrimary)
+                                }
+                            }
+                        }
+                    }
+                    .padding(Theme.Spacing.card)
+                    .background(Theme.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderSubtle, lineWidth: 0.5))
+                }
+            }
+            .padding(.horizontal, Theme.screenPadding)
+            .padding(.bottom, 100)
+        }
+    }
+}
+
+struct AnalysisStockHeaderCard: View {
+    let info: QuickInfo
+    var body: some View {
+        VStack(spacing: Theme.Spacing.standard) {
+            HStack(spacing: Theme.Spacing.card) {
+                StockIcon(ticker: info.ticker, signal: info.signal)
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                    Text(info.ticker).font(Theme.serialNumberFont(size: 24)).foregroundStyle(Theme.inkPrimary)
+                    Text(info.sector ?? info.industry ?? "").font(Theme.microLabel()).foregroundStyle(Theme.inkSecondary)
+                }
+                Spacer()
+            }
+            GuillocheDivider()
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
+                Text("₹").font(Theme.engravedSerif(size: 24, weight: .bold)).foregroundStyle(Theme.goldPrimary)
+                Text((info.price ?? 0.0).inrFormatted.replacingOccurrences(of: "₹", with: ""))
+                    .font(Theme.dataLarge()).foregroundStyle(Theme.inkPrimary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: Theme.Spacing.medium) {
+                Text("\((info.change ?? 0.0) >= 0 ? "+" : "")\((info.change ?? 0.0).inrFormatted)")
+                Text("(\((info.changePercent ?? 0.0).percentFormatted))")
+            }
+            .font(Theme.monoTabular(size: 16))
+            .foregroundStyle((info.change ?? 0.0) >= 0 ? Theme.dataPositive : Theme.dataNegative)
+        }
+        .padding(Theme.Spacing.card)
+        .background(Theme.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
+        .padding(.top, Theme.Spacing.screen)
+    }
+}
