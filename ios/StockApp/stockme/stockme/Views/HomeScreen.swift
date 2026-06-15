@@ -2631,7 +2631,7 @@ extension HomeScreen {
                     } else {
                         VStack(spacing: Theme.Spacing.standard) {
                             ForEach(viewModel.watchlist) { stock in
-                                NavigationLink(value: stock.ticker) {
+                                NavigationLink(value: StockActionHubDest(ticker: stock.ticker, companyName: stock.companyName, exchange: stock.exchange)) {
                                     StockRow(stock: stock)
                                 }
                                 .ekPressHaptic()
