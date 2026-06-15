@@ -1268,7 +1268,15 @@ def analyze(
             print(
                 f"[CACHE HIT] Returning existing analysis for {full_ticker} on {analysis_date}"
             )
-            cached_today = _normalize_response(cached_today)
+            _quant_from_cache = {
+                "market_regime": cached_today.get("market_regime", "Unknown"),
+                "calibrated_confidence": cached_today.get("calibrated_confidence", 0.0),
+                "conformal_target_upper_3m": cached_today.get("conformal_target_upper_3m"),
+                "conformal_target_lower_3m": cached_today.get("conformal_target_lower_3m"),
+                "quantitative_drivers": cached_today.get("quantitative_drivers", {}),
+                "tail_risk_flags": cached_today.get("tail_risk_flags", {}),
+            }
+            cached_today = _normalize_response(cached_today, quant_payload=_quant_from_cache)
             cached_today["ticker"] = ticker.upper()
             cached_today["exchange"] = exchange
             cached_today["_cache_type"] = "CACHE HIT"
@@ -1394,7 +1402,15 @@ def analyze(
                             new_analysis = copy.deepcopy(last_analysis)
                             new_analysis["analysis_date"] = analysis_date
 
-                            new_analysis = _normalize_response(new_analysis)
+                            _quant_from_smart_cache = {
+                                "market_regime": new_analysis.get("market_regime", "Unknown"),
+                                "calibrated_confidence": new_analysis.get("calibrated_confidence", 0.0),
+                                "conformal_target_upper_3m": new_analysis.get("conformal_target_upper_3m"),
+                                "conformal_target_lower_3m": new_analysis.get("conformal_target_lower_3m"),
+                                "quantitative_drivers": new_analysis.get("quantitative_drivers", {}),
+                                "tail_risk_flags": new_analysis.get("tail_risk_flags", {}),
+                            }
+                            new_analysis = _normalize_response(new_analysis, quant_payload=_quant_from_smart_cache)
                             new_analysis["ticker"] = ticker.upper()
                             new_analysis["exchange"] = exchange
                             new_analysis["_cache_type"] = "SMART CACHE"
@@ -1495,9 +1511,9 @@ def analyze(
                 mh = yf.Ticker(ns_ticker).major_holders
                 if "pledged" in str(mh).lower():
                     pledging_data = str(mh)
-            except:
+            except Exception:
                 pass
-    except:
+    except Exception:
         pass
 
     # ── ML Hybrid Pipeline: Quantitative Engine (teacher-student flow) ───

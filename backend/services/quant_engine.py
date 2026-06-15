@@ -9,26 +9,48 @@ All math is deterministic — no black-box ML.
 """
 
 import asyncio
+import logging
 import math
 from typing import Dict, Any, Tuple
 
 import numpy as np
 
+_LOG = logging.getLogger(__name__)
+
+_NIFTY_LONG_RUN_DAILY_VOL = 0.016    # ~16% annualized — Nifty 50 historical average
+_NIFTY_LONG_RUN_ANNUAL_VOL = 0.16
+
 
 class QuantitativeEngine:
     """Deterministic ML proxy — provides mathematically provable predictions."""
 
-    def __init__(self, ticker: str):
+    def __init__(self, ticker: str) -> None:
         self.ticker = ticker.upper()
 
     async def run_full_pipeline(self) -> Dict[str, Any]:
         """Execute the full quant pipeline: fetch data, compute regime,
         conformal targets, SHAP drivers, and calibrated confidence."""
-        # Fetch data concurrently
-        market_data, fundamental_data, macro_data = await asyncio.gather(
+        # Fetch data concurrently — return_exceptions so one failure doesn't abort all
+        results = await asyncio.gather(
             self._fetch_market_volatility(),
             self._fetch_fundamentals(),
             self._fetch_macro_indicators(),
+            return_exceptions=True,
+        )
+        market_data = (
+            results[0]
+            if not isinstance(results[0], BaseException)
+            else self._fallback_market_data()
+        )
+        fundamental_data = (
+            results[1]
+            if not isinstance(results[1], BaseException)
+            else {"piotroski_score": 5, "promoter_pledge_pct": 0.0, "fallback": True}
+        )
+        _macro_data = (  # noqa: F841 — reserved for future regime enrichment (Nifty VIX)
+            results[2]
+            if not isinstance(results[2], BaseException)
+            else {"nifty_50": 23600.0, "vix": None, "fallback": True}
         )
 
         # Sequential math (order matters — each step depends on prior)
@@ -84,7 +106,7 @@ class QuantitativeEngine:
                 "fallback": False,
             }
         except Exception as e:
-            print(f"[QuantEngine] Market data fetch failed for {self.ticker}: {e}")
+            _LOG.warning("[QuantEngine] Market data fetch failed for %s: %s", self.ticker, e)
             return self._fallback_market_data()
 
     @staticmethod
@@ -107,8 +129,8 @@ class QuantitativeEngine:
         """Return sensible fallback values when market data is unavailable."""
         return {
             "current_price": 0.0,
-            "daily_volatility": 0.016,
-            "annualized_volatility_30d": 0.16,
+            "daily_volatility": _NIFTY_LONG_RUN_DAILY_VOL,
+            "annualized_volatility_30d": _NIFTY_LONG_RUN_ANNUAL_VOL,
             "rsi_14": 50.0,
             "fallback": True,
         }
@@ -140,14 +162,12 @@ class QuantitativeEngine:
             return {
                 "piotroski_score": piotroski_score,
                 "promoter_pledge_pct": promoter_pledge,
-                "pe_ratio": fund.get("pe_ratio"),
-                "roe": fund.get("roe"),
+                "pe_ratio": float(fund.get("pe_ratio") or 0.0),
+                "roe": float(fund.get("roe") or 0.0),
                 "fallback": False,
             }
         except Exception as e:
-            print(
-                f"[QuantEngine] Fundamentals fetch failed for {self.ticker}: {e}"
-            )
+            _LOG.warning("[QuantEngine] Fundamentals fetch failed for %s: %s", self.ticker, e)
             return {
                 "piotroski_score": 5,
                 "promoter_pledge_pct": 0.0,
@@ -174,7 +194,8 @@ class QuantitativeEngine:
             else:
                 nifty_price = float(nifty_price)
             return {"nifty_50": nifty_price, "vix": None, "fallback": False}
-        except Exception:
+        except Exception as e:
+            _LOG.warning("[QuantEngine] Macro data fetch failed: %s", e)
             return {"nifty_50": 23600.0, "vix": None, "fallback": True}
 
     # ── Core Math ───────────────────────────────────────────────────────────

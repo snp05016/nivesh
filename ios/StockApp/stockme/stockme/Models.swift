@@ -124,10 +124,11 @@ struct StockAnalysis: Codable {
 
     // MARK: - Computed Helpers
 
-    /// Prefer calibrated confidence from quant engine; fall back to legacy confidencePct
+    /// Prefer calibrated confidence from quant engine; fall back to legacy confidencePct.
+    /// Clamped to [0.0, 1.0] to guard against stale cached rows predating schema bounds.
     var displayConfidence: Double {
         if let cc = calibratedConfidence {
-            return cc
+            return max(0.0, min(1.0, cc))
         }
         return Double(confidencePercent) / 100.0
     }
