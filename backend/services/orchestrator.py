@@ -1112,6 +1112,9 @@ def _normalize_response(result: dict, scan_type: str = "standard", quant_payload
         result["calibrated_confidence"] = quant_payload.get(
             "calibrated_confidence", 0.0
         )
+        result["confidence_math_breakdown"] = quant_payload.get(
+            "confidence_math_breakdown", {}
+        )
         result["conformal_target_upper_3m"] = quant_payload.get(
             "conformal_target_upper_3m"
         )
@@ -1269,6 +1272,7 @@ def analyze(
             _quant_from_cache = {
                 "market_regime": cached_today.get("market_regime", "Unknown"),
                 "calibrated_confidence": cached_today.get("calibrated_confidence", 0.0),
+                "confidence_math_breakdown": cached_today.get("confidence_math_breakdown", {}),
                 "conformal_target_upper_3m": cached_today.get("conformal_target_upper_3m"),
                 "conformal_target_lower_3m": cached_today.get("conformal_target_lower_3m"),
                 "quantitative_drivers": cached_today.get("quantitative_drivers", {}),
@@ -1403,6 +1407,7 @@ def analyze(
                             _quant_from_smart_cache = {
                                 "market_regime": new_analysis.get("market_regime", "Unknown"),
                                 "calibrated_confidence": new_analysis.get("calibrated_confidence", 0.0),
+                                "confidence_math_breakdown": new_analysis.get("confidence_math_breakdown", {}),
                                 "conformal_target_upper_3m": new_analysis.get("conformal_target_upper_3m"),
                                 "conformal_target_lower_3m": new_analysis.get("conformal_target_lower_3m"),
                                 "quantitative_drivers": new_analysis.get("quantitative_drivers", {}),
@@ -1533,6 +1538,13 @@ def analyze(
         quant_payload = {
             "market_regime": "Data Unavailable",
             "calibrated_confidence": 0.0,
+            "confidence_math_breakdown": {
+                "base_probability": 0.50,
+                "net_shap_adjustment": 0.0,
+                "regime_multiplier": 1.0,
+                "tail_risk_deduction": 0.0,
+                "final_calibrated_confidence": 0.0,
+            },
             "conformal_target_upper_3m": None,
             "conformal_target_lower_3m": None,
             "quantitative_drivers": {},

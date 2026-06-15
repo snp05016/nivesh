@@ -117,6 +117,7 @@ struct StockAnalysis: Codable {
     // ML Hybrid Pipeline — quant engine fields
     let marketRegime: String?
     let calibratedConfidence: Double?
+    let confidenceMathBreakdown: [String: Double]?
     let conformalTargetUpper3m: Double?
     let conformalTargetLower3m: Double?
     let quantitativeDrivers: [String: Double]?
@@ -183,6 +184,7 @@ struct StockAnalysis: Codable {
         case cachedScanType = "_cached_scan_type"
         case marketRegime = "market_regime"
         case calibratedConfidence = "calibrated_confidence"
+        case confidenceMathBreakdown = "confidence_math_breakdown"
         case conformalTargetUpper3m = "conformal_target_upper_3m"
         case conformalTargetLower3m = "conformal_target_lower_3m"
         case quantitativeDrivers = "quantitative_drivers"
@@ -240,6 +242,7 @@ struct StockAnalysis: Codable {
         cachedScanType          = try c.decodeIfPresent(String.self,                forKey: .cachedScanType)
         marketRegime            = try c.decodeIfPresent(String.self,                forKey: .marketRegime)
         calibratedConfidence    = try c.decodeIfPresent(Double.self,                forKey: .calibratedConfidence)
+        confidenceMathBreakdown = try c.decodeIfPresent([String: Double].self,       forKey: .confidenceMathBreakdown)
         conformalTargetUpper3m  = try c.decodeIfPresent(Double.self,                forKey: .conformalTargetUpper3m)
         conformalTargetLower3m  = try c.decodeIfPresent(Double.self,                forKey: .conformalTargetLower3m)
         quantitativeDrivers     = try c.decodeIfPresent([String: Double].self,       forKey: .quantitativeDrivers)

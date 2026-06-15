@@ -59,13 +59,14 @@ class QuantitativeEngine:
         shap_drivers, tail_risks = self._compute_feature_importance(
             fundamental_data, market_data
         )
-        confidence = self._compute_calibrated_confidence(
+        confidence, confidence_breakdown = self._compute_calibrated_confidence(
             regime, shap_drivers, tail_risks
         )
 
         return {
             "market_regime": regime,
             "calibrated_confidence": confidence,
+            "confidence_math_breakdown": confidence_breakdown,
             "conformal_target_upper_3m": targets["upper_3m"],
             "conformal_target_lower_3m": targets["lower_3m"],
             "quantitative_drivers": shap_drivers,
@@ -299,25 +300,37 @@ class QuantitativeEngine:
     @staticmethod
     def _compute_calibrated_confidence(
         regime: str, shap_drivers: Dict[str, float], tail_risks: Dict[str, bool]
-    ) -> float:
+    ) -> Tuple[float, Dict[str, float]]:
         """Compute calibrated confidence score (0.05–0.95).
 
         Base confidence of 0.50, adjusted by SHAP driver sum,
         multiplied by regime factor, then penalized for tail risks.
         """
-        base_confidence = 0.50
-        base_confidence += sum(shap_drivers.values())
+        base_probability = 0.50
+        net_shap_adjustment = sum(shap_drivers.values())
+        adjusted_confidence = base_probability + net_shap_adjustment
 
         regime_multipliers = {
             "Low Volatility / Accumulation": 1.10,
             "Transition / Macro-Driven": 0.85,
             "High Volatility / Crisis": 0.55,
         }
-        base_confidence *= regime_multipliers.get(regime, 1.0)
+        regime_multiplier = regime_multipliers.get(regime, 1.0)
+        adjusted_confidence *= regime_multiplier
 
+        tail_risk_deduction = 0.0
         if tail_risks.get("high_pledge_danger") or tail_risks.get(
             "distressed_fundamentals"
         ):
-            base_confidence -= 0.30
+            tail_risk_deduction = 0.30
+            adjusted_confidence -= tail_risk_deduction
 
-        return round(max(0.05, min(0.95, base_confidence)), 3)
+        confidence = round(max(0.05, min(0.95, adjusted_confidence)), 3)
+        breakdown = {
+            "base_probability": base_probability,
+            "net_shap_adjustment": round(net_shap_adjustment, 3),
+            "regime_multiplier": regime_multiplier,
+            "tail_risk_deduction": tail_risk_deduction,
+            "final_calibrated_confidence": confidence,
+        }
+        return confidence, breakdown

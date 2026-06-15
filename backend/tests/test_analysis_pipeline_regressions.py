@@ -64,6 +64,7 @@ def test_init_db_migrates_legacy_analysis_history_columns(tmp_path, monkeypatch)
         "conformal_target_lower_3m",
         "quantitative_drivers",
         "tail_risk_flags",
+        "confidence_math_breakdown",
     }.issubset(columns)
 
 
@@ -131,6 +132,13 @@ def test_quant_payload_is_passed_to_reformatter(monkeypatch):
         "conformal_target_lower_3m": 80.0,
         "quantitative_drivers": {"Promoter Pledge Risk": -0.2},
         "tail_risk_flags": {"high_pledge_danger": True},
+        "confidence_math_breakdown": {
+            "base_probability": 0.5,
+            "net_shap_adjustment": -0.2,
+            "regime_multiplier": 0.55,
+            "tail_risk_deduction": 0.3,
+            "final_calibrated_confidence": 0.33,
+        },
     }
     captured = {}
 
@@ -169,6 +177,41 @@ def test_quant_payload_is_passed_to_reformatter(monkeypatch):
     assert "QUANTITATIVE ENGINE OUTPUT (AUTHORITATIVE)" in captured["raw_output"]
     assert "High Volatility / Crisis" in captured["raw_output"]
     assert result["calibrated_confidence"] == 0.33
+    assert result["confidence_math_breakdown"]["final_calibrated_confidence"] == 0.33
+
+
+def test_save_analysis_persists_confidence_math_breakdown():
+    ticker = "PIPEMATH"
+    payload = {
+        "ticker": ticker,
+        "exchange": "NSE",
+        "company_name": ticker,
+        "analysis_date": "2026-06-15",
+        "signal": "HOLD",
+        "confidence_pct": 50,
+        "target_prices": {},
+        "fundamentals_snapshot": {},
+        "confidence_math_breakdown": {
+            "base_probability": 0.5,
+            "net_shap_adjustment": 0.1,
+            "regime_multiplier": 0.85,
+            "tail_risk_deduction": 0.0,
+            "final_calibrated_confidence": 0.51,
+        },
+    }
+
+    with database.get_session() as session:
+        session.query(AnalysisHistory).filter(AnalysisHistory.ticker == ticker).delete()
+        saved = database.save_analysis(session, None, ticker, payload)
+        row = (
+            session.query(AnalysisHistory)
+            .filter(AnalysisHistory.ticker == ticker)
+            .order_by(AnalysisHistory.created_at.desc())
+            .first()
+        )
+
+    assert saved["confidence_math_breakdown"]["net_shap_adjustment"] == 0.1
+    assert row.confidence_math_breakdown["final_calibrated_confidence"] == 0.51
 
 
 def test_ios_deep_scan_job_request_carries_deep_scan_flag():
