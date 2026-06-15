@@ -7,6 +7,7 @@ struct AnalysisCoreSections: View {
     let livePrice: Double?
     @ObservedObject var viewModel: AnalysisViewModel
     @State private var showFullSummary = false
+    @State private var showQuantInspector = false
 
     var body: some View {
         LazyVStack(spacing: Theme.sectionSpacing) {
@@ -23,6 +24,9 @@ struct AnalysisCoreSections: View {
             newsSectionView
             whatToWatchSectionView
             disclaimerSectionView
+        }
+        .sheet(isPresented: $showQuantInspector) {
+            QuantInspectorSheet(analysis: analysis)
         }
     }
 
@@ -136,10 +140,18 @@ struct AnalysisCoreSections: View {
                 ConfidenceArcView(score: conf, size: 64)
             }
 
-            Text("CALIBRATED PROBABILITY")
-                .font(Theme.microLabel())
-                .foregroundStyle(Theme.inkTertiary)
-                .explainableTerm("Mathematically Calibrated Confidence")
+            HStack(spacing: Theme.Spacing.small) {
+                Text("CALIBRATED PROBABILITY")
+                    .font(Theme.microLabel())
+                    .foregroundStyle(Theme.inkTertiary)
+                    .explainableTerm("Mathematically Calibrated Confidence")
+                if analysis.confidenceMathBreakdown != nil {
+                    QuantInspectorInfoButton {
+                        showQuantInspector = true
+                    }
+                }
+                Spacer()
+            }
 
             HStack(spacing: Theme.Spacing.xSmall) {
                 ForEach(0..<5, id: \.self) { i in
@@ -533,7 +545,13 @@ struct AnalysisCoreSections: View {
         if let upper = analysis.conformalTargetUpper3m,
            let lower = analysis.conformalTargetLower3m,
            upper > 0, lower > 0 {
-            ConformalBoundsRow(upper: upper, lower: lower)
+            ConformalBoundsRow(
+                upper: upper,
+                lower: lower,
+                onInfoTap: analysis.confidenceMathBreakdown == nil ? nil : {
+                    showQuantInspector = true
+                }
+            )
         }
     }
 }
@@ -542,14 +560,20 @@ struct AnalysisCoreSections: View {
 struct ConformalBoundsRow: View {
     let upper: Double
     let lower: Double
+    let onInfoTap: (() -> Void)?
 
     var body: some View {
         HStack(spacing: Theme.Spacing.standard) {
             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                Text("3M CONFORMAL BOUNDS")
-                    .font(Theme.officialStampFont(size: 9))
-                    .tracking(1.5)
-                    .foregroundStyle(Theme.inkTertiary)
+                HStack(spacing: Theme.Spacing.small) {
+                    Text("3M CONFORMAL BOUNDS")
+                        .font(Theme.officialStampFont(size: 9))
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.inkTertiary)
+                    if let onInfoTap {
+                        QuantInspectorInfoButton(action: onInfoTap)
+                    }
+                }
                 HStack(spacing: Theme.Spacing.small) {
                     Text(IndianFormatter.priceCompact(lower))
                         .font(Theme.serialNumberFont(size: 13))
@@ -572,5 +596,27 @@ struct ConformalBoundsRow: View {
         .padding(.vertical, Theme.Spacing.small)
         .background(Theme.canvasDeep.opacity(0.4))
         .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
+    }
+}
+
+private struct QuantInspectorInfoButton: View {
+    let action: () -> Void
+    private var hitTarget: CGFloat {
+        Theme.Spacing.xLarge + Theme.Spacing.standard
+    }
+
+    var body: some View {
+        Button {
+            HapticManager.selection()
+            action()
+        } label: {
+            Image(systemName: "info.circle")
+                .font(Theme.microLabel(size: 13, relativeTo: .caption))
+                .foregroundStyle(Theme.securityGold)
+                .frame(minWidth: hitTarget, minHeight: hitTarget)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(EKPressStyle())
+        .accessibilityLabel("Open quantitative engine log")
     }
 }

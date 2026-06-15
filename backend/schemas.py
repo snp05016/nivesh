@@ -68,6 +68,10 @@ class StockAnalysisResponse(BaseModel):
     # ── ML Hybrid Pipeline — quant engine fields (added 2026-06-14) ───
     market_regime: str = Field("Unknown", description="Market volatility regime")
     calibrated_confidence: float = Field(0.0, ge=0.0, le=1.0, description="Calibrated confidence score (0.0-1.0)")
+    confidence_math_breakdown: Dict[str, float] = Field(
+        default_factory=dict,
+        description="Deterministic confidence math components from the quant engine",
+    )
     conformal_target_upper_3m: Optional[float] = Field(None, description="3-month conformal upper bound")
     conformal_target_lower_3m: Optional[float] = Field(None, description="3-month conformal lower bound")
     quantitative_drivers: Dict[str, float] = Field(

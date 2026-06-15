@@ -40,24 +40,33 @@ class TestQuantEngineMath:
     def test_calibrated_confidence_bounds(self):
         from services.quant_engine import QuantitativeEngine
         engine = QuantitativeEngine("TEST")
-        cc = engine._compute_calibrated_confidence(
+        cc, breakdown = engine._compute_calibrated_confidence(
             "Transition / Macro-Driven",
             {"Fundamental Health (F-Score)": 0.2},
             {"high_pledge_danger": False, "distressed_fundamentals": False}
         )
         assert 0.0 <= cc <= 1.0
+        assert breakdown == {
+            "base_probability": 0.5,
+            "net_shap_adjustment": 0.2,
+            "regime_multiplier": 0.85,
+            "tail_risk_deduction": 0.0,
+            "final_calibrated_confidence": cc,
+        }
 
     def test_tail_risk_depresses_confidence(self):
         from services.quant_engine import QuantitativeEngine
         engine = QuantitativeEngine("TEST")
-        cc_normal = engine._compute_calibrated_confidence(
+        cc_normal, breakdown_normal = engine._compute_calibrated_confidence(
             "Transition / Macro-Driven", {}, {}
         )
-        cc_risky = engine._compute_calibrated_confidence(
+        cc_risky, breakdown_risky = engine._compute_calibrated_confidence(
             "Transition / Macro-Driven", {},
             {"high_pledge_danger": True, "distressed_fundamentals": False}
         )
         assert cc_risky < cc_normal
+        assert breakdown_normal["tail_risk_deduction"] == 0.0
+        assert breakdown_risky["tail_risk_deduction"] == 0.3
 
     def test_feature_importance_filters_negligible(self):
         from services.quant_engine import QuantitativeEngine

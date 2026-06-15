@@ -154,6 +154,7 @@ class AnalysisHistory(Base):
     # ML Hybrid Pipeline — quantitative engine columns (added 2026-06-14)
     market_regime               = Column(String, default="Transition")
     calibrated_confidence       = Column(Float, default=0.0)
+    confidence_math_breakdown   = Column(JSON, default=dict)
     conformal_target_upper_3m   = Column(Float, nullable=True)
     conformal_target_lower_3m   = Column(Float, nullable=True)
     quantitative_drivers        = Column(JSON, default=dict)
@@ -689,6 +690,7 @@ def _ensure_analysis_history_columns() -> None:
         "outcome_checked_at": "DATETIME",
         "market_regime": "VARCHAR DEFAULT 'Transition'",
         "calibrated_confidence": "FLOAT DEFAULT 0.0",
+        "confidence_math_breakdown": "JSON DEFAULT '{}'",
         "conformal_target_upper_3m": "FLOAT",
         "conformal_target_lower_3m": "FLOAT",
         "quantitative_drivers": "JSON DEFAULT '{}'",
@@ -842,6 +844,7 @@ def save_analysis(session: Session, user_id: Optional[int], ticker: str, result:
         # ML Hybrid Pipeline fields
         market_regime=result.get("market_regime", "Transition"),
         calibrated_confidence=result.get("calibrated_confidence", 0.0),
+        confidence_math_breakdown=result.get("confidence_math_breakdown", {}),
         conformal_target_upper_3m=result.get("conformal_target_upper_3m"),
         conformal_target_lower_3m=result.get("conformal_target_lower_3m"),
         quantitative_drivers=result.get("quantitative_drivers", {}),
@@ -882,6 +885,7 @@ def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_
     if not row:
         return None
     res = json.loads(row.full_json)
+    res.setdefault("confidence_math_breakdown", row.confidence_math_breakdown or {})
     res["raw_output"] = row.raw_output
     res["_cached_scan_type"] = scan_type
     if row.created_at:
@@ -917,6 +921,7 @@ def get_last_analysis_any_type(session: Session, ticker: str) -> Optional[dict]:
         )
         if row:
             res = json.loads(row.full_json)
+            res.setdefault("confidence_math_breakdown", row.confidence_math_breakdown or {})
             res["raw_output"] = row.raw_output
             res["_cached_scan_type"] = scan
             if row.created_at:
@@ -944,6 +949,7 @@ def get_all_ticker_history(session: Session, ticker: str, user_id: Optional[int]
     results = []
     for r in rows:
         res = json.loads(r.full_json)
+        res.setdefault("confidence_math_breakdown", r.confidence_math_breakdown or {})
         res["raw_output"] = r.raw_output
         results.append(res)
     return results
