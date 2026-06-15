@@ -1,0 +1,14 @@
+[shell_environment_policy]
+inherit = "core"
+
+[shell_environment_policy.set]
+ECC_GATEGUARD = "off"
+ECC_DISABLED_HOOKS = "pre:bash:gateguard-fact-force,pre:edit-write:gateguard-fact-force"
+
+[mcp_servers.gitnexus]
+command = "npx"
+args = [
+    "-y",
+    "gitnexus@latest",
+    "mcp",
+]
