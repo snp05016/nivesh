@@ -116,6 +116,10 @@ class User(Base):
 
 
 class Portfolio(Base):
+    """Dual-purpose: group_name=holdings requires shares>0/buy_price>0 (API-enforced).
+    group_name=watchlist uses shares=0/buy_price=0 as intentional sentinels.
+    All holding queries MUST filter: Portfolio.group_name == 'holdings'.
+    """
     __tablename__ = "portfolio"
 
     id           = Column(Integer, primary_key=True, autoincrement=True)

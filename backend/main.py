@@ -2298,16 +2298,10 @@ from schemas import (
 # ── DB session dependency (thread-safe SQLAlchemy) ───────────────────────────
 
 def _get_db():
-    """Yield a SQLAlchemy session; rolls back on error, always closes."""
-    from database import SessionLocal
-    db = SessionLocal()
-    try:
+    """FastAPI dependency: yield a session via get_session() context manager."""
+    from database import get_session
+    with get_session() as db:
         yield db
-    except Exception:
-        db.rollback()
-        raise
-    finally:
-        db.close()
 
 
 # ── /api/v1/market/dashboard-pulse ───────────────────────────────────────────
