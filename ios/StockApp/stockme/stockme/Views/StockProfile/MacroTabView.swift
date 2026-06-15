@@ -146,7 +146,7 @@ struct MacroMoodGaugeView: View {
 // MARK: - Macro Strip Card
 
 struct MacroStripCardView: View {
-    let strip: MacroStripData?
+    let strip: MacroStrip?
 
     var body: some View {
         if let strip = strip {
@@ -221,7 +221,7 @@ struct MacroStripItemView: View {
 
 struct MacroImpactListView: View {
     let ticker: String
-    let impacts: [MacroImpactItem]?
+    let impacts: [StockMacroImpact]?
 
     var body: some View {
         if let impacts = impacts, !impacts.isEmpty {
@@ -233,14 +233,11 @@ struct MacroImpactListView: View {
 
                 ForEach(impacts) { item in
                     HStack(alignment: .top, spacing: Theme.Spacing.standard) {
+                        let impactColor: Color = item.impact == "POSITIVE" ? Theme.bullGreen : item.impact == "NEGATIVE" ? Theme.bearRed : Theme.holdAmber
                         Text(item.impact)
                             .font(Theme.microLabel(size: 7))
                             .tracking(0.5)
-                            .foregroundStyle(
-                                item.impact == "POSITIVE" ? Theme.bullGreen :
-                                item.impact == "NEGATIVE" ? Theme.bearRed :
-                                Theme.holdAmber
-                            )
+                            .foregroundStyle(impactColor)
                             .padding(.horizontal, Theme.Spacing.tight)
                             .padding(.vertical, Theme.Spacing.xSmall)
                             .background(
