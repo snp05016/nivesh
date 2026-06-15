@@ -326,12 +326,12 @@ class NetworkManager: ObservableObject {
 
     // MARK: - v2 Analysis Engine (background job model)
 
-    func startAnalysisJob(ticker: String, exchange: String, userId: Int?, scanType: String) async throws -> StartJobResponse {
+    func startAnalysisJob(ticker: String, exchange: String, userId: Int?, deepScan: Bool = false, scanType: String) async throws -> StartJobResponse {
         guard let url = URL(string: "\(baseURL)/analyze") else { throw NetworkError.invalidURL }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(StartJobRequest(ticker: ticker, exchange: exchange, userId: userId, scanType: scanType))
+        request.httpBody = try JSONEncoder().encode(StartJobRequest(ticker: ticker, exchange: exchange, userId: userId, deepScan: deepScan, scanType: scanType))
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         if http.statusCode == 409 {

@@ -497,17 +497,14 @@ async def analyze_endpoint(req: AnalyzeRequest):
 
     ticker = req.ticker.upper()
 
-    # ── Cache check: return existing analysis instantly if available ──
-    # Priority: exact scan_type match, then any available type as fallback
+    # ── Cache check: return existing analysis instantly if exact tier is available ──
     try:
-        from database import get_analysis_for_date, get_last_analysis_any_type, get_session
+        from database import get_analysis_for_date, get_session
         from datetime import date
         with get_session() as cache_session:
             cached = get_analysis_for_date(
                 cache_session, ticker, date.today().strftime("%Y-%m-%d"), req.scan_type
             )
-            if not cached:
-                cached = get_last_analysis_any_type(cache_session, ticker)
             if cached:
                 from services.orchestrator import _normalize_response, _inject_live_data
                 cached = _normalize_response(cached)
@@ -540,10 +537,11 @@ async def analyze_endpoint(req: AnalyzeRequest):
                 "suggested_action": "ATTACH_OR_CANCEL",
             })
 
+    deep_scan = req.deep_scan or req.scan_type == "deep"
     job = database.create_job(req.user_id, ticker, req.exchange, req.scan_type)
     try:
         spawn_job(job["job_id"], ticker, req.exchange,
-                  req.user_id, req.deep_scan, req.scan_type)
+                  req.user_id, deep_scan, req.scan_type)
     except Exception as e:
         database.update_job(job["job_id"], status="FAILED",
                             error=f"Failed to spawn worker: {e}")

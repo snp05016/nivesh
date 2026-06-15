@@ -15,7 +15,7 @@ import threading
 import time
 
 # Wall-clock budgets per scan type (seconds). Extreme is depth-first ≤10 min.
-_WALLCLOCK_LIMITS = {"extreme": 600, "standard": 420}
+_WALLCLOCK_LIMITS = {"extreme": 600, "deep": 420, "standard": 420}
 
 
 def _start_wallclock_watchdog(job_id: str, limit_sec: int) -> None:
