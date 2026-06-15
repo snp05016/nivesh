@@ -464,9 +464,13 @@ struct PeerRow: Codable, Identifiable {
 struct StartJobRequest: Encodable {
     let ticker, exchange: String
     let userId: Int?
+    let deepScan: Bool
     let scanType: String
     enum CodingKeys: String, CodingKey {
-        case ticker, exchange; case userId = "user_id"; case scanType = "scan_type"
+        case ticker, exchange
+        case userId = "user_id"
+        case deepScan = "deep_scan"
+        case scanType = "scan_type"
     }
 }
 

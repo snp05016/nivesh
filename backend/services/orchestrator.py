@@ -1245,6 +1245,7 @@ def analyze(
     exchange = exchange.upper()
     if exchange not in EXCHANGE_SUFFIX:
         raise ValueError(f"Unsupported exchange: {exchange}. Use NSE or BSE.")
+    deep_scan = deep_scan or scan_type == "deep"
     full_ticker = _resolve_ticker(ticker, exchange)
     analysis_date = date.today().strftime("%Y-%m-%d")
 
@@ -1260,10 +1261,9 @@ def analyze(
         user_id = abs(hash(_anon_key)) % (10 ** 8)
 
     with get_session() as session:
-        # 1. Query Cache: exact scan_type match, then fallback to any type
+        # 1. Query Cache: exact scan_type match only.
+        # Cross-tier fallback makes Standard/Deep/Extreme display the wrong report.
         cached_today = get_analysis_for_date(session, ticker, analysis_date, scan_type)
-        if not cached_today:
-            cached_today = get_last_analysis_any_type(session, ticker)
         if cached_today:
             print(
                 f"[CACHE HIT] Returning existing analysis for {full_ticker} on {analysis_date}"
@@ -1531,6 +1531,12 @@ def analyze(
     raw_output, _, final_state = run_trading_agents(full_ticker, analysis_date, scan_type)
     emitter.emit("synthesis", "Research & Portfolio Managers",
                  "Weighing the dialectical debate (bear 1.5x) into a final call", pct=60)
+    raw_output += (
+        "\n\nQUANTITATIVE ENGINE OUTPUT (AUTHORITATIVE):\n"
+        f"{_json_dumps(quant_payload, sort_keys=True)}\n"
+        "Use these exact target bounds, confidence, regime, drivers, and tail-risk flags. "
+        "Do not invent or override quantitative values.\n"
+    )
     raw_output += f"\n\nADDITIONAL DATA (MANDATORY TO INCLUDE IN fundamentals_snapshot):\nPromoter Pledging: {pledging_data}\n"
 
     # ── Deep Scan: PKScreener + FinBERT injection ────────────────────────────

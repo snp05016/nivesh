@@ -60,7 +60,7 @@ class AnalysisViewModel: ObservableObject {
             // ── v2 engine: start background job, then poll with fallback ──
             do {
                 let start = try await NetworkManager.shared.startAnalysisJob(
-                    ticker: ticker, exchange: "NSE", userId: userId, scanType: scanType)
+                    ticker: ticker, exchange: "NSE", userId: userId, deepScan: deepScan, scanType: scanType)
 
                 if let cachedAnalysis = start.analysis {
                     await MainActor.run {
@@ -319,7 +319,7 @@ struct AnalysisScreen: View {
                         viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: isExtreme, scanType: isExtreme ? "extreme" : "standard")
                     case .deepScan:
                         let forbidden = Self.deepScanDisabledTickers.contains(ticker.uppercased())
-                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: !forbidden)
+                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: !forbidden, scanType: "deep")
                     case .extremeScan:
                         let forbidden = Self.deepScanDisabledTickers.contains(ticker.uppercased())
                         viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: !forbidden, scanType: "extreme")
