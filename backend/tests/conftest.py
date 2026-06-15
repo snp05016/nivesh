@@ -276,3 +276,27 @@ def teardown_test_user(client, request):
                 session.commit()
     except Exception as e:
         print(f"[Teardown] Warning — could not clean up test user: {e}")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def seed_job_test_users():
+    """Create stub users for job/worker tests that reference hard-coded user IDs.
+    These IDs are needed to satisfy the FK constraint on analysis_jobs.user_id
+    now that PRAGMA foreign_keys=ON is enforced.
+    """
+    import sqlite3
+    from pathlib import Path
+    db_path = Path(__file__).parent.parent / "stockapp_test.db"
+    conn = sqlite3.connect(str(db_path))
+    test_ids = [990001, 990002, 990003, 11_111_111, 11_111_112, 22_222_221]
+    for uid in test_ids:
+        conn.execute(
+            "INSERT OR IGNORE INTO users (id, username, password_hash, display_name) VALUES (?, ?, ?, ?)",
+            (uid, f"_test_stub_{uid}", "x", f"Test Stub {uid}")
+        )
+    conn.commit()
+    yield
+    for uid in test_ids:
+        conn.execute("DELETE FROM users WHERE id=?", (uid,))
+    conn.commit()
+    conn.close()
