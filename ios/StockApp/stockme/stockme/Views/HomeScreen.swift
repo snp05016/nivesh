@@ -586,15 +586,18 @@ struct HomeScreen: View {
     @State private var showingEditLayout = false
 
     private var activeSectionOrder: [HomeSectionID] {
+        let base: [HomeSectionID]
         if !sectionOrderData.isEmpty, let saved = try? JSONDecoder().decode([HomeSectionID].self, from: sectionOrderData) {
-            // Merge any missing ones
             var merged = saved
             for sec in HomeSectionID.allCases {
                 if !merged.contains(sec) { merged.append(sec) }
             }
-            return merged
+            base = merged
+        } else {
+            base = HomeSectionID.allCases
         }
-        return HomeSectionID.allCases
+        var seen = Set<HomeSectionID>()
+        return base.filter { seen.insert($0).inserted }
     }
 
     // Fix 3.3: Offline guard — block destructive watchlist ops when disconnected
@@ -2751,14 +2754,14 @@ extension HomeScreen {
                 .id(HomeSectionID.morning.rawValue)
             } else if let briefData = viewModel.morningBriefData {
                 VStack(spacing: Theme.Spacing.card) {
-                    SectionHeader(title: "Morning Brief", hindiTitle: "प्रातःकालीन सारांश")
+                    SectionHeader(title: "Morning Brief", hindiTitle: "Morning Summary")
                     MorningDecreeCard(briefData: briefData)
                         .padding(.horizontal, Theme.screenPadding)
                 }
                 .id(HomeSectionID.morning.rawValue)
             } else {
                 VStack(spacing: Theme.Spacing.card) {
-                    SectionHeader(title: "Morning Brief", hindiTitle: "प्रातःकालीन सारांश")
+                    SectionHeader(title: "Morning Brief", hindiTitle: "Morning Summary")
                     DashboardLoadingCard(label: "Morning Brief", isLoading: viewModel.isLoading)
                 }
                 .id(HomeSectionID.morning.rawValue)

@@ -206,7 +206,7 @@ async def pregen_morning_briefs_all_users() -> dict:
 
                 prompt = (
                     "You are a friendly Indian stock market advisor. Write a short morning brief "
-                    "(4-6 bullet points) for an investor. Write in simple English. Be specific. "
+                    "(4-6 bullet points) for an investor. Write ONLY in English — never use Hindi. Be specific. "
                     "Mention big movers. Flag anything concerning. End with one sentence on market mood. "
                     "Use Indian number format (lakhs/crores). Be warm.\n\n"
                     f"Portfolio:\n{portfolio_text}\n\n"

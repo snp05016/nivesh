@@ -275,6 +275,8 @@ Commit after EVERY small task or phase. Incremental, reviewable checkpoints.
 
 **Pre-commit:** Run `gitnexus_detect_changes()`, review `git status` + `git diff --stat`, NO secrets/.env/binary assets, NO xcodebuild artifacts.
 
+**Merging:** NEVER run `git merge` or merge any branch into `main` unless the user explicitly gives you permission. Always push to a separate branch first.
+
 ### 6.5 Deployment & Remote Verification
 After committing and pushing your code, you MUST deploy and verify on the remote server by executing commands non-interactively. NEVER open an interactive SSH session.
 1. Pull latest code remotely: `ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && git pull"`

@@ -753,7 +753,7 @@ def morning_summary_endpoint(user_id: int, authorization: str = Header(None)):
         signals_text = "\n".join(signal_lines) if signal_lines else "No analysis available."
         indices_text = "\n".join(indices_lines) if indices_lines else "Data unavailable."
 
-        prompt = f"""You are a friendly Indian stock market advisor. Write a short morning brief (4-6 bullet points) for an investor based on their portfolio data. Write in simple English. Be specific about which stocks to watch and why. Mention any big movers. Flag anything concerning. End with one sentence on overall market mood. Use Indian number format (lakhs/crores). Be warm and helpful.
+        prompt = f"""You are a friendly Indian stock market advisor. Write a short morning brief (4-6 bullet points) for an investor based on their portfolio data. Write ONLY in English — never use Hindi or any other language. Be specific about which stocks to watch and why. Mention any big movers. Flag anything concerning. End with one sentence on overall market mood. Use Indian number format (lakhs/crores). Be warm and helpful.
 
 Portfolio holdings today:
 {portfolio_text}
