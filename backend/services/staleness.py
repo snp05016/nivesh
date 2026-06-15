@@ -6,8 +6,8 @@ Pure math — no AI calls, no network calls.
 from datetime import datetime, timedelta
 from typing import Optional
 
-# IST offset — all timestamp comparisons use Indian Standard Time
-IST_OFFSET = timedelta(hours=5, minutes=30)
+# UAE offset — all timestamp comparisons use UAE Standard Time (UTC+4)
+UAE_OFFSET = timedelta(hours=4)
 # Market opens at 09:15 IST on weekdays
 _MARKET_OPEN_HOUR = 9
 _MARKET_OPEN_MINUTE = 15
@@ -18,14 +18,14 @@ def is_pre_market(analysis_date: Optional[datetime] = None) -> bool:
     Pre-market analyses use stale pre-open data and should be invalidated
     once live trading begins. Fix 2.34.
     """
-    now_ist = datetime.utcnow() + IST_OFFSET
-    market_open = now_ist.replace(
+    now_uae = datetime.utcnow() + UAE_OFFSET
+    market_open = now_uae.replace(
         hour=_MARKET_OPEN_HOUR, minute=_MARKET_OPEN_MINUTE, second=0, microsecond=0
     )
     if analysis_date is not None:
         anal_time = analysis_date.hour * 60 + analysis_date.minute
         market_open_mins = _MARKET_OPEN_HOUR * 60 + _MARKET_OPEN_MINUTE
-        if anal_time < market_open_mins and now_ist > market_open:
+        if anal_time < market_open_mins and now_uae > market_open:
             return True
     return False
 
@@ -49,8 +49,8 @@ def compute_staleness(
         score += 40
         reasons.append("never analysed")
     else:
-        now_ist = datetime.utcnow() + IST_OFFSET
-        age_days = (now_ist - last_analysis_date).days
+        now_uae = datetime.utcnow() + UAE_OFFSET
+        age_days = (now_uae - last_analysis_date).days
         if age_days > 30:
             score += 40
             reasons.append(f"analysis is {age_days}d old")
