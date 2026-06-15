@@ -1,70 +1,69 @@
-# Nivesh — LLM API Credits Usage Map
+# Nivesh LLM Credits Usage Map
 
-> **Exhaustive audit of every file consuming LLM API credits and the iOS features that trigger them.**
-> Generated: June 2026
-> Cost rates: DeepSeek V4 Flash / Claude Haiku / Claude Sonnet / Gemini 3.1 Pro
+> Last verified: 2026-06-15 from `backend/services/llm_utils.py`, routers, and service call sites. Costs are qualitative because actual usage depends on request size, cache hits, retries, and provider pricing.
 
----
+## Canonical Model Constants
 
-## 1. Provider & Model Overview
+The source of truth is `backend/services/llm_utils.py`:
 
-| Provider | Model(s) | Cost & Tier | Used In |
-|----------|----------|-------------|---------|
-| **DeepSeek** | `deepseek-chat` (V4 Flash) | **Tier 1** | 8x LangGraph agents, smart cache gate, daily action, red flags, macro impact, trade journal stats, advisor stance extraction |
-| **Anthropic** | `claude-haiku-4-5-20251001` | **Tier 2** | Research Manager, Portfolio Manager (LangGraph), Morning Summary |
-| **Anthropic / Google** | `claude-3-5-sonnet-latest` / `gemini-3.1-pro` | **Tier 3** | Fallback reformatter, Batch analysis, PDF export narrative, Extreme Analysis |
+| Constant | Current model | Intended tier/use |
+|---|---|---|
+| `DEEPSEEK_MODEL` | `deepseek-chat` | Tier 1 bulk work, cheaper summaries, routing, extraction, natural language translation |
+| `HAIKU_MODEL` | `claude-haiku-4-5-20251001` | Tier 2 synthesis and concise Anthropic responses |
+| `SONNET_MODEL` | `claude-sonnet-4-6` | Tier 3 batch/reformat/export paths |
 
-**Local AI (zero credit cost):**
-- `services/sentiment_engine.py` — FinBERT (HuggingFace pipeline, CPU)
-- `services/transcript_engine.py` — faster-whisper large-v3 (CPU, int8 quantized)
+Do not use the retired `claude-3-5-sonnet-latest` alias in new code.
 
----
+## Highest-Cost User Flows
 
-## 2. Backend: All Credit-Consuming Files
+| User action | Main endpoint | Likely model usage | Notes |
+|---|---|---|---|
+| Run stock analysis | `POST /analyze` | DeepSeek + Haiku + possible Sonnet reformat | Can be low cost on cache hit; high cost on fresh full analysis |
+| Batch analysis | `POST /analyze/batch` | Sonnet via Anthropic batch API | High cost by ticker count and prompt size |
+| Portfolio PDF export | `GET /portfolio/export/pdf/{user_id}` | Sonnet | High-cost narrative generation |
+| Copilot chat | `POST /api/v1/copilot/chat` | DeepSeek for routing/normal replies; Haiku for some handling | Cost grows with conversation/context size |
+| Morning summary | `GET /morning-summary/{user_id}` | Haiku | Medium cost, portfolio-size dependent |
+| Portfolio red flags | `GET /portfolio/red-flags/{user_id}` | DeepSeek | Low to medium, depends on holdings |
+| Macro impact | `GET /macro-impact/{user_id}` | DeepSeek | Low to medium, depends on holdings |
+| Trade journal stats | `GET /trade-journal/{user_id}/stats` | DeepSeek in some paths | Low to medium |
+| Natural language screener | `POST /api/v1/screener/natural-language` | DeepSeek | Low, one translation/classification style request |
+| Daily action | `GET /daily-action/{user_id}` | DeepSeek | Low |
+| Advisor stance extraction | harvester services | DeepSeek | Low per transcript/snippet |
 
-### 2.1 Router Endpoints
+## Main Credit-Consuming Files
 
-#### `routers/analysis.py`
+| File | What consumes credits |
+|---|---|
+| `backend/services/orchestrator.py` | Main analysis orchestration, Smart Cache Gate, LangGraph model configuration, reformatting |
+| `backend/services/llm_utils.py` | DeepSeek client and canonical model constants |
+| `backend/routers/analysis.py` | Batch analysis and daily action endpoints |
+| `backend/routers/portfolio.py` | Morning summary, red flags, macro impact, trade journal stats, PDF export |
+| `backend/services/copilot_service.py` | Copilot intent routing, summarization, navigation/general replies, deep-analysis helper flow |
+| `backend/routers/copilot.py` | Copilot API entry point |
+| `backend/services/nl_screener.py` | Natural language to screener filters/SQL-like structure |
+| `backend/services/advisor_harvester.py` | Advisor stance extraction |
+| `backend/services/harvester_reformatter.py` | DeepSeek-based harvester content normalization |
+| `backend/services/brainstorming.py` | DeepSeek brainstorming responses |
 
-| Endpoint | Model | Cost | What it does |
-|----------|-------|------|-------------|
-| `_run_analysis_worker()` | LangGraph pipeline | **HIGH** | Subprocess worker for `POST /analyze`. Calls `services.orchestrator.analyze()`. |
-| `POST /analyze` | DeepSeek + Haiku + Sonnet/Gemini | **LOW/HIGH** | Instant CACHE HIT returns immediately. Otherwise spawns `multiprocessing.Process`. |
-| `POST /analyze/batch` | Claude Sonnet / Gemini | **HIGH** | Message Batch. Each ticker gets full system prompt with ephemeral caching. |
-| `GET /daily-action/{id}` | DeepSeek V4 Flash | **LOW** | 1-sentence "most important action today". |
+## Local or Non-LLM AI
 
-#### `routers/portfolio.py`
+| File | Tool/model | Credit impact |
+|---|---|---|
+| `backend/services/sentiment_engine.py` | FinBERT/HuggingFace pipeline | Local CPU/model load, no LLM API credit by default |
+| `backend/services/math_engines/finbert_sentiment.py` | FinBERT/HuggingFace pipeline | Local CPU/model load, no LLM API credit by default |
+| `backend/services/transcript_engine.py` | faster-whisper style transcript processing | Local compute unless configured otherwise |
+| Quantitative engines | Python deterministic calculations | No LLM API credit |
 
-| Endpoint | Model | Cost | What it does |
-|----------|-------|------|-------------|
-| `GET /morning-summary` | Claude Haiku 4.5 | **MEDIUM** | 4-6 bullet morning brief for user's portfolio holdings. |
-| `GET /macro-impact` | DeepSeek V4 Flash | **LOW** | Per-holding macro impact statements. |
-| `GET /portfolio/export` | Sonnet / Gemini | **HIGH** | Full one-page portfolio review markdown → PDF. |
+## Cost Control Gates
 
-#### `routers/copilot.py`
-| Endpoint | Model | Cost | What it does |
-|----------|-------|------|-------------|
-| `POST /copilot/query` | Gemini 3.1 Pro / Sonnet | **HIGH** | Global AI assistant responding to user financial queries. |
+- Cache/staleness logic lives around `services/staleness.py` and `services/orchestrator.py`.
+- `deepseek_chat()` retries up to 3 times, so transient failures can multiply token spend.
+- Copilot summarizes long history, but the summary itself is a DeepSeek call.
+- Batch analysis and PDF export should be treated as explicit high-cost actions in UI/ops decisions.
 
-### 2.2 Services
+## Quick Audit Commands
 
-#### `services/orchestrator.py`
-
-| Function | Model | Cost | What it does |
-|----------|-------|------|-------------|
-| `run_trading_agents()` | DeepSeek + Haiku | **HIGH** | Instantiates `OptimizedTradingAgentsGraph`. Calls `ta.propagate()` → 12 LLM invocations. |
-| `reformat_with_deepseek()` | DeepSeek (primary), Fallback (Tier 3) | **LOW** | Sole active reformatter. Uses DeepSeek for >95% of runs. |
-| Smart Cache Gate | DeepSeek V4 Flash | **VERY LOW** | Checks news headlines for "major fundamental shift" to reuse cached analysis. |
-| `analyze()` | All of the above | **HIGH** | Main entry. Smart cache → trading agents → reformat → normalize. |
-
-#### `services/advisor_harvester.py`
-
-| Function | Model | Cost | What it does |
-|----------|-------|------|-------------|
-| `_extract_stance_with_haiku()` | DeepSeek V4 Flash | LOW | Extracts BULLISH/NEUTRAL/BEARISH stance from transcript snippet. |
-
-#### `services/nl_screener.py`
-
-| Function | Model | Cost | What it does |
-|----------|-------|------|-------------|
-| `translate_nl_to_sql()` | DeepSeek V4 Flash | **LOW** | Translates natural language to SQL queries for screener. |
+```bash
+rg -n "HAIKU_MODEL|SONNET_MODEL|DEEPSEEK_MODEL|deepseek_chat\(|anthropic\.Anthropic|client\.messages\.create|OpenAI\(" backend/services backend/routers
+rg -n "claude-3-5-sonnet-latest|gemini-3.1-pro|gemini" backend
+```

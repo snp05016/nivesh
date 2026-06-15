@@ -1,54 +1,83 @@
-# Nivesh — Architecture Blueprint
+# Nivesh Architecture Snapshot
 
-> **Authority:** Nivesh Architectural Ordinance
-> **Generated:** June 2026
-> **Scope:** High-level summary of the Nivesh architecture stack.
+> Last verified: 2026-06-15 from local source files. Use this as orientation, not as an enforcement document. `AGENTS.md` remains the architectural authority.
 
-## Overview
+## Product Shape
 
-Nivesh is a full-stack Indian stock market intelligence platform. It combines a FastAPI backend with a LangGraph multi-agent AI pipeline and a SwiftUI iOS frontend using a premium "Banknote" design system.
+Nivesh is an Indian equity intelligence app with three main surfaces:
 
-### Tech Stack
+| Surface | Current implementation |
+|---|---|
+| Backend | FastAPI app in `backend/main.py` with routers in `backend/routers/` |
+| Data and AI services | Python services in `backend/services/`, including LangGraph orchestration, market data, screeners, harvesters, and portfolio analytics |
+| iOS app | SwiftUI app in `ios/StockApp/stockme/stockme/` with Banknote-themed design tokens and components |
 
-| Layer | Technology |
-|-------|-----------|
-| Backend | Python 3.10+, FastAPI, SQLAlchemy, PostgreSQL |
-| AI Pipeline | LangGraph, Claude Sonnet/Haiku, DeepSeek |
-| iOS | SwiftUI, AVFoundation, Charts, WidgetKit |
-| Data | yfinance, PKScreener, FinBERT, matplotlib, jugaad-data |
-| Infra | DigitalOcean, multiprocessing, Redis, APNs, Celery |
+## Backend
 
----
+The intended architecture is Controller-Service-Repository:
 
-## 1. Frontend Architecture (iOS - SwiftUI)
+- Routers live under `backend/routers/` and expose HTTP endpoints.
+- Services live under `backend/services/` and hold business logic, AI orchestration, deterministic engines, caching, and data fetching.
+- Database access is centered on SQLAlchemy models and `get_session()` in `backend/database.py`.
+- Several current routers still contain meaningful logic and DB access, so treat the pattern as a target architecture, not a fully achieved invariant.
 
-The frontend strictly enforces the **Banknote Aesthetic**, mimicking Indian currency logic through components like `GuillocheDivider`, `EKPressStyle` (haptics), and `BanknoteSignalBadge`.
+Important backend entry points:
 
-- **Navigation:** Deeply integrated TabView (Home, Markets, Ideas, News, Portfolio) with a Sidebar (`MarketsView`) mapping to an extensible `MarketSection` enum.
-- **Data Flow:** Unidirectional data flow. Extensive use of `@StateObject` ViewModels and global `@EnvironmentObject` (like `AuthManager`).
-- **Core Screen Features:** 
-  - `AnalysisScreen`: Renders the output of the multi-agent AI debate.
-  - `CopilotScreen`: Global AI assistant.
-  - Custom data visualization tools (Correlation Matrix, Sector Rotation, Options Strategy).
+| Area | Source |
+|---|---|
+| App setup and router includes | `backend/main.py` |
+| Stock analysis jobs | `backend/routers/analysis.py`, `backend/services/orchestrator.py`, `backend/services/job_manager.py` |
+| Portfolio and trade journal | `backend/routers/portfolio.py` |
+| Market data and dashboards | `backend/routers/market.py` |
+| Copilot | `backend/routers/copilot.py`, `backend/services/copilot_service.py` |
+| Cache and Redis wrapper | `backend/services/cache_service.py` |
+| Canonical LLM constants | `backend/services/llm_utils.py` |
 
----
+## iOS App
 
-## 2. Backend Architecture (FastAPI)
+The iOS app is a SwiftUI application using the Banknote design system:
 
-Built on the **Controller-Service-Repository** pattern.
+| Area | Source |
+|---|---|
+| Root tabs and Markets hub | `ContentView.swift` |
+| API client | `NetworkManager.swift`, `NetworkManager+Sidebar.swift` |
+| Shared models | `Models.swift`, `HomeFeedModels.swift` |
+| Theme and formatting | `Utilities/Theme.swift`, `Utilities/IndianFormatter.swift`, `BanknoteDesignSystem.swift` |
+| Reusable components | `Components/` |
+| Screens | `Views/` |
 
-- **Controllers (`routers/`)**: Validate HTTP requests, manage rate limiting (sliding window), and spawn async/multiprocessing tasks. **No business logic or DB calls are allowed here.**
-- **Services (`services/`)**: Orchestrate all LangGraph flows, external data fetching (`nse_data_provider.py`), and mathematical engines (`microstructure_engine.py`, `macro_modifiers.py`).
-- **Repository**: Managed via SQLAlchemy `get_session()` context managers to ensure thread-safe database interactions.
-- **Global State**: Strictly controlled using `threading.Lock()` for any module-level mutable variables.
+The bottom tab bar currently has five tabs: Home, Markets, Ideas, News, Portfolio.
 
----
+## AI Pipeline
 
-## 3. AI Pipeline Architecture (LangGraph)
+The current AI stack uses:
 
-Uses a **Dialectical Asymmetry** model to simulate a hedge fund committee:
+| Tier | Model constant | Source |
+|---|---|---|
+| Bulk and low-cost tasks | `deepseek-chat` | `services/llm_utils.py` |
+| Synthesis | `claude-haiku-4-5-20251001` | `services/llm_utils.py` |
+| Tier 3 reformat/export/batch paths | `claude-sonnet-4-6` | `services/llm_utils.py` |
 
-1. **Smart Cache Gate**: DeepSeek runs a high-speed check to determine if the fundamental data has shifted enough to warrant a re-run.
-2. **Debate Agents**: Bull and Bear researchers analyze the data. The Bear prompt is intentionally longer and carries a 1.5x weight advantage to offset LLM positivity bias.
-3. **Committee Review**: Risk Committee and Portfolio Manager agents review the debate and output JSON conforming strictly to Nivesh schemas.
-4. **Normalization**: Output is run through `_normalize_response()` and `_ban_western_scale()` to guarantee clean Indian formatting (Lakhs/Crores) before saving to PostgreSQL.
+The main analysis flow is job-based:
+
+1. iOS posts to `POST /analyze`.
+2. `routers/analysis.py` creates or returns an analysis job.
+3. The client polls `GET /analyze/job/{job_id}` and `GET /analyze/active`.
+4. `services/orchestrator.py` runs cache checks, LangGraph work, enrichment, reformatting, normalization, and persistence.
+
+## Current Infrastructure Notes
+
+- Redis is used or attempted through `services/cache_service.py` and several cache helpers, with fallback behavior in places.
+- Celery exists only as optional/scaffolded support: `backend/services/celery_tasks.py` and a commented dependency in `backend/requirements.txt`.
+- APNs-related flows exist in notification routers and iOS `NotificationManager.swift`, but some backend dispatch paths are mock/development oriented.
+- `jugaad-data` is present and used by `services/nse_data_provider.py`, with yfinance fallback behavior.
+
+## Useful Verification Commands
+
+Run these from repo root when this directory may be stale:
+
+```bash
+rg -n "@(app|router)\.(get|post|put|delete|patch)\(" backend/main.py backend/routers
+rg -n "URL\(string:|endpoint =|path =|urlString =" ios/StockApp/stockme/stockme/NetworkManager*.swift ios/StockApp/stockme/stockme/HomeFeedService.swift
+rg -n "HAIKU_MODEL|SONNET_MODEL|DEEPSEEK_MODEL" backend/services/llm_utils.py
+```
