@@ -93,6 +93,7 @@ class PortfolioViewModel: ObservableObject {
         do {
             try await NetworkManager.shared.removeFromWatchlist(userId: userId, ticker: ticker)
             await fetchWatchlist(userId: userId)
+            NotificationCenter.default.post(name: .watchlistUpdated, object: nil)
         } catch {
             print("Watchlist remove error: \(error)")
         }
@@ -309,21 +310,19 @@ struct PortfolioScreen: View {
                             } else if selectedTab == 1 {
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: Theme.Spacing.medium) {
-                                        Button { activeWatchlistTag = nil } label: {
-                                            Text("All")
-                                                .font(Theme.officialStampFont(size: 9))
-                                                .foregroundStyle(activeWatchlistTag == nil ? Theme.canvasDeep : Theme.inkPrimary)
-                                                .padding(.horizontal, 12).padding(.vertical, 6)
-                                                .background(Capsule().fill(activeWatchlistTag == nil ? Theme.securityGold : Theme.canvasDeep))
-                                        }
                                         ForEach(tagsManager.allUniqueTags, id: \.self) { tag in
-                                            Button { activeWatchlistTag = activeWatchlistTag == tag ? nil : tag } label: {
+                                            Button {
+                                                HapticManager.selection()
+                                                activeWatchlistTag = activeWatchlistTag == tag ? nil : tag
+                                            } label: {
                                                 Text(tag.uppercased())
                                                     .font(Theme.officialStampFont(size: 9))
                                                     .foregroundStyle(activeWatchlistTag == tag ? Theme.canvasDeep : Theme.inkPrimary)
-                                                    .padding(.horizontal, 12).padding(.vertical, 6)
+                                                    .padding(.horizontal, Theme.Spacing.standard)
+                                                    .padding(.vertical, Theme.Spacing.tight)
                                                     .background(Capsule().fill(activeWatchlistTag == tag ? Theme.securityGold : Theme.canvasDeep))
                                             }
+                                            .buttonStyle(EKPressStyle())
                                         }
                                     }
                                     .padding(.horizontal, Theme.screenPadding)
@@ -401,27 +400,16 @@ struct PortfolioScreen: View {
                 }
 
                 // FAB — show "+" on Holdings or Watchlist tab to add
-                VStack {
-                    Spacer()
-                    HStack {
+                if selectedTab != 2 {
+                    VStack {
                         Spacer()
-                        Button {
-                            HapticManager.impact(.medium)
-                            if selectedTab == 0 {
-                                showAddHoldingSheet = true
+                        HStack {
+                            if selectedTab == 1 {
+                                addPortfolioButton
+                                Spacer()
                             } else {
-                                addSheetSearchText = ""
-                                showAddWatchlistSheet = true
-                            }
-                        } label: {
-                            ZStack {
-                                Circle()
-                                    .fill(Theme.securityGold)
-                                    .frame(width: 56, height: 56)
-                                    .shadow(color: Theme.securityGold.opacity(0.3), radius: 10, x: 0, y: 5)
-                                Image(systemName: "plus")
-                                    .font(.title2.weight(.bold))
-                                    .foregroundStyle(.white)
+                                Spacer()
+                                addPortfolioButton
                             }
                         }
                         .padding(Theme.screenPadding)
@@ -488,6 +476,7 @@ struct PortfolioScreen: View {
                         showAddWatchlistSheet = false
                         await viewModel.fetchWatchlist(userId: user.userId)
                         if added {
+                            NotificationCenter.default.post(name: .watchlistUpdated, object: nil)
                             addedBannerTicker = entry.ticker
                             withAnimation { showAddedBanner = true }
                             try? await Task.sleep(nanoseconds: 2_000_000_000)
@@ -581,6 +570,32 @@ struct PortfolioScreen: View {
         }
     }
 
+    private var addPortfolioButton: some View {
+        Button {
+            HapticManager.impact(.medium)
+            if selectedTab == 0 {
+                showAddHoldingSheet = true
+            } else {
+                addSheetSearchText = ""
+                showAddWatchlistSheet = true
+            }
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(Theme.securityGold)
+                    .frame(
+                        width: Theme.Spacing.xLarge + Theme.Spacing.large,
+                        height: Theme.Spacing.xLarge + Theme.Spacing.large
+                    )
+                    .shadow(color: Theme.securityGold.opacity(0.3), radius: Theme.Spacing.medium, x: 0, y: Theme.Spacing.tight)
+                Image(systemName: "plus")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(Theme.canvas)
+            }
+        }
+        .buttonStyle(EKPressStyle())
+    }
+
     @ViewBuilder
     private var watchlistTabContent: some View {
         if viewModel.watchlistLoading {
@@ -621,23 +636,19 @@ struct PortfolioScreen: View {
                 if !allTags.isEmpty {
                     ScrollView(.horizontal) {
                         HStack(spacing: Theme.Spacing.medium) {
-                            Button { activeWatchlistTag = nil } label: {
-                                Text("All")
-                                    .font(Theme.officialStampFont(size: 9))
-                                    .foregroundStyle(activeWatchlistTag == nil ? Theme.canvasDeep : Theme.inkPrimary)
-                                    .padding(.horizontal, 12).padding(.vertical, 6)
-                                    .background(Capsule().fill(activeWatchlistTag == nil ? Theme.securityGold : Theme.canvasDeep))
-                            }
                             ForEach(allTags, id: \.self) { tag in
                                 Button {
+                                    HapticManager.selection()
                                     activeWatchlistTag = activeWatchlistTag == tag ? nil : tag
                                 } label: {
                                     Text(tag.uppercased())
                                         .font(Theme.officialStampFont(size: 9))
                                         .foregroundStyle(activeWatchlistTag == tag ? Theme.canvasDeep : Theme.inkPrimary)
-                                        .padding(.horizontal, 12).padding(.vertical, 6)
+                                        .padding(.horizontal, Theme.Spacing.standard)
+                                        .padding(.vertical, Theme.Spacing.tight)
                                         .background(Capsule().fill(activeWatchlistTag == tag ? Theme.securityGold : Theme.canvasDeep))
                                 }
+                                .buttonStyle(EKPressStyle())
                             }
                         }
                         .padding(.horizontal, Theme.screenPadding)

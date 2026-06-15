@@ -516,17 +516,7 @@ class HomeViewModel: ObservableObject {
             }
 
             do {
-                let watchlistItems = try await NetworkManager.shared.getWatchlist(userId: userId)
-                watchlist = watchlistItems.map { item in
-                    Stock(
-                        ticker: item.ticker,
-                        companyName: item.companyName,
-                        exchange: item.exchange,
-                        currentPrice: item.currentPrice,
-                        changePercent: item.dayChangePct,
-                        signal: nil
-                    )
-                }
+                try await fetchWatchlist(userId: userId)
             } catch NetworkError.unauthorized {
                 sessionExpired = true
                 isLoading = false
@@ -543,6 +533,20 @@ class HomeViewModel: ObservableObject {
             print("Home fetch error: \(error)")
         }
         isLoading = false
+    }
+
+    func fetchWatchlist(userId: Int) async throws {
+        let watchlistItems = try await NetworkManager.shared.getWatchlist(userId: userId)
+        watchlist = watchlistItems.map { item in
+            Stock(
+                ticker: item.ticker,
+                companyName: item.companyName,
+                exchange: item.exchange,
+                currentPrice: item.currentPrice,
+                changePercent: item.dayChangePct,
+                signal: nil
+            )
+        }
     }
 
     /// Awaitable version — safe to call from .task {} and .refreshable {}
@@ -736,6 +740,18 @@ struct HomeScreen: View {
                     await viewModel.fetchIndices()
                     viewModel.fetchSectors()
                     feedVM.fetch(userId: user.userId, forceRefresh: true)
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .watchlistUpdated)) { _ in
+                guard let user = authManager.currentUser else { return }
+                Task {
+                    do {
+                        try await viewModel.fetchWatchlist(userId: user.userId)
+                    } catch NetworkError.unauthorized {
+                        viewModel.sessionExpired = true
+                    } catch {
+                        print("Home watchlist refresh error: \(error)")
+                    }
                 }
             }
         }
