@@ -1,87 +1,88 @@
 # Nivesh App Navigation Map
 
-> **Generated:** June 2026
-> **Scope:** Full mapping of SwiftUI routing, TabView structure, and Sidebar layouts in the current iOS app.
+> Last verified: 2026-06-15 from `ContentView.swift` and current Swift screen files.
 
-This document provides a comprehensive map of where every feature is located in the Nivesh iOS App. Use this as context to help users navigate the app and discover tools.
+## Global Surfaces
 
-## Global Features & Injections
-- **AI Copilot (`CopilotScreen`)**: Accessible globally. Triggered to ask questions about portfolio, deep analysis, or financial queries. Injected via `.withCopilot()` on the root `ContentView`.
-- **Global Search (`SearchScreen`)**: Accessible from the App Header, overriding the current view to search NSE/BSE tickers.
-- **Authentication (`LoginScreen`, `OnboardingScreen`)**: Root guard views before the main `TabView` is loaded.
+| Surface | Source | Notes |
+|---|---|---|
+| Authentication gate | `ContentView.swift`, `LoginScreen.swift` | Shows login when `AuthManager.isLoggedIn` is false |
+| Launch overlay | `LaunchSequenceView.swift` | Controlled by `ContentView` launch state |
+| Global Copilot | `CopilotScreen.swift` | Applied with `.withCopilot()` on root `ContentView` |
+| Tutorial/global overlays | `GlobalOverlayModifier` in `ContentView.swift` | Handles tutorial and app-level overlays |
 
----
+## Bottom Tab Bar
 
-## Main Bottom Tab Bar (`ContentView.swift`)
+The app currently uses a 5-tab `TabView` in `ContentView.swift`:
 
-The app uses a 5-tab bottom navigation bar (`TabView`):
+| Index | Tab | Root view | Purpose |
+|---|---|---|---|
+| 0 | Home | `HomeScreen` | Personalized dashboard, home feed, analysis shortcuts, market summary, configurable sections |
+| 1 | Markets | `MarketsView` | Market and quantitative tools hub |
+| 2 | Ideas | `ExpertNetworkView` | Expert ideas, advisor feed, videos, consensus cards |
+| 3 | News | `NewsMultimediaView` | News and multimedia feed |
+| 4 | Portfolio | `PortfolioScreen` | Holdings, allocation, performance, trade journal, charts, portfolio intelligence |
 
-### 1. Home Tab (Index 0)
-- **Location:** `HomeScreen`
-- **Features:** 
-  - Main personalized dashboard.
-  - High-level market indices overview (`IndexChip`).
-  - Quick access to recent analysis (`AnalysisHistoryScreen`).
-  - Home layout editing (`HomeLayoutEditorSheet`).
-  - Advisory matrix (`AdvisoryMatrixCard`).
+## Markets Tab
 
-### 2. Markets Tab (Index 1)
-- **Location:** `MarketsView` (Sidebar / Split View on iPad)
-- **Description:** Primary hub for analytical and quantitative tools. Contains a scrollable sidebar mapped to the `MarketSection` enum.
-- **Sub-Screens inside Markets Tab:**
-  - **Earnings Dashboard (`EarningsDashboardView`)**: YoY growth, earnings calendar, beat/miss analysis, and post-result movers.
-  - **Technical Momentum (`TechnicalMomentumView`)**: OI trends, golden/death cross signals, momentum scanning.
-  - **Pre-IPO Marketplace (`PreIPOMarketplaceView`)**: OTC price discovery for pre-IPO, SME board, upcoming listings.
-  - **Standard Screener (`SearchScreen` reused)**: Stock discovery.
-  - **Alerts (`AlertsScreen`)**: Price watch, target triggers, surveillance flags.
-  - **Strategy Lab (`StrategyLabScreen`)**: Backtest pre-built and custom trading strategies.
-  - **Options Strategy (`OptionsStrategyScreen`)**: Greeks, implied volatility, payoff charts.
-  - **NL Screener (`NLScreenerScreen`)**: Search stocks using Natural Language queries powered by AI.
-  - **Correlation Matrix (`CorrelationMatrixScreen`)**: Analyzes trailing 6-month matrices to diversify risk.
-  - **Market Anomalies (`MarketAnomalyScreen`)**: Scans for unusual volume spikes, breakouts, order book anomalies.
-  - **Sector Rotation (`SectorRotationScreen`)**: Tracks capital flow across market sectors visually.
-  - **Stress Test (`StressTestScreen`)**: Simulates portfolio performance under macroeconomic shocks.
-  - **Earnings Surprise (`EarningsSurpriseScreen`)**: Tracks historical earnings beats/misses.
+`MarketsView` is defined in `ContentView.swift`. It has an overview plus section pages backed by the `MarketSection` enum.
 
-### 3. Ideas Tab (Index 2)
-- **Location:** `ExpertNetworkView`
-- **Features:** 
-  - Expert stock ideas and curated research.
-  - YouTube expert video embeds (`YouTubeCardView`).
-  - Thematic baskets and Dalal Street Consensus (`DalalStreetConsensusCard`).
+| `MarketSection` case | Screen | Notes |
+|---|---|---|
+| `earnings` | `EarningsDashboardView` | Earnings calendar/feed, estimates, progress, post-result movers |
+| `technical` | `TechnicalMomentumView` | Momentum and technical scan surface |
+| `unlisted` | `PreIPOMarketplaceView` | Pre-IPO and unlisted marketplace experience |
+| `screener` | `SearchScreen` | Stock discovery and search reuse |
+| `alerts` | `AlertsScreen` | Price alerts and watch triggers |
+| `strategy` | `StrategyLabScreen` | Backtesting and strategy lab |
+| `nl_screener` | `NLScreenerScreen` | Natural language stock screener |
+| `correlation` | `CorrelationMatrixScreen` | Portfolio correlation matrix |
+| `anomalies` | `MarketAnomalyScreen` | Market anomaly scan |
+| `sector_rotation` | `SectorRotationScreen` | Sector rotation view |
+| `stress_test` | `StressTestScreen` | Portfolio shock scenarios |
+| `earnings_surprise` | `EarningsSurpriseScreen` | Earnings surprise tracking |
+| `options_strategy` | `OptionsStrategyScreen` | Multi-leg options payoff visualizer |
 
-### 4. News Tab (Index 3)
-- **Location:** `NewsMultimediaView`
-- **Features:** 
-  - Multimedia news feed and articles (`NewsCardView`).
-  - Real-time financial updates.
-  - FinBERT sentiment highlights.
+## Stock Deep-Dive Flow
 
-### 5. Portfolio Tab (Index 4)
-- **Location:** `PortfolioScreen`
-- **Features:** 
-  - User holdings and net worth.
-  - Animated `PortfolioValueDisplay`.
-  - Transaction history and allocation breakdown.
-  - Trade journaling (`TradeJournalScreen`).
-  - Valuation timeline (`ValuationCalendarView`).
+Common stock navigation flow:
 
----
+1. A ticker is selected from search, portfolio, watchlist, home feed, or another market surface.
+2. `StockProfileView` shows the high-level profile, price/history context, and related actions.
+3. `AnalysisScreen` shows the AI analysis output and supporting sections from `Views/Analysis/`.
+4. `CompareScreen` is available for side-by-side stock comparison flows.
 
-## Deep-Dive Analysis Flow
+## Portfolio Surfaces
 
-When a user taps a specific stock (e.g., from Search or Portfolio):
-1. **`StockProfileView`**: High-level overview, quick price charts, live data.
-2. **`AnalysisScreen`**: The core AI output screen.
-   - **Sections**: Governance, Fundamentals, Market, News, Bear Case, Bull Case.
-   - **Widgets**: `DialecticProgressView`, `BanknoteSignalBadge`, `AdvisoryMatrixCard`.
-3. **`CompareScreen`**: Triggered to compare two tickers side-by-side.
+`PortfolioScreen` is the main root for holdings. Related screens and components include:
 
-## Auxiliary Screens & Modals
-- **Settings (`SettingsScreen`)**: Server URL overrides, theme toggles.
-- **Tutorials (`TutorialOverlayView`, `InteractiveTutorialScreen`)**: User onboarding overlays.
-- **Glossary (`GlossaryBrowserView`, `TermDefinitionSheet`)**: Dictionary for complex financial jargon.
-- **Quiet Hours (`QuietHoursView`)**: Notification scheduling.
-- **Sector Blacklist (`SectorBlacklistView`)**: User preferences to ignore certain sectors.
-- **Crash Lab (`CrashLabView`)**: Diagnostics and telemetry testing.
-- **Report Manager (`ReportManagerView`)**: Downloadable PDF/JSON AI reports.
+- `TradeJournalScreen` for trade journaling.
+- `ValuationCalendarView` for valuation history/timeline.
+- Portfolio charts through `NetworkManager.fetchPortfolioCharts`.
+- Risk analysis, red flags, macro impact, timeframe conflicts, and advisory consensus through `NetworkManager` methods.
+
+## Support and Settings
+
+| Screen | Purpose |
+|---|---|
+| `SettingsScreen` | Server URL/theme/settings controls |
+| `GlossaryBrowserView`, `TermDefinitionSheet` | Financial term help |
+| `QuietHoursView` | Notification quiet hours |
+| `SectorBlacklistView` | Sector preferences |
+| `CrashLabView` | Diagnostics/testing surface |
+| `ReportManagerView` | Local/downloaded report management |
+| `AIHowItWorksView` | Explanation of the AI system |
+| `FeatureHelpViews.swift` | Feature-specific help views |
+
+## Notes For Copilot Navigation Answers
+
+When guiding a user, prefer exact tab and section names:
+
+- Natural language screener: Markets tab -> NL Screener.
+- Sector rotation: Markets tab -> Sector Rotation.
+- Portfolio stress test: Markets tab -> Stress Test, or portfolio intelligence surfaces where linked.
+- Options payoff: Markets tab -> Options Strategy.
+- Trade journal: Portfolio tab -> trade journal area.
+- Expert ideas: Ideas tab.
+- News: News tab.
+- Stock search: Markets tab -> Screener, or global search if the current build exposes it in the header.

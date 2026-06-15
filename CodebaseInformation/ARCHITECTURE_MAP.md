@@ -1,73 +1,84 @@
-# Nivesh (निवेश) — Hyper-Detailed Architecture Map
+# Nivesh Architecture Map
 
-> **Authority:** Definitive technical blueprint of the Nivesh ecosystem.
-> **Scope:** Full-stack analysis covering SwiftUI (iOS), FastAPI (Backend), LangGraph (AI Pipeline), and specialized engines.
-> **Last Updated:** June 2026.
+> Last verified: 2026-06-15 from local source files. This map is intentionally concise and points to source locations instead of restating every implementation detail.
 
----
+## Top-Level Directories
 
-## 1. Project Philosophy & Core Pillars
+| Path | Purpose |
+|---|---|
+| `backend/` | FastAPI backend, routers, services, models, tests, scripts, and local data |
+| `ios/StockApp/stockme/stockme/` | SwiftUI iOS app source |
+| `CodebaseInformation/` | Human-readable orientation docs |
+| `graphify-out/` | Local knowledge graph output |
+| `prompts/` | Planning/checklist prompt docs |
+| `scripts/` | Local helper scripts |
+| `nivesh-harvester/` | Harvester-related code area |
 
-Nivesh is a Premium AI-First Wealth Intelligence System focused exclusively on the Indian Equity Market.
+## Backend Map
 
-### Pillar I: The Banknote Aesthetic (Frontend — iOS SwiftUI)
+| Path | Current role |
+|---|---|
+| `backend/main.py` | FastAPI app creation, middleware, router inclusion, health/dashboard endpoints |
+| `backend/routers/analysis.py` | Analysis job lifecycle, batch analysis, daily actions, home feed, technical signals |
+| `backend/routers/portfolio.py` | Holdings, portfolio history/charts, risk, red flags, exports, trade journal, macro impact |
+| `backend/routers/market.py` | Search, stock profile, market dashboards, earnings, ideas, options chain, indices |
+| `backend/routers/copilot.py` | Copilot chat API |
+| `backend/routers/nl_screener.py` | Natural language screener endpoint |
+| `backend/routers/stress_test.py` | Portfolio stress test endpoint |
+| `backend/routers/sector_rotation.py` | Sector rotation endpoint, included under `/api/v1` prefix |
+| `backend/routers/correlation.py` | Portfolio correlation endpoint |
+| `backend/routers/options_strategy.py` | Options payoff endpoint, included under `/api/v1` prefix |
+| `backend/services/orchestrator.py` | Main AI analysis orchestration and normalization |
+| `backend/services/llm_utils.py` | Canonical LLM model constants and DeepSeek client helper |
+| `backend/services/nse_data_provider.py` | NSE/yfinance data provider with `jugaad-data` support |
+| `backend/services/cache_service.py` | Redis-backed cache with fallback behavior |
+| `backend/services/*_engine.py` | Deterministic analysis engines and quantitative helpers |
+| `backend/database.py` | SQLAlchemy engine/session setup and ORM models |
 
-The user interface is designed as a Financial Instrument.
-- **Guilloche Logic:** Procedural drawing of sine-wave pairs for borders and dividers (`GuillocheDivider`).
-- **Tactile Feedback:** Emil Kowalski-style press interactions (`EKPressStyle`).
-- **Design System Architecture:** 
-  - `Theme.swift`: Adaptive color system, semantic typography (Georgia serif, Hindi italic).
-  - `BanknoteDesignSystem.swift`: Security thread, watermarks, Governor seals.
-  - `SharedComponents.swift`: Universal components with strict `IndianFormatter.formatLakhsCrores()` enforcement.
+## iOS Map
 
-### Pillar II: Dialectical Reasoning (AI Pipeline — LangGraph Multi-Agent)
+| Path | Current role |
+|---|---|
+| `ContentView.swift` | Auth-gated root view, 5-tab `TabView`, `MarketsView`, `MarketSection` enum |
+| `NetworkManager.swift` | Main API client for auth, analysis, portfolio, market data, alerts, trade journal, exports |
+| `NetworkManager+Sidebar.swift` | Market sidebar/dashboard API calls |
+| `HomeFeedService.swift` | Home feed and valuation history service |
+| `AnalysisEngineManager.swift` | Analysis job/history coordination |
+| `Views/HomeScreen.swift` | Main dashboard |
+| `Views/PortfolioScreen.swift` | Portfolio, allocation, trade journal, charts |
+| `Views/AnalysisScreen.swift` and `Views/Analysis/` | AI analysis screen and extracted sections |
+| `Views/CopilotScreen.swift` | Global Copilot overlay and chat surface |
+| `Views/ExpertNetworkView.swift` | Ideas tab |
+| `Views/NewsMultimediaView.swift` | News tab |
+| `Utilities/Theme.swift` | Design tokens and semantic colors/fonts |
+| `Utilities/IndianFormatter.swift` | Indian number/currency formatting |
+| `Components/` | Shared UI components |
 
-- **The Debate Architecture:** Bull and Bear researchers attempt to invalidate each other's thesis. 
-- **Dialectical Asymmetry:** The Bear researcher gets the epistemic advantage—the burden of proof is on the Bull.
-- **Committee Review:** Trader, Risk Committee, and Portfolio Manager agents synthesize the debate.
+## Primary Execution Flows
 
-### Pillar III: Context Stratification (Performance Engineering)
+### Analysis Job
 
-- **Smart Cache Gate:** A DeepSeek pre-flight check determines if fundamental data shifted enough to run the full LangGraph pipeline.
-- **Data Integrity:** `jugaad-data` used as primary NSE/BSE fetcher; `yfinance` serves as a fallback. 
-- **Response Normalization:** Strict pipeline guarantees clean JSON extraction and format normalization before caching.
+1. iOS calls `NetworkManager.analyze` or `startAnalysisJob` at `POST /analyze`.
+2. `routers/analysis.py::analyze_endpoint` starts or returns a job.
+3. iOS polls `GET /analyze/job/{job_id}` and `GET /analyze/active`.
+4. Backend services call `services/orchestrator.py::analyze` and related helpers.
+5. Results are saved and decoded into Swift `StockAnalysis` models.
 
----
+### Markets Hub
 
-## 2. Directory Structure
+1. `ContentView.swift` defines `MarketSection` cases.
+2. `MarketsView` maps each section to a concrete SwiftUI screen.
+3. Screens call `NetworkManager` or `NetworkManager+Sidebar`.
+4. FastAPI routers serve `/api/v1/market/*`, earnings, sector rotation, stress test, screener, correlation, and options endpoints.
 
-### Backend (`/backend/`)
-- `routers/`: Controller layer (e.g. `analysis.py`, `portfolio.py`, `copilot.py`, `nl_screener.py`).
-- `services/`: Business logic, LangGraph nodes, and quantitative engines (e.g., `nse_data_provider.py`, `macro_modifiers.py`, `microstructure_engine.py`).
-- `schemas/`: Pydantic models for request/response validation.
-- `models/`: SQLAlchemy ORM representations (e.g., `BlockDeal`, `FIIDIIFlow`).
-- `scripts/`: Generation and automation scripts (e.g., `generate_frontend_prompts.py`).
+### Portfolio
 
-### Frontend (`/ios/StockApp/stockme/stockme/`)
-- `Views/`: SwiftUI View screens mapped to routing enums (`MarketSection`). Includes `AnalysisScreen`, `EarningsDashboardView`, `SectorRotationScreen`, etc.
-- `Components/`: Extracted reusable Banknote-themed UI elements.
-- `Utilities/`: Formatters, the core `Theme.swift`, and Haptic managers.
-- `NetworkManager.swift`: Primary API client interacting with the FastAPI backend.
-- `Models.swift`: Swift Codable structures matching backend Pydantic schemas.
+1. `PortfolioScreen` and related view models call `NetworkManager` portfolio methods.
+2. `routers/portfolio.py` serves holdings, charts, risk analysis, red flags, macro impact, trade journal, and exports.
+3. Several expensive summary/export endpoints use LLMs; see `LLM_CREDITS_USAGE.md`.
 
----
+## Known Architectural Gaps
 
-## 3. Advanced Quantitative Features
-
-- **NL Screener:** NLP to SQL/Rule engine for semantic stock discovery (`nl_screener.py` / `NLScreenerScreen.swift`).
-- **Options Microstructure:** Computes Put/Call Ratio (PCR) and Gamma Exposure (GEX) deterministically.
-- **Stress Testing:** Macroeconomic shock simulations across user portfolios (`stress_test.py` / `StressTestScreen.swift`).
-- **Sector Rotation:** Visualizes capital flow using RRG metrics.
-- **Earnings Surprise:** Tracks historical and projected earnings deviations.
-- **PKScreener Integration:** Deep technical breakout pattern detection.
-
-## 4. Execution Flows
-
-### AI Analysis Pipeline
-1. iOS client requests analysis via `POST /api/v1/analyze`.
-2. Backend routes to `analysis.py` → `orchestrator.py`.
-3. `staleness.py` gates the request; if cached & valid, returns instantly.
-4. If fresh analysis required, a background `multiprocessing.Process` spawns.
-5. LangGraph nodes (Market Analyst, Fundamentals Analyst, Bull vs Bear, Risk Committee) execute sequentially.
-6. `_normalize_response()` ensures the output JSON adheres to Nivesh schemas and Indian numbering conventions.
-7. Result cached in PostgreSQL and returned via SSE or polling.
+- Some routers still contain DB queries and substantial logic despite the target Controller-Service-Repository pattern.
+- API path conventions are mixed: some routes are unprefixed (`/analyze`, `/portfolio/{user_id}`), while newer routes use `/api/v1/...`.
+- Some feature docs and prompt docs may refer to planned endpoints that are not mounted in `backend/main.py`.
