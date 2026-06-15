@@ -136,10 +136,10 @@ struct AnalysisCoreSections: View {
                 ConfidenceArcView(score: conf, size: 64)
             }
 
-            Text("CONFIDENCE")
+            Text("CALIBRATED PROBABILITY")
                 .font(Theme.microLabel())
                 .foregroundStyle(Theme.inkTertiary)
-                .explainableTerm("Confidence Score")
+                .explainableTerm("Mathematically Calibrated Confidence")
 
             HStack(spacing: Theme.Spacing.xSmall) {
                 ForEach(0..<5, id: \.self) { i in
@@ -176,6 +176,7 @@ struct AnalysisCoreSections: View {
                 horizonRow(label: "3 MONTHS", target: analysis.targetPrices.shortTerm3m, upside: analysis.upsideDownsidePct.shortTerm)
                 horizonRow(label: "12 MONTHS", target: analysis.targetPrices.mediumTerm12m, upside: analysis.upsideDownsidePct.mediumTerm, featured: true)
                 horizonRow(label: "3 YEARS", target: analysis.targetPrices.longTerm36m, upside: analysis.upsideDownsidePct.longTerm)
+                conformalBoundsView
             }
 
             Text("Analysis by Nivesh AI \u{2024} Dalal Street weighted")
@@ -534,5 +535,51 @@ struct AnalysisCoreSections: View {
             Text(newVal).font(Theme.monoTabular(size: 13).weight(.bold)).foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
             Spacer()
         }
+    }
+
+    @ViewBuilder
+    private var conformalBoundsView: some View {
+        if let upper = analysis.conformalTargetUpper3m,
+           let lower = analysis.conformalTargetLower3m,
+           upper > 0, lower > 0 {
+            ConformalBoundsRow(upper: upper, lower: lower)
+        }
+    }
+}
+
+// Separate struct — prevents chkstk_darwin (AGENTS.md §6.6)
+struct ConformalBoundsRow: View {
+    let upper: Double
+    let lower: Double
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.standard) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                Text("3M CONFORMAL BOUNDS")
+                    .font(Theme.officialStampFont(size: 9))
+                    .tracking(1.5)
+                    .foregroundStyle(Theme.inkTertiary)
+                HStack(spacing: Theme.Spacing.small) {
+                    Text(IndianFormatter.priceCompact(lower))
+                        .font(Theme.serialNumberFont(size: 13))
+                        .foregroundStyle(Theme.bearRed)
+                    Text("→")
+                        .font(Theme.engravedSerif(size: 11, relativeTo: .caption2))
+                        .foregroundStyle(Theme.inkTertiary)
+                    Text(IndianFormatter.priceCompact(upper))
+                        .font(Theme.serialNumberFont(size: 13))
+                        .foregroundStyle(Theme.bullGreen)
+                }
+            }
+            Spacer()
+            Text("90% CI")
+                .font(Theme.officialStampFont(size: 9))
+                .tracking(1.5)
+                .foregroundStyle(Theme.inkTertiary)
+        }
+        .padding(.horizontal, Theme.Spacing.standard)
+        .padding(.vertical, Theme.Spacing.small)
+        .background(Theme.canvasDeep.opacity(0.4))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
     }
 }

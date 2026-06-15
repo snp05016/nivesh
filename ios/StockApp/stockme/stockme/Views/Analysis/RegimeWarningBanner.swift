@@ -11,11 +11,12 @@ struct RegimeWarningBanner: View {
         HStack(spacing: Theme.Spacing.standard) {
             Image(systemName: isHighRisk ? "exclamationmark.triangle.fill" : "info.circle.fill")
                 .foregroundStyle(isHighRisk ? Theme.holdAmber : Theme.inkTertiary)
-                .font(.system(size: 20))
+                .imageScale(.large)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                 Text("MARKET REGIME")
                     .font(Theme.officialStampFont(size: 10))
+                    .tracking(1.5)
                     .foregroundStyle(Theme.inkSecondary)
 
                 Text(regime)

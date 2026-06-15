@@ -55,9 +55,11 @@ struct DriverRow: View {
     let value: Double
 
     private var isPositive: Bool { value > 0 }
-    private var barFraction: CGFloat {
-        min(CGFloat(abs(value)), 1.0)
-    }
+    private var barFraction: CGFloat { min(CGFloat(abs(value)), 1.0) }
+
+    // Proportional widths (AGENTS.md §2.2 — no hardcoded px)
+    private var barTrackWidth: CGFloat { UIScreen.main.bounds.width * 0.14 }
+    private var valueWidth: CGFloat    { UIScreen.main.bounds.width * 0.11 }
 
     var body: some View {
         HStack(spacing: Theme.Spacing.tight) {
@@ -71,21 +73,21 @@ struct DriverRow: View {
             ZStack(alignment: isPositive ? .trailing : .leading) {
                 Rectangle()
                     .fill(Theme.borderFine.opacity(0.3))
-                    .frame(width: 60, height: 6)
+                    .frame(width: barTrackWidth, height: 6)
                     .cornerRadius(3)
 
                 Rectangle()
                     .fill(isPositive ? Theme.bullGreen : Theme.bearRed)
-                    .frame(width: 60 * barFraction, height: 6)
+                    .frame(width: barTrackWidth * barFraction, height: 6)
                     .cornerRadius(3)
             }
-            .frame(width: 60, height: 6)
+            .frame(width: barTrackWidth, height: 6)
 
             // Value
             Text(String(format: "%+.2f", value))
                 .font(Theme.serialNumberFont(size: 12))
                 .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
-                .frame(width: 48, alignment: .trailing)
+                .frame(width: valueWidth, alignment: .trailing)
         }
         .frame(maxWidth: .infinity)
     }

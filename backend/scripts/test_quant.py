@@ -28,14 +28,13 @@ async def main():
     assert "tail_risk_flags" in res, "Missing tail_risk_flags"
 
     cc = res["calibrated_confidence"]
-    assert 0.0 <= cc <= 1.0, f"Calibrated confidence {cc} out of [0,1] bounds"
+    assert 0.05 <= cc <= 0.95, f"Calibrated confidence {cc} out of [0.05, 0.95] bounds"
 
     mr = res["market_regime"]
     valid_regimes = [
         "Low Volatility / Accumulation",
         "Transition / Macro-Driven",
         "High Volatility / Crisis",
-        "Data Unavailable"
     ]
     assert mr in valid_regimes, f"Invalid regime: {mr}"
 
