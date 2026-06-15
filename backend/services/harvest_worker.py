@@ -98,7 +98,7 @@ async def admin_harvest_news(bg_tasks: BackgroundTasks, authorization: str = Hea
 def start_scheduler():
     """Start APScheduler with all nightly cron jobs. Called from main.py startup."""
     global _scheduler
-    _scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
+    _scheduler = AsyncIOScheduler(timezone="Asia/Dubai")
 
     from services.advisor_harvester import harvest_all_advisors, evaluate_analysis_outcomes
     from services.news_harvester import harvest_news

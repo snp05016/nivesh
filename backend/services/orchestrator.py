@@ -1019,11 +1019,9 @@ def _normalize_response(result: dict, scan_type: str = "standard", quant_payload
     if not isinstance(result.get("extreme_thesis"), list):
         result["extreme_thesis"] = []
 
-    # 15. analysis_date — must be string
-    if not isinstance(result.get("analysis_date"), str):
-        from datetime import date
-
-        result["analysis_date"] = date.today().strftime("%Y-%m-%d")
+    # 15. analysis_date — always use server date, never trust AI-generated date
+    from datetime import date
+    result["analysis_date"] = date.today().strftime("%Y-%m-%d")
 
     # 16. EXTREME superset — additive guarantees so the iOS extra sections/graphs
     # always decode. Standard analyses skip this entirely.
