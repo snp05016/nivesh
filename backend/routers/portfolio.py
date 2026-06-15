@@ -846,14 +846,14 @@ mood must be exactly: "positive", "cautious", or "negative"
                 ).all()
                 for f in flips:
                     is_trend_flip = (
-                        (f.old_signal in ("BULLISH", "BUY") and f.new_signal in ("BEARISH", "SELL")) or
-                        (f.old_signal in ("BEARISH", "SELL") and f.new_signal in ("BULLISH", "BUY"))
+                        (f.from_signal in ("BULLISH", "BUY") and f.to_signal in ("BEARISH", "SELL")) or
+                        (f.from_signal in ("BEARISH", "SELL") and f.to_signal in ("BULLISH", "BUY"))
                     )
                     priority_items.append({
                         "priority": 1 if is_trend_flip else 2,
                         "type": "trend_flip" if is_trend_flip else "signal_change",
                         "ticker": f.ticker,
-                        "message": f"Signal changed: {f.ticker} {f.old_signal} → {f.new_signal}",
+                        "message": f"Signal changed: {f.ticker} {f.from_signal} → {f.to_signal}",
                     })
         except Exception as e:
             print(f"[MORNING] Signal flip check failed: {e}")

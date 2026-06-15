@@ -495,11 +495,20 @@ class NetworkManager: ObservableObject {
         guard let url = URL(string: "\(baseURL)/morning-summary/\(userId)") else { throw NetworkError.invalidURL }
         var request = authRequest(url)
         request.timeoutInterval = 30
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         if http.statusCode == 401 { throw NetworkError.unauthorized }
         guard (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
-        return try JSONDecoder().decode(MorningSummaryResponse.self, from: data)
+        do {
+            return try JSONDecoder().decode(MorningSummaryResponse.self, from: data)
+        } catch {
+            print("[MorningBrief] Decode error: \(error)")
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("[MorningBrief] Payload: \(jsonString)")
+            }
+            throw NetworkError.invalidResponse
+        }
     }
 
     // MARK: - Market Indices
