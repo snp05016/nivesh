@@ -73,12 +73,31 @@ Refuse when a request:
 - **Incremental verification** — AI output passes `_normalize_response()` before client. Process spawn = health-check loop. DB sessions use `get_session()` with rollback.
 - **Zero magic** — No bare `except:`, no untyped dict access without `.get(key, default)`, no silent fallthroughs. `_SIGNAL_MAP` is SOLE authority for signal strings.
 
-### 1.4 Sequential Subagent Pipeline (Subagent-Driven Development)
+### 1.4 Surgical Engineering Principles
+These rules govern **how** every change is approached. They are non-negotiable and apply before any code is written.
+
+**Before touching code:**
+- **Understand before you code.** Spend more time reading existing code, tracing call paths, and checking the database than writing new code.
+- **Never assume architecture.** Always verify the actual structure from the repository before concluding how something works.
+- **Never assume database behavior.** Read the ORM models, active Alembic migrations, and run schema checks — never infer what columns exist.
+- **Never assume API contracts.** Inspect the actual Pydantic models, router decorators, and live OpenAPI spec before forming opinions about request/response shapes.
+- **Prefer repository evidence over inference.** If you cannot find explicit proof in the code or docs, say so — do not fill the gap with guesses.
+- **Document reasoning before implementation.** Write out *why* a change is needed and *which files* are in scope before making any edit.
+
+**When modifying code:**
+- **Follow existing repository patterns exactly.** Adopt the same naming conventions, error-handling patterns, and abstraction layers already in use.
+- **Reuse abstractions before creating new ones.** Check whether a helper, service, or utility already exists before writing a new one.
+- **Minimize architectural drift.** Do not introduce new patterns, dependencies, or structural layers unless the user explicitly requests them.
+- **Avoid duplicate logic.** If the same logic exists elsewhere, call or import it — do not copy-paste.
+- **Keep changes scoped to the task.** Only modify files directly required by the stated task. Do not "clean up" unrelated code in the same commit.
+
+### 1.5 Sequential Subagent Pipeline (Subagent-Driven Development)
 When executing complex tasks, you MUST deploy a team of specialized subagents working sequentially to maintain context hygiene:
 1. **The Builder Agent:** Focuses strictly on writing the core implementation (e.g., backend logic, SwiftUI views).
 2. **The Reviewer Agent:** A separate subagent spawned specifically to perform a rigorous code quality review. It checks for architectural compliance, Banknote Aesthetic usage, correct Indian numbering, and zero magic strings.
 3. **The Verifier/Tester Agent:** Ensures the system actually runs locally without missing modules, syntax errors, or circular imports.
 Do not attempt to write, review, and verify massive features in a single context window. Divide and conquer.
+
 
 ---
 
