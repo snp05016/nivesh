@@ -17,7 +17,7 @@ def run():
     runner = TestRunner("01_json_normalization")
 
     # Test 1: Extract JSON from markdown
-    raw_text = \"\"\"
+    raw_text = """
 Here is your analysis:
 ```json
 {
@@ -27,7 +27,7 @@ Here is your analysis:
 }
 ```
 Good luck!
-\"\"\"
+"""
     try:
         extracted = _extract_json_from_text(raw_text)
         parsed = json.loads(extracted)
