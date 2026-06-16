@@ -146,6 +146,7 @@ def process_nl_query(query: str) -> dict[str, Any]:
     sql_query = " ".join(query_parts)
 
     tickers = []
+    db_failed = False
     try:
         from database import get_session
         from sqlalchemy import text
@@ -154,9 +155,10 @@ def process_nl_query(query: str) -> dict[str, Any]:
             tickers = [row[0] for row in rows]
     except Exception as e:
         logger.error(f"DB query failed: {e}")
+        db_failed = True
 
-    # Fallback if DB is empty or fails
-    if not tickers:
+    # Fallback only if DB failed (e.g. table missing). If it just returned 0 results, keep it empty.
+    if db_failed:
         tickers = [
             "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", 
             "ITC.NS", "SBI.NS", "BHARTIARTL.NS", "SUNPHARMA.NS", "CIPLA.NS", 
@@ -202,8 +204,11 @@ def process_nl_query(query: str) -> dict[str, Any]:
     # Sort results by score descending
     results.sort(key=lambda x: x["score"], reverse=True)
     
+    # Convert all filter values to strings for iOS compatibility
+    stringified_filters = {str(k): str(v) for k, v in filters.items()}
+
     response_data = {
-        "parsed_filters": filters,
+        "parsed_filters": stringified_filters,
         "results": results
     }
     
