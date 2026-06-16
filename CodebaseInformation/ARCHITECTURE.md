@@ -1,6 +1,6 @@
 # Nivesh Architecture Snapshot
 
-> Last verified: 2026-06-15 from local source files. Use this as orientation, not as an enforcement document. `AGENTS.md` remains the architectural authority.
+> Last verified: 2026-06-16 from local source files. Use this as orientation, not as an enforcement document. `AGENTS.md` remains the architectural authority.
 
 ## Product Shape
 

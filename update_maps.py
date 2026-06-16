@@ -1,7 +1,7 @@
 import re
 
 def update_architecture_md():
-    with open('/Users/saumya/Desktop/nivesh/CodeBaseInformation/ARCHITECTURE.md', 'r') as f:
+    with open('/Users/saumya/Desktop/nivesh/CodebaseInformation/ARCHITECTURE.md', 'r') as f:
         content = f.read()
     
     # 1. Tech Stack
@@ -38,12 +38,12 @@ def update_architecture_md():
 """
     content = content.replace('serve instantly.\n\n---', f'serve instantly.\n{new_decisions}\n---')
     
-    with open('/Users/saumya/Desktop/nivesh/CodeBaseInformation/ARCHITECTURE.md', 'w') as f:
+    with open('/Users/saumya/Desktop/nivesh/CodebaseInformation/ARCHITECTURE.md', 'w') as f:
         f.write(content)
 
 
 def update_architecture_map_md():
-    with open('/Users/saumya/Desktop/nivesh/CodeBaseInformation/ARCHITECTURE_MAP.md', 'r') as f:
+    with open('/Users/saumya/Desktop/nivesh/CodebaseInformation/ARCHITECTURE_MAP.md', 'r') as f:
         content = f.read()
 
     # Append a new section summarizing the architecture changes right after the first heading
@@ -75,7 +75,7 @@ def update_architecture_map_md():
     # Update the cache mention if we can find it
     content = content.replace('_dcache', 'services/cache_service.py')
     
-    with open('/Users/saumya/Desktop/nivesh/CodeBaseInformation/ARCHITECTURE_MAP.md', 'w') as f:
+    with open('/Users/saumya/Desktop/nivesh/CodebaseInformation/ARCHITECTURE_MAP.md', 'w') as f:
         f.write(content)
 
 update_architecture_md()
