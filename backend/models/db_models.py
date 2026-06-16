@@ -91,7 +91,7 @@ class AnalysisHistory(Base):
     outcome_checked_at   = Column(DateTime, nullable=True)
     # ML Hybrid Pipeline — quantitative engine columns (added 2026-06-14)
     market_regime               = Column(String, nullable=True)
-    calibrated_confidence        = Column(Float, nullable=False, default=0.0, server_default="0.0")
+    calibrated_confidence        = Column(Float, nullable=True, default=0.0, server_default="0.0")
     confidence_math_breakdown   = Column(JSON, default="{}")
     conformal_target_upper_3m   = Column(Float, nullable=True)
     conformal_target_lower_3m   = Column(Float, nullable=True)
