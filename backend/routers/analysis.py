@@ -828,9 +828,10 @@ async def get_technical_signals(ticker: str):
 # ---------------------------------------------------------------------------
 @router.get("/api/v1/home-feed")
 async def get_home_feed(user_id: int, ticker: str = None, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    if user_id != 0:
+        token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
+        if token_user != user_id:
+            raise HTTPException(status_code=401, detail="Unauthorized")
     with get_session() as session:
         news_query = session.query(NewsArticle).order_by(NewsArticle.published_at.desc())
         if ticker:
