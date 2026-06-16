@@ -32,6 +32,12 @@ def _successful_worker(queue):
     queue.put({"result": "success", "signal": "BULLISH"})
 
 
+def _hanging_worker(queue):
+    """Worker that hangs indefinitely."""
+    import time
+    time.sleep(999)
+
+
 def run():
     runner = TestRunner("09_runtime_exceptions")
 
@@ -68,9 +74,6 @@ def run():
         runner.fail("multiprocessing_success", "Worker did not return result via Queue")
 
     # ---- Process termination
-    def _hanging_worker(queue):
-        import time
-        time.sleep(999)
 
     queue3 = multiprocessing.Queue()
     p_hang = multiprocessing.Process(target=_hanging_worker, args=(queue3,))
