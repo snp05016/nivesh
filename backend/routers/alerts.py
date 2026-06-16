@@ -81,13 +81,13 @@ async def _price_alert_poller():
                     await asyncio.sleep(300)
                     continue
                 
-                # Fetch distinct prices to avoid redundant yfinance calls
+                # Fetch distinct prices — offload blocking yfinance I/O to threadpool
+                # so the asyncio event loop is not frozen during network calls.
                 unique_tickers = {a.ticker for a in pending}
                 prices = {}
                 for t in unique_tickers:
-                    # In a real system, we'd use yf.download(tickers) for batching.
                     ns_ticker = _to_ns(t)
-                    price, _ = _yf_price(ns_ticker)
+                    price, _ = await asyncio.to_thread(_yf_price, ns_ticker)
                     if price is not None:
                         prices[t] = price
                 
