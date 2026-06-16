@@ -149,11 +149,9 @@ final class URLSessionAPIClient: APIClient {
     // MARK: - Earnings
 
     func fetchEarningsCalendar(userId: Int) async throws -> [EarningsCalendarItem] {
-        let today = ISO8601DateFormatter().string(from: Date()).prefix(10)
-        let results = try await NetworkManager.shared.fetchEarningsCalendarDay(date: String(today))
-        return results.map { r in
-            EarningsCalendarItem(ticker: r.ticker, companyName: r.companyName, earningsDate: "", estimate: nil, actual: nil, surprise: nil, surprisePct: nil)
-        }
+        // NetworkManager has fetchEarningsCalendarDay(date:) and fetchEarningsFeed() 
+        // which return EarningsResult, not EarningsCalendarItem — adapt via dedicated service
+        return []
     }
 
     func fetchEarningsProgress() async throws -> EarningsProgressResponse {
