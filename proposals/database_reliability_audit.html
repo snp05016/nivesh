@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nivesh — Database Reliability Audit</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body{background:#0d1117;color:#c9d1d9;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:13px;line-height:1.5}
+.card{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:1.25rem;margin-bottom:1rem}
+.crit{background:#490202;color:#ff7b72;border:1px solid #da3633}
+.high{background:#341a00;color:#d29922;border:1px solid #9e6a03}
+.med{background:#161b22;color:#8b949e;border:1px solid #30363d}
+.low{color:#6e7681}
+h2{color:#c9a84c;font-size:1.1rem;font-weight:700;margin-bottom:.5rem}
+h3{color:#f0e6d0;font-size:.9rem;font-weight:600;margin-top:1rem;margin-bottom:.25rem}
+.file-tag{display:inline-block;background:#1f2937;border:1px solid #374151;border-radius:4px;padding:1px 6px;font-size:.65rem;color:#8b949e;margin-right:4px;font-family:monospace}
+table{width:100%;border-collapse:collapse;font-size:.75rem}
+th{text-align:left;padding:.4rem .5rem;border-bottom:1px solid #30363d;color:#c9a84c;font-size:.7rem}
+td{padding:.3rem .5rem;border-bottom:1px solid #21262d;vertical-align:top}
+.sev-crit{color:#ff7b72;font-weight:700}
+.sev-high{color:#d29922;font-weight:700}
+.sev-med{color:#8b949e}
+.sev-low{color:#6e7681}
+.score-big{font-size:2.5rem;font-weight:800;color:#c9a84c}
+.score-label{color:#6e7681;font-size:.7rem}
+.verdict{font-size:.85rem;padding:.5rem .75rem;border-radius:6px;margin:.5rem 0}
+.verdict-reject{background:#0f2110;border:1px solid #238636;color:#3fb950}
+.verdict-confirm{background:#341a00;border:1px solid #9e6a03;color:#d29922}
+</style>
+</head>
+<body class="p-4 max-w-6xl mx-auto">
+
+<header class="mb-6 border-b border-[#30363d] pb-4">
+<h1 class="text-2xl font-bold text-[#c9a84c]">Nivesh Database Reliability Audit</h1>
+<p class="text-[#6e7681] mt-1">Production-Grade Integrity Audit · 24 Tables · 80+ Endpoints · 22 Service Files</p>
+<p class="text-[#6e7681] text-xs mt-1">June 16, 2026 · Branch: feat/architecture-deepening · 10-Phase Audit</p>
+</header>
+
+<!-- ================================================================== -->
+<!-- EXECUTIVE SUMMARY -->
+<!-- ================================================================== -->
+<div class="card">
+<h2>Executive Summary</h2>
+<p class="text-sm mb-3">
+This audit inspected 24 SQLAlchemy ORM models, 22 service files, 20 router files, 28 test files, and the complete
+database lifecycle (init → seed → migration → query → cache). Findings were verified through code-level analysis
+with adversarial challenge on every claim.
+</p>
+<p class="text-sm mb-3">
+<strong>3 CRITICAL</strong> issues found — all are fixable with targeted code changes. The database itself is
+structurally sound (correct relationships, proper cascades, intentional nullable patterns), but the application
+layer has <strong>auth gaps</strong> (23+ endpoints without JWT enforcement) and <strong>one runtime crash bug</strong>
+(a non-existent column reference in sentiment_engine.py).
+</p>
+<div class="grid grid-cols-4 gap-4 mt-3">
+<div class="text-center"><div class="score-big">3</div><div class="score-label">CRITICAL</div></div>
+<div class="text-center"><div class="score-big" style="color:#d29922">12</div><div class="score-label">HIGH</div></div>
+<div class="text-center"><div class="score-big" style="color:#8b949e">8</div><div class="score-label">MEDIUM</div></div>
+<div class="text-center"><div class="score-big" style="color:#6e7681">6</div><div class="score-label">LOW</div></div>
+</div>
+</div>
+
+<!-- ================================================================== -->
+<!-- CRITICAL FINDINGS -->
+<!-- ================================================================== -->
+<div class="card crit">
+<h2 style="color:#ff7b72">Confirmed Critical Issues</h2>
+
+<!-- C1 -->
+<h3>C1: 23+ Endpoints Expose User Data Without JWT Enforcement</h3>
+<p class="text-sm text-[#8b949e]">
+<span class="file-tag">routers/portfolio.py:508</span>
+<span class="file-tag">routers/user.py</span>
+<span class="file-tag">routers/alerts.py:40</span>
+<span class="file-tag">routers/analysis.py:467</span>
+</p>
+<p class="text-sm">
+The codebase uses a pattern where <code>verify_access_token</code> is called but the result is checked as
+<code>if token_user is not None and token_user != user_id</code> — meaning when <strong>no JWT is sent</strong>,
+<code>token_user</code> is <code>None</code> and the condition is <code>False</code>, so access is <strong>granted</strong>
+to any <code>user_id</code>. This affects portfolio, watchlist, alerts, trade journal, morning summary, daily action,
+risk analysis, macro impact, valuation history, attribution, signal warnings, and more — all via query parameter.
+</p>
+<div class="verdict verdict-confirm">
+<b>Agent B challenge:</b> "Is this actually exploitable? The code comment says 'Auth optional — personal app'."<br>
+<b>Confirmed:</b> Yes. A curl request <code>GET /portfolio/1</code> with no Authorization header returns user 1's
+full portfolio. The "personal app" assumption is violated as soon as the API is network-accessible (which it is).
+</div>
+
+<!-- C2 -->
+<h3>C2: NewsArticle.related_tickers Column Does Not Exist</h3>
+<p class="text-sm text-[#8b949e]">
+<span class="file-tag">services/sentiment_engine.py:169,213</span>
+<span class="file-tag">models/db_models.py:213-229</span>
+</p>
+<p class="text-sm">
+<code>NewsArticle.related_tickers.like(f"%{ticker}%")</code> is called in <code>get_sentiment_trend()</code>
+and <code>compute_cisi()</code>, but the <code>NewsArticle</code> model has <strong>no <code>related_tickers</code>
+column</strong>. The model only has <code>ticker</code> (singular, nullable). This will raise
+<code>AttributeError</code> at runtime whenever these functions are called.
+</p>
+<div class="verdict verdict-confirm">
+<b>Agent B challenge:</b> "Are these functions actually called in production? Maybe they're dead code?"<br>
+<b>Confirmed:</b> <code>get_sentiment_trend()</code> is called from
+<code>routers/market.py:/market/sentiment-trend/{ticker}</code>. <code>compute_cisi()</code> is called from
+<code>routers/portfolio.py:/portfolio/red-flags/{user_id}</code>. Both are active production endpoints.
+</div>
+
+<!-- C3 -->
+<h3>C3: P&L Reported as 0 When Current Price is Unavailable</h3>
+<p class="text-sm text-[#8b949e]">
+<span class="file-tag">routers/portfolio.py:558</span>
+</p>
+<p class="text-sm">
+<code>pnl = current_value - invested if current_value > 0 else 0.0</code> — when <code>current_price</code>
+is <code>None</code> (yfinance fails, market closed, network error), <code>current_value = shares * 0 = 0</code>,
+so P&L shows <strong>₹0</strong> instead of <strong>-₹invested</strong>. User sees "breakeven" on a stock they
+may have lost everything on.
+</p>
+<div class="verdict verdict-confirm">
+<b>Agent B challenge:</b> "When would current_price actually be None?"<br>
+<b>Confirmed:</b> yfinance returns None on weekends, market holidays, network failures, or for delisted stocks.
+The code has a fallback path that catches this but the <code>current_value > 0</code> check runs before the
+fallback. A delisted stock at buy_price ₹10,000 would show P&L = ₹0 instead of -₹10,000.
+</div>
+</div>
+
+<!-- ================================================================== -->
+<!-- HIGH-RISK ISSUES -->
+<!-- ================================================================== -->
+<div class="card high">
+<h2 style="color:#d29922">Confirmed High-Risk Issues</h2>
+
+<table>
+<thead><tr><th>#</th><th>Finding</th><th>File:Line</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>H1</td><td><b>No Alembic migrations</b> — <code>Base.metadata.create_all()</code> only. Schema changes to existing tables silently fail.</td><td><span class="file-tag">database.py:219</span></td><td>Run <code>alembic init</code>, add auto-generation</td></tr>
+<tr><td>H2</td><td><b>New model columns silently fail</b> on existing DBs — <code>_ensure_analysis_history_columns()</code> must be manually updated for every new column.</td><td><span class="file-tag">database.py:172-215</span></td><td>Startup integrity check comparing model columns vs migration</td></tr>
+<tr><td>H3</td><td><b>Float for money</b> — <code>shares</code>, <code>buy_price</code>, <code>total_value</code> use <code>Float()</code>, not <code>Numeric</code>. IEEE 754 rounding errors on portfolio totals.</td><td><span class="file-tag">db_models.py:47-48</span></td><td>Change to <code>Numeric(18,4)</code> for monetary columns</td></tr>
+<tr><td>H4</td><td><b>Date columns stored as String</b> — <code>analysis_date</code>, <code>snapshot_date</code>, <code>event_date</code> etc. use <code>String(20)</code>. No date indexing, no validation, no timezone awareness.</td><td><span class="file-tag">db_models.py:68,109,259,277,299,320,371,411,424</span></td><td>Change to <code>Date</code> type, add migration</td></tr>
+<tr><td>H5</td><td><b>4 FK columns missing indexes</b> — <code>PriceTarget.user_id</code>, <code>TradeJournal.user_id</code>, <code>DeviceToken.user_id</code>, <code>AnalysisJob.user_id</code> lack indexes. Full table scans on every user-scoped query.</td><td><span class="file-tag">db_models.py:120,142,156,174</span></td><td>Add <code>Index()</code> in <code>__table_args__</code></td></tr>
+<tr><td>H6</td><td><b>N+1 queries in morning brief</b> — iterates holdings and queries <code>AnalysisHistory</code> per holding instead of a single <code>IN</code> query.</td><td><span class="file-tag">portfolio_snapshot.py:134-145</span>, <span class="file-tag">portfolio.py:689-697</span></td><td>Use <code>.filter(ticker.in_(tickers))</code></td></tr>
+<tr><td>H7</td><td><b>No unique constraint</b> on <code>Portfolio(user_id, ticker, group_name)</code> — duplicate holdings possible at DB level.</td><td><span class="file-tag">db_models.py:39-56</span></td><td>Add <code>UniqueConstraint</code></td></tr>
+<tr><td>H8</td><td><b><code>datetime.utcnow</code> as <code>default=</code></b> — evaluated at import time, not row-insert time. All rows inserted during one process lifetime get the same timestamp.</td><td><span class="file-tag">db_models.py:27,51,91,111,133,147,165,177,205,229,247,265,287,307,329,417,431,469,478,491</span></td><td>Change to <code>default=lambda: datetime.now(timezone.utc)</code></td></tr>
+<tr><td>H9</td><td><b>No DB-level CHECK constraints</b> on positive financial values — <code>shares > 0</code>, <code>buy_price > 0</code> enforced only at application layer.</td><td><span class="file-tag">db_models.py:47-48</span></td><td>Add <code>CheckConstraint("shares > 0")</code></td></tr>
+<tr><td>H10</td><td><b>No cascade deletion tests</b> — deleting a User should cascade-delete portfolio, analysis, alerts, journal. Zero tests verify this.</td><td>No test file</td><td>Write cascade test suite</td></tr>
+<tr><td>H11</td><td><b>Zero financial calculation tests</b> — P&L formula, CAGR, average buy price, split/bonus adjustments, SIP calculator all untested.</td><td>No test file</td><td>Write financial correctness test suite</td></tr>
+<tr><td>H12</td><td><b>19 of 20 tables have zero direct table-level tests</b> — only <code>AnalysisJob</code> has dedicated DB tests.</td><td>All test files</td><td>Add table-level CRUD tests</td></tr>
+</tbody>
+</table>
+</div>
+
+<!-- ================================================================== -->
+<!-- MEDIUM-RISK ISSUES -->
+<!-- ================================================================== -->
+<div class="card med">
+<h2>Confirmed Medium-Risk Issues</h2>
+
+<table>
+<thead><tr><th>#</th><th>Finding</th><th>File:Line</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>M1</td><td><b>Race condition in <code>_release_analysis_slot()</code></b> — semaphore release is outside lock. If semaphore.release() raises, user permanently blocked.</td><td><span class="file-tag">core/concurrency.py:45-49</span></td><td>Move release inside lock</td></tr>
+<tr><td>M2</td><td><b>Morning brief cache not invalidated</b> after portfolio CRUD — stale AI-generated brief served for up to 2 hours.</td><td><span class="file-tag">portfolio.py:666-669</span></td><td>Invalidate cache on portfolio add/remove/update</td></tr>
+<tr><td>M3</td><td><b><code>get_all_ticker_history()</code> has no LIMIT</b> — returns all rows for a ticker, could be hundreds over months.</td><td><span class="file-tag">repositories/analysis_repo.py:130</span></td><td>Add <code>limit=50</code></td></tr>
+<tr><td>M4</td><td><b><code>GET /users</code> (admin) has no LIMIT</b> — returns all users in one query.</td><td><span class="file-tag">routers/user.py</span></td><td>Add pagination</td></tr>
+<tr><td>M5</td><td><b><code>GET /earnings-calendar</code> unbound</b> — iterates ALL users' portfolio tickers with no scope limit.</td><td><span class="file-tag">routers/market.py</span></td><td>Add user scoping or LIMIT</td></tr>
+<tr><td>M6</td><td><b>check_signal_outcomes() individual row errors</b> may invalidate session, discarding all 50 rows' work.</td><td><span class="file-tag">harvest_worker.py:345-399</span></td><td>Commit per-row or skip bad rows</td></tr>
+<tr><td>M7</td><td><b>N+1 yfinance calls</b> in snapshot_all_users() and portfolio_benchmark() — sequential instead of batch.</td><td><span class="file-tag">portfolio_snapshot.py:74-80</span></td><td>Use ThreadPoolExecutor or yf.download batch</td></tr>
+<tr><td>M8</td><td><b><code>confidence_pct</code> stored as Float</b> but always 0-100 integer. Type/semantic mismatch.</td><td><span class="file-tag">db_models.py:70</span></td><td>Change to <code>Integer</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<!-- ================================================================== -->
+<!-- LOW / REJECTED -->
+<!-- ================================================================== -->
+<div class="card">
+<h2>Rejected False Alarms &amp; Low-Risk Issues</h2>
+
+<table>
+<thead><tr><th>#</th><th>Claim</th><th>Agent B Verdict</th><th>Reasoning</th></tr></thead>
+<tbody>
+<tr><td>R1</td><td><code>index=True</code> on PK columns is redundant (17 models)</td><td class="sew-med">Rejected as bug, accepted as style</td><td>SQLAlchemy ignores <code>index=True</code> on PK columns. Harmless — purely a code style preference. No performance impact.</td></tr>
+<tr><td>R2</td><td><code>AdvisorInsight.ticker</code> has duplicate indexes</td><td class="sew-med">Rejected</td><td>The inline <code>index=True</code> and composite <code>ix_advisor_ticker_published</code> serve different query patterns. The inline is a single-column index (used for <code>WHERE ticker = ?</code>) and the composite is for <code>ticker + published_at</code> sorts. Both are needed.</td></tr>
+<tr><td>R3</td><td>AnalysisHistory.user_id NULL = orphan risk</td><td class="sew-med">Rejected as bug, accepted as design</td><td>Explicitly documented in <code>analysis_repo.py:22-23</code> — "Intentionally cross-user." System analyses with no user context are a feature, not a bug.</td></tr>
+<tr><td>R4</td><td><code>created_at</code> could be set to future date</td><td class="sew-med">Rejected</td><td>No code path sets <code>created_at</code> to future dates. The <code>default=</code> bug (H8) is the real issue, and fixing it also eliminates this concern. No explicit CHECK needed.</td></tr>
+<tr><td>R5</td><td>Dead <code>company_name</code> field in AlertAddRequest</td><td class="sew-low">Low</td><td>Unused field. Remove from model to reduce confusion.</td></tr>
+<tr><td>R6</td><td>NLScreenerRequest.query has no length limit</td><td class="sew-low">Low</td><td>The LLM call has token limits that act as implicit bounds. Add <code>max_length=2000</code> to Pydantic model for defense-in-depth.</td></tr>
+</tbody>
+</table>
+</div>
+
+<!-- ================================================================== -->
+<!-- PRODUCTION READINESS SCORES -->
+<!-- ================================================================== -->
+<div class="card">
+<h2>Production Readiness Scores</h2>
+<div class="grid grid-cols-4 gap-4 mt-3">
+<div class="text-center">
+<div class="score-big" style="color:#d29922">5</div>
+<div class="score-label">Schema Correctness<br>/10</div>
+<div style="font-size:.65rem;color:#8b949e">Dates as strings, Float for money, missing CHECK constraints</div>
+</div>
+<div class="text-center">
+<div class="score-big" style="color:#ff7b72">2</div>
+<div class="score-label">Migration Safety<br>/10</div>
+<div style="font-size:.65rem;color:#8b949e">No Alembic, manual ALTER TABLE only, no rollback capability</div>
+</div>
+<div class="text-center">
+<div class="score-big" style="color:#ff7b72">3</div>
+<div class="score-label">Data Integrity<br>/10</div>
+<div style="font-size:.65rem;color:#8b949e">Auth gaps, no DB-level constraints, cross-user leakage</div>
+</div>
+<div class="text-center">
+<div class="score-big" style="color:#d29922">5</div>
+<div class="score-label">Query Performance<br>/10</div>
+<div style="font-size:.65rem;color:#8b949e">Missing FK indexes, N+1 queries, unbounded queries</div>
+</div>
+<div class="text-center">
+<div class="score-big" style="color:#d29922">6</div>
+<div class="score-label">Transaction Safety<br>/10</div>
+<div style="font-size:.65rem;color:#8b949e">Context manager auto-rollback, but semaphore race + session contamination</div>
+</div>
+<div class="text-center">
+<div class="score-big" style="color:#d29922">5</div>
+<div class="score-label">API/DB Consistency<br>/10</div>
+<div style="font-size:.65rem;color:#8b949e">Pydantic/DB type mismatches, some endpoints wrap errors, some don't</div>
+</div>
+<div class="text-center">
+<div class="score-big" style="color:#ff7b72">2</div>
+<div class="score-label">Test Coverage<br>/10</div>
+<div style="font-size:.65rem;color:#8b949e">19/20 tables untested, zero financial calc tests, no cascade tests</div>
+</div>
+<div class="text-center">
+<div class="score-big" style="color:#d29922">4.0</div>
+<div class="score-label">Overall<br>/10</div>
+<div style="font-size:.65rem;color:#8b949e">Serviceable for development. Not production-ready without fixes.</div>
+</div>
+</div>
+</div>
+
+<!-- ================================================================== -->
+<!-- TOP FIX PLAN -->
+<!-- ================================================================== -->
+<div class="card" style="border-color:#c9a84c">
+<h2>Priority Fix Plan</h2>
+<p class="text-sm text-[#8b949e]">Ordered by risk × effort ratio — what to fix first for maximum safety with minimum code change.</p>
+<table>
+<thead><tr><th>Order</th><th>Issue</th><th>Effort</th><th>Risk if not fixed</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><b>C2: Fix NewsArticle.related_tickers</b> — change to <code>NewsArticle.ticker == ticker</code></td><td>5 min</td><td class="sew-crit">Runtime crash on sentiment endpoints</td></tr>
+<tr><td>2</td><td><b>C3: Fix P&L = 0 bug</b> — change condition to <code>if current_price is not None</code></td><td>5 min</td><td class="sew-crit">Wrong P&L shown to users</td></tr>
+<tr><td>3</td><td><b>C1: Add JWT enforcement</b> — change <code>if token_user is not None and ...</code> to <code>if token_user != user_id</code> on 23 endpoints</td><td>1 hr</td><td class="sew-crit">Any user's data accessible without auth</td></tr>
+<tr><td>4</td><td><b>H5: Add FK indexes</b> — 4 Index() declarations in <code>__table_args__</code></td><td>10 min</td><td class="sew-high">Full table scans on every user query</td></tr>
+<tr><td>5</td><td><b>H8: Fix datetime.utcnow default</b> — 20 replace operations across db_models.py</td><td>15 min</td><td class="sew-high">Wrong timestamps on all rows</td></tr>
+<tr><td>6</td><td><b>H6: Fix N+1 queries</b> — convert loops to IN queries</td><td>30 min</td><td class="sew-high">Slow morning brief generation</td></tr>
+<tr><td>7</td><td><b>M1: Fix semaphore race</b> — move release inside lock</td><td>2 min</td><td class="sew-med">User permanently blocked from analysis</td></tr>
+<tr><td>8</td><td><b>H1: Add Alembic</b> — <code>alembic init</code> + auto-generate initial migration</td><td>1 hr</td><td class="sew-high">Schema changes silently fail in production</td></tr>
+</tbody>
+</table>
+</div>
+
+<footer class="text-center text-[#6e7681] text-xs mt-6 pb-4 border-t border-[#21262d] pt-4">
+Nivesh Database Reliability Audit · June 2026 · 10-Phase Audit · Production Score: 4.0/10
+</footer>
+
+</body>
+</html>
