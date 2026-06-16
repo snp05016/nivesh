@@ -828,10 +828,12 @@ async def get_technical_signals(ticker: str):
 # ---------------------------------------------------------------------------
 @router.get("/api/v1/home-feed")
 async def get_home_feed(user_id: int, ticker: str = None, authorization: str = Header(None)):
+    # Degrade gracefully on missing/invalid token — serve anonymous feed (no portfolio
+    # personalisation) rather than hard-failing with 401. Home feed content is public.
     if user_id != 0:
         token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
         if token_user != user_id:
-            raise HTTPException(status_code=401, detail="Unauthorized")
+            user_id = 0  # anonymous mode: no red flags, no portfolio video matching
     with get_session() as session:
         news_query = session.query(NewsArticle).order_by(NewsArticle.published_at.desc())
         if ticker:
@@ -842,10 +844,16 @@ async def get_home_feed(user_id: int, ticker: str = None, authorization: str = H
 
         articles = news_query.limit(15).all()
 
+        # Fallback to wider window before hitting yfinance
+        if not articles and not ticker:
+            articles = session.query(NewsArticle).order_by(
+                NewsArticle.published_at.desc()
+            ).limit(15).all()
+
+        _fb_arts = []
         if not articles:
             try:
                 _check_tickers = [ticker.upper()] if ticker else ["^NSEI", "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS"]
-                _fb_arts = []
                 for _t in _check_tickers[:4]:
                     try:
                         _news = yf.Ticker(_t).news or []
@@ -868,13 +876,6 @@ async def get_home_feed(user_id: int, ticker: str = None, authorization: str = H
                             })
                     except Exception:
                         continue
-                if _fb_arts:
-                    return {
-                        "news": _fb_arts[:12],
-                        "red_flag_alerts": [],
-                        "youtube_videos": [],
-                        "generated_at": datetime.utcnow().isoformat(),
-                    }
             except Exception as _fe:
                 print(f"[HOME-FEED] yfinance fallback error: {_fe}")
 
@@ -964,8 +965,9 @@ async def get_home_feed(user_id: int, ticker: str = None, authorization: str = H
                 "sebi_reg": v.sebi_reg,
             }
 
+        news_payload = [serialize_article(a) for a in articles] if articles else _fb_arts
         return {
-            "news": [serialize_article(a) for a in articles],
+            "news": news_payload,
             "red_flag_alerts": [serialize_article(a) for a in red_flags],
             "youtube_videos": [serialize_video(v) for v in all_videos],
             "generated_at": datetime.utcnow().isoformat(),
