@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    Boolean, CheckConstraint, Column, DateTime, Float, Numeric, Integer, JSON, String, Text,
+    Boolean, CheckConstraint, Column, DateTime, Float, Integer, JSON, String, Text,
     ForeignKey, Index, UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -44,8 +44,8 @@ class Portfolio(Base):
     user_id      = Column(Integer, ForeignKey("users.id"), nullable=False)
     ticker       = Column(String(30), nullable=False)
     company_name = Column(String(200), nullable=False)
-    shares       = Column(Numeric(15, 4, asdecimal=True), nullable=False)
-    buy_price     = Column(Numeric(15, 4, asdecimal=True), nullable=False)
+    shares       = Column(Float, nullable=False)
+    buy_price     = Column(Float, nullable=False)
     target_price  = Column(Float, nullable=True)
     purchase_date = Column(String, nullable=True)
     group_name    = Column(String(50), default="watchlist")
@@ -73,24 +73,24 @@ class AnalysisHistory(Base):
     analysis_date  = Column(String(20), nullable=False)
     signal         = Column(String(20), nullable=False)
     confidence_pct = Column(Integer, nullable=True)
-    target_short   = Column(Numeric(15, 4, asdecimal=True), nullable=True)
-    target_medium  = Column(Numeric(15, 4, asdecimal=True), nullable=True)
-    target_long    = Column(Numeric(15, 4, asdecimal=True), nullable=True)
-    promoter_pledged_pct = Column(Numeric(15, 4, asdecimal=True), nullable=True)
+    target_short   = Column(Float, nullable=True)
+    target_medium  = Column(Float, nullable=True)
+    target_long    = Column(Float, nullable=True)
+    promoter_pledged_pct = Column(Float, nullable=True)
     promoter_pledged_trend = Column(String(20), nullable=True)
     raw_output     = Column(Text, nullable=True)
     full_json      = Column(Text, nullable=False)
     scan_type      = Column(String(20), nullable=False, default="standard")
     # Epistemic feedback loop — added 2026-06-03
-    outcome_delta_pct    = Column(Numeric(15, 4, asdecimal=True), nullable=True)   # % price change since analysis
+    outcome_delta_pct    = Column(Float, nullable=True)   # % price change since analysis
     was_correct          = Column(Boolean, nullable=True)  # signal matched price direction
     outcome_checked_at   = Column(DateTime, nullable=True)
     # ML Hybrid Pipeline — quantitative engine columns (added 2026-06-14)
     market_regime               = Column(String, nullable=True)
-    calibrated_confidence        = Column(Numeric(15, 4, asdecimal=True), default=0.0)
+    calibrated_confidence        = Column(Float, default=0.0)
     confidence_math_breakdown   = Column(JSON, default="{}")
-    conformal_target_upper_3m   = Column(Numeric(15, 4, asdecimal=True), nullable=True)
-    conformal_target_lower_3m   = Column(Numeric(15, 4, asdecimal=True), nullable=True)
+    conformal_target_upper_3m   = Column(Float, nullable=True)
+    conformal_target_lower_3m   = Column(Float, nullable=True)
     quantitative_drivers        = Column(JSON, default=dict)
     tail_risk_flags             = Column(JSON, default=dict)
     created_at     = Column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -170,7 +170,7 @@ class TradeJournal(Base):
     user_id        = Column(Integer, ForeignKey("users.id"), nullable=False)
     ticker         = Column(String(30), nullable=False)
     action         = Column(String(10), nullable=False)  # BUY / SELL / HOLD / WATCH
-    price_at_time  = Column(Numeric(15, 4, asdecimal=True), nullable=False)
+    price_at_time  = Column(Float, nullable=False)
     reason_text    = Column(Text, nullable=False)
     outcome_text   = Column(Text, nullable=True)
     company_name   = Column(String(200), nullable=True)   # added — run migrate_trade_journal.py
@@ -245,7 +245,7 @@ class NewsArticle(Base):
     article_url     = Column(String, nullable=False, unique=True)
     published_at    = Column(DateTime, nullable=False)
     sentiment       = Column(String, nullable=True)         # "POSITIVE" | "NEUTRAL" | "NEGATIVE"
-    sentiment_score = Column(Numeric(15, 4, asdecimal=True), nullable=True)          # FinBERT score: -1.0 to +1.0
+    sentiment_score = Column(Float, nullable=True)          # FinBERT score: -1.0 to +1.0
     sentiment_label = Column(String, nullable=True)         # "Positive" | "Negative" | "Neutral"
     is_red_flag     = Column(Boolean, default=False)        # True if contains auditor/CFO/SEBI keywords
     created_at      = Column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -284,11 +284,11 @@ class PortfolioValuationHistory(Base):
         index=True,
     )
     snapshot_date   = Column(String, nullable=False)        # "2026-06-02" ISO date string
-    total_value     = Column(Numeric(15, 4, asdecimal=True), nullable=False)         # Total portfolio value in INR
-    total_invested  = Column(Numeric(15, 4, asdecimal=True), nullable=False)         # Total cost basis
-    total_pnl       = Column(Numeric(15, 4, asdecimal=True), nullable=False)         # total_value - total_invested
-    pnl_percent     = Column(Numeric(15, 4, asdecimal=True), nullable=False)         # (pnl / invested) * 100
-    nifty_close     = Column(Numeric(15, 4, asdecimal=True), nullable=True)          # NIFTY 50 close that day (for benchmark)
+    total_value     = Column(Float, nullable=False)         # Total portfolio value in INR
+    total_invested  = Column(Float, nullable=False)         # Total cost basis
+    total_pnl       = Column(Float, nullable=False)         # total_value - total_invested
+    pnl_percent     = Column(Float, nullable=False)         # (pnl / invested) * 100
+    nifty_close     = Column(Float, nullable=True)          # NIFTY 50 close that day (for benchmark)
     created_at      = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
@@ -305,12 +305,12 @@ class PKScreenerSignal(Base):
     screen_result   = Column(String, nullable=True)                # Raw PKScreener output
     breakout        = Column(Boolean, default=False)
     consolidating   = Column(Boolean, default=False)
-    rsi             = Column(Numeric(15, 4, asdecimal=True), nullable=True)
+    rsi             = Column(Float, nullable=True)
     macd_signal     = Column(String, nullable=True)                # "BUY" | "SELL" | "NEUTRAL"
     ma_signal       = Column(String, nullable=True)                # "Above50MA" | "Below200MA" etc.
     volume_signal   = Column(String, nullable=True)                # "HighVolume" | "Normal"
     pattern         = Column(String, nullable=True)                # "Bull Flag" | "Cup and Handle" etc.
-    technical_score = Column(Numeric(15, 4, asdecimal=True), nullable=True)                 # 0.0 = strong sell, 1.0 = strong buy
+    technical_score = Column(Float, nullable=True)                 # 0.0 = strong sell, 1.0 = strong buy
     created_at      = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
@@ -345,14 +345,14 @@ class NetWorthLedger(Base):
     id                   = Column(Integer, primary_key=True, index=True)
     user_id              = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     snapshot_date        = Column(String(20), nullable=False)      # "2026-06-04"
-    total_value_inr      = Column(Numeric(15, 4, asdecimal=True), nullable=False)           # absolute INR value
-    daily_delta_inr      = Column(Numeric(15, 4, asdecimal=True), nullable=True)            # change since previous day (INR)
-    daily_delta_pct      = Column(Numeric(15, 4, asdecimal=True), nullable=True)            # % change since previous day
-    peak_value_inr       = Column(Numeric(15, 4, asdecimal=True), nullable=True)            # all-time high
+    total_value_inr      = Column(Float, nullable=False)           # absolute INR value
+    daily_delta_inr      = Column(Float, nullable=True)            # change since previous day (INR)
+    daily_delta_pct      = Column(Float, nullable=True)            # % change since previous day
+    peak_value_inr       = Column(Float, nullable=True)            # all-time high
     top_gainer_ticker    = Column(String(30), nullable=True)       # best single-day performer
-    top_gainer_pct       = Column(Numeric(15, 4, asdecimal=True), nullable=True)            # its % gain
+    top_gainer_pct       = Column(Float, nullable=True)            # its % gain
     top_loser_ticker     = Column(String(30), nullable=True)       # worst single-day performer
-    top_loser_pct        = Column(Numeric(15, 4, asdecimal=True), nullable=True)            # its % loss
+    top_loser_pct        = Column(Float, nullable=True)            # its % loss
     portfolio_json       = Column(Text, nullable=True)             # full breakdown JSON
     created_at           = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -440,7 +440,7 @@ class BlockDeal(Base):
     client_name = Column(String(200), nullable=False)
     deal_type = Column(String(20), nullable=False) # "BUY" or "SELL"
     quantity = Column(Integer, nullable=False)
-    price = Column(Numeric(15, 4, asdecimal=True), nullable=False)
+    price = Column(Float, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
@@ -449,12 +449,12 @@ class FIIDIIFlow(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     date = Column(String(20), nullable=False, unique=True, index=True)
-    fii_buy = Column(Numeric(15, 4, asdecimal=True), nullable=False)
-    fii_sell = Column(Numeric(15, 4, asdecimal=True), nullable=False)
-    fii_net = Column(Numeric(15, 4, asdecimal=True), nullable=False)
-    dii_buy = Column(Numeric(15, 4, asdecimal=True), nullable=False)
-    dii_sell = Column(Numeric(15, 4, asdecimal=True), nullable=False)
-    dii_net = Column(Numeric(15, 4, asdecimal=True), nullable=False)
+    fii_buy = Column(Float, nullable=False)
+    fii_sell = Column(Float, nullable=False)
+    fii_net = Column(Float, nullable=False)
+    dii_buy = Column(Float, nullable=False)
+    dii_sell = Column(Float, nullable=False)
+    dii_net = Column(Float, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
@@ -544,8 +544,8 @@ class MarketAnomaly(Base):
     anomaly_type = Column(String)
     severity = Column(String)
     detail = Column(Text)
-    price = Column(Numeric(15, 4, asdecimal=True))
-    change_pct = Column(Numeric(15, 4, asdecimal=True))
+    price = Column(Float)
+    change_pct = Column(Float)
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
@@ -561,13 +561,13 @@ class EarningsSurpriseHistory(Base):
     ticker = Column(String)
     company_name = Column(String)
     quarter = Column(String)
-    estimated_eps = Column(Numeric(15, 4, asdecimal=True))
-    actual_eps = Column(Numeric(15, 4, asdecimal=True))
-    surprise_pct = Column(Numeric(15, 4, asdecimal=True))
+    estimated_eps = Column(Float)
+    actual_eps = Column(Float)
+    surprise_pct = Column(Float)
     classification = Column(String)
-    post_price_1d = Column(Numeric(15, 4, asdecimal=True))
-    post_price_5d = Column(Numeric(15, 4, asdecimal=True))
-    historical_score = Column(Numeric(15, 4, asdecimal=True))
+    post_price_1d = Column(Float)
+    post_price_5d = Column(Float)
+    historical_score = Column(Float)
     serial_pattern = Column(String)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
