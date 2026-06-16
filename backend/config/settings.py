@@ -73,7 +73,7 @@ YF_CIRCUIT_TIMEOUT: int = int(os.getenv("YF_CIRCUIT_TIMEOUT", 300))  # seconds
 QUICK_INFO_TTL: int = int(os.getenv("QUICK_INFO_TTL", 900))          # 15 min
 ASM_GSM_CACHE_TTL: int = int(os.getenv("ASM_GSM_CACHE_TTL", 21600))  # 6 hours
 INDICES_CACHE_TTL: int = int(os.getenv("INDICES_CACHE_TTL", 300))     # 5 min
-MORNING_BRIEF_TTL: int = int(os.getenv("MORNING_BRIEF_TTL", 3600))   # 1 hour
+MORNING_BRIEF_TTL: int = int(os.getenv("MORNING_BRIEF_TTL", 86400))   # 24h — brief is valid for the full day
 
 # ---------------------------------------------------------------------------
 # Task 40: yfinance backoff multiplier (used by tenacity / manual sleep)

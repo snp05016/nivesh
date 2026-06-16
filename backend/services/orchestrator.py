@@ -337,12 +337,10 @@ def create_optimized_analyst_node(llm, persona: str, report_key: str, tools: lis
             {
                 "type": "text",
                 "text": BASE_INSTITUTIONAL_INSTRUCTION,
-                "cache_control": {"type": "ephemeral"},
             },
             {
                 "type": "text",
                 "text": f"{persona}\n\nYou have access to the following tools: {', '.join([t.name for t in tools])}.",
-                "cache_control": {"type": "ephemeral"},
             },
         ]
 
@@ -753,7 +751,6 @@ def reformat_with_claude(
             {
                 "type": "text",
                 "text": INDIAN_MARKET_SYSTEM_PROMPT,
-                "cache_control": {"type": "ephemeral"},
             }
         ]
         if is_extreme:
@@ -761,7 +758,6 @@ def reformat_with_claude(
                 {
                     "type": "text",
                     "text": EXTREME_ADDENDUM,
-                    "cache_control": {"type": "ephemeral"},
                 }
             )
         if serialized_history:
@@ -769,7 +765,6 @@ def reformat_with_claude(
                 {
                     "type": "text",
                     "text": f"PREVIOUS HISTORICAL ANALYSES (CONTEXT):\n{serialized_history}",
-                    "cache_control": {"type": "ephemeral"},
                 }
             )
 
@@ -781,7 +776,6 @@ def reformat_with_claude(
                     system=system_array,
                     messages=[{"role": "user", "content": user_message}],
                     temperature=0,
-                    extra_body={"cache_control": {"type": "ephemeral"}},
                 )
                 _log_token_usage("reformat", response.usage)
                 raw_json = _extract_json_from_text(response.content[0].text)

@@ -21,6 +21,7 @@ from services.llm_utils import contains_devanagari
 logger = logging.getLogger(__name__)
 
 # Disk-cache namespace for pre-generated morning briefs
+from config.settings import MORNING_BRIEF_TTL
 _MORNING_BRIEF_NS = "morning_brief"
 
 def get_current_price(ticker: str) -> float | None:
@@ -253,7 +254,7 @@ async def pregen_morning_briefs_all_users() -> dict:
             brief["generated_at"] = datetime.utcnow().strftime("%H:%M")
             brief["pregen"] = True
 
-            cache_set(_MORNING_BRIEF_NS, str(user_id_val), brief, ttl=86400)
+            cache_set(_MORNING_BRIEF_NS, str(user_id_val), brief, ttl=MORNING_BRIEF_TTL)
             generated += 1
             logger.info(f"[morning_brief] Pre-generated for user_id={user_id_val}")
 
