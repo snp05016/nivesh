@@ -26,6 +26,7 @@ if str(_BACKEND) not in sys.path:
 import unittest.mock as _mock
 for _mod in [
     "tradingagents", "tradingagents.graph", "tradingagents.graph.trading_graph",
+    "tradingagents.graph.analyst_execution", "tradingagents.graph.nodes",
     "tradingagents.default_config", "tradingagents.agents",
     "tradingagents.agents.utils", "tradingagents.agents.utils.agent_states",
     "tradingagents.agents.utils.agent_utils",
