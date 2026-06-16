@@ -5,27 +5,13 @@ from typing import Optional, List, Dict, Any
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, Text
 from database import Base, get_session, ENGINE
+from models.db_models import MarketAnomaly
 from helpers import NSE_TICKERS
 from services.nse_data_provider import get_price_history, fetch_info, download_bhavcopy
 from services.factor_engine import compute_indicators
 from services.options_scraper import fetch_option_chain, compute_derivatives_metrics
 
 logger = logging.getLogger(__name__)
-
-class MarketAnomaly(Base):
-    __tablename__ = "market_anomalies"
-    id = Column(Integer, primary_key=True, index=True)
-    ticker = Column(String, index=True)
-    company = Column(String, nullable=True)
-    anomaly_type = Column(String, index=True)
-    severity = Column(String) # HIGH, MEDIUM, LOW
-    detail = Column(Text)
-    price = Column(Float)
-    change_pct = Column(Float)
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
-
-# Ensure table exists safely without touching base setup
-MarketAnomaly.__table__.create(bind=ENGINE, checkfirst=True)
 
 def _determine_severity(anomaly_type: str, magnitude: float) -> str:
     if anomaly_type == "VOLUME_SPIKE":
