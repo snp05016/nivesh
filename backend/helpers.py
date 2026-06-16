@@ -48,8 +48,11 @@ from services.nse_client import (
     _INDICES_TICKERS, _fetch_single_index, _get_indices_data,
 )
 
-# Task 42: ticker overrides loaded from config
-from config.settings import NSE_TICKER_OVERRIDES
+# Disk cache re-exports (used by routers/portfolio.py, routers/market.py)
+from services.disk_cache import get as _dcache_get, set as _dcache_set, stats as _dcache_stats
+
+# Config re-exports (used by routers via helpers)
+from config.settings import NSE_TICKER_OVERRIDES, QUICK_INFO_TTL as _QUICK_INFO_TTL
 
 # ---------------------------------------------------------------------------
 # Notification Helpers
