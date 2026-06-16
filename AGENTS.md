@@ -324,8 +324,20 @@ Commit after EVERY small task or phase. Incremental, reviewable checkpoints.
 ### 6.5 Deployment & Remote Verification
 After committing and pushing your code, you MUST deploy and verify on the remote server by executing commands non-interactively. NEVER open an interactive SSH session.
 **Anything to be tested in the backend should be done on the server using (`saumyapatel@192.168.1.122`). No backend Python files and tests will be ran in the local computer. All testing, checking for bugs by running the files will be done on the server (`saumyapatel@192.168.1.122`).**
-1. Pull latest code remotely: `ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && git pull"`
-2. Run tests remotely: `ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && pytest"` (or relevant verification command)
+
+**After EVERY backend change and git pull, you MUST:**
+1. Kill all stale server processes to prevent zombie workers from consuming server CPU:
+   ```bash
+   ssh saumyapatel@192.168.1.122 "pkill -f 'uvicorn' || true; pkill -f 'python.*main' || true; sleep 2"
+   ```
+2. Pull latest code remotely: `ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && git pull"`
+3. Restart the backend server (in background):
+   ```bash
+   ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh/backend && nohup ../venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload > /tmp/uvicorn.log 2>&1 &"
+   ```
+4. Run tests remotely: `ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && pytest"` (or relevant verification command)
+
+**NEVER skip the kill step.** Stale uvicorn/Python processes run indefinitely in the background and waste server CPU. Always kill before restart.
 
 ---
 
