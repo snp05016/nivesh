@@ -3,26 +3,8 @@ import json
 import yfinance as yf
 from sqlalchemy import Column, Integer, String, Float, DateTime
 from database import Base, ENGINE, get_session, AnalysisHistory
+from models.db_models import EarningsSurpriseHistory
 from routers.market import earnings_estimates_endpoint, _to_ns
-
-class EarningsSurpriseHistory(Base):
-    __tablename__ = "earnings_surprise_history"
-    id = Column(Integer, primary_key=True, index=True)
-    ticker = Column(String, index=True)
-    company_name = Column(String)
-    quarter = Column(String)
-    estimated_eps = Column(Float, nullable=True)
-    actual_eps = Column(Float, nullable=True)
-    surprise_pct = Column(Float, nullable=True)
-    classification = Column(String) # BEAT, MISS, INLINE
-    post_price_1d = Column(Float, nullable=True)
-    post_price_5d = Column(Float, nullable=True)
-    historical_score = Column(Float, nullable=True)
-    serial_pattern = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-# NOTE: EarningsSurpriseHistory is registered in Base.metadata via this module's import.
-# create_all() is called centrally by database.init_db() — do NOT call it here at import time.
 # Ideally, move EarningsSurpriseHistory class definition into database.py to keep schema central.
 
 async def compute_surprise_for_ticker(ticker: str):
