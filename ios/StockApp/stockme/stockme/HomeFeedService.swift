@@ -15,7 +15,13 @@ class HomeFeedService {
             throw NetworkError.invalidURL
         }
         
-        let (data, response) = try await URLSession.shared.data(from: url)
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 30
+        if let token = NetworkManager.shared.authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
