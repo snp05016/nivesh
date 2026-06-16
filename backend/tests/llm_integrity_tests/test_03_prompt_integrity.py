@@ -29,8 +29,8 @@ def run():
 
     # Check required priorities and rules
     required_phrases = [
-        "Lakhs",
-        "Crores",
+        "lakhs",
+        "crores",
         "bull_case",
         "bear_case",
         "key_risks"
