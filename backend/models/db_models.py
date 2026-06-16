@@ -31,6 +31,10 @@ class User(Base):
     price_targets    = relationship("PriceTarget",     back_populates="user", cascade="all, delete-orphan")
     trade_journal    = relationship("TradeJournal",    back_populates="user", cascade="all, delete-orphan")
     device_tokens    = relationship("DeviceToken",     back_populates="user", cascade="all, delete-orphan")
+    portfolio_valuation_history = relationship("PortfolioValuationHistory", back_populates="user", cascade="all, delete-orphan")
+    net_worth_ledger            = relationship("NetWorthLedger",            back_populates="user", cascade="all, delete-orphan")
+    earnings_alerts             = relationship("EarningsAlert",             back_populates="user", cascade="all, delete-orphan")
+    analysis_jobs               = relationship("AnalysisJob",               back_populates="user", cascade="all, delete-orphan")
 
 
 class Portfolio(Base):
@@ -87,7 +91,7 @@ class AnalysisHistory(Base):
     outcome_checked_at   = Column(DateTime, nullable=True)
     # ML Hybrid Pipeline — quantitative engine columns (added 2026-06-14)
     market_regime               = Column(String, nullable=True)
-    calibrated_confidence        = Column(Float, default=0.0)
+    calibrated_confidence        = Column(Float, nullable=False, default=0.0, server_default="0.0")
     confidence_math_breakdown   = Column(JSON, default="{}")
     conformal_target_upper_3m   = Column(Float, nullable=True)
     conformal_target_lower_3m   = Column(Float, nullable=True)
@@ -139,8 +143,11 @@ class AnalysisJob(Base):
     started_at   = Column(DateTime, nullable=True)
     finished_at  = Column(DateTime, nullable=True)
 
+    user = relationship("User", back_populates="analysis_jobs")
+
     __table_args__ = (
         Index("ix_analysis_jobs_user_id", "user_id"),
+        Index("ix_analysis_jobs_ticker", "ticker"),
     )
 
 
@@ -291,6 +298,8 @@ class PortfolioValuationHistory(Base):
     nifty_close     = Column(Float, nullable=True)          # NIFTY 50 close that day (for benchmark)
     created_at      = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    user = relationship("User", back_populates="portfolio_valuation_history")
+
     __table_args__ = (
         UniqueConstraint('user_id', 'snapshot_date', name='uq_user_date_snapshot'),
     )
@@ -356,7 +365,7 @@ class NetWorthLedger(Base):
     portfolio_json       = Column(Text, nullable=True)             # full breakdown JSON
     created_at           = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    user = relationship("User", foreign_keys=[user_id])
+    user = relationship("User", foreign_keys=[user_id], back_populates="net_worth_ledger")
 
     __table_args__ = (
         UniqueConstraint("user_id", "snapshot_date", name="uq_networth_user_date"),
@@ -398,7 +407,7 @@ class EarningsAlert(Base):
     earnings_date = Column(String(20), nullable=False)          # "2026-06-15"
     created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    user = relationship("User", foreign_keys=[user_id])
+    user = relationship("User", foreign_keys=[user_id], back_populates="earnings_alerts")
 
     __table_args__ = (
         UniqueConstraint("user_id", "ticker", "earnings_date", name="uq_user_ticker_earnings_date"),
