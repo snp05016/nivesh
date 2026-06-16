@@ -1235,6 +1235,229 @@ def _inject_live_data(result: dict, ticker: str) -> dict:
 
     return result
 
+def _run_deep_scan(ticker: str, raw_output: str) -> tuple[str, object | None, bool]:
+    """Phase 8: PKScreener + FinBERT news sentiment injection.
+    Returns (updated_raw_output, pk_signal_or_None, deep_scan_used_flag).
+    """
+    pk_signal = None
+    deep_scan_used = True
+    try:
+        with get_session() as session:
+            pk_signal = (
+                session.query(PKScreenerSignal)
+                .filter(PKScreenerSignal.ticker == ticker.upper())
+                .order_by(PKScreenerSignal.signal_date.desc())
+                .first()
+            )
+
+        if pk_signal:
+            pkscreener_context = f"""
+PKSCREENER TECHNICAL PRE-SCAN (as of {pk_signal.signal_date}):
+- Technical Score: {pk_signal.technical_score:.2f}/1.00 (0=Strong Sell, 1=Strong Buy)
+- Breakout Detected: {pk_signal.breakout}
+- Consolidating: {pk_signal.consolidating}
+- RSI: {pk_signal.rsi if pk_signal.rsi else 'N/A'}
+- MACD Signal: {pk_signal.macd_signal or 'N/A'}
+- Moving Average Position: {pk_signal.ma_signal or 'N/A'}
+- Volume Signal: {pk_signal.volume_signal or 'N/A'}
+- Chart Pattern: {pk_signal.pattern or 'None detected'}
+
+Use this PKScreener data as an additional technical anchor. It does NOT override your
+own technical analysis — treat it as a corroborating or conflicting data point.
+If your RSI calculation differs from PKScreener's, note the divergence explicitly.
+"""
+            raw_output += f"\n\n{pkscreener_context}"
+    except Exception as e:
+        print(f"[DEEP-SCAN] PKScreener context fetch failed: {e}")
+
+    # FinBERT sentiment context
+    try:
+        from services.sentiment_engine import score_article
+
+        with get_session() as session:
+            recent_news = (
+                session.query(NewsArticle)
+                .filter(
+                    NewsArticle.ticker == ticker.upper(),
+                    NewsArticle.published_at
+                    >= datetime.utcnow() - timedelta(days=7),
+                )
+                .order_by(NewsArticle.published_at.desc())
+                .limit(5)
+                .all()
+            )
+
+            if recent_news:
+                scored_lines = []
+                for article in recent_news:
+                    score = article.sentiment_score
+                    label = article.sentiment_label
+                    if score is None:
+                        label, score = score_article(
+                            article.headline, article.summary
+                        )
+                    scored_lines.append(
+                        f"  [{score:+.2f} {label}] {article.headline[:80]}"
+                    )
+                finbert_context = (
+                    "FINBERT NEWS SENTIMENT (last 7 days):\n"
+                    + "\n".join(scored_lines)
+                    + "\nUse these scores as a sentiment anchor. Positive = tailwind, Negative = headwind."
+                )
+                raw_output += f"\n\n{finbert_context}"
+    except Exception as e:
+        print(f"[DEEP-SCAN] FinBERT context build failed: {e}")
+
+    return raw_output, pk_signal, deep_scan_used
+
+
+def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -> str:
+    """Phase 9: Confidence Calibration Pipeline with 8 parallel tasks.
+    Prepends calibration_block to raw_output. Returns raw_output unchanged on error.
+    """
+    try:
+        from services.factor_engine import compute_indicators
+        from services.confidence_engine import (
+            compute_signal_agreement, compute_conformal_bounds,
+            find_historical_analogues, apply_bear_asymmetry,
+        )
+        from services.macro_modifiers import compute_minskyan_risk
+        from services.microstructure_engine import compute_pcr_gex
+        from services.sector_rotation import compute_rrg_quadrant
+        from services.filings_extractor import extract_auditor_info
+        from services.nse_data_provider import get_delivery_data, get_price_history
+
+        base_symbol = ticker.upper()
+        ns_ticker_for_cal = _to_ns(ticker)
+
+        price_df = get_price_history(base_symbol, period_days=252)
+        regime_indicators = compute_indicators(price_df, ticker=base_symbol) if price_df is not None else {}
+        current_price_raw = float(regime_indicators.get("price_vs_sma50_pct", 0) or 0)
+        # Derive close price from price_df if available
+        if price_df is not None and not price_df.empty:
+            current_price_raw = float(price_df["Close"].iloc[-1])
+        regime_state = regime_indicators.get("regime_state_label", "Unknown")
+        regime_mult = regime_indicators.get("regime_confidence_multiplier", 1.0)
+
+        agent_reports = {
+            "governance": final_state.get("governance_report", ""),
+            "market": final_state.get("market_report", ""),
+            "fundamentals": final_state.get("fundamentals_report", ""),
+            "news": final_state.get("news_report", ""),
+        } if isinstance(final_state, dict) else {}
+
+        # Parallelize all independent calibration HTTP/DB calls with ThreadPoolExecutor
+        _cal_tasks = {
+            "agreement": lambda: compute_signal_agreement(agent_reports),
+            "delivery":  lambda: get_delivery_data(base_symbol),
+            "microstructure": lambda: compute_pcr_gex(base_symbol),
+            "rrg":       lambda: compute_rrg_quadrant(base_symbol),
+            "minskyan":  lambda: compute_minskyan_risk(dii_ytd=0, fii_ytd=0),
+            "bear":      lambda: apply_bear_asymmetry(raw_output),
+            "auditor":   lambda: extract_auditor_info(ns_ticker_for_cal),
+            "analogues": lambda: find_historical_analogues(ns_ticker_for_cal, {
+                "rsi_14": regime_indicators.get("rsi_14", 50),
+                "price_vs_sma50_pct": regime_indicators.get("price_vs_sma50_pct", 0),
+                "hist_vol_21_annualized": regime_indicators.get("hist_vol_21_annualized", 25),
+                "momentum_score": regime_indicators.get("momentum_score", 0),
+            }),
+            "conformal": lambda: compute_conformal_bounds(ns_ticker_for_cal, current_price_raw, price_df),
+        }
+        _cal_results: dict = {}
+        with ThreadPoolExecutor(max_workers=8) as _cal_executor:
+            _cal_futures = {_cal_executor.submit(fn): name for name, fn in _cal_tasks.items()}
+            for _fut in as_completed(_cal_futures):
+                _cal_name = _cal_futures[_fut]
+                try:
+                    _cal_results[_cal_name] = _fut.result()
+                except Exception as _cal_task_err:
+                    print(f"[CALIBRATION] Task '{_cal_name}' failed: {_cal_task_err}")
+                    _cal_results[_cal_name] = {}
+
+        agreement_data    = _cal_results.get("agreement", {})
+        delivery_data     = _cal_results.get("delivery", {})
+        microstructure_data = _cal_results.get("microstructure", {})
+        rrg_data          = _cal_results.get("rrg", {})
+        minskyan_data     = _cal_results.get("minskyan", {})
+        bear_data         = _cal_results.get("bear", {})
+        auditor_data      = _cal_results.get("auditor", {})
+        analogue_data     = _cal_results.get("analogues", {})
+        conformal_data    = _cal_results.get("conformal", {})
+
+        def _nf(v, default=0):
+            """Return default if v is None, else v. Prevents None.__format__ errors."""
+            return default if v is None else v
+
+        calibration_block = f"""
+=== CALIBRATION ENGINE OUTPUT (AUTHORITATIVE) ===
+Signal Agreement: {_nf(agreement_data.get('agreement_ratio'), 0.5):.2f}
+Regime: {regime_state} (x{_nf(regime_mult, 1.0):.2f})
+Delivery: {_nf(delivery_data.get('delivery_signal'), 'NEUTRAL')} ({_nf(delivery_data.get('delivery_pct_latest'), 0):.1f}% #)
+Dealer: {_nf(microstructure_data.get('dealer_regime'), 'NEUTRAL')} PCR: {_nf(microstructure_data.get('oi_pcr'), 0):.2f}
+RRG: {_nf(rrg_data.get('rrg_quadrant'), 'Unknown')}
+Minskyan: {_nf(minskyan_data.get('minskyan_flag'), False)} ({_nf(minskyan_data.get('minskyan_score'), 0):.2f})
+Bear Adj: {_nf(bear_data.get('adjustment'), 0):+.3f}
+Auditor: {_nf(auditor_data.get('auditor_name'), '')} ({_nf(auditor_data.get('tenure_years'), 0)}y Big-4:{_nf(auditor_data.get('is_big4'), False)})
+Analogues: {_nf(analogue_data.get('k_found'), 0)} WR:{_nf(analogue_data.get('historical_win_rate_pct'), 'N/A')}%
+Bounds 3M: {_nf((conformal_data.get('short_term_3m') or {}).get('lower'), 'N/A')}–{_nf((conformal_data.get('short_term_3m') or {}).get('upper'), 'N/A')}
+=== END CALIBRATION ===
+"""
+        return calibration_block + "\n\n" + raw_output
+    except Exception as _cal_err:
+        print(f"[CALIBRATION] Pipeline failed: {_cal_err}")
+        return raw_output
+
+
+def _save_and_fetch_advisors(
+    result: dict,
+    raw_output: str,
+    user_id: int,
+    ticker: str,
+    exchange: str,
+    scan_type: str = "standard",
+) -> tuple[dict, list[dict]]:
+    """Persist analysis to DB and fetch recent advisor insights.
+    Returns (saved_result, advisor_list_of_dicts).
+    """
+    from datetime import timezone as _tz
+
+    _cutoff = datetime.now(_tz.utc).replace(tzinfo=None) - timedelta(days=14)
+
+    with get_session() as session:
+        saved = save_analysis(
+            session,
+            user_id,
+            ticker.upper(),
+            result,
+            raw_output=raw_output,
+            scan_type=scan_type,
+        )
+        rows = (
+            session.query(AdvisorInsight)
+            .filter(
+                AdvisorInsight.ticker == ticker.upper(),
+                AdvisorInsight.published_at >= _cutoff,
+            )
+            .order_by(AdvisorInsight.published_at.desc())
+            .limit(10)
+            .all()
+        )
+        advisor_list = [
+            {
+                "advisor_name": r.advisor_name,
+                "stance": r.stance,
+                "confidence": r.confidence,
+                "catalyst_summary": r.catalyst_summary,
+                "video_title": r.video_title,
+                "video_url": r.video_url,
+                "published_at": r.published_at.isoformat() if r.published_at else None,
+                "transcript_source": r.transcript_source,
+            }
+            for r in rows
+        ]
+        return saved, advisor_list
+
+
 def analyze(
     ticker: str,
     exchange: str,
@@ -1566,169 +1789,13 @@ def analyze(
     raw_output += f"\n\nADDITIONAL DATA (MANDATORY TO INCLUDE IN fundamentals_snapshot):\nPromoter Pledging: {pledging_data}\n"
 
     # ── Deep Scan: PKScreener + FinBERT injection ────────────────────────────
-    pk_signal = None
-    deep_scan_used = False
     if deep_scan:
-        deep_scan_used = True
-        try:
-            with get_session() as session:
-                pk_signal = (
-                    session.query(PKScreenerSignal)
-                    .filter(PKScreenerSignal.ticker == ticker.upper())
-                    .order_by(PKScreenerSignal.signal_date.desc())
-                    .first()
-                )
+        raw_output, pk_signal, deep_scan_used = _run_deep_scan(ticker, raw_output)
+    else:
+        pk_signal = None
+        deep_scan_used = False
 
-            if pk_signal:
-                pkscreener_context = f"""
-PKSCREENER TECHNICAL PRE-SCAN (as of {pk_signal.signal_date}):
-- Technical Score: {pk_signal.technical_score:.2f}/1.00 (0=Strong Sell, 1=Strong Buy)
-- Breakout Detected: {pk_signal.breakout}
-- Consolidating: {pk_signal.consolidating}
-- RSI: {pk_signal.rsi if pk_signal.rsi else 'N/A'}
-- MACD Signal: {pk_signal.macd_signal or 'N/A'}
-- Moving Average Position: {pk_signal.ma_signal or 'N/A'}
-- Volume Signal: {pk_signal.volume_signal or 'N/A'}
-- Chart Pattern: {pk_signal.pattern or 'None detected'}
-
-Use this PKScreener data as an additional technical anchor. It does NOT override your
-own technical analysis — treat it as a corroborating or conflicting data point.
-If your RSI calculation differs from PKScreener's, note the divergence explicitly.
-"""
-                raw_output += f"\n\n{pkscreener_context}"
-        except Exception as e:
-            print(f"[DEEP-SCAN] PKScreener context fetch failed: {e}")
-
-        # FinBERT sentiment context
-        try:
-            from services.sentiment_engine import score_article
-
-            with get_session() as session:
-                recent_news = (
-                    session.query(NewsArticle)
-                    .filter(
-                        NewsArticle.ticker == ticker.upper(),
-                        NewsArticle.published_at
-                        >= datetime.utcnow() - timedelta(days=7),
-                    )
-                    .order_by(NewsArticle.published_at.desc())
-                    .limit(5)
-                    .all()
-                )
-
-                if recent_news:
-                    scored_lines = []
-                    for article in recent_news:
-                        score = article.sentiment_score
-                        label = article.sentiment_label
-                        if score is None:
-                            label, score = score_article(
-                                article.headline, article.summary
-                            )
-                        scored_lines.append(
-                            f"  [{score:+.2f} {label}] {article.headline[:80]}"
-                        )
-                    finbert_context = (
-                        "FINBERT NEWS SENTIMENT (last 7 days):\n"
-                        + "\n".join(scored_lines)
-                        + "\nUse these scores as a sentiment anchor. Positive = tailwind, Negative = headwind."
-                    )
-                    raw_output += f"\n\n{finbert_context}"
-        except Exception as e:
-            print(f"[DEEP-SCAN] FinBERT context build failed: {e}")
-
-    # ── Confidence Calibration Pipeline ─────────────────────────────────────
-    try:
-        from services.factor_engine import compute_indicators
-        from services.confidence_engine import (
-            compute_signal_agreement, compute_conformal_bounds,
-            find_historical_analogues, apply_bear_asymmetry,
-        )
-        from services.macro_modifiers import compute_minskyan_risk
-        from services.microstructure_engine import compute_pcr_gex
-        from services.sector_rotation import compute_rrg_quadrant
-        from services.filings_extractor import extract_auditor_info
-        from services.nse_data_provider import get_delivery_data, get_price_history
-
-        base_symbol = ticker.upper()
-        ns_ticker_for_cal = _to_ns(ticker)
-
-        price_df = get_price_history(base_symbol, period_days=252)
-        regime_indicators = compute_indicators(price_df, ticker=base_symbol) if price_df is not None else {}
-        current_price_raw = float(regime_indicators.get("price_vs_sma50_pct", 0) or 0)
-        # Derive close price from price_df if available
-        if price_df is not None and not price_df.empty:
-            current_price_raw = float(price_df["Close"].iloc[-1])
-        regime_state = regime_indicators.get("regime_state_label", "Unknown")
-        regime_mult = regime_indicators.get("regime_confidence_multiplier", 1.0)
-
-        agent_reports = {
-            "governance": final_state.get("governance_report", ""),
-            "market": final_state.get("market_report", ""),
-            "fundamentals": final_state.get("fundamentals_report", ""),
-            "news": final_state.get("news_report", ""),
-        } if isinstance(final_state, dict) else {}
-
-        # Parallelize all independent calibration HTTP/DB calls with ThreadPoolExecutor
-        _cal_tasks = {
-            "agreement": lambda: compute_signal_agreement(agent_reports),
-            "delivery":  lambda: get_delivery_data(base_symbol),
-            "microstructure": lambda: compute_pcr_gex(base_symbol),
-            "rrg":       lambda: compute_rrg_quadrant(base_symbol),
-            "minskyan":  lambda: compute_minskyan_risk(dii_ytd=0, fii_ytd=0),
-            "bear":      lambda: apply_bear_asymmetry(raw_output),
-            "auditor":   lambda: extract_auditor_info(ns_ticker_for_cal),
-            "analogues": lambda: find_historical_analogues(ns_ticker_for_cal, {
-                "rsi_14": regime_indicators.get("rsi_14", 50),
-                "price_vs_sma50_pct": regime_indicators.get("price_vs_sma50_pct", 0),
-                "hist_vol_21_annualized": regime_indicators.get("hist_vol_21_annualized", 25),
-                "momentum_score": regime_indicators.get("momentum_score", 0),
-            }),
-            "conformal": lambda: compute_conformal_bounds(ns_ticker_for_cal, current_price_raw, price_df),
-        }
-        _cal_results: dict = {}
-        with ThreadPoolExecutor(max_workers=8) as _cal_executor:
-            _cal_futures = {_cal_executor.submit(fn): name for name, fn in _cal_tasks.items()}
-            for _fut in as_completed(_cal_futures):
-                _cal_name = _cal_futures[_fut]
-                try:
-                    _cal_results[_cal_name] = _fut.result()
-                except Exception as _cal_task_err:
-                    print(f"[CALIBRATION] Task '{_cal_name}' failed: {_cal_task_err}")
-                    _cal_results[_cal_name] = {}
-
-        agreement_data    = _cal_results.get("agreement", {})
-        delivery_data     = _cal_results.get("delivery", {})
-        microstructure_data = _cal_results.get("microstructure", {})
-        rrg_data          = _cal_results.get("rrg", {})
-        minskyan_data     = _cal_results.get("minskyan", {})
-        bear_data         = _cal_results.get("bear", {})
-        auditor_data      = _cal_results.get("auditor", {})
-        analogue_data     = _cal_results.get("analogues", {})
-        conformal_data    = _cal_results.get("conformal", {})
-
-        def _nf(v, default=0):
-            """Return default if v is None, else v. Prevents None.__format__ errors."""
-            return default if v is None else v
-
-        calibration_block = f"""
-=== CALIBRATION ENGINE OUTPUT (AUTHORITATIVE) ===
-Signal Agreement: {_nf(agreement_data.get('agreement_ratio'), 0.5):.2f}
-Regime: {regime_state} (x{_nf(regime_mult, 1.0):.2f})
-Delivery: {_nf(delivery_data.get('delivery_signal'), 'NEUTRAL')} ({_nf(delivery_data.get('delivery_pct_latest'), 0):.1f}% #)
-Dealer: {_nf(microstructure_data.get('dealer_regime'), 'NEUTRAL')} PCR: {_nf(microstructure_data.get('oi_pcr'), 0):.2f}
-RRG: {_nf(rrg_data.get('rrg_quadrant'), 'Unknown')}
-Minskyan: {_nf(minskyan_data.get('minskyan_flag'), False)} ({_nf(minskyan_data.get('minskyan_score'), 0):.2f})
-Bear Adj: {_nf(bear_data.get('adjustment'), 0):+.3f}
-Auditor: {_nf(auditor_data.get('auditor_name'), '')} ({_nf(auditor_data.get('tenure_years'), 0)}y Big-4:{_nf(auditor_data.get('is_big4'), False)})
-Analogues: {_nf(analogue_data.get('k_found'), 0)} WR:{_nf(analogue_data.get('historical_win_rate_pct'), 'N/A')}%
-Bounds 3M: {_nf((conformal_data.get('short_term_3m') or {}).get('lower'), 'N/A')}–{_nf((conformal_data.get('short_term_3m') or {}).get('upper'), 'N/A')}
-=== END CALIBRATION ===
-"""
-        raw_output = calibration_block + "\n\n" + raw_output
-    except Exception as _cal_err:
-        print(f"[CALIBRATION] Pipeline failed: {_cal_err}")
-        # Continue without calibration — reformatter will run unmodified
+    raw_output = _run_calibration_pipeline(ticker, final_state, raw_output)
 
     # Wait for background prefetch to complete (started at top of analyze())
     _prefetch_done.wait(timeout=30)
@@ -1756,51 +1823,10 @@ Bounds 3M: {_nf((conformal_data.get('short_term_3m') or {}).get('lower'), 'N/A')
         except Exception as _enrich_err:
             print(f"[EXTREME] enrichment failed for {ticker}: {_enrich_err}")
 
-    # Task 08: Decouple DB reads (save + advisor fetch) from main analysis thread.
-    # Both DB operations run in separate threads inside ThreadPoolExecutor.
-    from datetime import timezone as _tz
-    _cutoff = datetime.now(_tz.utc).replace(tzinfo=None) - timedelta(days=14)
-
-    def _save_and_fetch_advisors():
-        with get_session() as session:
-            saved = save_analysis(
-                session,
-                user_id,
-                ticker.upper(),
-                result,
-                raw_output=raw_output,
-                scan_type=scan_type,
-            )
-            rows = (
-                session.query(AdvisorInsight)
-                .filter(
-                    AdvisorInsight.ticker == ticker.upper(),
-                    AdvisorInsight.published_at >= _cutoff,
-                )
-                .order_by(AdvisorInsight.published_at.desc())
-                .limit(10)
-                .all()
-            )
-            # Detach rows from session before returning (avoid DetachedInstanceError)
-            advisor_list = [
-                {
-                    "advisor_name": r.advisor_name,
-                    "stance": r.stance,
-                    "confidence": r.confidence,
-                    "catalyst_summary": r.catalyst_summary,
-                    "video_title": r.video_title,
-                    "video_url": r.video_url,
-                    "published_at": r.published_at.isoformat() if r.published_at else None,
-                    "transcript_source": r.transcript_source,
-                }
-                for r in rows
-            ]
-            return saved, advisor_list
-
     try:
-        with ThreadPoolExecutor(max_workers=1) as _db_executor:
-            _db_future = _db_executor.submit(_save_and_fetch_advisors)
-            result, _advisor_rows_dicts = _db_future.result()
+        result, _advisor_rows_dicts = _save_and_fetch_advisors(
+            result, raw_output, user_id, ticker, exchange, scan_type
+        )
     except Exception as e:
         print(
             f"[WARN] save_analysis failed for {ticker}, returning result anyway: {e}"
