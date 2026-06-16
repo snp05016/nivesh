@@ -415,7 +415,7 @@ def portfolio_stress_test(user_id: int, authorization: str = Header(None)):
 # ---------------------------------------------------------------------------
 # Local caches & helpers needed by endpoints
 # ---------------------------------------------------------------------------
-_MORNING_CACHE_TTL = 7200  # 2 hours
+_MORNING_CACHE_TTL = 86400  # 24h — matches pregen TTL; brief is valid for the full day
 _MACRO_IMPACT_TTL = 7200  # 2 hours
 
 _ASM_GSM_CACHE_TTL = 21600  # 6 hours
@@ -802,7 +802,6 @@ mood must be exactly: "positive", "cautious", or "negative"
                     model=HAIKU_MODEL,
                     max_tokens=400,
                     messages=[{"role": "user", "content": prompt}],
-                    extra_body={"cache_control": {"type": "ephemeral"}},
                 )
                 break
             except Exception as e:

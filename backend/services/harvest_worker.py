@@ -98,7 +98,7 @@ async def admin_harvest_news(bg_tasks: BackgroundTasks, authorization: str = Hea
 def start_scheduler():
     """Start APScheduler with all nightly cron jobs. Called from main.py startup."""
     global _scheduler
-    _scheduler = AsyncIOScheduler(timezone="Asia/Dubai")
+    _scheduler = AsyncIOScheduler(timezone="UTC")
 
     from services.advisor_harvester import harvest_all_advisors, evaluate_analysis_outcomes
     from services.news_harvester import harvest_news
@@ -258,8 +258,7 @@ def start_scheduler():
     _scheduler.add_job(_run_harvest_portfolio_videos, "cron", hour=1,  minute=15)  # 1:15 AM IST
     _scheduler.add_job(snapshot_all_users,            "cron", hour=11, minute=0)   # 4:30 PM IST (11:00 UTC)
     _scheduler.add_job(run_nightly_screen,            "cron", hour=11, minute=15)  # 4:45 PM IST (11:15 UTC)
-    _scheduler.add_job(_run_evaluate_analysis_outcomes,"cron", hour=2, minute=0)   # 2:00 AM IST
-    _scheduler.add_job(_run_evaluate_analysis_outcomes,"cron", hour=2, minute=0)   # 2:00 AM IST
+    _scheduler.add_job(_run_evaluate_analysis_outcomes,"cron", hour=20, minute=30)  # 2:00 AM IST (20:30 UTC)
 
     # ── NEW jobs ──────────────────────────────────────────────────────────────
     _scheduler.add_job(_run_cache_purge,          "cron", hour=3,  minute=0)              # 3:00 AM IST
