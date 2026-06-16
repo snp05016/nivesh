@@ -105,9 +105,8 @@ def run():
 
     # ---- Test 3: SQLAlchemy error types are importable and catchable
     from sqlalchemy.exc import (
-        IntegrityError, OperationalError, ProgrammingError, DataError,
-        DatabaseError, SQLAlchemyError, NoResultFound, MultipleResultsFound,
-        InvalidRequestError, PendingRollbackError, DBAPIError, InterfaceError,
+        ProgrammingError, DataError, DatabaseError, NoResultFound, MultipleResultsFound,
+        InvalidRequestError, DBAPIError, InterfaceError,
     )
     # Verify they are all proper exception classes
     error_classes = [
