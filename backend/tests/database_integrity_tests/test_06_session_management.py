@@ -73,11 +73,11 @@ def run():
     leaked_session = None
     with get_session() as s:
         leaked_session = s
+        s.query(User).first()  # Force a connection/transaction to be acquired
 
-    # After context exit, the session should be closed
-    # SQLAlchemy sessions auto-renew connections if queried after close(), 
-    # so we must check the transaction state directly.
-    if not leaked_session.is_active:
+    # After context exit, the session should be closed and connections released.
+    # We can verify this by checking if it's still holding a transaction.
+    if not leaked_session.in_transaction():
         runner.ok("session_closes_on_exit", "Session transaction correctly closed after context exit")
     else:
         runner.fail(
