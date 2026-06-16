@@ -81,7 +81,7 @@ def run():
                 user_id=base_uid,
                 ticker=f"THREAD{thread_id:03d}",
                 company_name=f"Thread {thread_id} Co",
-                shares=float(thread_id),
+                shares=float(thread_id) + 1.0,
                 buy_price=100.0,
                 group_name="holdings"
             )
