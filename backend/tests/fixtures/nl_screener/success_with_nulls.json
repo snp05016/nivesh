@@ -1,0 +1,14 @@
+{
+  "parsed_filters": {
+    "sector": "IT"
+  },
+  "results": [
+    {
+      "ticker": "TCS.NS",
+      "company": "Tata Consultancy Services",
+      "score": 100.0,
+      "reason": "Match",
+      "sector": null
+    }
+  ]
+}

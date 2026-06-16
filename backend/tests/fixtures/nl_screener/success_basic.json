@@ -1,0 +1,15 @@
+{
+  "parsed_filters": {
+    "sector": "Banks",
+    "pe_max": "20"
+  },
+  "results": [
+    {
+      "ticker": "HDFCBANK.NS",
+      "company": "HDFC Bank",
+      "score": 100.0,
+      "reason": "PE 18.2 < 20",
+      "sector": "Financial Services"
+    }
+  ]
+}
