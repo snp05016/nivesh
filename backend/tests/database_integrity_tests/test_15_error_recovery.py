@@ -17,9 +17,13 @@ from contextlib import contextmanager
 from _base import TestRunner, make_test_engine, User, Portfolio
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import (
-    IntegrityError, PendingRollbackError, DetachedInstanceError,
-    OperationalError, SQLAlchemyError
+    IntegrityError, PendingRollbackError, OperationalError, SQLAlchemyError
 )
+# DetachedInstanceError moved to sqlalchemy.orm.exc in SQLAlchemy 2.0
+try:
+    from sqlalchemy.exc import DetachedInstanceError
+except ImportError:
+    from sqlalchemy.orm.exc import DetachedInstanceError
 
 
 def run():

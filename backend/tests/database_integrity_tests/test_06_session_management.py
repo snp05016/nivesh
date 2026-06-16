@@ -75,20 +75,18 @@ def run():
         leaked_session = s
 
     # After context exit, the session should be closed
+    # In SQLAlchemy 2.0+, a closed session raises InvalidRequestError or similar
     try:
-        leaked_session.execute
-        # Try a benign operation — should raise if session is properly closed
-        try:
-            leaked_session.query(User).count()
-            runner.fail(
-                "session_closes_on_exit",
-                "Session is still usable after context exit — session is being leaked. "
-                "This will exhaust the connection pool under load."
-            )
-        except Exception:
-            runner.ok("session_closes_on_exit", "Session is properly closed after context exit")
+        leaked_session.query(User).count()
+        runner.fail(
+            "session_closes_on_exit",
+            "Session is still fully usable after context exit — session may be leaked. "
+            "This will exhaust the connection pool under load."
+        )
     except Exception as e:
-        runner.fail("session_closes_on_exit", f"Unexpected error checking session state: {e}", e)
+        # Any exception (InvalidRequestError, OperationalError, etc.) confirms the session is closed
+        runner.ok("session_closes_on_exit",
+                  f"Session correctly unusable after context exit: {type(e).__name__}: {str(e)[:80]}")
 
     # ---- Test 3: After IntegrityError + rollback, session can be reused
     try:
