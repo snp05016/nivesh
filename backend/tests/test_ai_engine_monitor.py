@@ -78,7 +78,7 @@ def _make_job(
 
 
 def test_list_jobs_matches_check_stock_modes_and_labels():
-    from services.ai_engine_monitor import list_ai_engine_jobs
+    from services.ai_engine_monitor import build_ai_engine_monitor, list_ai_engine_jobs
 
     now = datetime(2026, 6, 16, 9, 30, tzinfo=timezone.utc)
     recent = _make_job(
@@ -130,6 +130,14 @@ def test_list_jobs_matches_check_stock_modes_and_labels():
 
     ticker_jobs = list_ai_engine_jobs(mode="infy", now=now)
     assert [job["job_id"] for job in ticker_jobs] == [done["job_id"]]
+
+    monitor = build_ai_engine_monitor(mode="running", now=now)
+    assert monitor["type"] == "ai_engine_monitor"
+    assert monitor["mode"] == "running"
+    assert monitor["generated_at"] == "2026-06-16T09:30:00+00:00"
+    assert monitor["summary"]["running"] >= 2
+    assert monitor["summary"]["stuck"] >= 1
+    assert recent["job_id"] in {job["job_id"] for job in monitor["jobs"]}
 
 
 def test_detail_payload_includes_phase_timeline_last_message_and_latest_success_summary():
@@ -218,3 +226,17 @@ def test_detail_payload_includes_phase_timeline_last_message_and_latest_success_
         "upside_12m_pct": 14.4,
         "tokens_used": 1234,
     }
+
+
+def test_malformed_checkpoint_json_does_not_break_monitor():
+    from services.ai_engine_monitor import list_ai_engine_jobs
+
+    now = datetime(2026, 6, 16, 11, 0, tzinfo=timezone.utc)
+    job = _make_job("BADCHK", status="RUNNING", now=now)
+    _set_job_fields(job["job_id"], checkpoints="not-json")
+
+    jobs = list_ai_engine_jobs(mode="BADCHK", now=now)
+
+    assert jobs[0]["job_id"] == job["job_id"]
+    assert jobs[0]["phase_timeline"] == []
+    assert jobs[0]["last_message"] == ""

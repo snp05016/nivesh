@@ -21,12 +21,22 @@ _JOB_TERMINAL = {"SUCCEEDED", "FAILED", "CANCELLED", "TIMEOUT"}
 _STALE_LIMITS: dict[str, int] = {"extreme": 600, "deep": 420, "standard": 300}
 
 
+def _parse_checkpoints(raw: str | None) -> list[dict]:
+    try:
+        parsed = json.loads(raw or "[]")
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [item for item in parsed if isinstance(item, dict)]
+
+
 def _job_to_dict(j: "AnalysisJob") -> dict:
     return {
         "job_id": j.job_id, "user_id": j.user_id, "ticker": j.ticker,
         "exchange": j.exchange, "scan_type": j.scan_type, "status": j.status,
         "stage": j.stage, "progress_pct": j.progress_pct,
-        "checkpoints": json.loads(j.checkpoints or "[]"),
+        "checkpoints": _parse_checkpoints(j.checkpoints),
         "pid": j.pid, "tokens_used": j.tokens_used, "error": j.error,
         "created_at": j.created_at.isoformat() if j.created_at else None,
         "started_at": j.started_at.isoformat() if j.started_at else None,

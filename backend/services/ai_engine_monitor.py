@@ -10,6 +10,7 @@ from repositories import job_repo
 
 
 _RUNNING_LABEL = "running"
+_TERMINAL_STATUSES = {"SUCCEEDED", "FAILED", "CANCELLED", "TIMEOUT"}
 
 
 def _as_utc(value: Any) -> datetime | None:
@@ -158,6 +159,45 @@ def list_ai_engine_jobs(
         now=now_utc,
     )
     return [_format_job(job, now=now_utc, stuck_minutes=stuck_minutes) for job in jobs]
+
+
+def _summary_from_jobs(jobs: list[dict]) -> dict:
+    running = sum(1 for job in jobs if job.get("status") == "RUNNING")
+    queued = sum(1 for job in jobs if job.get("status") == "QUEUED")
+    stuck = sum(1 for job in jobs if job.get("is_stuck") is True)
+    terminal_recent = sum(1 for job in jobs if job.get("status") in _TERMINAL_STATUSES)
+    return {
+        "running": running,
+        "queued": queued,
+        "stuck": stuck,
+        "terminal_recent": terminal_recent,
+    }
+
+
+def build_ai_engine_monitor(
+    *,
+    mode: str = "running",
+    ticker: str | None = None,
+    limit: int = 20,
+    stuck_minutes: int = 15,
+    now: datetime | None = None,
+) -> dict:
+    now_utc = _as_utc(now) or datetime.now(timezone.utc)
+    jobs = list_ai_engine_jobs(
+        mode=mode,
+        ticker=ticker,
+        limit=limit,
+        stuck_minutes=stuck_minutes,
+        now=now_utc,
+    )
+    return {
+        "type": "ai_engine_monitor",
+        "mode": (mode or "running").strip() or "running",
+        "ticker": ticker.upper() if ticker else None,
+        "generated_at": now_utc.isoformat(),
+        "summary": _summary_from_jobs(jobs),
+        "jobs": jobs,
+    }
 
 
 def get_ai_engine_job_detail(
