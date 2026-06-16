@@ -14,6 +14,8 @@ from fastapi import APIRouter, HTTPException, Header, Request
 from fastapi.responses import StreamingResponse
 import yfinance as yf
 
+from services.disk_cache import invalidate as _cache_invalidate
+
 from helpers import (
     get_session, verify_access_token, EXCHANGE_SUFFIX, _resolve_ticker,
     _to_ns, _yf_price, _yf_fetch_info, _dcache_get, _dcache_set,
@@ -249,7 +251,10 @@ def sip_calculator(req: SIPCalculatorRequest):
 
 # ── Item 44: Portfolio vs Nifty CAGR ──────────────────────────────────
 @router.get("/portfolio/benchmark")
-def portfolio_benchmark(user_id: int):
+def portfolio_benchmark(user_id: int, authorization: str = Header(None)):
+    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
+    if token_user != user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     with get_session() as db:
         holdings = db.query(Portfolio).filter(Portfolio.user_id == user_id).all()
         
@@ -315,7 +320,10 @@ def portfolio_benchmark(user_id: int):
 
 # ── Item 50: Portfolio Stress Test ────────────────────────────────────
 @router.get("/portfolio/stress-test")
-def portfolio_stress_test(user_id: int):
+def portfolio_stress_test(user_id: int, authorization: str = Header(None)):
+    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
+    if token_user != user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     with get_session() as db:
         holdings = db.query(Portfolio).filter(Portfolio.user_id == user_id).all()
         
@@ -482,7 +490,7 @@ def _risk_label(score: int | None) -> str:
 @router.get("/portfolio/signal-warnings")
 def portfolio_signal_warnings(user_id: int, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     warnings = []
     with get_session() as session:
@@ -504,9 +512,8 @@ def portfolio_signal_warnings(user_id: int, authorization: str = Header(None)):
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/{user_id}")
 async def portfolio_endpoint(user_id: int, authorization: str = Header(None)):
-    # Auth optional — personal app, user_id scoping is sufficient
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is not None and token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         with get_session() as session:
@@ -555,8 +562,8 @@ async def portfolio_endpoint(user_id: int, authorization: str = Header(None)):
 
             invested = h.shares * h.buy_price
             current_value = h.shares * current_price if current_price else 0.0
-            pnl = current_value - invested if current_value > 0 else 0.0
-            pnl_pct = (pnl / invested * 100) if invested > 0 and current_value > 0 else 0.0
+            pnl = current_value - invested if current_price is not None else 0.0
+            pnl_pct = (pnl / invested * 100) if invested > 0 and current_price is not None else 0.0
             day_change_pct = 0.0
             if current_price and prev_close and prev_close > 0:
                 day_change_pct = round((current_price - prev_close) / prev_close * 100, 2)
@@ -611,7 +618,7 @@ async def portfolio_endpoint(user_id: int, authorization: str = Header(None)):
 @router.get("/portfolio/history/{user_id}")
 def portfolio_history_endpoint(user_id: int, days: int = 30, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     cutoff = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
     with get_session() as session:
@@ -657,7 +664,7 @@ def piotroski_endpoint(ticker: str):
 @router.get("/morning-summary/{user_id}")
 def morning_summary_endpoint(user_id: int, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     now = time.time()
 
@@ -684,17 +691,18 @@ def morning_summary_endpoint(user_id: int, authorization: str = Header(None)):
                 raise HTTPException(status_code=404, detail=f"User {user_id} not found")
             holdings = session.query(Portfolio).filter_by(user_id=user_id, group_name="holdings").all()
 
-            # Get last known signal for each ticker from analysis_history
+            # Get last known signal for each ticker from analysis_history (single IN query)
             last_signals: dict[str, str] = {}
-            for h in holdings:
-                row = (
-                    session.query(AnalysisHistory)
-                    .filter(AnalysisHistory.user_id == user_id, AnalysisHistory.ticker == h.ticker)
-                    .order_by(AnalysisHistory.created_at.desc())
-                    .first()
-                )
-                if row:
-                    last_signals[h.ticker] = row.signal
+            tickers = [h.ticker.upper() for h in holdings]
+            rows = (
+                session.query(AnalysisHistory)
+                .filter(AnalysisHistory.user_id == user_id, AnalysisHistory.ticker.in_(tickers))
+                .order_by(AnalysisHistory.created_at.desc())
+                .all()
+            )
+            for r in rows:
+                if r.ticker not in last_signals:
+                    last_signals[r.ticker] = r.signal
 
         # Fetch prices and compute movers
         holding_lines = []
@@ -896,7 +904,7 @@ mood must be exactly: "positive", "cautious", or "negative"
 @router.post("/portfolio/add")
 def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is not None and token_user != req.user_id:
+    if token_user != req.user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     if not req.ticker or not req.ticker.strip():
         raise HTTPException(status_code=400, detail="Ticker cannot be empty.")
@@ -924,6 +932,7 @@ def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header
             )
             session.add(new_holding)
             session.commit()
+            _cache_invalidate("morning_brief", str(req.user_id))
 
         ns = _to_ns(ticker)
         current_price, prev_close = _yf_price(ns)
@@ -961,7 +970,7 @@ def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header
 @router.delete("/portfolio/remove")
 def portfolio_remove_endpoint(req: PortfolioRemoveRequest, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != req.user_id:
+    if token_user != req.user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     ticker = req.ticker.upper().strip()
     try:
@@ -973,6 +982,7 @@ def portfolio_remove_endpoint(req: PortfolioRemoveRequest, authorization: str = 
                 raise HTTPException(status_code=404, detail="Holding not found.")
             session.delete(holding)
             session.commit()
+            _cache_invalidate("morning_brief", str(req.user_id))
         return {"success": True, "ticker": ticker}
     except HTTPException:
         raise
@@ -986,7 +996,7 @@ def portfolio_remove_endpoint(req: PortfolioRemoveRequest, authorization: str = 
 @router.put("/portfolio/update")
 def portfolio_update_endpoint(req: PortfolioUpdateRequest, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != req.user_id:
+    if token_user != req.user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     if req.shares <= 0:
         raise HTTPException(status_code=400, detail="Shares must be greater than 0.")
@@ -1004,6 +1014,7 @@ def portfolio_update_endpoint(req: PortfolioUpdateRequest, authorization: str = 
             holding.shares = req.shares
             holding.buy_price = req.buy_price
             session.commit()
+            _cache_invalidate("morning_brief", str(req.user_id))
             company_name = holding.company_name
 
         ns = _to_ns(ticker)
@@ -1042,7 +1053,7 @@ def portfolio_update_endpoint(req: PortfolioUpdateRequest, authorization: str = 
 @router.put("/portfolio/note")
 def portfolio_note_endpoint(req: PortfolioNoteRequest, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != req.user_id:
+    if token_user != req.user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     ticker = req.ticker.upper().strip()
     try:
@@ -1054,6 +1065,7 @@ def portfolio_note_endpoint(req: PortfolioNoteRequest, authorization: str = Head
                 raise HTTPException(status_code=404, detail="Stock not found in portfolio or watchlist")
             holding.notes = req.note.strip()
             session.commit()
+            _cache_invalidate("morning_brief", str(req.user_id))
         return {"success": True, "ticker": ticker, "note": req.note.strip()}
     except HTTPException:
         raise
@@ -1503,7 +1515,7 @@ def portfolio_advisor_consensus(user_id: int, days: int = 7):
 @router.get("/portfolio/export/excel/{user_id}")
 def export_portfolio_excel(user_id: int, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     if not OPENPYXL_AVAILABLE:
         raise HTTPException(status_code=501, detail="openpyxl not installed on server")
@@ -1626,7 +1638,7 @@ def export_portfolio_excel(user_id: int, authorization: str = Header(None)):
 @router.get("/api/v1/portfolio/valuation-history")
 async def get_valuation_history(user_id: int, days: int = 90, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     with get_session() as session:
         cutoff_date = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
@@ -1758,7 +1770,7 @@ async def portfolio_charts_endpoint(
         if authorization and authorization.startswith("Bearer ")
         else ""
     )
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         from portfolio_charts import generate_portfolio_charts
@@ -1854,7 +1866,7 @@ async def portfolio_charts_endpoint(
 @router.get("/portfolio/risk-analysis/{user_id}")
 def portfolio_risk_analysis_endpoint(user_id: int, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         with get_session() as session:
@@ -2016,7 +2028,7 @@ def portfolio_risk_analysis_endpoint(user_id: int, authorization: str = Header(N
 @router.get("/portfolio/red-flags/{user_id}")
 def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         with get_session() as session:
@@ -2172,7 +2184,7 @@ def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)
 @router.get("/macro-impact/{user_id}")
 def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         now = time.time()
@@ -2258,7 +2270,7 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
 @router.get("/portfolio/timeframe-conflicts/{user_id}")
 def portfolio_timeframe_conflicts_endpoint(user_id: int, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         with get_session() as session:
@@ -2338,7 +2350,7 @@ def portfolio_timeframe_conflicts_endpoint(user_id: int, authorization: str = He
 @router.post("/trade-journal")
 def trade_journal_add_endpoint(req: TradeJournalAddRequest, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != req.user_id:
+    if token_user != req.user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     action = req.action.upper()
     if action not in ("BUY", "SELL", "HOLD", "WATCH"):
@@ -2382,7 +2394,7 @@ def trade_journal_add_endpoint(req: TradeJournalAddRequest, authorization: str =
 @router.get("/trade-journal/{user_id}")
 def trade_journal_get_endpoint(user_id: int, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         with get_session() as session:
@@ -2431,7 +2443,7 @@ def trade_journal_get_endpoint(user_id: int, authorization: str = Header(None)):
 @router.put("/trade-journal/{entry_id}")
 def trade_journal_update_endpoint(entry_id: int, req: TradeJournalUpdateRequest, user_id: int, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     """Update outcome_text and mood on a trade journal entry. user_id passed as query param."""
     try:
@@ -2481,7 +2493,7 @@ def trade_journal_update_endpoint(entry_id: int, req: TradeJournalUpdateRequest,
 @router.delete("/trade-journal/{entry_id}")
 def trade_journal_delete_endpoint(entry_id: int, user_id: int, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     """Delete a trade journal entry. user_id passed as query param."""
     try:
@@ -2597,7 +2609,7 @@ def trade_journal_stats_endpoint(user_id: int):
 @router.get("/portfolio/export/pdf/{user_id}")
 def export_portfolio_pdf(user_id: int, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     """Generate a one-page portfolio review PDF (or plain text if fpdf2 not installed)."""
     try:

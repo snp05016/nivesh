@@ -127,11 +127,11 @@ def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_
     return res
 
 
-def get_all_ticker_history(session: Session, ticker: str, user_id: Optional[int] = None) -> list[dict]:
+def get_all_ticker_history(session: Session, ticker: str, user_id: Optional[int] = None, limit: int = 50) -> list[dict]:
     q = session.query(AnalysisHistory).filter(AnalysisHistory.ticker == ticker.upper())
     if user_id is not None:
         q = q.filter(AnalysisHistory.user_id == user_id)
-    rows = q.order_by(AnalysisHistory.created_at.asc()).all()
+    rows = q.order_by(AnalysisHistory.created_at.asc()).limit(limit).all()
     results = []
     for r in rows:
         res = json.loads(r.full_json)

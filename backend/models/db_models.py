@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, Float, Integer, JSON, String, Text,
+    Boolean, CheckConstraint, Column, DateTime, Float, Integer, JSON, String, Text,
     ForeignKey, Index, UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -24,7 +24,7 @@ class User(Base):
     username      = Column(String(50), unique=True, nullable=False)
     password_hash = Column(String(64), nullable=False)
     display_name  = Column(String(100), nullable=False)
-    created_at    = Column(DateTime, default=datetime.utcnow)
+    created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     portfolio        = relationship("Portfolio",       back_populates="user", cascade="all, delete-orphan")
     analysis_history = relationship("AnalysisHistory", back_populates="user", cascade="all, delete-orphan")
@@ -48,7 +48,7 @@ class Portfolio(Base):
     buy_price    = Column(Float, nullable=False)
     group_name   = Column(String(50), default="watchlist")
     notes        = Column(Text, default="")
-    created_at   = Column(DateTime, default=datetime.utcnow)
+    created_at   = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="portfolio")
 
@@ -56,6 +56,9 @@ class Portfolio(Base):
         Index("ix_portfolio_user_id", "user_id"),
         Index("ix_portfolio_user_ticker", "user_id", "ticker"),
         Index("ix_portfolio_group", "user_id", "group_name"),
+        UniqueConstraint("user_id", "ticker", "group_name", name="uq_portfolio_user_ticker_group"),
+        CheckConstraint("shares > 0", name="ck_portfolio_shares_positive"),
+        CheckConstraint("buy_price > 0", name="ck_portfolio_buy_price_positive"),
     )
 
 
@@ -67,7 +70,7 @@ class AnalysisHistory(Base):
     ticker         = Column(String(30), nullable=False)
     analysis_date  = Column(String(20), nullable=False)
     signal         = Column(String(20), nullable=False)
-    confidence_pct = Column(Float, nullable=True)
+    confidence_pct = Column(Integer, nullable=True)
     target_short   = Column(Float, nullable=True)
     target_medium  = Column(Float, nullable=True)
     target_long    = Column(Float, nullable=True)
@@ -88,7 +91,7 @@ class AnalysisHistory(Base):
     conformal_target_lower_3m   = Column(Float, nullable=True)
     quantitative_drivers        = Column(JSON, default=dict)
     tail_risk_flags             = Column(JSON, default=dict)
-    created_at     = Column(DateTime, default=datetime.utcnow)
+    created_at     = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="analysis_history")
 
@@ -108,7 +111,7 @@ class SignalEvent(Base):
     from_signal = Column(String(30), nullable=False)
     to_signal   = Column(String(30), nullable=False)
     event_date  = Column(String(20), nullable=False)
-    created_at  = Column(DateTime, default=datetime.utcnow)
+    created_at  = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class AnalysisJob(Base):
@@ -130,9 +133,13 @@ class AnalysisJob(Base):
     tokens_used  = Column(Integer, nullable=False, default=0)
     error        = Column(Text, nullable=True)
     result_json  = Column(Text, nullable=True)                            # full normalized result when SUCCEEDED
-    created_at   = Column(DateTime, default=datetime.utcnow)
+    created_at   = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     started_at   = Column(DateTime, nullable=True)
     finished_at  = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        Index("ix_analysis_jobs_user_id", "user_id"),
+    )
 
 
 class PriceTarget(Base):
@@ -144,9 +151,14 @@ class PriceTarget(Base):
     target_price = Column(Float, nullable=False)
     direction    = Column(String(10), nullable=False)
     triggered    = Column(Boolean, default=False)
-    created_at   = Column(DateTime, default=datetime.utcnow)
+    created_at   = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="price_targets")
+
+    __table_args__ = (
+        Index("ix_price_targets_user_id", "user_id"),
+        CheckConstraint("target_price > 0", name="ck_price_targets_positive"),
+    )
 
 
 class TradeJournal(Base):
@@ -162,9 +174,13 @@ class TradeJournal(Base):
     company_name   = Column(String(200), nullable=True)   # added — run migrate_trade_journal.py
     mood           = Column(String(30), nullable=True)    # added — run migrate_trade_journal.py
     updated_at     = Column(DateTime, nullable=True)      # added — run migrate_trade_journal.py
-    created_at     = Column(DateTime, default=datetime.utcnow)
+    created_at     = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="trade_journal")
+
+    __table_args__ = (
+        Index("ix_trade_journal_user_id", "user_id"),
+    )
 
 
 class DeviceToken(Base):
@@ -174,10 +190,14 @@ class DeviceToken(Base):
     user_id      = Column(Integer, ForeignKey("users.id"), nullable=False)
     device_token = Column(String(200), unique=True, nullable=False)
     platform     = Column(String(10), default="ios")
-    created_at   = Column(DateTime, default=datetime.utcnow)
-    updated_at   = Column(DateTime, default=datetime.utcnow)
+    created_at   = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at   = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="device_tokens")
+
+    __table_args__ = (
+        Index("ix_device_tokens_user_id", "user_id"),
+    )
 
 
 class AdvisorInsight(Base):
@@ -202,7 +222,7 @@ class AdvisorInsight(Base):
     catalyst_summary = Column(String, nullable=False)
     raw_snippet     = Column(Text, nullable=True)
     view_count      = Column(Integer, default=0)
-    created_at      = Column(DateTime, default=datetime.utcnow)
+    created_at      = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint('video_id', 'ticker', name='uq_video_ticker'),
@@ -226,7 +246,7 @@ class NewsArticle(Base):
     sentiment_score = Column(Float, nullable=True)          # FinBERT score: -1.0 to +1.0
     sentiment_label = Column(String, nullable=True)         # "Positive" | "Negative" | "Neutral"
     is_red_flag     = Column(Boolean, default=False)        # True if contains auditor/CFO/SEBI keywords
-    created_at      = Column(DateTime, default=datetime.utcnow)
+    created_at      = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class YouTubeVideo(Base):
@@ -244,8 +264,8 @@ class YouTubeVideo(Base):
     view_count      = Column(Integer, default=0)
     duration_seconds = Column(Integer, default=0)
     tickers_mentioned = Column(String, nullable=True)
-    created_at      = Column(DateTime, default=datetime.utcnow)
-    harvested_at    = Column(DateTime, default=datetime.utcnow)
+    created_at      = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    harvested_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     matched_ticker  = Column(String, nullable=True, index=True)
     source          = Column(String, default="channel_harvest")
     sebi_reg        = Column(String, nullable=True)
@@ -262,7 +282,7 @@ class PortfolioValuationHistory(Base):
     total_pnl       = Column(Float, nullable=False)         # total_value - total_invested
     pnl_percent     = Column(Float, nullable=False)         # (pnl / invested) * 100
     nifty_close     = Column(Float, nullable=True)          # NIFTY 50 close that day (for benchmark)
-    created_at      = Column(DateTime, default=datetime.utcnow)
+    created_at      = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint('user_id', 'snapshot_date', name='uq_user_date_snapshot'),
@@ -284,7 +304,7 @@ class PKScreenerSignal(Base):
     volume_signal   = Column(String, nullable=True)                # "HighVolume" | "Normal"
     pattern         = Column(String, nullable=True)                # "Bull Flag" | "Cup and Handle" etc.
     technical_score = Column(Float, nullable=True)                 # 0.0 = strong sell, 1.0 = strong buy
-    created_at      = Column(DateTime, default=datetime.utcnow)
+    created_at      = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint('ticker', 'signal_date', name='uq_ticker_date_signal'),
@@ -304,8 +324,8 @@ class MacroEvent(Base):
     prior           = Column(String(100), nullable=True)           # previous reading
     category        = Column(String(50), nullable=True)            # MONETARY / FISCAL / EARNINGS / GLOBAL
     source          = Column(String(100), nullable=True)           # "RBI" / "SEBI" / "NSE"
-    created_at      = Column(DateTime, default=datetime.utcnow)
-    updated_at      = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at      = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at      = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("ix_macro_events_date", "event_date"),
@@ -327,7 +347,7 @@ class NetWorthLedger(Base):
     top_loser_ticker     = Column(String(30), nullable=True)       # worst single-day performer
     top_loser_pct        = Column(Float, nullable=True)            # its % loss
     portfolio_json       = Column(Text, nullable=True)             # full breakdown JSON
-    created_at           = Column(DateTime, default=datetime.utcnow)
+    created_at           = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", foreign_keys=[user_id])
 
@@ -340,7 +360,7 @@ class MarketErrorLog(Base):
     __tablename__ = "market_error_logs"
 
     id             = Column(Integer, primary_key=True, index=True)
-    timestamp      = Column(DateTime, default=datetime.utcnow)
+    timestamp      = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     component      = Column(String(100), nullable=False)   # "filings_extractor", "nse_data_provider", etc.
     error_message  = Column(Text, nullable=False)            # full traceback / error string
     context_ticker = Column(String(30), nullable=True)       # optional — ticker being processed when error hit
@@ -369,7 +389,7 @@ class EarningsAlert(Base):
     user_id       = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     ticker        = Column(String(30), nullable=False)
     earnings_date = Column(String(20), nullable=False)          # "2026-06-15"
-    created_at    = Column(DateTime, default=datetime.utcnow)
+    created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", foreign_keys=[user_id])
 
@@ -382,7 +402,7 @@ class EarningsErrorLog(Base):
     __tablename__ = "earnings_error_logs"
 
     id             = Column(Integer, primary_key=True, index=True)
-    timestamp      = Column(DateTime, default=datetime.utcnow)
+    timestamp      = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     module         = Column(String(100), nullable=False)   # "filings_extractor", "earnings_calendar", "earnings_feed"
     error_trace    = Column(Text, nullable=False)            # full traceback / error string
     failed_ticker  = Column(String(30), nullable=True)       # ticker being processed when error occurred
@@ -414,7 +434,7 @@ class BlockDeal(Base):
     deal_type = Column(String(20), nullable=False) # "BUY" or "SELL"
     quantity = Column(Integer, nullable=False)
     price = Column(Float, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class FIIDIIFlow(Base):
@@ -428,14 +448,14 @@ class FIIDIIFlow(Base):
     dii_buy = Column(Float, nullable=False)
     dii_sell = Column(Float, nullable=False)
     dii_net = Column(Float, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class NotificationErrorLog(Base):
     __tablename__ = "notification_error_logs"
 
     id            = Column(Integer, primary_key=True, index=True)
-    timestamp     = Column(DateTime, default=datetime.utcnow)
+    timestamp     = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     failure_point = Column(String(100), nullable=False)   # "token_registration", "apns_dispatch"
     error_trace   = Column(Text, nullable=False)            # full traceback / error string
     target_device = Column(String(200), nullable=True)      # device token or identifier
@@ -466,7 +486,7 @@ class AdvisorBiography(Base):
     experience_years = Column(Integer, default=0)
     analytical_framework = Column(String(200), nullable=True)  # e.g. "Wyckoff, Volume Profile"
     full_biography_text = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class TextAdvisoryInsight(Base):
@@ -474,7 +494,7 @@ class TextAdvisoryInsight(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     advisor_id = Column(Integer, ForeignKey("advisor_biographies.id"), nullable=False, index=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     content_text = Column(Text, nullable=False)
     target_ticker = Column(String(30), nullable=True, index=True)
     extracted_sentiment = Column(String(20), nullable=True)  # BULLISH/BEARISH/NEUTRAL
@@ -487,7 +507,7 @@ class IdeasErrorLog(Base):
     __tablename__ = "ideas_error_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     module = Column(String(100), nullable=False)
     error_trace = Column(Text, nullable=False)
     context_ticker = Column(String(30), nullable=True)

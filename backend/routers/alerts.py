@@ -10,7 +10,7 @@ router = APIRouter(tags=["Price Alerts"])
 @router.post("/alerts/add")
 def alerts_add_endpoint(req: AlertAddRequest, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != req.user_id:
+    if token_user != req.user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     if req.direction not in ("above", "below"):
         raise HTTPException(status_code=400, detail="direction must be 'above' or 'below'")
@@ -46,7 +46,7 @@ def alerts_add_endpoint(req: AlertAddRequest, authorization: str = Header(None))
 @router.delete("/alerts/remove")
 def alerts_remove_endpoint(req: AlertRemoveRequest, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != req.user_id:
+    if token_user != req.user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         with get_session() as session:
@@ -168,7 +168,7 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
 @router.get("/alerts/{user_id}")
 def alerts_get_endpoint(user_id: int, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         with get_session() as session:

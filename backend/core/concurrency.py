@@ -46,7 +46,7 @@ def _release_analysis_slot(user_id: int) -> None:
     """Release the analysis slot for user_id."""
     with _running_lock:
         _running_analyses.pop(user_id, None)
-    _release_analyze_semaphore(user_id)
+        _release_analyze_semaphore(user_id)
 
 def _force_clear_analysis_slot(user_id: int) -> bool:
     """Admin: force-clear a stuck analysis slot. Returns True if slot existed."""

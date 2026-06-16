@@ -129,20 +129,21 @@ async def pregen_morning_briefs_all_users() -> dict:
                     skipped += 1
                     continue
 
-                # Gather last AI signals
+                # Gather last AI signals (single IN query, avoids N+1)
                 last_signals: dict[str, str] = {}
-                for h in holdings:
-                    row = (
-                        db.query(AnalysisHistory)
-                        .filter(
-                            AnalysisHistory.user_id == user.id,
-                            AnalysisHistory.ticker == h.ticker,
-                        )
-                        .order_by(AnalysisHistory.created_at.desc())
-                        .first()
+                tickers = [h.ticker.upper() for h in holdings]
+                rows = (
+                    db.query(AnalysisHistory)
+                    .filter(
+                        AnalysisHistory.user_id == user.id,
+                        AnalysisHistory.ticker.in_(tickers),
                     )
-                    if row:
-                        last_signals[h.ticker] = row.signal
+                    .order_by(AnalysisHistory.created_at.desc())
+                    .all()
+                )
+                for r in rows:
+                    if r.ticker not in last_signals:
+                        last_signals[r.ticker] = r.signal
 
                 # Fetch live prices
                 holding_lines = []
