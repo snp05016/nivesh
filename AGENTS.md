@@ -183,7 +183,7 @@ REFUSED — AGENTS.md §2.8 Cmd I: Data Density
 |-------|----------|---------------|
 | Controller | `routers/` (9 files) | HTTP validation, rate limiting, spawn `multiprocessing.Process` |
 | Service | `services/` (20 files) | All business logic, LLM orchestration, computations |
-| Repository | `database.py` + `models/` | `get_session()` context manager |
+| Repository | `database.py` + `models/db_models.py` + `repositories/` | `get_session()` context manager. ORM models centralized in one file. Alembic migrations in `migrations/versions/`. |
 
 Business logic in routers FORBIDDEN. DB queries in services FORBIDDEN.
 
@@ -195,6 +195,33 @@ Heavy AI analysis MUST use `multiprocessing.Process` with `multiprocessing.Queue
 
 ### 3.4 Global State
 Any module-level mutable variable MUST have a dedicated `threading.Lock`. Use with-lock access pattern + explicit release/deletion path. Current locked state: `_running_analyses: set[int]`, per-user semaphores.
+
+### 3.5 Database Migrations (Alembic) — MANDATORY
+
+**Every schema change to ORM models MUST go through Alembic. Never use `Base.metadata.create_all()` for schema changes — it only creates NEW tables, never modifies existing ones.**
+
+When you add, remove, or modify a column in `models/db_models.py`:
+```bash
+cd backend
+../venv/bin/alembic revision --autogenerate -m "describe the change"
+../venv/bin/alembic upgrade head
+```
+
+Key rules:
+- **Generate BEFORE deploying** — the migration file must be committed alongside the model change.
+- **`alembic check` before commit** — verifies no schema drift between models and DB.
+- **Never manually ALTER TABLE** — all schema changes go through migration files in `migrations/versions/`.
+- **SQLite `render_as_batch=True`** — already configured in `migrations/env.py`; batch mode handles SQLite's lack of ALTER support.
+- **JSON columns use `default="{}"`** (string, not Python dict) — SQLite requires constant defaults.
+- **`datetime.utcnow` forbidden in models** — use `default=lambda: datetime.now(timezone.utc)` (evaluated at row-insert time, not import time).
+- **All ORM models live in `models/db_models.py` ONLY** — never define a second `class Foo(Base)` in a service file. Centralizing prevents `Table already defined` errors.
+
+Schema change checklist:
+1. Edit `models/db_models.py`
+2. `alembic revision --autogenerate -m "description"`
+3. Review the generated migration file
+4. `alembic upgrade head` (local) or `alembic stamp head` (server if DB already matches)
+5. Commit both the model change AND the migration file
 
 ---
 
@@ -253,6 +280,7 @@ All AI-generated text MUST pass through `stripEmoji()`. Applies to: Morning Brie
 3. If router files modified: verify no business logic (no yfinance, no LLM client, no `session.query()`).
 4. Scan diff for "Million"/"Billion"/"Trillion".
 5. If `backend/prompts.py` modified: verify prompt not shortened/tone altered.
+6. If `models/db_models.py` modified: verify `alembic revision --autogenerate` was run, migration file is committed, and `alembic check` passes.
 
 ### 6.2 Xcode Build Prohibition
 **NEVER run `xcodebuild` or attempt to compile the iOS app.** The Swift/Xcode project in `ios/StockApp/` is reference-only. Compiling will crash the agent session. Skip any workflow step that would trigger `xcodebuild`.
@@ -264,6 +292,18 @@ Violation: [description]
 Non-compliant: [snippet]
 Compliant alternative: [snippet]
 Architectural impact: [what breaks]
+```
+
+```
+REFUSED — AGENTS.md §3.5: Database Migrations
+Direct ALTER TABLE or manual column addition forbidden.
+Use: alembic revision --autogenerate -m "description" → alembic upgrade head
+```
+
+```
+REFUSED — AGENTS.md §3.5: ORM Model Duplication
+Defining class Foo(Base) in a service file forbidden.
+All ORM models MUST live in models/db_models.py only.
 ```
 
 ### 6.4 Commit Workflow
