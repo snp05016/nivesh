@@ -15,19 +15,52 @@ This test verifies:
 """
 import sys
 import threading
+import tempfile
+import os
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 sys.path.insert(0, str(Path(__file__).parent))
 
-from _base import TestRunner, make_test_engine, make_session, User, Portfolio
+from _base import TestRunner, User, Portfolio
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
+from models.db_models import Base
 from sqlalchemy.exc import OperationalError
+import unittest.mock as _mock
+for _m in ["tradingagents","tradingagents.graph","tradingagents.graph.trading_graph",
+           "tradingagents.default_config","tradingagents.agents",
+           "tradingagents.agents.utils","tradingagents.agents.utils.agent_states",
+           "langchain_anthropic","langchain_core","langchain_core.messages",
+           "langchain_core.prompts","langchain_core.tools","langgraph","langgraph.graph",
+           "apscheduler","apscheduler.schedulers","apscheduler.schedulers.asyncio",
+           "anthropic","openai","prompts","yfinance","openpyxl","openpyxl.styles",
+           "services.options_scraper","services.nse_data_provider",
+           "services.disk_cache","services.piotroski"]:
+    if _m not in _mock.sys.modules if hasattr(_mock,'sys') else True:
+        pass
+    if _m not in sys.modules:
+        sys.modules[_m] = _mock.MagicMock()
 
 
 def run():
     runner = TestRunner("07_concurrent_writes")
-    runner.setup()
-    engine = runner.engine
+
+    # Use a temp file-based SQLite so all threads share the same physical DB.
+    # In-memory SQLite creates a separate DB per connection, making cross-thread
+    # writes invisible to each other.
+    tmp_db = tempfile.mktemp(suffix="_concurrent_test.db")
+    db_url = f"sqlite:///{tmp_db}"
+    engine = create_engine(
+        db_url,
+        connect_args={"check_same_thread": False},
+        echo=False,
+    )
+    @event.listens_for(engine, "connect")
+    def _wal(dbapi_conn, _):
+        dbapi_conn.execute("PRAGMA journal_mode=WAL")
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
+        dbapi_conn.execute("PRAGMA busy_timeout=5000")
+    Base.metadata.create_all(engine)
     SessionFactory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
     # Create base user
@@ -131,7 +164,15 @@ def run():
     log_dir = Path(__file__).parent / "logs"
     log_dir.mkdir(exist_ok=True)
     runner.write_log(log_dir / "db_integrity_latest.txt")
-    runner.teardown()
+    engine.dispose()
+    # Clean up temp DB file
+    try:
+        for ext in ["", "-wal", "-shm"]:
+            p = tmp_db + ext
+            if os.path.exists(p):
+                os.unlink(p)
+    except Exception:
+        pass
     return 0 if failed == 0 else 1
 
 

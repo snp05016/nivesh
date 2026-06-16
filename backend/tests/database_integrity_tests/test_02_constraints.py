@@ -28,13 +28,12 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timezone
 
 
-def make_user(session, uid: int = 1) -> User:
-    """Insert a minimal user row."""
+def make_user(session, suffix: str = "1") -> User:
+    """Insert a minimal user row and return it with its assigned id."""
     u = User(
-        id=uid,
-        username=f"constraint_test_{uid}",
+        username=f"constraint_test_{suffix}",
         password_hash="x" * 60,
-        display_name=f"Test {uid}",
+        display_name=f"Test {suffix}",
     )
     session.add(u)
     session.flush()
@@ -45,12 +44,14 @@ def run():
     runner = TestRunner("02_constraints")
     runner.setup()
     session = runner.session
-    make_user(session, 1)
+    u = make_user(session, "main")
+    session.commit()
+    uid = u.id
 
     # ---- Portfolio: shares must be > 0 for holdings
     try:
         p = Portfolio(
-            user_id=1, ticker="TST", company_name="Test Co",
+            user_id=uid, ticker="TST", company_name="Test Co",
             shares=0, buy_price=100.0, group_name="holdings"
         )
         session.add(p)
@@ -70,7 +71,7 @@ def run():
     # ---- Portfolio: buy_price must be > 0 for holdings
     try:
         p = Portfolio(
-            user_id=1, ticker="TST2", company_name="Test Co",
+            user_id=uid, ticker="TST2", company_name="Test Co",
             shares=10, buy_price=0.0, group_name="holdings"
         )
         session.add(p)
@@ -90,7 +91,7 @@ def run():
     # ---- Portfolio: watchlist allows shares=0 and buy_price=0
     try:
         p = Portfolio(
-            user_id=1, ticker="TST3", company_name="Test Co",
+            user_id=uid, ticker="TST3", company_name="Test Co",
             shares=0, buy_price=0.0, group_name="watchlist"
         )
         session.add(p)
@@ -103,12 +104,12 @@ def run():
     # ---- Portfolio: unique constraint (user_id, ticker, group_name)
     try:
         session.add(Portfolio(
-            user_id=1, ticker="DUPTEST", company_name="Dup Co",
+            user_id=uid, ticker="DUPTEST", company_name="Dup Co",
             shares=5, buy_price=100.0, group_name="holdings"
         ))
         session.commit()
         session.add(Portfolio(
-            user_id=1, ticker="DUPTEST", company_name="Dup Co",
+            user_id=uid, ticker="DUPTEST", company_name="Dup Co",
             shares=5, buy_price=100.0, group_name="holdings"
         ))
         session.commit()
@@ -127,7 +128,7 @@ def run():
     # ---- PriceTarget: target_price must be > 0
     try:
         session.add(PriceTarget(
-            user_id=1, ticker="NEGTGT", target_price=-100.0, direction="BUY"
+            user_id=uid, ticker="NEGTGT", target_price=-100.0, direction="BUY"
         ))
         session.commit()
         runner.fail(
@@ -146,7 +147,7 @@ def run():
     try:
         for _ in range(2):
             session.add(PortfolioValuationHistory(
-                user_id=1, snapshot_date="2026-01-01",
+                user_id=uid, snapshot_date="2026-01-01",
                 total_value=100000.0, total_invested=90000.0,
                 total_pnl=10000.0, pnl_percent=11.1
             ))
@@ -167,7 +168,7 @@ def run():
     try:
         for _ in range(2):
             session.add(NetWorthLedger(
-                user_id=1, snapshot_date="2026-01-01", total_value_inr=500000.0
+                user_id=uid, snapshot_date="2026-01-01", total_value_inr=500000.0
             ))
             session.commit()
         runner.fail(

@@ -38,9 +38,14 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy.exc import (
     IntegrityError, OperationalError, ProgrammingError, DataError,
     DatabaseError, SQLAlchemyError, NoResultFound, MultipleResultsFound,
-    DetachedInstanceError, InvalidRequestError, PendingRollbackError,
+    InvalidRequestError, PendingRollbackError,
     DBAPIError, InterfaceError,
 )
+# DetachedInstanceError moved in SQLAlchemy 2.0
+try:
+    from sqlalchemy.exc import DetachedInstanceError
+except ImportError:
+    from sqlalchemy.orm.exc import DetachedInstanceError
 
 try:
     from sqlalchemy.exc import MissingGreenlet
