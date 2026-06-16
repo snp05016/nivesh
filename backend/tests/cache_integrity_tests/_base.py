@@ -27,6 +27,7 @@ import unittest.mock as _mock
 for _mod in [
     "tradingagents", "tradingagents.graph", "tradingagents.graph.trading_graph",
     "tradingagents.graph.analyst_execution", "tradingagents.graph.nodes",
+    "tradingagents.graph.conditional_logic", "tradingagents.graph.setup",
     "tradingagents.default_config", "tradingagents.agents",
     "tradingagents.agents.utils", "tradingagents.agents.utils.agent_states",
     "tradingagents.agents.utils.agent_utils",
@@ -38,7 +39,9 @@ for _mod in [
     "services.piotroski",
 ]:
     if _mod not in sys.modules:
-        sys.modules[_mod] = _mock.MagicMock()
+        m = _mock.MagicMock()
+        m.__path__ = []
+        sys.modules[_mod] = m
 
 # Set minimal env so database.py selects an in-memory SQLite
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
