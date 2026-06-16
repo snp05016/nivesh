@@ -29,4 +29,9 @@ Your mission is to execute the following fixes systematically. Do not attempt to
 1. SSH into `saumyapatel@192.168.1.122`.
 2. Resolve `ModuleNotFoundError: No module named 'tradingagents'`. You must determine if this is a missing `.env` Python path, an uninstalled PIP package, or a local directory that was excluded via `.gitignore` during the sync.
 
+### Priority 6: Resolve Backend Linting Violations
+1. The new `backend_integrity_tests/test_02_syntax_lint.py` suite identified 148 linting failures across the codebase.
+2. Investigate whether these are false positives or legitimate violations of architectural rules (such as wildcard imports, bare excepts, or global state issues).
+3. Systematically fix the real lint errors without introducing regressions.
+
 **Proceed with caution. Execute one priority at a time. Run tests exclusively on the remote server (`192.168.1.122`) per the updated `AGENTS.md` guidelines.**
