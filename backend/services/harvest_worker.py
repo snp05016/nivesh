@@ -253,9 +253,9 @@ def start_scheduler():
     # ── Wire all jobs ─────────────────────────────────────────────────────────
 
     _scheduler.add_job(_run_harvest_all_advisors,     "cron", hour=1,  minute=30)  # 1:30 AM IST
-    _scheduler.add_job(_run_harvest_news,             "cron", hour=0,  minute=30)  # 12:30 AM IST
-    _scheduler.add_job(_run_harvest_youtube_metadata, "cron", hour=1,  minute=0)   # 1:00 AM IST
-    _scheduler.add_job(_run_harvest_portfolio_videos, "cron", hour=1,  minute=15)  # 1:15 AM IST
+    _scheduler.add_job(_run_harvest_news,             "interval", hours=2)
+    _scheduler.add_job(_run_harvest_youtube_metadata, "interval", hours=2)
+    _scheduler.add_job(_run_harvest_portfolio_videos, "interval", hours=2)
     _scheduler.add_job(snapshot_all_users,            "cron", hour=11, minute=0)   # 4:30 PM IST (11:00 UTC)
     _scheduler.add_job(run_nightly_screen,            "cron", hour=11, minute=15)  # 4:45 PM IST (11:15 UTC)
     _scheduler.add_job(_run_evaluate_analysis_outcomes,"cron", hour=20, minute=30)  # 2:00 AM IST (20:30 UTC)
