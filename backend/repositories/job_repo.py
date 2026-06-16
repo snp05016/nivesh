@@ -34,6 +34,13 @@ def _job_to_dict(j: "AnalysisJob") -> dict:
     }
 
 
+def _job_to_monitor_dict(j: "AnalysisJob") -> dict:
+    d = _job_to_dict(j)
+    d["heartbeat_at"] = j.heartbeat_at.isoformat() if j.heartbeat_at else None
+    d["result_json"] = j.result_json
+    return d
+
+
 def create_job(user_id: Optional[int], ticker: str, exchange: str, scan_type: str) -> dict:
     jid = str(uuid.uuid4())[:12]
     with _get_session() as s:
@@ -136,6 +143,70 @@ def list_active_jobs() -> list[dict]:
                   .filter(AnalysisJob.status.in_(["QUEUED", "RUNNING"]))
                   .order_by(AnalysisJob.created_at.desc()).all())
         return [_job_to_dict(j) for j in rows]
+
+
+def list_monitor_jobs(
+    *,
+    mode: str = "running",
+    ticker: Optional[str] = None,
+    limit: int = 20,
+    stuck_minutes: int = 15,
+    now: Optional[datetime] = None,
+) -> list[dict]:
+    """Job rows for the AI engine monitor, matching scripts/check_jobs.py modes."""
+    normalized_mode = (mode or "running").strip()
+    normalized_ticker = (ticker or "").strip().upper()
+    if not normalized_ticker and normalized_mode not in {"running", "all", "--all", "stuck", "--stuck"}:
+        normalized_ticker = normalized_mode.upper()
+
+    if now is None:
+        now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(minutes=stuck_minutes)
+    if cutoff.tzinfo is not None:
+        cutoff = cutoff.replace(tzinfo=None)
+
+    with _get_session() as s:
+        query = s.query(AnalysisJob)
+        query_limit: Optional[int] = None
+        if normalized_ticker:
+            query = query.filter(AnalysisJob.ticker == normalized_ticker)
+            query_limit = min(limit, 5)
+        elif normalized_mode == "running":
+            query = query.filter(AnalysisJob.status == "RUNNING")
+        elif normalized_mode in {"stuck", "--stuck"}:
+            query = query.filter(
+                AnalysisJob.status == "RUNNING",
+                AnalysisJob.created_at < cutoff,
+            )
+        elif normalized_mode in {"all", "--all"}:
+            query_limit = limit
+        else:
+            query = query.filter(AnalysisJob.ticker == normalized_mode.upper())
+            query_limit = min(limit, 5)
+
+        query = query.order_by(AnalysisJob.created_at.desc())
+        if query_limit is not None:
+            query = query.limit(query_limit)
+        rows = query.all()
+        return [_job_to_monitor_dict(j) for j in rows]
+
+
+def get_monitor_job(job_id: str) -> Optional[dict]:
+    """Single job row with raw result JSON for monitor detail views."""
+    with _get_session() as s:
+        j = s.get(AnalysisJob, job_id)
+        return _job_to_monitor_dict(j) if j else None
+
+
+def get_latest_successful_monitor_job(ticker: str) -> Optional[dict]:
+    """Latest successful analysis for a ticker, matching scripts/show_result.py."""
+    with _get_session() as s:
+        j = (s.query(AnalysisJob)
+               .filter(AnalysisJob.ticker == ticker.upper(),
+                       AnalysisJob.status == "SUCCEEDED")
+               .order_by(AnalysisJob.created_at.desc())
+               .first())
+        return _job_to_monitor_dict(j) if j else None
 
 
 def sweep_stale_jobs(max_heartbeat_age_sec: int = 90) -> int:
