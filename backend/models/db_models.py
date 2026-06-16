@@ -45,10 +45,12 @@ class Portfolio(Base):
     ticker       = Column(String(30), nullable=False)
     company_name = Column(String(200), nullable=False)
     shares       = Column(Float, nullable=False)
-    buy_price    = Column(Float, nullable=False)
-    group_name   = Column(String(50), default="watchlist")
-    notes        = Column(Text, default="")
-    created_at   = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    buy_price     = Column(Float, nullable=False)
+    target_price  = Column(Float, nullable=True)
+    purchase_date = Column(String, nullable=True)
+    group_name    = Column(String(50), default="watchlist")
+    notes         = Column(Text, default="")
+    created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="portfolio")
 
@@ -527,3 +529,43 @@ def log_ideas_error(module: str, error_trace: str, context_ticker: str | None = 
             session.commit()
     except Exception:
         pass  # telemetry must never cause a cascading failure
+
+
+class MarketAnomaly(Base):
+    __tablename__ = "market_anomalies"
+    id = Column(Integer, primary_key=True, index=True)
+    ticker = Column(String)
+    company = Column(String)
+    anomaly_type = Column(String)
+    severity = Column(String)
+    detail = Column(Text)
+    price = Column(Float)
+    change_pct = Column(Float)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_market_anomalies_anomaly_type", "anomaly_type"),
+        Index("ix_market_anomalies_ticker", "ticker"),
+        Index("ix_market_anomalies_timestamp", "timestamp"),
+    )
+
+
+class EarningsSurpriseHistory(Base):
+    __tablename__ = "earnings_surprise_history"
+    id = Column(Integer, primary_key=True, index=True)
+    ticker = Column(String)
+    company_name = Column(String)
+    quarter = Column(String)
+    estimated_eps = Column(Float)
+    actual_eps = Column(Float)
+    surprise_pct = Column(Float)
+    classification = Column(String)
+    post_price_1d = Column(Float)
+    post_price_5d = Column(Float)
+    historical_score = Column(Float)
+    serial_pattern = Column(String)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_earnings_surprise_history_ticker", "ticker"),
+    )
