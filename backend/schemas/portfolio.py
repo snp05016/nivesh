@@ -46,6 +46,8 @@ class PortfolioAddRequest(BaseModel):
     shares: float
     buy_price: float
     group_name: str = "holdings"
+    target_price: Optional[float] = None
+    purchase_date: Optional[str] = None
 
 
 class PortfolioRemoveRequest(BaseModel):
@@ -58,6 +60,8 @@ class PortfolioUpdateRequest(BaseModel):
     ticker: str
     shares: float
     buy_price: float
+    target_price: Optional[float] = None
+    purchase_date: Optional[str] = None
 
 
 class PortfolioNoteRequest(BaseModel):

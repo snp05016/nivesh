@@ -933,6 +933,8 @@ def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header
                 shares=req.shares,
                 buy_price=req.buy_price,
                 group_name="holdings",
+                target_price=req.target_price,
+                purchase_date=req.purchase_date,
             )
             session.add(new_holding)
             session.commit()
@@ -1017,6 +1019,10 @@ def portfolio_update_endpoint(req: PortfolioUpdateRequest, authorization: str = 
                 raise HTTPException(status_code=404, detail="Holding not found.")
             holding.shares = req.shares
             holding.buy_price = req.buy_price
+            if req.target_price is not None:
+                holding.target_price = req.target_price
+            if req.purchase_date is not None:
+                holding.purchase_date = req.purchase_date
             session.commit()
             _cache_invalidate("morning_brief", str(req.user_id))
             company_name = holding.company_name
