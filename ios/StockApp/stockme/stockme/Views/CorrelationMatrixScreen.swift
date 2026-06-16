@@ -46,12 +46,20 @@ struct CorrelationResponse: Codable {
     let diversificationScore: Int
     let sectorConcentration: [CorrelationSector]
     let suggestions: [DiversificationSuggestion]
+    let error: String?
+    let message: String?
+    let holdingsCount: Int?
+    let holdingsTickers: [String]?
     
     enum CodingKeys: String, CodingKey {
         case correlationMatrix = "correlation_matrix"
         case diversificationScore = "diversification_score"
         case sectorConcentration = "sector_concentration"
         case suggestions
+        case error
+        case message
+        case holdingsCount = "holdings_count"
+        case holdingsTickers = "holdings_tickers"
     }
 }
 
@@ -142,7 +150,24 @@ struct CorrelationMatrixScreen: View {
             }
             
             guard http.statusCode == 200 else {
-                throw NSError(domain: "", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "Server returned status \(http.statusCode)."])
+                // Try to extract server error detail from response body
+                var serverDetail = ""
+                if let body = String(data: respData, encoding: .utf8) {
+                    // Try JSON error detail
+                    if let json = try? JSONSerialization.jsonObject(with: respData) as? [String: Any],
+                       let detail = json["detail"] as? String {
+                        serverDetail = detail
+                    } else if let json = try? JSONSerialization.jsonObject(with: respData) as? [String: Any],
+                              let errorMsg = json["error"] as? String {
+                        serverDetail = errorMsg
+                    } else {
+                        // Use first 200 chars of raw body
+                        serverDetail = String(body.prefix(200))
+                    }
+                }
+                let detail = serverDetail.isEmpty ? "No details from server." : serverDetail
+                throw NSError(domain: "", code: http.statusCode, 
+                    userInfo: [NSLocalizedDescriptionKey: "Server error \(http.statusCode): \(detail)"])
             }
             
             let decoded = try JSONDecoder().decode(CorrelationResponse.self, from: respData)
