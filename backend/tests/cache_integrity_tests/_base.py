@@ -28,6 +28,7 @@ for _mod in [
     "tradingagents", "tradingagents.graph", "tradingagents.graph.trading_graph",
     "tradingagents.default_config", "tradingagents.agents",
     "tradingagents.agents.utils", "tradingagents.agents.utils.agent_states",
+    "tradingagents.agents.utils.agent_utils",
     "langchain_anthropic", "langchain_core", "langchain_core.messages",
     "langchain_core.prompts", "langchain_core.tools", "langgraph", "langgraph.graph",
     "apscheduler", "apscheduler.schedulers", "apscheduler.schedulers.asyncio",
