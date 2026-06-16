@@ -319,10 +319,11 @@ Commit after EVERY small task or phase. Incremental, reviewable checkpoints.
 
 **Pre-commit:** Run `gitnexus_detect_changes()`, review `git status` + `git diff --stat`, NO secrets/.env/binary assets, NO xcodebuild artifacts.
 
-**Merging:** NEVER run `git merge` or merge any branch into `main` unless the user explicitly gives you permission. Always push to a separate branch first.
+**Merging:** NEVER run `git merge` or merge any branch into `main` unless the user explicitly gives you permission. Also make sure that if you are in a branch `x` that is not `main`, anything committed should be committed to that branch only and should not be merged to `main`.
 
 ### 6.5 Deployment & Remote Verification
 After committing and pushing your code, you MUST deploy and verify on the remote server by executing commands non-interactively. NEVER open an interactive SSH session.
+**Anything to be tested in the backend should be done on the server using (`saumyapatel@192.168.1.122`). No backend Python files and tests will be ran in the local computer. All testing, checking for bugs by running the files will be done on the server (`saumyapatel@192.168.1.122`).**
 1. Pull latest code remotely: `ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && git pull"`
 2. Run tests remotely: `ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && pytest"` (or relevant verification command)
 

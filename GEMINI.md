@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **nivesh** (14861 symbols, 32719 relationships, 269 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **nivesh** (16830 symbols, 35967 relationships, 291 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -183,7 +183,7 @@ REFUSED — AGENTS.md §2.8 Cmd I: Data Density
 |-------|----------|---------------|
 | Controller | `routers/` (9 files) | HTTP validation, rate limiting, spawn `multiprocessing.Process` |
 | Service | `services/` (20 files) | All business logic, LLM orchestration, computations |
-| Repository | `database.py` + `models/` | `get_session()` context manager |
+| Repository | `database.py` + `models/db_models.py` + `repositories/` | `get_session()` context manager. ORM models centralized in one file. Alembic migrations in `migrations/versions/`. |
 
 Business logic in routers FORBIDDEN. DB queries in services FORBIDDEN.
 
@@ -195,6 +195,33 @@ Heavy AI analysis MUST use `multiprocessing.Process` with `multiprocessing.Queue
 
 ### 3.4 Global State
 Any module-level mutable variable MUST have a dedicated `threading.Lock`. Use with-lock access pattern + explicit release/deletion path. Current locked state: `_running_analyses: set[int]`, per-user semaphores.
+
+### 3.5 Database Migrations (Alembic) — MANDATORY
+
+**Every schema change to ORM models MUST go through Alembic. Never use `Base.metadata.create_all()` for schema changes — it only creates NEW tables, never modifies existing ones.**
+
+When you add, remove, or modify a column in `models/db_models.py`:
+```bash
+cd backend
+../venv/bin/alembic revision --autogenerate -m "describe the change"
+../venv/bin/alembic upgrade head
+```
+
+Key rules:
+- **Generate BEFORE deploying** — the migration file must be committed alongside the model change.
+- **`alembic check` before commit** — verifies no schema drift between models and DB.
+- **Never manually ALTER TABLE** — all schema changes go through migration files in `migrations/versions/`.
+- **SQLite `render_as_batch=True`** — already configured in `migrations/env.py`; batch mode handles SQLite's lack of ALTER support.
+- **JSON columns use `default="{}"`** (string, not Python dict) — SQLite requires constant defaults.
+- **`datetime.utcnow` forbidden in models** — use `default=lambda: datetime.now(timezone.utc)` (evaluated at row-insert time, not import time).
+- **All ORM models live in `models/db_models.py` ONLY** — never define a second `class Foo(Base)` in a service file. Centralizing prevents `Table already defined` errors.
+
+Schema change checklist:
+1. Edit `models/db_models.py`
+2. `alembic revision --autogenerate -m "description"`
+3. Review the generated migration file
+4. `alembic upgrade head` (local) or `alembic stamp head` (server if DB already matches)
+5. Commit both the model change AND the migration file
 
 ---
 
@@ -253,6 +280,7 @@ All AI-generated text MUST pass through `stripEmoji()`. Applies to: Morning Brie
 3. If router files modified: verify no business logic (no yfinance, no LLM client, no `session.query()`).
 4. Scan diff for "Million"/"Billion"/"Trillion".
 5. If `backend/prompts.py` modified: verify prompt not shortened/tone altered.
+6. If `models/db_models.py` modified: verify `alembic revision --autogenerate` was run, migration file is committed, and `alembic check` passes.
 
 ### 6.2 Xcode Build Prohibition
 **NEVER run `xcodebuild` or attempt to compile the iOS app.** The Swift/Xcode project in `ios/StockApp/` is reference-only. Compiling will crash the agent session. Skip any workflow step that would trigger `xcodebuild`.
@@ -266,19 +294,36 @@ Compliant alternative: [snippet]
 Architectural impact: [what breaks]
 ```
 
+```
+REFUSED — AGENTS.md §3.5: Database Migrations
+Direct ALTER TABLE or manual column addition forbidden.
+Use: alembic revision --autogenerate -m "description" → alembic upgrade head
+```
+
+```
+REFUSED — AGENTS.md §3.5: ORM Model Duplication
+Defining class Foo(Base) in a service file forbidden.
+All ORM models MUST live in models/db_models.py only.
+```
+
 ### 6.4 Commit Workflow
 Commit after EVERY small task or phase. Incremental, reviewable checkpoints.
 
 **When:** After each discrete task (e.g. "added search bar" → commit, "added results list" → commit), each phase (frontend done, backend done, integration done), and after the final task.
 
-**Format:** `<verb> <component>: <brief description>` (e.g. `Add SearchScreen: voice search`, `Fix market.py: screener rate limit`)
+**Format:** Conventional commits — `type(scope): description` (e.g. `feat(ios): add voice search to SearchScreen`, `fix(backend): screener rate limiting`)
+
+**Types:** `feat` (new feature), `fix` (bug fix), `chore` (refactor/deps/config), `docs` (documentation/help/guides), `style` (UI polish/theming), `perf` (performance)
+
+**Scopes:** `ios`, `backend`, `copilot`, `earnings`, `correlation`, `stress-test`, `nl-screener`, `anomalies`, `sector-rotation`, `settings`, `home`, `portfolio`, `markets`, `analysis`
 
 **Pre-commit:** Run `gitnexus_detect_changes()`, review `git status` + `git diff --stat`, NO secrets/.env/binary assets, NO xcodebuild artifacts.
 
-**Merging:** NEVER run `git merge` or merge any branch into `main` unless the user explicitly gives you permission. Always push to a separate branch first.
+**Merging:** NEVER run `git merge` or merge any branch into `main` unless the user explicitly gives you permission. Also make sure that if you are in a branch `x` that is not `main`, anything committed should be committed to that branch only and should not be merged to `main`.
 
 ### 6.5 Deployment & Remote Verification
 After committing and pushing your code, you MUST deploy and verify on the remote server by executing commands non-interactively. NEVER open an interactive SSH session.
+**Anything to be tested in the backend should be done on the server using (`saumyapatel@192.168.1.122`). No backend Python files and tests will be ran in the local computer. All testing, checking for bugs by running the files will be done on the server (`saumyapatel@192.168.1.122`).**
 1. Pull latest code remotely: `ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && git pull"`
 2. Run tests remotely: `ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && pytest"` (or relevant verification command)
 
@@ -286,16 +331,40 @@ After committing and pushing your code, you MUST deploy and verify on the remote
 
 ## 6.6 SwiftUI Stack Overflow Prevention (CRITICAL)
 
-Inline `@ViewBuilder` functions with `func someSection() -> some View` cause `chkstk_darwin` crashes when SwiftUI inlines the nested view tree into one massive type. Every VStack/HStack/ZStack in the view crashes with the same `EXC_BAD_ACCESS` address.
+When a SwiftUI view calls multiple inline `@ViewBuilder` functions (e.g., `func someSection() -> some View`), SwiftUI inlines the entire nested view tree into one massive type signature on the call stack. This causes `chkstk_darwin` / `EXC_BAD_ACCESS` crashes with the same address across every VStack/HStack/ZStack in the view.
 
-**Rules:**
-1. Convert inline `-> some View` functions >5 lines into separate `View` structs.
-2. Use `LazyVStack` inside `ScrollView` to reduce initial stack depth.
-3. If same crash address in every stack: copy `@Published` model to `@State` via `.onReceive($publisher)`.
-4. `DenominationBackground` + ZStack can corrupt view tree — fall back to `Theme.canvas`.
-5. Files >1000 lines: extract into `Views/FeatureName/` subfolder structs.
+### Rules (NON-NEGOTIABLE)
 
-**Refusal:** `REFUSED — AGENTS.md §6.6: Inline view function too large`
+1. **NEVER use inline `func -> some View` for sections larger than 5 lines.** Convert to separate `View` structs. Each struct creates a boundary with its own stack frame.
+
+2. **Inside `ScrollView`, prefer `LazyVStack` over `VStack`** — LazyVStack only builds visible children, reducing initial stack depth.
+
+3. **If the same `EXC_BAD_ACCESS` address appears across multiple stacks**, the `@Published` model object is being deallocated mid-render. Copy to `@State` and sync via `.onReceive(publisher) { ... }`.
+
+4. **`DenominationBackground` + `BanknoteWatermark` inside ZStack can corrupt view tree.** If crashes occur, fall back to `Theme.canvas.ignoresSafeArea()`.
+
+5. **Files with >1000 lines** — extract independent sections into `Views/FeatureName/` subfolder structs.
+
+### Fix Template
+```swift
+// BEFORE (crashes)
+private func extremeChartSections(_ a: A) -> some View {
+    Group { ... 100+ lines ... }
+}
+
+// AFTER (safe)
+struct ExtremeChartSections: View {
+    let analysis: StockAnalysis
+    var body: some View { Group { ... } }
+}
+```
+
+### Refusal Template
+```
+REFUSED — AGENTS.md §6.6: Inline view function too large
+Convert `func {name}() -> some View` to `struct {Name}: View`.
+Inline functions >5 lines cause chkstk_darwin stack overflow.
+```
 
 ---
 
@@ -314,3 +383,18 @@ Inline `@ViewBuilder` functions with `func someSection() -> some View` cause `ch
 **Response Normalization:** Pipeline: extract JSON → parse → `_normalize_response()` → `_ban_western_scale()`. Guarantees all required fields exist with correct types.
 
 **EKPressStyle:** ButtonStyle (BanknoteDesignSystem.swift:5-18) — 0.97 scale + 0.88 opacity spring animation. All interactive elements MUST use it.
+
+**chkstk_darwin Crash:** SwiftUI stack overflow from inline `-> some View` functions. Same `EXC_BAD_ACCESS` address appears in every VStack/HStack/ZStack. Fix: convert to separate View structs (§6.6).
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+When the user types `/graphify`, invoke the `skill` tool with `skill: "graphify"` before doing anything else.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
