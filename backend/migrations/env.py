@@ -73,7 +73,9 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            render_as_batch=True,  # SQLite doesn't support ALTER, use batch mode
+            render_as_batch=True,       # SQLite doesn't support ALTER, use batch mode
+            compare_type=False,         # SQLite type affinity aliases (REAL/TEXT vs Float/JSON) are not real drift
+            compare_server_default=False,  # Server defaults differ by affinity too; not actionable on SQLite
         )
 
         with context.begin_transaction():
