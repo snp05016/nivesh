@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nivesh — Architecture Deepening Report</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({startOnLoad:true,theme:'neutral',themeVariables:{fontFamily:'ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace'}});</script>
+  <style>
+    body { background: #0d1117; color: #c9d1d9; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .card strong { color: #f0e6d0; }
+    .badge-strong { background: #238636; color: #fff; padding: 2px 10px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; }
+    .badge-explore { background: #9e6a03; color: #fff; padding: 2px 10px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; }
+    .badge-spec { background: #6e7681; color: #fff; padding: 2px 10px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; }
+    h2 { color: #c9a84c; font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem; }
+    h3 { color: #f0e6d0; font-size: 0.95rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.25rem; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+    .diagram-box { background: #0d1117; border: 1px solid #21262d; border-radius: 8px; padding: 0.75rem; }
+    .adr-warning { background: #2d1b00; border: 1px solid #9e6a03; border-radius: 8px; padding: 0.5rem 0.75rem; font-size: 0.8rem; margin: 0.5rem 0; }
+    .bullet-list { list-style: none; padding-left: 0; }
+    .bullet-list li::before { content: "▸ "; color: #c9a84c; }
+    .bullet-list li { margin-bottom: 0.25rem; font-size: 0.85rem; line-height: 1.4; }
+    .file-tag { display: inline-block; background: #1f2937; border: 1px solid #374151; border-radius: 4px; padding: 1px 6px; font-size: 0.7rem; color: #8b949e; margin-right: 4px; }
+  </style>
+</head>
+<body class="p-6 max-w-6xl mx-auto">
+
+  <header class="mb-8 border-b border-[#30363d] pb-4">
+    <h1 class="text-2xl font-bold text-[#c9a84c] tracking-tight">Nivesh Architecture Deepening Report</h1>
+    <p class="text-[#6e7681] mt-1 text-sm">Improving testability &amp; AI-navigability through module deepening — 7 candidates</p>
+    <p class="text-[#6e7681] text-xs mt-1">June 2026 · backend FastAPI (3.1k LOC services) · iOS SwiftUI (~11k LOC)</p>
+  </header>
+
+  <!-- ================================================================== -->
+  <!-- CANDIDATE 1: Orchestrator God Module                               -->
+  <!-- ================================================================== -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-3">
+      <h2>1. Orchestrator God Module → Domain-Specific Deep Modules</h2>
+      <span class="badge-strong">STRONG</span>
+    </div>
+    <div>
+      <span class="file-tag">services/orchestrator.py</span>
+      <span class="file-tag">services/confidence_engine.py</span>
+      <span class="file-tag">services/quant_engine.py</span>
+      <span class="file-tag">services/job_manager.py</span>
+      <span class="file-tag">routers/analysis.py</span>
+    </div>
+
+    <h3>Problem</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      <code>orchestrator.py</code> (1,827 lines) is the deepest module in the system — <strong>and that is the problem</strong>.
+      The <code>analyze()</code> function (~590 lines) is a sequential monolith that chains 10+ operations: cache check, smart gate, 
+      yfinance prefetch, quant engine, LangGraph multi-agent, deep scan, calibration pipeline (8 parallel tasks), 
+      reformat with retry, normalization, extreme enrichment, DB save. Every caller (<code>routers/analysis.py</code>, 
+      <code>services/job_manager.py</code>, <code>services/checkpoints.py</code>) must route through this single 
+      function. The <strong>deletion test</strong> is brutal: deleting <code>orchestrator.py</code> does not reveal 
+      complexity in callers — it reveals <em>total system collapse</em>. The module is deep in behaviour but its 
+      <strong>interface</strong> (<code>analyze(ticker, exchange, user_id, deep_scan, scan_type, job_id) → dict</code>) 
+      is deceptively narrow — all the real complexity is hidden behind a single function signature that offers 
+      no hooks, no customization points, and no testing seams.
+    </p>
+
+    <h3>Solution</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      Split orchestrator into 4 domain-specific modules, each with a narrow interface and independent testability:
+      <strong>CacheOrchestrator</strong> (cache check + smart gate logic), <strong>AgentOrchestrator</strong> 
+      (LangGraph setup + agent execution), <strong>CalibrationOrchestrator</strong> (8 parallel calibration tasks 
+      + final confidence), <strong>AnalysisPersister</strong> (DB save + advisor fetch). The <code>analyze()</code> 
+      function becomes a thin coordinator that composes these 4 modules in sequence, each injectable for testing.
+    </p>
+
+    <div class="grid-2 mb-3">
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">BEFORE — Single God Module</div>
+        <pre class="mermaid text-xs">
+flowchart TD
+    subgraph orchestrator.py
+        A["analyze()
+        590 lines
+        ~20 responsibilities"]
+
+        A --> C1[Check cache]
+        A --> C2[Smart cache gate]
+        A --> C3[yfinance prefetch]
+        A --> C4[Quant engine]
+        A --> C5[LangGraph agents]
+        A --> C6[Deep scan]
+        A --> C7[Calibration ×8]
+        A --> C8[Reformat retry loop]
+        A --> C9[Normalize]
+        A --> C10[Extreme enrich]
+        A --> C11[DB save]
+    end
+
+    R["routers/analysis.py"]
+    JM["services/job_manager.py"]
+    R --> A
+    JM --> A
+    subgraph callers
+        R
+        JM
+    end
+
+    style A fill:#3d1f00,stroke:#9e6a03,color:#f0e6d0
+    style R fill:#161b22,stroke:#30363d,color:#8b949e
+    style JM fill:#161b22,stroke:#30363d,color:#8b949e
+        </pre>
+      </div>
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">AFTER — Coordinated Deep Modules</div>
+        <pre class="mermaid text-xs">
+flowchart TD
+    subgraph coordinator
+        A["analyze()
+        ~50 lines
+        4 delegation calls"]
+    end
+
+    CO["CacheOrchestrator
+    check() → cache_hit"]
+    AO["AgentOrchestrator
+    run() → raw_output"]
+    CBO["CalibrationOrchestrator
+    calibrate() → confidence"]
+    AP["AnalysisPersister
+    save() → db_id"]
+
+    A --> CO
+    A --> AO
+    A --> CBO
+    A --> AP
+
+    style A fill:#161b22,stroke:#238636,color:#f0e6d0
+    style CO fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style AO fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style CBO fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style AP fill:#0f2110,stroke:#238636,color:#c9d1d9
+        </pre>
+      </div>
+    </div>
+
+    <h3>Benefits</h3>
+    <ul class="bullet-list">
+      <li><strong>Locality</strong> — Cache logic, agent orchestration, calibration, and persistence each live in their own module. Changing the calibration pipeline no longer requires touching the analyse function.</li>
+      <li><strong>Leverage</strong> — Each module exposes a narrow interface (1-3 functions) hiding 100-300 lines of implementation. Test seams at every boundary.</li>
+      <li><strong>Testability</strong> — Each sub-module can be tested in isolation by injecting a fake for its downstream dependency. CacheOrchestrator can be tested without LangGraph or yfinance. The coordinator can be integration-tested with mock sub-modules.</li>
+      <li><strong>AI-navigability</strong> — A reader wanting to understand "confidence calibration" jumps to <span class="file-tag">calibration_orchestrator.py</span> instead of scrolling through 590 lines.</li>
+    </ul>
+  </div>
+
+  <!-- ================================================================== -->
+  <!-- CANDIDATE 2: Models.swift → Domain-Sliced Modules                  -->
+  <!-- ================================================================== -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-3">
+      <h2>2. iOS Models.swift → Domain-Sliced Modules</h2>
+      <span class="badge-strong">STRONG</span>
+    </div>
+    <div>
+      <span class="file-tag">ios/…/Models.swift (2,470 loc)</span>
+    </div>
+
+    <h3>Problem</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      A single file with 103+ structs, enums, and extensions. <code>StockAnalysis</code> (~80 fields) plus the 
+      full set of DTOs for 20+ API endpoints. The <strong>deletion test</strong>: deleting this file removes every 
+      data contract from the iOS app — no single struct is duplicated elsewhere, but every feature file imports 
+      from it. Understanding the data model for any one feature (e.g., dashboard) requires scrolling past 50 
+      unrelated structs. Xcode's indexing slows on files over 2,000 lines. Merge conflicts are frequent.
+      Every new endpoint requires adding a struct here, violating <strong>locality</strong> — the struct for 
+      <code>OptionsPayoffResponse</code> lives next to <code>LoginRequest</code>, even though they serve 
+      completely unrelated features.
+    </p>
+
+    <h3>Solution</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      Split into domain-specific model files: <code>Models/PortfolioModels.swift</code>, 
+      <code>Models/AnalysisModels.swift</code>, <code>Models/MarketModels.swift</code>, 
+      <code>Models/AuthModels.swift</code>, <code>Models/EarningsModels.swift</code>, 
+      <code>Models/OptionsModels.swift</code>, <code>Models/Common.swift</code> (shared primitives like 
+      <code>Signal</code>). The <code>Models.swift</code> file becomes a re-export umbrella.
+    </p>
+
+    <div class="grid-2 mb-3">
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">BEFORE — Monolithic Models.swift</div>
+        <pre class="mermaid text-xs">
+flowchart LR
+    MS["Models.swift
+    2,470 lines
+    103+ structs"]
+
+    AS["AnalysisScreen.swift"]
+    HS["HomeScreen.swift"]
+    OSS["OptionsStrategyScreen.swift"]
+    MSW["WatchlistScreen.swift"]
+
+    AS --> MS
+    HS --> MS
+    OSS --> MS
+    MSW --> MS
+
+    style MS fill:#3d1f00,stroke:#9e6a03,color:#f0e6d0
+        </pre>
+      </div>
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">AFTER — Domain-Sliced Models</div>
+        <pre class="mermaid text-xs">
+flowchart LR
+    subgraph Models
+        AM["AnalysisModels
+        StockAnalysis
+        Calibration structs"]
+        PM["PortfolioModels
+        PortfolioHolding
+        TradeJournalEntry"]
+        MM["MarketModels
+        LiveMarketIndex
+        SectorPerformance"]
+        OPM["OptionsModels
+        OptionLeg
+        PayoffPoint"]
+        EM["EarningsModels
+        EarningsResult"]
+        CM["Common
+        Signal enum
+        DateFormatters"]
+    end
+
+    AS["AnalysisScreen.swift"] --> AM
+    AS --> CM
+    HS["HomeScreen.swift"] --> MM
+    HS --> PM
+    OSS["OptionsStrategyScreen.swift"] --> OPM
+    OSS --> CM
+    MSW["WatchlistScreen.swift"] --> PM
+
+    style AM fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style PM fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style MM fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style OPM fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style EM fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style CM fill:#0f2110,stroke:#238636,color:#c9d1d9
+        </pre>
+      </div>
+    </div>
+
+    <h3>Benefits</h3>
+    <ul class="bullet-list">
+      <li><strong>Locality</strong> — Adding an earnings endpoint means touching <span class="file-tag">EarningsModels.swift</span>, not the global models file. Knowledge is concentrated where it's used.</li>
+      <li><strong>Leverage</strong> — Each model file has a narrow scope (1 API domain). The interface is "import this file" — but the implementation (all decoding logic, CodingKeys, computed properties) is encapsulated.</li>
+      <li><strong>Testability</strong> — Model decoding tests can be colocated with their domain model file. No circular dependency risk.</li>
+      <li><strong>AI-navigability</strong> — 2,470→~400 lines per file. Terminal grep for "PortfolioHolding" returns one clear match.</li>
+    </ul>
+  </div>
+
+  <!-- ================================================================== -->
+  <!-- CANDIDATE 3: helpers.py Grab-Bag → Focused Modules                -->
+  <!-- ================================================================== -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-3">
+      <h2>3. helpers.py — Dissolve the Grab-Bag into Focused Modules</h2>
+      <span class="badge-strong">STRONG</span>
+    </div>
+    <div>
+      <span class="file-tag">backend/helpers.py (834 loc)</span>
+      <span class="file-tag">backend/core/security.py</span>
+      <span class="file-tag">backend/routers/analysis.py</span>
+      <span class="file-tag">backend/config/settings.py</span>
+    </div>
+
+    <h3>Problem</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      <code>helpers.py</code> is the canonical "everything else" module. It contains: rate limiting logic, 
+      Pydantic request models (14), Pydantic response models (4), yfinance wrappers (5 functions), ticker 
+      resolution with cache, NSE directory lookup, dashboard state (deques + locks), token logging, 
+      analysis concurrency management (slot acquire/release/cancel with per-user semaphores), auth 
+      dependencies (get_current_user_id, require_auth, require_admin), notification helpers, NSE 
+      ASM/GSM list fetching, and market index data. The <strong>deletion test</strong>: deleting helpers.py 
+      would spread complexity across 8+ router files and main.py. Its <strong>interface</strong> doesn't 
+      exist — everything is a top-level function or module-level variable. Importers reach in directly.
+    </p>
+
+    <h3>Solution</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      Extract into 5 focused modules: <span class="file-tag">core/rate_limiter.py</span> (all rate limiting), 
+      <span class="file-tag">core/concurrency.py</span> (analysis slot management, <code>_running_analyses</code>),
+      <span class="file-tag">services/yfinance_client.py</span> (yfinance wrappers + ticker resolution),
+      <span class="file-tag">services/nse_client.py</span> (NSE API calls, ASM/GSM, indices, directory),
+      <span class="file-tag">core/dashboard_state.py</span> (all dashboard deques, locks, and dash_* functions).
+      Request/response models stay in <span class="file-tag">schemas/</span> (which already exists but is incomplete).
+      Auth dependencies stay in <span class="file-tag">core/security.py</span> (already extracted).
+    </p>
+
+    <div class="grid-2 mb-3">
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">BEFORE — Unstructured Grab-Bag</div>
+        <pre class="mermaid text-xs">
+flowchart TD
+    H["helpers.py
+    834 lines
+    Rate limiter
+    Request models
+    Response models
+    yfinance wrappers
+    Ticker resolution
+    NSE directory
+    Dashboard state
+    Token logging
+    Analysis concurrency
+    Auth deps
+    NSE ASM/GSM
+    Market indices"]
+
+    R1["routers/portfolio.py"]
+    R2["routers/market.py"]
+    R3["routers/auth.py"]
+    R4["routers/analysis.py"]
+    M["main.py"]
+
+    R1 -.-> H
+    R2 -.-> H
+    R3 -.-> H
+    R4 -.-> H
+    M -.-> H
+
+    style H fill:#3d1f00,stroke:#9e6a03,color:#f0e6d0
+        </pre>
+      </div>
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">AFTER — Focused Modules</div>
+        <pre class="mermaid text-xs">
+flowchart TD
+    subgraph core
+        SEC["core/security.py
+        (already extracted)
+        auth dependencies"]
+        RL["core/rate_limiter.py
+        _check_rate_limit
+        sliding windows"]
+        CC["core/concurrency.py
+        _running_analyses
+        slot acquire/release"]
+        DS["core/dashboard_state.py
+        deques + locks
+        dash_start/end/log"]
+    end
+    subgraph services
+        YF["services/yfinance_client.py
+        _yf_fetch_info
+        _yf_price
+        ticker resolution"]
+        NSE["services/nse_client.py
+        ASM/GSM lists
+        indices
+        NSE directory"]
+    end
+    subgraph schemas
+        S["schemas/* (already exist)
+        all request + response models"]
+    end
+
+    R4["routers/analysis.py"] --> CC
+    R4 --> YF
+    R1["routers/portfolio.py"] --> YF
+    R3["routers/auth.py"] --> SEC
+    M["main.py"] --> RL
+    M --> DS
+
+    style S fill:#161b22,stroke:#238636,color:#c9d1d9
+    style YF fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style NSE fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style RL fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style CC fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style DS fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style SEC fill:#161b22,stroke:#30363d,color:#8b949e
+        </pre>
+      </div>
+    </div>
+
+    <h3>Benefits</h3>
+    <ul class="bullet-list">
+      <li><strong>Locality</strong> — Rate limiting changes affect only <span class="file-tag">core/rate_limiter.py</span>. No risk of accidentally breaking ticker resolution or dashboard state.</li>
+      <li><strong>Leverage</strong> — Each module has a real <strong>interface</strong> (1-3 public functions) hiding 80-200 lines. Importers declare what they need.</li>
+      <li><strong>Testability</strong> — <code>core/rate_limiter.py</code> can be unit-tested with simulated time. <code>services/yfinance_client.py</code> can have a fake adapter for tests. Currently impossible because the yfinance calls are intertwined with rate limiting and auth.</li>
+    </ul>
+  </div>
+
+  <!-- ================================================================== -->
+  <!-- CANDIDATE 4: NetworkManager → Protocol-Based Seam                 -->
+  <!-- ================================================================== -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-3">
+      <h2>4. iOS NetworkManager → Protocol-Based API Client</h2>
+      <span class="badge-strong">STRONG</span>
+    </div>
+    <div>
+      <span class="file-tag">ios/…/NetworkManager.swift (1,330 loc)</span>
+      <span class="file-tag">ios/…/NetworkManager+Sidebar.swift (354 loc)</span>
+      <span class="file-tag">ios/…/Models.swift</span>
+    </div>
+
+    <h3>Problem</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      <code>NetworkManager</code> is a singleton class with ~45 API methods, each duplicating the same 
+      URLSession pattern: build URL, add auth header, add correlation ID, decode JSON, wrap error. There 
+      is no test seam — every ViewModel that needs network access must depend on the real singleton, 
+      making unit tests impossible without running the full server. The <strong>deletion test</strong>: 
+      removing NetworkManager would force every ViewModel to reimplement URLSession boilerplate. 
+      The <strong>interface</strong> is "all 45 methods" — there's no way to say "this ViewModel only 
+      needs portfolio methods."
+    </p>
+
+    <h3>Solution</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      Define a <code>protocol APIClient</code> with domain-grouped method requirements. Create the 
+      concrete <code>URLSessionAPIClient</code> adapter (the current implementation). ViewModels 
+      depend on <code>APIClient</code> via constructor injection. A second adapter 
+      (<code>MockAPIClient</code> or <code>PreviewAPIClient</code>) provides test/preview data. 
+      <code>NetworkManager.shared</code> becomes one adapter instance, not the sole authority.
+    </p>
+
+    <div class="grid-2 mb-3">
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">BEFORE — Singleton with No Seam</div>
+        <pre class="mermaid text-xs">
+flowchart TD
+    NM["NetworkManager.shared
+    (singleton)
+    45 methods
+    URLSession + auth + decode
+    + error handling"]
+
+    AV["AnalysisViewModel"]
+    HV["HomeViewModel"]
+    PF["PortfolioView"]
+    OV["OptionsView"]
+
+    AV --> NM
+    HV --> NM
+    PF --> NM
+    OV --> NM
+
+    style NM fill:#3d1f00,stroke:#9e6a03,color:#f0e6d0
+        </pre>
+      </div>
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">AFTER — Protocol-Based Adapters</div>
+        <pre class="mermaid text-xs">
+flowchart TD
+    subgraph protocol
+        P["protocol APIClient
+        analyze(ticker) → StockAnalysis
+        fetchPortfolio() → [Holding]
+        fetchMarket() → MarketData
+        ..."]
+    end
+
+    subgraph adapters
+        R["URLSessionAPIClient
+        (real adapter)"]
+        M["MockAPIClient
+        (test/preview adapter)"]
+    end
+
+    AV["AnalysisViewModel
+    let api: APIClient"]
+    HV["HomeViewModel
+    let api: APIClient"]
+
+    AV -.- P
+    HV -.- P
+    P --> R
+    P -.-> M
+
+    style P fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style R fill:#161b22,stroke:#30363d,color:#8b949e
+    style M fill:#1f2937,stroke:#374151,color:#6e7681
+        </pre>
+      </div>
+    </div>
+
+    <h3>Benefits</h3>
+    <ul class="bullet-list">
+      <li><strong>Locality</strong> — Adding a new API endpoint requires adding to one protocol + one adapter, rather than appending to a 1,330-line file.</li>
+      <li><strong>Leverage</strong> — The protocol <strong>interface</strong> is the contract. A ViewModel only depends on the methods it needs (via protocol decomposition). URL construction, auth, error handling, and decoding are locked inside the adapter.</li>
+      <li><strong>Testability</strong> — Every ViewModel becomes testable by injecting <code>MockAPIClient</code>. This is the single highest-leverage testability improvement in the iOS app. Two adapters = real seam.</li>
+    </ul>
+  </div>
+
+  <!-- ================================================================== -->
+  <!-- CANDIDATE 5: Math Engines → Uniform Inference Seam                 -->
+  <!-- ================================================================== -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-3">
+      <h2>5. Math Engines — Uniform Inference Seam</h2>
+      <span class="badge-strong">STRONG</span>
+    </div>
+    <div>
+      <span class="file-tag">services/math_engines/*.py (15 files)</span>
+      <span class="file-tag">services/confidence_engine.py</span>
+      <span class="file-tag">services/quant_engine.py</span>
+      <span class="file-tag">services/orchestrator.py</span>
+      <span class="file-tag">services/factor_engine.py</span>
+    </div>
+
+    <h3>Problem</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      The 15 math engine files in <code>services/math_engines/</code> each export 1-2 functions with 
+      completely different signatures. Some take a <code>(ticker, session)</code> pair, others take 
+      raw numpy arrays, others take a full <code>StockAnalysis</code> dict. They are called from at 
+      least 3 different orchestrators (<code>orchestrator.py</code>, <code>confidence_engine.py</code>, 
+      <code>quant_engine.py</code>). Identifying which engines run for a given analysis requires reading 
+      all 3 callers. Each engine has its own error handling pattern (try/except vs sentinel return values 
+      vs raising). There is no <strong>seam</strong> where a consumer says "run all applicable engines 
+      and give me the results" — the caller must know about each engine individually.
+    </p>
+
+    <h3>Solution</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      Define a uniform <code>InferenceEngine</code> protocol with a single method 
+      <code>compute(ticker, analysis_data, session) → dict</code>. Each engine (conformal, minsky, 
+      pcr_gex, etc.) becomes an <strong>adapter</strong> implementing this protocol. An 
+      <code>EngineRegistry</code> provides discovery: consumers ask for all engines that satisfy 
+      a capability tag (e.g., "risk_metric", "confidence_modifier", "valuation"). The calibration 
+      pipeline becomes a generic "run all engines tagged 'confidence_modifier' in parallel."
+    </p>
+
+    <div class="grid-2 mb-3">
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">BEFORE — Ad-Hoc Calls</div>
+        <pre class="mermaid text-xs">
+flowchart LR
+    ORCH["orchestrator.py"]
+    CE["confidence_engine.py"]
+    QE["quant_engine.py"]
+
+    CE --> A1["signal_agreement.py
+    call: compute_signal_agreement()"]
+    CE --> A2["conformal_prediction.py
+    call: compute_conformal_bounds()"]
+    ORCH --> A3["minsky_risk.py
+    call: compute_minsky_tension()"]
+    QE --> A4["dtw_pattern_matching.py
+    call: dtw_closest()"]
+
+    ORCH -.->|"❌ no pattern"| CE
+    CE -.->|"❌ no pattern"| QE
+
+    style ORCH fill:#3d1f00,stroke:#9e6a03,color:#f0e6d0
+    style CE fill:#3d1f00,stroke:#9e6a03,color:#f0e6d0
+    style QE fill:#3d1f00,stroke:#9e6a03,color:#f0e6d0
+        </pre>
+      </div>
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">AFTER — Uniform Protocol</div>
+        <pre class="mermaid text-xs">
+flowchart TD
+    P["protocol InferenceEngine
+    compute(ticker, data, session) → dict"]
+
+    subgraph engines
+        SA["SignalAgreementEngine"]
+        CP["ConformalPredictionEngine"]
+        MR["MinskyRiskEngine"]
+        DTW["DTWPatternEngine"]
+        PE["PCR_GEXEngine"]
+        AR["AuditorRiskEngine"]
+        RRG["RelativeRotationGraphEngine"]
+    end
+
+    REG["EngineRegistry
+    get_engines(tag='confidence_modifier')"]
+
+    CAL["CalibrationOrchestrator
+    for engine in registry.get_engines()
+        result = engine.compute(...)"]
+
+    SA -.-> P
+    CP -.-> P
+    MR -.-> P
+    DTW -.-> P
+    PE -.-> P
+    AR -.-> P
+    RRG -.-> P
+
+    CAL --> REG
+    REG -.-> SA
+    REG -.-> CP
+    REG -.-> MR
+    REG -.-> PE
+
+    style P fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style REG fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style CAL fill:#0f2110,stroke:#238636,color:#c9d1d9
+        </pre>
+      </div>
+    </div>
+
+    <h3>Benefits</h3>
+    <ul class="bullet-list">
+      <li><strong>Locality</strong> — Adding a new math engine means adding one file implementing <code>InferenceEngine</code> and registering it. No existing caller changes.</li>
+      <li><strong>Leverage</strong> — The <code>InferenceEngine</code> protocol is the interface. Callers depend on the protocol, not 15 different function signatures.</li>
+      <li><strong>Testability</strong> — Each engine can be tested in isolation via its uniform interface. The registry can be tested with mock engines. The calibration orchestrator can be tested with fake registry.</li>
+    </ul>
+  </div>
+
+  <!-- ================================================================== -->
+  <!-- CANDIDATE 6: database.py → Schema + Repository Separation          -->
+  <!-- ================================================================== -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-3">
+      <h2>6. database.py — Separate Schema from Queries</h2>
+      <span class="badge-explore">Worth exploring</span>
+    </div>
+    <div>
+      <span class="file-tag">backend/database.py (1,181 loc)</span>
+    </div>
+
+    <h3>Problem</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      <code>database.py</code> defines 24 SQLAlchemy ORM models AND all query/CUD functions (save_analysis, 
+      create_job, sweep_stale_jobs, etc.) in a single file. The <strong>interface</strong> is ~50 exported 
+      symbols ranging from table column definitions to multi-line query functions. Understanding "how does 
+      job creation work?" requires differentiating table columns from query logic. Every module imports 
+      from database.py — changing any one symbol risks side effects across 50+ import sites.
+      The <strong>deletion test</strong> fails qualitatively: deleting database.py would break every 
+      service and router, but the complexity (24 tables + 30 query functions) is dense enough that it's 
+      earning its keep — it's just not well-structured.
+    </p>
+
+    <h3>Solution</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      Split into 3 files: <span class="file-tag">models/__init__.py</span> (24 ORM classes, column definitions 
+      only), <span class="file-tag">database.py</span> (engine, session factory, <code>get_session()</code>, 
+      <code>init_db()</code>), and <span class="file-tag">repositories/analysis_repo.py</span> + 
+      <span class="file-tag">repositories/portfolio_repo.py</span> + 
+      <span class="file-tag">repositories/job_repo.py</span> (query methods grouped by domain).
+      The Phase 1 refactor comment ("extracted from main.py") already hints this was planned.
+    </p>
+
+    <div class="grid-2 mb-3">
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">BEFORE — Monolithic database.py</div>
+        <pre class="mermaid text-xs">
+flowchart TD
+    DB["database.py
+    1,181 lines
+    24 ORM models
+    30+ query functions
+    engine + session
+    init_db() + get_session()"]
+
+    S1["services/orchestrator.py"]
+    S2["services/staleness.py"]
+    S3["services/cache_service.py"]
+    S4["services/portfolio_snapshot.py"]
+    R1["routers/analysis.py"]
+    R2["routers/portfolio.py"]
+
+    S1 --> DB
+    S2 --> DB
+    S3 --> DB
+    S4 --> DB
+    R1 --> DB
+    R2 --> DB
+
+    style DB fill:#3d1f00,stroke:#9e6a03,color:#f0e6d0
+        </pre>
+      </div>
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">AFTER — Schema + Repository Separation</div>
+        <pre class="mermaid text-xs">
+flowchart TD
+    MOD["models/__init__.py
+    24 ORM classes
+    relationships only"]
+
+    DB["database.py
+    engine, session factory
+    init_db(), get_session()
+    ~50 lines"]
+
+    subgraph repositories
+        AR["repositories/analysis_repo.py
+        save_analysis()
+        get_recent_analyses()
+        get_analysis_for_date()"]
+        PR["repositories/portfolio_repo.py
+        add_holding()
+        remove_holding()
+        snapshot_all_users()"]
+        JR["repositories/job_repo.py
+        create_job()
+        get_job()
+        sweep_stale_jobs()"]
+    end
+
+    DB --> MOD
+    AR --> MOD
+    PR --> MOD
+    JR --> MOD
+
+    style MOD fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style DB fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style AR fill:#1f2937,stroke:#374151,color:#c9d1d9
+    style PR fill:#1f2937,stroke:#374151,color:#c9d1d9
+    style JR fill:#1f2937,stroke:#374151,color:#c9d1d9
+        </pre>
+      </div>
+    </div>
+
+    <h3>Benefits</h3>
+    <ul class="bullet-list">
+      <li><strong>Locality</strong> — A change to "how jobs are queried" touches <span class="file-tag">repositories/job_repo.py</span>, not the table definitions or portfolio queries.</li>
+      <li><strong>Leverage</strong> — Each repository offers a focused <strong>interface</strong>: "create a job", "update a job with checkpoint". The caller doesn't need to know about SQLAlchemy session management.</li>
+      <li><strong>Testability</strong> — Each repository can be tested against a test DB independently. Currently, testing <code>create_job()</code> requires importing the entire database.py.</li>
+    </ul>
+
+    <div class="adr-warning">
+      ⚠️ Contradicts the implicit ADR "one file for all DB concerns" — but this was an artifact of the initial 
+      extraction from main.py (Phase 1 comment). The Phase 1 refactor comment explicitly marks this as 
+      an intermediate step, not a final destination.
+    </div>
+  </div>
+
+  <!-- ================================================================== -->
+  <!-- CANDIDATE 7: TradingAgents — Deduplicate the Fork                  -->
+  <!-- ================================================================== -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-3">
+      <h2>7. TradingAgents Fork — Isolate the Forked Package</h2>
+      <span class="badge-explore">Worth exploring</span>
+    </div>
+    <div>
+      <span class="file-tag">backend/tradingagents-core/</span>
+      <span class="file-tag">backend/main.py (lines 12-16)</span>
+      <span class="file-tag">backend/services/orchestrator.py</span>
+      <span class="file-tag">backend/.gitignore</span>
+    </div>
+
+    <h3>Problem</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      The project vendors a full fork of the <code>tradingagents</code> PyPI package at 
+      <code>backend/tradingagents-core/tradingagents/</code>. On startup, <code>main.py</code> 
+      inserts this path into <code>sys.path</code> <em>before</em> any imports, shadowing the 
+      installed PyPI package. This creates a fragile build-time coupling: the fork must stay 
+      API-compatible with <code>orchestrator.py</code>'s call sites, but diverges from upstream. 
+      80+ files are tracked in git (force-added, were previously .gitignored). There is no 
+      <code>CHANGELOG.md</code> tracking what differs from upstream, no patch file, no branch strategy.
+    </p>
+
+    <h3>Solution</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      Three options, in decreasing order of preference: (1) Upstream the changes and remove the fork; 
+      (2) Use <code>pip install -e ./tradingagents-core</code> with a proper 
+      <code>pyproject.toml</code> version patch so the package is installable without sys.path 
+      manipulation; (3) Extract only the modified files (<code>default_config.py</code>, graph 
+      configuration) into a thin shim module in <code>services/</code> that overrides specific 
+      behaviours at import time, deleting the rest of the fork.
+    </p>
+
+    <div class="grid-2 mb-3">
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">BEFORE — sys.path Hack</div>
+        <pre class="mermaid text-xs">
+flowchart LR
+    TA_FORK["tradingagents-core/
+    80+ vendored files
+    diverged from PyPI"]
+    MAIN["main.py
+    sys.path.insert(0, ...)
+    shadows PyPI package"]
+    ORCH["orchestrator.py
+    from tradingagents import ..."]
+
+    MAIN -->|"shadows"| TA_FORK
+    ORCH -->|"imports from"| TA_FORK
+    TA_FORK -->|"diverged"| PYPI["PyPI tradingagents"]
+
+    style TA_FORK fill:#3d1f00,stroke:#9e6a03,color:#f0e6d0
+    style MAIN fill:#3d1f00,stroke:#9e6a03,color:#f0e6d0
+        </pre>
+      </div>
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">AFTER — Editable Install</div>
+        <pre class="mermaid text-xs">
+flowchart LR
+    TA_FORK["tradingagents-core/
+    pip install -e .
+    proper versioning"]
+    ORCH["orchestrator.py
+    from tradingagents import ...
+    (same import)"]
+    MAIN["main.py
+    (no sys.path hack)"]
+
+    TA_FORK -->|"editable install"| VENV["site-packages"]
+    ORCH --> VENV
+
+    style TA_FORK fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style MAIN fill:#0f2110,stroke:#238636,color:#c9d1d9
+        </pre>
+      </div>
+    </div>
+
+    <h3>Benefits</h3>
+    <ul class="bullet-list">
+      <li><strong>Locality</strong> — The fork is an explicit dependency with a version, not a silent sys.path shadow.</li>
+      <li><strong>Leverage</strong> — <code>pip install -e ./tradingagents-core</code> reduces main.py startup by 5 lines and eliminates an entire class of "works on server but not locally" bugs.</li>
+      <li><strong>Testability</strong> — CI can pip-install the fork as a real dependency. No special path handling needed in test runners.</li>
+    </ul>
+
+    <div class="adr-warning">
+      ⚠️ The fork exists because <code>orchestrator.py</code> depends on <code>tradingagents.config</code> internals 
+      that diverge from PyPI. Option (3) — a thin shim — may be the safest path if upstreaming is not feasible.
+    </div>
+  </div>
+
+  <!-- ================================================================== -->
+  <!-- CANDIDATE 8: HomeScreen → Feature-Sliced Decomposition             -->
+  <!-- ================================================================== -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-3">
+      <h2>8. HomeScreen — Feature-Sliced Decomposition</h2>
+      <span class="badge-spec">Speculative</span>
+    </div>
+    <div>
+      <span class="file-tag">ios/…/Views/HomeScreen.swift (3,082 loc)</span>
+    </div>
+
+    <h3>Problem</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      At 3,082 lines, HomeScreen.swift is the largest file in the iOS app. It contains: the view model 
+      (data fetching, auto-refresh timer, debounce logic, state management), the main view layout 
+      (configurable section order via @AppStorage, NavigationStack with destinations), 30+ sub-views, 
+      pull-to-refresh, spotlight search, notification observers, and crash guard logic. The 
+      <strong>deletion test</strong>: removing HomeScreen.swift removes the app's primary screen — 
+      but the complexity is real (it is the home screen). The pain is in <strong>navigability</strong>: 
+      Xcode struggles with files over 2,500 lines, and finding any specific sub-view requires scrolling 
+      past 1,000+ lines or using "Jump to bar" with fuzzy search.
+    </p>
+
+    <h3>Solution</h3>
+    <p class="text-sm text-[#8b949e] mb-3">
+      Extract into feature-sliced files under a <code>Views/Home/</code> directory: 
+      <span class="file-tag">HomeScreen.swift</span> (thin layout shell, ~200 lines), 
+      <span class="file-tag">HomeViewModel.swift</span> (already separated in concept, move to dedicated file),
+      <span class="file-tag">HomeScreen+Sections.swift</span> (section rendering), 
+      <span class="file-tag">HomeScreen+Cards.swift</span> (individual card views). The ~30 inline sub-views 
+      (NiveshBulletRow, PriorityPill, etc.) each get their own file. The section-ordering logic 
+      (<code>HomeSectionID</code>, <code>activeSectionOrder</code>) becomes a separate model.
+    </p>
+
+    <div class="grid-2 mb-3">
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">BEFORE — Monolithic HomeScreen.swift</div>
+        <pre class="mermaid text-xs">
+flowchart TD
+    HS["HomeScreen.swift
+    3,082 lines
+    ViewModel
+    Layout
+    30+ sub-views
+    Section ordering
+    Data fetching
+    Navigation logic"]
+
+    style HS fill:#3d1f00,stroke:#9e6a03,color:#f0e6d0
+        </pre>
+      </div>
+      <div class="diagram-box">
+        <div class="text-xs text-[#6e7681] mb-1 font-semibold">AFTER — Feature Slices</div>
+        <pre class="mermaid text-xs">
+flowchart TD
+    subgraph Views/Home
+        HS["HomeScreen.swift
+        ~200 lines: shell layout"]
+        HV["HomeViewModel.swift
+        data fetching + state"]
+        SO["HomeSectionOrder.swift
+        section ordering model"]
+        SC["HomeSections.swift
+        section rendering blocks"]
+        CV["HomeCards.swift
+        individual card components"]
+    end
+
+    HS --> HV
+    HS --> SO
+    HS --> SC
+    SC --> CV
+
+    style HS fill:#0f2110,stroke:#238636,color:#c9d1d9
+    style HV fill:#1f2937,stroke:#374151,color:#c9d1d9
+    style SO fill:#1f2937,stroke:#374151,color:#c9d1d9
+    style SC fill:#1f2937,stroke:#374151,color:#c9d1d9
+    style CV fill:#1f2937,stroke:#374151,color:#c9d1d9
+        </pre>
+      </div>
+    </div>
+
+    <h3>Benefits</h3>
+    <ul class="bullet-list">
+      <li><strong>Locality</strong> — Changing the portfolio card layout touches <span class="file-tag">HomeCards.swift</span>, not the view model or section order.</li>
+      <li><strong>Leverage</strong> — Each file has a clear responsibility. The HomeScreen shell delegates to section files by name.</li>
+      <li><strong>Testability</strong> — <code>HomeViewModel</code> can be tested independently with a mock APIClient (see Candidate 4). Card views can be previewed in SwiftUI canvas without running the full home screen.</li>
+    </ul>
+
+    <div class="adr-warning">
+      📝 Strength "Speculative" because the cost (moving 30+ views to new files) may not justify the benefit 
+      for a team of one. Revisit when adding the next home screen feature or onboarding a new developer.
+    </div>
+  </div>
+
+  <!-- ================================================================== -->
+  <!-- TOP RECOMMENDATION                                                  -->
+  <!-- ================================================================== -->
+  <div class="card" style="border-color: #c9a84c;">
+    <div class="flex items-center gap-2 mb-3">
+      <span style="font-size:1.5rem;">🏆</span>
+      <h2 style="margin-bottom:0;">Top Recommendation</h2>
+    </div>
+    <p class="text-sm text-[#f0e6d0] mb-3">
+      <strong>Candidate 3: Dissolve helpers.py into focused modules</strong> — with 
+      <strong>Candidate 4: Protocol-based iOS API client</strong> as a close second.
+    </p>
+    <p class="text-sm text-[#8b949e]">
+      <strong>Why helpers.py first:</strong> Every backend service, router, and main.py imports from 
+      <code>helpers.py</code>. Its dissolution into <code>core/rate_limiter.py</code>, 
+      <code>core/concurrency.py</code>, <code>core/dashboard_state.py</code>, 
+      <code>services/yfinance_client.py</code>, and <code>services/nse_client.py</code> is 
+      <strong>pure extraction</strong> — zero behavioural change, zero risk, mechanical refactoring. 
+      It pays dividends immediately: each new module is independently testable, 
+      <strong>AI-navigability</strong> improves because "find rate limiter" takes you to one 80-line file 
+      instead of scrolling past 400 lines of unrelated code, and it completes the Phase 1 refactor 
+      that was already started with <code>schemas/</code> and <code>core/security.py</code>.
+    </p>
+    <p class="text-sm text-[#8b949e] mt-2">
+      Estimated effort: 2-3 hours (1 session). 100% safe. Highest risk/reward ratio.
+    </p>
+  </div>
+
+  <!-- ================================================================== -->
+  <!-- SUMMARY TABLE                                                      -->
+  <!-- ================================================================== -->
+  <div class="card">
+    <h2>Summary</h2>
+    <div class="overflow-x-auto mt-2">
+      <table class="text-xs w-full border-collapse">
+        <thead>
+          <tr class="border-b border-[#30363d]">
+            <th class="text-left py-2 pr-4 text-[#c9a84c]">#</th>
+            <th class="text-left py-2 pr-4 text-[#c9a84c]">Candidate</th>
+            <th class="text-left py-2 pr-4 text-[#c9a84c]">Strength</th>
+            <th class="text-left py-2 pr-4 text-[#c9a84c]">Files Affected</th>
+            <th class="text-left py-2 pr-4 text-[#c9a84c]">Risk</th>
+            <th class="text-left py-2 text-[#c9a84c]">Effort</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-[#21262d]">
+            <td class="py-2 pr-4">1</td>
+            <td class="py-2 pr-4">Orchestrator → domain modules</td>
+            <td class="py-2 pr-4"><span class="badge-strong">STRONG</span></td>
+            <td class="py-2 pr-4 text-[#8b949e]">5</td>
+            <td class="py-2 pr-4 text-[#f0e6d0]">Medium (refactor)</td>
+            <td class="py-2 text-[#f0e6d0]">4-6h</td>
+          </tr>
+          <tr class="border-b border-[#21262d]">
+            <td class="py-2 pr-4">2</td>
+            <td class="py-2 pr-4">Models.swift → domain files</td>
+            <td class="py-2 pr-4"><span class="badge-strong">STRONG</span></td>
+            <td class="py-2 pr-4 text-[#8b949e]">7+</td>
+            <td class="py-2 pr-4 text-[#f0e6d0]">Low (additive)</td>
+            <td class="py-2 text-[#f0e6d0]">2-3h</td>
+          </tr>
+          <tr class="border-b border-[#21262d]">
+            <td class="py-2 pr-4">3</td>
+            <td class="py-2 pr-4">helpers.py → focused modules</td>
+            <td class="py-2 pr-4"><span class="badge-strong">STRONG</span></td>
+            <td class="py-2 pr-4 text-[#8b949e]">6</td>
+            <td class="py-2 pr-4" style="color:#3fb950;">Very Low (extraction)</td>
+            <td class="py-2 text-[#f0e6d0]">2-3h</td>
+          </tr>
+          <tr class="border-b border-[#21262d]">
+            <td class="py-2 pr-4">4</td>
+            <td class="py-2 pr-4">Protocol-based iOS API client</td>
+            <td class="py-2 pr-4"><span class="badge-strong">STRONG</span></td>
+            <td class="py-2 pr-4 text-[#8b949e]">10+</td>
+            <td class="py-2 pr-4 text-[#f0e6d0]">Low (additive)</td>
+            <td class="py-2 text-[#f0e6d0]">3-4h</td>
+          </tr>
+          <tr class="border-b border-[#21262d]">
+            <td class="py-2 pr-4">5</td>
+            <td class="py-2 pr-4">Math engines → uniform protocol</td>
+            <td class="py-2 pr-4"><span class="badge-strong">STRONG</span></td>
+            <td class="py-2 pr-4 text-[#8b949e]">18</td>
+            <td class="py-2 pr-4 text-[#f0e6d0]">Medium (refactor)</td>
+            <td class="py-2 text-[#f0e6d0]">4-5h</td>
+          </tr>
+          <tr class="border-b border-[#21262d]">
+            <td class="py-2 pr-4">6</td>
+            <td class="py-2 pr-4">database.py → schema+repo</td>
+            <td class="py-2 pr-4"><span class="badge-explore">Explore</span></td>
+            <td class="py-2 pr-4 text-[#8b949e]">14+</td>
+            <td class="py-2 pr-4 text-[#f0e6d0]">Medium (refactor)</td>
+            <td class="py-2 text-[#f0e6d0]">3-5h</td>
+          </tr>
+          <tr class="border-b border-[#21262d]">
+            <td class="py-2 pr-4">7</td>
+            <td class="py-2 pr-4">TradingAgents fork isolation</td>
+            <td class="py-2 pr-4"><span class="badge-explore">Explore</span></td>
+            <td class="py-2 pr-4 text-[#8b949e]">2</td>
+            <td class="py-2 pr-4 text-[#f0e6d0]">Low</td>
+            <td class="py-2 text-[#f0e6d0]">1-2h</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-4">8</td>
+            <td class="py-2 pr-4">HomeScreen → feature slices</td>
+            <td class="py-2 pr-4"><span class="badge-spec">Spec</span></td>
+            <td class="py-2 pr-4 text-[#8b949e]">6+</td>
+            <td class="py-2 pr-4" style="color:#3fb950;">Very Low (movement)</td>
+            <td class="py-2 text-[#f0e6d0]">2-3h</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer class="text-center text-[#6e7681] text-xs mt-8 pb-4 border-t border-[#21262d] pt-4">
+    Nivesh Architecture Deepening Report · June 2026 · Generated from codebase analysis
+  </footer>
+
+</body>
+</html>
