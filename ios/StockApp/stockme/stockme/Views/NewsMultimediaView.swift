@@ -248,6 +248,9 @@ struct NewsMultimediaView: View {
         var req = URLRequest(url: url)
         req.httpMethod = "GET"
         req.timeoutInterval = 20
+        if let token = authManager.currentUser?.token {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         if let (data, resp) = try? await URLSession.shared.data(for: req),
            let http = resp as? HTTPURLResponse, http.statusCode == 200,

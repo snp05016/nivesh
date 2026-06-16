@@ -152,7 +152,7 @@ final class URLSessionAPIClient: APIClient {
         // NetworkManager has fetchEarningsCalendarDay(date:) and fetchEarningsFeed() 
         // which return EarningsResult, not EarningsCalendarItem — adapt via dedicated service
         return []
-    }
+    }       
 
     func fetchEarningsProgress() async throws -> EarningsProgressResponse {
         return try await NetworkManager.shared.fetchEarningsProgress()
