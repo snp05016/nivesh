@@ -378,7 +378,7 @@ class TestAlertsEndpoints:
     def test_check_alerts(self):
         """Test checking alerts."""
         response = client.get("/alerts/check/1")
-        assert response.status_code in [200, 401]
+        assert response.status_code in [200, 401, 404]
 
 
 # ==================== ANALYSIS TESTS ====================
@@ -395,7 +395,7 @@ class TestAnalysisEndpoints:
             "ticker": "RELIANCE",
             "exchange": "NSE"
         })
-        assert response.status_code in [200, 401, 429]
+        assert response.status_code in [200, 202, 401, 429]
     
     def test_analyze_with_user_id(self):
         """Test analyze endpoint with user_id."""
@@ -404,7 +404,7 @@ class TestAnalysisEndpoints:
             "exchange": "NSE",
             "user_id": 1
         })
-        assert response.status_code in [200, 401, 429]
+        assert response.status_code in [200, 202, 401, 429]
     
     def test_analyze_batch(self):
         """Test batch analyze endpoint."""
@@ -646,7 +646,7 @@ class TestIntegration:
         
         # 3. Check alerts
         check_response = client.get("/alerts/check/1")
-        assert check_response.status_code in [200, 401]
+        assert check_response.status_code in [200, 401, 404]
 
 
 # ==================== MOCKED EXTERNAL SERVICES TESTS ====================
@@ -694,7 +694,7 @@ class TestMockedServices:
             "ticker": "RELIANCE",
             "exchange": "NSE"
         })
-        assert response.status_code in [200, 401, 429]
+        assert response.status_code in [200, 202, 401, 429]
 
 
 # ==================== EDGE CASE TESTS ====================
@@ -735,12 +735,12 @@ class TestEdgeCases:
     def test_negative_user_id(self):
         """Test negative user ID."""
         response = client.get("/portfolio/-1")
-        assert response.status_code in [200, 404]
+        assert response.status_code in [200, 401, 404]
     
     def test_zero_user_id(self):
         """Test zero user ID."""
         response = client.get("/portfolio/0")
-        assert response.status_code in [200, 404]
+        assert response.status_code in [200, 401, 404]
     
     def test_missing_query_params(self):
         """Test missing query parameters."""

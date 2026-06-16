@@ -125,14 +125,19 @@ def _growth_score(fin_trends: dict | None) -> int | None:
     return _clamp(sum(parts) / len(parts)) if parts else None
 
 
-def _compute_factor_scores(ticker: str, exchange: str, peers_info: list[dict], fin_trends: dict | None) -> dict | None:
+def _compute_factor_scores(
+    ticker: str,
+    exchange: str,
+    peers_info: list[dict] | None = None,
+    fin_trends: dict | None = None,
+) -> dict | None:
     try:
         from services.nse_data_provider import get_fundamentals
         f = get_fundamentals(ticker, exchange) or {}
     except Exception:
         f = {}
     scores = {
-        "value":          _value_score(f, peers_info),
+        "value":          _value_score(f, peers_info or []),
         "quality":        _quality_score(f),
         "momentum":       _momentum_score(ticker, exchange),
         "growth":         _growth_score(fin_trends),

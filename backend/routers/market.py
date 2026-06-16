@@ -1022,6 +1022,14 @@ def sector_performance_endpoint():
     if _sector_cache["data"] and now - _sector_cache["ts"] < 600:
         return _sector_cache["data"]
 
+    def _as_finite_float(value):
+        if isinstance(value, bool):
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        value = float(value)
+        return value if math.isfinite(value) else None
+
     sectors = []
     import math
     for ticker, name in SECTOR_TICKERS:
@@ -1032,24 +1040,26 @@ def sector_performance_endpoint():
                 try:
                     t = yf.Ticker(ticker)
                     info = t.fast_info if hasattr(t, "fast_info") else {}
-                    current = getattr(info, "last_price", None) or (t.info or {}).get("regularMarketPrice")
-                    prev    = getattr(info, "previous_close", None) or (t.info or {}).get("previousClose")
+                    current = _as_finite_float(getattr(info, "last_price", None)) or _as_finite_float((t.info or {}).get("regularMarketPrice"))
+                    prev    = _as_finite_float(getattr(info, "previous_close", None)) or _as_finite_float((t.info or {}).get("previousClose"))
 
-                    if current is None or math.isnan(current):
+                    if current is None:
                         # Fallback: History
                         hist = t.history(period="5d")
                         if not hist.empty and len(hist) >= 2:
                             current = float(hist["Close"].iloc[-1])
                             prev = float(hist["Close"].iloc[-2])
 
-                    if current is not None and not math.isnan(current):
+                    if current is not None:
                         break
                 except Exception as e:
                     print(f"[YF] Sector perf attempt {attempt+1} failed for {ticker}: {e}")
                     if attempt < 2:
                         time.sleep((1.0 * (2 ** attempt)) + (random.random() * 0.2))
 
-            if not current or math.isnan(current) or not prev:
+            current = _as_finite_float(current)
+            prev = _as_finite_float(prev)
+            if current is None or prev is None or prev == 0:
                 continue
             change_abs = round(current - prev, 2)
             change_pct = round((change_abs / prev) * 100, 2)

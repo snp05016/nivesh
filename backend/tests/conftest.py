@@ -32,6 +32,7 @@ _HEAVY_MODS = [
     "langchain_core",
     "langchain_core.messages",
     "langchain_core.prompts",
+    "langchain_core.tools",
     "langgraph",
     "langgraph.graph",
     "apscheduler",
@@ -43,7 +44,6 @@ _HEAVY_MODS = [
     "yfinance",
     "openpyxl",
     "openpyxl.styles",
-    "services.scraper",
     "services.options_scraper",
     "services.nse_data_provider",
 ]
@@ -79,6 +79,9 @@ _lc_msg.HumanMessage = MagicMock()
 _lc_prompt = sys.modules["langchain_core.prompts"]
 _lc_prompt.ChatPromptTemplate = MagicMock()
 _lc_prompt.MessagesPlaceholder = MagicMock()
+
+_lc_tools = sys.modules["langchain_core.tools"]
+_lc_tools.tool = lambda fn=None, **_kwargs: (lambda wrapped: wrapped) if fn is None else fn
 
 _lg = sys.modules["langgraph.graph"]
 _lg.StateGraph = MagicMock()
@@ -116,15 +119,6 @@ _anthropic_msg.content = [MagicMock(text='{"signal":"BULLISH"}')]
 _anthropic_msg.usage = MagicMock(input_tokens=100, output_tokens=50)
 _anthropic_client.messages.create.return_value = _anthropic_msg
 
-# Patch services
-_scraper = sys.modules["services.scraper"]
-_scraper.fetch_market_pulse.return_value = {"pulse": "mock"}
-_scraper.fetch_momentum.return_value = {"momentum": "mock"}
-_scraper.fetch_macro_alternatives.return_value = {"macro": "mock"}
-_scraper.fetch_institutional_flow.return_value = {"flow": "mock"}
-_scraper.fetch_earnings_sync_ratio.return_value = {"ratio": "mock"}
-_scraper.fetch_yoy_aggregate_indicators.return_value = {"yoy": "mock"}
-
 _options = sys.modules["services.options_scraper"]
 _options.fetch_option_chain.return_value = {}
 _options.compute_derivatives_metrics.return_value = {}
@@ -136,11 +130,18 @@ _nse_dp.get_fundamentals.return_value = {}
 # ---------------------------------------------------------------------------
 # STEP 2: Set test environment variables
 # ---------------------------------------------------------------------------
-os.environ.setdefault("DATABASE_URL", f"sqlite:///{os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'stockapp_test.db')}")
+_TEST_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "stockapp_test.db")
+os.environ.setdefault("DATABASE_URL", f"sqlite:///{_TEST_DB_PATH}")
 os.environ.setdefault("JWT_SECRET", "test_secret_key_for_pytest_only")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test_key")
 os.environ.setdefault("DEEPSEEK_API_KEY", "test_key")
 os.environ.setdefault("ADMIN_TOKEN", "admin")
+
+for _path in (_TEST_DB_PATH, f"{_TEST_DB_PATH}-wal", f"{_TEST_DB_PATH}-shm"):
+    try:
+        os.remove(_path)
+    except FileNotFoundError:
+        pass
 
 # ---------------------------------------------------------------------------
 # STEP 3: Add backend to sys.path and import the app
@@ -150,19 +151,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pytest
 from fastapi.testclient import TestClient
 
-# Patch disk_cache and staleness/piotroski services before import
-import importlib
-
 # Patch services.disk_cache before app import
 _disk_cache_mock = MagicMock()
 _disk_cache_mock.get.return_value = None
 _disk_cache_mock.set.return_value = None
 _disk_cache_mock.stats.return_value = {"hits": 0, "misses": 0}
 sys.modules["services.disk_cache"] = _disk_cache_mock
-
-_staleness_mock = MagicMock()
-_staleness_mock.compute_staleness.return_value = {"level": "FRESH"}
-sys.modules["services.staleness"] = _staleness_mock
 
 _piotroski_mock = MagicMock()
 _piotroski_mock.compute_piotroski.return_value = {"score": 5, "interpretation": "Strong"}

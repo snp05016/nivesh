@@ -44,6 +44,7 @@ except ImportError:
     OPENPYXL_AVAILABLE = False
 
 import os
+from decimal import Decimal
 
 from services.staleness import compute_staleness
 from services.piotroski import compute_piotroski
@@ -554,16 +555,20 @@ async def portfolio_endpoint(user_id: int, authorization: str = Header(None)):
         }
 
         rows = []
-        total_invested = 0.0
-        total_current = 0.0
+        total_invested = Decimal("0")
+        total_current = Decimal("0")
 
         for h in holdings:
             current_price, prev_close = prices.get(h.ticker, (None, None))
 
-            invested = h.shares * h.buy_price
-            current_value = h.shares * current_price if current_price else 0.0
-            pnl = current_value - invested if current_price is not None else 0.0
-            pnl_pct = (pnl / invested * 100) if invested > 0 and current_price is not None else 0.0
+            shares = Decimal(str(h.shares or 0))
+            buy_price = Decimal(str(h.buy_price or 0))
+            current_price_dec = Decimal(str(current_price)) if current_price is not None else None
+
+            invested = shares * buy_price
+            current_value = shares * current_price_dec if current_price_dec is not None else Decimal("0")
+            pnl = current_value - invested if current_price_dec is not None else Decimal("0")
+            pnl_pct = (pnl / invested * Decimal("100")) if invested > 0 and current_price_dec is not None else Decimal("0")
             day_change_pct = 0.0
             if current_price and prev_close and prev_close > 0:
                 day_change_pct = round((current_price - prev_close) / prev_close * 100, 2)
@@ -575,17 +580,17 @@ async def portfolio_endpoint(user_id: int, authorization: str = Header(None)):
                 "ticker": h.ticker,
                 "company_name": h.company_name,
                 "group": h.group_name,
-                "shares": h.shares,
-                "buy_price": h.buy_price,
+                "shares": float(shares),
+                "buy_price": float(buy_price),
                 "purchase_date": getattr(h, "purchase_date", "N/A"),
                 "notes": getattr(h, "notes", ""),
-                "target_price": getattr(h, "target_price", 0.0),
+                "target_price": float(getattr(h, "target_price", 0.0) or 0.0),
                 "current_price": current_price or 0.0,
                 "day_change_pct": day_change_pct,
-                "invested_inr": round(invested, 2),
-                "current_value_inr": round(current_value, 2),
-                "pnl_inr": round(pnl, 2),
-                "pnl_pct": round(pnl_pct, 2),
+                "invested_inr": round(float(invested), 2),
+                "current_value_inr": round(float(current_value), 2),
+                "pnl_inr": round(float(pnl), 2),
+                "pnl_pct": round(float(pnl_pct), 2),
                 "notes": h.notes or "",
                 "staleness": compute_staleness(
                     last_analyses.get(h.ticker),
@@ -600,10 +605,10 @@ async def portfolio_endpoint(user_id: int, authorization: str = Header(None)):
             "user": user.display_name,
             "user_id": user_id,
             "as_of": datetime.utcnow().strftime("%d-%b-%Y %H:%M UTC"),
-            "total_invested_inr": round(total_invested, 2),
-            "total_current_inr": round(total_current, 2),
-            "total_pnl_inr": round(total_pnl, 2),
-            "total_pnl_pct": round((total_pnl / total_invested * 100), 2) if total_invested > 0 else 0,
+            "total_invested_inr": round(float(total_invested), 2),
+            "total_current_inr": round(float(total_current), 2),
+            "total_pnl_inr": round(float(total_pnl), 2),
+            "total_pnl_pct": round(float(total_pnl / total_invested * Decimal("100")), 2) if total_invested > 0 else 0,
             "holdings": sorted(rows, key=lambda x: (x["pnl_pct"] or 0), reverse=True),
         }
     except HTTPException:

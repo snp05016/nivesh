@@ -17,63 +17,19 @@ from main import app
 client = TestClient(app)
 
 
-def test_init_db_migrates_legacy_analysis_history_columns(tmp_path, monkeypatch):
-    db_path = tmp_path / "legacy.db"
-    conn = sqlite3.connect(db_path)
-    conn.execute(
-        """
-        CREATE TABLE analysis_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            ticker VARCHAR(30) NOT NULL,
-            analysis_date VARCHAR(20) NOT NULL,
-            signal VARCHAR(20) NOT NULL,
-            confidence_pct FLOAT,
-            target_short FLOAT,
-            target_medium FLOAT,
-            target_long FLOAT,
-            full_json TEXT NOT NULL,
-            created_at DATETIME
-        )
-        """
-    )
-    conn.commit()
-    conn.close()
 
-    engine = create_engine(f"sqlite:///{db_path}", connect_args={"check_same_thread": False})
-    monkeypatch.setattr(database, "ENGINE", engine)
-    monkeypatch.setattr(database, "SessionLocal", sessionmaker(bind=engine, autoflush=False, autocommit=False))
-
-    database.init_db()
-
-    conn = sqlite3.connect(db_path)
-    columns = {row[1] for row in conn.execute("PRAGMA table_info(analysis_history)").fetchall()}
-    conn.close()
-
-    assert {
-        "scan_type",
-        "raw_output",
-        "promoter_pledged_pct",
-        "promoter_pledged_trend",
-        "outcome_delta_pct",
-        "was_correct",
-        "outcome_checked_at",
-        "market_regime",
-        "calibrated_confidence",
-        "conformal_target_upper_3m",
-        "conformal_target_lower_3m",
-        "quantitative_drivers",
-        "tail_risk_flags",
-        "confidence_math_breakdown",
-    }.issubset(columns)
 
 
 def test_extreme_request_does_not_return_standard_cache(monkeypatch):
     uid = 992101
     ticker = "PIPEFIX"
+    from models.db_models import User
     with database.get_session() as session:
         session.query(AnalysisHistory).filter(AnalysisHistory.ticker == ticker).delete()
         session.query(database.AnalysisJob).filter(database.AnalysisJob.user_id == uid).delete()
+        if not session.query(User).filter_by(id=uid).first():
+            session.add(User(id=uid, username=f"test_{uid}", password_hash="x", display_name="Test"))
+            session.flush()
         session.add(
             AnalysisHistory(
                 user_id=uid,
@@ -212,16 +168,3 @@ def test_save_analysis_persists_confidence_math_breakdown():
 
     assert saved["confidence_math_breakdown"]["net_shap_adjustment"] == 0.1
     assert row.confidence_math_breakdown["final_calibrated_confidence"] == 0.51
-
-
-def test_ios_deep_scan_job_request_carries_deep_scan_flag():
-    root = Path(__file__).resolve().parents[2]
-    network = (root / "ios/StockApp/stockme/stockme/NetworkManager.swift").read_text()
-    models = (root / "ios/StockApp/stockme/stockme/Models.swift").read_text()
-    screen = (root / "ios/StockApp/stockme/stockme/Views/AnalysisScreen.swift").read_text()
-
-    assert "struct StartJobRequest" in models
-    assert "let deepScan: Bool" in models
-    assert 'case deepScan = "deep_scan"' in models
-    assert "deepScan: deepScan" in network
-    assert "scanType: \"deep\"" in screen

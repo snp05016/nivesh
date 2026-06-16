@@ -53,8 +53,12 @@ class TTLLRUCache:
             if len(self._cache) > self._maxsize:
                 self._cache.popitem(last=False)
 
+    def clear(self) -> None:
+        with self._lock:
+            self._cache.clear()
 
-_CACHE = TTLLRUCache(maxsize=256, ttl=900)  # 15-minute TTL, 256 max entries
+_TTL_SECONDS = 900
+_CACHE = TTLLRUCache(maxsize=256, ttl=_TTL_SECONDS)  # 15-minute TTL, 256 max entries
 
 
 def _cache_get(key: str) -> Any | None:

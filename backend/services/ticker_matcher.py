@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 MANUAL_OVERRIDES: dict[str, list[str]] = {
-    "TATAMOTORS": ["Tata Motors", "tata motor", "TM"],
+    "TATAMOTORS": ["Tata Motors", "tata motor", "tata wala stock motors", "TM"],
     "HDFCBANK": ["HDFC Bank", "HDFC", "hdfc wala bank"],
     "INFY": ["Infosys", "Infy", "info sis"],
     "WIPRO": ["Wipro", "wipro wala"],
@@ -241,7 +241,7 @@ def find_tickers(transcript: dict) -> list[dict]:
     # Fix 2.9: generic English words that should NEVER be matched as tickers
     # even if rapidfuzz finds a high-scoring similarity
     _GENERIC_ENGLISH_WORDS = {
-        "reliance", "idea", "true", "false", "value", "growth",
+        "idea", "true", "false", "value", "growth",
         "market", "capital", "trust", "power", "light", "life",
         "future", "global", "prime", "star", "gold", "silver",
     }

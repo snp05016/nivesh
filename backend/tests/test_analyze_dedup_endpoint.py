@@ -10,9 +10,14 @@ _TEST_UIDS = (991001, 991002)
 
 
 def setup_module(_):
-    """Cancel any leftover QUEUED/RUNNING jobs for test UIDs so tests are idempotent."""
+    """Cancel any leftover QUEUED/RUNNING jobs for test UIDs so tests are idempotent. Also seed users."""
     s = SessionLocal()
+    from models.db_models import User
     try:
+        for uid in _TEST_UIDS:
+            if not s.query(User).filter_by(id=uid).first():
+                s.add(User(id=uid, username=f"test_dedup_{uid}", password_hash="x", display_name="Test"))
+        s.commit()
         s.query(AnalysisJob).filter(
             AnalysisJob.user_id.in_(_TEST_UIDS),
             AnalysisJob.status.in_(["QUEUED", "RUNNING"]),

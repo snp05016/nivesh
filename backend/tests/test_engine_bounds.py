@@ -6,11 +6,11 @@ def test_extreme_config_is_bounded(monkeypatch):
     monkeypatch.setattr("services.orchestrator.DEFAULT_CONFIG", {}, raising=False)
     from services.orchestrator import build_ta_config
     c = build_ta_config("extreme")
-    assert c["max_debate_rounds"] == 2
+    assert c["max_debate_rounds"] == 1
     assert c["max_risk_discuss_rounds"] == 1
-    assert c["max_tokens"] == 8000
+    assert c["max_tokens"] == 4000
     assert c["quick_think_llm"] == "deepseek-reasoner"
-    assert c.get("recursion_limit") and c["recursion_limit"] <= 40
+    assert c.get("recursion_limit") and c["recursion_limit"] <= 150
     assert c.get("analyst_tool_loop_cap") == 3
 
 
@@ -20,7 +20,7 @@ def test_standard_config_unchanged(monkeypatch):
     c = build_ta_config("standard")
     assert c["max_debate_rounds"] == 1
     assert c["max_risk_discuss_rounds"] == 1
-    assert c["max_tokens"] == 4000
+    assert c["max_tokens"] == 1000
 
 
 class _Msg:

@@ -539,7 +539,7 @@ def build_ta_config(scan_type: str = "standard") -> dict:
         # Runaway fix: rounds/tokens capped + explicit LangGraph recursion + tool-loop bound.
         config["quick_think_llm"] = "deepseek-reasoner"
         config["quick_think_provider"] = "deepseek"
-        config["max_debate_rounds"] = 2          # was 3 — runaway fix
+        config["max_debate_rounds"] = 1          # AGENTS.md §4.2: single debate round
         config["max_risk_discuss_rounds"] = 1    # was 2 — runaway fix
         config["max_tokens"] = 4000              # cost reduction: extreme keeps depth
         config["recursion_limit"] = 150          # explicit LangGraph bound (no infinite loops)
