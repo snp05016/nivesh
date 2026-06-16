@@ -1,6 +1,6 @@
 # Nivesh App Navigation Map
 
-> Last verified: 2026-06-15 from `ContentView.swift` and current Swift screen files.
+> Last verified: 2026-06-16 from `ContentView.swift` and current Swift screen files.
 
 ## Global Surfaces
 

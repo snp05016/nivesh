@@ -1,6 +1,6 @@
 # Nivesh Architecture Map
 
-> Last verified: 2026-06-15 from local source files. This map is intentionally concise and points to source locations instead of restating every implementation detail.
+> Last verified: 2026-06-16 from local source files. This map is intentionally concise and points to source locations instead of restating every implementation detail.
 
 ## Top-Level Directories
 
@@ -11,6 +11,7 @@
 | `CodebaseInformation/` | Human-readable orientation docs |
 | `graphify-out/` | Local knowledge graph output |
 | `prompts/` | Planning/checklist prompt docs |
+| `proposals/` | Project proposals and architectural teardowns |
 | `scripts/` | Local helper scripts |
 | `nivesh-harvester/` | Harvester-related code area |
 

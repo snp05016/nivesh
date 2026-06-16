@@ -1,6 +1,6 @@
 # Nivesh API Contract Map
 
-> Last verified: 2026-06-15 from FastAPI decorators and Swift URL call sites. This is a practical bridge map, not an OpenAPI replacement.
+> Last verified: 2026-06-16 from FastAPI decorators and Swift URL call sites. This is a practical bridge map, not an OpenAPI replacement.
 
 ## Route Prefix Rules That Matter
 
