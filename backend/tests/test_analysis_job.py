@@ -16,7 +16,13 @@ def _ensure_table():
 
 
 def _uid():
-    return random.randint(10_000_000, 99_999_999)
+    import database
+    from models.db_models import User
+    uid = random.randint(10_000_000, 99_999_999)
+    with database.get_session() as session:
+        session.add(User(id=uid, username=f"test_{uid}", password_hash="x", display_name="Test"))
+        session.commit()
+    return uid
 
 
 def test_job_lifecycle():

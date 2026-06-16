@@ -169,55 +169,11 @@ DAD_HOLDINGS = [
 ]
 
 
-def _ensure_analysis_history_columns() -> None:
-    """Idempotently migrate legacy SQLite/PostgreSQL analysis_history columns."""
-    columns: dict[str, str] = {
-        "raw_output": "TEXT",
-        "scan_type": "VARCHAR(20) NOT NULL DEFAULT 'standard'",
-        "promoter_pledged_pct": "FLOAT",
-        "promoter_pledged_trend": "VARCHAR(20)",
-        "outcome_delta_pct": "FLOAT",
-        "was_correct": "BOOLEAN",
-        "outcome_checked_at": "DATETIME",
-        "market_regime": "VARCHAR DEFAULT 'Transition'",
-        "calibrated_confidence": "FLOAT DEFAULT 0.0",
-        "confidence_math_breakdown": "JSON DEFAULT '{}'",
-        "conformal_target_upper_3m": "FLOAT",
-        "conformal_target_lower_3m": "FLOAT",
-        "quantitative_drivers": "JSON DEFAULT '{}'",
-        "tail_risk_flags": "JSON DEFAULT '{}'",
-    }
-    dialect = ENGINE.dialect.name
-    with ENGINE.begin() as connection:
-        if dialect == "sqlite":
-            existing = {
-                row[1]
-                for row in connection.exec_driver_sql(
-                    "PRAGMA table_info(analysis_history)"
-                ).fetchall()
-            }
-            for column_name, column_type in columns.items():
-                if column_name not in existing:
-                    connection.execute(
-                        text(
-                            f"ALTER TABLE analysis_history "
-                            f"ADD COLUMN {column_name} {column_type}"
-                        )
-                    )
-            return
 
-        for column_name, column_type in columns.items():
-            connection.execute(
-                text(
-                    f"ALTER TABLE analysis_history "
-                    f"ADD COLUMN IF NOT EXISTS {column_name} {column_type}"
-                )
-            )
 
 
 def init_db() -> None:
     Base.metadata.create_all(ENGINE)
-    _ensure_analysis_history_columns()
 
     with get_session() as session:
         if session.query(User).count() > 0:

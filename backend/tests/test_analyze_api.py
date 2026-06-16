@@ -21,7 +21,13 @@ def api_client(monkeypatch):
 
 
 def _uid():
-    return random.randint(30_000_000, 39_999_999)
+    uid = random.randint(30_000_000, 39_999_999)
+    import database
+    from models.db_models import User
+    with database.get_session() as session:
+        session.add(User(id=uid, username=f"test_{uid}", password_hash="x", display_name="Test"))
+        session.commit()
+    return uid
 
 
 def test_analyze_returns_202_immediately(api_client):

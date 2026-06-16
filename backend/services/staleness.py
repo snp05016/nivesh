@@ -60,6 +60,9 @@ def compute_staleness(
         elif age_days > 7:
             score += 10
             reasons.append(f"analysis is {age_days}d old")
+        elif age_days > 2:
+            score += 45
+            reasons.append(f"analysis is {age_days}d old")
 
     # Price movement (weight 35)
     # Fix 2.51: skip price-drop penalty on ex-dividend dates —

@@ -6,12 +6,18 @@ Run: python -m pytest tests/test_e2e_api.py -v
 import pytest
 import requests
 import json
+import os
 import time
 import hashlib
 from datetime import datetime
 
-BASE_URL = "http://165.22.221.18:8000"
+BASE_URL = os.getenv("NIVESH_LIVE_E2E_BASE_URL")
 TIMEOUT = 30
+
+pytestmark = pytest.mark.skipif(
+    not BASE_URL,
+    reason="live E2E tests require NIVESH_LIVE_E2E_BASE_URL",
+)
 
 
 # ---------------------------------------------------------------------------
