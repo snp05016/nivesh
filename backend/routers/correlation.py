@@ -16,5 +16,5 @@ def get_portfolio_correlation(portfolio_id: str, user_id: int = Depends(require_
             Portfolio.group_name == "holdings"
         ).all()
         
-    result = compute_portfolio_correlation(holdings)
-    return result
+        result = compute_portfolio_correlation(holdings)
+        return result
