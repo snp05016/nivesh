@@ -240,3 +240,53 @@ def test_malformed_checkpoint_json_does_not_break_monitor():
     assert jobs[0]["job_id"] == job["job_id"]
     assert jobs[0]["phase_timeline"] == []
     assert jobs[0]["last_message"] == ""
+
+
+def test_dashboard_snapshot_includes_ai_engine_payload():
+    from routers.dashboard import get_dashboard_snapshot
+
+    snapshot = get_dashboard_snapshot()
+
+    assert snapshot["ai_engine"]["type"] == "ai_engine_monitor"
+    assert "jobs" in snapshot["ai_engine"]
+    assert "active_analyses" in snapshot
+
+
+def test_ai_engine_dashboard_route_returns_monitor_payload(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    import main
+
+    monkeypatch.setattr("routers.dashboard.require_auth", lambda authorization: {"id": 1})
+    client = TestClient(main.app)
+
+    response = client.get(
+        "/api/v1/dashboard/ai-engine?mode=all&limit=2",
+        headers={"Authorization": "Bearer test"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["type"] == "ai_engine_monitor"
+    assert payload["mode"] == "all"
+    assert "summary" in payload
+
+
+def test_ai_engine_dashboard_detail_route_returns_job(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    import main
+
+    now = datetime(2026, 6, 16, 12, 0, tzinfo=timezone.utc)
+    job = _make_job("DETAIL", status="RUNNING", now=now)
+    monkeypatch.setattr("routers.dashboard.require_auth", lambda authorization: {"id": 1})
+    client = TestClient(main.app)
+
+    response = client.get(
+        f"/api/v1/dashboard/ai-engine/{job['job_id']}",
+        headers={"Authorization": "Bearer test"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["job"]["job_id"] == job["job_id"]

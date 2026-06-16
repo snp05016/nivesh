@@ -7,6 +7,7 @@ from helpers import (
     _dash_lock, _active_analyses, _completed_analyses,
     _harvest_status, _token_stats, _request_log, require_auth
 )
+from services.ai_engine_monitor import build_ai_engine_monitor, get_ai_engine_job_detail
 
 router = APIRouter(tags=["Dashboard"])
 
@@ -66,6 +67,7 @@ def get_dashboard_snapshot():
             "type": "dashboard_snapshot",
             "active_analyses": merged,
             "recent_analyses": list(_completed_analyses)[:10],
+            "ai_engine": build_ai_engine_monitor(mode="running"),
             "harvest_status": dict(_harvest_status),
             "token_stats": {
                 "total_input": _token_stats["total_input"],
@@ -74,6 +76,28 @@ def get_dashboard_snapshot():
             },
             "timestamp": time.time()
         }
+
+@router.get("/api/v1/dashboard/ai-engine")
+async def ai_engine_dashboard(
+    mode: str = "running",
+    ticker: str | None = None,
+    limit: int = 20,
+    authorization: str = Header(None),
+):
+    """Live AI engine monitor matching scripts/check_stock.sh modes."""
+    require_auth(authorization)
+    return build_ai_engine_monitor(mode=mode, ticker=ticker, limit=limit)
+
+
+@router.get("/api/v1/dashboard/ai-engine/{job_id}")
+async def ai_engine_job_detail(job_id: str, authorization: str = Header(None)):
+    """Detailed monitor record for one AI engine job."""
+    require_auth(authorization)
+    detail = get_ai_engine_job_detail(job_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="AI engine job not found")
+    return detail
+
 
 @router.get("/api/v1/dashboard/stream")
 async def dashboard_stream(request: Request, authorization: str = Header(None)):

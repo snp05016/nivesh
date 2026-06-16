@@ -1,45 +1,44 @@
 """Check analysis job status. Usage: python3 check_jobs.py [running|--all|--stuck|TICKER]"""
-import sys, json
-from datetime import datetime, timezone, timedelta
 
-sys.path.insert(0, '/root/nivesh/backend')
-from database import get_session, AnalysisJob
+from __future__ import annotations
 
-mode = sys.argv[1] if len(sys.argv) > 1 else 'running'
+import sys
+from pathlib import Path
 
-with get_session() as s:
-    if mode == 'running':
-        jobs = s.query(AnalysisJob).filter(AnalysisJob.status == 'RUNNING').order_by(AnalysisJob.created_at.desc()).all()
-    elif mode == 'stuck' or mode == '--stuck':
-        cutoff = datetime.now(timezone.utc) - timedelta(minutes=15)
-        jobs = s.query(AnalysisJob).filter(
-            AnalysisJob.status == 'RUNNING', AnalysisJob.created_at < cutoff
-        ).order_by(AnalysisJob.created_at.desc()).all()
-    elif mode == '--all':
-        jobs = s.query(AnalysisJob).order_by(AnalysisJob.created_at.desc()).limit(20).all()
-    else:
-        t = mode.upper()
-        jobs = s.query(AnalysisJob).filter(AnalysisJob.ticker == t).order_by(AnalysisJob.created_at.desc()).limit(5).all()
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
+from services.ai_engine_monitor import build_ai_engine_monitor
+
+
+def _print_jobs(mode: str) -> int:
+    monitor = build_ai_engine_monitor(mode=mode)
+    jobs = monitor["jobs"]
     if not jobs:
-        print('No jobs found.')
-        sys.exit(0)
+        print("No jobs found.")
+        return 0
 
-    now = datetime.now(timezone.utc)
-    print(f"{'TICKER':<12} {'STATUS':<12} {'STAGE':<18} {'PROG':>4}  {'AGE':>7}  {'SCAN':<8}  {'JOB ID'}")
-    print('-' * 95)
-    for j in jobs:
-        ct = j.created_at
-        if ct.tzinfo is None:
-            ct = ct.replace(tzinfo=timezone.utc)
-        age = (now - ct).total_seconds()
-        m, s = divmod(int(age), 60)
-        age_s = f'{m}m{s}s'
-        name  = (j.ticker or '').ljust(12)
-        stat  = (j.status or '').ljust(12)
-        stage = (j.stage or '-').ljust(18)
-        pct   = f'{j.progress_pct or 0}%'.rjust(4)
-        scan  = (j.scan_type or 'standard').ljust(8)
-        print(f'{name} {stat} {stage} {pct}  {age_s:>7}  {scan}  {j.job_id}')
-        if j.error:
-            print(f'  Error: {str(j.error)[:200]}')
+    print(
+        f"{'TICKER':<12} {'STATUS':<12} {'STAGE':<18} {'PROG':>4}  "
+        f"{'AGE':>7}  {'TOOK':>9}  {'SCAN':<8}  {'JOB ID'}"
+    )
+    print("-" * 108)
+    for job in jobs:
+        name = str(job.get("ticker") or "").ljust(12)
+        status = str(job.get("status") or "").ljust(12)
+        stage = str(job.get("stage") or "-").ljust(18)
+        pct = f"{int(job.get('progress_pct') or 0)}%".rjust(4)
+        age = str(job.get("age_label") or "-").rjust(7)
+        took = str(job.get("took_label") or job.get("elapsed_label") or "-").rjust(9)
+        scan = str(job.get("scan_type") or "standard").ljust(8)
+        print(f"{name} {status} {stage} {pct}  {age}  {took}  {scan}  {job.get('job_id')}")
+        error = job.get("error")
+        if error:
+            print(f"  Error: {str(error)[:200]}")
+    return 0
+
+
+if __name__ == "__main__":
+    mode = sys.argv[1] if len(sys.argv) > 1 else "running"
+    raise SystemExit(_print_jobs(mode))

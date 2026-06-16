@@ -20,6 +20,7 @@ load_dotenv(dotenv_path=env_path, override=True)
 
 # Disk cache — L2 persistent layer (L1 = in-memory _quick_info_cache)
 from services.disk_cache import get as _dcache_get, set as _dcache_set, stats as _dcache_stats
+from services.ai_engine_monitor import build_ai_engine_monitor
 from services.error_telemetry import CorrelationIDMiddleware
 
 from dotenv import load_dotenv
@@ -881,6 +882,19 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
     .nav-tab{background:none;border:none;color:#6e7681;padding:10px 16px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;border-bottom:2px solid transparent;transition:.15s}
     .nav-tab:hover{color:#c9d1d9}
     .nav-tab.active{color:#c9a84c;border-bottom-color:#c9a84c}
+    .btn-mode{background:#161b22;border:1px solid #30363d;border-radius:6px;padding:6px 14px;color:#8b949e;cursor:pointer;font-family:inherit;font-size:11px;transition:.15s}
+    .btn-mode:hover{color:#c9d1d9;border-color:#c9a84c}
+    .btn-mode.active{background:#c9a84c15;color:#c9a84c;border-color:#c9a84c}
+    .phase-bar{height:4px;border-radius:2px;background:#21262d;margin-top:4px;overflow:hidden}
+    .phase-bar-fill{height:100%;border-radius:2px;transition:width .3s}
+    .phase-bar-fill.running{background:#c9a84c}
+    .phase-bar-fill.done{background:#3fb950}
+    .phase-bar-fill.failed{background:#f85149}
+    .timeline-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11px}
+    .timeline-dot{width:8px;height:8px;border-radius:50%;background:#30363d;flex-shrink:0}
+    .timeline-dot.active{background:#c9a84c;box-shadow:0 0 6px #c9a84c60}
+    .timeline-dot.done{background:#3fb950}
+    .timeline-dot.failed{background:#f85149}
     .page{display:none;padding:24px 28px;max-width:1600px;margin:0 auto}
     .page.active{display:block}
     /* Layout */
@@ -1248,6 +1262,54 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
 ═══════════════════════════════════════════════════════════ -->
 <div class="page" id="page-ai">
   <div style="padding-top:24px">
+
+    <!-- ═══ AI Engine Monitor — Header ═══ -->
+    <div class="section-label">AI Engine Monitor</div>
+    <div class="row4" style="margin-bottom:16px">
+      <div class="stat-tile tile-dark"><div class="val val-green" id="ai_running">-</div><div class="lbl">Running</div></div>
+      <div class="stat-tile tile-dark"><div class="val val-blue" id="ai_queued">-</div><div class="lbl">Queued</div></div>
+      <div class="stat-tile tile-dark"><div class="val val-red" id="ai_stuck">-</div><div class="lbl">Stuck</div></div>
+      <div class="stat-tile tile-dark"><div class="val val-dim" id="ai_total">-</div><div class="lbl">Total Shown</div></div>
+    </div>
+
+    <!-- ═══ Mode selector ═══ -->
+    <div style="margin-bottom:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn-mode active" onclick="setAIMode('running',this)">Running</button>
+      <button class="btn-mode" onclick="setAIMode('all',this)">All Jobs</button>
+      <button class="btn-mode" onclick="setAIMode('stuck',this)">Stuck</button>
+      <input id="ai-ticker-filter" type="text" placeholder="Filter by ticker..." style="width:140px;background:#0a0a0a;border:1px solid #30363d;border-radius:6px;padding:6px 10px;color:#c9d1d9;font-size:11px;margin-left:12px" oninput="loadAIEngine()">
+      <span class="ts" id="ai_updated" style="margin-left:auto">Loading...</span>
+    </div>
+
+    <!-- ═══ Running Jobs Table ═══ -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header"><span class="card-title">Jobs</span></div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Ticker</th><th>Status</th><th>Phase / Stage</th><th>Prog</th><th>Age</th><th>Elapsed</th><th>Scan</th><th>Tokens</th><th>Job ID</th>
+          </tr></thead>
+          <tbody id="ai-jobs-tbody"><tr><td colspan="9" class="empty">No jobs found</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ Phase Timeline ═══ -->
+    <div class="section-label">Phase Timelines</div>
+    <div id="ai-timelines" style="margin-bottom:20px">
+      <div class="empty">Select a running job to view its phase timeline</div>
+    </div>
+
+    <!-- ═══ Latest Successful Summary ═══ -->
+    <div class="section-label">Latest Completion per Ticker</div>
+    <div style="overflow-x:auto;margin-bottom:20px">
+      <table>
+        <thead><tr><th>Ticker</th><th>Signal</th><th>Conf</th><th>Tier</th><th>Price</th><th>12M Target</th><th>Upside</th><th>Tokens</th><th>Date</th></tr></thead>
+        <tbody id="ai-latest-tbody"><tr><td colspan="9" class="empty">No completed analyses</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- ═══ AI Model Usage (keep existing) ═══ -->
     <div class="section-label">AI Model Usage &amp; Cost</div>
     <div class="ai-model-grid" style="margin-bottom:20px">
       <div class="model-card claude">
@@ -1853,9 +1915,109 @@ async function populateUserDropdown(){
   }catch(e){console.warn('Could not populate user list:',e);}
 }
 
+// ─── AI Engine Monitor ────────────────────────────────────────
+let _aiMode='running';
+
+function setAIMode(mode,btn){
+  _aiMode=mode;
+  document.querySelectorAll('.btn-mode').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  document.getElementById('ai-ticker-filter').value='';
+  loadAIEngine();
+}
+
+async function loadAIEngine(){
+  const ticker=document.getElementById('ai-ticker-filter')?.value?.trim()||'';
+  const params=new URLSearchParams({mode:_aiMode,limit:'30'});
+  if(ticker)params.set('ticker',ticker);
+  try{
+    const r=await fetch('/api/v1/dashboard/ai-engine?'+params,{headers:{'Authorization':'Bearer admin'}});
+    if(!r.ok){console.warn('AI engine fetch failed:',r.status);return;}
+    const d=await r.json();
+    renderAIEngine(d);
+  }catch(e){console.warn('AI engine error:',e);}
+}
+
+function renderAIEngine(d){
+  if(!d)return;
+  const s=d.summary||{};
+  document.getElementById('ai_running').textContent=s.running??0;
+  document.getElementById('ai_queued').textContent=s.queued??0;
+  document.getElementById('ai_stuck').textContent=s.stuck??0;
+  const jobs=d.jobs||[];
+  document.getElementById('ai_total').textContent=jobs.length;
+  document.getElementById('ai_updated').textContent=ts(d.generated_at);
+
+  const tbody=document.getElementById('ai-jobs-tbody');
+  if(jobs.length===0){
+    tbody.innerHTML='<tr><td colspan="9" class="empty">No jobs found</td></tr>';
+  }else{
+    tbody.innerHTML=jobs.map(j=>{
+      const status=j.status||'?';
+      const scl=status==='RUNNING'?'active':status==='SUCCEEDED'?'ok':'err';
+      const pct=j.progress_pct||0;
+      const barCls=status==='SUCCEEDED'?'done':status==='FAILED'?'failed':'running';
+      const tl=j.phase_timeline||[];
+      const hasTimeline=tl.length>0;
+      return `<tr>
+        <td style="font-weight:700;color:#f0f6fc">${j.ticker||'-'}${j.is_stuck?' <span class="badge err">STUCK</span>':''}</td>
+        <td><span class="badge ${scl}">${status}</span></td>
+        <td style="max-width:180px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${j.current_phase||j.stage||'-'}</div><div class="phase-bar"><div class="phase-bar-fill ${barCls}" style="width:${pct}%"></div></div></td>
+        <td class="ts">${pct}%</td>
+        <td class="ts">${j.age_label||'-'}</td>
+        <td class="ts">${j.elapsed_label||'-'}</td>
+        <td><span class="badge hold">${j.scan_type||'standard'}</span></td>
+        <td class="ts" style="color:#bc8cff">${fmt(j.tokens_used||0)}</td>
+        <td style="max-width:110px"><span class="ts" style="font-size:9px">${j.job_id}</span>${j.is_stuck?` <button class="btn-view err" style="font-size:9px;padding:2px 6px" onclick="cancelAIMonitorJob('${j.job_id}')">X</button>`:''}</td>
+      </tr>
+      ${hasTimeline?`<tr><td colspan="9" style="padding:4px 12px 8px">
+        <div style="display:flex;gap:4px;flex-wrap:wrap;font-size:10px;color:#6e7681">
+          ${tl.map((p,i,a)=>{
+            const dc=p.state==='active'?'active':p.state==='done'?'done':p.state==='failed'?'failed':'';
+            return `<div style="display:flex;align-items:center;gap:6px;padding:2px 6px;background:#0d1117;border-radius:4px;border:1px solid #21262d;flex:0 0 auto;min-width:100px">
+              <div class="timeline-dot ${dc}"></div>
+              <div><div style="color:#8b949e;font-weight:600">${p.stage||'-'}</div><div style="font-size:9px;color:#484f58;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.message||'').slice(0,50)}</div></div>
+            </div>`;
+          }).join('')}
+        </div>
+      </td></tr>`:''}`;
+    }).join('');
+  }
+
+  // Latest by ticker
+  const latest=d.latest_success||[];
+  const ltbody=document.getElementById('ai-latest-tbody');
+  if(latest.length===0){
+    ltbody.innerHTML='<tr><td colspan="9" class="empty">No completed analyses</td></tr>';
+  }else{
+    ltbody.innerHTML=latest.map(l=>`<tr>
+      <td style="font-weight:700;color:#f0f6fc">${l.ticker||'-'}</td>
+      <td>${sig(l.signal)}</td>
+      <td style="color:#d29922">${l.confidence_pct!=null?l.confidence_pct+'%':'-'}</td>
+      <td class="ts">${l.analysis_tier||l.scan_type||'-'}</td>
+      <td style="color:#c9a84c">${l.current_price_inr!=null?'₹'+l.current_price_inr.toLocaleString('en-IN'):'-'}</td>
+      <td style="color:#c9a84c">${l.target_12m!=null?'₹'+l.target_12m.toLocaleString('en-IN'):'-'}</td>
+      <td class="${l.upside_12m_pct!=null&&l.upside_12m_pct>0?'pnl-pos':'pnl-neg'}">${l.upside_12m_pct!=null?l.upside_12m_pct.toFixed(1)+'%':'-'}</td>
+      <td class="ts">${fmt(l.tokens_used||0)}</td>
+      <td class="ts">${l.analysis_date||'-'}</td>
+    </tr>`).join('');
+  }
+}
+
+async function cancelAIMonitorJob(jobId){
+  if(!confirm('Cancel job '+jobId+'?'))return;
+  try{
+    const r=await fetch('/analyze/'+jobId+'/cancel',{method:'POST',headers:{'Authorization':'Bearer admin'}});
+    if(r.ok)loadAIEngine();
+    else console.warn('Cancel failed:',r.status);
+  }catch(e){console.warn('Cancel error:',e);}
+}
+
 // Init
 refreshAll();
+loadAIEngine();
 setInterval(refreshAll, 30000);
+setInterval(loadAIEngine, 10000);
 </script>
 </body>
 </html>"""
@@ -2057,6 +2219,7 @@ def dashboard_data(authorization: str = Header(None)):
         "latest_news":     latest_news if 'latest_news' in locals() else [],
         "latest_videos":   latest_videos if 'latest_videos' in locals() else [],
         "ai_health":       ai_health,
+        "ai_engine":       build_ai_engine_monitor(mode="running"),
     }
 
 
