@@ -68,7 +68,7 @@ def list_users(authorization: str = Header(None)):
 @router.post("/watchlist/add")
 def watchlist_add_endpoint(req: WatchlistAddRequest, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != req.user_id:
+    if token_user != req.user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         ticker = req.ticker.upper()
@@ -97,7 +97,7 @@ def watchlist_add_endpoint(req: WatchlistAddRequest, authorization: str = Header
 @router.delete("/watchlist/remove")
 def watchlist_remove_endpoint(req: WatchlistRemoveRequest, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != req.user_id:
+    if token_user != req.user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         ticker = req.ticker.upper()
@@ -118,7 +118,7 @@ def watchlist_remove_endpoint(req: WatchlistRemoveRequest, authorization: str = 
 @router.get("/watchlist/{user_id}")
 def watchlist_get_endpoint(user_id: int, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user is None or token_user != user_id:
+    if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         now = time.time()

@@ -166,7 +166,7 @@ def get_sentiment_trend(ticker: str, days: int = 30):
         ).filter(
             NewsArticle.published_at >= cutoff.isoformat(),
             or_(
-                NewsArticle.related_tickers.like(f"%{ticker}%"),
+                NewsArticle.ticker == ticker,
                 NewsArticle.headline.like(f"%{ticker}%")
             )
         ).group_by(
@@ -210,7 +210,7 @@ def compute_cisi(
         topic_scores = []
         with get_session() as db:
             rows = db.query(NewsArticle.sentiment_score).filter(
-                NewsArticle.related_tickers.like(f"%{ticker}%"),
+                NewsArticle.ticker == ticker,
                 NewsArticle.sentiment_score != None,
             ).limit(50).all()
             topic_scores = [float(r.sentiment_score) for r in rows if r.sentiment_score is not None]
