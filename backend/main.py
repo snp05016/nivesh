@@ -9,11 +9,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-# v2 engine fix: tradingagents-core must be on the Python path before any imports
-# that trigger orchestrator.py → tradingagents.default_config resolution.
-_TRADINGAGENTS_PATH = Path(__file__).parent / "tradingagents-core"
-if _TRADINGAGENTS_PATH.exists() and str(_TRADINGAGENTS_PATH) not in sys.path:
-    sys.path.insert(0, str(_TRADINGAGENTS_PATH))
+# tradingagents-core installed via: pip install -e ./tradingagents-core
 
 # ---------------------------------------------------------------------------
 # Load environment before any other imports
