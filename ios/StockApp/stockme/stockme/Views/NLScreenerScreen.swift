@@ -16,6 +16,10 @@ struct NLScreenerResponse: Codable {
     }
 }
 
+struct APIErrorResponse: Codable {
+    let detail: String?
+}
+
 struct NLScreenerResult: Codable, Identifiable {
     var id: String { ticker }
     let ticker: String
@@ -78,8 +82,24 @@ class NLScreenerViewModel: ObservableObject {
                 
                 let (data, response) = try await URLSession.shared.data(for: request)
                 
-                guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                guard let httpResponse = response as? HTTPURLResponse else {
                     throw URLError(.badServerResponse)
+                }
+                
+                #if DEBUG
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("NLScreener API Response (\(httpResponse.statusCode)): \(jsonString)")
+                }
+                #endif
+                
+                if httpResponse.statusCode != 200 {
+                    if let errorResp = try? JSONDecoder().decode(APIErrorResponse.self, from: data), let detail = errorResp.detail {
+                        self.errorMessage = "Server error: \(detail)"
+                    } else {
+                        self.errorMessage = "Server returned status code \(httpResponse.statusCode)."
+                    }
+                    self.isLoading = false
+                    return
                 }
                 
                 let apiResponse = try JSONDecoder().decode(NLScreenerResponse.self, from: data)
@@ -91,6 +111,12 @@ class NLScreenerViewModel: ObservableObject {
                 
                 self.parsedFilters = filterDict
                 self.results = apiResponse.results
+                self.isLoading = false
+            } catch let error as DecodingError {
+                self.errorMessage = "Failed to process results (Data format issue)."
+                #if DEBUG
+                print("DecodingError: \(error)")
+                #endif
                 self.isLoading = false
             } catch {
                 self.errorMessage = "Failed to load results: \(error.localizedDescription)"
