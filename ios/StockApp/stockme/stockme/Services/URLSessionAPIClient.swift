@@ -36,7 +36,7 @@ final class URLSessionAPIClient: APIClient {
 
     func login(username: String, password: String) async throws -> String {
         let response = try await NetworkManager.shared.login(username: username, password: password)
-        return response.accessToken ?? ""
+        return response.token
     }
 
     func register(username: String, password: String, displayName: String) async throws {
@@ -46,19 +46,19 @@ final class URLSessionAPIClient: APIClient {
     // MARK: - Analysis
 
     func startAnalysis(ticker: String, exchange: String, scanType: String) async throws -> StartJobResponse {
-        return try await NetworkManager.shared.startAnalysisJob(ticker: ticker, exchange: exchange, scanType: scanType)
+        return try await NetworkManager.shared.startAnalysisJob(ticker: ticker, exchange: exchange, userId: nil, scanType: scanType)
     }
 
     func pollJob(jobId: String) async throws -> JobStatus {
-        return try await NetworkManager.shared.pollJob(jobId: jobId)
+        return try await NetworkManager.shared.pollJob(jobId: jobId, userId: nil)
     }
 
     func getActiveJob() async throws -> JobStatus? {
-        return try await NetworkManager.shared.getActiveJob()
+        return try await NetworkManager.shared.getActiveJob(userId: 0)
     }
 
     func cancelJob(jobId: String) async throws {
-        try await NetworkManager.shared.cancelJob(jobId: jobId)
+        try await NetworkManager.shared.cancelJob(jobId: jobId, userId: nil)
     }
 
     func quickInfo(ticker: String) async throws -> QuickInfo {
@@ -75,7 +75,7 @@ final class URLSessionAPIClient: APIClient {
     }
 
     func addHolding(request: PortfolioAddRequest) async throws {
-        try await NetworkManager.shared.addHolding(
+        let _ = try await NetworkManager.shared.addHolding(
             userId: request.userId,
             ticker: request.ticker,
             companyName: request.companyName,
@@ -149,7 +149,11 @@ final class URLSessionAPIClient: APIClient {
     // MARK: - Earnings
 
     func fetchEarningsCalendar(userId: Int) async throws -> [EarningsCalendarItem] {
-        return try await NetworkManager.shared.fetchEarningsCalendar(userId: userId)
+        let today = ISO8601DateFormatter().string(from: Date()).prefix(10)
+        let results = try await NetworkManager.shared.fetchEarningsCalendarDay(date: String(today))
+        return results.map { r in
+            EarningsCalendarItem(ticker: r.ticker, companyName: r.companyName, earningsDate: "", estimate: nil, actual: nil, surprise: nil, surprisePct: nil)
+        }
     }
 
     func fetchEarningsProgress() async throws -> EarningsProgressResponse {
