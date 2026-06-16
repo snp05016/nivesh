@@ -1,0 +1,109 @@
+<h2>AI Engine Dashboard Redesign</h2>
+<p class="subtitle">Visual proposal: turn the backend dashboard into a live command-center version of <code>scripts/check_stock.sh</code>, with every running/recent AI call visible.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Recommended Layout: Live AI Operations Console</div>
+  <div class="mockup-body">
+    <div style="display:grid;grid-template-columns:1.2fr .8fr;gap:18px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="border:1px solid #d5c28a;border-radius:8px;padding:14px;background:#fbf8ef">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div>
+              <div class="label">LIVE AI CALLS</div>
+              <h3 style="margin:2px 0 0">Running Jobs</h3>
+            </div>
+            <div style="font-family:monospace;color:#7b5d12">auto-refresh: 1s</div>
+          </div>
+          <div style="font-family:monospace;font-size:13px;display:grid;grid-template-columns:90px 86px 136px 54px 74px 78px 1fr;gap:8px;color:#75643b;border-bottom:1px solid #e5d9b2;padding-bottom:7px">
+            <b>TICKER</b><b>STATUS</b><b>PHASE</b><b>PROG</b><b>AGE</b><b>TOOK</b><b>JOB ID</b>
+          </div>
+          <div style="font-family:monospace;font-size:13px;display:grid;grid-template-columns:90px 86px 136px 54px 74px 78px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid #eee1ba">
+            <span>RELIANCE</span><span style="color:#8b6a00">RUNNING</span><span>bear_research</span><span>42%</span><span>2m14s</span><span>--</span><span>e91a72cd-2f1</span>
+          </div>
+          <div style="font-family:monospace;font-size:13px;display:grid;grid-template-columns:90px 86px 136px 54px 74px 78px 1fr;gap:8px;padding:9px 0">
+            <span>TATAMOTORS</span><span style="color:#8b6a00">QUEUED</span><span>waiting</span><span>0%</span><span>0m28s</span><span>--</span><span>ac34ff09-a8e</span>
+          </div>
+        </div>
+
+        <div style="border:1px solid #d9ceb0;border-radius:8px;padding:14px;background:#fffdf7">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div>
+              <div class="label">SELECTED JOB</div>
+              <h3 style="margin:2px 0 0">RELIANCE · extreme · e91a72cd-2f1</h3>
+            </div>
+            <button class="mock-button">Cancel Job</button>
+          </div>
+          <div style="height:8px;background:#eee2bd;border-radius:99px;overflow:hidden;margin:12px 0">
+            <div style="width:42%;height:100%;background:#b28a19"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
+            <div><div class="label">Started</div><b>2m14s ago</b></div>
+            <div><div class="label">Elapsed</div><b>134s</b></div>
+            <div><div class="label">Tokens</div><b>12,450</b></div>
+            <div><div class="label">PID</div><b>788950</b></div>
+          </div>
+          <div style="display:grid;grid-template-columns:28px 1fr 78px;gap:10px;align-items:start;font-size:13px">
+            <span>✓</span><span><b>Factor Engine</b><br>Computed RSI, MACD, sector context</span><span>4s</span>
+            <span>✓</span><span><b>Governance Agent</b><br>Checked pledge, auditor, SEBI, filings</span><span>31s</span>
+            <span>●</span><span><b>Bear Researcher</b><br>Finding downside, promoter, liquidity risks</span><span>running</span>
+            <span>○</span><span><b>Research Manager</b><br>Waiting for debate synthesis</span><span>pending</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="border:1px solid #d9ceb0;border-radius:8px;padding:14px;background:#fffdf7">
+          <div class="label">SCRIPT VIEWS</div>
+          <h3 style="margin:2px 0 10px">Same Views as Shell Tools</h3>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <button class="mock-button">running</button>
+            <button class="mock-button">--all</button>
+            <button class="mock-button">--stuck</button>
+            <button class="mock-button">ticker filter</button>
+          </div>
+          <p style="margin-top:10px;color:#665b43">These map directly to <code>check_jobs.py</code> query modes and return JSON instead of terminal text.</p>
+        </div>
+
+        <div style="border:1px solid #d9ceb0;border-radius:8px;padding:14px;background:#fffdf7">
+          <div class="label">RECENT COMPLETIONS</div>
+          <h3 style="margin:2px 0 10px">Last 20 AI Calls</h3>
+          <div style="display:flex;flex-direction:column;gap:9px;font-size:13px">
+            <div><b>SBIN</b> · SUCCEEDED · 3m18s · 8 min ago · BUY 72%</div>
+            <div><b>CDSL</b> · FAILED · 1m02s · 16 min ago · provider timeout</div>
+            <div><b>HAL</b> · SUCCEEDED · 4m44s · 25 min ago · HOLD 61%</div>
+          </div>
+        </div>
+
+        <div style="border:1px solid #cf9a9a;border-radius:8px;padding:14px;background:#fff8f6">
+          <div class="label">STUCK / ATTENTION</div>
+          <h3 style="margin:2px 0 10px">Jobs Over 15 Minutes</h3>
+          <div style="font-family:monospace;font-size:13px">No stuck jobs found.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="approve-console" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Approve This Console Layout</h3>
+      <p>Backend exposes script-equivalent JSON and the dashboard renders live status, age, elapsed time, phase, tokens, recent jobs, and stuck jobs.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="more-terminal" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Make It More Like Terminal Output</h3>
+      <p>Prioritize monospaced tables and command-style filters over cards and visual phase timelines.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="more-ios" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Make It More Like Current iOS Engine Activity</h3>
+      <p>Prioritize Banknote-style cards, progress bars, checkpoint rows, and less terminal-table density.</p>
+    </div>
+  </div>
+</div>

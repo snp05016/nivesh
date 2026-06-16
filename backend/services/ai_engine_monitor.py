@@ -161,6 +161,23 @@ def list_ai_engine_jobs(
     return [_format_job(job, now=now_utc, stuck_minutes=stuck_minutes) for job in jobs]
 
 
+def _latest_success_list(jobs: list[dict]) -> list[dict]:
+    """Build a list of latest successful analyses per unique ticker from the job list."""
+    seen: dict[str, dict] = {}
+    for job in jobs:
+        ticker = str(job.get("ticker") or "").upper()
+        if not ticker:
+            continue
+        status = str(job.get("status") or "")
+        if status != "SUCCEEDED":
+            continue
+        if ticker not in seen:
+            summary = _latest_success_summary(job)
+            if summary:
+                seen[ticker] = summary
+    return sorted(seen.values(), key=lambda x: x.get("analysis_date") or "", reverse=True)
+
+
 def _summary_from_jobs(jobs: list[dict]) -> dict:
     running = sum(1 for job in jobs if job.get("status") == "RUNNING")
     queued = sum(1 for job in jobs if job.get("status") == "QUEUED")
@@ -197,6 +214,7 @@ def build_ai_engine_monitor(
         "generated_at": now_utc.isoformat(),
         "summary": _summary_from_jobs(jobs),
         "jobs": jobs,
+        "latest_success": _latest_success_list(jobs),
     }
 
 

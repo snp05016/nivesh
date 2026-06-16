@@ -1,0 +1,87 @@
+<h2>AI Engine Dashboard · Terminal Mode</h2>
+<p class="subtitle">Revision B: the dashboard behaves like <code>check_stock.sh</code> in the app, with dense monospaced job tables and command-style filters first.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Terminal-first dashboard preview</div>
+  <div class="mockup-body">
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+      <button class="mock-button">check_stock running</button>
+      <button class="mock-button">check_stock --all</button>
+      <button class="mock-button">check_stock --stuck</button>
+      <input class="mock-input" placeholder="ticker e.g. RELIANCE" style="max-width:190px">
+      <div style="margin-left:auto;font-family:monospace;color:#7b5d12">streaming · 1s refresh</div>
+    </div>
+
+    <div style="border:1px solid #d4c28e;border-radius:8px;overflow:hidden;background:#11100d;color:#f7efd3">
+      <div style="font-family:monospace;font-size:13px;background:#1d1a12;color:#d8c27a;padding:10px 12px;border-bottom:1px solid #4b3e1e">
+        $ check_stock.sh --all
+      </div>
+      <div style="font-family:monospace;font-size:12.5px;padding:12px;overflow:auto">
+        <div style="display:grid;grid-template-columns:104px 98px 154px 54px 78px 74px 84px 1fr;gap:10px;color:#cbb56b;border-bottom:1px solid #3d3520;padding-bottom:8px;min-width:900px">
+          <b>TICKER</b><b>STATUS</b><b>STAGE</b><b>PROG</b><b>AGE</b><b>TOOK</b><b>SCAN</b><b>JOB ID</b>
+        </div>
+        <div style="display:grid;grid-template-columns:104px 98px 154px 54px 78px 74px 84px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid #2f2a1e;min-width:900px;color:#fff8df">
+          <span>RELIANCE</span><span style="color:#ffd166">RUNNING</span><span>bear_research</span><span>42%</span><span>2m14s</span><span>--</span><span>extreme</span><span>e91a72cd-2f1</span>
+        </div>
+        <div style="display:grid;grid-template-columns:104px 98px 154px 54px 78px 74px 84px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid #2f2a1e;min-width:900px;color:#fff8df">
+          <span>TATAMOTORS</span><span style="color:#ffd166">QUEUED</span><span>waiting</span><span>0%</span><span>0m28s</span><span>--</span><span>standard</span><span>ac34ff09-a8e</span>
+        </div>
+        <div style="display:grid;grid-template-columns:104px 98px 154px 54px 78px 74px 84px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid #2f2a1e;min-width:900px;color:#c9ffd8">
+          <span>SBIN</span><span>SUCCEEDED</span><span>done</span><span>100%</span><span>8m04s</span><span>3m18s</span><span>deep</span><span>03aa9c31-bcc</span>
+        </div>
+        <div style="display:grid;grid-template-columns:104px 98px 154px 54px 78px 74px 84px 1fr;gap:10px;padding:9px 0;min-width:900px;color:#ffd0c9">
+          <span>CDSL</span><span>FAILED</span><span>failed</span><span>0%</span><span>16m20s</span><span>1m02s</span><span>standard</span><span>bf1298ea-912</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+      <div style="border:1px solid #d9ceb0;border-radius:8px;padding:12px;background:#fffdf7">
+        <div class="label">selected row drill-down</div>
+        <pre style="font-size:12px;line-height:1.45;white-space:pre-wrap;margin:8px 0 0;color:#352d1a">job_id: e91a72cd-2f1
+ticker: RELIANCE
+status: RUNNING
+current_phase: Bear Researcher
+started_at: 2026-06-16T13:27:40Z
+age: 2m14s
+elapsed: 134s
+tokens_used: 12,450
+pid: 788950
+last_heartbeat: 3s ago
+last_message: Finding downside, promoter, liquidity risks...</pre>
+      </div>
+      <div style="border:1px solid #d9ceb0;border-radius:8px;padding:12px;background:#fffdf7">
+        <div class="label">phase log tail</div>
+        <pre style="font-size:12px;line-height:1.45;white-space:pre-wrap;margin:8px 0 0;color:#352d1a">[00:01] Engine            Analysis started
+[00:04] Factor Engine     Technical + factor scores ready
+[00:31] Governance Agent  Governance scan complete
+[01:02] Bull Researcher   Bull case complete
+[02:14] Bear Researcher   running...</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="approve-terminal" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Approve Terminal-first Design</h3>
+      <p>Implement backend JSON endpoints and dashboard stream around this dense table + selected-row drilldown.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="add-more-detail" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Add More Detail</h3>
+      <p>Show provider/model, cost estimate, per-phase duration, queue position, and all script commands as separate tabs.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="simplify-mobile" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Simplify for Mobile</h3>
+      <p>Keep the terminal feel but collapse columns aggressively for iPhone screens.</p>
+    </div>
+  </div>
+</div>

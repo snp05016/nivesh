@@ -1,98 +1,61 @@
 """Display the latest successful AI analysis for a ticker."""
-import sys, json
 
-sys.path.insert(0, '/root/nivesh/backend')
-from database import get_session, AnalysisJob
+from __future__ import annotations
 
-ticker = sys.argv[1].upper() if len(sys.argv) > 1 else 'RELIANCE'
+import sys
+from pathlib import Path
 
-with get_session() as s:
-    job = s.query(AnalysisJob).filter(
-        AnalysisJob.ticker == ticker,
-        AnalysisJob.status == 'SUCCEEDED'
-    ).order_by(AnalysisJob.created_at.desc()).first()
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-    if not job:
-        print(f'No successful analysis found for {ticker}.')
-        running = s.query(AnalysisJob).filter(
-            AnalysisJob.ticker == ticker, AnalysisJob.status == 'RUNNING'
-        ).first()
-        if running:
-            print(f'Analysis is still RUNNING (stage: {running.stage}, {running.progress_pct}%)')
-        sys.exit(1)
+from repositories.job_repo import get_latest_successful_monitor_job
+from services.ai_engine_monitor import get_ai_engine_job_detail
 
-    r = json.loads(job.result_json) if isinstance(job.result_json, str) else (job.result_json or {})
 
-    print('=' * 60)
-    print(f'  AI ANALYSIS REPORT — {job.ticker}')
-    print('=' * 60)
-    date_str = r.get("analysis_date") or (job.created_at.strftime("%Y-%m-%d") if job.created_at else "?")
-    print(f'  Date:        {date_str}')
-    print(f'  Signal:       {r.get("signal", "?")}')
-    print(f'  Confidence:   {r.get("confidence_pct", "?")}%')
-    print(f'  Scan type:    {job.scan_type or "standard"}')
-    print(f'  Tier:         {r.get("analysis_tier", "?")}')
+def _display_latest(ticker: str) -> int:
+    latest = get_latest_successful_monitor_job(ticker)
+    if not latest:
+        print(f"No successful analysis found for {ticker}.")
+        return 1
+
+    detail = get_ai_engine_job_detail(str(latest["job_id"]))
+    if not detail:
+        print(f"No successful analysis found for {ticker}.")
+        return 1
+
+    job = detail["job"]
+    summary = detail["latest_success_summary"] or {}
+    result = job.get("result") or {}
+
+    print("=" * 60)
+    print(f"  AI ANALYSIS REPORT - {job.get('ticker')}")
+    print("=" * 60)
+    print(f"  Date:        {summary.get('analysis_date') or job.get('created_at') or '?'}")
+    print(f"  Signal:      {summary.get('signal') or '?'}")
+    print(f"  Confidence:  {summary.get('confidence_pct') or '?'}%")
+    print(f"  Scan type:   {summary.get('scan_type') or job.get('scan_type') or 'standard'}")
+    print(f"  Tier:        {summary.get('analysis_tier') or '?'}")
     print()
 
-    # Price & targets
-    tp = r.get('target_prices') or {}
-    ud = r.get('upside_downside_pct') or {}
-    print(f'  Current:      Rs.{r.get("current_price_inr", "?")}')
-    print(f'  Target 3m:    Rs.{tp.get("short_term_3m", "?")}  ({ud.get("short_term", "?")}%)')
-    print(f'  Target 12m:   Rs.{tp.get("medium_term_12m", "?")}  ({ud.get("medium_term", "?")}%)')
-    print(f'  Target 36m:   Rs.{tp.get("long_term_36m", "?")}  ({ud.get("long_term", "?")}%)')
+    print(f"  Current:     Rs.{summary.get('current_price_inr') or '?'}")
+    print(f"  Target 12m:  Rs.{summary.get('target_12m') or '?'}  ({summary.get('upside_12m_pct') or '?'}%)")
     print()
 
-    # Governance
-    print(f'  Gov Score:    {r.get("governance_score", "?")}/100')
-    flags = r.get('governance_red_flags') or []
-    if flags:
-        for f in flags[:5]:
-            print(f'    Flag:       {f[:80]}')
-    print()
+    key_risks = result.get("key_risks") if isinstance(result.get("key_risks"), list) else []
+    if key_risks:
+        print("  KEY RISKS:")
+        for risk in key_risks[:3]:
+            print(f"    ! {str(risk)[:120]}")
+        print()
 
-    # Key factors
-    kf = r.get('key_factors') or {}
-    print('  KEY FACTORS:')
-    for k in ['management_quality', 'governance_assessment', 'fundamentals_summary',
-               'promoter_fii_dii_activity', 'indian_market_sentiment',
-               'turnaround_story', 'global_macro_impact']:
-        v = kf.get(k, '')
-        if v and v != 'Data not available':
-            label = k.replace('_', ' ').title()
-            print(f'    {label}: {v[:150]}')
-    print()
+    print("=" * 60)
+    print(f"  Generated: {job.get('created_at')}")
+    print(f"  Job ID:     {job.get('job_id')}")
+    print(f"  Tokens:     {job.get('tokens_used') or 'N/A'}")
+    return 0
 
-    # Bull / Bear / Risks
-    bull = r.get('bull_case') or []
-    bear = r.get('bear_case') or []
-    risks = r.get('key_risks') or []
-    if bull:
-        print('  BULL CASE:')
-        for b in bull[:3]: print(f'    + {b[:120]}')
-    if bear:
-        print('  BEAR CASE:')
-        for b in bear[:3]: print(f'    - {b[:120]}')
-    if risks:
-        print('  KEY RISKS:')
-        for rk in risks[:3]: print(f'    ! {rk[:120]}')
-    print()
 
-    # Extreme thesis
-    et = r.get('extreme_thesis_md') or ''
-    if et:
-        print(f'  EXTREME THESIS: ({len(et)} chars)')
-        print(et[:2000])
-    print()
-
-    # What to watch
-    wtw = r.get('what_to_watch') or []
-    if wtw:
-        print('  WHAT TO WATCH:')
-        for w in wtw[:5]: print(f'    > {w[:120]}')
-
-    print()
-    print('=' * 60)
-    print(f'  Generated: {job.created_at}')
-    print(f'  Job ID:     {job.job_id}')
-    print(f'  Tokens:     {job.tokens_used or "N/A"}')
+if __name__ == "__main__":
+    selected_ticker = sys.argv[1].upper() if len(sys.argv) > 1 else "RELIANCE"
+    raise SystemExit(_display_latest(selected_ticker))
