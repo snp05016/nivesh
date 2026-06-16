@@ -2723,6 +2723,11 @@ extension HomeScreen {
                             HStack(spacing: Theme.Spacing.standard) {
                                 Button {
                                     HapticManager.selection()
+                                    let df = DateFormatter()
+                                    df.dateFormat = "yyyy-MM-dd"
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        morningBriefShownDate = df.string(from: Date())
+                                    }
                                 } label: {
                                     Text("READ FULL BRIEF")
                                         .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
