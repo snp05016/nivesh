@@ -8,7 +8,7 @@ from database import get_session
 from models.db_models import StockUniverse
 from services.llm_utils import deepseek_chat
 from helpers import _extract_json_from_text
-from services.disk_cache import get, set
+from services.disk_cache import get as cache_get, set as cache_set
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +159,7 @@ def _parse_float(val: Any) -> float | None:
 
 def process_nl_query(query: str) -> dict[str, Any]:
     cache_key = f"nl_screener_{hash(query)}"
-    cached = get("screener", cache_key)
+    cached = cache_get("screener", cache_key)
     if cached:
         return cached
 
@@ -273,5 +273,5 @@ def process_nl_query(query: str) -> dict[str, Any]:
         "results": results
     }
     
-    set("screener", cache_key, response_data, ttl=3600) # Cache for 1hr
+    cache_set("screener", cache_key, response_data, ttl=3600) # Cache for 1hr
     return response_data
