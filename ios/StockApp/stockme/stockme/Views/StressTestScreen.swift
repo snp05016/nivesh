@@ -28,8 +28,8 @@ struct StressTestProgressResponse: Codable {
 
 struct StressTestJobResponse: Codable {
     let status: String
-    let progressPct: Int
-    let stage: String
+    let progressPct: Int?
+    let stage: String?
     let results: [StressTestResult]?
 
     enum CodingKeys: String, CodingKey {
@@ -193,42 +193,84 @@ class StressTestViewModel: ObservableObject {
     }
 
     private func startPolling(jobId: String, token: String) {
-        pollingTask = Task { [weak self] in
-            guard let self = self else { return }
-            let maxRetries = 300
-            var attempts = 0
+         pollingTask = Task { [weak self] in
+             guard let self = self else { return }
+             let maxRetries = 300
+             var attempts = 0
 
-            while attempts < maxRetries && !Task.isCancelled {
-                do {
-                    var request = URLRequest(url: URL(string: "\(self.baseURL)/api/v1/portfolio/stress-test/\(jobId)")!)
-                    request.httpMethod = "GET"
-                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+             while attempts < maxRetries && !Task.isCancelled {
+                 do {
+                     var request = URLRequest(url: URL(string: "\(self.baseURL)/api/v1/portfolio/stress-test/\(jobId)")!)
+                     request.httpMethod = "GET"
+                     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
-                    let (data, _) = try await URLSession.shared.data(for: request)
-                    let jobResponse = try JSONDecoder().decode(StressTestJobResponse.self, from: data)
+                     let (data, response) = try await URLSession.shared.data(for: request)
+                     
+                     guard let httpResponse = response as? HTTPURLResponse else { continue }
+                     
+                     // Handle 404 — job lost (server restart)
+                     if httpResponse.statusCode == 404 {
+                         await MainActor.run {
+                             self.errorMessage = "Server was restarted. Please run the simulation again."
+                             self.isLoading = false
+                             HapticManager.error()
+                         }
+                         return
+                     }
+                     
+                     // Try to decode the response body for error detail
+                     if let body = String(data: data, encoding: .utf8),
+                        httpResponse.statusCode >= 400 {
+                         var detail = "Server error \(httpResponse.statusCode)"
+                         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                            let d = json["detail"] as? String {
+                             detail = d
+                         }
+                         await MainActor.run {
+                             self.errorMessage = detail
+                             self.isLoading = false
+                             HapticManager.error()
+                         }
+                         return
+                     }
+                     
+                     let jobResponse = try JSONDecoder().decode(StressTestJobResponse.self, from: data)
 
-                    await MainActor.run {
-                        self.progressPct = jobResponse.progressPct
-                        self.progressStage = jobResponse.stage
-                        self.pollingStatus = jobResponse.status
-                    }
+                     await MainActor.run {
+                         self.progressPct = jobResponse.progressPct ?? 0
+                         self.progressStage = jobResponse.stage ?? ""
+                         self.pollingStatus = jobResponse.status
+                     }
 
-                    if jobResponse.status == "completed" {
-                        await MainActor.run {
-                            self.results = jobResponse.results ?? []
-                            self.isLoading = false
-                            self.progressPct = 100
-                            HapticManager.success()
-                        }
-                        return
-                    }
-                } catch {
-                    attempts += 1
-                }
+                     if jobResponse.status == "completed" {
+                         await MainActor.run {
+                             self.results = jobResponse.results ?? []
+                             self.isLoading = false
+                             self.progressPct = 100
+                             HapticManager.success()
+                         }
+                         return
+                     }
+                     
+                     if jobResponse.status == "failed" {
+                         await MainActor.run {
+                             self.errorMessage = "Simulation failed. Please try again."
+                             self.isLoading = false
+                             HapticManager.error()
+                         }
+                         return
+                     }
+                 } catch {
+                     // Network error (timeout, no connection)
+                     if (error as NSError).code == NSURLErrorTimedOut ||
+                        (error as NSError).code == NSURLErrorCannotConnectToHost {
+                         attempts += 5 // skip ahead faster
+                     }
+                 }
 
-                attempts += 1
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-            }
+                 attempts += 1
+                 try? await Task.sleep(nanoseconds: 1_000_000_000)
+             }
 
             if attempts >= maxRetries {
                 await MainActor.run {

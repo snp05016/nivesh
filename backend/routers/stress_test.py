@@ -82,17 +82,35 @@ def start_stress_test(req: StressTestRequest, user_id: int = Depends(require_aut
                     _jobs[job_id]["progress_pct"] = 100
                     _jobs[job_id]["stage"] = "Complete"
                     _jobs[job_id]["result"] = results
+                    _jobs[job_id]["finished_at"] = datetime.now(timezone.utc).isoformat()
         except Exception as e:
             with _lock:
                 if job_id in _jobs:
                     _jobs[job_id]["status"] = "failed"
                     _jobs[job_id]["error"] = str(e)
+                    _jobs[job_id]["finished_at"] = datetime.now(timezone.utc).isoformat()
     
     threading.Thread(target=_run, daemon=True).start()
     return {"job_id": job_id, "status": "running"}
 
+def _cleanup_old_jobs():
+    """Remove completed/failed jobs older than 5 minutes."""
+    with _lock:
+        now = datetime.now(timezone.utc)
+        stale = []
+        for jid, job in _jobs.items():
+            if job["status"] in ("completed", "failed"):
+                finished = job.get("finished_at")
+                if finished:
+                    ft = datetime.fromisoformat(finished)
+                    if (now - ft).total_seconds() > 300:
+                        stale.append(jid)
+        for jid in stale:
+            del _jobs[jid]
+
 @router.get("/api/v1/portfolio/stress-test/{job_id}")
 def get_stress_test_result(job_id: str):
+    _cleanup_old_jobs()
     with _lock:
         job = _jobs.get(job_id)
     
