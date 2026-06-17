@@ -59,16 +59,35 @@ def get_sector(company_name: str) -> str:
 
 # ── Core Engine ──────────────────────────────────────────────────────
 
+def _call_with_timeout(fn, *args, default=None, timeout=8):
+    """Call fn with timeout. Returns default on timeout/hang."""
+    import queue
+    result_queue = queue.Queue()
+    def _worker():
+        try:
+            result_queue.put(("ok", fn(*args)))
+        except Exception as e:
+            result_queue.put(("err", str(e)))
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+    t.join(timeout=timeout)
+    if t.is_alive():
+        return default
+    try:
+        status, value = result_queue.get_nowait()
+        if status == "ok":
+            return value
+    except Exception:
+        pass
+    return default
+
 def _estimate_betas(ticker: str) -> dict[str, float]:
     """Fetch beta estimates for a stock.
     Falls back to yfinance beta for market, 0.0 for other factors.
-    In production, use vasicek.py compute_factor_sensitivities with cached data.
+    Uses timeout wrapper to prevent hanging on slow API calls.
     """
-    try:
-        info = _yf_fetch_info(ticker)
-        market_beta = float(info.get("beta", 1.0) or 1.0)
-    except Exception:
-        market_beta = 1.0
+    info = _call_with_timeout(_yf_fetch_info, ticker, default={}, timeout=8)
+    market_beta = float(info.get("beta", 1.0) or 1.0)
     return {
         "market": market_beta,
         "midcap": 1.2 if market_beta > 1.0 else 0.8,
@@ -84,23 +103,17 @@ def _estimate_betas(ticker: str) -> dict[str, float]:
 
 def _estimate_volatility(ticker: str) -> float:
     """Estimate annualized volatility. Falls back to 30%."""
-    try:
-        info = _yf_fetch_info(ticker)
-        beta = float(info.get("beta", 1.0) or 1.0)
-        return round(0.20 * beta + 0.05, 4)
-    except Exception:
-        return 0.30
+    info = _call_with_timeout(_yf_fetch_info, ticker, default={}, timeout=8)
+    beta = float(info.get("beta", 1.0) or 1.0)
+    return round(0.20 * beta + 0.05, 4)
 
 
 def _estimate_adv(ticker: str) -> float:
     """Estimate average daily volume."""
-    try:
-        info = _yf_fetch_info(ticker)
-        avg_vol = info.get("averageVolume") or info.get("averageDailyVolume10Day")
-        if avg_vol and float(avg_vol) > 0:
-            return float(avg_vol)
-    except Exception:
-        pass
+    info = _call_with_timeout(_yf_fetch_info, ticker, default={}, timeout=8)
+    avg_vol = info.get("averageVolume") or info.get("averageDailyVolume10Day")
+    if avg_vol and float(avg_vol) > 0:
+        return float(avg_vol)
     return 1_000_000
 
 
