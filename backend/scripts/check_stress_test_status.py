@@ -9,9 +9,9 @@ import requests
 BASE = "http://localhost:8000"
 
 def get_token(username: str, password: str) -> str:
-    r = requests.post(f"{BASE}/auth/login", json={"username": username, "password": password}, timeout=5)
+    r = requests.post(f"{BASE}/login", json={"username": username, "password": password}, timeout=5)
     r.raise_for_status()
-    return r.json()["token"]
+    return r.json()["access_token"]
 
 def check_status(username: str, password: str):
     try:
