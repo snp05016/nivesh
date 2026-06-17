@@ -119,3 +119,23 @@ def get_stress_test_progress(job_id: str):
         "ticker_count": job.get("ticker_count", 0),
         "started_at": job.get("started_at"),
     }
+
+@router.get("/api/v1/dashboard/stress-test-jobs")
+def list_stress_test_jobs():
+    """Debug: list all stress test jobs (for dashboard and CLI)."""
+    with _lock:
+        jobs = dict(_jobs)
+    return {
+        "active_count": sum(1 for j in jobs.values() if j["status"] == "running"),
+        "total_count": len(jobs),
+        "jobs": [
+            {
+                "job_id": j["job_id"], "status": j["status"],
+                "progress_pct": j["progress_pct"], "stage": j["stage"],
+                "ticker_count": j.get("ticker_count", 0),
+                "started_at": j.get("started_at"),
+                "has_error": bool(j.get("error")),
+            }
+            for j in jobs.values()
+        ]
+    }

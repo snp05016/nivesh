@@ -104,6 +104,19 @@ def _estimate_adv(ticker: str) -> float:
     return 1_000_000
 
 
+def _build_fallback(h) -> dict:
+    """Build a fallback enriched holding when yfinance fails."""
+    ticker = h.ticker.upper() if hasattr(h, 'ticker') else str(h)
+    name = h.company_name if hasattr(h, 'company_name') else ticker
+    shares = float(h.shares) if hasattr(h, 'shares') else 0
+    buy_price = float(h.buy_price) if hasattr(h, 'buy_price') else 0
+    return {
+        "ticker": ticker, "company_name": name or ticker,
+        "shares": shares, "price": buy_price, "value": shares * buy_price,
+        "betas": _estimate_betas(ticker), "sector": get_sector(name or ""),
+        "volatility": 0.30, "avg_daily_volume": 1_000_000, "spread_bps": 0.005,
+    }
+
 def enrich_holdings(holdings, progress_callback=None) -> List[Dict[str, Any]]:
     """Enrich portfolio holdings with current price, beta factors, and liquidity params.
     
@@ -160,10 +173,27 @@ def enrich_holdings(holdings, progress_callback=None) -> List[Dict[str, Any]]:
         return result
     
     with ThreadPoolExecutor(max_workers=8) as pool:
-        futures = [pool.submit(_enrich_single, h) for h in holdings]
-        results = [f.result() for f in futures]
+        futures = {pool.submit(_enrich_single, h): i for i, h in enumerate(holdings)}
+        results = [None] * len(holdings)
+        import concurrent.futures as _cf
+        for f in _cf.as_completed(futures, timeout=120):
+            idx = futures[f]
+            try:
+                results[idx] = f.result(timeout=15)
+            except Exception:
+                h = holdings[idx]
+                results[idx] = _build_fallback(h)
+                with lock:
+                    completed[0] += 1
+                    if progress_callback:
+                        progress_callback(completed[0], total, f"{h.ticker} (fallback)")
+        
+        # Fill any remaining Nones
+        for i, r in enumerate(results):
+            if r is None:
+                results[i] = _build_fallback(holdings[i])
     
-    return results
+    return [r for r in results if r is not None]
 
 
 def run_stress_test(holdings, scenarios: List[str], progress_callback=None) -> List[Dict[str, Any]]:
