@@ -6,31 +6,63 @@ struct StressTestResponse: Codable {
     let results: [StressTestResult]
 }
 
+struct StressTestScores: Codable {
+    let riskScore: Int
+    let stressScore: Int
+    let macroFragility: Int
+    let liquidityScore: Int
+    let concentrationScore: Int
+    let tailRiskScore: Int
+    
+    enum CodingKeys: String, CodingKey {
+        case riskScore = "risk_score"
+        case stressScore = "stress_score"
+        case macroFragility = "macro_fragility"
+        case liquidityScore = "liquidity_score"
+        case concentrationScore = "concentration_score"
+        case tailRiskScore = "tail_risk_score"
+    }
+}
+
 struct StressTestResult: Codable, Identifiable {
     var id: String { name }
     let name: String
     let impactPct: Double
     let impactInr: Double
     let holdings: [StressTestHolding]
+    let scores: StressTestScores
     
     enum CodingKeys: String, CodingKey {
         case name
         case impactPct = "impact_pct"
         case impactInr = "impact_inr"
         case holdings
+        case scores
     }
 }
 
 struct StressTestHolding: Codable, Identifiable {
     var id: String { ticker }
     let ticker: String
+    let companyName: String
+    let sector: String
+    let value: Double
+    let weightPct: Double
     let impactPct: Double
     let impactInr: Double
+    let liquidityPenaltyPct: Double
+    let liquidityPenaltyInr: Double
     
     enum CodingKeys: String, CodingKey {
         case ticker
+        case companyName = "company_name"
+        case sector
+        case value
+        case weightPct = "weight_pct"
         case impactPct = "impact_pct"
         case impactInr = "impact_inr"
+        case liquidityPenaltyPct = "liquidity_penalty_pct"
+        case liquidityPenaltyInr = "liquidity_penalty_inr"
     }
 }
 
@@ -238,6 +270,24 @@ struct StressTestScreen: View {
                                 .padding(.horizontal, Theme.Spacing.screen)
                             }
                             
+                            // 2x3 SCORECARD GRID
+                            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                                Text("RISK SCORES")
+                                    .font(Theme.sectionCapsLabel())
+                                    .foregroundColor(Theme.inkTertiary)
+                                    .padding(.horizontal, Theme.Spacing.screen)
+                                
+                                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.standard), count: 2), spacing: Theme.Spacing.standard) {
+                                    ScoreTile(label: "Risk Score", value: result.scores.riskScore, color: Theme.bearRed)
+                                    ScoreTile(label: "Stress Score", value: result.scores.stressScore, color: Theme.holdAmber)
+                                    ScoreTile(label: "Macro Fragility", value: result.scores.macroFragility, color: Theme.securityGold)
+                                    ScoreTile(label: "Liquidity", value: result.scores.liquidityScore, color: Theme.bullGreen)
+                                    ScoreTile(label: "Concentration", value: result.scores.concentrationScore, color: Theme.inkSecondary)
+                                    ScoreTile(label: "Tail Risk", value: result.scores.tailRiskScore, color: Theme.bearRed)
+                                }
+                                .padding(.horizontal, Theme.Spacing.screen)
+                            }
+                            
                             // HOLDING CARDS
                             VStack(spacing: Theme.Spacing.standard) {
                                 ForEach(result.holdings) { h in
@@ -270,5 +320,31 @@ struct StressTestScreen: View {
         .navigationTitle("Stress Test")
         .navigationBarTitleDisplayMode(.inline)
         .helpSheet(isPresented: $showHelp, title: FeatureHelp.stressTest.title, subtitle: FeatureHelp.stressTest.subtitle, sections: FeatureHelp.stressTest.sections)
+    }
+}
+
+struct ScoreTile: View {
+    let label: String
+    let value: Int
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: Theme.Spacing.small) {
+            Text("\(value)")
+                .font(Theme.serialNumberFont(size: 24, relativeTo: .title2))
+                .foregroundColor(color)
+            Text(label)
+                .font(Theme.microLabel())
+                .foregroundColor(Theme.inkTertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Theme.Spacing.standard)
+        .padding(.horizontal, Theme.Spacing.card)
+        .background(Theme.canvasDeep)
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                .strokeBorder(Theme.borderFine, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
     }
 }
