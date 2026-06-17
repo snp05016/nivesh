@@ -138,12 +138,17 @@ If user mentions a company by name (e.g. 'like HDFC Bank'), extract that company
 Return ONLY a JSON object with a "parsed_filters" key containing the filters, and an optional "reference_company" key if a company was mentioned."""
 
 def _get_target_sectors(filter_sector: str) -> list[str]:
-    """Map a user's sector term to yfinance sector strings, using aliases."""
+    """Map a user's sector term to yfinance sector strings, using aliases.
+    Only includes the raw term if it exactly matches an alias (not as substring
+    to avoid matching 'it' against 'Utilities', 'Healthcare', etc.)."""
     fs = filter_sector.lower().strip()
-    targets = [fs]  # Always include the raw search term
+    targets = []
     for alias, mapped_targets in _SECTOR_ALIASES.items():
         if alias in fs or fs in alias:
             targets.extend(mapped_targets)
+    # Only include raw term as a direct match (not ILIKE substring — avoids false positives)
+    if not targets:
+        targets = [fs]
     return list(set(targets))
 
 
