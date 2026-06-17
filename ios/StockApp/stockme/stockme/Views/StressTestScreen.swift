@@ -342,12 +342,12 @@ struct StressTestScreen: View {
 
                         HStack {
                             Text(vm.progressStage)
-                                .font(Theme.roundedSecondary(size: 13, weight: .regular, relativeTo: .caption1))
+                                .font(Theme.roundedSecondary(size: 13, weight: .regular, relativeTo: .caption))
                                 .foregroundColor(Theme.inkSecondary)
                                 .lineLimit(2)
                             Spacer()
                             Text("\(vm.progressPct)%")
-                                .font(Theme.serialNumberFont(size: 13, relativeTo: .caption1))
+                                .font(Theme.serialNumberFont(size: 13, relativeTo: .caption))
                                 .foregroundColor(Theme.securityGold)
                         }
                         .padding(.horizontal, Theme.Spacing.screen)
@@ -357,7 +357,7 @@ struct StressTestScreen: View {
                             HapticManager.selection()
                         } label: {
                             Text("Cancel")
-                                .font(Theme.roundedSecondary(size: 13, weight: .medium, relativeTo: .caption1))
+                                .font(Theme.roundedSecondary(size: 13, weight: .medium, relativeTo: .caption))
                                 .foregroundColor(Theme.bearRed)
                                 .padding(.horizontal, Theme.Spacing.card)
                                 .padding(.vertical, Theme.Spacing.small)
