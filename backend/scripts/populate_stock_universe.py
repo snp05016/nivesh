@@ -323,6 +323,15 @@ async def populate_universe():
         
     logger.info(f"Successfully processed {len(records)} valid stock records. Saving to database...")
     
+    # Deduplicate by ticker — bulk_save_objects fails on UNIQUE constraint if batch has dupes
+    seen_tickers = set()
+    deduped = []
+    for r in records:
+        if r.ticker not in seen_tickers:
+            seen_tickers.add(r.ticker)
+            deduped.append(r)
+    records = deduped
+    
     with get_session() as session:
         # Do not delete, just append the new ones
         session.bulk_save_objects(records)
