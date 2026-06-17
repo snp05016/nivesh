@@ -81,24 +81,11 @@ def _call_with_timeout(fn, *args, default=None, timeout=30):
         pass
     return default
 
-def _estimate_betas(ticker: str) -> dict[str, float]:
-    """Fetch beta estimates for a stock.
-    Falls back to yfinance beta for market, 0.0 for other factors.
-    Uses timeout wrapper to prevent hanging on slow API calls.
-    """
-    info = _call_with_timeout(_yf_fetch_info, ticker, default={}, timeout=30)
-    market_beta = float(info.get("beta", 1.0) or 1.0)
-    return {
-        "market": market_beta,
-        "midcap": 1.2 if market_beta > 1.0 else 0.8,
-        "smallcap": 1.3 if market_beta > 1.0 else 0.7,
-        "oil": 0.2,
-        "rates": -0.3,
-        "fx": 0.1,
-        "inflation": -0.2,
-        "fii_flow": 0.5,
-        "dii_flow": -0.2,
-    }
+from services.math_engines.vasicek import get_adjusted_macro_betas
+
+def _estimate_betas(ticker: str, sector: str) -> dict[str, float]:
+    """Fetch beta estimates using Vasicek Bayesian Shrinkage."""
+    return get_adjusted_macro_betas(ticker, sector)
 
 
 def _estimate_volatility(ticker: str) -> float:
@@ -161,7 +148,8 @@ def enrich_holdings(holdings, progress_callback=None) -> List[Dict[str, Any]]:
                 price = float(h.buy_price)
             
             value = float(h.shares) * price
-            betas = _estimate_betas(ticker)
+            sector = get_sector(h.company_name or "")
+            betas = _estimate_betas(ticker, sector)
             volatility = _estimate_volatility(ticker)
             adv = _estimate_adv(ticker)
             
@@ -172,7 +160,7 @@ def enrich_holdings(holdings, progress_callback=None) -> List[Dict[str, Any]]:
                 "price": price,
                 "value": value,
                 "betas": betas,
-                "sector": get_sector(h.company_name or ""),
+                "sector": sector,
                 "volatility": volatility,
                 "avg_daily_volume": adv,
                 "spread_bps": 0.005,
@@ -225,6 +213,7 @@ def run_stress_test(holdings, scenarios: List[str], progress_callback=None) -> L
     from services.math_engines.liquidity import square_root_impact, portfolio_liquidity_loss
     from services.math_engines.concentration import compute_concentration_analysis
     from services.math_engines.scoring import compute_all_scores, compute_stress_score
+    from services.math_engines.covariance import fetch_historical_returns, compute_covariance_matrix, compute_crisis_covariance
     
     # Phase 1: Enrich holdings (parallel yfinance)
     enriched = enrich_holdings(holdings, progress_callback=progress_callback)
@@ -236,14 +225,36 @@ def run_stress_test(holdings, scenarios: List[str], progress_callback=None) -> L
     tickers = [e["ticker"] for e in enriched]
     sectors = [e["sector"] for e in enriched]
     
-    # Phase 2: Build simple covariance (NxN) from volatilities
+    # Phase 2: Fetch empirical covariance from historical returns
     n = len(enriched)
-    cov = np.eye(n)
-    for i in range(n):
-        cov[i, i] = enriched[i]["volatility"] ** 2
+    returns_dict = fetch_historical_returns(tickers, period="2y")
+    cov = compute_covariance_matrix(returns_dict, tickers)
     
-    # Phase 3: Concentration analysis (shared across scenarios)
-    conc = compute_concentration_analysis(tickers, weights, sectors, cov)
+    # Calculate historical skewness and kurtosis of the portfolio for Cornish-Fisher
+    port_rets_list = []
+    for ticker, weight in zip(tickers, weights):
+        rets = returns_dict.get(ticker)
+        if rets is not None and len(rets) > 0:
+            port_rets_list.append(rets[-252:] * weight) # Last 1 year common approx
+    
+    if len(port_rets_list) > 0:
+        min_len = min([len(r) for r in port_rets_list])
+        port_rets = np.sum([r[-min_len:] for r in port_rets_list], axis=0)
+        m2 = np.mean((port_rets - np.mean(port_rets))**2)
+        if m2 > 1e-10:
+            m3 = np.mean((port_rets - np.mean(port_rets))**3)
+            m4 = np.mean((port_rets - np.mean(port_rets))**4)
+            port_skew = float(m3 / (m2**1.5))
+            port_kurt = float((m4 / (m2**2)) - 3.0)
+        else:
+            port_skew, port_kurt = 0.0, 0.0
+    else:
+        port_skew, port_kurt = 0.0, 0.0
+    
+    # Pre-compute crisis covariance for severe crash scenarios
+    crisis_cov = compute_crisis_covariance(returns_dict, tickers, broken_arrow_corr=0.85)
+
+    # Phase 3: Concentration analysis (base covariance, updated per-scenario)
     
     results = []
     for sc_key in scenarios:
@@ -334,17 +345,24 @@ def run_stress_test(holdings, scenarios: List[str], progress_callback=None) -> L
             for k in ["oil", "rates", "fx", "inflation"]
         }
         
+        # Re-compute concentration if Broken Arrow triggered
+        is_severe_crash = "CRASH" in scenario["name"] or "RECESSION" in scenario["name"]
+        scenario_cov = crisis_cov if (is_severe_crash and len(crisis_cov) > 0) else cov
+        scen_conc = compute_concentration_analysis(tickers, weights, sectors, scenario_cov)
+
         scores = compute_all_scores(
             portfolio_vol_annualized=portfolio_vol,
             worst_case_loss_pct=worst_case_pct,
             macro_betas=macro_betas,
             liquidity_impact_pct=portfolio_liq["total_liquidity_loss_pct"],
-            concentration_hhi=conc["hhi"],
-            parametric_var_95_pct=portfolio_vol * 1.645 * np.sqrt(10),
+            concentration_hhi=scen_conc["hhi"],
+            parametric_var_95_pct=portfolio_vol * 1.645 * np.sqrt(10) * 100.0,
             cvar_99_pct=worst_case_pct,
             liquidity_score_raw=portfolio_liq.get("total_liquidity_loss_pct", 0.0) * 10,
+            skewness=port_skew,
+            kurtosis=port_kurt,
         )
-        scores["concentration_score"] = conc["concentration_score"]
+        scores["concentration_score"] = scen_conc["concentration_score"]
         
         results.append({
             "name": scenario["name"],
@@ -355,7 +373,7 @@ def run_stress_test(holdings, scenarios: List[str], progress_callback=None) -> L
             "total_value": round(total_value, 2),
             "scores": scores,
             "holdings": holdings_results,
-            "concentration": conc,
+            "concentration": scen_conc,
             "liquidity": {
                 "total_loss_pct": portfolio_liq["total_liquidity_loss_pct"],
                 "total_loss_inr": portfolio_liq["total_liquidity_loss_inr"],

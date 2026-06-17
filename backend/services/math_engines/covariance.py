@@ -1,7 +1,30 @@
 """Covariance matrices for stress testing — normal and crisis regimes."""
 from __future__ import annotations
 import numpy as np
+import pandas as pd
+import yfinance as yf
 from typing import Optional
+
+def fetch_historical_returns(tickers: list[str], period: str = "2y") -> dict[str, np.ndarray]:
+    """Fetch daily returns for a list of tickers via yfinance."""
+    returns_dict = {}
+    for t in tickers:
+        try:
+            ticker_obj = yf.Ticker(t)
+            hist = ticker_obj.history(period=period)
+            if not hist.empty and "Close" in hist.columns:
+                rets = hist["Close"].pct_change().dropna()
+                returns_dict[t] = rets.values
+            else:
+                returns_dict[t] = np.array([])
+        except Exception:
+            returns_dict[t] = np.array([])
+    return returns_dict
+
+def fetch_and_compute_covariance(tickers: list[str], period: str = "2y") -> np.ndarray:
+    """Construct an N x N covariance matrix from historical returns (fetch via yfinance)."""
+    returns_dict = fetch_historical_returns(tickers, period)
+    return compute_covariance_matrix(returns_dict, tickers)
 
 def compute_covariance_matrix(
     returns: dict[str, np.ndarray],
@@ -48,14 +71,37 @@ def compute_covariance_matrix(
 def compute_crisis_covariance(
     returns: dict[str, np.ndarray],
     ticker_order: list[str],
+    broken_arrow_corr: float = 0.85,
 ) -> np.ndarray:
-    """Broken Arrow heuristic: compute covariance over longest available history
-    to capture crisis regimes (1000-day or max available).
+    """Broken Arrow heuristic: In a severe crash scenario, artificially inflate 
+    all pairwise equity correlations to ~0.85 to simulate correlation breakdown.
     
     During stress tests, this matrix replaces the normal covariance to
-    model correlation breakdown (all assets → 1.0).
+    model correlation breakdown.
     """
-    return compute_covariance_matrix(returns, ticker_order)
+    n = len(ticker_order)
+    if n == 0:
+        return np.array([])
+    
+    # Base covariance
+    cov = compute_covariance_matrix(returns, ticker_order)
+    
+    if cov.size == 0:
+        return cov
+        
+    # Extract variances to compute volatilities
+    variances = np.diag(cov)
+    vols = np.sqrt(np.maximum(variances, 1e-12))
+    
+    # Broken Arrow Protocol: inflate correlations
+    corr = np.ones((n, n)) * broken_arrow_corr
+    np.fill_diagonal(corr, 1.0)
+    
+    # Reconstruct covariance: Σ = D * R * D
+    vol_matrix = np.outer(vols, vols)
+    crisis_cov = corr * vol_matrix
+    
+    return crisis_cov
 
 def conditional_shock_propagation(
     shocked_factors: dict[str, float],

@@ -1,6 +1,8 @@
 """Vasicek Bayesian Shrinkage estimator for equity beta sensitivities (§4.2)."""
 from __future__ import annotations
 import numpy as np
+import pandas as pd
+import yfinance as yf
 from typing import Optional
 
 def compute_ewma_beta(
@@ -62,9 +64,10 @@ def vasicek_shrinkage(
     Returns:
         Vasicek-shrunk beta
     """
-    if prior_var + ts_se**2 < 1e-10:
+    var_beta = ts_se ** 2
+    if prior_var + var_beta < 1e-10:
         return ts_beta
-    w = prior_var / (prior_var + ts_se**2)
+    w = prior_var / (prior_var + var_beta)
     return w * ts_beta + (1 - w) * prior_beta
 
 def compute_factor_sensitivities(
@@ -99,3 +102,95 @@ def compute_factor_sensitivities(
         shrunk = vasicek_shrinkage(raw_beta, ts_se, prior_beta=0.0, prior_var=1.0)
         betas[factor_name] = float(shrunk)
     return betas
+
+SECTOR_PRIOR_BETAS = {
+    "IT": 1.1,
+    "Banking": 1.2,
+    "FMCG": 0.8,
+    "Auto": 1.15,
+    "Pharma": 0.75,
+    "Oil & Gas": 1.05,
+    "Power": 0.9,
+    "Metals": 1.3,
+    "Cement": 1.1,
+    "NBFC": 1.25,
+    "Defence": 1.0,
+    "Infra": 1.1,
+    "Real Estate": 1.3,
+    "Telecom": 1.05,
+    "Other": 1.0
+}
+
+def get_adjusted_macro_betas(ticker: str, sector: str = "Other") -> dict[str, float]:
+    """
+    Fetch 1-year historical daily returns for the ticker and benchmark (^NSEI) using yfinance.
+    Compute empirical beta and its standard error, then shrink towards a sector mean.
+    Returns the adjusted macro factor betas required by stress_test.py.
+    """
+    try:
+        # Fetch 1-year historical daily returns
+        stock_data = yf.download(ticker, period="1y", interval="1d", progress=False)
+        market_data = yf.download("^NSEI", period="1y", interval="1d", progress=False)
+        
+        if stock_data.empty and not ticker.endswith(".NS"):
+            stock_data = yf.download(f"{ticker}.NS", period="1y", interval="1d", progress=False)
+            
+        if stock_data.empty or market_data.empty:
+            raise ValueError("Empty data fetched from yfinance")
+            
+        stock_prices = stock_data["Adj Close"] if "Adj Close" in stock_data else stock_data["Close"]
+        market_prices = market_data["Adj Close"] if "Adj Close" in market_data else market_data["Close"]
+        
+        if isinstance(stock_prices, pd.DataFrame):
+            stock_prices = stock_prices.iloc[:, 0]
+        if isinstance(market_prices, pd.DataFrame):
+            market_prices = market_prices.iloc[:, 0]
+            
+        stock_ret = np.log(stock_prices / stock_prices.shift(1)).dropna()
+        market_ret = np.log(market_prices / market_prices.shift(1)).dropna()
+        
+        # Align dates
+        df = pd.concat([stock_ret, market_ret], axis=1, join="inner").dropna()
+        if len(df) < 20:
+            market_beta = 1.0
+        else:
+            s_ret = df.iloc[:, 0].values
+            m_ret = df.iloc[:, 1].values
+            
+            # Empirical beta
+            cov = np.cov(s_ret, m_ret)[0, 1]
+            var_m = np.var(m_ret, ddof=1)
+            emp_beta = cov / var_m if var_m > 1e-10 else 1.0
+            
+            # Standard error of beta
+            residuals = s_ret - emp_beta * m_ret
+            se_res = np.std(residuals, ddof=1)
+            se_m = np.std(m_ret, ddof=1)
+            n = len(s_ret)
+            ts_se = se_res / (se_m * np.sqrt(n)) if se_m > 1e-10 else 1.0
+            
+            # Vasicek Shrinkage
+            prior_beta = SECTOR_PRIOR_BETAS.get(sector, 1.0)
+            prior_var = 0.05  # Prior variance assumed for the sector
+            
+            market_beta = vasicek_shrinkage(
+                ts_beta=emp_beta,
+                ts_se=ts_se,
+                prior_beta=prior_beta,
+                prior_var=prior_var
+            )
+            
+    except Exception:
+        market_beta = 1.0
+
+    return {
+        "market": float(market_beta),
+        "midcap": 1.2 if float(market_beta) > 1.0 else 0.8,
+        "smallcap": 1.3 if float(market_beta) > 1.0 else 0.7,
+        "oil": 0.2,
+        "rates": -0.3,
+        "fx": 0.1,
+        "inflation": -0.2,
+        "fii_flow": 0.5,
+        "dii_flow": -0.2,
+    }
