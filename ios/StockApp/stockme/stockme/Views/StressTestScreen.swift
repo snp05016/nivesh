@@ -105,9 +105,42 @@ struct StressTestHolding: Codable, Identifiable {
 // MARK: - Checkpoint Model
 
 struct StressCheckpoint: Identifiable {
-    let id: String       // matches backend checkpoint key
+    let id: String
     let label: String
     let icon: String
+}
+
+// MARK: - Diagnostic Info
+
+struct StressDiagnostic {
+    let urlAttempted: String
+    let httpStatus: Int?       // nil = never reached server
+    let errorDomain: String?
+    let errorCode: Int?
+    let rawBody: String?       // first 400 chars of response body
+
+    var summary: String {
+        if let status = httpStatus {
+            switch status {
+            case 401: return "HTTP 401 — Token invalid or expired. Log out and back in."
+            case 403: return "HTTP 403 — Access denied."
+            case 404: return "HTTP 404 — Endpoint not found. Server may need restart."
+            case 422: return "HTTP 422 — Request body rejected by server."
+            case 500: return "HTTP 500 — Server crash. Check server logs."
+            default:  return "HTTP \(status) — Unexpected response."
+            }
+        }
+        if let code = errorCode {
+            switch code {
+            case NSURLErrorCannotConnectToHost:  return "Cannot connect to \(urlAttempted). Is the server running?"
+            case NSURLErrorTimedOut:             return "Connection timed out after 30s."
+            case NSURLErrorNetworkConnectionLost: return "Network connection lost mid-request."
+            case NSURLErrorNotConnectedToInternet: return "No internet connection."
+            default: return "Network error (code \(code))."
+            }
+        }
+        return "Unknown failure."
+    }
 }
 
 // MARK: - ViewModel
@@ -117,13 +150,13 @@ class StressTestViewModel: ObservableObject {
     @Published var results: [StressTestResult] = []
     @Published var isLoading = false
     @Published var errorMessage: String? = nil
+    @Published var diagnostic: StressDiagnostic? = nil
 
     @Published var progressPct: Int = 0
     @Published var progressStage: String = ""
     @Published var activeCheckpoint: String = "init"
 
     private var pollingTask: Task<Void, Never>? = nil
-    private var baseURL: String { NetworkManager.shared.baseURL }
 
     let scenarios = [
         ("NIFTY_CRASH", "Nifty Crash", "chart.line.down.right"),
@@ -164,12 +197,17 @@ class StressTestViewModel: ObservableObject {
         guard !selectedScenarios.isEmpty else { return }
         isLoading = true
         errorMessage = nil
+        diagnostic = nil
         results = []
         progressPct = 0
         progressStage = ""
         activeCheckpoint = "init"
 
         pollingTask?.cancel()
+
+        // Capture baseURL on main actor before entering the Task
+        let serverURL = NetworkManager.shared.baseURL
+        let endpoint = "\(serverURL)/api/v1/portfolio/stress-test"
 
         Task { [weak self] in
             guard let self = self else { return }
@@ -179,17 +217,46 @@ class StressTestViewModel: ObservableObject {
                     "scenarios": Array(self.selectedScenarios)
                 ]
 
-                var request = URLRequest(url: URL(string: "\(self.baseURL)/api/v1/portfolio/stress-test")!)
+                var request = URLRequest(url: URL(string: endpoint)!)
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                request.timeoutInterval = 30
                 request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
                 let (data, postResponse) = try await URLSession.shared.data(for: request)
-                guard let httpResponse = postResponse as? HTTPURLResponse,
-                      httpResponse.statusCode == 202 || httpResponse.statusCode == 200 else {
-                    throw NSError(domain: "", code: -1,
-                        userInfo: [NSLocalizedDescriptionKey: "Server error: could not start stress test"])
+
+                guard let httpResponse = postResponse as? HTTPURLResponse else {
+                    let diag = StressDiagnostic(urlAttempted: endpoint, httpStatus: nil,
+                                               errorDomain: nil, errorCode: nil, rawBody: nil)
+                    await MainActor.run {
+                        self.diagnostic = diag
+                        self.errorMessage = "Invalid response from server."
+                        self.isLoading = false
+                        HapticManager.error()
+                    }
+                    return
+                }
+
+                let bodyPreview = String(data: data, encoding: .utf8).map { String($0.prefix(400)) }
+
+                guard httpResponse.statusCode == 200 || httpResponse.statusCode == 202 else {
+                    // Extract FastAPI detail field if present
+                    var detail = bodyPreview ?? "No body"
+                    if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let d = json["detail"] as? String {
+                        detail = d
+                    }
+                    let diag = StressDiagnostic(urlAttempted: endpoint,
+                                               httpStatus: httpResponse.statusCode,
+                                               errorDomain: nil, errorCode: nil, rawBody: detail)
+                    await MainActor.run {
+                        self.diagnostic = diag
+                        self.errorMessage = diag.summary
+                        self.isLoading = false
+                        HapticManager.error()
+                    }
+                    return
                 }
 
                 let job = try JSONDecoder().decode(StressTestJob.self, from: data)
@@ -206,10 +273,15 @@ class StressTestViewModel: ObservableObject {
                     return
                 }
 
-                await self.startPolling(jobId: job.jobId, token: token)
+                await self.startPolling(jobId: job.jobId, token: token, serverURL: serverURL)
             } catch {
+                let nsErr = error as NSError
+                let diag = StressDiagnostic(urlAttempted: endpoint, httpStatus: nil,
+                                           errorDomain: nsErr.domain, errorCode: nsErr.code,
+                                           rawBody: nsErr.localizedDescription)
                 await MainActor.run {
-                    self.errorMessage = error.localizedDescription
+                    self.diagnostic = diag
+                    self.errorMessage = diag.summary
                     self.isLoading = false
                     HapticManager.error()
                 }
@@ -217,15 +289,16 @@ class StressTestViewModel: ObservableObject {
         }
     }
 
-    private func startPolling(jobId: String, token: String) {
+    private func startPolling(jobId: String, token: String, serverURL: String) {
         pollingTask = Task { [weak self] in
             guard let self = self else { return }
             let maxRetries = 300
             var attempts = 0
+            let pollEndpoint = "\(serverURL)/api/v1/portfolio/stress-test/\(jobId)"
 
             while attempts < maxRetries && !Task.isCancelled {
                 do {
-                    var request = URLRequest(url: URL(string: "\(self.baseURL)/api/v1/portfolio/stress-test/\(jobId)")!)
+                    var request = URLRequest(url: URL(string: pollEndpoint)!)
                     request.httpMethod = "GET"
                     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
@@ -233,23 +306,16 @@ class StressTestViewModel: ObservableObject {
 
                     guard let httpResponse = response as? HTTPURLResponse else { continue }
 
-                    if httpResponse.statusCode == 404 {
-                        await MainActor.run {
-                            self.errorMessage = "Server was restarted. Please run the simulation again."
-                            self.isLoading = false
-                            HapticManager.error()
-                        }
-                        return
-                    }
-
                     if httpResponse.statusCode >= 400 {
-                        var detail = "Server error \(httpResponse.statusCode)"
+                        var detail = String(data: data, encoding: .utf8).map { String($0.prefix(400)) }
                         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                           let d = json["detail"] as? String {
-                            detail = d
-                        }
+                           let d = json["detail"] as? String { detail = d }
+                        let diag = StressDiagnostic(urlAttempted: pollEndpoint,
+                                                   httpStatus: httpResponse.statusCode,
+                                                   errorDomain: nil, errorCode: nil, rawBody: detail)
                         await MainActor.run {
-                            self.errorMessage = detail
+                            self.diagnostic = diag
+                            self.errorMessage = diag.summary
                             self.isLoading = false
                             HapticManager.error()
                         }
@@ -286,8 +352,12 @@ class StressTestViewModel: ObservableObject {
                         return
                     }
                 } catch {
-                    if (error as NSError).code == NSURLErrorTimedOut ||
-                       (error as NSError).code == NSURLErrorCannotConnectToHost {
+                    let nsErr = error as NSError
+                    if nsErr.code == NSURLErrorTimedOut || nsErr.code == NSURLErrorCannotConnectToHost {
+                        let diag = StressDiagnostic(urlAttempted: pollEndpoint, httpStatus: nil,
+                                                   errorDomain: nsErr.domain, errorCode: nsErr.code,
+                                                   rawBody: nsErr.localizedDescription)
+                        await MainActor.run { self.diagnostic = diag }
                         attempts += 5
                     }
                 }
@@ -313,6 +383,91 @@ class StressTestViewModel: ObservableObject {
         progressPct = 0
         progressStage = ""
         activeCheckpoint = "init"
+        diagnostic = nil
+    }
+}
+
+// MARK: - Diagnostic Card
+
+struct StressDiagnosticCard: View {
+    let message: String?
+    let diagnostic: StressDiagnostic?
+    let serverURL: String
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            // Summary row
+            HStack(spacing: Theme.Spacing.standard) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(Theme.bearRed)
+                Text(message ?? "Unknown error")
+                    .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
+                    .foregroundColor(Theme.bearRed)
+                    .multilineTextAlignment(.leading)
+                Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+                } label: {
+                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Theme.inkTertiary)
+                }
+                .buttonStyle(EKPressStyle())
+            }
+
+            // Debug rows (collapsed by default)
+            if expanded {
+                GuillocheDivider()
+
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                    DiagRow(label: "Server", value: serverURL)
+                    if let d = diagnostic {
+                        if let url = Optional(d.urlAttempted), url != serverURL {
+                            DiagRow(label: "Endpoint", value: url)
+                        }
+                        if let status = d.httpStatus {
+                            DiagRow(label: "HTTP Status", value: "\(status)")
+                        }
+                        if let domain = d.errorDomain, let code = d.errorCode {
+                            DiagRow(label: "Error", value: "\(domain) \(code)")
+                        }
+                        if let body = d.rawBody {
+                            DiagRow(label: "Body", value: body)
+                        }
+                    }
+                }
+
+                Text("Change server URL in Settings → Server URL")
+                    .font(Theme.microLabel())
+                    .foregroundColor(Theme.inkTertiary)
+            }
+        }
+        .padding(Theme.Spacing.card)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.bearRedLight)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+            .strokeBorder(Theme.bearRed.opacity(0.4), lineWidth: 1))
+        .padding(.horizontal, Theme.screenPadding)
+    }
+}
+
+private struct DiagRow: View {
+    let label: String
+    let value: String
+    var body: some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.small) {
+            Text(label)
+                .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
+                .tracking(0.8)
+                .foregroundColor(Theme.inkTertiary)
+                .frame(width: 72, alignment: .leading)
+            Text(value)
+                .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
+                .foregroundColor(Theme.inkSecondary)
+                .multilineTextAlignment(.leading)
+        }
     }
 }
 
@@ -552,25 +707,10 @@ struct StressTestScreen: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
-                // ERROR STATE
-                if let error = vm.errorMessage {
-                    HStack(spacing: Theme.Spacing.standard) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(Theme.bearRed)
-                        Text(error)
-                            .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
-                            .foregroundColor(Theme.bearRed)
-                            .multilineTextAlignment(.leading)
-                    }
-                    .padding(Theme.Spacing.card)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Theme.bearRedLight)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                            .strokeBorder(Theme.bearRed.opacity(0.4), lineWidth: 1)
-                    )
-                    .padding(.horizontal, Theme.screenPadding)
+                // ERROR + DIAGNOSTIC CARD
+                if vm.errorMessage != nil || vm.diagnostic != nil {
+                    StressDiagnosticCard(message: vm.errorMessage, diagnostic: vm.diagnostic,
+                                        serverURL: NetworkManager.shared.baseURL)
                 }
 
                 // RESULTS
