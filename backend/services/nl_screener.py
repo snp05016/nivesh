@@ -1,8 +1,9 @@
 import json
 import logging
-import yfinance as yf
 from typing import Any
 
+from database import get_session
+from models.db_models import StockUniverse
 from services.llm_utils import deepseek_chat
 from helpers import _extract_json_from_text
 from services.disk_cache import get, set
@@ -261,52 +262,36 @@ def process_nl_query(query: str) -> dict[str, Any]:
         logger.error(f"Failed to parse NL query: {e}")
         filters = {}
 
-    # Narrow universe to ~60 stocks when a sector filter is present so yfinance
-    # calls stay fast. Without a sector filter use the full NIFTY-50 + Next-50.
-    sector_filter = filters.get("sector", "").lower().strip()
-    if sector_filter:
-        # Use the full universe and let _evaluate_stock do sector filtering
-        tickers = _INDIA_STOCK_UNIVERSE
-    else:
-        # No sector requested — use the first 100 (large + upper-mid cap) for speed
-        tickers = _INDIA_STOCK_UNIVERSE[:100]
-
-    import asyncio
-    async def fetch_ticker_info(t: str) -> tuple[str, dict]:
-        try:
-            return t, await asyncio.to_thread(lambda: yf.Ticker(t).info)
-        except Exception:
-            return t, {}
-
-    async def fetch_all(ts: list[str]):
-        tasks = [fetch_ticker_info(t) for t in ts]
-        return await asyncio.gather(*tasks)
+    results = []
     
     try:
-        # Avoid "asyncio.run() cannot be called from a running event loop"
-        # in case router is running in one
-        loop = asyncio.get_running_loop()
-        import nest_asyncio
-        nest_asyncio.apply()
-        ticker_infos = loop.run_until_complete(fetch_all(tickers))
-    except RuntimeError:
-        ticker_infos = asyncio.run(fetch_all(tickers))
-
-    results = []
-    for t, info in ticker_infos:
-        if not info or "shortName" not in info:
-            continue
-        
-        is_match, reason, score = _evaluate_stock(info, filters)
-        if is_match:
-            results.append({
-                "ticker": t,
-                "company": info.get("shortName", t),
-                "score": round(score, 1),
-                "reason": reason,
-                "sector": info.get("sector", "Unknown")
-            })
+        with get_session() as session:
+            stock_records = session.query(StockUniverse).all()
             
+            for stock in stock_records:
+                info = {
+                    "trailingPE": stock.pe_ratio,
+                    "marketCap": stock.market_cap,
+                    "heldPercentInsiders": (stock.promoter_holding / 100.0) if stock.promoter_holding is not None else None,
+                    "returnOnEquity": (stock.roe / 100.0) if stock.roe is not None else None,
+                    "debtToEquity": stock.debt_to_equity,
+                    "dividendYield": (stock.dividend_yield / 100.0) if stock.dividend_yield is not None else None,
+                    "sector": stock.sector,
+                    "shortName": stock.company_name
+                }
+                
+                is_match, reason, score = _evaluate_stock(info, filters)
+                if is_match:
+                    results.append({
+                        "ticker": stock.ticker,
+                        "company": stock.company_name or stock.ticker,
+                        "score": round(score, 1),
+                        "reason": reason,
+                        "sector": stock.sector or "Unknown"
+                    })
+    except Exception as e:
+        logger.error(f"Database query failed for NL Screener: {e}")
+
     # Sort results by score descending
     results.sort(key=lambda x: x["score"], reverse=True)
     

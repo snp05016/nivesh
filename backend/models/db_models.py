@@ -607,3 +607,35 @@ class CovarianceMatrix(Base):
     tickers_list = Column(JSON, default=list)
     data_matrix = Column(JSON, default=list)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class StockUniverse(Base):
+    """Nightly cached fundamental data for 2000+ Indian stocks. Used by NL Screener."""
+    __tablename__ = "stock_universe"
+    
+    ticker = Column(String(30), primary_key=True)
+    company_name = Column(String(200), nullable=True)
+    sector = Column(String(100), nullable=True)
+    industry = Column(String(100), nullable=True)
+    
+    market_cap = Column(Float, nullable=True)          # Absolute INR
+    pe_ratio = Column(Float, nullable=True)
+    roe = Column(Float, nullable=True)                 # Percentage (e.g., 15.5 for 15.5%)
+    roce = Column(Float, nullable=True)                # Percentage
+    debt_to_equity = Column(Float, nullable=True)      # Ratio (e.g. 1.2)
+    promoter_holding = Column(Float, nullable=True)    # Percentage
+    fii_holding = Column(Float, nullable=True)         # Percentage
+    dii_holding = Column(Float, nullable=True)         # Percentage
+    dividend_yield = Column(Float, nullable=True)      # Percentage
+    ebitda_margin = Column(Float, nullable=True)       # Percentage
+    
+    price_change_3m = Column(Float, nullable=True)     # Percentage
+    price_change_1y = Column(Float, nullable=True)     # Percentage
+    rsi = Column(Float, nullable=True)                 # 0-100
+    
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_stock_universe_market_cap", "market_cap"),
+        Index("ix_stock_universe_sector", "sector"),
+    )
+
