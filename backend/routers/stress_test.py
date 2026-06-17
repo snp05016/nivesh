@@ -2,7 +2,7 @@ import threading
 import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 from datetime import datetime, timezone
 
 from helpers import get_session, require_auth
@@ -51,36 +51,40 @@ def start_stress_test(req: StressTestRequest, user_id: int = Depends(require_aut
     job_id = str(uuid.uuid4())[:12]
     now = datetime.now(timezone.utc).isoformat()
     
-    progress = {"stage": "initializing", "pct": 0, "total": len(holdings), "completed": 0}
-    
     with _lock:
         _jobs[job_id] = {
             "job_id": job_id, "status": "running", "started_at": now,
-            "stage": progress["stage"], "progress_pct": 0, "ticker_count": len(holdings),
-            "result": None, "error": None, "progress": progress
+            "stage": "Initializing…", "progress_pct": 0, "checkpoint": "init",
+            "ticker_count": len(holdings), "result": None, "error": None,
         }
     
+    def _set(stage: str, pct: int, checkpoint: str):
+        with _lock:
+            if job_id in _jobs:
+                _jobs[job_id]["stage"] = stage
+                _jobs[job_id]["progress_pct"] = pct
+                _jobs[job_id]["checkpoint"] = checkpoint
+
     def _run():
         try:
+            _set("Initializing simulation…", 2, "init")
+
             def _on_progress(done, total, current_ticker):
-                pct = int((done / total) * 80)
-                with _lock:
-                    if job_id in _jobs:
-                        _jobs[job_id]["stage"] = f"Loading {current_ticker} ({done}/{total})"
-                        _jobs[job_id]["progress_pct"] = pct
-            
-            with _lock:
-                if job_id in _jobs:
-                    _jobs[job_id]["stage"] = "Fetching market data..."
-                    _jobs[job_id]["progress_pct"] = 5
-            
+                pct = 5 + int((done / total) * 70)
+                _set(f"Loading {current_ticker} ({done}/{total})", pct, "enrich")
+
+            _set("Fetching market data for holdings…", 5, "enrich")
             results = run_stress_test(holdings, req.scenarios, progress_callback=_on_progress)
-            
+
+            _set(f"Running {len(req.scenarios)} scenario(s)…", 80, "scenarios")
+            _set("Computing concentration & tail-risk scores…", 92, "scoring")
+
             with _lock:
                 if job_id in _jobs:
                     _jobs[job_id]["status"] = "completed"
                     _jobs[job_id]["progress_pct"] = 100
                     _jobs[job_id]["stage"] = "Complete"
+                    _jobs[job_id]["checkpoint"] = "done"
                     _jobs[job_id]["result"] = results
                     _jobs[job_id]["finished_at"] = datetime.now(timezone.utc).isoformat()
         except Exception as e:
@@ -118,7 +122,12 @@ def get_stress_test_result(job_id: str):
         raise HTTPException(status_code=404, detail="Job not found")
     
     if job["status"] == "running":
-        return {"status": "running", "progress_pct": job["progress_pct"], "stage": job["stage"]}
+        return {
+            "status": "running",
+            "progress_pct": job["progress_pct"],
+            "stage": job["stage"],
+            "checkpoint": job.get("checkpoint", "init"),
+        }
     
     if job["status"] == "failed":
         raise HTTPException(status_code=500, detail=f"Stress test failed: {job.get('error')}")
