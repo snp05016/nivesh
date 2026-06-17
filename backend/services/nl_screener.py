@@ -2,6 +2,8 @@ import json
 import logging
 from typing import Any
 
+from sqlalchemy import or_
+
 from database import get_session
 from models.db_models import StockUniverse
 from services.llm_utils import deepseek_chat
@@ -135,19 +137,14 @@ If user mentions a company by name (e.g. 'like HDFC Bank'), extract that company
 
 Return ONLY a JSON object with a "parsed_filters" key containing the filters, and an optional "reference_company" key if a company was mentioned."""
 
-def _sector_matches(filter_sector: str, yf_sector: str) -> bool:
-    """Check if a user's sector term matches the yfinance sector string, using aliases."""
+def _get_target_sectors(filter_sector: str) -> list[str]:
+    """Map a user's sector term to yfinance sector strings, using aliases."""
     fs = filter_sector.lower().strip()
-    ys = yf_sector.lower().strip()
-    # Direct substring match
-    if fs in ys or ys in fs:
-        return True
-    # Alias lookup: map common terms to yfinance sector names
-    for alias, targets in _SECTOR_ALIASES.items():
+    targets = [fs]  # Always include the raw search term
+    for alias, mapped_targets in _SECTOR_ALIASES.items():
         if alias in fs or fs in alias:
-            if any(t in ys or ys in t for t in targets):
-                return True
-    return False
+            targets.extend(mapped_targets)
+    return list(set(targets))
 
 
 def _parse_float(val: Any) -> float | None:
@@ -159,88 +156,6 @@ def _parse_float(val: Any) -> float | None:
     except (TypeError, ValueError):
         return None
 
-
-def _evaluate_stock(info: dict, filters: dict) -> tuple[bool, str, float]:
-    """Evaluate a stock info dictionary against the parsed filters."""
-    score = 1.0
-    reasons = []
-
-    pe = info.get("trailingPE")
-    market_cap = info.get("marketCap")
-    # yfinance heldPercentInsiders is 0-1; multiply by 100 for %
-    promoter_raw = info.get("heldPercentInsiders")
-    promoter_pct = promoter_raw * 100 if promoter_raw is not None else None
-    roe_raw = info.get("returnOnEquity")
-    roe_pct = roe_raw * 100 if roe_raw is not None else None
-    # yfinance debtToEquity is already a ratio (e.g. 0.5 means 50%)
-    de = info.get("debtToEquity")
-    div_raw = info.get("dividendYield")
-    div_pct = div_raw * 100 if div_raw is not None else None
-    sector = info.get("sector") or ""
-
-    def _f(key: str) -> float | None:
-        return _parse_float(filters.get(key))
-
-    pe_max = _f("pe_max")
-    pe_min = _f("pe_min")
-    if pe_max is not None and pe is not None:
-        if pe > pe_max:
-            return False, "", 0.0
-        reasons.append(f"PE {pe:.1f} ≤ {pe_max}")
-    if pe_min is not None and pe is not None:
-        if pe < pe_min:
-            return False, "", 0.0
-        reasons.append(f"PE {pe:.1f} ≥ {pe_min}")
-
-    promo_min = _f("promoter_holding_min")
-    if promo_min is not None and promoter_pct is not None:
-        if promoter_pct < promo_min:
-            return False, "", 0.0
-        reasons.append(f"Promoter {promoter_pct:.1f}% ≥ {promo_min}%")
-
-    roce_min = _f("roce_min")
-    roe_min = _f("roe_min")
-    effective_roe_min = roce_min if roce_min is not None else roe_min
-    if effective_roe_min is not None and roe_pct is not None:
-        if roe_pct < effective_roe_min:
-            return False, "", 0.0
-        reasons.append(f"ROE {roe_pct:.1f}% ≥ {effective_roe_min}%")
-
-    de_max = _f("debt_to_equity_max")
-    if de_max is not None and de is not None:
-        if de > de_max:
-            return False, "", 0.0
-        reasons.append(f"D/E {de:.2f} ≤ {de_max}")
-
-    div_min = _f("dividend_yield_min")
-    if div_min is not None and div_pct is not None:
-        if div_pct < div_min:
-            return False, "", 0.0
-        reasons.append(f"Div yield {div_pct:.1f}% ≥ {div_min}%")
-
-    cap_min = _f("market_cap_min")
-    cap_max = _f("market_cap_max")
-    # Filter values are in Crores; yfinance marketCap is in absolute INR
-    # 1 Crore = 10^7
-    if cap_min is not None and market_cap is not None:
-        if market_cap < cap_min * 1e7:
-            return False, "", 0.0
-        reasons.append(f"MCap > {cap_min:,.0f}Cr")
-    if cap_max is not None and market_cap is not None:
-        if market_cap > cap_max * 1e7:
-            return False, "", 0.0
-        reasons.append(f"MCap < {cap_max:,.0f}Cr")
-
-    filter_sector = filters.get("sector") or ""
-    if filter_sector and sector:
-        if not _sector_matches(filter_sector, sector):
-            return False, "", 0.0
-        reasons.append(f"Sector: {sector}")
-
-    if not reasons:
-        reasons.append("Matches general criteria")
-
-    return True, ", ".join(reasons), score * 100
 
 def process_nl_query(query: str) -> dict[str, Any]:
     cache_key = f"nl_screener_{hash(query)}"
@@ -266,35 +181,90 @@ def process_nl_query(query: str) -> dict[str, Any]:
     
     try:
         with get_session() as session:
-            stock_records = session.query(StockUniverse).all()
+            sql_query = session.query(StockUniverse)
             
-            for stock in stock_records:
-                info = {
-                    "trailingPE": stock.pe_ratio,
-                    "marketCap": stock.market_cap,
-                    "heldPercentInsiders": (stock.promoter_holding / 100.0) if stock.promoter_holding is not None else None,
-                    "returnOnEquity": (stock.roe / 100.0) if stock.roe is not None else None,
-                    "debtToEquity": stock.debt_to_equity,
-                    "dividendYield": (stock.dividend_yield / 100.0) if stock.dividend_yield is not None else None,
-                    "sector": stock.sector,
-                    "shortName": stock.company_name
-                }
+            # Helper to add filters safely
+            def _f(key: str) -> float | None:
+                return _parse_float(filters.get(key))
+
+            pe_max = _f("pe_max")
+            if pe_max is not None: sql_query = sql_query.filter(StockUniverse.pe_ratio <= pe_max)
+            
+            pe_min = _f("pe_min")
+            if pe_min is not None: sql_query = sql_query.filter(StockUniverse.pe_ratio >= pe_min)
+
+            cap_min = _f("market_cap_min")
+            if cap_min is not None: sql_query = sql_query.filter(StockUniverse.market_cap >= cap_min * 1e7)
+            
+            cap_max = _f("market_cap_max")
+            if cap_max is not None: sql_query = sql_query.filter(StockUniverse.market_cap <= cap_max * 1e7)
+
+            promo_min = _f("promoter_holding_min")
+            if promo_min is not None: sql_query = sql_query.filter(StockUniverse.promoter_holding >= promo_min)
+
+            fii_min = _f("fii_holding_min")
+            if fii_min is not None: sql_query = sql_query.filter(StockUniverse.fii_holding >= fii_min)
+
+            dii_min = _f("dii_holding_min")
+            if dii_min is not None: sql_query = sql_query.filter(StockUniverse.dii_holding >= dii_min)
+
+            roce_min = _f("roce_min")
+            if roce_min is not None: sql_query = sql_query.filter(StockUniverse.roce >= roce_min)
+
+            roe_min = _f("roe_min")
+            if roe_min is not None: sql_query = sql_query.filter(StockUniverse.roe >= roe_min)
+
+            de_max = _f("debt_to_equity_max")
+            if de_max is not None: sql_query = sql_query.filter(StockUniverse.debt_to_equity <= de_max)
+
+            div_min = _f("dividend_yield_min")
+            if div_min is not None: sql_query = sql_query.filter(StockUniverse.dividend_yield >= div_min)
+
+            ebitda_min = _f("ebitda_margin_min")
+            if ebitda_min is not None: sql_query = sql_query.filter(StockUniverse.ebitda_margin >= ebitda_min)
+
+            p3m_min = _f("price_change_3m_min")
+            if p3m_min is not None: sql_query = sql_query.filter(StockUniverse.price_change_3m >= p3m_min)
+
+            p1y_min = _f("price_change_1y_min")
+            if p1y_min is not None: sql_query = sql_query.filter(StockUniverse.price_change_1y >= p1y_min)
+
+            rsi_min = _f("rsi_min")
+            if rsi_min is not None: sql_query = sql_query.filter(StockUniverse.rsi >= rsi_min)
+
+            rsi_max = _f("rsi_max")
+            if rsi_max is not None: sql_query = sql_query.filter(StockUniverse.rsi <= rsi_max)
+
+            filter_sector = filters.get("sector")
+            if filter_sector:
+                targets = _get_target_sectors(str(filter_sector))
+                conditions = [StockUniverse.sector.ilike(f"%{t}%") for t in targets]
+                sql_query = sql_query.filter(or_(*conditions))
                 
-                is_match, reason, score = _evaluate_stock(info, filters)
-                if is_match:
-                    results.append({
-                        "ticker": stock.ticker,
-                        "company": stock.company_name or stock.ticker,
-                        "score": round(score, 1),
-                        "reason": reason,
-                        "sector": stock.sector or "Unknown"
-                    })
+            keyword = filters.get("keyword")
+            if keyword:
+                kw = str(keyword)
+                sql_query = sql_query.filter(
+                    or_(
+                        StockUniverse.company_name.ilike(f"%{kw}%"),
+                        StockUniverse.industry.ilike(f"%{kw}%")
+                    )
+                )
+
+            # Execute the optimized SQL query
+            matching_stocks = sql_query.all()
+            
+            for stock in matching_stocks:
+                results.append({
+                    "ticker": stock.ticker,
+                    "company": stock.company_name or stock.ticker,
+                    "score": 100.0,
+                    "reason": "Matches Database Criteria",
+                    "sector": stock.sector or "Unknown"
+                })
     except Exception as e:
         logger.error(f"Database query failed for NL Screener: {e}")
 
-    # Sort results by score descending
-    results.sort(key=lambda x: x["score"], reverse=True)
-    
     # Convert all filter values to strings for iOS compatibility
     stringified_filters = {str(k): str(v) for k, v in filters.items()}
 
