@@ -44,20 +44,21 @@ def start_stress_test(req: StressTestRequest, user_id: int = Depends(require_aut
         holdings = db.query(Portfolio).filter(
             Portfolio.user_id == user_id, Portfolio.group_name == req.portfolio_id
         ).all()
-    
+
     if not holdings:
         return {"results": [], "status": "completed"}
-    
+
     job_id = str(uuid.uuid4())[:12]
     now = datetime.now(timezone.utc).isoformat()
-    
+
     with _lock:
         _jobs[job_id] = {
-            "job_id": job_id, "status": "running", "started_at": now,
-            "stage": "Initializing…", "progress_pct": 0, "checkpoint": "init",
-            "ticker_count": len(holdings), "result": None, "error": None,
+            "job_id": job_id, "owner_user_id": user_id, "status": "running",
+            "started_at": now, "stage": "Initializing…", "progress_pct": 0,
+            "checkpoint": "init", "ticker_count": len(holdings),
+            "result": None, "error": None,
         }
-    
+
     def _set(stage: str, pct: int, checkpoint: str):
         with _lock:
             if job_id in _jobs:
@@ -93,34 +94,42 @@ def start_stress_test(req: StressTestRequest, user_id: int = Depends(require_aut
                     _jobs[job_id]["status"] = "failed"
                     _jobs[job_id]["error"] = str(e)
                     _jobs[job_id]["finished_at"] = datetime.now(timezone.utc).isoformat()
-    
+
     threading.Thread(target=_run, daemon=True).start()
     return {"job_id": job_id, "status": "running"}
+
 
 def _cleanup_old_jobs():
     """Remove completed/failed jobs older than 5 minutes."""
     with _lock:
         now = datetime.now(timezone.utc)
-        stale = []
-        for jid, job in _jobs.items():
-            if job["status"] in ("completed", "failed"):
-                finished = job.get("finished_at")
-                if finished:
-                    ft = datetime.fromisoformat(finished)
-                    if (now - ft).total_seconds() > 300:
-                        stale.append(jid)
+        stale = [
+            jid for jid, job in _jobs.items()
+            if job["status"] in ("completed", "failed")
+            and job.get("finished_at")
+            and (now - datetime.fromisoformat(job["finished_at"])).total_seconds() > 300
+        ]
         for jid in stale:
             del _jobs[jid]
 
-@router.get("/api/v1/portfolio/stress-test/{job_id}")
-def get_stress_test_result(job_id: str):
-    _cleanup_old_jobs()
+
+def _get_owned_job(job_id: str, user_id: int) -> dict:
+    """Return the job dict if it belongs to user_id, else raise 404."""
     with _lock:
         job = _jobs.get(job_id)
-    
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    
+    if job["owner_user_id"] != user_id:
+        # Return 404 (not 403) to avoid leaking job existence to other users
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
+
+@router.get("/api/v1/portfolio/stress-test/{job_id}")
+def get_stress_test_result(job_id: str, user_id: int = Depends(require_auth)):
+    _cleanup_old_jobs()
+    job = _get_owned_job(job_id, user_id)
+
     if job["status"] == "running":
         return {
             "status": "running",
@@ -128,18 +137,16 @@ def get_stress_test_result(job_id: str):
             "stage": job["stage"],
             "checkpoint": job.get("checkpoint", "init"),
         }
-    
+
     if job["status"] == "failed":
         raise HTTPException(status_code=500, detail=f"Stress test failed: {job.get('error')}")
-    
+
     return {"status": "completed", "results": job.get("result", [])}
 
+
 @router.get("/api/v1/portfolio/stress-test/{job_id}/progress")
-def get_stress_test_progress(job_id: str):
-    with _lock:
-        job = _jobs.get(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+def get_stress_test_progress(job_id: str, user_id: int = Depends(require_auth)):
+    job = _get_owned_job(job_id, user_id)
     return {
         "job_id": job_id, "status": job["status"],
         "progress_pct": job["progress_pct"], "stage": job["stage"],
@@ -147,14 +154,15 @@ def get_stress_test_progress(job_id: str):
         "started_at": job.get("started_at"),
     }
 
+
 @router.get("/api/v1/dashboard/stress-test-jobs")
-def list_stress_test_jobs():
-    """Debug: list all stress test jobs (for dashboard and CLI)."""
+def list_stress_test_jobs(user_id: int = Depends(require_auth)):
+    """List stress test jobs belonging to the authenticated user."""
     with _lock:
-        jobs = dict(_jobs)
+        user_jobs = [j for j in _jobs.values() if j["owner_user_id"] == user_id]
     return {
-        "active_count": sum(1 for j in jobs.values() if j["status"] == "running"),
-        "total_count": len(jobs),
+        "active_count": sum(1 for j in user_jobs if j["status"] == "running"),
+        "total_count": len(user_jobs),
         "jobs": [
             {
                 "job_id": j["job_id"], "status": j["status"],
@@ -163,6 +171,6 @@ def list_stress_test_jobs():
                 "started_at": j.get("started_at"),
                 "has_error": bool(j.get("error")),
             }
-            for j in jobs.values()
+            for j in user_jobs
         ]
     }
