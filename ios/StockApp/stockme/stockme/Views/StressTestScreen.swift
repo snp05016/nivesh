@@ -30,12 +30,14 @@ struct StressTestJobResponse: Codable {
     let status: String
     let progressPct: Int?
     let stage: String?
+    let checkpoint: String?
     let results: [StressTestResult]?
 
     enum CodingKeys: String, CodingKey {
         case status
         case progressPct = "progress_pct"
         case stage
+        case checkpoint
         case results
     }
 }
@@ -100,6 +102,14 @@ struct StressTestHolding: Codable, Identifiable {
     }
 }
 
+// MARK: - Checkpoint Model
+
+struct StressCheckpoint: Identifiable {
+    let id: String       // matches backend checkpoint key
+    let label: String
+    let icon: String
+}
+
 // MARK: - ViewModel
 
 class StressTestViewModel: ObservableObject {
@@ -110,7 +120,7 @@ class StressTestViewModel: ObservableObject {
 
     @Published var progressPct: Int = 0
     @Published var progressStage: String = ""
-    @Published var pollingStatus: String = ""
+    @Published var activeCheckpoint: String = "init"
 
     private var pollingTask: Task<Void, Never>? = nil
     private var baseURL: String { NetworkManager.shared.baseURL }
@@ -123,8 +133,21 @@ class StressTestViewModel: ObservableObject {
         ("GLOBAL_RECESSION", "Recession", "globe.americas"),
         ("POLICY_SHOCK", "Policy Shock", "building.columns"),
         ("CURRENCY_CRASH", "Currency Crash", "indianrupeesign.circle"),
-        ("CUSTOM", "Custom", "slider.horizontal.3")
     ]
+
+    let checkpoints: [StressCheckpoint] = [
+        StressCheckpoint(id: "init",      label: "Initializing",        icon: "cpu"),
+        StressCheckpoint(id: "enrich",    label: "Loading Market Data", icon: "arrow.down.circle"),
+        StressCheckpoint(id: "scenarios", label: "Running Scenarios",   icon: "waveform.path.ecg"),
+        StressCheckpoint(id: "scoring",   label: "Risk Scoring",        icon: "chart.bar.xaxis"),
+        StressCheckpoint(id: "done",      label: "Complete",            icon: "checkmark.seal.fill"),
+    ]
+
+    func checkpointIndex(for key: String) -> Int {
+        checkpoints.firstIndex(where: { $0.id == key }) ?? 0
+    }
+
+    var activeIndex: Int { checkpointIndex(for: activeCheckpoint) }
 
     func toggleScenario(_ id: String) {
         if selectedScenarios.contains(id) {
@@ -144,7 +167,7 @@ class StressTestViewModel: ObservableObject {
         results = []
         progressPct = 0
         progressStage = ""
-        pollingStatus = ""
+        activeCheckpoint = "init"
 
         pollingTask?.cancel()
 
@@ -175,6 +198,8 @@ class StressTestViewModel: ObservableObject {
                     let jobFull = try JSONDecoder().decode(StressTestJobResponse.self, from: data)
                     await MainActor.run {
                         self.results = jobFull.results ?? []
+                        self.progressPct = 100
+                        self.activeCheckpoint = "done"
                         self.isLoading = false
                         HapticManager.success()
                     }
@@ -193,84 +218,83 @@ class StressTestViewModel: ObservableObject {
     }
 
     private func startPolling(jobId: String, token: String) {
-         pollingTask = Task { [weak self] in
-             guard let self = self else { return }
-             let maxRetries = 300
-             var attempts = 0
+        pollingTask = Task { [weak self] in
+            guard let self = self else { return }
+            let maxRetries = 300
+            var attempts = 0
 
-             while attempts < maxRetries && !Task.isCancelled {
-                 do {
-                     var request = URLRequest(url: URL(string: "\(self.baseURL)/api/v1/portfolio/stress-test/\(jobId)")!)
-                     request.httpMethod = "GET"
-                     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            while attempts < maxRetries && !Task.isCancelled {
+                do {
+                    var request = URLRequest(url: URL(string: "\(self.baseURL)/api/v1/portfolio/stress-test/\(jobId)")!)
+                    request.httpMethod = "GET"
+                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
-                     let (data, response) = try await URLSession.shared.data(for: request)
-                     
-                     guard let httpResponse = response as? HTTPURLResponse else { continue }
-                     
-                     // Handle 404 — job lost (server restart)
-                     if httpResponse.statusCode == 404 {
-                         await MainActor.run {
-                             self.errorMessage = "Server was restarted. Please run the simulation again."
-                             self.isLoading = false
-                             HapticManager.error()
-                         }
-                         return
-                     }
-                     
-                     // Try to decode the response body for error detail
-                     if let body = String(data: data, encoding: .utf8),
-                        httpResponse.statusCode >= 400 {
-                         var detail = "Server error \(httpResponse.statusCode)"
-                         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                            let d = json["detail"] as? String {
-                             detail = d
-                         }
-                         await MainActor.run {
-                             self.errorMessage = detail
-                             self.isLoading = false
-                             HapticManager.error()
-                         }
-                         return
-                     }
-                     
-                     let jobResponse = try JSONDecoder().decode(StressTestJobResponse.self, from: data)
+                    let (data, response) = try await URLSession.shared.data(for: request)
 
-                     await MainActor.run {
-                         self.progressPct = jobResponse.progressPct ?? 0
-                         self.progressStage = jobResponse.stage ?? ""
-                         self.pollingStatus = jobResponse.status
-                     }
+                    guard let httpResponse = response as? HTTPURLResponse else { continue }
 
-                     if jobResponse.status == "completed" {
-                         await MainActor.run {
-                             self.results = jobResponse.results ?? []
-                             self.isLoading = false
-                             self.progressPct = 100
-                             HapticManager.success()
-                         }
-                         return
-                     }
-                     
-                     if jobResponse.status == "failed" {
-                         await MainActor.run {
-                             self.errorMessage = "Simulation failed. Please try again."
-                             self.isLoading = false
-                             HapticManager.error()
-                         }
-                         return
-                     }
-                 } catch {
-                     // Network error (timeout, no connection)
-                     if (error as NSError).code == NSURLErrorTimedOut ||
-                        (error as NSError).code == NSURLErrorCannotConnectToHost {
-                         attempts += 5 // skip ahead faster
-                     }
-                 }
+                    if httpResponse.statusCode == 404 {
+                        await MainActor.run {
+                            self.errorMessage = "Server was restarted. Please run the simulation again."
+                            self.isLoading = false
+                            HapticManager.error()
+                        }
+                        return
+                    }
 
-                 attempts += 1
-                 try? await Task.sleep(nanoseconds: 1_000_000_000)
-             }
+                    if httpResponse.statusCode >= 400 {
+                        var detail = "Server error \(httpResponse.statusCode)"
+                        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                           let d = json["detail"] as? String {
+                            detail = d
+                        }
+                        await MainActor.run {
+                            self.errorMessage = detail
+                            self.isLoading = false
+                            HapticManager.error()
+                        }
+                        return
+                    }
+
+                    let jobResponse = try JSONDecoder().decode(StressTestJobResponse.self, from: data)
+
+                    await MainActor.run {
+                        self.progressPct = jobResponse.progressPct ?? 0
+                        self.progressStage = jobResponse.stage ?? ""
+                        if let cp = jobResponse.checkpoint {
+                            self.activeCheckpoint = cp
+                        }
+                    }
+
+                    if jobResponse.status == "completed" {
+                        await MainActor.run {
+                            self.results = jobResponse.results ?? []
+                            self.isLoading = false
+                            self.progressPct = 100
+                            self.activeCheckpoint = "done"
+                            HapticManager.success()
+                        }
+                        return
+                    }
+
+                    if jobResponse.status == "failed" {
+                        await MainActor.run {
+                            self.errorMessage = "Simulation failed. Please try again."
+                            self.isLoading = false
+                            HapticManager.error()
+                        }
+                        return
+                    }
+                } catch {
+                    if (error as NSError).code == NSURLErrorTimedOut ||
+                       (error as NSError).code == NSURLErrorCannotConnectToHost {
+                        attempts += 5
+                    }
+                }
+
+                attempts += 1
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
 
             if attempts >= maxRetries {
                 await MainActor.run {
@@ -288,7 +312,125 @@ class StressTestViewModel: ObservableObject {
         isLoading = false
         progressPct = 0
         progressStage = ""
-        pollingStatus = ""
+        activeCheckpoint = "init"
+    }
+}
+
+// MARK: - Checkpoint Tracker
+
+struct StressCheckpointTracker: View {
+    let checkpoints: [StressCheckpoint]
+    let activeIndex: Int
+    let progressPct: Int
+    let stage: String
+
+    var body: some View {
+        VStack(spacing: Theme.Spacing.medium) {
+            // Step indicators
+            HStack(spacing: 0) {
+                ForEach(checkpoints.indices, id: \.self) { idx in
+                    let cp = checkpoints[idx]
+                    let isDone    = idx < activeIndex
+                    let isActive  = idx == activeIndex
+                    let isPending = idx > activeIndex
+
+                    VStack(spacing: Theme.Spacing.small) {
+                        ZStack {
+                            Circle()
+                                .fill(isDone ? Theme.bullGreen : isActive ? Theme.securityGold : Theme.canvasDeep)
+                                .frame(width: 32, height: 32)
+                                .overlay(
+                                    Circle()
+                                        .strokeBorder(
+                                            isDone ? Theme.bullGreen : isActive ? Theme.securityGold : Theme.borderFine,
+                                            lineWidth: 1.5
+                                        )
+                                )
+
+                            if isDone {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(.white)
+                            } else if isActive {
+                                Image(systemName: cp.icon)
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(Theme.securityGold)
+                            } else {
+                                Image(systemName: cp.icon)
+                                    .font(.system(size: 13))
+                                    .foregroundColor(Theme.inkTertiary)
+                            }
+                        }
+                        .animation(.easeInOut(duration: 0.3), value: activeIndex)
+
+                        Text(cp.label)
+                            .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+                            .tracking(0.5)
+                            .foregroundColor(
+                                isDone ? Theme.bullGreen :
+                                isActive ? Theme.securityGold :
+                                Theme.inkTertiary
+                            )
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                            .frame(width: 60)
+                    }
+
+                    if idx < checkpoints.count - 1 {
+                        Rectangle()
+                            .fill(idx < activeIndex ? Theme.bullGreen : Theme.borderFine)
+                            .frame(height: 1.5)
+                            .frame(maxWidth: .infinity)
+                            .padding(.bottom, 28)
+                            .animation(.easeInOut(duration: 0.4), value: activeIndex)
+                    }
+                }
+            }
+            .padding(.horizontal, Theme.screenPadding)
+
+            // Active stage label + progress bar
+            VStack(spacing: Theme.Spacing.small) {
+                if !stage.isEmpty {
+                    Text(stage)
+                        .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .caption))
+                        .foregroundColor(Theme.inkSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .animation(.none, value: stage)
+                }
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Theme.canvasDeep)
+                            .frame(height: 6)
+
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Theme.securityGold.opacity(0.7), Theme.securityGold],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: geo.size.width * CGFloat(progressPct) / 100.0, height: 6)
+                            .animation(.easeInOut(duration: 0.5), value: progressPct)
+                    }
+                }
+                .frame(height: 6)
+
+                HStack {
+                    Text("\(progressPct)% complete")
+                        .font(Theme.serialNumberFont(size: 11, relativeTo: .caption2))
+                        .foregroundColor(Theme.inkTertiary)
+                    Spacer()
+                }
+            }
+            .padding(.horizontal, Theme.screenPadding)
+        }
+        .padding(.vertical, Theme.Spacing.card)
+        .banknoteCard()
+        .padding(.horizontal, Theme.screenPadding)
     }
 }
 
@@ -301,7 +443,7 @@ struct StressTestScreen: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: Theme.Spacing.xLarge) {
+            LazyVStack(spacing: Theme.Spacing.xLarge) {
                 HelpInlineButton(showHelp: $showHelp)
                     .padding(.horizontal, Theme.screenPadding)
 
@@ -323,7 +465,7 @@ struct StressTestScreen: View {
                     Text("SCENARIOS (Select up to 3)")
                         .font(Theme.sectionCapsLabel())
                         .foregroundColor(Theme.inkTertiary)
-                        .padding(.horizontal, Theme.Spacing.screen)
+                        .padding(.horizontal, Theme.screenPadding)
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: Theme.Spacing.standard) {
@@ -351,156 +493,93 @@ struct StressTestScreen: View {
                                 .buttonStyle(EKPressStyle())
                             }
                         }
-                        .padding(.horizontal, Theme.Spacing.screen)
+                        .padding(.horizontal, Theme.screenPadding)
                     }
                 }
 
-                // RUN BUTTON
-                Button {
-                    vm.runTest(userId: authManager.currentUser?.userId ?? 0, token: authManager.currentUser?.token ?? "")
-                    HapticManager.impact(.medium)
-                } label: {
-                    Text("Run Simulation")
-                        .font(Theme.roundedSecondary(size: 16, weight: .semibold, relativeTo: .headline))
+                // RUN / CANCEL BUTTON
+                if vm.isLoading {
+                    Button {
+                        vm.cancel()
+                        HapticManager.selection()
+                    } label: {
+                        HStack(spacing: Theme.Spacing.standard) {
+                            Image(systemName: "xmark.circle")
+                                .font(.system(size: 16))
+                            Text("Cancel Simulation")
+                                .font(Theme.roundedSecondary(size: 16, weight: .semibold, relativeTo: .headline))
+                        }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, Theme.Spacing.card)
-                        .background(vm.selectedScenarios.isEmpty ? Theme.canvasDeep : Theme.inkPrimary)
-                        .foregroundColor(vm.selectedScenarios.isEmpty ? Theme.inkTertiary : Theme.canvas)
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
-                }
-                .disabled(vm.selectedScenarios.isEmpty || vm.isLoading)
-                .buttonStyle(EKPressStyle())
-                .padding(.horizontal, Theme.Spacing.screen)
-
-                GuillocheDivider().padding(.horizontal, Theme.Spacing.screen)
-
-                // PROGRESS / LOADING
-                if vm.isLoading && !vm.progressStage.isEmpty {
-                    VStack(spacing: Theme.Spacing.standard) {
-                        ProgressView(value: Double(vm.progressPct), total: 100)
-                            .tint(Theme.securityGold)
-                            .frame(maxWidth: .infinity)
-                            .padding(.horizontal, Theme.Spacing.screen)
-
-                        HStack {
-                            Text(vm.progressStage)
-                                .font(Theme.roundedSecondary(size: 13, weight: .regular, relativeTo: .caption))
-                                .foregroundColor(Theme.inkSecondary)
-                                .lineLimit(2)
-                            Spacer()
-                            Text("\(vm.progressPct)%")
-                                .font(Theme.serialNumberFont(size: 13, relativeTo: .caption))
-                                .foregroundColor(Theme.securityGold)
-                        }
-                        .padding(.horizontal, Theme.Spacing.screen)
-
-                        Button {
-                            vm.cancel()
-                            HapticManager.selection()
-                        } label: {
-                            Text("Cancel")
-                                .font(Theme.roundedSecondary(size: 13, weight: .medium, relativeTo: .caption))
-                                .foregroundColor(Theme.bearRed)
-                                .padding(.horizontal, Theme.Spacing.card)
-                                .padding(.vertical, Theme.Spacing.small)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                                        .strokeBorder(Theme.bearRed.opacity(0.4), lineWidth: 1)
-                                )
-                        }
-                        .buttonStyle(EKPressStyle())
-                    }
-                    .padding(.vertical, Theme.Spacing.xLarge)
-                    .banknoteCard()
-                    .padding(.horizontal, Theme.Spacing.screen)
-                } else if vm.isLoading {
-                    ProgressView("Running Simulations...")
-                        .padding(.vertical, Theme.Spacing.xLarge)
-                } else if let error = vm.errorMessage {
-                    Text(error)
+                        .background(Theme.bearRedLight)
                         .foregroundColor(Theme.bearRed)
-                        .padding()
-                } else if !vm.results.isEmpty {
-                    ForEach(vm.results) { result in
-                        VStack(spacing: Theme.Spacing.large) {
-
-                            // SUMMARY CARD
-                            VStack(spacing: Theme.Spacing.standard) {
-                                Text(result.name)
-                                    .font(Theme.engravedSerif(size: 18, weight: .semibold, relativeTo: .title3))
-                                    .foregroundColor(Theme.inkPrimary)
-
-                                Text("Portfolio down \(IndianFormatter.formatLakhsCrores(abs(result.impactInr))) (\(IndianFormatter.percent(result.impactPct)))")
-                                    .font(Theme.serialNumberFont(size: 16, relativeTo: .headline))
-                                    .foregroundColor(result.impactPct >= 0 ? Theme.bullGreen : Theme.bearRed)
-                            }
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
+                                .strokeBorder(Theme.bearRed.opacity(0.4), lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
+                    }
+                    .buttonStyle(EKPressStyle())
+                    .padding(.horizontal, Theme.screenPadding)
+                } else {
+                    Button {
+                        vm.runTest(userId: authManager.currentUser?.userId ?? 0, token: authManager.currentUser?.token ?? "")
+                        HapticManager.impact(.medium)
+                    } label: {
+                        Text("Run Simulation")
+                            .font(Theme.roundedSecondary(size: 16, weight: .semibold, relativeTo: .headline))
                             .frame(maxWidth: .infinity)
-                            .padding(Theme.Spacing.card)
-                            .banknoteCard()
-                            .padding(.horizontal, Theme.Spacing.screen)
+                            .padding(.vertical, Theme.Spacing.card)
+                            .background(vm.selectedScenarios.isEmpty ? Theme.canvasDeep : Theme.inkPrimary)
+                            .foregroundColor(vm.selectedScenarios.isEmpty ? Theme.inkTertiary : Theme.canvas)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
+                    }
+                    .disabled(vm.selectedScenarios.isEmpty)
+                    .buttonStyle(EKPressStyle())
+                    .padding(.horizontal, Theme.screenPadding)
+                }
 
-                            // TORNADO CHART
-                            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                                Text("HOLDING IMPACT")
-                                    .font(Theme.sectionCapsLabel())
-                                    .foregroundColor(Theme.inkTertiary)
-                                    .padding(.horizontal, Theme.Spacing.screen)
+                GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
-                                Chart(result.holdings.prefix(10)) { h in
-                                    BarMark(
-                                        x: .value("Impact", h.impactPct),
-                                        y: .value("Ticker", h.ticker)
-                                    )
-                                    .foregroundStyle(h.impactPct >= 0 ? Theme.bullGreen : Theme.bearRed)
-                                    .annotation(position: h.impactPct >= 0 ? .trailing : .leading) {
-                                        Text(IndianFormatter.percent(h.impactPct))
-                                            .font(Theme.microLabel())
-                                            .foregroundColor(Theme.inkSecondary)
-                                    }
-                                }
-                                .frame(height: 250)
-                                .padding(.horizontal, Theme.Spacing.screen)
-                            }
+                // CHECKPOINT TRACKER (shown while loading)
+                if vm.isLoading {
+                    StressCheckpointTracker(
+                        checkpoints: vm.checkpoints,
+                        activeIndex: vm.activeIndex,
+                        progressPct: vm.progressPct,
+                        stage: vm.progressStage
+                    )
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
 
-                            // 2x3 SCORECARD GRID
-                            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                                Text("RISK SCORES")
-                                    .font(Theme.sectionCapsLabel())
-                                    .foregroundColor(Theme.inkTertiary)
-                                    .padding(.horizontal, Theme.Spacing.screen)
+                // ERROR STATE
+                if let error = vm.errorMessage {
+                    HStack(spacing: Theme.Spacing.standard) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(Theme.bearRed)
+                        Text(error)
+                            .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
+                            .foregroundColor(Theme.bearRed)
+                            .multilineTextAlignment(.leading)
+                    }
+                    .padding(Theme.Spacing.card)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.bearRedLight)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                            .strokeBorder(Theme.bearRed.opacity(0.4), lineWidth: 1)
+                    )
+                    .padding(.horizontal, Theme.screenPadding)
+                }
 
-                                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.standard), count: 2), spacing: Theme.Spacing.standard) {
-                                    ScoreTile(label: "Risk Score", value: result.scores.riskScore, color: Theme.bearRed)
-                                    ScoreTile(label: "Stress Score", value: result.scores.stressScore, color: Theme.holdAmber)
-                                    ScoreTile(label: "Macro Fragility", value: result.scores.macroFragility, color: Theme.securityGold)
-                                    ScoreTile(label: "Liquidity", value: result.scores.liquidityScore, color: Theme.bullGreen)
-                                    ScoreTile(label: "Concentration", value: result.scores.concentrationScore, color: Theme.inkSecondary)
-                                    ScoreTile(label: "Tail Risk", value: result.scores.tailRiskScore, color: Theme.bearRed)
-                                }
-                                .padding(.horizontal, Theme.Spacing.screen)
-                            }
+                // RESULTS
+                if !vm.results.isEmpty {
+                    ForEach(vm.results) { result in
+                        StressScenarioSection(result: result)
 
-                            // HOLDING CARDS
-                            VStack(spacing: Theme.Spacing.standard) {
-                                ForEach(result.holdings) { h in
-                                    HStack {
-                                        Text(h.ticker)
-                                            .font(Theme.roundedSecondary(size: 14, weight: .semibold, relativeTo: .subheadline))
-                                            .foregroundColor(Theme.inkPrimary)
-                                        Spacer()
-                                        Text("\(h.impactInr >= 0 ? "+" : "-")\(IndianFormatter.price(abs(h.impactInr))) (\(IndianFormatter.percent(h.impactPct)))")
-                                            .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
-                                            .foregroundColor(h.impactInr >= 0 ? Theme.bullGreen : Theme.bearRed)
-                                    }
-                                    .padding(Theme.Spacing.standard)
-                                    .banknoteCard()
-                                    .padding(.horizontal, Theme.Spacing.screen)
-                                }
-                            }
-
-                            if result.id != vm.results.last?.id {
-                                GuillocheDivider().padding(.horizontal, Theme.Spacing.screen)
-                            }
+                        if result.id != vm.results.last?.id {
+                            GuillocheDivider().padding(.horizontal, Theme.screenPadding)
                         }
                     }
                 }
@@ -511,7 +590,105 @@ struct StressTestScreen: View {
         .background(Theme.canvas.edgesIgnoringSafeArea(.all))
         .navigationTitle("Stress Test")
         .navigationBarTitleDisplayMode(.inline)
+        .animation(.easeInOut(duration: 0.4), value: vm.isLoading)
         .helpSheet(isPresented: $showHelp, title: FeatureHelp.stressTest.title, subtitle: FeatureHelp.stressTest.subtitle, sections: FeatureHelp.stressTest.sections)
+    }
+}
+
+// MARK: - Scenario Result Section
+
+struct StressScenarioSection: View {
+    let result: StressTestResult
+
+    var body: some View {
+        VStack(spacing: Theme.Spacing.large) {
+            // SUMMARY CARD
+            VStack(spacing: Theme.Spacing.standard) {
+                Text(result.name)
+                    .font(Theme.engravedSerif(size: 18, weight: .semibold, relativeTo: .title3))
+                    .foregroundColor(Theme.inkPrimary)
+
+                Text("Portfolio down \(IndianFormatter.formatLakhsCrores(abs(result.impactInr))) (\(IndianFormatter.percent(result.impactPct)))")
+                    .font(Theme.serialNumberFont(size: 16, relativeTo: .headline))
+                    .foregroundColor(result.impactPct >= 0 ? Theme.bullGreen : Theme.bearRed)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(Theme.Spacing.card)
+            .banknoteCard()
+            .padding(.horizontal, Theme.screenPadding)
+
+            // TORNADO CHART
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                Text("HOLDING IMPACT")
+                    .font(Theme.sectionCapsLabel())
+                    .foregroundColor(Theme.inkTertiary)
+                    .padding(.horizontal, Theme.screenPadding)
+
+                Chart(result.holdings.prefix(10)) { h in
+                    BarMark(
+                        x: .value("Impact", h.impactPct),
+                        y: .value("Ticker", h.ticker)
+                    )
+                    .foregroundStyle(h.impactPct >= 0 ? Theme.bullGreen : Theme.bearRed)
+                    .annotation(position: h.impactPct >= 0 ? .trailing : .leading) {
+                        Text(IndianFormatter.percent(h.impactPct))
+                            .font(Theme.microLabel())
+                            .foregroundColor(Theme.inkSecondary)
+                    }
+                }
+                .frame(height: 250)
+                .padding(.horizontal, Theme.screenPadding)
+            }
+
+            // 2×3 SCORECARD GRID
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                Text("RISK SCORES")
+                    .font(Theme.sectionCapsLabel())
+                    .foregroundColor(Theme.inkTertiary)
+                    .padding(.horizontal, Theme.screenPadding)
+
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.standard), count: 2),
+                    spacing: Theme.Spacing.standard
+                ) {
+                    ScoreTile(label: "Risk Score",     value: result.scores.riskScore,          color: Theme.bearRed)
+                    ScoreTile(label: "Stress Score",   value: result.scores.stressScore,        color: Theme.holdAmber)
+                    ScoreTile(label: "Macro Fragility",value: result.scores.macroFragility,     color: Theme.securityGold)
+                    ScoreTile(label: "Liquidity",      value: result.scores.liquidityScore,     color: Theme.bullGreen)
+                    ScoreTile(label: "Concentration",  value: result.scores.concentrationScore, color: Theme.inkSecondary)
+                    ScoreTile(label: "Tail Risk",      value: result.scores.tailRiskScore,      color: Theme.bearRed)
+                }
+                .padding(.horizontal, Theme.screenPadding)
+            }
+
+            // HOLDING ROWS
+            VStack(spacing: Theme.Spacing.standard) {
+                ForEach(result.holdings) { h in
+                    HStack {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                            Text(h.ticker)
+                                .font(Theme.roundedSecondary(size: 14, weight: .semibold, relativeTo: .subheadline))
+                                .foregroundColor(Theme.inkPrimary)
+                            Text(h.sector)
+                                .font(Theme.microLabel())
+                                .foregroundColor(Theme.inkTertiary)
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
+                            Text("\(h.impactInr >= 0 ? "+" : "-")\(IndianFormatter.price(abs(h.impactInr)))")
+                                .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
+                                .foregroundColor(h.impactInr >= 0 ? Theme.bullGreen : Theme.bearRed)
+                            Text(IndianFormatter.percent(h.impactPct))
+                                .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
+                                .foregroundColor(h.impactInr >= 0 ? Theme.bullGreen : Theme.bearRed)
+                        }
+                    }
+                    .padding(Theme.Spacing.standard)
+                    .banknoteCard()
+                    .padding(.horizontal, Theme.screenPadding)
+                }
+            }
+        }
     }
 }
 
@@ -530,6 +707,7 @@ struct ScoreTile: View {
             Text(label)
                 .font(Theme.microLabel())
                 .foregroundColor(Theme.inkTertiary)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, Theme.Spacing.standard)
