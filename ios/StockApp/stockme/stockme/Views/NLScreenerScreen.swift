@@ -347,6 +347,7 @@ struct ResultCard: View {
                 .lineLimit(2)
                 .padding(.top, Theme.Spacing.xSmall)
         }
+        .padding(Theme.Spacing.card)
         .frame(maxWidth: .infinity, alignment: .leading)
         .banknoteCard()
     }

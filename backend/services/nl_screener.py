@@ -11,6 +11,19 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You parse natural language stock screening queries into structured filters. Return ONLY valid JSON.
 Available filters: sector, industry, pe_max, pe_min, market_cap_min, market_cap_max, promoter_holding_min, fii_holding_min, dii_holding_min, roce_min, roe_min, debt_to_equity_max, ebitda_margin_min, dividend_yield_min, price_change_3m_min, price_change_1y_min, rsi_min, rsi_max, keyword (free text search in company name/description).
+
+IMPORTANT: For market cap, output values in Crores (Cr) based on these standard definitions:
+- Mega Cap: > 100000
+- Large Cap: 20000 to 100000
+- Upper Mid Cap: 10000 to 20000
+- Lower Mid Cap: 5000 to 10000
+- Mid Cap: 5000 to 20000
+- Upper Small Cap: 2000 to 5000
+- Lower Small Cap: 500 to 2000
+- Small Cap: 500 to 5000
+- Micro Cap: < 500
+
+Example: "mid cap stocks" -> {"market_cap_min": 5000, "market_cap_max": 20000}
 If user mentions a company by name (e.g. 'like HDFC Bank'), extract that company's metrics as reference values.
 
 Return ONLY a JSON object with a "parsed_filters" key containing the filters, and an optional "reference_company" key if a company was mentioned."""
@@ -50,6 +63,16 @@ def _evaluate_stock(info: dict, filters: dict) -> tuple[bool, str, float]:
     if filters.get("debt_to_equity_max") and metrics["debt_to_equity"] is not None:
         if metrics["debt_to_equity"] > filters["debt_to_equity_max"]: return False, "", 0.0
         reasons.append(f"D/E {metrics['debt_to_equity']:.2f} < {filters['debt_to_equity_max']}")
+
+    if filters.get("market_cap_min") is not None and metrics["market_cap"]:
+        min_cap_raw = filters["market_cap_min"] * 10_000_000
+        if metrics["market_cap"] < min_cap_raw: return False, "", 0.0
+        reasons.append(f"Market Cap > {filters['market_cap_min']}Cr")
+
+    if filters.get("market_cap_max") is not None and metrics["market_cap"]:
+        max_cap_raw = filters["market_cap_max"] * 10_000_000
+        if metrics["market_cap"] > max_cap_raw: return False, "", 0.0
+        reasons.append(f"Market Cap < {filters['market_cap_max']}Cr")
 
     if filters.get("sector") and metrics["sector"]:
         if filters["sector"].lower() not in metrics["sector"].lower():
