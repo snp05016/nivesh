@@ -56,14 +56,29 @@ def compute_all_scores(
     parametric_var_95_pct: float,
     cvar_99_pct: float,
     liquidity_score_raw: float = 50.0,
+    skewness: float = 0.0,
+    kurtosis: float = 0.0,
 ) -> dict[str, float]:
     """Compute all 6 risk scores for a stress test scenario."""
+    # Cornish-Fisher Expansion for tail risk (Worst Case Loss)
+    z_c = 2.326
+    S = skewness
+    K = kurtosis
+    Z_CF = z_c + (1/6)*(z_c**2 - 1)*S + (1/24)*(z_c**3 - 3*z_c)*K - (1/36)*(2*z_c**3 - 5*z_c)*(S**2)
+    
+    # Extract scaled sigma from the Gaussian 95% VaR (which is Z * sigma, where Z = 1.645 for 95%)
+    # This ensures we use the correct time horizon (e.g., 10-day) automatically.
+    sigma = parametric_var_95_pct / 1.645 if parametric_var_95_pct else 0.0
+    
+    # Calculate the Cornish-Fisher CVaR
+    cf_cvar_99_pct = Z_CF * sigma if sigma > 0 else cvar_99_pct
+    
     return {
         "risk_score": compute_risk_score(portfolio_vol_annualized),
-        "stress_score": compute_stress_score(worst_case_loss_pct),
+        "stress_score": compute_stress_score(cf_cvar_99_pct),
         "macro_fragility": compute_macro_fragility_score(macro_betas),
         "liquidity_score": round(max(0.0, min(100.0, liquidity_score_raw)), 1),
         "tail_risk_score": compute_tail_risk_score(
-            abs(parametric_var_95_pct), abs(cvar_99_pct)
+            abs(parametric_var_95_pct), abs(cf_cvar_99_pct)
         ),
     }
