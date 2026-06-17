@@ -583,3 +583,27 @@ class EarningsSurpriseHistory(Base):
     __table_args__ = (
         Index("ix_earnings_surprise_history_ticker", "ticker"),
     )
+
+
+# ── Stress Test Engine Tables (Tier 2.5) ─────────────────────────────────
+
+class EquityRiskFactor(Base):
+    """Pre-calculated quantitative risk attributes for individual stocks. Updated nightly."""
+    __tablename__ = "equity_risk_factors"
+    ticker = Column(String(30), primary_key=True)
+    beta_market = Column(Float, nullable=True, default=1.0)
+    beta_oil = Column(Float, nullable=True, default=0.0)
+    beta_rates = Column(Float, nullable=True, default=0.0)
+    beta_fx = Column(Float, nullable=True, default=0.0)
+    average_daily_volume = Column(Float, nullable=True, default=1e6)
+    volatility_annualized = Column(Float, nullable=True, default=0.30)
+    base_spread = Column(Float, nullable=True, default=0.005)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class CovarianceMatrix(Base):
+    """Serialized covariance matrices for stress testing. Prevents recomputation."""
+    __tablename__ = "covariance_matrices"
+    matrix_type = Column(String(50), primary_key=True)
+    tickers_list = Column(JSON, default=list)
+    data_matrix = Column(JSON, default=list)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
