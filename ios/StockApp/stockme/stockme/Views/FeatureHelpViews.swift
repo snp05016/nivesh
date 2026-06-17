@@ -172,12 +172,14 @@ enum FeatureHelp {
         title: "Stress Test Guide",
         subtitle: "Simulates how your portfolio would perform under extreme economic scenarios — recession, inflation, interest rate shocks, and more.",
         sections: [
+            HelpSection(icon: "function", title: "How It Works",
+                detail: "The Stress Test Engine uses a Tier 2.5 hybrid architecture combining BlackRock-style predictive stress testing with econometric techniques:\n\n• Beta Estimation: Exponentially Weighted Moving Average (EWMA) OLS betas with Vasicek Bayesian Shrinkage to stabilize small-cap estimates\n• Shock Propagation: Conditional expectation propagation using covariance matrices (MSCI/BlackRock methodology)\n• Liquidity Penalty: Almgren-Chriss Square-Root Law of Market Impact with 60% volume suppression during crises\n• Concentration Risk: Herfindahl-Hirschman Index (HHI) and Marginal Risk Contribution (Euler's theorem) using crisis covariance\n• 6 Risk Scores: Risk, Stress, Macro Fragility, Liquidity, Concentration, Tail Risk\n• 14 Pre-built scenarios and custom macro shock capability"),
             HelpSection(icon: "bolt.trianglebadge.exclamationmark", title: "Tornado Chart",
                 detail: "Visualizes the expected drawdown or gain via horizontal bars for each modeled scenario. Green bars represent a net positive impact (your portfolio gains value), while red bars represent a net negative impact (your portfolio loses value). The length indicates the absolute magnitude of the shock."),
             HelpSection(icon: "chart.bar.fill", title: "Reading Bar Values",
                 detail: "Impact percentages reflect the expected drawdown. For instance, a bar showing -12% means a specific macroeconomic shock is statistically projected to erase 12% of your portfolio's value. The equivalent fiat value in INR (₹) is dynamically calculated against your current holding value."),
-            HelpSection(icon: "list.bullet.rectangle.portrait", title: "8 Macro Scenarios",
-                detail: "The engine runs deterministic simulations covering: Recession, Inflation Spikes, Crude Oil Shocks, RBI Interest Rate Hikes, INR Currency Depreciation, Global Market Selloffs, Domestic Political Crises, and COVID-style Black Swan events. Each model applies historical beta and sector sensitivity parameters to your specific stocks."),
+            HelpSection(icon: "list.bullet.rectangle.portrait", title: "14 Macro Scenarios",
+                detail: "The engine runs deterministic simulations covering: Nifty Crash, Oil Shock, Rate Hikes, FII Exodus, Global Recession, Policy Shock, Currency Crash, and Custom macro shock parameters. Each model applies historical beta, sector sensitivity, and liquidity penalty parameters to your specific stocks."),
             HelpSection(icon: "arrow.up.and.down.text.horizontal", title: "Holding-Level Detail",
                 detail: "By tapping a specific scenario, you can drill down into a micro-view that reveals how EACH individual stock in your portfolio contributes to the shock. This enables precision hedging by identifying exactly which holding is dragging your portfolio down under specific conditions."),
         ]
