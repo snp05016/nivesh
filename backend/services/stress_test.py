@@ -6,6 +6,7 @@ Liquidity Penalty → Concentration Analysis → Scoring.
 """
 from __future__ import annotations
 import numpy as np
+import threading
 from typing import List, Dict, Any, Optional
 from helpers import _yf_fetch_info, _yf_price
 
@@ -103,48 +104,69 @@ def _estimate_adv(ticker: str) -> float:
     return 1_000_000
 
 
-def enrich_holdings(holdings) -> List[Dict[str, Any]]:
-    """Enrich portfolio holdings with current price, beta factors, and liquidity params."""
-    enriched = []
-    for h in holdings:
+def enrich_holdings(holdings, progress_callback=None) -> List[Dict[str, Any]]:
+    """Enrich portfolio holdings with current price, beta factors, and liquidity params.
+    
+    Uses ThreadPoolExecutor (max 8 workers) to fetch yfinance data in parallel.
+    progress_callback(done: int, total: int, current_ticker: str) called per holding.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    
+    total = len(holdings)
+    completed = [0]
+    lock = threading.Lock()
+    
+    def _enrich_single(h):
         ticker = h.ticker.upper()
+        
         if ticker in ("CASH", "INR"):
             price = h.shares if h.shares > 0 else 1.0
-            enriched.append({
+            result = {
                 "ticker": ticker, "company_name": h.company_name or "Cash",
                 "shares": h.shares, "price": price, "value": h.shares * price,
                 "betas": {}, "sector": "Cash", "volatility": 0.0,
                 "avg_daily_volume": 0, "spread_bps": 0.0,
-            })
-            continue
+            }
+        else:
+            try:
+                price_info = _yf_price(ticker)
+                price = float(price_info[0]) if price_info and price_info[0] and price_info[0] > 0 else float(h.buy_price)
+            except Exception:
+                price = float(h.buy_price)
+            
+            value = float(h.shares) * price
+            betas = _estimate_betas(ticker)
+            volatility = _estimate_volatility(ticker)
+            adv = _estimate_adv(ticker)
+            
+            result = {
+                "ticker": ticker,
+                "company_name": h.company_name or ticker,
+                "shares": float(h.shares),
+                "price": price,
+                "value": value,
+                "betas": betas,
+                "sector": get_sector(h.company_name or ""),
+                "volatility": volatility,
+                "avg_daily_volume": adv,
+                "spread_bps": 0.005,
+            }
         
-        try:
-            price_info = _yf_price(ticker)
-            price = float(price_info[0]) if price_info and price_info[0] and price_info[0] > 0 else float(h.buy_price)
-        except Exception:
-            price = float(h.buy_price)
+        with lock:
+            completed[0] += 1
+            if progress_callback:
+                progress_callback(completed[0], total, ticker)
         
-        value = float(h.shares) * price
-        betas = _estimate_betas(ticker)
-        volatility = _estimate_volatility(ticker)
-        adv = _estimate_adv(ticker)
-        
-        enriched.append({
-            "ticker": ticker,
-            "company_name": h.company_name or ticker,
-            "shares": float(h.shares),
-            "price": price,
-            "value": value,
-            "betas": betas,
-            "sector": get_sector(h.company_name or ""),
-            "volatility": volatility,
-            "avg_daily_volume": adv,
-            "spread_bps": 0.005,  # 50 bps default
-        })
-    return enriched
+        return result
+    
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(_enrich_single, h) for h in holdings]
+        results = [f.result() for f in futures]
+    
+    return results
 
 
-def run_stress_test(holdings, scenarios: List[str]) -> List[Dict[str, Any]]:
+def run_stress_test(holdings, scenarios: List[str], progress_callback=None) -> List[Dict[str, Any]]:
     """Execute Tier 2.5 stress tests on a portfolio.
     
     Steps:
@@ -154,13 +176,15 @@ def run_stress_test(holdings, scenarios: List[str]) -> List[Dict[str, Any]]:
     4. Compute liquidity penalty via Almgren-Chriss
     5. Compute concentration analysis (HHI, MRC)
     6. Calculate all 6 risk scores
+    
+    progress_callback(done: int, total: int, current_ticker: str) called per holding.
     """
     from services.math_engines.liquidity import square_root_impact, portfolio_liquidity_loss
     from services.math_engines.concentration import compute_concentration_analysis
     from services.math_engines.scoring import compute_all_scores, compute_stress_score
     
-    # Phase 1: Enrich holdings
-    enriched = enrich_holdings(holdings)
+    # Phase 1: Enrich holdings (parallel yfinance)
+    enriched = enrich_holdings(holdings, progress_callback=progress_callback)
     total_value = sum(e["value"] for e in enriched)
     if total_value <= 0:
         return []
