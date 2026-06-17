@@ -59,7 +59,7 @@ def get_sector(company_name: str) -> str:
 
 # ── Core Engine ──────────────────────────────────────────────────────
 
-def _call_with_timeout(fn, *args, default=None, timeout=8):
+def _call_with_timeout(fn, *args, default=None, timeout=30):
     """Call fn with timeout. Returns default on timeout/hang."""
     import queue
     result_queue = queue.Queue()
@@ -86,7 +86,7 @@ def _estimate_betas(ticker: str) -> dict[str, float]:
     Falls back to yfinance beta for market, 0.0 for other factors.
     Uses timeout wrapper to prevent hanging on slow API calls.
     """
-    info = _call_with_timeout(_yf_fetch_info, ticker, default={}, timeout=8)
+    info = _call_with_timeout(_yf_fetch_info, ticker, default={}, timeout=30)
     market_beta = float(info.get("beta", 1.0) or 1.0)
     return {
         "market": market_beta,
@@ -103,14 +103,14 @@ def _estimate_betas(ticker: str) -> dict[str, float]:
 
 def _estimate_volatility(ticker: str) -> float:
     """Estimate annualized volatility. Falls back to 30%."""
-    info = _call_with_timeout(_yf_fetch_info, ticker, default={}, timeout=8)
+    info = _call_with_timeout(_yf_fetch_info, ticker, default={}, timeout=30)
     beta = float(info.get("beta", 1.0) or 1.0)
     return round(0.20 * beta + 0.05, 4)
 
 
 def _estimate_adv(ticker: str) -> float:
     """Estimate average daily volume."""
-    info = _call_with_timeout(_yf_fetch_info, ticker, default={}, timeout=8)
+    info = _call_with_timeout(_yf_fetch_info, ticker, default={}, timeout=30)
     avg_vol = info.get("averageVolume") or info.get("averageDailyVolume10Day")
     if avg_vol and float(avg_vol) > 0:
         return float(avg_vol)
@@ -189,10 +189,10 @@ def enrich_holdings(holdings, progress_callback=None) -> List[Dict[str, Any]]:
         futures = {pool.submit(_enrich_single, h): i for i, h in enumerate(holdings)}
         results = [None] * len(holdings)
         import concurrent.futures as _cf
-        for f in _cf.as_completed(futures, timeout=120):
+        for f in _cf.as_completed(futures, timeout=180):
             idx = futures[f]
             try:
-                results[idx] = f.result(timeout=15)
+                results[idx] = f.result(timeout=45)
             except Exception:
                 h = holdings[idx]
                 results[idx] = _build_fallback(h)
