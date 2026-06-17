@@ -18,10 +18,53 @@ from models.db_models import StockUniverse
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Fallback small list if NSE CSV fails
+# Fallback: full NSE universe (~170 tickers) for when NSE CSV is blocked
 FALLBACK_TICKERS = [
+    # NIFTY 50 — Large Cap
     "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS",
-    "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BAJFINANCE.NS", "BHARTIARTL.NS"
+    "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BAJFINANCE.NS", "BHARTIARTL.NS",
+    "KOTAKBANK.NS", "AXISBANK.NS", "ASIANPAINT.NS", "MARUTI.NS", "SUNPHARMA.NS",
+    "TITAN.NS", "ULTRACEMCO.NS", "WIPRO.NS", "HCLTECH.NS", "TECHM.NS",
+    "ONGC.NS", "POWERGRID.NS", "NTPC.NS", "COALINDIA.NS", "JSWSTEEL.NS",
+    "TATASTEEL.NS", "HINDALCO.NS", "GRASIM.NS", "ADANIENT.NS", "ADANIPORTS.NS",
+    "BAJAJ-AUTO.NS", "BAJAJFINSV.NS", "BPCL.NS", "BRITANNIA.NS", "CIPLA.NS",
+    "DIVISLAB.NS", "DRREDDY.NS", "EICHERMOT.NS", "HDFCLIFE.NS", "HEROMOTOCO.NS",
+    "INDUSINDBK.NS", "LT.NS", "M&M.NS", "NESTLEIND.NS", "SBILIFE.NS",
+    "SHRIRAMFIN.NS", "TATACONSUM.NS", "TATAMOTORS.NS", "TRENT.NS", "UPL.NS",
+    # NIFTY Next 50 / Upper Mid Cap
+    "ADANIGREEN.NS", "ADANITRANS.NS", "AMBUJACEM.NS", "APOLLOHOSP.NS", "BANDHANBNK.NS",
+    "BIOCON.NS", "BOSCHLTD.NS", "CANBK.NS", "CHOLAFIN.NS", "COLPAL.NS",
+    "CONCOR.NS", "DABUR.NS", "DLF.NS", "FEDERALBNK.NS", "GAIL.NS",
+    "GODREJCP.NS", "HAVELLS.NS", "IDFCFIRSTB.NS", "INDUSTOWER.NS", "IOC.NS",
+    "IRCTC.NS", "LTIM.NS", "LUPIN.NS", "MUTHOOTFIN.NS", "NAUKRI.NS",
+    "PAGEIND.NS", "PGHH.NS", "PIDILITIND.NS", "PIIND.NS", "PNB.NS",
+    "SBICARD.NS", "SIEMENS.NS", "SRF.NS", "TORNTPHARM.NS", "TVSMOTOR.NS",
+    "VEDL.NS", "VOLTAS.NS", "ZOMATO.NS", "PAYTM.NS",
+    # Mid Cap — Banking & Finance
+    "AUBANK.NS", "CITYUNIONB.NS", "EQUITASBNK.NS", "KARURVYSYA.NS", "LICHSGFIN.NS",
+    "MANAPPURAM.NS", "RBLBANK.NS", "SOUTHBANK.NS", "YESBANK.NS",
+    # Mid Cap — IT & Tech
+    "COFORGE.NS", "KPITTECH.NS", "MPHASIS.NS", "PERSISTENT.NS", "TATAELXSI.NS",
+    # Mid Cap — Pharma & Healthcare
+    "ALKEM.NS", "AUROPHARMA.NS", "GLENMARK.NS", "IPCA.NS", "LAURUSLABS.NS",
+    "NATCOPHARM.NS", "ZYDUSLIFE.NS",
+    # Mid Cap — Consumer & FMCG
+    "EMAMILTD.NS", "GODREJIND.NS", "MARICO.NS", "VBL.NS",
+    # Mid Cap — Auto & Ancillary
+    "APOLLOTYRE.NS", "ASHOKLEY.NS", "BALKRISIND.NS", "BHARATFORG.NS",
+    "MOTHERSON.NS", "SONACOMS.NS",
+    # Mid Cap — Infrastructure & Engineering
+    "ABB.NS", "BEL.NS", "BHEL.NS", "CUMMINSIND.NS", "HAL.NS", "IRFC.NS",
+    "POLYCAB.NS", "THERMAX.NS",
+    # Mid Cap — Metals & Materials
+    "JINDALSTEL.NS", "NMDC.NS", "SAIL.NS",
+    # Mid Cap — Cement & Real Estate
+    "ACC.NS", "DALMIABHA.NS", "GODREJPROP.NS", "OBEROIRLTY.NS", "RAMCOCEM.NS",
+    # Small Cap
+    "AARTIIND.NS", "ASTRAL.NS", "CDSL.NS", "DEEPAKNTR.NS", "GESHIP.NS",
+    "HINDCOPPER.NS", "ICICIGI.NS", "INDHOTEL.NS", "IRCON.NS", "JUBLFOOD.NS",
+    "LICI.NS", "MAXHEALTH.NS", "MCX.NS", "RECLTD.NS", "TEJASNET.NS",
+    "VARUNBEV.NS",
 ]
 
 def fetch_nse_symbols() -> list[str]:
