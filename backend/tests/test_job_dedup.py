@@ -33,6 +33,6 @@ def test_stale_job_not_active():
     with database.get_session() as s:
         row = s.query(database.AnalysisJob).filter_by(job_id=j["job_id"]).first()
         import datetime
-        row.created_at = datetime.datetime.utcnow() - datetime.timedelta(seconds=900)
+        row.created_at = datetime.datetime.now(timezone.utc) - datetime.timedelta(seconds=900)
         s.commit()
     assert database.get_active_job_for_user_and_type(uid, "standard") is None

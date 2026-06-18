@@ -6,7 +6,7 @@ Generates up to 11 PNG charts with dark professional theme and Indian numbering.
 
 import os
 import math
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from pathlib import Path
 from collections import defaultdict
 
@@ -201,7 +201,7 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
             try:
                 if isinstance(ref_date, str):
                     ref_date = datetime.strptime(ref_date[:10], "%Y-%m-%d")
-                hold_days = (datetime.utcnow() - ref_date).days
+                hold_days = (datetime.now(timezone.utc) - ref_date).days
             except Exception:
                 pass
 

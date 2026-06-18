@@ -285,8 +285,8 @@ _admin_users: set[int] = set()
 def create_access_token(user_id: int) -> str:
     payload = {
         "sub": str(user_id),
-        "iat": datetime.utcnow(),
-        "exp": datetime.utcnow() + timedelta(hours=_JWT_EXPIRY_HOURS),
+        "iat": datetime.now(timezone.utc),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=_JWT_EXPIRY_HOURS),
     }
     return pyjwt.encode(payload, _JWT_SECRET, algorithm=_JWT_ALGORITHM)
 

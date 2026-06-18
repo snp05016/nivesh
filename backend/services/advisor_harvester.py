@@ -9,7 +9,7 @@ import os
 import re
 import sys
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import anthropic
@@ -126,7 +126,7 @@ async def _fetch_videos_youtube_api(channel_id: str, lookback_hours: int) -> lis
     """
     import httpx
 
-    published_after = (datetime.utcnow() - timedelta(hours=lookback_hours)).strftime(
+    published_after = (datetime.now(timezone.utc) - timedelta(hours=lookback_hours)).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
     )
 
@@ -198,7 +198,7 @@ async def _fetch_videos_youtube_api(channel_id: str, lookback_hours: int) -> lis
         try:
             published_at = datetime.strptime(published_str, "%Y-%m-%dT%H:%M:%SZ")
         except ValueError:
-            published_at = datetime.utcnow()
+            published_at = datetime.now(timezone.utc)
 
         extra = details_by_id.get(vid_id, {"duration_seconds": 0, "view_count": 0})
         videos.append({
@@ -230,7 +230,7 @@ def _fetch_videos_ytdlp(channel_id: str, lookback_hours: int) -> list[dict]:
     if os.path.exists(_cookies_path):
         ydl_opts["cookiefile"] = _cookies_path
 
-    cutoff = datetime.utcnow() - timedelta(hours=lookback_hours)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=lookback_hours)
 
     videos = []
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -258,11 +258,11 @@ def _fetch_videos_ytdlp(channel_id: str, lookback_hours: int) -> list[dict]:
             try:
                 published_at = datetime.strptime(upload_date_str, "%Y%m%d")
             except ValueError:
-                published_at = datetime.utcnow()
+                published_at = datetime.now(timezone.utc)
         else:
             # Timestamp field
             ts = entry.get("timestamp")
-            published_at = datetime.utcfromtimestamp(ts) if ts else datetime.utcnow()
+            published_at = datetime.utcfromtimestamp(ts) if ts else datetime.now(timezone.utc)
 
         if published_at < cutoff:
             continue
@@ -336,7 +336,7 @@ def _insert_insight(
                 catalyst_summary=catalyst_summary,
                 raw_snippet=raw_snippet,
                 view_count=view_count,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
             .prefix_with("OR IGNORE")
         )
@@ -655,7 +655,7 @@ def evaluate_analysis_outcomes(db) -> int:
     import gzip
     from datetime import datetime, timedelta
 
-    cutoff = datetime.utcnow() - timedelta(days=7)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
     pending = (
         db.query(AnalysisHistory)
         .filter(AnalysisHistory.outcome_delta_pct == None)  # noqa: E711
@@ -688,7 +688,7 @@ def evaluate_analysis_outcomes(db) -> int:
             current   = float(hist["Close"].iloc[-1])
             delta     = ((current - float(prev_price)) / float(prev_price)) * 100
             analysis.outcome_delta_pct  = round(delta, 2)
-            analysis.outcome_checked_at = datetime.utcnow()
+            analysis.outcome_checked_at = datetime.now(timezone.utc)
             analysis.was_correct = (
                 (signal in ("BUY", "BULLISH") and delta > 0) or
                 (signal in ("SELL", "BEARISH") and delta < 0)

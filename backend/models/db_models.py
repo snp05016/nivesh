@@ -95,8 +95,8 @@ class AnalysisHistory(Base):
     confidence_math_breakdown   = Column(JSON, default="{}")
     conformal_target_upper_3m   = Column(Float, nullable=True)
     conformal_target_lower_3m   = Column(Float, nullable=True)
-    quantitative_drivers        = Column(JSON, default=dict)
-    tail_risk_flags             = Column(JSON, default=dict)
+    quantitative_drivers        = Column(JSON, default="{}")
+    tail_risk_flags             = Column(JSON, default="{}")
     created_at     = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="analysis_history")

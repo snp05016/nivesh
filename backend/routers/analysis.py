@@ -10,13 +10,13 @@ import asyncio
 import multiprocessing
 import math
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import yfinance as yf
 import anthropic
 from fastapi import APIRouter, HTTPException, Request, Header
 from fastapi.responses import JSONResponse as _JSONResponse
-from datetime import timezone as _timezone
+
 
 from helpers import (
     get_session, EXCHANGE_SUFFIX, NSE_TICKERS, NSE_TICKER_OVERRIDES,
@@ -396,7 +396,7 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
             if t_base in lists.get("GSM", set()): asm_gsm_status = "GSM"
             elif t_base in lists.get("ASM", set()): asm_gsm_status = "ASM"
             elif not lists.get("ASM") and not lists.get("GSM"): asm_gsm_status = "UNKNOWN"
-        except:
+        except Exception:
             asm_gsm_status = "UNKNOWN"
 
         result = {
@@ -466,7 +466,7 @@ def _build_analysis_error(
         "error_type": error_type,
         "phase_failed": phase_failed,
         "ticker": ticker,
-        "timestamp": datetime.now(_timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "suggested_action": suggested_action,
         "diagnostic_info": diagnostic_info,
         "http_status": http_status,
@@ -841,7 +841,7 @@ async def get_home_feed(user_id: int, ticker: str = None, authorization: str = H
         if ticker:
             news_query = news_query.filter(NewsArticle.ticker == ticker.upper())
         else:
-            cutoff = datetime.utcnow() - timedelta(hours=48)
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
             news_query = news_query.filter(NewsArticle.published_at >= cutoff)
 
         articles = news_query.limit(15).all()
@@ -861,7 +861,7 @@ async def get_home_feed(user_id: int, ticker: str = None, authorization: str = H
                         _news = yf.Ticker(_t).news or []
                         for _n in _news[:4]:
                             _pub_ts = _n.get("providerPublishTime", 0)
-                            _pub_iso = datetime.utcfromtimestamp(_pub_ts).isoformat() + "Z" if _pub_ts else datetime.utcnow().isoformat() + "Z"
+                            _pub_iso = datetime.utcfromtimestamp(_pub_ts).isoformat() + "Z" if _pub_ts else datetime.now(timezone.utc).isoformat() + "Z"
                             _fb_arts.append({
                                 "id": abs(hash(_n.get("link", "") + _t)) % 1_000_000,
                                 "source": _n.get("publisher", "Yahoo Finance"),
@@ -889,11 +889,11 @@ async def get_home_feed(user_id: int, ticker: str = None, authorization: str = H
         red_flags = session.query(NewsArticle).filter(
             NewsArticle.is_red_flag == True,
             NewsArticle.ticker.in_(holding_tickers),
-            NewsArticle.published_at >= datetime.utcnow() - timedelta(days=7)
+            NewsArticle.published_at >= datetime.now(timezone.utc) - timedelta(days=7)
         ).order_by(NewsArticle.published_at.desc()).limit(5).all()
 
         holding_tickers_set = {h.ticker.upper() for h in holdings}
-        cutoff_7d = datetime.utcnow() - timedelta(days=7)
+        cutoff_7d = datetime.now(timezone.utc) - timedelta(days=7)
         # Quality threshold cascade: prefer SEBI registry channels, then 50k+ views,
         # then 10k+ views so the section never silently disappears.
         def _quality_base(q, min_views: int):
@@ -972,7 +972,7 @@ async def get_home_feed(user_id: int, ticker: str = None, authorization: str = H
             "news": news_payload,
             "red_flag_alerts": [serialize_article(a) for a in red_flags],
             "youtube_videos": [serialize_video(v) for v in all_videos],
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 
 
@@ -990,7 +990,7 @@ def screener_endpoint(preset: str):
             try:
                 from services.piotroski import compute_piotroski
                 from datetime import timedelta
-                cutoff_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d")
+                cutoff_date = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d")
                 with get_session() as session:
                     rows = session.query(AnalysisHistory).filter(
                         AnalysisHistory.analysis_date >= cutoff_date,
@@ -1037,7 +1037,7 @@ def screener_endpoint(preset: str):
                 from datetime import timedelta
                 with get_session() as session:
                     pk_signals = session.query(PKScreenerSignal).filter(
-                        PKScreenerSignal.signal_date >= (datetime.utcnow() - timedelta(days=ADVISOR_INSIGHTS_LOOKBACK_DAYS)).strftime("%Y-%m-%d"),
+                        PKScreenerSignal.signal_date >= (datetime.now(timezone.utc) - timedelta(days=ADVISOR_INSIGHTS_LOOKBACK_DAYS)).strftime("%Y-%m-%d"),
                     ).all()
                     # Map ticker -> latest screener signal
                     pk_map: dict[str, PKScreenerSignal] = {}
@@ -1086,7 +1086,7 @@ def screener_endpoint(preset: str):
                 with get_session() as session:
                     # Query recent analysis for tickers with bearish signals
                     rows = session.query(AnalysisHistory).filter(
-                        AnalysisHistory.analysis_date >= (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d"),
+                        AnalysisHistory.analysis_date >= (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d"),
                     ).order_by(AnalysisHistory.created_at.desc()).limit(40).all()
                     seen: set[str] = set()
                     for r in rows:
@@ -1146,7 +1146,7 @@ def screener_endpoint(preset: str):
         elif preset == "quality_value":
             try:
                 from datetime import timedelta
-                cutoff_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d")
+                cutoff_date = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d")
                 with get_session() as session:
                     rows = session.query(AnalysisHistory).filter(
                         AnalysisHistory.analysis_date >= cutoff_date,
@@ -1185,7 +1185,7 @@ def screener_endpoint(preset: str):
         elif preset == "promoter_conviction":
             try:
                 from datetime import timedelta
-                cutoff_60 = (datetime.utcnow() - timedelta(days=60)).strftime("%Y-%m-%d")
+                cutoff_60 = (datetime.now(timezone.utc) - timedelta(days=60)).strftime("%Y-%m-%d")
                 with get_session() as session:
                     from sqlalchemy import func
                     latest_ids = session.query(

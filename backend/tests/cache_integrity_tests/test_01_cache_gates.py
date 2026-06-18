@@ -16,7 +16,7 @@ from services.staleness import compute_staleness, is_pre_market, UAE_OFFSET
 def run():
     runner = TestRunner("01_cache_gates")
 
-    now = datetime.utcnow() + UAE_OFFSET
+    now = datetime.now(timezone.utc) + UAE_OFFSET
 
     # Test 1: Fresh analysis (0-19)
     # Just analyzed, no price movement

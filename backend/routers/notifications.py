@@ -3,7 +3,7 @@ Push notification pipeline — device token registration, dev push mock, error t
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Header, Depends
 from pydantic import BaseModel
@@ -133,7 +133,7 @@ def get_notification_errors(authorization: str = Header(None)):
         return {
             "errors": errors,
             "count": len(errors),
-            "fetched_at": datetime.utcnow().isoformat(),
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
         }
     except HTTPException:
         raise

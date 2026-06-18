@@ -8,6 +8,7 @@ Contains:
 - Admin harvest trigger endpoints (FastAPI router)
 """
 
+from datetime import timezone
 import logging
 from fastapi import APIRouter, BackgroundTasks, Header
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -351,7 +352,7 @@ async def check_signal_outcomes():
 
     try:
         with get_session() as db:
-            cutoff = datetime.utcnow() - timedelta(days=30)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=30)
             pending = (
                 db.query(AnalysisHistory)
                 .filter(AnalysisHistory.was_correct == None)
@@ -378,7 +379,7 @@ async def check_signal_outcomes():
                     
                     outcome_delta_pct = (current_price - price_at_signal_date) / price_at_signal_date * 100
                     row.outcome_delta_pct = outcome_delta_pct
-                    row.outcome_checked_at = datetime.utcnow()
+                    row.outcome_checked_at = datetime.now(timezone.utc)
                     
                     signal = row.signal.upper() if row.signal else "HOLD"
                     if signal == "BUY" and outcome_delta_pct > 0:

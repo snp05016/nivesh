@@ -6,7 +6,7 @@ import sys, os, random
 sys.path.insert(0, os.path.dirname(__file__))
 
 from database import init_db, get_session, User, Portfolio, TradeJournal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Top 50 diverse NSE stocks across all major sectors
 STOCKS = [
@@ -109,7 +109,7 @@ def main():
             for _ in range(random.randint(2, 4)):
                 days_ago = random.randint(1, 365)
                 price_at_time = round(holding.buy_price * random.uniform(0.85, 1.15), 2)
-                session.add(TradeJournal(user_id=saumya.id, ticker=holding.ticker, action=random.choice(actions), price_at_time=price_at_time, reason_text=random.choice(reasons), outcome_text=f"Position {'gained' if random.random()>0.5 else 'lost'} {random.uniform(1,20):.1f}%", company_name=holding.company_name, mood=random.choice(moods), created_at=datetime.utcnow() - timedelta(days=days_ago)))
+                session.add(TradeJournal(user_id=saumya.id, ticker=holding.ticker, action=random.choice(actions), price_at_time=price_at_time, reason_text=random.choice(reasons), outcome_text=f"Position {'gained' if random.random()>0.5 else 'lost'} {random.uniform(1,20):.1f}%", company_name=holding.company_name, mood=random.choice(moods), created_at=datetime.now(timezone.utc) - timedelta(days=days_ago)))
                 jc += 1
         session.commit()
         print(f"Added {jc} journal entries")

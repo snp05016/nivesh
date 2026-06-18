@@ -1,0 +1,286 @@
+================================================================================
+IOS SWIFT CODE AUDIT — nivesh/stockme
+Date: 2026-06-18
+Method: Text search only (no xcodebuild per AGENTS.md §6.2)
+Scope: /ios/StockApp/stockme/stockme/**/*.swift (excluding /build/, /Pods/)
+================================================================================
+
+SUMMARY: 16 files flagged with issues across 7 categories.
+Risk: LOW-MEDIUM overall. No compile-error-looking patterns found.
+No try!/as!/fatalError, no hex colors, no Western scales in UI text.
+No .font(.system(size:...)) — full compliance on font system.
+
+================================================================================
+1. FORCE UNWRAPS (`!`) — RISK: MEDIUM
+================================================================================
+16 force-unwraps found. Most are nil-guarded but fragile.
+
+HIGH-RISK (unguarded, could crash on empty collections):
+  StockProfileView.swift:42
+      let startDate = filteredPrices.first!.parsedDate
+      → Crashes if filteredPrices is empty
+
+  ImmersivePortfolioHeroChart.swift:65-66
+      path.addLine(to: CGPoint(x: pts.last!.x, y: rect.maxY))
+      path.addLine(to: CGPoint(x: pts.first!.x, y: rect.maxY))
+      → Crashes if pts array is empty
+
+  SharedDarkComponents.swift:155
+      path.addLine(to: CGPoint(x: pts.last!.x, y: h))
+      → Crashes if pts array is empty
+
+  LaunchScreenView.swift:31
+      fill.addLine(to: CGPoint(x: pts.last!.x, y: h))
+      → Crashes if pts array is empty
+
+GUARDED (safe but fragile — recommend guard-let instead):
+  SearchScreen.swift:353          — activePreset! (nil-checked before)
+  EarningsSurpriseScreen.swift:394 — value! (nil-checked before)
+  StockProfile/OverviewTabView.swift:37 — info.price! (nil-checked)
+  StockProfileView.swift:379      — info.price! (nil-checked)
+  PortfolioScreen.swift:336,664,668 — activeWatchlistTag! (nil-checked)
+  EarningsDashboardView.swift:303 — vm.feedError! (nil-checked)
+  EarningsDashboardView.swift:575 — r.grossProfit! (nil-checked)
+  EarningsDashboardView.swift:930 — vm.feedDataSource! (nil-checked)
+  OptionsStrategyScreen.swift:428 — response! (nil-checked)
+
+================================================================================
+2. @AppStorage / UNDEFINED VARIABLES — RISK: LOW
+================================================================================
+69 @AppStorage usages found across 18 files. All have defaults. No orphaned keys.
+Key consistency looks good (same keys in AnalysisScreen + SettingsScreen match).
+✅ No issues found.
+
+================================================================================
+3. NON-THEME COLORS — RISK: MEDIUM
+================================================================================
+AGENTS.md §2.1: .blue/.red/.green/.primary/.secondary FORBIDDEN
+(except as opacity bases like .primary.opacity(0.88))
+
+VIOLATIONS — foregroundStyle(.primary) / .foregroundStyle(.secondary):
+  ValuationCalendarView.swift:168    .foregroundStyle(.secondary)
+  DenominationBackground.swift:82     .foregroundStyle(.primary)
+  BanknoteErrorCanvas.swift:50        .foregroundStyle(.secondary)
+  NewsCardView.swift:113              .foregroundStyle(.primary)
+  NewsCardView.swift:122              .foregroundStyle(.secondary)
+  YouTubeCardView.swift:205           .foregroundStyle(.secondary)
+  YouTubeCardView.swift:208           .foregroundStyle(.secondary)
+
+POTENTIAL VIOLATIONS — .foregroundStyle(.white):
+  16 locations across 10 files (NewsMultimedia, HomeScreen, AlertsScreen,
+  AnalysisScreen, TradeJournalScreen, PortfolioScreen, SharedComponents,
+  YouTubeCardView, StockCharts).
+  In a dark-only theme, white text on dark backgrounds may be intentional,
+  but AGENTS.md requires Theme.* tokens (e.g., Theme.inkPrimary).
+
+OTHER NON-THEME COLORS:
+  NiveshNavigationSidebar.swift:86    Color.black (standalone background)
+  SettingsScreen.swift:199            .indigo (ToggleRow icon color)
+  AnalysisScreen.swift:556-557        .white, .primary (in switch statement)
+
+NOTE: Extensive use of .primary.opacity(N) and .black.opacity(N) is
+compliant (opacity bases are explicitly permitted).
+
+================================================================================
+4. NON-THEME FONTS — RISK: NONE
+================================================================================
+✅ 0 matches for .font(.system(size:...)) — PERFECT COMPLIANCE
+Semantic fonts (.caption, .title, .headline, etc.) are used extensively
+and are acceptable per AGENTS.md §2.4.
+
+================================================================================
+5. HARDCODED PIXEL WIDTHS — RISK: LOW
+================================================================================
+100+ .frame(width: N) matches, but nearly all are:
+  - Small ornamentation (dots: 3-8pt, dividers: 0.5-3pt)
+  - Icon/avatar sizes (24-56pt) — explicitly permitted
+  - Control sizes (toggles, badges)
+
+LARGER SIZES FOUND:
+  DenominationBackground.swift:41   .frame(width: 180, height: 180)  — ornamental
+  DenominationBackground.swift:44   .frame(width: 160, height: 160)  — ornamental
+  → Both are watermark/ornamentation elements, permitted per §2.2.
+
+No full-width hardcoded card widths (like .frame(width:350)) found.
+✅ No violations.
+
+================================================================================
+6. MISSING EKPressStyle() ON BUTTONS — RISK: MEDIUM
+================================================================================
+Many Button instances lack .buttonStyle(EKPressStyle()).
+
+Buttons WITH .buttonStyle(EKPressStyle()): ~40+ instances ✅
+Buttons WITH .buttonStyle(.plain): ~22 instances (acceptable style override)
+
+Buttons WITHOUT any buttonStyle (potentially missing EKPressStyle):
+  TutorialOverlayView.swift:149    Button("Skip") — no .buttonStyle
+  PreIPOMarketplaceView.swift:244  Button(action:) — no .buttonStyle
+  PreIPOMarketplaceView.swift:324  Button(action:) — no .buttonStyle
+  PreIPOMarketplaceView.swift:332  Button(action:) — no .buttonStyle
+  LoginScreen.swift:135            Button(action:) — no .buttonStyle
+  LoginScreen.swift:154            Button(action:) — no .buttonStyle
+  LoginScreen.swift:171            Button — no .buttonStyle
+  StrategyLabScreen.swift:207      Button(action:) — no .buttonStyle
+  StrategyLabScreen.swift:229,245,285,306,341,364,529 — no .buttonStyle
+  StressTestScreen.swift:593       HelpInlineButton — custom button, likely OK
+  AdvisoryMatrixCard.swift:187     Button — no .buttonStyle
+  BrainstormingView.swift:53       Button(action:) — no .buttonStyle
+  PortfolioScreen.swift — MANY (~40 Buttons), most without buttonStyle
+  HomeScreen.swift — MANY (~25 Buttons), most without buttonStyle
+  SettingsScreen.swift:177,213,221 — no .buttonStyle
+  ValuationCalendarView.swift:45  Button(action:) — no .buttonStyle
+  OnboardingScreen.swift:62        Button(action:) — no .buttonStyle
+  HistoryScreen.swift:47           Button(role: .destructive) — no .buttonStyle
+  AnalysisScreen.swift:379,384     Button("View Cached")/Button("Regenerate") — no .buttonStyle
+  CompareScreen.swift:29,36        StockPickerButton — custom, likely OK
+  FearAndGreedIndexView.swift:?    — not checked in detail
+
+NOTE: Buttons inside List/Form pick up default styles. Many Buttons in
+PortfolioScreen, HomeScreen, StrategyLabScreen lack explicit buttonStyle.
+This violates AGENTS.md §2.3: "Every interactive element: .buttonStyle(EKPressStyle())".
+
+================================================================================
+7. DIVIDER vs GUILLOCHEDIVIDER — RISK: LOW
+================================================================================
+✅ 0 instances of plain Divider() found — compliant.
+
+However, SectionDivider (defined in Theme.swift:352) uses a Rectangle with
+.fill(Color.white.opacity(0.06)) — NOT GuillocheDivider. Per AGENTS.md §2.3:
+"Section separators: ONLY GuillocheDivider()."
+
+SectionDivider is used in ~40 locations. GuillocheDivider is used in ~56
+locations. Both are present throughout the codebase.
+
+Recommendation: Replace SectionDivider body with GuillocheDivider or
+deprecate SectionDivider in favor of GuillocheDivider directly.
+
+================================================================================
+8. INLINE func -> some View (STACK OVERFLOW RISK) — RISK: MEDIUM
+================================================================================
+AGENTS.md §6.6: Inline functions >5 lines → separate View structs.
+
+VERY LARGE FILES (>1000 lines — §6.6 recommends splitting):
+  StockDatabase.swift               3754 lines ⚠️ (data file)
+  HomeScreen.swift                  3089 lines 🔴 HIGH RISK
+  PortfolioScreen.swift             2447 lines 🔴 HIGH RISK
+  EarningsDashboardView.swift       2062 lines 🔴 HIGH RISK
+  NetworkManager.swift              1337 lines ⚠️
+  AnalysisScreen.swift              1234 lines ⚠️
+  StockCharts.swift                 1053 lines ⚠️
+
+LARGE INLINE FUNCTIONS FOUND (via heuristic):
+  AnalysisCoreSections.swift:421   whatChangedSectionView — ~142 lines
+
+Many files have 5+ inline functions per View struct. Combined with large
+file sizes (HomeScreen 3089 lines, PortfolioScreen 2447 lines), these
+present significant stack overflow risk per §6.6.
+
+Recommendation: Extract sections into Views/{FeatureName}/ subfolder structs.
+
+================================================================================
+9. @MainActor / THREADING — RISK: LOW
+================================================================================
+✅ Most ViewModels use @MainActor + @Published correctly.
+✅ DispatchQueue.main.async used for UI updates from background contexts.
+✅ No unprotected global state detected.
+
+Files with @MainActor on ViewModels:
+  AuthManager.swift, PreIPOViewModel, NLScreenerViewModel, AnalysisViewModel,
+  PortfolioViewModel, ExpertNetworkViewModel, EarningsDashboardViewModel
+
+Files using DispatchQueue.main.async:
+  EarningsSurpriseScreen.swift, SearchScreen.swift, EarningsDashboardView.swift
+
+✅ No violations found.
+
+================================================================================
+10. COMPILE-ERROR-LOOKING PATTERNS — RISK: NONE
+================================================================================
+✅ 0 matches for try! (forced try)
+✅ 0 matches for as! (forced cast with fatalError)
+✅ 0 matches for fatalError
+✅ No orphaned/unresolved symbol references detected
+✅ Hex colors (#NNNNNN) only appear in comments
+
+================================================================================
+ADDITIONAL FINDINGS
+================================================================================
+
+A. INDIAN NUMBER FORMATTING COMPLIANCE — ✅ PASS
+   "Million"/"Billion"/"Trillion" only appear in error messages and docs,
+   not in user-facing data display. IndianFormatter used throughout.
+
+B. @State OVERUSE CONCERN — LOW
+   100+ @State properties across the codebase. Some views have 10-15+
+   @State vars (SearchScreen, AnalysisScreen, EarningsDashboardView).
+   Consider grouping related state into sub-ViewModels.
+
+C. EMPTY CATCH BLOCKS — NOT CHECKED
+   The grep for bare `catch` was not performed. Recommend manual review.
+
+D. APPDELEGATE/SCENEDELEGATE — ✅ OK
+   stockmeApp.swift and AppDelegate.swift exist and have @AppStorage init.
+
+================================================================================
+FILE-BY-FILE FLAG SUMMARY
+================================================================================
+File                                      Force  Color  EKPress Divider LargeFunc
+                                            Unwrap Viol   Missing  Issue  Risk
+────────────────────────────────────────────────────────────────────────────────
+HomeScreen.swift (3089 lines)               —      ⚠️     🔴       —      🔴
+PortfolioScreen.swift (2447 lines)          ⚠️     ⚠️     🔴       —      🔴
+EarningsDashboardView.swift (2062 lines)    ⚠️     —      ⚠️       —      🔴
+AnalysisScreen.swift (1234 lines)           —      ⚠️     ⚠️       —      ⚠️
+StockProfileView.swift                      ⚠️     —      ✅       —      —
+SearchScreen.swift                           ⚠️     —      ⚠️       —      —
+OptionsStrategyScreen.swift                 ⚠️     —      ⚠️       —      —
+StrategyLabScreen.swift                     —      —      🔴       —      —
+ImmersivePortfolioHeroChart.swift           ⚠️     —      —        —      —
+SharedDarkComponents.swift                  ⚠️     —      —        —      —
+LaunchScreenView.swift                      ⚠️     —      —        —      —
+EarningsSurpriseScreen.swift                ⚠️     —      ⚠️       —      —
+PreIPOMarketplaceView.swift                 —      —      🔴       —      —
+LoginScreen.swift                           —      —      🔴       —      —
+SettingsScreen.swift                        —      ⚠️     🔴       —      —
+ValuationCalendarView.swift                 —      ⚠️     🔴       —      —
+NewsCardView.swift                          —      ⚠️     —        —      —
+YouTubeCardView.swift                       —      ⚠️     —        —      —
+BanknoteErrorCanvas.swift                   —      ⚠️     —        —      —
+DenominationBackground.swift                —      ⚠️     —        —      —
+NiveshNavigationSidebar.swift               —      ⚠️     —        —      —
+TutorialOverlayView.swift                   —      —      🔴       —      —
+BrainstormingView.swift                     —      —      🔴       —      —
+OnboardingScreen.swift                      —      —      🔴       —      —
+HistoryScreen.swift                         —      —      🔴       —      —
+StockProfile/OverviewTabView.swift          ⚠️     —      —        —      —
+AdvisoryMatrixCard.swift                    —      —      🔴       —      —
+AlertsScreen.swift                          —      ⚠️     —        —      —
+SharedComponents.swift                      —      ⚠️     —        —      —
+StockCharts.swift                           —      ⚠️     —        —      —
+AnalysisCoreSections.swift                  —      —      —        —      ⚠️
+Theme.swift (SectionDivider)                —      —      —        ⚠️      —
+
+LEGEND: ✅ = compliant  ⚠️ = minor issue  🔴 = significant violation  — = not assessed / N/A
+
+================================================================================
+PRIORITY ACTION ITEMS
+================================================================================
+1. [HIGH] Add .buttonStyle(EKPressStyle()) to Buttons in LoginScreen,
+   StrategyLabScreen, PortfolioScreen, BrainstormingView, OnboardingScreen,
+   AdvisoryMatrixCard, and HistoryScreen.
+
+2. [MEDIUM] Replace .foregroundStyle(.primary)/.secondary/.white with
+   Theme.inkPrimary / Theme.inkSecondary tokens.
+
+3. [MEDIUM] Guard force-unwraps on chart point arrays (pts.first!/pts.last!)
+   in ImmersivePortfolioHeroChart, SharedDarkComponents, LaunchScreenView.
+
+4. [MEDIUM] Extract sections from HomeScreen (3089 lines), PortfolioScreen
+   (2447 lines), EarningsDashboardView (2062 lines) into subfolder View structs.
+
+5. [LOW] Replace SectionDivider implementation with GuillocheDivider, or
+   update SectionDivider to wrap GuillocheDivider internally.
+
+6. [LOW] Guard filteredPrices.first! in StockProfileView.swift:42.
+
+================================================================================

@@ -4,7 +4,7 @@ Uses the isolated stockapp_test.db configured by conftest. Unique user_ids per t
 keep rows from colliding across runs.
 """
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -73,7 +73,7 @@ def test_sweep_stale_running_marks_failed():
     import database
     j = database.create_job(_uid(), "WIPRO", "NSE", "standard")
     database.update_job(j["job_id"], status="RUNNING",
-                        heartbeat_at=datetime.utcnow() - timedelta(seconds=300))
+                        heartbeat_at=datetime.now(timezone.utc) - timedelta(seconds=300))
     n = database.sweep_stale_jobs(max_heartbeat_age_sec=90)
     assert n >= 1
     assert database.get_job(j["job_id"])["status"] == "FAILED"

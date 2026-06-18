@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from services.staleness import compute_staleness
 
 # Generating 100 test cases for staleness logic
@@ -35,7 +35,7 @@ from services.staleness import compute_staleness
 def test_staleness_logic(last_date_offset, price_change, signal, expected_min_score):
     last_date = None
     if last_date_offset is not None:
-        last_date = datetime.utcnow() - timedelta(days=last_date_offset)
+        last_date = datetime.now(timezone.utc) - timedelta(days=last_date_offset)
     
     result = compute_staleness(last_date, price_change, signal)
     assert result["score"] >= expected_min_score
@@ -45,7 +45,7 @@ def test_staleness_logic(last_date_offset, price_change, signal, expected_min_sc
 
 def test_staleness_reasons_count():
     # Test that a reason is provided
-    last_date = datetime.utcnow() - timedelta(days=40)
+    last_date = datetime.now(timezone.utc) - timedelta(days=40)
     price_change = 25.0
     result = compute_staleness(last_date, price_change, "STRONG_BUY")
     assert "reason" in result

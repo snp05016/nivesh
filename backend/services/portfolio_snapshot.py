@@ -9,7 +9,7 @@ for all users at 6:30 AM IST so the /morning-summary endpoint is instant.
 """
 import yfinance as yf
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 import sys
 import os
 import json
@@ -251,7 +251,7 @@ async def pregen_morning_briefs_all_users() -> dict:
                     "mood": "cautious",
                 }
 
-            brief["generated_at"] = datetime.utcnow().strftime("%H:%M")
+            brief["generated_at"] = datetime.now(timezone.utc).strftime("%H:%M")
             brief["pregen"] = True
 
             cache_set(_MORNING_BRIEF_NS, str(user_id_val), brief, ttl=MORNING_BRIEF_TTL)

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Header, Depends
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 from pydantic import BaseModel
 from typing import Optional
@@ -278,7 +278,7 @@ def notifications_morning_summary_push(req: MorningSummaryPushRequest):
 
 @router.get("/api/v1/experts")
 def get_experts():
-    now_iso = datetime.utcnow().isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
     try:
         with get_session() as session:
             rows = session.query(AdvisorInsight).order_by(
@@ -324,7 +324,7 @@ def get_experts():
 
 @router.get("/api/v1/expert-posts")
 def get_expert_posts(limit: int = 30):
-    now_iso = datetime.utcnow().isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
     try:
         with get_session() as session:
             rows = session.query(AdvisorInsight).order_by(

@@ -5,7 +5,7 @@ Run nightly. Never called from request handlers.
 """
 import feedparser
 from newspaper import Article
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from sqlalchemy.orm import Session
 import sys
@@ -111,7 +111,7 @@ async def harvest_news(lookback_hours: int = 26):
     articles_added = 0
 
     with get_session() as db:
-        cutoff = datetime.utcnow() - timedelta(hours=lookback_hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=lookback_hours)
 
         for feed_config in RSS_FEEDS:
             try:
@@ -133,9 +133,9 @@ async def harvest_news(lookback_hours: int = 26):
                         try:
                             pub_date = datetime(*entry.published_parsed[:6]) \
                                 if hasattr(entry, 'published_parsed') and entry.published_parsed \
-                                else datetime.utcnow()
+                                else datetime.now(timezone.utc)
                         except (TypeError, AttributeError, ValueError):
-                            pub_date = datetime.utcnow()
+                            pub_date = datetime.now(timezone.utc)
 
                         if pub_date < cutoff:
                             continue

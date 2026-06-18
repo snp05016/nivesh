@@ -56,7 +56,7 @@ def create_job(user_id: Optional[int], ticker: str, exchange: str, scan_type: st
     with _get_session() as s:
         j = AnalysisJob(job_id=jid, user_id=user_id, ticker=ticker.upper(),
                         exchange=exchange, scan_type=scan_type, status="QUEUED",
-                        heartbeat_at=datetime.utcnow())
+                        heartbeat_at=datetime.now(timezone.utc))
         s.add(j)
         s.commit()
         return _job_to_dict(j)
@@ -78,10 +78,10 @@ def get_job(job_id: str) -> Optional[dict]:
 
 def update_job(job_id: str, **fields) -> None:
     if fields.get("status") in _JOB_TERMINAL:
-        fields.setdefault("finished_at", datetime.utcnow())
+        fields.setdefault("finished_at", datetime.now(timezone.utc))
     if fields.get("status") == "RUNNING":
-        fields.setdefault("started_at", datetime.utcnow())
-    fields.setdefault("heartbeat_at", datetime.utcnow())
+        fields.setdefault("started_at", datetime.now(timezone.utc))
+    fields.setdefault("heartbeat_at", datetime.now(timezone.utc))
     with _get_session() as s:
         j = s.get(AnalysisJob, job_id)
         if not j:
@@ -98,12 +98,12 @@ def append_checkpoint(job_id: str, *, stage: str, agent: str,
         if not j:
             return
         cps = json.loads(j.checkpoints or "[]")
-        cps.append({"ts": datetime.utcnow().isoformat(), "stage": stage,
+        cps.append({"ts": datetime.now(timezone.utc).isoformat(), "stage": stage,
                     "agent": agent, "message": message, "state": state})
         j.checkpoints = json.dumps(cps, ensure_ascii=False)
         j.stage = stage
         j.progress_pct = max(j.progress_pct or 0, int(pct))
-        j.heartbeat_at = datetime.utcnow()
+        j.heartbeat_at = datetime.now(timezone.utc)
         s.commit()
 
 
@@ -113,7 +113,7 @@ def add_job_tokens(job_id: str, n: int) -> int:
         if not j:
             return 0
         j.tokens_used = (j.tokens_used or 0) + int(n)
-        j.heartbeat_at = datetime.utcnow()
+        j.heartbeat_at = datetime.now(timezone.utc)
         s.commit()
         return j.tokens_used
 
@@ -135,7 +135,7 @@ def get_active_job_for_user_and_type(user_id: Optional[int], scan_type: str) -> 
     if user_id is None:
         return None
     cutoff_sec = _STALE_LIMITS.get(scan_type, 300)
-    threshold = datetime.utcnow() - timedelta(seconds=cutoff_sec)
+    threshold = datetime.now(timezone.utc) - timedelta(seconds=cutoff_sec)
     with _get_session() as s:
         j = (s.query(AnalysisJob)
                .filter(AnalysisJob.user_id == user_id,
@@ -242,7 +242,7 @@ def get_latest_successful_monitor_job(ticker: str) -> Optional[dict]:
 
 def sweep_stale_jobs(max_heartbeat_age_sec: int = 90) -> int:
     """Crash recovery: mark QUEUED/RUNNING jobs with a stale heartbeat as FAILED."""
-    cutoff = datetime.utcnow() - timedelta(seconds=max_heartbeat_age_sec)
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=max_heartbeat_age_sec)
     with _get_session() as s:
         stale = (s.query(AnalysisJob)
                    .filter(AnalysisJob.status.in_(["QUEUED", "RUNNING"]),
@@ -250,6 +250,6 @@ def sweep_stale_jobs(max_heartbeat_age_sec: int = 90) -> int:
         for j in stale:
             j.status = "FAILED"
             j.error = "Worker died (stale heartbeat / server restart)"
-            j.finished_at = datetime.utcnow()
+            j.finished_at = datetime.now(timezone.utc)
         s.commit()
         return len(stale)
