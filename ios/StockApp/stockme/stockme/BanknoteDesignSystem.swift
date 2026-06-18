@@ -103,6 +103,8 @@ struct PortfolioValueDisplay: View {
                 .font(Theme.engravedSerif(size: fontSize, weight: .bold))
                 .foregroundStyle(Theme.securityGold)
             Text(IndianFormatter.priceWithoutSymbol(current))
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
                 .contentTransition(.numericText())
                 .font(Theme.serialNumberFont(size: fontSize))
                 .foregroundStyle(Theme.inkPrimary)
@@ -280,6 +282,8 @@ struct PnlBadge: View {
                     .foregroundStyle(color)
             } else {
                 Text(IndianFormatter.priceCompact(abs(value)))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                     .font(Theme.monoTabular(size: 13, relativeTo: .footnote))
                     .foregroundStyle(color)
             }

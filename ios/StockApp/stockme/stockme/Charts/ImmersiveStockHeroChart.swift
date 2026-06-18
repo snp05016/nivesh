@@ -65,6 +65,8 @@ struct ImmersiveStockHeroChart: View {
     private var valueHeader: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
             Text(IndianFormatter.price(displayPrice))
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
                 .font(.largeTitle.weight(.bold))
                 .monospaced()
                 .foregroundStyle(Theme.inkPrimary)

@@ -290,6 +290,8 @@ struct AnalysisScreen: View {
                     // Screen C — price + ChangeBadge inline on the right
                     if let info = viewModel.quickInfo {
                         Text(IndianFormatter.price(livePrice ?? info.price ?? 0))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 13, relativeTo: .footnote))
                             .foregroundStyle(Theme.inkPrimary)
                         ChangeBadge(value: info.changePercent ?? 0)

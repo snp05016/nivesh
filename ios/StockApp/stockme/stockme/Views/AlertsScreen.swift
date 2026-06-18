@@ -235,6 +235,8 @@ private struct AlertRow: View {
                         Image(systemName: alert.isAbove ? "chevron.up" : "chevron.down")
                             .font(.caption2)
                         Text(IndianFormatter.price(alert.targetPrice))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                     }
                     .font(Theme.serialNumberFont(size: 14))
                     .foregroundStyle(Theme.inkPrimary)

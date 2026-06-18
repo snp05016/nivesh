@@ -268,6 +268,8 @@ struct WatchlistRow: View {
             // Price + change badge (G2)
             VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                 Text(IndianFormatter.price(item.currentPrice))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                     .font(Theme.serialNumberFont(size: 14, relativeTo: .callout).weight(.semibold))
                     .foregroundStyle(Theme.inkPrimary)
                 ChangeBadge(value: item.dayChangePct)

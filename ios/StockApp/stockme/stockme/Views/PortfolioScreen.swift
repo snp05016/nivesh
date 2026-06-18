@@ -2272,6 +2272,8 @@ struct PortfolioBriefSheet: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("VALUE").font(Theme.officialStampFont(size: 7)).tracking(1.2).foregroundStyle(Theme.inkTertiary)
                         Text(IndianFormatter.priceCompact(portfolioValue))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 16, relativeTo: .headline)).foregroundStyle(Theme.inkPrimary)
                     }
                     Spacer()
@@ -2295,6 +2297,8 @@ struct PortfolioBriefSheet: View {
                         Text(h.stock.ticker).font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkPrimary)
                         Spacer()
                         Text(IndianFormatter.percent(h.pnlPercent))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.bullGreen)
                     }
                     .padding(.vertical, Theme.Spacing.small)
@@ -2310,6 +2314,8 @@ struct PortfolioBriefSheet: View {
                         Text(h.stock.ticker).font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkPrimary)
                         Spacer()
                         Text(IndianFormatter.percent(h.pnlPercent))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.bearRed)
                     }
                     .padding(.vertical, Theme.Spacing.small)
