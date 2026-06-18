@@ -83,7 +83,7 @@ def _call_with_timeout(fn, *args, default=None, timeout=30):
 
 from services.math_engines.vasicek import get_adjusted_macro_betas
 
-def _estimate_betas(ticker: str, sector: str) -> dict[str, float]:
+def _estimate_betas(ticker: str, sector: str = "Other") -> dict[str, float]:
     """Fetch beta estimates using Vasicek Bayesian Shrinkage."""
     return get_adjusted_macro_betas(ticker, sector)
 
@@ -197,7 +197,12 @@ def enrich_holdings(holdings, progress_callback=None) -> List[Dict[str, Any]]:
     return [r for r in results if r is not None]
 
 
-def run_stress_test(holdings, scenarios: List[str], progress_callback=None) -> List[Dict[str, Any]]:
+def run_stress_test(
+    holdings,
+    scenarios: List[str],
+    progress_callback=None,
+    phase_callback=None,
+) -> List[Dict[str, Any]]:
     """Execute Tier 2.5 stress tests on a portfolio.
     
     Steps:
@@ -209,13 +214,20 @@ def run_stress_test(holdings, scenarios: List[str], progress_callback=None) -> L
     6. Calculate all 6 risk scores
     
     progress_callback(done: int, total: int, current_ticker: str) called per holding.
+    phase_callback(checkpoint: str, pct: int, message: str) is called at real
+    engine boundaries so API clients can display durable backend progress.
     """
     from services.math_engines.liquidity import square_root_impact, portfolio_liquidity_loss
     from services.math_engines.concentration import compute_concentration_analysis
     from services.math_engines.scoring import compute_all_scores, compute_stress_score
     from services.math_engines.covariance import fetch_historical_returns, compute_covariance_matrix, compute_crisis_covariance
     
+    def _emit_phase(checkpoint: str, pct: int, message: str) -> None:
+        if phase_callback:
+            phase_callback(checkpoint, pct, message)
+
     # Phase 1: Enrich holdings (parallel yfinance)
+    _emit_phase("enrich", 5, "Loading prices, betas, and liquidity inputs")
     enriched = enrich_holdings(holdings, progress_callback=progress_callback)
     total_value = sum(e["value"] for e in enriched)
     if total_value <= 0:
@@ -226,6 +238,7 @@ def run_stress_test(holdings, scenarios: List[str], progress_callback=None) -> L
     sectors = [e["sector"] for e in enriched]
     
     # Phase 2: Fetch empirical covariance from historical returns
+    _emit_phase("covariance", 55, "Building historical covariance matrix")
     n = len(enriched)
     returns_dict = fetch_historical_returns(tickers, period="2y")
     cov = compute_covariance_matrix(returns_dict, tickers)
@@ -255,12 +268,19 @@ def run_stress_test(holdings, scenarios: List[str], progress_callback=None) -> L
     crisis_cov = compute_crisis_covariance(returns_dict, tickers, broken_arrow_corr=0.85)
 
     # Phase 3: Concentration analysis (base covariance, updated per-scenario)
+    valid_scenarios = [
+        key.lower().strip()
+        for key in scenarios
+        if key.lower().strip() in SCENARIOS_DEF
+    ]
+    _emit_phase(
+        "scenarios",
+        70,
+        f"Running {len(valid_scenarios)} portfolio shock scenario(s)",
+    )
     
     results = []
-    for sc_key in scenarios:
-        sc_key_lower = sc_key.lower().strip()
-        if sc_key_lower not in SCENARIOS_DEF:
-            continue
+    for scenario_index, sc_key_lower in enumerate(valid_scenarios):
         
         scenario = SCENARIOS_DEF[sc_key_lower]
         shocks = scenario.get("shocks", {})
@@ -379,5 +399,15 @@ def run_stress_test(holdings, scenarios: List[str], progress_callback=None) -> L
                 "total_loss_inr": portfolio_liq["total_liquidity_loss_inr"],
             },
         })
+
+        completed = scenario_index + 1
+        scenario_pct = 70 + int((completed / max(len(valid_scenarios), 1)) * 28)
+        _emit_phase(
+            "scenarios",
+            scenario_pct,
+            f"Completed {scenario['name']} ({completed}/{len(valid_scenarios)})",
+        )
+
+    _emit_phase("scoring", 99, "Finalizing portfolio risk scores")
     
     return results

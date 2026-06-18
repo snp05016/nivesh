@@ -155,6 +155,27 @@ def list_active_jobs() -> list[dict]:
         return [_job_to_dict(j) for j in rows]
 
 
+def list_jobs_for_user_and_type(
+    user_id: int,
+    scan_type: str,
+    *,
+    limit: int = 50,
+) -> list[dict]:
+    """Newest jobs for one user and engine type."""
+    with _get_session() as s:
+        rows = (
+            s.query(AnalysisJob)
+            .filter(
+                AnalysisJob.user_id == user_id,
+                AnalysisJob.scan_type == scan_type,
+            )
+            .order_by(AnalysisJob.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [_job_to_dict(j) for j in rows]
+
+
 def list_monitor_jobs(
     *,
     mode: str = "running",
