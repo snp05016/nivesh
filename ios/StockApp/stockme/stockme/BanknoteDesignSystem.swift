@@ -145,21 +145,23 @@ extension View {
 struct GovernorSealAvatar: View {
     let initials: String
 
+    private var avatarSize: CGFloat { UIScreen.main.bounds.width * 0.11 }
+
     var body: some View {
         ZStack {
             Circle()
                 .fill(Theme.canvasDeep)
             Circle()
                 .stroke(Theme.securityGold.opacity(0.5), lineWidth: 1.5)
-                .frame(width: 48, height: 48)
+                .frame(width: avatarSize, height: avatarSize)
             Circle()
                 .stroke(Theme.securityGold.opacity(0.2), lineWidth: 0.5)
-                .frame(width: 40, height: 40)
+                .frame(width: avatarSize * 0.83, height: avatarSize * 0.83)
             Text(initials.uppercased())
                 .font(Theme.engravedSerif(size: 16, weight: .bold))
                 .foregroundStyle(Theme.inkPrimary)
         }
-        .frame(width: 52, height: 52)
+        .frame(width: avatarSize * 1.08, height: avatarSize * 1.08)
     }
 }
 

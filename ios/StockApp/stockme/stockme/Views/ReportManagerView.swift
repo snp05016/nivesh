@@ -12,7 +12,7 @@ struct ReportManagerView: View {
                 VStack(spacing: Theme.Spacing.standard) {
                     Spacer()
                     Image(systemName: "doc.text.magnifyingglass")
-                        .font(.system(size: 48))
+                        .font(Theme.engravedSerif(size: 48))
                         .foregroundStyle(Theme.inkTertiary)
                     Text("No saved reports")
                         .font(Theme.engravedSerif(size: 15))

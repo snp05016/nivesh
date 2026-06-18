@@ -32,10 +32,12 @@ struct StockActionHubView: View {
     @Binding var path: NavigationPath
 
     @EnvironmentObject var reportManager: LocalReportManager
+    @AppStorage("nivesh_autoRunOnTap") private var autoRunOnTap = false
 
     @State private var showHowItWorks = false
     @State private var showCacheAlert = false
     @State private var pendingMode: AnalysisLaunchMode = .standard
+    @State private var didAutoRun = false
 
     private static let deepScanDisabledTickers: Set<String> = [
         "NIFTY", "SENSEX", "BANKNIFTY", "NIFTYBANK", "INDIAVIX",
@@ -164,6 +166,11 @@ struct StockActionHubView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.canvas, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+        .onAppear {
+            guard autoRunOnTap, !didAutoRun else { return }
+            didAutoRun = true
+            tapAnalysis(mode: .standard)
+        }
     }
 
     // MARK: - Cache-check logic

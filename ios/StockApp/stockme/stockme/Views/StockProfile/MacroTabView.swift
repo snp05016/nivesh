@@ -78,7 +78,7 @@ struct MacroMoodGaugeView: View {
                         Circle()
                             .trim(from: 0.25 + segStart * 0.5, to: 0.25 + segEnd * 0.5)
                             .stroke(segColor, style: StrokeStyle(lineWidth: 14, lineCap: .butt))
-                            .frame(width: 160, height: 160)
+                            .frame(width: UIScreen.main.bounds.width * 0.40, height: UIScreen.main.bounds.width * 0.40)
                             .rotationEffect(.degrees(180))
                     }
 
@@ -103,7 +103,7 @@ struct MacroMoodGaugeView: View {
                         .fill(Theme.inkPrimary)
                         .frame(width: 10, height: 10)
                 }
-                .frame(width: 160, height: 110)
+                .frame(width: UIScreen.main.bounds.width * 0.40, height: UIScreen.main.bounds.height * 0.13)
 
                 VStack(spacing: Theme.Spacing.xSmall) {
                     Text("\(Int(score))")

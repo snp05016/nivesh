@@ -229,11 +229,15 @@ struct StartJobRequest: Encodable {
     let userId: Int?
     let deepScan: Bool
     let scanType: String
+    var language: String? = nil
+    var debateRounds: Int? = nil
     enum CodingKeys: String, CodingKey {
         case ticker, exchange
         case userId = "user_id"
         case deepScan = "deep_scan"
         case scanType = "scan_type"
+        case language
+        case debateRounds = "debate_rounds"
     }
 }
 

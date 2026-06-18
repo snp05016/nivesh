@@ -7,7 +7,7 @@ struct NewsCardView: View {
     private var goldAccent: Color { Theme.securityGold }
     private let bearRed    = Theme.bearRed
     private let bullGreen  = Theme.bullGreen
-    private let dimText    = Color.secondary
+    private let dimText    = Theme.inkSecondary
 
     var sentimentColor: Color {
         switch article.sentiment {

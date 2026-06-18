@@ -129,6 +129,8 @@ class AnalyzeRequest(BaseModel):
     user_id: Optional[int] = None
     deep_scan: bool = False
     scan_type: str = "standard"
+    language: Optional[str] = None
+    debate_rounds: Optional[int] = None
 
     @validator("ticker")
     def validate_ticker(cls, v):

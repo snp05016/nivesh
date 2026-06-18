@@ -84,7 +84,7 @@ struct TermTooltipCard: View {
             }
             .padding(Theme.Spacing.card)
             .banknoteCard()
-            .frame(maxWidth: 300)
+            .frame(maxWidth: min(UIScreen.main.bounds.width * 0.85, 500))
 
             Button(action: {
                 triggerSelectionHaptic()

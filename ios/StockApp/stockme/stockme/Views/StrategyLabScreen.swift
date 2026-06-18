@@ -195,7 +195,7 @@ struct StrategyLabScreen: View {
                 } else if let error = viewModel.errorMessage {
                     VStack(spacing: Theme.Spacing.medium) {
                         Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 24))
+                            .font(Theme.engravedSerif(size: 24))
                             .foregroundStyle(Theme.bearRed)
                         Text("API Unavailable or Insufficient Data")
                             .font(Theme.engravedSerif(size: 16, weight: .bold))
@@ -263,7 +263,7 @@ struct StrategyLabScreen: View {
                 } else {
                     VStack {
                         Image(systemName: "flask")
-                            .font(.system(size: 32))
+                            .font(Theme.engravedSerif(size: 32))
                             .foregroundStyle(Theme.inkTertiary)
                             .padding(.bottom, 8)
                         Text("Select a strategy to begin")

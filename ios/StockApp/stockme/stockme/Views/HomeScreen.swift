@@ -104,7 +104,7 @@ struct ADBreathBar: View {
                         )
                     )
             }
-            .frame(height: 8)
+            .frame(height: Theme.Spacing.medium)
             .cornerRadius(Theme.CornerRadius.small)
 
             HStack {
@@ -217,7 +217,7 @@ struct MomentumSectionView: View {
                 ForEach(stocks) { stock in
                     MomentumStockRow(stock: stock, stanceColor: stanceColor)
                     if stock.id != stocks.last?.id {
-                        Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5).padding(.leading, 10)
+                        Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5).padding(.leading, Theme.Spacing.medium)
                     }
                 }
             }
@@ -383,7 +383,7 @@ struct FundReturnRow: View {
             Text("\(rank)")
                 .font(.caption.weight(.medium)).monospaced()
                 .foregroundStyle(subtleText)
-                .frame(width: 14)
+                .frame(width: Theme.Spacing.standard)
 
             Text(fundName)
                 .font(.footnote.weight(.medium))
@@ -1018,7 +1018,7 @@ private struct MorningDecreeCard: View {
                         }
                     }
                     .padding(.top, cardVPad)
-                    .padding(.leading, 10)
+                    .padding(.leading, Theme.Spacing.medium)
                     .padding(.trailing, cardHPad)
 
                     SectionDivider()
@@ -1300,7 +1300,7 @@ private struct MarketPulseDashCard: View {
                             .foregroundStyle(Theme.inkPrimary)
                     }
                     .padding(.top, cardVPad)
-                    .padding(.leading, 10)
+                    .padding(.leading, Theme.Spacing.medium)
                     .padding(.trailing, cardHPad)
 
                     SectionDivider()
@@ -1382,7 +1382,7 @@ private struct MomentumDashCard: View {
                             .foregroundStyle(Theme.inkPrimary)
                     }
                     .padding(.top, cardVPad)
-                    .padding(.leading, 10)
+                    .padding(.leading, Theme.Spacing.medium)
                     .padding(.trailing, cardHPad)
 
                     SectionDivider()
@@ -1468,7 +1468,7 @@ private struct MacroDashCard: View {
                             .foregroundStyle(Theme.inkPrimary)
                     }
                     .padding(.top, cardVPad)
-                    .padding(.leading, 10)
+                    .padding(.leading, Theme.Spacing.medium)
                     .padding(.trailing, cardHPad)
 
                     SectionDivider()
@@ -1786,7 +1786,7 @@ struct CompactNewsCell: View {
                                     .resizable()
                                     .aspectRatio(contentMode: .fill)
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: 148)
+                                    .frame(height: UIScreen.main.bounds.height * 0.18)
                                     .clipped()
                             case .failure(_), .empty:
                                 newsFallbackImage
@@ -1848,7 +1848,7 @@ struct CompactNewsCell: View {
                     .padding(.horizontal, Theme.Spacing.medium)
                     .padding(.bottom, Theme.Spacing.medium)
                 }
-                .frame(height: 148)
+                .frame(height: UIScreen.main.bounds.height * 0.18)
                 .clipped()
                 .cornerRadius(Theme.CornerRadius.tight)
 
@@ -1975,7 +1975,7 @@ struct CompactNewsCell: View {
                 )
             )
             .frame(maxWidth: .infinity)
-            .frame(height: 148)
+            .frame(height: UIScreen.main.bounds.height * 0.18)
             .overlay(
                 VStack(spacing: Theme.Spacing.tight) {
                     Image(systemName: "newspaper.fill")
@@ -2235,7 +2235,7 @@ private struct InstitutionalDashCard: View {
                             .foregroundStyle(Theme.inkPrimary)
                     }
                     .padding(.top, cardVPad)
-                    .padding(.leading, 10)
+                    .padding(.leading, Theme.Spacing.medium)
                     .padding(.trailing, cardHPad)
 
                     SectionDivider()

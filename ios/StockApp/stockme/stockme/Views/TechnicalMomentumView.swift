@@ -52,8 +52,8 @@ struct TechnicalMomentumView: View {
             Spacer()
         }
         .padding(.horizontal, Theme.screenPadding)
-        .padding(.top, 14)
-        .padding(.bottom, 10)
+        .padding(.top, Theme.Spacing.standard)
+        .padding(.bottom, Theme.Spacing.medium)
         .background(Theme.canvasDeep)
     }
 
@@ -75,7 +75,7 @@ struct TechnicalMomentumView: View {
                 Spacer()
             }
             .padding(.horizontal, Theme.screenPadding)
-            .padding(.vertical, 10)
+            .padding(.vertical, Theme.Spacing.medium)
             .background(Theme.canvasDeep)
         }
     }
@@ -91,8 +91,8 @@ struct TechnicalMomentumView: View {
                             .font(Theme.officialStampFont(size: 11))
                             .fontWeight(selectedSubTab == idx ? .bold : .regular)
                             .foregroundStyle(selectedSubTab == idx ? Theme.securityGold : Theme.inkTertiary)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
+                            .padding(.horizontal, Theme.Spacing.standard)
+                            .padding(.vertical, Theme.Spacing.medium)
                             .background(selectedSubTab == idx ? Theme.securityGold.opacity(0.08) : Color.clear)
                     }
                 }
@@ -135,7 +135,7 @@ struct TechnicalMomentumView: View {
                         Text("No \(selectedMomentum.lowercased()) signals detected for \(selectedIndex).")
                             .font(Theme.officialStampFont(size: 12))
                             .foregroundStyle(Theme.inkTertiary)
-                            .padding(40)
+                            .padding(Theme.Spacing.xLarge)
                             .frame(maxWidth: .infinity)
                     } else {
                         ForEach(tickers) { ticker in
@@ -165,7 +165,7 @@ struct TechnicalMomentumView: View {
                             ZStack {
                                 Circle()
                                     .stroke(momentumColor(filter).opacity(0.5), lineWidth: 1.5)
-                                    .frame(width: 14, height: 14)
+                                    .frame(width: Theme.Spacing.standard, height: Theme.Spacing.standard)
                                 if selectedMomentum == filter {
                                     Circle()
                                         .fill(momentumColor(filter))
@@ -301,7 +301,7 @@ struct TechnicalMomentumView: View {
                     ForEach(0..<3, id: \.self) { _ in
                         RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                             .fill(Theme.inkTertiary.opacity(0.08))
-                            .frame(height: 72)
+                            .frame(height: UIScreen.main.bounds.height * 0.09)
                             .shimmerPlaceholder(isLoading: true)
                             .padding(.horizontal, Theme.screenPadding)
                     }
@@ -309,7 +309,7 @@ struct TechnicalMomentumView: View {
                     Text("Market breadth data unavailable.")
                         .font(Theme.officialStampFont(size: 12))
                         .foregroundStyle(Theme.inkTertiary)
-                        .padding(40)
+                        .padding(Theme.Spacing.xLarge)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -378,7 +378,7 @@ struct TechnicalMomentumView: View {
                     Text("No data available.")
                         .font(Theme.officialStampFont(size: 12))
                         .foregroundStyle(Theme.inkTertiary)
-                        .padding(40)
+                        .padding(Theme.Spacing.xLarge)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -388,12 +388,13 @@ struct TechnicalMomentumView: View {
     }
 
     private var moverRowPlaceholder: some View {
-        HStack(spacing: Theme.Spacing.standard) {
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 24, height: 12)
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return HStack(spacing: Theme.Spacing.standard) {
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.07, height: 12)
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: UIScreen.main.bounds.width * 0.22, height: 14)
             Spacer()
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 50, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.20, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.14, height: 12)
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
@@ -435,11 +436,12 @@ struct TechnicalMomentumView: View {
     // MARK: Placeholders
 
     private var momentumCardPlaceholder: some View {
-        HStack(spacing: Theme.Spacing.standard) {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return HStack(spacing: Theme.Spacing.standard) {
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: UIScreen.main.bounds.width * 0.2, height: 14)
             Spacer()
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 60, height: 12)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 40, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.17, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.11, height: 12)
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
@@ -645,12 +647,13 @@ struct TopMoverRow: View {
     private var changeColor: Color { isPositive ? Theme.bullGreen : Theme.bearRed }
 
     var body: some View {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
         HStack(spacing: Theme.Spacing.standard) {
             // Rank badge
             Text("#\(rank)")
                 .font(Theme.serialNumberFont(size: 11))
                 .foregroundStyle(Theme.inkTertiary)
-                .frame(width: 28, alignment: .trailing)
+                .frame(width: colW * 0.08, alignment: .trailing)
 
             // Ticker + submetric
             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {

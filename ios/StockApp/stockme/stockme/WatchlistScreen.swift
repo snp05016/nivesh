@@ -242,7 +242,7 @@ struct WatchlistRow: View {
             Text(initials)
                 .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote).weight(.semibold))
                 .foregroundStyle(Theme.inkPrimary)
-                .frame(width: 42, height: 42)
+                .frame(width: Theme.Spacing.xLarge, height: Theme.Spacing.xLarge)
                 .background(Theme.cardBlueDeep)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
 

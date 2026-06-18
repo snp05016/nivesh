@@ -257,7 +257,7 @@ struct AnalysisErrorStateView: View {
                         }
                         .font(Theme.officialStampFont(size: 10))
                         .foregroundStyle(Theme.inkPrimary)
-                        .padding(.vertical, 14)
+                        .padding(.vertical, Theme.Spacing.standard)
                         .frame(maxWidth: .infinity)
                         .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.inkPrimary, lineWidth: 1))
                     }

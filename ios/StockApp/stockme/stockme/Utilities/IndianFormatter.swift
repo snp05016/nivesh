@@ -1,6 +1,10 @@
 import Foundation
 
 struct IndianFormatter {
+    static var useAbsoluteFormat: Bool {
+        UserDefaults.standard.string(forKey: "currencyDisplay") == "Absolute"
+    }
+
     private static let priceFormatter: NumberFormatter = {
         let f = NumberFormatter()
         f.numberStyle = .currency
@@ -32,6 +36,7 @@ struct IndianFormatter {
     }
 
     static func priceCompact(_ value: Double) -> String {
+        if useAbsoluteFormat { return price(value) }
         let absVal = abs(value)
         let sign = value < 0 ? "-" : ""
 
@@ -48,6 +53,7 @@ struct IndianFormatter {
     /// ALL currency output from views MUST go through this function.
     /// Never outputs Millions or Billions.
     static func formatLakhsCrores(_ value: Double) -> String {
+        if useAbsoluteFormat { return price(value) }
         let absVal = abs(value)
         let sign = value < 0 ? "-" : ""
         if absVal >= 1_00_00_000 { // 1 Crore = 1,00,00,000

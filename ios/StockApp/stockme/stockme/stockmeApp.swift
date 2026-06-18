@@ -51,6 +51,7 @@ struct stockmeApp: App {
     @AppStorage("nivesh_crashCountSeen") private var crashCountSeen: Int = 0
     @State private var newCrashesSinceLastBoot: Int = 0
     @AppStorage("darkMode") private var darkMode = false
+    @AppStorage("nivesh_reduceAnimations") private var reduceAnimations = false
     @AppStorage("dev_welcome_notification") private var devWelcomeNotification = false
 
     // Item 5 + 28: Configurable biometric timeout
@@ -124,7 +125,7 @@ struct stockmeApp: App {
                         .transition(.opacity)
                 }
             }
-            .animation(.spring(response: 0.45, dampingFraction: 0.8, blendDuration: 0), value: launchPhase)
+            .animation(reduceAnimations ? .none : .spring(response: 0.45, dampingFraction: 0.8, blendDuration: 0), value: launchPhase)
             .onChange(of: launchAnimDone) { done in
                 if done {
                     withAnimation(.spring(response: 0.45, dampingFraction: 0.8, blendDuration: 0)) {

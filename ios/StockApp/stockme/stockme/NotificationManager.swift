@@ -80,13 +80,29 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
         completionHandler([.banner, .sound, .badge])
     }
 
-    /// Schedule a local notification immediately
-    func scheduleLocal(title: String, body: String, subtitle: String = "") {
+    /// Schedule a local notification immediately.
+    /// - Parameters:
+    ///   - signalType: Optional signal type (BUY/SELL/HOLD) for alert filtering.
+    func scheduleLocal(title: String, body: String, subtitle: String = "", signalType: String? = nil) {
+        // Signal-type filtering
+        if let signal = signalType?.uppercased() {
+            let alertOnBuy = UserDefaults.standard.bool(forKey: "nivesh_alertOnBuy")
+            let alertOnSell = UserDefaults.standard.bool(forKey: "nivesh_alertOnSell")
+            let muteHold = UserDefaults.standard.bool(forKey: "nivesh_muteHoldSignals")
+
+            if signal.contains("BUY") && !alertOnBuy { return }
+            if signal.contains("SELL") && !alertOnSell { return }
+            if signal.contains("HOLD") && muteHold { return }
+        }
+
+        // Quiet hours check
+        if isInQuietHours() { return }
+
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         if !subtitle.isEmpty { content.subtitle = subtitle }
-        
+
         let customSound = UserDefaults.standard.string(forKey: "notificationSound") ?? "Default"
         if customSound == "Default" {
             content.sound = .default
@@ -104,6 +120,31 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
             if let error = error {
                 print("[Nivesh/Local] Failed: \(error.localizedDescription)")
             }
+        }
+    }
+
+    // MARK: - Quiet Hours
+
+    private func isInQuietHours() -> Bool {
+        let startSecs = UserDefaults.standard.double(forKey: "nivesh_quietHoursStart")
+        let endSecs = UserDefaults.standard.double(forKey: "nivesh_quietHoursEnd")
+        guard startSecs > 0 || endSecs > 0 else { return false }
+
+        let daysData = UserDefaults.standard.data(forKey: "nivesh_quietHoursDays") ?? Data()
+        let activeDays: Set<Int> = (try? JSONDecoder().decode(Set<Int>.self, from: daysData)) ?? Set(0...6)
+
+        let cal = Calendar.current
+        let now = Date()
+        let weekday = (cal.component(.weekday, from: now) + 5) % 7 // 0=Sun
+        guard activeDays.contains(weekday) else { return false }
+
+        let midnight = cal.startOfDay(for: now)
+        let currentSecs = now.timeIntervalSince(midnight)
+
+        if startSecs < endSecs {
+            return currentSecs >= startSecs && currentSecs < endSecs
+        } else {
+            return currentSecs >= startSecs || currentSecs < endSecs
         }
     }
 }

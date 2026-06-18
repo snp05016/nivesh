@@ -21,7 +21,7 @@ struct AdvisoryMatrixCard: View {
                         .font(Theme.hindiFont(size: 8))
                         .foregroundStyle(Theme.inkSecondary)
                 }
-                .padding(.leading, 10)
+                .padding(.leading, Theme.Spacing.medium)
 
                 Spacer()
 
@@ -38,7 +38,7 @@ struct AdvisoryMatrixCard: View {
                     )
                     .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
             }
-            .padding(.top, 14)
+            .padding(.top, Theme.Spacing.standard)
             .padding(.trailing, 16)
 
             SectionDivider()

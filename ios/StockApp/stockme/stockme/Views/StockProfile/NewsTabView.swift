@@ -42,7 +42,7 @@ struct SPNewsCardView: View {
                     } placeholder: {
                         Rectangle().fill(Theme.inkTertiary.opacity(0.08))
                     }
-                    .frame(width: 64, height: 64)
+                    .frame(width: UIScreen.main.bounds.width * 0.16, height: UIScreen.main.bounds.width * 0.16)
                     .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight))
                 }
 

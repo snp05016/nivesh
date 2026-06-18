@@ -130,6 +130,20 @@ class NLScreenerViewModel: ObservableObject {
 struct NLScreenerScreen: View {
     @StateObject private var viewModel = NLScreenerViewModel()
     @State private var showHelp = false
+    @AppStorage("nivesh_sectorBlacklist") private var blacklistData: Data = Data()
+
+    private var blacklistedSectors: Set<String> {
+        (try? JSONDecoder().decode(Set<String>.self, from: blacklistData)) ?? []
+    }
+
+    private var filteredResults: [NLScreenerResult] {
+        let bl = blacklistedSectors
+        guard !bl.isEmpty else { return viewModel.results }
+        return viewModel.results.filter { result in
+            guard let sector = result.sector else { return true }
+            return !bl.contains(sector)
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -159,7 +173,7 @@ struct NLScreenerScreen: View {
                                     GuillocheDivider().padding(.horizontal, Theme.screenPadding)
                                 }
                                 
-                                if !viewModel.results.isEmpty {
+                                if !filteredResults.isEmpty {
                                     resultsSection
                                 } else if !viewModel.query.isEmpty && !viewModel.isLoading {
                                     Text("No stocks matched your criteria.")
@@ -261,7 +275,7 @@ struct NLScreenerScreen: View {
     
     private var resultsSection: some View {
         LazyVStack(spacing: Theme.Spacing.card) {
-            ForEach(viewModel.results) { result in
+            ForEach(filteredResults) { result in
                 NavigationLink(destination: StockProfileView(ticker: result.ticker)) {
                     ResultCard(result: result)
                 }

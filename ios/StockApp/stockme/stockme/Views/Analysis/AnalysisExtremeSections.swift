@@ -192,15 +192,14 @@ struct AnalysisExtremeSections: View {
             ("Momentum", fs.momentum), ("Growth", fs.growth),
             ("Low Vol", fs.lowVolatility)
         ]
-        // §2.5: no GeometryReader inside HStack. Compute bar width directly.
-        // Screen - 2×screenPadding - labelWidth(80) - valueWidth(32) - 2×defaultSpacing(8)
-        let barWidth = UIScreen.main.bounds.width - 2 * Theme.screenPadding - 80 - 32 - 16
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        let barWidth = colW - colW * 0.23 - colW * 0.09 - Theme.Spacing.medium * 2
         return VStack(spacing: Theme.Spacing.standard) {
             ForEach(items, id: \.0) { label, score in
                 HStack {
                     Text(label)
                         .font(.caption).foregroundStyle(Theme.inkSecondary)
-                        .frame(width: 80, alignment: .leading)
+                        .frame(width: colW * 0.23, alignment: .leading)
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 2)
                             .fill(Theme.inkTertiary.opacity(0.12))
@@ -216,7 +215,7 @@ struct AnalysisExtremeSections: View {
                     Text(score.map { "\($0)" } ?? "-")
                         .font(Theme.serialNumberFont(size: 12))
                         .foregroundStyle(Theme.inkPrimary)
-                        .frame(width: 32, alignment: .trailing)
+                        .frame(width: colW * 0.09, alignment: .trailing)
                 }
             }
         }
@@ -224,7 +223,8 @@ struct AnalysisExtremeSections: View {
     }
 
     private func scenarioTable(_ sc: ScenarioBundle) -> some View {
-        VStack(spacing: 0) {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return VStack(spacing: 0) {
             ForEach(["bull", "base", "bear"], id: \.self) { flavor in
                 let pt = flavor == "bull" ? sc.bull : flavor == "base" ? sc.base : sc.bear
                 if let p = pt {
@@ -233,14 +233,14 @@ struct AnalysisExtremeSections: View {
                             .font(Theme.officialStampFont(size: 9))
                             .foregroundStyle(flavor == "bull" ? Theme.bullGreen :
                                              flavor == "bear" ? Theme.bearRed : Theme.securityGold)
-                            .frame(width: 44, alignment: .leading)
+                            .frame(width: colW * 0.12, alignment: .leading)
                         Text(IndianFormatter.priceCompact(p.price3m ?? 0))
-                            .font(Theme.serialNumberFont(size: 11)).frame(width: 70, alignment: .trailing)
+                            .font(Theme.serialNumberFont(size: 11)).frame(width: colW * 0.20, alignment: .trailing)
                         Text("3m")
                             .font(.caption2).foregroundStyle(Theme.inkTertiary)
                         Spacer()
                         Text(IndianFormatter.priceCompact(p.price12m ?? 0))
-                            .font(Theme.serialNumberFont(size: 11)).frame(width: 70, alignment: .trailing)
+                            .font(Theme.serialNumberFont(size: 11)).frame(width: colW * 0.20, alignment: .trailing)
                         Text("12m")
                             .font(.caption2).foregroundStyle(Theme.inkTertiary)
                         Spacer()
@@ -248,7 +248,7 @@ struct AnalysisExtremeSections: View {
                             Text("\(prob)%")
                                 .font(Theme.serialNumberFont(size: 12))
                                 .foregroundStyle(Theme.securityGold)
-                                .frame(width: 40, alignment: .trailing)
+                                .frame(width: colW * 0.11, alignment: .trailing)
                         }
                     }
                     .padding(.vertical, Theme.Spacing.xSmall)
@@ -378,12 +378,13 @@ struct AnalysisExtremeSections: View {
     }
 
     private func peerTable(_ peers: [PeerRow]) -> some View {
-        VStack(spacing: 0) {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return VStack(spacing: 0) {
             HStack {
-                Text("Ticker").font(.caption2.weight(.bold)).frame(width: 60, alignment: .leading)
-                Text("P/E").font(.caption2.weight(.bold)).frame(width: 40, alignment: .trailing)
-                Text("ROE%").font(.caption2.weight(.bold)).frame(width: 44, alignment: .trailing)
-                Text("D/E").font(.caption2.weight(.bold)).frame(width: 40, alignment: .trailing)
+                Text("Ticker").font(.caption2.weight(.bold)).frame(width: colW * 0.17, alignment: .leading)
+                Text("P/E").font(.caption2.weight(.bold)).frame(width: colW * 0.11, alignment: .trailing)
+                Text("ROE%").font(.caption2.weight(.bold)).frame(width: colW * 0.12, alignment: .trailing)
+                Text("D/E").font(.caption2.weight(.bold)).frame(width: colW * 0.11, alignment: .trailing)
                 Text("MCap").font(.caption2.weight(.bold)).frame(maxWidth: .infinity, alignment: .trailing)
             }
             .foregroundStyle(Theme.inkTertiary)
@@ -394,13 +395,13 @@ struct AnalysisExtremeSections: View {
                 HStack {
                     Text(p.ticker ?? p.name ?? "-")
                         .font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.securityGold)
-                        .frame(width: 60, alignment: .leading)
+                        .frame(width: colW * 0.17, alignment: .leading)
                     Text(p.pe.map { String(format: "%.1f", $0) } ?? "-")
-                        .font(.caption).frame(width: 40, alignment: .trailing)
+                        .font(.caption).frame(width: colW * 0.11, alignment: .trailing)
                     Text(p.roePct.map { String(format: "%.1f", $0) } ?? "-")
-                        .font(.caption).frame(width: 44, alignment: .trailing)
+                        .font(.caption).frame(width: colW * 0.12, alignment: .trailing)
                     Text(p.debtToEquity.map { String(format: "%.1f", $0) } ?? "-")
-                        .font(.caption).frame(width: 40, alignment: .trailing)
+                        .font(.caption).frame(width: colW * 0.11, alignment: .trailing)
                     Text(p.marketcapCr.map { "\u{20B9}\(Int($0))Cr" } ?? "-")
                         .font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
                 }

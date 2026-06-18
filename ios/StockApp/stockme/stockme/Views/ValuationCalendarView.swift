@@ -56,7 +56,7 @@ struct ValuationCalendarView: View {
                             }
                         }
                     }
-                    .padding(.bottom, 10)
+                    .padding(.bottom, Theme.Spacing.medium)
 
                     SectionDivider()
                         .padding(.bottom, Theme.Spacing.card)
@@ -82,7 +82,7 @@ struct ValuationCalendarView: View {
                                 color: dimText
                             )
                         }
-                        .padding(.bottom, 14)
+                        .padding(.bottom, Theme.Spacing.standard)
                     }
 
                     // Swift Charts: Value Over Time

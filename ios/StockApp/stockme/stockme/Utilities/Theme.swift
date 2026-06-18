@@ -175,8 +175,18 @@ enum Theme {
         return Font.system(size: scaled, weight: .medium, design: .default)
     }
 
+    static var showHindiLabels: Bool {
+        UserDefaults.standard.object(forKey: "nivesh_showHindiLabels") as? Bool ?? true
+    }
+
+    static var reduceAnimations: Bool {
+        UserDefaults.standard.bool(forKey: "nivesh_reduceAnimations")
+    }
+
     /// Secondary text — italic system font (replaces Georgia italic).
+    /// Returns zero-size font when Hindi labels are disabled.
     static func hindiFont(size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
+        guard showHindiLabels else { return Font.system(size: 0.01) }
         Font.system(size: size, weight: .regular)
     }
 

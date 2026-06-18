@@ -221,12 +221,12 @@ struct DiversificationHero: View {
             ZStack {
                 Circle()
                     .stroke(Theme.borderFine, lineWidth: 12)
-                    .frame(width: 140, height: 140)
+                    .frame(width: UIScreen.main.bounds.width * 0.35, height: UIScreen.main.bounds.width * 0.35)
                 
                 Circle()
                     .trim(from: 0, to: CGFloat(score) / 100.0)
                     .stroke(color, style: StrokeStyle(lineWidth: 12, lineCap: .round))
-                    .frame(width: 140, height: 140)
+                    .frame(width: UIScreen.main.bounds.width * 0.35, height: UIScreen.main.bounds.width * 0.35)
                     .rotationEffect(.degrees(-90))
                     .animation(.easeOut(duration: 1.0), value: score)
                 
@@ -275,12 +275,12 @@ struct CorrelationHeatmap: View {
                         // Header row
                         HStack(spacing: Theme.Spacing.xSmall) {
                             Text("")
-                                .frame(width: 60, height: 30)
+                                .frame(width: UIScreen.main.bounds.width * 0.15, height: UIScreen.main.bounds.height * 0.035)
                             ForEach(uniqueTickers, id: \.self) { t in
                                 Text(t.prefix(4))
                                     .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
                                     .foregroundColor(Theme.inkSecondary)
-                                    .frame(width: 40, height: 30)
+                                    .frame(width: UIScreen.main.bounds.width * 0.10, height: UIScreen.main.bounds.height * 0.035)
                             }
                         }
                         
@@ -289,7 +289,7 @@ struct CorrelationHeatmap: View {
                                 Text(t1.prefix(4))
                                     .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
                                     .foregroundColor(Theme.inkSecondary)
-                                    .frame(width: 60, alignment: .trailing)
+                                    .frame(width: UIScreen.main.bounds.width * 0.15, alignment: .trailing)
                                 
                                 ForEach(uniqueTickers, id: \.self) { t2 in
                                     HeatmapCell(t1: t1, t2: t2, matrix: matrix)

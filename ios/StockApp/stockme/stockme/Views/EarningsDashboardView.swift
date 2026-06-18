@@ -218,8 +218,8 @@ struct EarningsDashboardView: View {
             .onChange(of: comparisonMode) { _, val in vm.comparisonMode = val }
         }
         .padding(.horizontal, 16)
-        .padding(.top, 14)
-        .padding(.bottom, 10)
+        .padding(.top, Theme.Spacing.standard)
+        .padding(.bottom, Theme.Spacing.medium)
         .background(Theme.canvasDeep)
     }
 
@@ -404,13 +404,14 @@ struct EarningsProgressView: View {
     }
 
     private func aggregateMetric(label: String, value: Double, isLoading: Bool) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
             Text(label)
                 .font(.caption2.weight(.semibold).monospaced())
                 .tracking(1.2)
                 .foregroundStyle(Theme.inkTertiary)
             if isLoading {
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.12)).frame(width: 60, height: 22)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.12)).frame(width: colW * 0.17, height: 22)
             } else {
                 Text(IndianFormatter.delta(value))
                     .font(.title3.weight(.bold).monospaced())
@@ -587,15 +588,16 @@ struct EarningsProgressView: View {
     }
 
     private var tableRowPlaceholder: some View {
-        HStack(spacing: Theme.Spacing.medium) {
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 60, height: 12)
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return HStack(spacing: Theme.Spacing.medium) {
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.17, height: 12)
             Spacer()
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.20, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.20, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.20, height: 12)
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 10)
+        .padding(.vertical, Theme.Spacing.medium)
         .shimmerPlaceholder(isLoading: true)
     }
 }
@@ -812,6 +814,7 @@ struct EarningsCalendarView: View {
 
     private func calendarResultRow(_ r: EarningsCalendarItem) -> some View {
         let userId = authManager.currentUser?.userId ?? 0
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
         return HStack(spacing: Theme.Spacing.standard) {
             VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 HStack(spacing: Theme.Spacing.tight) {
@@ -838,7 +841,7 @@ struct EarningsCalendarView: View {
                 // Sparkline row
                 if !r.sparkline.isEmpty {
                     MiniSparkline(data: r.sparkline, color: (r.priceChange7dPct ?? 0) >= 0 ? Theme.bullGreen : Theme.bearRed)
-                        .frame(height: 20)
+                        .frame(height: UIScreen.main.bounds.height * 0.024)
                         .padding(.top, 2)
                 }
             }
@@ -863,7 +866,7 @@ struct EarningsCalendarView: View {
                         Text("Alert")
                             .font(.caption.weight(.medium))
                     }
-                    .frame(width: 60)
+                    .frame(width: colW * 0.17)
                     .foregroundStyle(alertSetFor == r.ticker ? Theme.securityGold : Theme.inkSecondary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -881,7 +884,7 @@ struct EarningsCalendarView: View {
                         Text("iCal")
                             .font(.caption.weight(.medium))
                     }
-                    .frame(width: 60)
+                    .frame(width: colW * 0.17)
                     .foregroundStyle(Theme.inkSecondary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -942,7 +945,7 @@ struct EarningsFeedView: View {
                         Text(label)
                             .font(.caption.weight(vm.selectedSort == key ? .bold : .regular))
                             .foregroundStyle(vm.selectedSort == key ? Theme.securityGold : Theme.inkTertiary)
-                            .padding(.vertical, 10)
+                            .padding(.vertical, Theme.Spacing.medium)
                             .frame(maxWidth: .infinity)
                             .background(vm.selectedSort == key ? Theme.securityGold.opacity(0.08) : Color.clear)
                     }
@@ -966,10 +969,11 @@ struct EarningsFeedView: View {
     }
 
     private var feedCardPlaceholder: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 100, height: 13)
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.28, height: 13)
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(height: 13)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 160, height: 11)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.45, height: 11)
         }
         .padding(Theme.Spacing.standard)
         .banknoteCard()
@@ -1020,7 +1024,7 @@ struct EarningsResultCard: View {
             if let spark = result.sparkline, !spark.isEmpty {
                 HStack(spacing: Theme.Spacing.medium) {
                     MiniSparkline(data: spark, color: result.netProfitGrowthPct >= 0 ? Theme.bullGreen : Theme.bearRed)
-                        .frame(height: 22)
+                        .frame(height: UIScreen.main.bounds.height * 0.026)
                     if let chg7d = result.priceChange7dPct {
                         Text("7d: \(IndianFormatter.delta(chg7d))")
                             .font(.caption2.weight(.medium).monospaced())
@@ -1331,11 +1335,12 @@ struct ScreenerView: View {
         var color: Color = Theme.inkSecondary
 
         var body: some View {
+            let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
             HStack(alignment: .top, spacing: Theme.Spacing.tight) {
                 Text(label)
                     .font(.caption2.weight(.semibold).monospaced())
                     .foregroundStyle(Theme.inkTertiary)
-                    .frame(width: 100, alignment: .leading)
+                    .frame(width: colW * 0.28, alignment: .leading)
                 Text(value)
                     .font(.caption2.monospaced())
                     .foregroundStyle(color)
@@ -1394,7 +1399,7 @@ struct ScreenerView: View {
                         ZStack {
                             RoundedRectangle(cornerRadius: Theme.CornerRadius.tight)
                                 .fill(Theme.securityGold.opacity(0.12))
-                                .frame(width: 32, height: 32)
+                                .frame(width: Theme.Spacing.xLarge, height: Theme.Spacing.xLarge)
                             Image(systemName: preset.icon)
                                 .font(.subheadline.weight(.medium))
                                 .foregroundStyle(isSelected ? Theme.securityGold : Theme.inkSecondary)
@@ -1714,7 +1719,7 @@ struct VarianceTrackerView: View {
                     Text(label)
                         .font(.caption.weight(expectationFilter == key ? .bold : .regular))
                         .foregroundStyle(expectationFilter == key ? Theme.securityGold : Theme.inkTertiary)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, Theme.Spacing.medium)
                         .frame(maxWidth: .infinity)
                         .background(expectationFilter == key ? Theme.securityGold.opacity(0.08) : Color.clear)
                 }
@@ -1725,8 +1730,9 @@ struct VarianceTrackerView: View {
     }
 
     private var variancePlaceholder: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 100, height: 13)
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.28, height: 13)
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(height: 60)
         }
         .padding(Theme.Spacing.standard).banknoteCard().shimmerPlaceholder(isLoading: true)
@@ -1966,19 +1972,20 @@ struct PostResultMonitorView: View {
             .frame(minWidth: rowW * 0.16, alignment: .trailing)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.vertical, Theme.Spacing.medium)
     }
 
     private var moverRowPlaceholder: some View {
-        HStack(spacing: Theme.Spacing.none) {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return HStack(spacing: Theme.Spacing.none) {
             VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 110, height: 10)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.20, height: 12)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.31, height: 10)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 60, height: 12)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 55, height: 12).padding(.leading, 8)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 55, height: 12).padding(.leading, 8)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.17, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.15, height: 12).padding(.leading, 8)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.15, height: 12).padding(.leading, 8)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

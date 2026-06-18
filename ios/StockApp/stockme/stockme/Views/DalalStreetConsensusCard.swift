@@ -125,7 +125,7 @@ struct DalalStreetConsensusCard: View {
                         .font(Theme.hindiFont(size: 8))
                         .foregroundStyle(Theme.inkSecondary)
                 }
-                .padding(.leading, 10)
+                .padding(.leading, Theme.Spacing.medium)
 
                 Spacer()
 
@@ -142,7 +142,7 @@ struct DalalStreetConsensusCard: View {
                     )
                     .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
             }
-            .padding(.top, 14)
+            .padding(.top, Theme.Spacing.standard)
             .padding(.trailing, 16)
 
             SectionDivider()
@@ -236,7 +236,7 @@ private struct SectorSignalRow: View {
                 .lineLimit(1)
                 .frame(minWidth: 80, alignment: .trailing)
         }
-        .frame(height: 18)
+        .frame(height: Theme.Spacing.card)
     }
 
     private var dotColor: Color {
