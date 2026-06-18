@@ -60,7 +60,7 @@ class AnalysisViewModel: ObservableObject {
             // ── v2 engine: start background job, then poll with fallback ──
             do {
                 let start = try await NetworkManager.shared.startAnalysisJob(
-                    ticker: ticker, exchange: "NSE", userId: userId, deepScan: deepScan, scanType: scanType, language: language, debateRounds: debateRounds, riskTolerance: riskTolerance)
+                    ticker: ticker, exchange: "NSE", userId: userId, deepScan: deepScan, scanType: scanType)
 
                 if let cachedAnalysis = start.analysis {
                     await MainActor.run {
