@@ -32,11 +32,15 @@ struct NLScreenerResult: Codable, Identifiable {
 // MARK: - ViewModel
 @MainActor
 class NLScreenerViewModel: ObservableObject {
+    private static let endpointPath = "/api/v1/screener/natural-language"
+    private static let requestTimeout: TimeInterval = 120
+
     @Published var query: String = ""
     @Published var parsedFilters: [String: String] = [:]
     @Published var results: [NLScreenerResult] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published var errorDiagnostic: ErrorDiagnostic?
     
     @Published var history: [String] = []
     
@@ -69,13 +73,20 @@ class NLScreenerViewModel: ObservableObject {
         
         isLoading = true
         errorMessage = nil
+        errorDiagnostic = nil
         
         Task {
+            let endpoint = "\(NetworkManager.shared.baseURL)\(Self.endpointPath)"
+            let correlationId = NetworkManager.shared.generateCorrelationID(subsystem: "nl_screener")
             do {
-                guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/screener/natural-language") else { return }
+                guard let url = URL(string: endpoint) else {
+                    throw NetworkError.invalidURL
+                }
                 var request = URLRequest(url: url)
                 request.httpMethod = "POST"
+                request.timeoutInterval = Self.requestTimeout
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue(correlationId, forHTTPHeaderField: "X-Correlation-ID")
                 
                 let reqBody = NLScreenerRequest(query: textToSearch)
                 request.httpBody = try JSONEncoder().encode(reqBody)
@@ -98,7 +109,15 @@ class NLScreenerViewModel: ObservableObject {
                     } else {
                         self.errorMessage = "Server returned status code \(httpResponse.statusCode)."
                     }
+                    self.errorDiagnostic = ErrorDiagnostic(
+                        endpoint: endpoint,
+                        httpStatus: httpResponse.statusCode,
+                        correlationId: correlationId,
+                        swiftFile: #fileID,
+                        classification: "INFRASTRUCTURE_EXCEPTION"
+                    )
                     self.isLoading = false
+                    HapticManager.error()
                     return
                 }
                 
@@ -112,15 +131,32 @@ class NLScreenerViewModel: ObservableObject {
                 self.parsedFilters = filterDict
                 self.results = apiResponse.results
                 self.isLoading = false
+                HapticManager.success()
             } catch let error as DecodingError {
                 self.errorMessage = "Failed to process results (Data format issue)."
+                self.errorDiagnostic = ErrorDiagnostic(
+                    endpoint: endpoint,
+                    correlationId: correlationId,
+                    failingContract: String(describing: error),
+                    swiftFile: #fileID,
+                    classification: "SCHEMA_DRIFT"
+                )
                 #if DEBUG
                 print("DecodingError: \(error)")
                 #endif
                 self.isLoading = false
+                HapticManager.error()
             } catch {
                 self.errorMessage = "Failed to load results: \(error.localizedDescription)"
+                self.errorDiagnostic = ErrorDiagnostic(
+                    endpoint: endpoint,
+                    correlationId: correlationId,
+                    failingContract: String(describing: error),
+                    swiftFile: #fileID,
+                    classification: "INFRASTRUCTURE_EXCEPTION"
+                )
                 self.isLoading = false
+                HapticManager.error()
             }
         }
     }
@@ -158,13 +194,14 @@ struct NLScreenerScreen: View {
                         ProgressView("Analyzing query...")
                         Spacer()
                     } else if let error = viewModel.errorMessage {
-                        Spacer()
-                        Text(error)
-                            .font(Theme.engravedSerif(size: 16, relativeTo: .body))
-                            .foregroundColor(Theme.bearRed)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, Theme.screenPadding)
-                        Spacer()
+                        NLScreenerErrorState(
+                            message: error,
+                            diagnostic: viewModel.errorDiagnostic ?? ErrorDiagnostic(
+                                endpoint: "\(NetworkManager.shared.baseURL)/api/v1/screener/natural-language",
+                                swiftFile: #fileID
+                            ),
+                            retryAction: { viewModel.performSearch() }
+                        )
                     } else {
                         ScrollView {
                             VStack(spacing: Theme.Spacing.card) {
@@ -319,6 +356,25 @@ struct NLScreenerScreen: View {
                     .buttonStyle(EKPressStyle())
                 }
             }
+        }
+    }
+}
+
+struct NLScreenerErrorState: View {
+    let message: String
+    let diagnostic: ErrorDiagnostic
+    let retryAction: () -> Void
+
+    var body: some View {
+        ScrollView {
+            ErrorDiagnoserView(
+                error: message,
+                context: diagnostic,
+                retryAction: { retryAction() }
+            )
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, Theme.screenPadding)
+            .padding(.vertical, Theme.sectionSpacing)
         }
     }
 }
