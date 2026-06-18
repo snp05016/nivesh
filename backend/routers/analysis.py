@@ -137,7 +137,7 @@ _get_asm_gsm_lists = _helpers_asm_gsm
 # ---------------------------------------------------------------------------
 # Analysis worker (runs in subprocess)
 # ---------------------------------------------------------------------------
-def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False, scan_type="standard"):
+def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False, scan_type="standard", language=None, debate_rounds=None, risk_tolerance=None):
     from dotenv import load_dotenv
     from pathlib import Path as _Path
     import os
@@ -153,7 +153,7 @@ def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False, scan
         if _ta_core.exists():
             sys.path.insert(0, str(_ta_core))
         from services.orchestrator import analyze
-        result = analyze(ticker, exchange, user_id, deep_scan=deep_scan, scan_type=scan_type)
+        result = analyze(ticker, exchange, user_id, deep_scan=deep_scan, scan_type=scan_type, language=language, debate_rounds=debate_rounds, risk_tolerance=risk_tolerance)
         queue.put({"status": "ok", "result": result})
     except ImportError as e:
         tb = traceback.format_exc()
@@ -541,7 +541,9 @@ async def analyze_endpoint(req: AnalyzeRequest):
     job = database.create_job(req.user_id, ticker, req.exchange, req.scan_type)
     try:
         spawn_job(job["job_id"], ticker, req.exchange,
-                  req.user_id, deep_scan, req.scan_type)
+                  req.user_id, deep_scan, req.scan_type,
+                  language=req.language, debate_rounds=req.debate_rounds,
+                  risk_tolerance=req.risk_tolerance)
     except Exception as e:
         database.update_job(job["job_id"], status="FAILED",
                             error=f"Failed to spawn worker: {e}")

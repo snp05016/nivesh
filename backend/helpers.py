@@ -131,6 +131,7 @@ class AnalyzeRequest(BaseModel):
     scan_type: str = "standard"
     language: Optional[str] = None
     debate_rounds: Optional[int] = None
+    risk_tolerance: Optional[str] = None
 
     @validator("ticker")
     def validate_ticker(cls, v):

@@ -33,6 +33,7 @@ struct StockActionHubView: View {
 
     @EnvironmentObject var reportManager: LocalReportManager
     @AppStorage("nivesh_autoRunOnTap") private var autoRunOnTap = false
+    @AppStorage("nivesh_defaultScanType") private var defaultScanType = "ask"
 
     @State private var showHowItWorks = false
     @State private var showCacheAlert = false
@@ -169,7 +170,14 @@ struct StockActionHubView: View {
         .onAppear {
             guard autoRunOnTap, !didAutoRun else { return }
             didAutoRun = true
-            tapAnalysis(mode: .standard)
+            let mode: AnalysisLaunchMode = {
+                switch defaultScanType {
+                case "deep": return .deepScan
+                case "extreme": return .extremeScan
+                default: return .standard
+                }
+            }()
+            tapAnalysis(mode: mode)
         }
     }
 

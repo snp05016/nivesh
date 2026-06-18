@@ -36,7 +36,8 @@ def _start_wallclock_watchdog(job_id: str, limit_sec: int) -> None:
 
 
 def run_job(job_id: str, ticker: str, exchange: str,
-            user_id, deep_scan: bool, scan_type: str) -> None:
+            user_id, deep_scan: bool, scan_type: str,
+            language=None, debate_rounds=None, risk_tolerance=None) -> None:
     # Re-import deps + reload env inside the subprocess (AGENTS.md §3.3).
     # v2 fix: tradingagents-core must be on sys.path before services.orchestrator
     # resolves its tradingagents.default_config import.
@@ -64,7 +65,9 @@ def run_job(job_id: str, ticker: str, exchange: str,
     try:
         from services.orchestrator import analyze
         result = analyze(ticker, exchange, user_id,
-                         deep_scan=deep_scan, scan_type=scan_type, job_id=job_id)
+                         deep_scan=deep_scan, scan_type=scan_type, job_id=job_id,
+                         language=language, debate_rounds=debate_rounds,
+                         risk_tolerance=risk_tolerance)
         database.update_job(
             job_id, status="SUCCEEDED", progress_pct=100, stage="done",
             result_json=json.dumps(result, default=str),

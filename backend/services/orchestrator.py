@@ -557,6 +557,12 @@ def build_ta_config(scan_type: str = "standard") -> dict:
     config["llm_provider"] = "deepseek"
     config["deep_think_llm"] = HAIKU_MODEL
     config["deep_think_provider"] = "anthropic"
+
+    if debate_rounds is not None and 1 <= debate_rounds <= 3:
+        config["max_debate_rounds"] = debate_rounds
+
+    if language and language != "English":
+        config["response_language"] = language
     return config
 
 
@@ -621,6 +627,7 @@ def reformat_with_deepseek(
     exchange: str,
     prior_analyses: list[dict] | None = None,
     scan_type: str = "standard",
+    language: str | None = None,
 ) -> dict:
     """Primary reformatter: DeepSeek V4 Flash (Tier 1, cheapest).
     Falls back to Claude Sonnet only on parse failure."""
@@ -637,6 +644,8 @@ def reformat_with_deepseek(
             system_prompt = INDIAN_MARKET_SYSTEM_PROMPT
             if is_extreme:
                 system_prompt += EXTREME_ADDENDUM
+            if language and language != "English":
+                system_prompt += f"\n\nIMPORTANT: Write ALL text fields (summary, bull_case, bear_case, key_risks, etc.) in {language}. Keep JSON keys, signal values (BUY/SELL/HOLD), and numbers in English."
             ds_raw = _deepseek_chat(
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -1459,6 +1468,9 @@ def analyze(
     deep_scan: bool = False,
     scan_type: str = "standard",
     job_id: str | None = None,
+    language: str | None = None,
+    debate_rounds: int | None = None,
+    risk_tolerance: str | None = None,
 ) -> dict:
     exchange = exchange.upper()
     if exchange not in EXCHANGE_SUFFIX:
@@ -1782,6 +1794,14 @@ def analyze(
     )
     raw_output += f"\n\nADDITIONAL DATA (MANDATORY TO INCLUDE IN fundamentals_snapshot):\nPromoter Pledging: {pledging_data}\n"
 
+    if risk_tolerance and risk_tolerance != "Moderate":
+        raw_output += (
+            f"\n\nUSER RISK PROFILE: {risk_tolerance}\n"
+            "Adjust target_prices, key_risks emphasis, and confidence commentary "
+            "to reflect this risk appetite. Conservative = tighter stops, lower targets. "
+            "Aggressive = wider ranges, growth-weighted.\n"
+        )
+
     # ── Deep Scan: PKScreener + FinBERT injection ────────────────────────────
     if deep_scan:
         raw_output, pk_signal, deep_scan_used = _run_deep_scan(ticker, raw_output)
@@ -1797,7 +1817,8 @@ def analyze(
     emitter.emit("format", "Reformatter",
                  "Structuring the report into the final schema", pct=80)
     result = reformat_with_deepseek(
-        raw_output, full_ticker, exchange, prior_analyses=prior, scan_type=scan_type
+        raw_output, full_ticker, exchange, prior_analyses=prior, scan_type=scan_type,
+        language=language
     )
     result = _normalize_response(result, scan_type, quant_payload)
     result["ticker"] = ticker.upper()

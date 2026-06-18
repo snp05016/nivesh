@@ -15,11 +15,13 @@ _registry_lock = threading.Lock()
 
 
 def spawn_job(job_id: str, ticker: str, exchange: str,
-              user_id, deep_scan: bool, scan_type: str) -> None:
+              user_id, deep_scan: bool, scan_type: str,
+              language=None, debate_rounds=None, risk_tolerance=None) -> None:
     from services.job_worker import run_job
     p = multiprocessing.Process(
         target=run_job,
-        args=(job_id, ticker, exchange, user_id, deep_scan, scan_type),
+        args=(job_id, ticker, exchange, user_id, deep_scan, scan_type,
+              language, debate_rounds, risk_tolerance),
         daemon=True,
     )
     p.start()

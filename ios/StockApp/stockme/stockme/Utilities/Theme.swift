@@ -160,18 +160,18 @@ enum Theme {
 
     /// Body / heading text — now uses system font so all call sites keep working.
     static func engravedSerif(size: CGFloat, weight: Font.Weight = .regular, relativeTo style: Font.TextStyle = .body) -> Font {
-        Font.system(size: size, weight: weight == .bold ? .bold : .regular, design: .default)
+        Font.system(size: size * fontSizeMultiplier, weight: weight == .bold ? .bold : .regular, design: .default)
     }
 
     /// Monospaced font for prices, percentages, numerical data.
     static func serialNumberFont(size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
-        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
+        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size) * fontSizeMultiplier
         return Font.system(size: scaled, weight: .medium, design: .monospaced)
     }
 
     /// Official stamp labels — apply .tracking(1.5) at call site.
     static func officialStampFont(size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
-        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
+        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size) * fontSizeMultiplier
         return Font.system(size: scaled, weight: .medium, design: .default)
     }
 
@@ -183,11 +183,27 @@ enum Theme {
         UserDefaults.standard.bool(forKey: "nivesh_reduceAnimations")
     }
 
+    static var fontSizeMultiplier: CGFloat {
+        switch UserDefaults.standard.string(forKey: "nivesh_fontSize") ?? "Standard" {
+        case "Small": return 0.85
+        case "Large": return 1.15
+        default: return 1.0
+        }
+    }
+
+    static var spacingMultiplier: CGFloat {
+        switch UserDefaults.standard.string(forKey: "nivesh_layoutDensity") ?? "Standard" {
+        case "Compact": return 0.75
+        case "Comfortable": return 1.25
+        default: return 1.0
+        }
+    }
+
     /// Secondary text — italic system font (replaces Georgia italic).
     /// Returns zero-size font when Hindi labels are disabled.
     static func hindiFont(size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
         guard showHindiLabels else { return Font.system(size: 0.01) }
-        Font.system(size: size, weight: .regular)
+        return Font.system(size: size, weight: .regular)
     }
 
     static let labelStyle = Font.caption.weight(.bold).uppercaseSmallCaps()
@@ -263,9 +279,9 @@ enum Theme {
         static let sheet: CGFloat  = 24
     }
 
-    static let cardPadding: CGFloat    = Spacing.screen
-    static let screenPadding: CGFloat  = Spacing.screen
-    static let sectionSpacing: CGFloat = Spacing.xLarge
+    static var cardPadding: CGFloat    { Spacing.screen * spacingMultiplier }
+    static var screenPadding: CGFloat  { Spacing.screen * spacingMultiplier }
+    static var sectionSpacing: CGFloat { Spacing.xLarge * spacingMultiplier }
 
     // MARK: - Gradients
 
