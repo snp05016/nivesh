@@ -679,9 +679,13 @@ struct SearchScreen: View {
 	                let isUp = change >= 0
 	                VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
 	                    Text(IndianFormatter.price(price))
+                     .lineLimit(1)
+                     .minimumScaleFactor(0.6)
 	                        .font(Theme.serialNumberFont(size: 13))
 	                        .foregroundStyle(Theme.inkPrimary)
 	                    Text(IndianFormatter.percent(change))
+                     .lineLimit(1)
+                     .minimumScaleFactor(0.6)
 	                        .font(Theme.serialNumberFont(size: 11))
 	                        .foregroundStyle(isUp ? Theme.bullGreen : Theme.bearRed)
 	                        .padding(.horizontal, Theme.Spacing.small)

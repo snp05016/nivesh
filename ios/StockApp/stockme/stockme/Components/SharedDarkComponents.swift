@@ -91,6 +91,8 @@ struct ScrubTooltipView: View {
     let date: Date
     var body: some View {
         Text(IndianFormatter.price(price) + " · " + date.formatted(.dateTime.day().month(.abbreviated)))
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
             .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote))
             .foregroundStyle(Theme.inkPrimary)
             .padding(.horizontal, Theme.Spacing.card)

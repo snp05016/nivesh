@@ -346,6 +346,8 @@ struct SurpriseCard: View {
                         .foregroundColor(Theme.inkTertiary)
                     if let pct = surprise.surprise_pct {
                         Text(IndianFormatter.percent(pct))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 20, relativeTo: .title3))
                             .foregroundColor(classificationColor)
                     } else { Text("--").font(Theme.serialNumberFont(size: 16, relativeTo: .body)).foregroundColor(Theme.inkSecondary) }
@@ -368,6 +370,8 @@ struct SurpriseCard: View {
                                 .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                                 .foregroundColor(Theme.inkTertiary)
                             Text(IndianFormatter.percent(post5d))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                                 .font(Theme.serialNumberFont(size: 13, relativeTo: .caption))
                                 .foregroundColor(post5d >= 0 ? Theme.bullGreen : Theme.bearRed)
                         }

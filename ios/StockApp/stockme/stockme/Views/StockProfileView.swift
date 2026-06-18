@@ -54,6 +54,8 @@ struct InteractivePriceChartView: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text(p.date).font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                         Text(IndianFormatter.price(p.close))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 14))
                             .foregroundStyle(Theme.inkPrimary)
                     }
@@ -62,20 +64,28 @@ struct InteractivePriceChartView: View {
                         HStack(spacing: Theme.Spacing.small) {
                             Text("H").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                             Text(IndianFormatter.price(p.high)).font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.bullGreen)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                         }
                         HStack(spacing: Theme.Spacing.small) {
                             Text("L").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                             Text(IndianFormatter.price(p.low)).font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.bearRed)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                         }
                     }
                     VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                         Text("VOL").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                         Text(IndianFormatter.priceCompact(p.volume)).font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.inkSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                     }
                 } else if let last = filteredPrices.last {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text(ticker.uppercased()).font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.securityGold)
                         Text(IndianFormatter.price(last.close))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 16))
                             .foregroundStyle(Theme.inkPrimary)
                     }
@@ -177,6 +187,8 @@ struct InteractivePriceChartView: View {
                     AxisValueLabel {
                         if let v = val.as(Double.self) {
                             Text(IndianFormatter.priceCompact(v))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                                 .font(Theme.serialNumberFont(size: 8))
                                 .foregroundStyle(Theme.inkTertiary)
                         }

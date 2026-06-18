@@ -168,10 +168,14 @@ struct AnomalyCard: View {
                     
                     VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                         Text(IndianFormatter.price(anomaly.price))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 16, relativeTo: .body))
                             .foregroundColor(Theme.inkPrimary)
                         
                         Text(IndianFormatter.percent(anomaly.change_pct))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
                             .foregroundColor(anomaly.change_pct >= 0 ? Theme.bullGreen : Theme.bearRed)
                     }

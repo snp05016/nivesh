@@ -33,6 +33,8 @@ private struct ScrubTooltipCard: View {
                 .tracking(0.8)
                 .foregroundStyle(Theme.inkSecondary)
             Text(IndianFormatter.price(price))
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
                 .font(Theme.serialNumberFont(size: 13, relativeTo: .footnote))
                 .foregroundStyle(Theme.inkPrimary)
         }

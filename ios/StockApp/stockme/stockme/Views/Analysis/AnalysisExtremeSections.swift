@@ -158,6 +158,8 @@ struct AnalysisExtremeSections: View {
                                 VStack(spacing: Theme.Spacing.xSmall) {
                                     Text("3M").font(Theme.officialStampFont(size: 9, relativeTo: .caption2)).foregroundStyle(Theme.inkTertiary)
                                     Text(IndianFormatter.priceCompact(stMid)).font(Theme.serialNumberFont(size: 16, relativeTo: .callout)).foregroundStyle(Theme.inkPrimary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.6)
                                     Text("\(IndianFormatter.priceCompact(st?.lower ?? 0)) \u{2013} \(IndianFormatter.priceCompact(st?.upper ?? 0))").font(Theme.serialNumberFont(size: 10, relativeTo: .caption2)).foregroundStyle(Theme.inkTertiary)
                                 }.frame(maxWidth: .infinity)
                             }
@@ -165,6 +167,8 @@ struct AnalysisExtremeSections: View {
                                 VStack(spacing: Theme.Spacing.xSmall) {
                                     Text("12M").font(Theme.officialStampFont(size: 9, relativeTo: .caption2)).foregroundStyle(Theme.inkTertiary)
                                     Text(IndianFormatter.priceCompact(mtMid)).font(Theme.serialNumberFont(size: 16, relativeTo: .callout)).foregroundStyle(Theme.inkPrimary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.6)
                                     Text("\(IndianFormatter.priceCompact(mt?.lower ?? 0)) \u{2013} \(IndianFormatter.priceCompact(mt?.upper ?? 0))").font(Theme.serialNumberFont(size: 10, relativeTo: .caption2)).foregroundStyle(Theme.inkTertiary)
                                 }.frame(maxWidth: .infinity)
                             }
@@ -172,6 +176,8 @@ struct AnalysisExtremeSections: View {
                                 VStack(spacing: Theme.Spacing.xSmall) {
                                     Text("36M").font(Theme.officialStampFont(size: 9, relativeTo: .caption2)).foregroundStyle(Theme.inkTertiary)
                                     Text(IndianFormatter.priceCompact(ltMid)).font(Theme.serialNumberFont(size: 16, relativeTo: .callout)).foregroundStyle(Theme.inkPrimary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.6)
                                     Text("\(IndianFormatter.priceCompact(lt?.lower ?? 0)) \u{2013} \(IndianFormatter.priceCompact(lt?.upper ?? 0))").font(Theme.serialNumberFont(size: 10, relativeTo: .caption2)).foregroundStyle(Theme.inkTertiary)
                                 }.frame(maxWidth: .infinity)
                             }
@@ -235,11 +241,15 @@ struct AnalysisExtremeSections: View {
                                              flavor == "bear" ? Theme.bearRed : Theme.securityGold)
                             .frame(width: colW * 0.12, alignment: .leading)
                         Text(IndianFormatter.priceCompact(p.price3m ?? 0))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 11)).frame(width: colW * 0.20, alignment: .trailing)
                         Text("3m")
                             .font(.caption2).foregroundStyle(Theme.inkTertiary)
                         Spacer()
                         Text(IndianFormatter.priceCompact(p.price12m ?? 0))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 11)).frame(width: colW * 0.20, alignment: .trailing)
                         Text("12m")
                             .font(.caption2).foregroundStyle(Theme.inkTertiary)
@@ -337,12 +347,16 @@ struct AnalysisExtremeSections: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("CURRENT").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                         Text(IndianFormatter.priceCompact(curr))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 18)).foregroundStyle(Theme.inkPrimary)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("FAIR VALUE").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                         Text(IndianFormatter.priceCompact(fair))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 18))
                             .foregroundStyle(fair > curr ? Theme.bullGreen : Theme.bearRed)
                     }

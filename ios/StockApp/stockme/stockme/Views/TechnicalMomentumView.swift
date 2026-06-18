@@ -514,12 +514,16 @@ struct MomentumIndicatorCard: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("LTP").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                         Text(IndianFormatter.price(ticker.lastPrice))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 12))
                             .foregroundStyle(Theme.inkPrimary)
                     }
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("MA20").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                         Text(IndianFormatter.price(ticker.ma20))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 11))
                             .foregroundStyle(Theme.inkSecondary)
                     }
@@ -666,6 +670,8 @@ struct TopMoverRow: View {
                         .foregroundStyle(Theme.inkTertiary)
                 } else if valueMode {
                     Text(IndianFormatter.priceCompact(mover.value))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                         .font(Theme.officialStampFont(size: 9))
                         .foregroundStyle(Theme.inkTertiary)
                 }
@@ -676,13 +682,19 @@ struct TopMoverRow: View {
             // Price + change
             VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                 Text(IndianFormatter.price(mover.price))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                     .font(Theme.serialNumberFont(size: 13))
                     .foregroundStyle(Theme.inkPrimary)
                 HStack(spacing: Theme.Spacing.xSmall) {
                     Text(IndianFormatter.percent(mover.changePct))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                         .font(Theme.serialNumberFont(size: 11))
                         .foregroundStyle(changeColor)
                     Text(IndianFormatter.delta(mover.changeAbs))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                         .font(Theme.officialStampFont(size: 9))
                         .foregroundStyle(changeColor.opacity(0.7))
                 }

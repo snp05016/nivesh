@@ -414,6 +414,8 @@ struct EarningsProgressView: View {
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.12)).frame(width: colW * 0.17, height: 22)
             } else {
                 Text(IndianFormatter.delta(value))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                     .font(.title3.weight(.bold).monospaced())
                     .foregroundStyle(value >= 0 ? Theme.bullGreen : Theme.bearRed)
             }
@@ -564,6 +566,8 @@ struct EarningsProgressView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Text(IndianFormatter.formatLakhsCrores(r.revenue))
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
                 .font(.caption.weight(.medium).monospaced())
                 .foregroundStyle(Theme.inkPrimary)
                 .frame(minWidth: tableWidth * 0.22, alignment: .trailing)
@@ -575,9 +579,13 @@ struct EarningsProgressView: View {
 
             VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                 Text(IndianFormatter.formatLakhsCrores(r.netProfit))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                     .font(.caption.weight(.medium).monospaced())
                     .foregroundStyle(Theme.inkPrimary)
                 Text(IndianFormatter.delta(profitGrowth))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(profitGrowth >= 0 ? Theme.bullGreen : Theme.bearRed)
             }
@@ -831,6 +839,8 @@ struct EarningsCalendarView: View {
                     // 7-day price change badge
                     if let chg = r.priceChange7dPct {
                         Text(IndianFormatter.delta(chg))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(chg >= 0 ? Theme.bullGreen : Theme.bearRed)
                     }
@@ -1012,9 +1022,13 @@ struct EarningsResultCard: View {
                 Spacer()
                 VStack(alignment: .trailing, spacing: Theme.Spacing.small) {
                     Text(IndianFormatter.price(result.ltp))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                         .font(.footnote.weight(.semibold).monospaced())
                         .foregroundStyle(Theme.inkPrimary)
                     Text(IndianFormatter.delta(result.changePercent))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                         .font(.caption.weight(.bold))
                         .foregroundStyle(result.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed)
                 }
@@ -1060,6 +1074,8 @@ struct EarningsResultCard: View {
             // 2.1 Absolute elapsed timestamp
             if let reportedDate = result.parsedReportedAt {
                 Text(IndianFormatter.elapsed(from: reportedDate))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                     .font(.caption)
                     .foregroundStyle(Theme.inkTertiary)
             }
@@ -1079,6 +1095,8 @@ struct EarningsResultCard: View {
                 .foregroundStyle(Theme.inkPrimary)
             if let g = growth {
                 Text(IndianFormatter.delta(g))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                     .font(.caption.weight(.bold))
                     .foregroundStyle(g >= 0 ? Theme.bullGreen : Theme.bearRed)
             }
@@ -1521,16 +1539,22 @@ struct ScreenerView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
                                 Text(IndianFormatter.price(r.ltp))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.6)
                                     .font(.caption.monospaced())
                                     .foregroundStyle(Theme.inkPrimary)
                                     .frame(minWidth: colW * 0.18, alignment: .trailing)
 
                                 Text(IndianFormatter.delta(r.changePercent))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.6)
                                     .font(.caption.weight(.bold).monospaced())
                                     .foregroundStyle(r.changePercent >= 0 ? Theme.bullGreen : Theme.bearRed)
                                     .frame(minWidth: colW * 0.14, alignment: .trailing)
 
                                 Text(IndianFormatter.delta(r.netProfitGrowthPct))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.6)
                                     .font(.caption.weight(.bold).monospaced())
                                     .foregroundStyle(r.netProfitGrowthPct >= 0 ? Theme.bullGreen : Theme.bearRed)
                                     .frame(minWidth: colW * 0.18, alignment: .trailing)
@@ -1816,6 +1840,8 @@ struct VarianceCard: View {
             }
             if let pct = variancePct {
                 Text(IndianFormatter.delta(pct))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                     .font(.caption.weight(.bold))
                     .foregroundStyle(pct >= 0 ? Theme.bullGreen : Theme.bearRed)
             }
@@ -1956,6 +1982,8 @@ struct PostResultMonitorView: View {
                 .frame(minWidth: rowW * 0.20, alignment: .trailing)
 
             Text(IndianFormatter.price(m.ltp))
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
                 .font(.footnote.weight(.semibold).monospaced())
                 .foregroundStyle(Theme.inkPrimary)
                 .frame(minWidth: rowW * 0.20, alignment: .trailing)
@@ -1966,6 +1994,8 @@ struct PostResultMonitorView: View {
                     .font(.caption.weight(.bold))
                     .foregroundStyle(isPos ? Theme.bullGreen : Theme.bearRed)
                 Text(IndianFormatter.delta(m.changePercent))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                     .font(.caption.weight(.bold).monospaced())
                     .foregroundStyle(isPos ? Theme.bullGreen : Theme.bearRed)
             }

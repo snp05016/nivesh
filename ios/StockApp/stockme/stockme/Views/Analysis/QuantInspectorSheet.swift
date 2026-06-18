@@ -164,12 +164,16 @@ private struct QuantBoundsContext: View {
                 .foregroundStyle(Theme.inkTertiary)
             HStack(spacing: Theme.Spacing.small) {
                 Text(IndianFormatter.price(lowerBound))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                     .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
                     .foregroundStyle(Theme.bearRed)
                 Text("to")
                     .font(Theme.engravedSerif(size: 11, relativeTo: .caption2))
                     .foregroundStyle(Theme.inkTertiary)
                 Text(IndianFormatter.price(upperBound))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                     .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
                     .foregroundStyle(Theme.bullGreen)
             }

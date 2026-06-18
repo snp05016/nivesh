@@ -281,6 +281,8 @@ struct QuarterlyRevenueSectionView: View {
                     AxisValueLabel {
                         if let v = value.as(Double.self) {
                             Text(IndianFormatter.priceCompact(v)).font(Theme.microLabel(size: 8)).foregroundStyle(Theme.inkTertiary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                         }
                     }
                 }
@@ -334,6 +336,8 @@ struct QuarterlyPATSectionView: View {
                     AxisValueLabel {
                         if let v = value.as(Double.self) {
                             Text(IndianFormatter.priceCompact(v)).font(Theme.microLabel(size: 8)).foregroundStyle(Theme.inkTertiary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                         }
                     }
                 }

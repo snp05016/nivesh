@@ -614,6 +614,8 @@ struct ExpertPostCard: View {
                         .font(Theme.officialStampFont(size: 12))
                         .foregroundStyle(Theme.inkPrimary)
                     Text(IndianFormatter.elapsed(from: post.publishedAt))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                         .font(Theme.officialStampFont(size: 10))
                         .foregroundStyle(Theme.inkTertiary)
                 }

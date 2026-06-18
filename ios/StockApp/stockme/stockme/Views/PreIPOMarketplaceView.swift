@@ -304,6 +304,8 @@ struct PreIPOMarketplaceView: View {
                 // 6.2 LTP + delta
                 VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                     Text(IndianFormatter.price(company.ltp))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                         .font(Theme.serialNumberFont(size: 13))
                         .foregroundStyle(Theme.inkPrimary)
                     HStack(spacing: Theme.Spacing.xSmall) {
@@ -311,6 +313,8 @@ struct PreIPOMarketplaceView: View {
                             .font(Theme.officialStampFont(size: 9))
                             .foregroundStyle(isPos ? Theme.bullGreen : Theme.bearRed)
                         Text(IndianFormatter.delta(company.changePct))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.officialStampFont(size: 11))
                             .foregroundStyle(isPos ? Theme.bullGreen : Theme.bearRed)
                     }
@@ -351,6 +355,8 @@ struct PreIPOMarketplaceView: View {
                                 .font(Theme.serialNumberFont(size: 8))
                                 .foregroundStyle(Theme.inkTertiary)
                             Text(IndianFormatter.price(company.ltp))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                                 .font(Theme.serialNumberFont(size: 16))
                                 .foregroundStyle(Theme.inkPrimary)
                         }
@@ -360,6 +366,8 @@ struct PreIPOMarketplaceView: View {
                                 .font(Theme.serialNumberFont(size: 8))
                                 .foregroundStyle(Theme.inkTertiary)
                             Text(IndianFormatter.formatLakhsCrores(company.changeAbs))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                                 .font(Theme.serialNumberFont(size: 14))
                                 .foregroundStyle(company.changeAbs >= 0 ? Theme.bullGreen : Theme.bearRed)
                         }
@@ -369,6 +377,8 @@ struct PreIPOMarketplaceView: View {
                                 .font(Theme.serialNumberFont(size: 8))
                                 .foregroundStyle(Theme.inkTertiary)
                             Text(IndianFormatter.delta(company.changePct))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                                 .font(Theme.serialNumberFont(size: 14))
                                 .foregroundStyle(company.changePct >= 0 ? Theme.bullGreen : Theme.bearRed)
                         }

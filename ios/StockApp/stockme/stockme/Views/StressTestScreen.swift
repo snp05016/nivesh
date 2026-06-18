@@ -763,6 +763,8 @@ struct StressScenarioSection: View {
                     .foregroundStyle(h.impactPct >= 0 ? Theme.bullGreen : Theme.bearRed)
                     .annotation(position: h.impactPct >= 0 ? .trailing : .leading) {
                         Text(IndianFormatter.percent(h.impactPct))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.microLabel())
                             .foregroundColor(Theme.inkSecondary)
                     }
@@ -810,6 +812,8 @@ struct StressScenarioSection: View {
                                 .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
                                 .foregroundColor(h.impactInr >= 0 ? Theme.bullGreen : Theme.bearRed)
                             Text(IndianFormatter.percent(h.impactPct))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                                 .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
                                 .foregroundColor(h.impactInr >= 0 ? Theme.bullGreen : Theme.bearRed)
                         }

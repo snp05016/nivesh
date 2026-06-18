@@ -84,6 +84,8 @@ struct NiveshWidgetEntryView : View {
                 .foregroundStyle(Theme.inkSecondary)
             
             Text(IndianFormatter.price(entry.pnL))
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
                 .font(Theme.serialNumberFont(size: 16, relativeTo: .headline))
                 .foregroundStyle(entry.pnL >= 0 ? Theme.bullGreen : Theme.bearRed)
             
@@ -95,6 +97,8 @@ struct NiveshWidgetEntryView : View {
                 .foregroundStyle(Theme.inkSecondary)
             
             Text(IndianFormatter.price(entry.niftyValue))
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
                 .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
                 .foregroundStyle(Theme.inkPrimary)
                 
@@ -126,6 +130,8 @@ struct NiveshWidgetEntryView : View {
                         Spacer()
                         
                         Text(IndianFormatter.price(holding.pnl))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
                             .foregroundStyle(holding.isUp ? Theme.bullGreen : Theme.bearRed)
                     }

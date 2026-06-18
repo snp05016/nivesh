@@ -1691,6 +1691,8 @@ struct MomentumRowView: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("LTP").font(.caption2).foregroundStyle(Theme.inkTertiary)
                         Text(IndianFormatter.price(ticker.lastPrice))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                             .font(.caption.weight(.semibold)).monospaced()
                             .foregroundStyle(Theme.inkPrimary)
                     }
