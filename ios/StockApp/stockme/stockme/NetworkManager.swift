@@ -74,9 +74,12 @@ class NetworkManager: ObservableObject {
     static let defaultURL   = "https://api.nivesh.qzz.io"
 
     var baseURL: String {
-        // Priority: UserDefaults override (set in Settings screen) → compile-time default.
-        // To point at DigitalOcean: open Settings tab → Server URL → enter droplet IP.
-        UserDefaults.standard.string(forKey: Self.serverURLKey) ?? Self.defaultURL
+        let storedURL = UserDefaults.standard.string(forKey: Self.serverURLKey)
+        let resolvedURL = ServerURLPolicy.resolve(storedURL: storedURL, defaultURL: Self.defaultURL)
+        if storedURL != nil, storedURL != resolvedURL {
+            UserDefaults.standard.removeObject(forKey: Self.serverURLKey)
+        }
+        return resolvedURL
     }
 
     func updateBaseURL(_ url: String) {

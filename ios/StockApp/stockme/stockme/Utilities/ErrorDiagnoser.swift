@@ -225,7 +225,10 @@ struct ErrorDiagnoserView: View {
 
     private var diagnosticExpander: some View {
         VStack(spacing: Theme.Spacing.none) {
-            Button { withAnimation(.easeInOut(duration: 0.2)) { showDiagnostics.toggle() } } label: {
+            Button {
+                HapticManager.selection()
+                withAnimation(.easeInOut(duration: 0.2)) { showDiagnostics.toggle() }
+            } label: {
                 HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: showDiagnostics ? "chevron.down" : "chevron.right").font(.caption.weight(.bold))
                     Text("DIAGNOSTICS").font(Theme.officialStampFont(size: 8)).tracking(2)
@@ -235,6 +238,7 @@ struct ErrorDiagnoserView: View {
                 }
                 .foregroundStyle(Theme.securityGold.opacity(0.7)).padding(.vertical, Theme.Spacing.small)
             }
+            .buttonStyle(EKPressStyle())
             if showDiagnostics {
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     diagRow("Endpoint", context.endpoint)
