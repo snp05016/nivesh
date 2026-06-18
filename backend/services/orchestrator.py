@@ -530,7 +530,7 @@ class OptimizedTradingAgentsGraph(TradingAgentsGraph):
 # ═════════════════════════════════════════════════════════════════════════════
 
 
-def build_ta_config(scan_type: str = "standard") -> dict:
+def build_ta_config(scan_type: str = "standard", debate_rounds: int | None = None, language: str | None = None) -> dict:
     config = DEFAULT_CONFIG.copy()
     if scan_type == "extreme":
         # DeepSeek reasoning model for all agent nodes — bounded for ≤10 min depth-first runs.
@@ -566,10 +566,11 @@ def build_ta_config(scan_type: str = "standard") -> dict:
     return config
 
 
-def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "standard") -> tuple:
+def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "standard",
+                       debate_rounds: int | None = None, language: str | None = None) -> tuple:
     print(f"\n[AI] Initializing Analysis for {full_ticker}...")
     print(f"[AI] Thinking: Gathering market data and fundamental ratios...")
-    config = build_ta_config(scan_type)
+    config = build_ta_config(scan_type, debate_rounds=debate_rounds, language=language)
     ta = OptimizedTradingAgentsGraph(
         selected_analysts=["governance", "market", "news", "fundamentals"],
         debug=True,
@@ -1783,7 +1784,8 @@ def analyze(
     emitter.emit("agents", "Multi-Agent Engine",
                  "Running governance, market, news & fundamentals analysts + bull/bear debate",
                  pct=25)
-    raw_output, _, final_state = run_trading_agents(full_ticker, analysis_date, scan_type)
+    raw_output, _, final_state = run_trading_agents(full_ticker, analysis_date, scan_type,
+                                                     debate_rounds=debate_rounds, language=language)
     emitter.emit("synthesis", "Research & Portfolio Managers",
                  "Weighing the dialectical debate (bear 1.5x) into a final call", pct=60)
     raw_output += (
