@@ -3,6 +3,24 @@ import XCTest
 
 final class NLScreenerTests: XCTestCase {
 
+    func testLegacyLocalServerOverrideMigratesToProductionURL() {
+        let resolved = ServerURLPolicy.resolve(
+            storedURL: "http://192.168.1.122:8000",
+            defaultURL: "https://api.nivesh.qzz.io"
+        )
+
+        XCTAssertEqual(resolved, "https://api.nivesh.qzz.io")
+    }
+
+    func testCustomServerOverrideRemainsSelected() {
+        let resolved = ServerURLPolicy.resolve(
+            storedURL: "https://staging.nivesh.example",
+            defaultURL: "https://api.nivesh.qzz.io"
+        )
+
+        XCTAssertEqual(resolved, "https://staging.nivesh.example")
+    }
+
     func testDecodeSuccessfulNLScreenerFixture() throws {
         let json = """
         {
