@@ -60,7 +60,7 @@ class AnalysisViewModel: ObservableObject {
             // ── v2 engine: start background job, then poll with fallback ──
             do {
                 let start = try await NetworkManager.shared.startAnalysisJob(
-                    ticker: ticker, exchange: "NSE", userId: userId, deepScan: deepScan, scanType: scanType, language: language, debateRounds: debateRounds)
+                    ticker: ticker, exchange: "NSE", userId: userId, deepScan: deepScan, scanType: scanType, language: language, debateRounds: debateRounds, riskTolerance: riskTolerance)
 
                 if let cachedAnalysis = start.analysis {
                     await MainActor.run {
@@ -211,6 +211,8 @@ struct AnalysisScreen: View {
     @AppStorage("nivesh_analysisLanguage") private var analysisLanguage: String = "English"
     @AppStorage("nivesh_debateRounds") private var debateRoundsStr: String = "1"
     @AppStorage("nivesh_defaultExchange") private var defaultExchange: String = "Auto"
+    @AppStorage("nivesh_riskTolerance") private var riskTolerance: String = "Moderate"
+    @AppStorage("nivesh_autoRegenerateStale") private var autoRegenerateStale: Bool = false
     @State private var deepScanEnabled: Bool = false
     @State private var isAnalyzing = false
     // Extreme result: 0 = AI report, 1 = full stock profile (embedded verbatim).
@@ -228,6 +230,12 @@ struct AnalysisScreen: View {
     
     // Retained copy of analysis to prevent EXC_BAD_ACCESS from view model dealloc
     @State private var retainedAnalysis: StockAnalysis? = nil
+
+    private static var todayString: String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: Date())
+    }
 
     private static let deepScanDisabledTickers: Set<String> = [
         "NIFTY", "SENSEX", "BANKNIFTY", "NIFTYBANK", "INDIAVIX",
@@ -334,6 +342,11 @@ struct AnalysisScreen: View {
                     }
                 } else if forceCached, let cached = previousAnalysis {
                     viewModel.analysis = cached
+                } else if let cached = previousAnalysis, autoRegenerateStale,
+                          cached.analysisDate != Self.todayString {
+                    let lang = analysisLanguage == "English" ? nil : analysisLanguage
+                    let rounds = Int(debateRoundsStr)
+                    viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: deepScanEnabled, language: lang, debateRounds: rounds)
                 } else if previousAnalysis != nil {
                     showingRegenerateAlert = true
                 } else {

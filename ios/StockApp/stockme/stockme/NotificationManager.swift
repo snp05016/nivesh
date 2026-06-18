@@ -83,7 +83,14 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
     /// Schedule a local notification immediately.
     /// - Parameters:
     ///   - signalType: Optional signal type (BUY/SELL/HOLD) for alert filtering.
-    func scheduleLocal(title: String, body: String, subtitle: String = "", signalType: String? = nil) {
+    func scheduleLocal(title: String, body: String, subtitle: String = "", signalType: String? = nil, confidencePct: Int? = nil) {
+        // Confidence threshold filtering
+        if let pct = confidencePct {
+            let thresholdStr = UserDefaults.standard.string(forKey: "nivesh_minConfidenceAlert") ?? "50%"
+            let threshold = Int(thresholdStr.replacingOccurrences(of: "%", with: "")) ?? 50
+            if pct < threshold { return }
+        }
+
         // Signal-type filtering
         if let signal = signalType?.uppercased() {
             let alertOnBuy = UserDefaults.standard.bool(forKey: "nivesh_alertOnBuy")
@@ -121,6 +128,32 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
                 print("[Nivesh/Local] Failed: \(error.localizedDescription)")
             }
         }
+    }
+
+    // MARK: - Morning Brief Scheduling
+
+    func scheduleMorningBrief() {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: ["nivesh_morning_brief"])
+
+        let totalSecs = UserDefaults.standard.double(forKey: "morningBriefTime")
+        guard totalSecs > 0 else { return }
+
+        let hour = Int(totalSecs) / 3600
+        let minute = (Int(totalSecs) % 3600) / 60
+
+        let content = UNMutableNotificationContent()
+        content.title = "Morning Brief"
+        content.body = "Your daily market overview is ready."
+        content.sound = .default
+
+        var dateComponents = DateComponents()
+        dateComponents.hour = hour
+        dateComponents.minute = minute
+
+        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
+        let request = UNNotificationRequest(identifier: "nivesh_morning_brief", content: content, trigger: trigger)
+        center.add(request, withCompletionHandler: nil)
     }
 
     // MARK: - Quiet Hours

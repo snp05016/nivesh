@@ -231,6 +231,7 @@ struct StartJobRequest: Encodable {
     let scanType: String
     var language: String? = nil
     var debateRounds: Int? = nil
+    var riskTolerance: String? = nil
     enum CodingKeys: String, CodingKey {
         case ticker, exchange
         case userId = "user_id"
@@ -238,6 +239,7 @@ struct StartJobRequest: Encodable {
         case scanType = "scan_type"
         case language
         case debateRounds = "debate_rounds"
+        case riskTolerance = "risk_tolerance"
     }
 }
 

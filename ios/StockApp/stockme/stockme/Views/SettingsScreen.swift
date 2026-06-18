@@ -60,6 +60,7 @@ struct SettingsScreen: View {
         }, set: { newDate in
             let c = Calendar.current.dateComponents([.hour, .minute], from: newDate)
             morningBriefTime = Double((c.hour ?? 0) * 3600 + (c.minute ?? 0) * 60)
+            NotificationManager.shared.scheduleMorningBrief()
         })
     }
 
