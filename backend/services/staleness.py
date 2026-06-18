@@ -3,7 +3,7 @@ Staleness scoring for Nivesh analysis results.
 Returns a score 0-100 for how urgently a stock should be re-analysed.
 Pure math — no AI calls, no network calls.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 # UAE offset — all timestamp comparisons use UAE Standard Time (UTC+4)
@@ -18,7 +18,7 @@ def is_pre_market(analysis_date: Optional[datetime] = None) -> bool:
     Pre-market analyses use stale pre-open data and should be invalidated
     once live trading begins. Fix 2.34.
     """
-    now_uae = datetime.utcnow() + UAE_OFFSET
+    now_uae = datetime.now(timezone.utc) + UAE_OFFSET
     market_open = now_uae.replace(
         hour=_MARKET_OPEN_HOUR, minute=_MARKET_OPEN_MINUTE, second=0, microsecond=0
     )
@@ -49,7 +49,7 @@ def compute_staleness(
         score += 40
         reasons.append("never analysed")
     else:
-        now_uae = datetime.utcnow() + UAE_OFFSET
+        now_uae = datetime.now(timezone.utc) + UAE_OFFSET
         age_days = (now_uae - last_analysis_date).days
         if age_days > 30:
             score += 40
@@ -58,10 +58,10 @@ def compute_staleness(
             score += 25
             reasons.append(f"analysis is {age_days}d old")
         elif age_days > 7:
-            score += 10
+            score += 15
             reasons.append(f"analysis is {age_days}d old")
         elif age_days > 2:
-            score += 45
+            score += 5
             reasons.append(f"analysis is {age_days}d old")
 
     # Price movement (weight 35)

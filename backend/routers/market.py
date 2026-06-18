@@ -2,7 +2,7 @@ from helpers import (
     get_session, verify_access_token, EXCHANGE_SUFFIX, _resolve_ticker,
     _to_ns, _yf_price, _yf_fetch_info, _dcache_get, _dcache_set,
     _quick_info_cache, _QUICK_INFO_TTL, DataHarvestingError,
-    EarningsSyncRatioResponse, YoYAggregateResponse,
+    EarningsSyncRatioResponse, YoYAggregateResponse, require_auth,
     InstitutionalLeaderboardResponse, NetWorthSnapshotResponse,
     User, Portfolio, AnalysisHistory, NetWorthLedger,
     MarketErrorLog, EarningsAlert, log_market_error,
@@ -17,8 +17,8 @@ import time
 import asyncio
 import random
 import math
-from datetime import datetime, date, timedelta
-from fastapi import APIRouter, HTTPException, Header, Request, Query
+from datetime import datetime, date, timedelta, timezone
+from fastapi import APIRouter, Depends, HTTPException, Header, Request, Query
 import yfinance as yf
 from services.scraper import (
     fetch_market_pulse, fetch_momentum, fetch_macro_alternatives,
@@ -1075,7 +1075,7 @@ def sector_performance_endpoint():
 
     result = {
         "sectors": sorted(sectors, key=lambda x: abs(x["change_pct"]), reverse=True),
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
     }
     _sector_cache = {"data": result, "ts": now}
     return result
@@ -2014,11 +2014,11 @@ def _earnings_result_from_row(r, now_iso: str) -> dict:
 
 @router.get("/api/v1/earnings/progress")
 async def earnings_progress_endpoint():
-    now_iso = datetime.utcnow().isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
     try:
         with get_session() as session:
             from datetime import timedelta
-            cutoff = (datetime.utcnow() - timedelta(days=90)).strftime("%Y-%m-%d")
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%d")
             rows = session.query(AnalysisHistory).filter(
                 AnalysisHistory.analysis_date >= cutoff
             ).all()
@@ -2234,14 +2234,14 @@ async def earnings_feed_endpoint(market_cap: str = "all", sort: str = "latest"):
     Falls back to yfinance quarterly data when no AnalysisHistory records exist.
     Adds data_source and diagnostic fields for transparency.
     """
-    now_iso = datetime.utcnow().isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
     data_source = "database"
     diagnostic = None
 
     try:
         with get_session() as session:
             from datetime import timedelta
-            cutoff = (datetime.utcnow() - timedelta(days=90)).strftime("%Y-%m-%d")
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%d")
             rows = session.query(AnalysisHistory).filter(
                 AnalysisHistory.analysis_date >= cutoff
             ).order_by(AnalysisHistory.created_at.desc()).all()
@@ -2317,8 +2317,8 @@ async def earnings_calendar_day_endpoint(date: str = None, ticker: str = None):
       - sparkline: list of 7 closing prices preceding the result date
       - price_change_7d_pct: % change over the 7-day window
     """
-    now_iso = datetime.utcnow().isoformat()
-    target_date = date or datetime.utcnow().strftime("%Y-%m-%d")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    target_date = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     try:
         with get_session() as session:
             query = session.query(AnalysisHistory).filter(
@@ -2417,7 +2417,7 @@ def _scan_upcoming_earnings(target_date: str) -> list[dict]:
 
 @router.get("/api/v1/earnings/estimates")
 async def earnings_estimates_endpoint(ticker: str):
-    now_iso = datetime.utcnow().isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
     ticker = ticker.upper()
     try:
         ns = _to_ns(ticker)
@@ -2456,12 +2456,12 @@ async def earnings_estimates_endpoint(ticker: str):
 
 @router.get("/api/v1/earnings/post-result-movers")
 async def post_result_movers_endpoint():
-    now_iso = datetime.utcnow().isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
     movers = []
     try:
         with get_session() as session:
             from datetime import timedelta
-            cutoff = (datetime.utcnow() - timedelta(days=14)).strftime("%Y-%m-%d")
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).strftime("%Y-%m-%d")
             rows = session.query(AnalysisHistory).filter(
                 AnalysisHistory.analysis_date >= cutoff
             ).order_by(AnalysisHistory.created_at.desc()).all()
@@ -2532,15 +2532,15 @@ def earnings_alerts_get_endpoint(user_id: int = 0):
                     for r in rows
                 ],
                 "count": len(rows),
-                "fetched_at": datetime.utcnow().isoformat(),
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
             }
     except Exception as e:
         log_market_error("earnings_alerts_get", str(e))
-        return {"alerts": [], "count": 0, "error": str(e), "fetched_at": datetime.utcnow().isoformat()}
+        return {"alerts": [], "count": 0, "error": str(e), "fetched_at": datetime.now(timezone.utc).isoformat()}
 
 
 @router.post("/api/v1/earnings/alerts")
-def earnings_alerts_post_endpoint(body: EarningsAlertCreateRequest):
+def earnings_alerts_post_endpoint(body: EarningsAlertCreateRequest, user_id: int = Depends(require_auth)):
     """
     Create an earnings date alert for a user+ticker combination.
     Deduplicates — if same user/ticker/date already exists, returns 200 with existing.
@@ -2550,7 +2550,7 @@ def earnings_alerts_post_endpoint(body: EarningsAlertCreateRequest):
         with get_session() as session:
             # Dedup check
             existing = session.query(EarningsAlert).filter(
-                EarningsAlert.user_id == body.user_id,
+                EarningsAlert.user_id == user_id,
                 EarningsAlert.ticker == ticker,
                 EarningsAlert.earnings_date == body.earnings_date,
             ).first()
@@ -2562,11 +2562,11 @@ def earnings_alerts_post_endpoint(body: EarningsAlertCreateRequest):
                     "earnings_date": existing.earnings_date,
                     "created_at": existing.created_at.isoformat() if existing.created_at else None,
                     "status": "already_exists",
-                    "fetched_at": datetime.utcnow().isoformat(),
+                    "fetched_at": datetime.now(timezone.utc).isoformat(),
                 }
 
             entry = EarningsAlert(
-                user_id=body.user_id,
+                user_id=user_id,
                 ticker=ticker,
                 earnings_date=body.earnings_date,
             )
@@ -2580,7 +2580,7 @@ def earnings_alerts_post_endpoint(body: EarningsAlertCreateRequest):
                 "earnings_date": entry.earnings_date,
                 "created_at": entry.created_at.isoformat() if entry.created_at else None,
                 "status": "created",
-                "fetched_at": datetime.utcnow().isoformat(),
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
             }
     except Exception as e:
         log_market_error("earnings_alerts_post", str(e), context_ticker=ticker)
@@ -2588,16 +2588,19 @@ def earnings_alerts_post_endpoint(body: EarningsAlertCreateRequest):
 
 
 @router.delete("/api/v1/earnings/alerts/{alert_id}")
-def earnings_alerts_delete_endpoint(alert_id: int):
-    """Delete a specific earnings alert by ID."""
+def earnings_alerts_delete_endpoint(alert_id: int, user_id: int = Depends(require_auth)):
+    """Delete a specific earnings alert by ID. Verifies alert belongs to authenticated user."""
     try:
         with get_session() as session:
-            entry = session.query(EarningsAlert).filter(EarningsAlert.id == alert_id).first()
+            entry = session.query(EarningsAlert).filter(
+                EarningsAlert.id == alert_id,
+                EarningsAlert.user_id == user_id
+            ).first()
             if not entry:
-                raise HTTPException(status_code=404, detail="Alert not found")
+                raise HTTPException(status_code=404, detail="Alert not found" if user_id else "Alert not found or not authorized")
             session.delete(entry)
             session.commit()
-            return {"deleted": True, "alert_id": alert_id, "fetched_at": datetime.utcnow().isoformat()}
+            return {"deleted": True, "alert_id": alert_id, "fetched_at": datetime.now(timezone.utc).isoformat()}
     except HTTPException:
         raise
     except Exception as e:
@@ -2807,7 +2810,7 @@ def ideas_advisors_endpoint():
     Auto-populates the table from the built-in SEBI_ADVISORS list if empty.
     Response: { "advisors": [...], "count": N, "fetched_at": "..." }
     """
-    now_iso = datetime.utcnow().isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
     try:
         _populate_advisor_biographies()
         with get_session() as session:
@@ -2845,7 +2848,7 @@ def ideas_feed_endpoint(limit: int = 20, sentiment: str = "all"):
     Response: { "insights": [{id, advisor_name, timestamp, content_text,
                               target_ticker, extracted_sentiment}], "count": N }
     """
-    now_iso = datetime.utcnow().isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
     sentiment = sentiment.lower()
     try:
         with get_session() as session:

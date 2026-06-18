@@ -17,7 +17,7 @@ import time
 import threading
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 # Task 14: Use orjson for fast JSON serialization when available
@@ -1132,6 +1132,28 @@ def _normalize_response(result: dict, scan_type: str = "standard", quant_payload
             "tail_risk_flags", {}
         )
 
+    # 25. Deterministic Nivesh Hierarchy Enforcement
+    gov_score = result.get("governance_score", 100)
+    if isinstance(gov_score, (int, float)) and gov_score < 40:
+        old_conf = result.get("confidence_pct", 0)
+        if isinstance(old_conf, (int, float)) and old_conf > 40:
+            result["confidence_pct"] = 40
+            if isinstance(result.get("confidence_calibration"), dict):
+                result["confidence_calibration"]["raw_llm_confidence"] = min(
+                    result["confidence_calibration"].get("raw_llm_confidence", 0), 40
+                )
+                result["confidence_calibration"]["calibration_note"] = "Confidence mathematically capped at 40% due to Nivesh Tier 1 Governance Failure."
+        
+        # Also cap calibrated_confidence if it exists
+        calib_conf = result.get("calibrated_confidence", 0)
+        if isinstance(calib_conf, (int, float)) and calib_conf > 40:
+            result["calibrated_confidence"] = 40.0
+        
+        # A governance FAIL completely invalidates bullish signals according to the Framework
+        sig = result.get("signal", "HOLD")
+        if sig in ("BULLISH", "CAUTIOUSLY BULLISH"):
+            result["signal"] = "HOLD"
+
     return result
 
 
@@ -1173,7 +1195,7 @@ def _inject_live_data(result: dict, ticker: str) -> dict:
                 session.query(NewsArticle)
                 .filter(
                     NewsArticle.ticker == ticker.upper(),
-                    NewsArticle.published_at >= datetime.utcnow() - timedelta(days=7),
+                    NewsArticle.published_at >= datetime.now(timezone.utc) - timedelta(days=7),
                 )
                 .order_by(NewsArticle.published_at.desc())
                 .limit(8)
@@ -1284,7 +1306,7 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
                 .filter(
                     NewsArticle.ticker == ticker.upper(),
                     NewsArticle.published_at
-                    >= datetime.utcnow() - timedelta(days=7),
+                    >= datetime.now(timezone.utc) - timedelta(days=7),
                 )
                 .order_by(NewsArticle.published_at.desc())
                 .limit(5)
@@ -1716,8 +1738,13 @@ def analyze(
 
     def _prefetch_worker(t_ticker: str) -> None:
         try:
-            _prefetch_data["history"] = yf.download(t_ticker, period="1y", auto_adjust=True, progress=False)
-            _prefetch_data["fast_info"] = yf.Ticker(t_ticker).fast_info
+            import yfinance as yf
+            tk = yf.Ticker(t_ticker)
+            _prefetch_data["history"] = tk.history(period="1y", auto_adjust=True)
+            _prefetch_data["fast_info"] = tk.fast_info
+            if scan_type == "extreme":
+                _prefetch_data["financials"] = tk.financials
+                _prefetch_data["info"] = tk.info
         except Exception as _pf_err:
             print(f"[PREFETCH] Background fetch failed for {t_ticker}: {_pf_err}")
         finally:
@@ -1816,6 +1843,25 @@ def analyze(
     # Wait for background prefetch to complete (started at top of analyze())
     _prefetch_done.wait(timeout=30)
 
+    extreme_bundles = {}
+    if scan_type == "extreme":
+        emitter.emit("enrich", "Graph Engine",
+                     "Computing factor / Piotroski / valuation & ownership graphs", pct=75)
+        try:
+            from services.extreme_enrichers import build_extreme_bundles
+            extreme_bundles = build_extreme_bundles(ticker.upper(), exchange, _prefetch_data)
+            
+            # INJECT into raw_output before reformat!
+            raw_output += (
+                "\n\nEXTREME ENRICHERS OUTPUT (AUTHORITATIVE):\n"
+                f"{json.dumps(extreme_bundles, sort_keys=True)}\n"
+                "Use these exact factor scores (value, quality, momentum, growth, low_volatility), "
+                "Piotroski F-score, financial trends, and peer comparisons to write the extreme_thesis. "
+                "Base your bear and bull deep dives explicitly on these numbers.\n"
+            )
+        except Exception as _enrich_err:
+            print(f"[EXTREME] enrichment failed for {ticker}: {_enrich_err}")
+
     emitter.emit("format", "Reformatter",
                  "Structuring the report into the final schema", pct=80)
     result = reformat_with_deepseek(
@@ -1831,14 +1877,8 @@ def analyze(
 
     # EXTREME superset — attach deterministic, code-computed graph bundles (real numbers
     # for the charts; the LLM already supplied the narrative blocks via EXTREME_ADDENDUM).
-    if scan_type == "extreme":
-        emitter.emit("enrich", "Graph Engine",
-                     "Computing factor / Piotroski / valuation & ownership graphs", pct=92)
-        try:
-            from services.extreme_enrichers import build_extreme_bundles
-            result.update(build_extreme_bundles(ticker.upper(), exchange))
-        except Exception as _enrich_err:
-            print(f"[EXTREME] enrichment failed for {ticker}: {_enrich_err}")
+    if scan_type == "extreme" and extreme_bundles:
+        result.update(extreme_bundles)
 
     try:
         result, _advisor_rows_dicts = _save_and_fetch_advisors(

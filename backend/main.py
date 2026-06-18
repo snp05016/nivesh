@@ -5,7 +5,7 @@ import hashlib
 import time
 import time as _time
 import io
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -841,7 +841,7 @@ async def liveness_probe():
         with get_session() as _session:
             from sqlalchemy import text as _text
             _session.execute(_text("SELECT 1"))
-        return {"status": "alive", "db": True, "ts": datetime.utcnow().isoformat()}
+        return {"status": "alive", "db": True, "ts": datetime.now(timezone.utc).isoformat()}
     except Exception as exc:
         raise HTTPException(
             status_code=503,
@@ -1463,7 +1463,7 @@ let currentUserTab='portfolio';
 
 // ─── Formatting ──────────────────────────────────────────────
 function fmt(n){if(n==null)return'-';if(n>=1e9)return(n/1e9).toFixed(2)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return''+n}
-function fmtINR(n){if(n==null||isNaN(n))return'-';const abs=Math.abs(n);let s;if(abs>=1e7)s=(n/1e7).toFixed(2)+' Cr';else if(abs>=1e5)s=(n/1e5).toFixed(2)+' L';else s=n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',');return(n<0?'-₹':'₹')+s.replace('-','')}
+function fmtINR(n){if(n==null||isNaN(n))return'-';const abs=Math.abs(n);let s;if(abs>=1e7)s=(n/1e7).toFixed(2)+' Cr';else if(abs>=1e5)s=(n/1e5).toFixed(2)+' L';else s=n.toFixed(0).replace(/\\B(?=(\d{3})+(?!\d))/g,',');return(n<0?'-₹':'₹')+s.replace('-','')}
 function fmtCost(c){if(c==null)return'$-.--';return'$'+c.toFixed(4)}
 function ts(iso){if(!iso)return'-';return new Date(iso).toLocaleTimeString('en-IN',{hour12:false})}
 function dts(iso){if(!iso)return'-';const d=new Date(iso);return d.toLocaleDateString('en-IN')+' '+d.toLocaleTimeString('en-IN',{hour12:false})}

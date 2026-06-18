@@ -13,7 +13,7 @@ ARCHITECTURE:
 COST: ~200-400 tokens per cache-miss run. Zero cost on cache hits.
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -91,7 +91,7 @@ def get_feedback_block(ticker: str, db_session=None) -> str:
 
                 try:
                     last_analysis.outcome_delta_pct  = delta_pct
-                    last_analysis.outcome_checked_at = datetime.utcnow()
+                    last_analysis.outcome_checked_at = datetime.now(timezone.utc)
                     last_analysis.was_correct = (
                         (prev_signal in ("BUY", "BULLISH") and delta_pct > 0) or
                         (prev_signal in ("SELL", "BEARISH") and delta_pct < 0)
@@ -102,7 +102,7 @@ def get_feedback_block(ticker: str, db_session=None) -> str:
             except Exception:
                 pass
 
-        days_ago = (datetime.utcnow() - prev_date).days if prev_date else "?"
+        days_ago = (datetime.now(timezone.utc) - prev_date).days if prev_date else "?"
         date_str = prev_date.strftime("%Y-%m-%d") if prev_date else "unknown"
 
         lines = [

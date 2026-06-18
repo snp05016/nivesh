@@ -10,6 +10,7 @@ Verifies that:
 5. Warning hierarchy is correct
 6. Warnings can be promoted to errors (for strict mode)
 """
+from datetime import timezone
 import sys
 import warnings
 from pathlib import Path
@@ -42,15 +43,15 @@ def run():
             runner.fail(f"hierarchy:{name}→{parent.__name__}",
                         f"{name} does not inherit from {parent.__name__}")
 
-    # ---- DeprecationWarning: datetime.utcnow() (forbidden per AGENTS.md)
+    # ---- DeprecationWarning: datetime.now(timezone.utc) (forbidden per AGENTS.md)
     import datetime
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         # utcnow() should produce DeprecationWarning in Python 3.12+
-        _ = datetime.datetime.utcnow()
+        _ = datetime.datetime.now(timezone.utc)
         if sys.version_info >= (3, 12) and any(issubclass(x.category, DeprecationWarning) for x in w):
             runner.ok("DeprecationWarning_utcnow",
-                      f"datetime.utcnow() emits DeprecationWarning in Python {sys.version_info.major}.{sys.version_info.minor}. "
+                      f"datetime.now(timezone.utc) emits DeprecationWarning in Python {sys.version_info.major}.{sys.version_info.minor}. "
                       f"Replace with datetime.now(timezone.utc) per AGENTS.md §3.5.")
         elif sys.version_info < (3, 12):
             runner.ok("DeprecationWarning_utcnow_py311",
@@ -58,7 +59,7 @@ def run():
                       f"Still forbidden per AGENTS.md — use datetime.now(timezone.utc).")
         else:
             runner.fail("DeprecationWarning_utcnow",
-                        "datetime.utcnow() did NOT emit DeprecationWarning in Python 3.12+. "
+                        "datetime.now(timezone.utc) did NOT emit DeprecationWarning in Python 3.12+. "
                         "This is unexpected — check if warnings are suppressed globally.")
 
     # ---- RuntimeWarning: float division edge cases

@@ -27,7 +27,7 @@ class TestCalibrationEngine:
 
         # Fresh analysis — just analysed, no movement
         fresh = compute_staleness(
-            last_analysis_date=datetime.utcnow(),
+            last_analysis_date=datetime.now(timezone.utc),
             price_change_7d_pct=0.5,
             signal="HOLD",
         )
@@ -45,7 +45,7 @@ class TestCalibrationEngine:
         from services.staleness import compute_staleness
         from datetime import datetime, timedelta
 
-        old_date = datetime.utcnow() - timedelta(days=3)
+        old_date = datetime.now(timezone.utc) - timedelta(days=3)
         result = compute_staleness(
             last_analysis_date=old_date,
             price_change_7d_pct=1.0,
@@ -58,7 +58,7 @@ class TestCalibrationEngine:
         from datetime import datetime
 
         result = compute_staleness(
-            last_analysis_date=datetime.utcnow(),
+            last_analysis_date=datetime.now(timezone.utc),
             price_change_7d_pct=0.5,
             governance_event_detected=True,
         )

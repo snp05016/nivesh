@@ -7,7 +7,7 @@ Extracted from helpers.py.
 import random
 import math
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 import yfinance as yf
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -41,7 +41,7 @@ def _nse_session():
     })
     try:
         s.get("https://www.nseindia.com", timeout=_HTTP_DEFAULT_TIMEOUT)
-    except: pass
+    except Exception: pass
     return s
 
 
@@ -179,7 +179,7 @@ def _get_indices_data() -> dict:
 
     payload = {
         "indices": result,
-        "fetched_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
+        "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
     }
     _dcache_set("indices", "all", payload, ttl=_INDICES_CACHE_TTL)
     return payload

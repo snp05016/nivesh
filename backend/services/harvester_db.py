@@ -23,7 +23,7 @@ from __future__ import annotations
 import json
 import os
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import (
@@ -227,7 +227,7 @@ def upsert_card(session, card: dict) -> bool:
         credibility_score=cred,
         card_type=(card.get("card_type") or "EXPERT")[:20],
         expert_credential=card.get("expert_credential"),
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     session.add(row)
     return True
@@ -253,7 +253,7 @@ def record_source_health(
         row = SourceHealth(source_name=source_name[:120], items_scraped=0)
         session.add(row)
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if success:
         row.last_success = now
         row.is_healthy = True

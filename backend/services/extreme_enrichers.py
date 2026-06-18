@@ -155,13 +155,18 @@ def _compute_piotroski(ticker: str) -> dict | None:
         return None
 
 
-def _financial_trends(ticker: str, exchange: str) -> dict | None:
+def _financial_trends(ticker: str, exchange: str, prefetch_data: dict | None = None) -> dict | None:
     """Best-effort multi-year series from yfinance financials. None if unavailable."""
     try:
         import yfinance as yf
         suffix = ".NS" if exchange == "NSE" else ".BO"
         sym = ticker if ticker.endswith((".NS", ".BO")) else f"{ticker}{suffix}"
-        fin = yf.Ticker(sym).financials
+        
+        if prefetch_data and "financials" in prefetch_data and prefetch_data["financials"] is not None:
+            fin = prefetch_data["financials"]
+        else:
+            fin = yf.Ticker(sym).financials
+            
         if fin is None or fin.empty:
             return None
         years = [str(c.year) for c in fin.columns][::-1]
@@ -205,12 +210,17 @@ def _ownership_trends(ticker: str) -> dict | None:
         return None
 
 
-def _get_peers_info(ticker: str, exchange: str) -> list[dict]:
+def _get_peers_info(ticker: str, exchange: str, prefetch_data: dict | None = None) -> list[dict]:
     try:
         import yfinance as yf
         suffix = ".NS" if exchange == "NSE" else ".BO"
         sym = ticker if ticker.endswith((".NS", ".BO")) else f"{ticker}{suffix}"
-        info = yf.Ticker(sym).info
+        
+        if prefetch_data and "info" in prefetch_data and prefetch_data["info"] is not None:
+            info = prefetch_data["info"]
+        else:
+            info = yf.Ticker(sym).info
+            
         industry_key = info.get("industryKey")
         if not industry_key:
             return []
@@ -221,9 +231,18 @@ def _get_peers_info(ticker: str, exchange: str) -> list[dict]:
             return []
             
         peers_info = []
-        for peer_sym, _ in df.head(5).iterrows():
-            if peer_sym == sym: continue
-            peers_info.append(yf.Ticker(peer_sym).info)
+        peer_syms = [p_sym for p_sym, _ in df.head(5).iterrows() if p_sym != sym]
+        
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_sym = {executor.submit(lambda s: yf.Ticker(s).info, p): p for p in peer_syms}
+            for future in as_completed(future_to_sym):
+                try:
+                    p_info = future.result()
+                    if p_info:
+                        peers_info.append(p_info)
+                except Exception:
+                    pass
         return peers_info
     except Exception:
         return []
@@ -241,10 +260,10 @@ def _peer_comparison(peers_info: list[dict]) -> list:
     return peers
 
 
-def build_extreme_bundles(ticker: str, exchange: str = "NSE") -> dict:
+def build_extreme_bundles(ticker: str, exchange: str = "NSE", prefetch_data: dict | None = None) -> dict:
     """Assemble all deterministic graph bundles for an extreme analysis result."""
-    peers_info = _get_peers_info(ticker, exchange)
-    fin_trends = _financial_trends(ticker, exchange)
+    peers_info = _get_peers_info(ticker, exchange, prefetch_data)
+    fin_trends = _financial_trends(ticker, exchange, prefetch_data)
     
     return {
         "factor_scores":    _compute_factor_scores(ticker, exchange, peers_info, fin_trends),

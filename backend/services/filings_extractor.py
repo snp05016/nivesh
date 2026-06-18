@@ -7,7 +7,7 @@ in an in-memory TTL cache for the earnings dashboard to consume.
 
 import time
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import requests
@@ -151,7 +151,7 @@ def harvest_filings() -> dict:
         "recent_filings": filings[:50],
         "earnings_filings": earnings_filings[:30],
         "source": source,
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
     }
 
     _set_filings_cache(result)

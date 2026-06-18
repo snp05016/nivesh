@@ -15,7 +15,7 @@ import time
 import logging
 import requests
 import yt_dlp
-from datetime import datetime
+from datetime import datetime, timezone
 from database import get_session, YouTubeVideo, Portfolio
 
 logger = logging.getLogger(__name__)
@@ -172,7 +172,7 @@ def get_company_name(ticker: str) -> str:
 def _parse_date(raw: str) -> datetime:
     """Safely parse a date string from either API (ISO) or yt-dlp (YYYYMMDD) format."""
     if not raw:
-        return datetime.utcnow()
+        return datetime.now(timezone.utc)
     try:
         if "T" in str(raw):
             return datetime.fromisoformat(str(raw).replace("Z", "+00:00")).replace(tzinfo=None)
@@ -180,7 +180,7 @@ def _parse_date(raw: str) -> datetime:
             return datetime.strptime(str(raw), "%Y%m%d")
     except Exception:
         pass
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 
 def _upsert_video(db, video_dict: dict) -> bool:
@@ -212,7 +212,7 @@ def _upsert_video(db, video_dict: dict) -> bool:
         matched_ticker=video_dict.get("matched_ticker"),
         source=video_dict.get("source", "channel_harvest"),
         sebi_reg=video_dict.get("sebi_reg"),
-        harvested_at=datetime.utcnow(),
+        harvested_at=datetime.now(timezone.utc),
     )
     db.add(row)
     return True

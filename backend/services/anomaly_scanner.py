@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 import pandas as pd
 from typing import Optional, List, Dict, Any
 
@@ -241,7 +241,7 @@ def run_anomaly_scan() -> List[dict]:
                     detail=a["detail"],
                     price=a["price"],
                     change_pct=a["change_pct"],
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now(timezone.utc)
                 )
                 db.add(db_record)
             db.commit()
@@ -257,7 +257,7 @@ def get_latest_anomalies(limit: int = 10) -> List[dict]:
     try:
         with get_session() as db:
             # We want recent anomalies, past 24 hours ideally
-            yesterday = datetime.utcnow() - timedelta(days=1)
+            yesterday = datetime.now(timezone.utc) - timedelta(days=1)
             records = db.query(MarketAnomaly).filter(MarketAnomaly.timestamp > yesterday).order_by(MarketAnomaly.timestamp.desc()).limit(limit * 2).all()
             
             results = []

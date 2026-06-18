@@ -11,7 +11,7 @@ GAP 11 — Minskyan Risk as Computed Penalty: Scalar fragility score from
 """
 import logging
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -137,7 +137,7 @@ def get_monsoon_modifier(
         }
 
         # Update cache (discard stale entries)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         global _monsoon_cache
         with _monsoon_cache_lock:
             _monsoon_cache[ticker] = (result, now)
@@ -161,7 +161,7 @@ def get_cached_monsoon_modifier(ticker: str) -> Optional[dict]:
         if entry is None:
             return None
         result, cached_at = entry
-        age = datetime.utcnow() - cached_at
+        age = datetime.now(timezone.utc) - cached_at
         if age.days < MONSOON_CACHE_TTL_DAYS:
             return result
         del _monsoon_cache[ticker]

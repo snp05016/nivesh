@@ -6,11 +6,11 @@ import time
 import math
 import random
 import threading
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import Optional
 from collections import Counter, defaultdict
 
-from fastapi import APIRouter, HTTPException, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from fastapi.responses import StreamingResponse
 import yfinance as yf
 
@@ -198,7 +198,7 @@ def _get_indices_data() -> dict:
 
     payload = {
         "indices": result,
-        "fetched_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
+        "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
     }
     _dcache_set("indices", "all", payload, ttl=_INDICES_CACHE_TTL)
     return payload
@@ -304,7 +304,7 @@ def portfolio_benchmark(user_id: int, authorization: str = Header(None)):
             ht = yf.Ticker(h.ticker)
             cp = getattr(ht.fast_info, "last_price", h.buy_price)
             if math.isnan(cp): cp = h.buy_price
-        except:
+        except Exception:
             cp = h.buy_price
         total_current += cp * h.shares
         
@@ -371,7 +371,7 @@ def portfolio_stress_test(user_id: int, authorization: str = Header(None)):
             t = yf.Ticker(h.ticker)
             cp = getattr(t.fast_info, "last_price", h.buy_price)
             if math.isnan(cp): cp = h.buy_price
-        except:
+        except Exception:
             cp = h.buy_price
             
         val = cp * h.shares
@@ -432,7 +432,7 @@ def _nse_session():
     })
     try:
         s.get("https://www.nseindia.com", timeout=8)
-    except: pass
+    except Exception: pass
     return s
 
 
@@ -604,7 +604,7 @@ async def portfolio_endpoint(user_id: int, authorization: str = Header(None)):
         return {
             "user": user.display_name,
             "user_id": user_id,
-            "as_of": datetime.utcnow().strftime("%d-%b-%Y %H:%M UTC"),
+            "as_of": datetime.now(timezone.utc).strftime("%d-%b-%Y %H:%M UTC"),
             "total_invested_inr": round(float(total_invested), 2),
             "total_current_inr": round(float(total_current), 2),
             "total_pnl_inr": round(float(total_pnl), 2),
@@ -625,7 +625,7 @@ def portfolio_history_endpoint(user_id: int, days: int = 30, authorization: str 
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
     if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    cutoff = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
     with get_session() as session:
         rows = session.query(PortfolioValuationHistory).filter(
             PortfolioValuationHistory.user_id == user_id,
@@ -680,7 +680,7 @@ def morning_summary_endpoint(user_id: int, authorization: str = Header(None)):
         if not contains_devanagari(cached.get("summary", "")):
             return cached
 
-    generated_at = datetime.utcnow().strftime("%H:%M")
+    generated_at = datetime.now(timezone.utc).strftime("%H:%M")
 
     fallback = {
         "summary": "• Market data loaded. AI brief unavailable at this time.",
@@ -846,7 +846,7 @@ mood must be exactly: "positive", "cautious", or "negative"
 
         # Priority 1: Signal flips in last 24h for held stocks
         try:
-            cutoff = datetime.utcnow() - timedelta(hours=24)
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
             with get_session() as session:
                 held_tickers = {h.ticker for h in session.query(Portfolio).filter(
                     Portfolio.user_id == user_id,
@@ -1373,7 +1373,7 @@ def portfolio_advisor_consensus(user_id: int, days: int = 7):
     """Aggregate AdvisorInsight rows into sector signals and trending tickers."""
 
     try:
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
         # Build a sector lookup from the in-memory NSE directory
         _sector_map: dict[str, str] = {
@@ -1505,7 +1505,7 @@ def portfolio_advisor_consensus(user_id: int, days: int = 7):
         sector_signals = sector_signals[:3]
 
         return {
-            "generated_at": datetime.utcnow().isoformat() + "Z",
+            "generated_at": datetime.now(timezone.utc).isoformat() + "Z",
             "window_days": days,
             "sector_signals": sector_signals,
             "trending_tickers": trending_tickers,
@@ -1651,7 +1651,7 @@ async def get_valuation_history(user_id: int, days: int = 90, authorization: str
     if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     with get_session() as session:
-        cutoff_date = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
+        cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
 
         snapshots = session.query(PortfolioValuationHistory).filter(
             PortfolioValuationHistory.user_id == user_id,
@@ -2083,7 +2083,7 @@ def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)
                         pass
                 fii_histories[ticker] = fiis
 
-            cutoff = datetime.utcnow() - timedelta(days=30)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=30)
             bearish_flips = session.query(SignalEvent).filter(
                 SignalEvent.created_at >= cutoff,
                 SignalEvent.ticker.in_(held_tickers),
@@ -2210,7 +2210,7 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
             holdings_data = [(h.ticker, h.company_name) for h in holdings]
 
         if not holdings_data:
-            return {"user_id": user_id, "macro_readings": {}, "impacts": [], "generated_at": datetime.utcnow().isoformat()}
+            return {"user_id": user_id, "macro_readings": {}, "impacts": [], "generated_at": datetime.now(timezone.utc).isoformat()}
 
         macro: dict = {}
         for sym, key in [("BZ=F", "brent_oil_usd"), ("^INDIAVIX", "india_vix"), ("USDINR=X", "usd_inr")]:
@@ -2264,7 +2264,7 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
             "user_id": user_id,
             "macro_readings": macro,
             "impacts": impacts,
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
         }
         _dcache_set("macro_impact", str(user_id), result, ttl=_MACRO_IMPACT_TTL)
         return result
@@ -2469,7 +2469,7 @@ def trade_journal_update_endpoint(entry_id: int, req: TradeJournalUpdateRequest,
             except Exception:
                 pass
             try:
-                entry.updated_at = datetime.utcnow()
+                entry.updated_at = datetime.now(timezone.utc)
             except Exception:
                 pass
             session.commit()
@@ -2526,14 +2526,14 @@ def trade_journal_delete_endpoint(entry_id: int, user_id: int, authorization: st
 # 22. GET /trade-journal/{user_id}/stats
 # ---------------------------------------------------------------------------
 @router.get("/trade-journal/{user_id}/stats")
-def trade_journal_stats_endpoint(user_id: int):
-    """Compute analytics over all journal entries for a user."""
+def trade_journal_stats_endpoint(user_id: int, auth_user_id: int = Depends(require_auth)):
+    """Compute analytics over all journal entries for a user. Auth required."""
     try:
         with get_session() as session:
-            user = session.get(User, user_id)
+            user = session.get(User, auth_user_id)
             if not user:
-                raise HTTPException(status_code=404, detail=f"User {user_id} not found")
-            entries = session.query(TradeJournal).filter_by(user_id=user_id).all()
+                raise HTTPException(status_code=404, detail=f"User {auth_user_id} not found")
+            entries = session.query(TradeJournal).filter_by(user_id=auth_user_id).all()
             entries_data = []
             for e in entries:
                 entries_data.append({
@@ -2644,7 +2644,7 @@ def export_portfolio_pdf(user_id: int, authorization: str = Header(None)):
 
             # Step 3: Red flags (inline — no HTTP call)
             red_flag_list = []
-            cutoff30 = datetime.utcnow() - timedelta(days=30)
+            cutoff30 = datetime.now(timezone.utc) - timedelta(days=30)
             bearish_flips_pdf = session.query(SignalEvent).filter(
                 SignalEvent.created_at >= cutoff30,
                 SignalEvent.ticker.in_([t for t, _, _, _ in holdings_snap]),

@@ -10,6 +10,7 @@ Scans every .py file in the backend directory for:
 This test does NOT execute the code — it only parses the AST.
 It produces a line-by-line report of every file with issues.
 """
+from datetime import timezone
 import sys
 import os
 import ast
@@ -75,10 +76,10 @@ def check_ast_patterns(filepath: Path) -> list[str]:
                 f"Use 'except Exception:' or a specific exception type."
             )
 
-        # datetime.utcnow() usage (forbidden per AGENTS.md)
+        # datetime.now(timezone.utc) usage (forbidden per AGENTS.md)
         if isinstance(node, ast.Attribute) and node.attr == "utcnow":
             warnings.append(
-                f"  Line {node.col_offset}: datetime.utcnow() is forbidden per AGENTS.md. "
+                f"  Line {node.col_offset}: datetime.now(timezone.utc) is forbidden per AGENTS.md. "
                 f"Use datetime.now(timezone.utc) instead. "
                 f"utcnow() returns a naive datetime which compares incorrectly with timezone-aware datetimes."
             )

@@ -3,6 +3,7 @@ Nivesh Sentiment Engine
 Runs FinBERT sentiment scoring on news article headlines and summaries.
 Loads the model once at module import time and reuses it (singleton pattern).
 """
+from datetime import timezone
 import logging
 from typing import Optional
 
@@ -153,7 +154,7 @@ def get_sentiment_trend(ticker: str, days: int = 30):
     from datetime import datetime, timedelta
     from sqlalchemy import and_, or_, func, cast, Date
 
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     
     with get_session() as db:
         # SQLite datetime casting workaround: substr(published_at, 1, 10)
