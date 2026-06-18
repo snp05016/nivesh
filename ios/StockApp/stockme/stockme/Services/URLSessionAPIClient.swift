@@ -6,7 +6,7 @@ final class URLSessionAPIClient: APIClient {
     var authToken: String?
     var session: URLSession
 
-    init(baseURL: String = "http://192.168.1.122:8000", authToken: String? = nil) {
+    init(baseURL: String = "https://api.nivesh.qzz.io", authToken: String? = nil) {
         self.baseURL = baseURL
         self.authToken = authToken
         self.session = URLSession.shared
