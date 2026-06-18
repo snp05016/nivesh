@@ -130,7 +130,7 @@ struct EarningsSurpriseScreen: View {
             ToolbarItem(placement: .principal) {
                 HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: "sparkles.rectangle")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(Theme.engravedSerif(size: 12, weight: .semibold))
                         .foregroundColor(Theme.securityGold)
                     Text("EARNINGS SURPRISE")
                         .font(Theme.officialStampFont(size: 11, relativeTo: .caption))
@@ -143,7 +143,7 @@ struct EarningsSurpriseScreen: View {
                     Button { HapticManager.selection(); vm.showHelp = true }
                     label: {
                         Image(systemName: "questionmark.circle")
-                            .font(.system(size: 18, weight: .medium))
+                            .font(Theme.engravedSerif(size: 18, weight: .medium))
                             .foregroundColor(Theme.securityGold)
                     }
                     .buttonStyle(EKPressStyle())
@@ -156,7 +156,7 @@ struct EarningsSurpriseScreen: View {
                         }
                     } label: {
                         Image(systemName: vm.isCalendarView ? "list.bullet" : "calendar")
-                            .font(.system(size: 18, weight: .medium))
+                            .font(Theme.engravedSerif(size: 18, weight: .medium))
                             .foregroundColor(Theme.inkPrimary)
                     }
                     .buttonStyle(EKPressStyle())
@@ -484,7 +484,7 @@ struct EarningsSurpriseHelpView: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: section.icon)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(Theme.engravedSerif(size: 14, weight: .medium))
                         .foregroundColor(Theme.securityGold)
                     Text(section.title)
                         .font(Theme.engravedSerif(size: 15, weight: .semibold, relativeTo: .headline))

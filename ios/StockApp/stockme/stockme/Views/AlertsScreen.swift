@@ -93,7 +93,7 @@ struct AlertsScreen: View {
                                                             Task { await viewModel.removeAlert(alertId: alert.id, userId: user.userId) }
                                                         }
                                                     })
-                                                    .frame(width: UIScreen.main.bounds.width * 0.85)
+                                                    .frame(width: UIScreen.main.bounds.width * 0.62)
                                                 }
                                             }
                                             .padding(.horizontal, Theme.screenPadding)
@@ -114,7 +114,7 @@ struct AlertsScreen: View {
                                                             Task { await viewModel.removeAlert(alertId: alert.id, userId: user.userId) }
                                                         }
                                                     })
-                                                    .frame(width: UIScreen.main.bounds.width * 0.85)
+                                                    .frame(width: UIScreen.main.bounds.width * 0.62)
                                                 }
                                             }
                                             .padding(.horizontal, Theme.screenPadding)

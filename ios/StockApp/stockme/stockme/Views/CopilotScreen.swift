@@ -151,7 +151,7 @@ struct CopilotScreen: View {
                                         .fill(messageText.isEmpty ? Theme.inkTertiary.opacity(0.2) : Theme.securityGold)
                                         .frame(width: 44, height: 44)
                                     Image(systemName: "arrow.up")
-                                        .font(.system(size: 16, weight: .bold))
+                                        .font(Theme.engravedSerif(size: 16, weight: .bold))
                                         .foregroundColor(messageText.isEmpty ? Theme.inkTertiary : Theme.canvas)
                                 }
                             }
@@ -170,7 +170,7 @@ struct CopilotScreen: View {
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: Theme.Spacing.tight) {
                         Image(systemName: "sparkles")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(Theme.engravedSerif(size: 14, weight: .semibold))
                             .foregroundColor(Theme.securityGold)
                         Text("AI COPILOT")
                             .font(Theme.officialStampFont(size: 12, relativeTo: .caption))
@@ -184,7 +184,7 @@ struct CopilotScreen: View {
                         dismiss()
                     }) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(Theme.engravedSerif(size: 14, weight: .semibold))
                             .foregroundColor(Theme.inkTertiary)
                     }
                     .buttonStyle(EKPressStyle())
@@ -205,7 +205,7 @@ struct CopilotScreen: View {
                         .fill(Theme.securityGold.opacity(0.12))
                         .frame(width: 52, height: 52)
                     Image(systemName: "sparkles")
-                        .font(.system(size: 24, weight: .bold))
+                        .font(Theme.engravedSerif(size: 24, weight: .bold))
                         .foregroundColor(Theme.securityGold)
                 }
 
@@ -264,7 +264,7 @@ struct CopilotScreen: View {
                     .fill(cap.iconColor.opacity(0.12))
                     .frame(width: 36, height: 36)
                 Image(systemName: cap.icon)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(Theme.engravedSerif(size: 15, weight: .semibold))
                     .foregroundColor(cap.iconColor)
             }
 
@@ -281,7 +281,7 @@ struct CopilotScreen: View {
             Spacer()
 
             Image(systemName: "chevron.right")
-                .font(.system(size: 10, weight: .semibold))
+                .font(Theme.sectionCapsLabel(size: 10))
                 .foregroundColor(Theme.inkTertiary)
         }
         .padding(.horizontal, Theme.Spacing.card)
@@ -319,7 +319,7 @@ struct CopilotScreen: View {
                     .fill(Theme.securityGold.opacity(0.12))
                     .frame(width: 32, height: 32)
                 Image(systemName: "sparkles")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(Theme.engravedSerif(size: 14, weight: .bold))
                     .foregroundColor(Theme.securityGold)
             }
 
@@ -378,7 +378,7 @@ struct CopilotScreen: View {
                     .fill(Theme.securityGold.opacity(0.12))
                     .frame(width: 32, height: 32)
                 Image(systemName: "sparkles")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(Theme.engravedSerif(size: 14, weight: .bold))
                     .foregroundColor(Theme.securityGold)
             }
 
@@ -531,7 +531,7 @@ struct CopilotFloatingButtonModifier: ViewModifier {
                         isShowingCopilot = true
                     }) {
                         Image(systemName: "sparkles")
-                            .font(.system(size: 20, weight: .bold))
+                            .font(Theme.engravedSerif(size: 20, weight: .bold))
                             .foregroundColor(Theme.canvas)
                             .padding(Theme.Spacing.card)
                             .background(Theme.securityGold)

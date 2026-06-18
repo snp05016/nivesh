@@ -66,7 +66,7 @@ struct LaunchSequenceView: View {
                     )
                 )
                 .frame(width: wordmarkMeasuredWidth, height: 1.5)
-                .padding(.top, 14)
+                .padding(.top, Theme.Spacing.standard)
                 .opacity(shimmerOpacity)
 
             // "निवेश"

@@ -13,7 +13,7 @@ struct CrashLabView: View {
                 VStack(spacing: Theme.Spacing.standard) {
                     Spacer()
                     Image(systemName: "checkmark.shield.fill")
-                        .font(.system(size: 48))
+                        .font(Theme.engravedSerif(size: 48))
                         .foregroundStyle(Theme.bullGreen.opacity(0.6))
                     Text("No crashes recorded")
                         .font(Theme.engravedSerif(size: 16, weight: .medium, relativeTo: .headline))
@@ -116,7 +116,7 @@ private struct CrashCardView: View {
             if expanded {
                 ScrollView(.horizontal) {
                     Text(report.stackTrace)
-                        .font(.system(size: 9, design: .monospaced))
+                        .font(Theme.microLabel(size: 9))
                         .foregroundStyle(Theme.inkSecondary)
                 }
                 .padding(Theme.Spacing.small)

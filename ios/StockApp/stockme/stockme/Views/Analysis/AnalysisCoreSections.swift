@@ -450,11 +450,12 @@ struct AnalysisCoreSections: View {
     }
 
     private func horizonRow(label: String, target: Double, upside: Double, featured: Bool = false) -> some View {
-        HStack(spacing: Theme.Spacing.standard) {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return HStack(spacing: Theme.Spacing.standard) {
             Text(label)
                 .font(featured ? Theme.monoTabular(size: 13).weight(.bold) : Theme.monoTabular(size: 12))
                 .foregroundStyle(featured ? Theme.goldPrimary : Theme.inkSecondary)
-                .frame(width: 80, alignment: .leading)
+                .frame(width: colW * 0.23, alignment: .leading)
             Image(systemName: upside >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
                 .font(.caption2)
                 .foregroundStyle(upside >= 0 ? Theme.dataPositive : Theme.dataNegative)
@@ -531,8 +532,9 @@ struct AnalysisCoreSections: View {
     }
 
     private func diffRow(label: String, oldVal: String, newVal: String, isPositive: Bool) -> some View {
-        HStack(spacing: Theme.Spacing.medium) {
-            Text(label).font(Theme.microLabel()).foregroundStyle(Theme.inkSecondary).frame(width: 80, alignment: .leading)
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return HStack(spacing: Theme.Spacing.medium) {
+            Text(label).font(Theme.microLabel()).foregroundStyle(Theme.inkSecondary).frame(width: colW * 0.23, alignment: .leading)
             Text(oldVal).font(Theme.monoTabular(size: 13)).foregroundStyle(Theme.inkTertiary).strikethrough()
             Image(systemName: "arrow.right").font(.caption2).foregroundStyle(Theme.inkTertiary)
             Text(newVal).font(Theme.monoTabular(size: 13).weight(.bold)).foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)

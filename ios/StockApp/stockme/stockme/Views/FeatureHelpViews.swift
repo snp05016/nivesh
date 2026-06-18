@@ -9,7 +9,7 @@ struct HelpTypedButton: View {
         Button { HapticManager.selection(); showHelp = true }
         label: {
             Image(systemName: "questionmark.circle")
-                .font(.system(size: 18, weight: .medium))
+                .font(Theme.engravedSerif(size: 18, weight: .medium))
                 .foregroundColor(Theme.securityGold)
         }
         .buttonStyle(EKPressStyle())
@@ -27,7 +27,7 @@ struct HelpInlineButton: View {
             label: {
                 HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: "questionmark.circle")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(Theme.engravedSerif(size: 14, weight: .medium))
                     Text("HOW IT WORKS")
                         .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                         .tracking(1.0)
@@ -91,7 +91,7 @@ struct GenericHelpSheet: View {
                                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                                     HStack(spacing: Theme.Spacing.small) {
                                         Image(systemName: sec.icon)
-                                            .font(.system(size: 14, weight: .medium))
+                                            .font(Theme.engravedSerif(size: 14, weight: .medium))
                                             .foregroundColor(Theme.securityGold)
                                         Text(sec.title)
                                             .font(Theme.engravedSerif(size: 15, weight: .semibold, relativeTo: .headline))
@@ -139,7 +139,7 @@ struct HelpToolbarButton: ViewModifier {
                     Button { HapticManager.selection(); showHelp = true }
                     label: {
                         Image(systemName: "questionmark.circle")
-                            .font(.system(size: 18, weight: .medium))
+                            .font(Theme.engravedSerif(size: 18, weight: .medium))
                             .foregroundColor(Theme.securityGold)
                     }
                     .buttonStyle(EKPressStyle())

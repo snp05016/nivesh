@@ -136,7 +136,7 @@ private struct DrawerContent: View {
                                 withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) { isOpen = false }
                             }
                             if i < HomeSectionID.allCases.count - 1 {
-                                Rectangle().fill(Theme.inkTertiary.opacity(0.1)).frame(height: 0.5).padding(.leading, 56)
+                                Rectangle().fill(Theme.inkTertiary.opacity(0.1)).frame(height: 0.5).padding(.leading, Theme.Spacing.xLarge)
                             }
                         }
                     }
@@ -188,7 +188,7 @@ private struct DrawerContent: View {
             .accessibilityLabel("Close sidebar")
         }
         .padding(.horizontal, Theme.Spacing.screen)
-        .padding(.top, 64) // safe area compensation
+        .padding(.top, Theme.Spacing.xLarge * 2) // safe area compensation
         .padding(.bottom, Theme.Spacing.card)
     }
 }

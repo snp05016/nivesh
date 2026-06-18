@@ -189,8 +189,8 @@ struct SearchScreen: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, Theme.screenPadding)
-                    .padding(.top, 12)
-                    .padding(.bottom, 16)
+                    .padding(.top, Theme.Spacing.standard)
+                    .padding(.bottom, Theme.Spacing.card)
 
                     // Search field
                     VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
@@ -256,7 +256,7 @@ struct SearchScreen: View {
                         )
                     }
                     .padding(.horizontal, Theme.screenPadding)
-                    .padding(.bottom, 12)
+                    .padding(.bottom, Theme.Spacing.standard)
 
                     // Discover screener pills — glass capsule strip
                     if searchText.isEmpty {
@@ -370,7 +370,7 @@ struct SearchScreen: View {
                                         ProgressView().tint(Theme.securityGold)
                                         Spacer()
                                     }
-                                    .padding(.top, 40)
+                                    .padding(.top, Theme.Spacing.xLarge)
                                 } else if activePreset != nil && screenerResults.isEmpty {
                                     VStack(spacing: Theme.Spacing.standard) {
                                         BanknoteSignalBadge(text: "NO RESULTS", color: Theme.inkSecondary, rotation: -3)
@@ -378,7 +378,7 @@ struct SearchScreen: View {
                                             .font(.subheadline)
                                             .foregroundStyle(Theme.inkSecondary)
                                     }
-                                    .padding(.top, 40)
+                                    .padding(.top, Theme.Spacing.xLarge)
                                 } else if activePreset != nil {
                                     ForEach(Array(screenerResults.enumerated()), id: \.element.id) { index, result in
                                         Button {
@@ -724,8 +724,8 @@ private struct StockEntryRow: View {
                     .font(.subheadline.weight(.bold))
             }
             .padding(.vertical, Theme.Spacing.standard)
-            .padding(.leading, 12)
-            .padding(.trailing, 16)
+            .padding(.leading, Theme.Spacing.standard)
+            .padding(.trailing, Theme.Spacing.card)
         }
         .banknoteCard()
     }
@@ -754,8 +754,8 @@ private struct SearchSkeletonRow: View {
                 Spacer()
             }
             .padding(.vertical, Theme.Spacing.standard)
-            .padding(.leading, 12)
-            .padding(.trailing, 16)
+            .padding(.leading, Theme.Spacing.standard)
+            .padding(.trailing, Theme.Spacing.card)
         }
         .banknoteCard()
         .shimmerPlaceholder(isLoading: true)

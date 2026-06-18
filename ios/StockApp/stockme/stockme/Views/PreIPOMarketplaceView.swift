@@ -144,82 +144,77 @@ struct PreIPOMarketplaceView: View {
             Spacer()
         }
         .padding(.horizontal, Theme.screenPadding)
-        .padding(.top, 14)
-        .padding(.bottom, 10)
+        .padding(.top, Theme.Spacing.standard)
+        .padding(.bottom, Theme.Spacing.medium)
         .background(Theme.canvasDeep)
     }
 
     // MARK: 6.1 Live Trade Advisory Banner
 
     private var advisoryBanner: some View {
-        GeometryReader { geo in
-            ScrollView(.horizontal) {
-                HStack(spacing: Theme.Spacing.standard) {
-                    ForEach(vm.advisories) { adv in
-                        advisoryCard(adv, cardWidth: geo.size.width * 0.75)
-                    }
+        ScrollView(.horizontal) {
+            HStack(spacing: Theme.Spacing.standard) {
+                ForEach(vm.advisories) { adv in
+                    advisoryCard(adv, cardWidth: UIScreen.main.bounds.width * 0.75)
                 }
-                .padding(.horizontal, Theme.Spacing.card)
-                .padding(.vertical, Theme.Spacing.standard)
             }
-            .scrollIndicators(.hidden)
-            .background(Theme.canvasDeep)
+            .padding(.horizontal, Theme.Spacing.card)
+            .padding(.vertical, Theme.Spacing.standard)
         }
+        .scrollIndicators(.hidden)
+        .background(Theme.canvasDeep)
     }
 
     private func advisoryCard(_ adv: OTCAdvisory, cardWidth: CGFloat) -> some View {
-        GeometryReader { geo in
-            ZStack {
-                VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                    HStack {
-                        Text("SUPER PRO ADVISORY")
-                            .font(Theme.serialNumberFont(size: 8))
-                            .tracking(1.5)
-                            .foregroundStyle(Theme.securityGold)
-                        Spacer()
-                        Image(systemName: "lock.fill")
-                            .font(Theme.officialStampFont(size: 10))
-                            .foregroundStyle(Theme.securityGold.opacity(0.6))
-                    }
-                    Text(adv.companyName)
-                        .font(Theme.officialStampFont(size: 13))
-                        .foregroundStyle(Theme.inkPrimary)
-                    HStack(spacing: Theme.Spacing.standard) {
-                        metricTag("Entry", IndianFormatter.price(adv.entryPrice))
-                        metricTag("Tgt", IndianFormatter.price(adv.targetPrice))
-                        metricTag("SL", IndianFormatter.price(adv.stopLoss))
-                    }
-                    // 6.1 Rationale text blurred for non-premium
-                    Text(adv.rationale)
+        ZStack {
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                HStack {
+                    Text("SUPER PRO ADVISORY")
+                        .font(Theme.serialNumberFont(size: 8))
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.securityGold)
+                    Spacer()
+                    Image(systemName: "lock.fill")
                         .font(Theme.officialStampFont(size: 10))
-                        .foregroundStyle(Theme.inkSecondary)
-                        .lineLimit(2)
-                        .blur(radius: isSuperpro ? 0 : 4)
+                        .foregroundStyle(Theme.securityGold.opacity(0.6))
                 }
-                .padding(Theme.Spacing.standard)
-                .frame(width: geo.size.width)
-                .background(Theme.canvasDeep)
-                .cornerRadius(Theme.CornerRadius.medium)
-                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(Theme.securityGold.opacity(0.25), lineWidth: 1))
-
-                // 6.1 Premium Token Security Lock
-                if !isSuperpro {
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                        .fill(Theme.canvasDeep.opacity(0.6))
-                        .overlay(
-                            VStack(spacing: Theme.Spacing.small) {
-                                Image(systemName: "lock.shield")
-                                    .font(Theme.officialStampFont(size: 18))
-                                    .foregroundStyle(Theme.securityGold)
-                                Text("SUPER PRO")
-                                    .font(Theme.serialNumberFont(size: 9))
-                                    .tracking(2)
-                                    .foregroundStyle(Theme.securityGold)
-                            }
-                        )
+                Text(adv.companyName)
+                    .font(Theme.officialStampFont(size: 13))
+                    .foregroundStyle(Theme.inkPrimary)
+                HStack(spacing: Theme.Spacing.standard) {
+                    metricTag("Entry", IndianFormatter.price(adv.entryPrice))
+                    metricTag("Tgt", IndianFormatter.price(adv.targetPrice))
+                    metricTag("SL", IndianFormatter.price(adv.stopLoss))
                 }
+                // 6.1 Rationale text blurred for non-premium
+                Text(adv.rationale)
+                    .font(Theme.officialStampFont(size: 10))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .lineLimit(2)
+                    .blur(radius: isSuperpro ? 0 : 4)
             }
-            .frame(width: geo.size.width)
+            .padding(Theme.Spacing.standard)
+            .frame(width: cardWidth)
+            .background(Theme.canvasDeep)
+            .cornerRadius(Theme.CornerRadius.medium)
+            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(Theme.securityGold.opacity(0.25), lineWidth: 1))
+
+            // 6.1 Premium Token Security Lock
+            if !isSuperpro {
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                    .fill(Theme.canvasDeep.opacity(0.6))
+                    .overlay(
+                        VStack(spacing: Theme.Spacing.small) {
+                            Image(systemName: "lock.shield")
+                                .font(Theme.officialStampFont(size: 18))
+                                .foregroundStyle(Theme.securityGold)
+                            Text("SUPER PRO")
+                                .font(Theme.serialNumberFont(size: 9))
+                                .tracking(2)
+                                .foregroundStyle(Theme.securityGold)
+                        }
+                    )
+            }
         }
         .frame(width: cardWidth)
     }
@@ -406,19 +401,20 @@ struct PreIPOMarketplaceView: View {
     }
 
     private var companyPlaceholder: some View {
-        HStack(spacing: Theme.Spacing.standard) {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return HStack(spacing: Theme.Spacing.standard) {
             RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 130, height: 12)
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 80, height: 10)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.37, height: 12)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.23, height: 10)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: Theme.Spacing.tight) {
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 70, height: 12)
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: 50, height: 10)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.20, height: 12)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.14, height: 10)
             }
         }
-        .padding(14)
+        .padding(Theme.Spacing.standard)
         .banknoteCard()
         .shimmerPlaceholder(isLoading: true)
     }

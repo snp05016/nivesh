@@ -14,7 +14,6 @@ struct SettingsScreen: View {
     @AppStorage("nivesh_minMarketCap") private var minMarketCap = "Any"
 
     // Notifications
-    @AppStorage("pushNotifications") private var pushNotifications = true
     @AppStorage("nivesh_signalChangeAlerts") private var signalChangeAlerts = false
     @AppStorage("morningBriefTime") private var morningBriefTime: Double = 0
     @AppStorage("notificationSound") private var notificationSound = "Default"
@@ -226,6 +225,7 @@ struct SettingsScreen: View {
             }
             .buttonStyle(EKPressStyle())
             Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
+            PickerRow(icon: "lock.shield", color: Theme.securityGold, title: "Biometric Lock", selection: $biometricTimeoutRaw, options: ["immediately", "1min", "5min", "15min", "never"])
             ToggleRow(icon: "eye.slash", color: Theme.inkSecondary, title: "Hide Portfolio Values", isOn: $hidePortfolioValues)
             ToggleRow(icon: "touchid", color: Theme.securityGold, title: "Biometric for Trades", isOn: $biometricTradeLock)
         }

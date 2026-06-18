@@ -56,7 +56,7 @@ struct OnboardingScreen: View {
                     FeatureRegistryRow(icon: "doc.text.fill", text: "Official archives and record keeping", delay: 0.7)
                 }
                 .padding(.horizontal, Theme.Spacing.xLarge)
-                .padding(.bottom, 48)
+                .padding(.bottom, Theme.Spacing.xLarge)
 
                 // CTA (The Official Access Button)
                 Button(action: onContinue) {
@@ -86,7 +86,7 @@ private struct FeatureRegistryRow: View {
             Image(systemName: icon)
                 .font(.title3)
                 .foregroundStyle(Theme.securityGold)
-                .frame(width: 32)
+                .frame(width: Theme.Spacing.xLarge)
             Text(text.uppercased())
                 .font(.caption.weight(.bold))
                 .foregroundStyle(Theme.inkSecondary)

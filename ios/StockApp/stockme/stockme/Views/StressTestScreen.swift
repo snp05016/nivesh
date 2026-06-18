@@ -410,7 +410,7 @@ struct StressDiagnosticCard: View {
                     withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
                 } label: {
                     Image(systemName: expanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(Theme.engravedSerif(size: 12, weight: .medium))
                         .foregroundColor(Theme.inkTertiary)
                 }
                 .buttonStyle(EKPressStyle())
@@ -457,12 +457,13 @@ private struct DiagRow: View {
     let label: String
     let value: String
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.small) {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return HStack(alignment: .top, spacing: Theme.Spacing.small) {
             Text(label)
                 .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
                 .tracking(0.8)
                 .foregroundColor(Theme.inkTertiary)
-                .frame(width: 72, alignment: .leading)
+                .frame(width: colW * 0.20, alignment: .leading)
             Text(value)
                 .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
                 .foregroundColor(Theme.inkSecondary)
@@ -480,7 +481,8 @@ struct StressCheckpointTracker: View {
     let stage: String
 
     var body: some View {
-        VStack(spacing: Theme.Spacing.medium) {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return VStack(spacing: Theme.Spacing.medium) {
             // Step indicators
             HStack(spacing: 0) {
                 ForEach(checkpoints.indices, id: \.self) { idx in
@@ -504,15 +506,15 @@ struct StressCheckpointTracker: View {
 
                             if isDone {
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 13, weight: .bold))
+                                    .font(Theme.engravedSerif(size: 13, weight: .bold))
                                     .foregroundColor(.white)
                             } else if isActive {
                                 Image(systemName: cp.icon)
-                                    .font(.system(size: 13, weight: .medium))
+                                    .font(Theme.engravedSerif(size: 13, weight: .medium))
                                     .foregroundColor(Theme.securityGold)
                             } else {
                                 Image(systemName: cp.icon)
-                                    .font(.system(size: 13))
+                                    .font(Theme.engravedSerif(size: 13))
                                     .foregroundColor(Theme.inkTertiary)
                             }
                         }
@@ -528,7 +530,7 @@ struct StressCheckpointTracker: View {
                             )
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
-                            .frame(width: 60)
+                            .frame(width: colW * 0.17)
                     }
 
                     if idx < checkpoints.count - 1 {
@@ -536,7 +538,7 @@ struct StressCheckpointTracker: View {
                             .fill(idx < activeIndex ? Theme.bullGreen : Theme.borderFine)
                             .frame(height: 1.5)
                             .frame(maxWidth: .infinity)
-                            .padding(.bottom, 28)
+                            .padding(.bottom, Theme.Spacing.sectionGap)
                             .animation(.easeInOut(duration: 0.4), value: activeIndex)
                     }
                 }
@@ -631,7 +633,7 @@ struct StressTestScreen: View {
                                 } label: {
                                     HStack(spacing: Theme.Spacing.small) {
                                         Image(systemName: icon)
-                                            .font(.system(size: 14))
+                                            .font(Theme.engravedSerif(size: 14))
                                         Text(name)
                                             .font(Theme.roundedSecondary(size: 14, weight: .medium, relativeTo: .subheadline))
                                     }
@@ -660,7 +662,7 @@ struct StressTestScreen: View {
                     } label: {
                         HStack(spacing: Theme.Spacing.standard) {
                             Image(systemName: "xmark.circle")
-                                .font(.system(size: 16))
+                                .font(Theme.engravedSerif(size: 16))
                             Text("Cancel Simulation")
                                 .font(Theme.roundedSecondary(size: 16, weight: .semibold, relativeTo: .headline))
                         }
@@ -776,7 +778,7 @@ struct StressScenarioSection: View {
                             .foregroundColor(Theme.inkSecondary)
                     }
                 }
-                .frame(height: 250)
+                .frame(height: UIScreen.main.bounds.height * 0.30)
                 .padding(.horizontal, Theme.screenPadding)
             }
 

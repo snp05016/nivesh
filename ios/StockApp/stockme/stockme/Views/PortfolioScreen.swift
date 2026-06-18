@@ -153,6 +153,7 @@ struct PortfolioScreen: View {
     @State private var stockTapCompanyName: String? = nil
     @State private var showStockTapAction = false
     @State private var portfolioNavPath = NavigationPath()
+    @AppStorage("nivesh_hidePortfolioValues") private var hidePortfolioValues = false
 
     // Screen B — immersive valuation chart (fetched at view level; ViewModel untouched)
     @State private var snapshots: [ValuationSnapshot] = []
@@ -225,7 +226,8 @@ struct PortfolioScreen: View {
                                 totalPnLPercent: viewModel.investedValue > 0
                                     ? (viewModel.totalValue - viewModel.investedValue) / viewModel.investedValue * 100
                                     : 0,
-                                isLoading: viewModel.isLoading
+                                isLoading: viewModel.isLoading,
+                                hideValues: hidePortfolioValues
                             )
                             .padding(.horizontal, Theme.screenPadding)
 
@@ -281,7 +283,8 @@ struct PortfolioScreen: View {
                                         NavigationLink(value: HoldingNavValue(ticker: holding.stock.ticker, userNote: holding.notes, purchaseDateStr: holding.purchaseDate, holding: holding)) {
                                             HoldingNoteRow(holding: holding,
                                                            color: allocationPalette[idx % allocationPalette.count],
-                                                           signalWarning: signalWarnings[holding.stock.ticker])
+                                                           signalWarning: signalWarnings[holding.stock.ticker],
+                                                           hideValues: hidePortfolioValues)
                                         }
                                         .ekPress()
                                         .contextMenu {
@@ -345,7 +348,7 @@ struct PortfolioScreen: View {
                                                     taggingTicker = item.ticker
                                                     showTagSheet = true
                                                 })
-                                                .frame(width: UIScreen.main.bounds.width * 0.78)
+                                                .frame(width: UIScreen.main.bounds.width * 0.62)
                                             }
                                             .buttonStyle(.plain)
                                         }
@@ -624,7 +627,7 @@ struct PortfolioScreen: View {
                     }
                     .foregroundStyle(Theme.securityGold)
                     .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, Theme.Spacing.medium)
                     .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.securityGold, lineWidth: 1))
                 }
             }
@@ -961,6 +964,7 @@ private struct HoldingNoteRow: View {
     let holding: PortfolioHolding
     var color: Color = Theme.inkSecondary
     var signalWarning: SignalWarning? = nil
+    var hideValues: Bool = false
 
     var body: some View {
         HStack(spacing: Theme.Spacing.card) {
@@ -997,10 +1001,10 @@ private struct HoldingNoteRow: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
-                Text(IndianFormatter.price(holding.currentValue))
+                Text(hideValues ? "₹ ••••" : IndianFormatter.price(holding.currentValue))
                     .font(Theme.serialNumberFont(size: 14, relativeTo: .body).weight(.semibold))
                     .foregroundStyle(Theme.inkPrimary)
-                ChangeBadge(value: holding.pnlPercent)
+                if !hideValues { ChangeBadge(value: holding.pnlPercent) }
             }
         }
         .padding(.horizontal, Theme.Spacing.card)
@@ -1024,6 +1028,7 @@ private struct PortfolioHeroBlock: View {
     let totalPnL: Double
     let totalPnLPercent: Double
     let isLoading: Bool
+    var hideValues: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
@@ -1032,7 +1037,7 @@ private struct PortfolioHeroBlock: View {
                     Text("Portfolio · current value")
                         .font(Theme.officialStampFont(size: 9)).tracking(1.5)
                         .foregroundStyle(Theme.inkTertiary)
-                    Text(IndianFormatter.price(value))
+                    Text(hideValues ? "₹ ••••••" : IndianFormatter.price(value))
                         .font(.largeTitle.weight(.bold)).monospaced()
                         .foregroundStyle(Theme.inkPrimary)
                         .contentTransition(.numericText())
@@ -1040,16 +1045,18 @@ private struct PortfolioHeroBlock: View {
                 Spacer()
                 NiveshBrandChip()
             }
-            HStack(spacing: Theme.Spacing.small) {
-                ChangeBadge(value: totalPnLPercent)
-                let up = totalPnL >= 0
-                Text((up ? "+" : "") + IndianFormatter.priceCompact(totalPnL) + " total")
-                    .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote))
-                    .foregroundStyle(up ? Theme.bullGreen : Theme.bearRed)
-                    .padding(.horizontal, Theme.Spacing.medium)
-                    .padding(.vertical, Theme.Spacing.xSmall)
-                    .background((up ? Theme.bullGreen : Theme.bearRed).opacity(0.18))
-                    .clipShape(Capsule())
+            if !hideValues {
+                HStack(spacing: Theme.Spacing.small) {
+                    ChangeBadge(value: totalPnLPercent)
+                    let up = totalPnL >= 0
+                    Text((up ? "+" : "") + IndianFormatter.priceCompact(totalPnL) + " total")
+                        .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote))
+                        .foregroundStyle(up ? Theme.bullGreen : Theme.bearRed)
+                        .padding(.horizontal, Theme.Spacing.medium)
+                        .padding(.vertical, Theme.Spacing.xSmall)
+                        .background((up ? Theme.bullGreen : Theme.bearRed).opacity(0.18))
+                        .clipShape(Capsule())
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1083,7 +1090,7 @@ private struct PortfolioAllocationDonutCard: View {
                         startDeg += sweep
                     }
                 }
-                .frame(width: 110, height: 110)
+                .frame(width: UIScreen.main.bounds.width * 0.28, height: UIScreen.main.bounds.width * 0.28)
                 VStack(spacing: Theme.Spacing.none) {
                     Text("\(holdings.count)")
                         .font(Theme.serialNumberFont(size: 18, relativeTo: .title3).weight(.bold))
@@ -1290,18 +1297,19 @@ private struct WatchlistRowView: View {
 
 private struct WatchlistSkeletonRow: View {
     var body: some View {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
         HStack(spacing: Theme.Spacing.card) {
             Circle()
                 .fill(Theme.inkTertiary.opacity(0.1))
                 .frame(width: 40, height: 40)
             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.15)).frame(width: 130, height: 12)
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.1)).frame(width: 60, height: 9)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.15)).frame(width: colW * 0.37, height: 12)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.1)).frame(width: colW * 0.17, height: 9)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: Theme.Spacing.tight) {
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.15)).frame(width: 70, height: 12)
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.1)).frame(width: 40, height: 9)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.15)).frame(width: colW * 0.20, height: 12)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.1)).frame(width: colW * 0.11, height: 9)
             }
         }
         .padding(.vertical, Theme.Spacing.standard)
@@ -1906,7 +1914,7 @@ private struct NoteEditorSheet: View {
                                     }
                                 }
                             }
-                            .frame(height: 220)
+                            .frame(height: UIScreen.main.bounds.height * 0.30)
                             
                             VStack(spacing: Theme.Spacing.xSmall) {
                                 Text("₹")

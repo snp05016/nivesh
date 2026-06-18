@@ -563,35 +563,37 @@ struct MarketsView: View {
         }
         .padding(.horizontal, Theme.Spacing.standard)
         .padding(.vertical, Theme.Spacing.medium)
-        .frame(minWidth: 88, alignment: .leading)
+        .frame(minWidth: UIScreen.main.bounds.width * 0.22, alignment: .leading)
         .banknoteCard()
     }
 
     private func indexPlaceholderChip(name: String) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
             Text(name)
                 .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                 .tracking(1.0)
                 .foregroundStyle(Theme.inkTertiary)
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                 .fill(Theme.inkTertiary.opacity(0.12))
-                .frame(width: 72, height: 14)
+                .frame(width: UIScreen.main.bounds.width * 0.18, height: UIScreen.main.bounds.height * 0.016)
                 .shimmerPlaceholder(isLoading: true)
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                 .fill(Theme.inkTertiary.opacity(0.08))
-                .frame(width: 48, height: 10)
+                .frame(width: colW * 0.14, height: 10)
                 .shimmerPlaceholder(isLoading: true)
         }
         .padding(.horizontal, Theme.Spacing.standard)
         .padding(.vertical, Theme.Spacing.medium)
-        .frame(minWidth: 88, alignment: .leading)
+        .frame(minWidth: UIScreen.main.bounds.width * 0.22, alignment: .leading)
         .banknoteCard()
     }
 
     // MARK: - Section card (overview grid card)
 
     private func sectionCard(_ section: MarketSection) -> some View {
-        Button(action: {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return Button(action: {
             HapticManager.selection()
             withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) { activeSection = section }
         }) {
@@ -599,7 +601,7 @@ struct MarketsView: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                         .fill(section.accentColor.opacity(0.12))
-                        .frame(width: 48, height: 48)
+                        .frame(width: colW * 0.14, height: colW * 0.14)
                     Image(systemName: section.icon)
                         .font(Theme.serialNumberFont(size: 20, relativeTo: .headline))
                         .foregroundStyle(section.accentColor)

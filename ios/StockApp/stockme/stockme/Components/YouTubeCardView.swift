@@ -5,7 +5,7 @@ struct YouTubeCardView: View {
     var onTickerTap: ((String) -> Void)? = nil
 
     private var goldAccent: Color { Theme.securityGold }
-    private let dimText    = Color.secondary
+    private let dimText    = Theme.inkSecondary
 
     var body: some View {
         Button(action: {

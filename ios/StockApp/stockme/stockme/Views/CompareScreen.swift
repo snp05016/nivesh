@@ -56,7 +56,7 @@ struct CompareScreen: View {
                                     .font(Theme.officialStampFont(size: 9))
                                     .foregroundStyle(Theme.inkSecondary)
                             }
-                            .padding(40)
+                            .padding(Theme.Spacing.xLarge)
                         } else if let a = infoA, let b = infoB {
                             compareGrid(a: a, b: b, c: infoC)
                         } else {
@@ -66,7 +66,7 @@ struct CompareScreen: View {
                                 Text("Select two stocks to compare")
                                     .font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkTertiary)
                             }
-                            .padding(60)
+                            .padding(Theme.Spacing.xLarge)
                         }
 
                         Spacer(minLength: 80)
@@ -180,7 +180,7 @@ private struct CompareHeaderCell: View {
             .font(Theme.serialNumberFont(size: 13))
             .foregroundStyle(Theme.securityGold)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
+            .padding(.vertical, Theme.Spacing.medium)
     }
 }
 
@@ -218,7 +218,7 @@ private struct CompareRow: View {
                     .multilineTextAlignment(.center)
             }
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, Theme.Spacing.medium)
         .overlay(Rectangle().fill(Theme.borderFine).frame(height: 0.5), alignment: .bottom)
     }
 }

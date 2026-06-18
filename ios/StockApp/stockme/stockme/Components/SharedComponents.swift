@@ -27,7 +27,7 @@ struct AppHeader: View {
                     Image(systemName: "bell.fill")
                         .font(.footnote)
                         .foregroundStyle(Theme.inkSecondary)
-                        .frame(width: 32, height: 32)
+                        .frame(width: Theme.Spacing.xLarge, height: Theme.Spacing.xLarge)
                         .background(Theme.surfaceElevated)
                         .clipShape(Circle())
 
@@ -48,6 +48,8 @@ struct AppHeader: View {
 private struct StockPreviewCard: View {
     let stock: Stock
 
+    private var avatarSize: CGFloat { UIScreen.main.bounds.width * 0.11 }
+
     var body: some View {
         GeometryReader { geo in
             VStack(alignment: .leading, spacing: Theme.Spacing.card) {
@@ -55,7 +57,7 @@ private struct StockPreviewCard: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                             .fill(Theme.inkSecondary.opacity(0.08))
-                            .frame(width: 48, height: 48)
+                            .frame(width: avatarSize, height: avatarSize)
                         Text(String(stock.ticker.prefix(2)))
                             .font(Theme.engravedSerif(size: 18, weight: .bold, relativeTo: .headline))
                             .foregroundStyle(Theme.inkPrimary)
@@ -125,7 +127,7 @@ struct StockRow: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                         .fill(Theme.inkSecondary.opacity(0.08))
-                        .frame(width: 44, height: 44)
+                        .frame(width: 44, height: 44) // 44pt minimum touch target per Apple HIG
                     Text(String(stock.ticker.prefix(2)))
                         .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .callout))
                         .foregroundStyle(Theme.inkPrimary)

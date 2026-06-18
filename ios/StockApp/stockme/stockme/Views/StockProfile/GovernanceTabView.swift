@@ -102,7 +102,7 @@ struct GovernanceScoreCardView: View {
                     ZStack {
                         Circle()
                             .stroke(Theme.inkTertiary.opacity(0.15), lineWidth: 6)
-                            .frame(width: 72, height: 72)
+                            .frame(width: UIScreen.main.bounds.width * 0.18, height: UIScreen.main.bounds.width * 0.18)
                         Circle()
                             .trim(from: 0, to: CGFloat(score) / 100.0)
                             .stroke(
@@ -110,7 +110,7 @@ struct GovernanceScoreCardView: View {
                                 score >= 40 ? Theme.holdAmber : Theme.bearRed,
                                 style: StrokeStyle(lineWidth: 6, lineCap: .round)
                             )
-                            .frame(width: 72, height: 72)
+                            .frame(width: UIScreen.main.bounds.width * 0.18, height: UIScreen.main.bounds.width * 0.18)
                             .rotationEffect(.degrees(-90))
                         VStack(spacing: 0) {
                             Text("\(score)")
@@ -269,7 +269,7 @@ struct GovernancePromoterSectionView: View {
                 .chartYAxis {
                     AxisMarks { _ in AxisValueLabel() }
                 }
-                .frame(height: 100)
+                .frame(height: UIScreen.main.bounds.height * 0.30)
             }
         }
         .padding(Theme.Spacing.card)

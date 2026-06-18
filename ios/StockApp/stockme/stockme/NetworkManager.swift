@@ -46,12 +46,16 @@ private struct AnalyzeRequest: Encodable {
     let useMock: Bool
     let deepScan: Bool
     let scanType: String
+    var language: String? = nil
+    var debateRounds: Int? = nil
     enum CodingKeys: String, CodingKey {
         case ticker, exchange
         case userId = "user_id"
         case useMock = "use_mock"
         case deepScan = "deep_scan"
         case scanType = "scan_type"
+        case language
+        case debateRounds = "debate_rounds"
     }
 }
 
@@ -221,14 +225,14 @@ class NetworkManager: ObservableObject {
 
     // MARK: - Analyze
 
-    func analyze(ticker: String, exchange: String = "NSE", userId: Int? = nil, useMock: Bool = false, deepScan: Bool = false, scanType: String = "standard") async throws -> StockAnalysis {
+    func analyze(ticker: String, exchange: String = "NSE", userId: Int? = nil, useMock: Bool = false, deepScan: Bool = false, scanType: String = "standard", language: String? = nil, debateRounds: Int? = nil) async throws -> StockAnalysis {
         guard let url = URL(string: "\(baseURL)/analyze") else { throw NetworkError.invalidURL }
         let requestUrl = "\(baseURL)/analyze"
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.httpBody = try JSONEncoder().encode(AnalyzeRequest(ticker: ticker, exchange: exchange, userId: userId, useMock: useMock, deepScan: deepScan, scanType: scanType))
+        request.httpBody = try JSONEncoder().encode(AnalyzeRequest(ticker: ticker, exchange: exchange, userId: userId, useMock: useMock, deepScan: deepScan, scanType: scanType, language: language, debateRounds: debateRounds))
 
         let requestStart = Date()
         let (data, response): (Data, URLResponse)
@@ -326,12 +330,12 @@ class NetworkManager: ObservableObject {
 
     // MARK: - v2 Analysis Engine (background job model)
 
-    func startAnalysisJob(ticker: String, exchange: String, userId: Int?, deepScan: Bool = false, scanType: String) async throws -> StartJobResponse {
+    func startAnalysisJob(ticker: String, exchange: String, userId: Int?, deepScan: Bool = false, scanType: String, language: String? = nil, debateRounds: Int? = nil) async throws -> StartJobResponse {
         guard let url = URL(string: "\(baseURL)/analyze") else { throw NetworkError.invalidURL }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(StartJobRequest(ticker: ticker, exchange: exchange, userId: userId, deepScan: deepScan, scanType: scanType))
+        request.httpBody = try JSONEncoder().encode(StartJobRequest(ticker: ticker, exchange: exchange, userId: userId, deepScan: deepScan, scanType: scanType, language: language, debateRounds: debateRounds))
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         if http.statusCode == 409 {

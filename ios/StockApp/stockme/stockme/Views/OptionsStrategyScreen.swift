@@ -587,11 +587,12 @@ struct OptionsStrategyScreen: View {
     }
 
     private func helpRow(_ num: String, _ text: String) -> some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.standard) {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return HStack(alignment: .top, spacing: Theme.Spacing.standard) {
             Text(num)
                 .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote).weight(.bold))
                 .foregroundStyle(Theme.securityGold)
-                .frame(width: 20, alignment: .center)
+                .frame(width: colW * 0.06, alignment: .center)
             Text(text)
                 .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
                 .foregroundStyle(Theme.inkSecondary)
@@ -599,11 +600,12 @@ struct OptionsStrategyScreen: View {
     }
 
     private func exampleRow(_ name: String, _ desc: String) -> some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.standard) {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return HStack(alignment: .top, spacing: Theme.Spacing.standard) {
             Text(name)
                 .font(Theme.serialNumberFont(size: 10, relativeTo: .caption).weight(.bold))
                 .foregroundStyle(Theme.securityGold)
-                .frame(width: 130, alignment: .leading)
+                .frame(width: colW * 0.37, alignment: .leading)
             Text(desc)
                 .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .caption))
                 .foregroundStyle(Theme.inkSecondary)
@@ -623,11 +625,12 @@ struct OptionsStrategyScreen: View {
     }
 
     private func formulaRow(_ label: String, _ formula: String) -> some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.standard) {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return HStack(alignment: .top, spacing: Theme.Spacing.standard) {
             Text(label)
                 .font(Theme.serialNumberFont(size: 10, relativeTo: .caption).weight(.bold))
                 .foregroundStyle(Theme.securityGold)
-                .frame(width: 90, alignment: .leading)
+                .frame(width: colW * 0.25, alignment: .leading)
             Text(formula)
                 .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .caption))
                 .foregroundStyle(Theme.inkSecondary)

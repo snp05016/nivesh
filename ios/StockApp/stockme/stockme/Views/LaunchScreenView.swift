@@ -173,14 +173,14 @@ struct LaunchScreenView: View {
                             .fill(Theme.securityGold)
                             .frame(width: loadProgress, height: 3.5)
                     }
-                    .padding(.bottom, 28)
+                    .padding(.bottom, Theme.Spacing.sectionGap)
 
                     // ── Disclaimer ──────────────────────────────────────────
                     Text("For informational purposes only")
                         .font(.caption2)
                         .tracking(8.5 * 0.05)
                         .foregroundStyle(Theme.inkTertiary)
-                        .padding(.bottom, 40)
+                        .padding(.bottom, Theme.Spacing.xLarge)
                 }
             }
             .preferredColorScheme(.dark)

@@ -202,7 +202,7 @@ struct PriceHistoryChart: View {
                     "200 DMA": Theme.bearRed.opacity(0.7),
                 ])
                 .chartLegend(position: .bottom, alignment: .leading)
-                .frame(height: 180)
+                .frame(height: UIScreen.main.bounds.height * 0.30)
                 .chartXAxis {
                     AxisMarks(values: .automatic(desiredCount: 4)) {
                         AxisValueLabel(format: .dateTime.month(.abbreviated))
@@ -368,7 +368,7 @@ struct RSIChart: View {
                     }
                 }
                 .chartYScale(domain: 0...100)
-                .frame(height: 140)
+                .frame(height: UIScreen.main.bounds.height * 0.22)
                 .chartXAxis {
                     AxisMarks(values: .automatic(desiredCount: 4)) {
                         AxisValueLabel(format: .dateTime.month(.abbreviated))
@@ -451,7 +451,7 @@ struct VolumeChart: View {
                         }
                     }
                 }
-                .frame(height: 120)
+                .frame(height: UIScreen.main.bounds.height * 0.20)
                 .chartXAxis {
                     AxisMarks(values: .automatic(desiredCount: 4)) {
                         AxisValueLabel(format: .dateTime.month(.abbreviated))
@@ -509,7 +509,7 @@ struct ShareholdingChart: View {
                             .foregroundStyle(Theme.inkSecondary)
                     }
                 }
-                .frame(height: 140)
+                .frame(height: UIScreen.main.bounds.height * 0.22)
                 .chartXAxis {
                     AxisMarks {
                         AxisValueLabel().font(Theme.officialStampFont(size: 10)).foregroundStyle(Theme.inkSecondary)
@@ -597,7 +597,7 @@ struct FinancialsChart: View {
                         }
                     }
                 }
-                .frame(height: 160)
+                .frame(height: UIScreen.main.bounds.height * 0.30)
                 .chartXAxis {
                     AxisMarks {
                         AxisValueLabel().font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
@@ -679,7 +679,7 @@ struct PriceRangeGauge: View {
                     // Current price dot
                     Circle()
                         .fill(Theme.inkPrimary)
-                        .frame(width: 14, height: 14)
+                        .frame(width: Theme.Spacing.standard, height: Theme.Spacing.standard)
                         .overlay(Circle().stroke(Theme.canvas, lineWidth: 2))
                         .offset(x: dotX - 7, y: -3)
                 }
@@ -770,7 +770,7 @@ struct PortfolioAllocationChart: View {
                             }
                         }
                     }
-                    .frame(height: 220)
+                    .frame(height: UIScreen.main.bounds.height * 0.30)
 
                     // Centre value
                     VStack(spacing: Theme.Spacing.xSmall) {
@@ -947,7 +947,7 @@ struct StockVsNiftyChart: View {
                 }
                 .chartForegroundStyleScale([ticker: Theme.securityGold, "Nifty 50": Theme.inkSecondary])
                 .chartLegend(position: .bottom, alignment: .leading)
-                .frame(height: 160)
+                .frame(height: UIScreen.main.bounds.height * 0.30)
                 .chartXAxis {
                     AxisMarks(values: .automatic(desiredCount: 4)) {
                         AxisValueLabel(format: .dateTime.month(.abbreviated))

@@ -32,7 +32,7 @@ struct LoginScreen: View {
                                 .font(Theme.engravedSerif(size: 40, weight: .bold, relativeTo: .largeTitle))
                                 .foregroundStyle(Theme.inkPrimary)
                         }
-                        .padding(.top, 60)
+                        .padding(.top, Theme.Spacing.xLarge * 2)
                         .staggerAppear(delay: 0.1)
 
                         VStack(spacing: Theme.Spacing.small) {
@@ -184,7 +184,7 @@ struct LoginScreen: View {
                                     }
                                 }
                             }
-                            .padding(.top, 8)
+                            .padding(.top, Theme.Spacing.medium)
                         }
                     }
                     .padding(Theme.Spacing.xLarge)

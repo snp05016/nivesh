@@ -336,8 +336,8 @@ struct ExpertNetworkView: View {
             Spacer()
         }
         .padding(.horizontal, Theme.screenPadding)
-        .padding(.top, 14)
-        .padding(.bottom, 10)
+        .padding(.top, Theme.Spacing.standard)
+        .padding(.bottom, Theme.Spacing.medium)
         .background(Theme.canvasDeep)
     }
 

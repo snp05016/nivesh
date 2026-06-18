@@ -23,7 +23,7 @@ class AnalysisViewModel: ObservableObject {
     private var analysisTask: Task<Void, Never>?
     private var pollJobTask: Task<Void, Never>?
 
-    func fetchAnalysis(ticker: String, userId: Int?, useMock: Bool, reportManager: LocalReportManager, deepScan: Bool = false, scanType: String = "standard") {
+    func fetchAnalysis(ticker: String, userId: Int?, useMock: Bool, reportManager: LocalReportManager, deepScan: Bool = false, scanType: String = "standard", language: String? = nil, debateRounds: Int? = nil) {
         analysisTask?.cancel()
         pollJobTask?.cancel()
 
@@ -60,7 +60,7 @@ class AnalysisViewModel: ObservableObject {
             // ── v2 engine: start background job, then poll with fallback ──
             do {
                 let start = try await NetworkManager.shared.startAnalysisJob(
-                    ticker: ticker, exchange: "NSE", userId: userId, deepScan: deepScan, scanType: scanType)
+                    ticker: ticker, exchange: "NSE", userId: userId, deepScan: deepScan, scanType: scanType, language: language, debateRounds: debateRounds)
 
                 if let cachedAnalysis = start.analysis {
                     await MainActor.run {
@@ -206,6 +206,11 @@ struct AnalysisScreen: View {
     @AppStorage("useMockAI") private var useMockAI = false
     @AppStorage("defaultDeepScan") private var defaultDeepScan: Bool = false
     @AppStorage("analysisLastTab") private var savedLastTab: Int = 0
+    @AppStorage("nivesh_defaultChartRange") private var defaultChartRange: String = "1M"
+    @AppStorage("nivesh_showGovernanceFirst") private var showGovernanceFirst: Bool = false
+    @AppStorage("nivesh_analysisLanguage") private var analysisLanguage: String = "English"
+    @AppStorage("nivesh_debateRounds") private var debateRoundsStr: String = "1"
+    @AppStorage("nivesh_defaultExchange") private var defaultExchange: String = "Auto"
     @State private var deepScanEnabled: Bool = false
     @State private var isAnalyzing = false
     // Extreme result: 0 = AI report, 1 = full stock profile (embedded verbatim).
@@ -219,7 +224,7 @@ struct AnalysisScreen: View {
     @State private var heroPrices: [Double] = []
     @State private var heroDates: [Date] = []
     @State private var heroLoading = false
-    @State private var heroPeriod = "1y"
+    @State private var heroPeriod = ""
     
     // Retained copy of analysis to prevent EXC_BAD_ACCESS from view model dealloc
     @State private var retainedAnalysis: StockAnalysis? = nil
@@ -296,8 +301,11 @@ struct AnalysisScreen: View {
         .toolbarBackground(Theme.canvas, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .onAppear {
-            activeTab = savedLastTab
+            activeTab = showGovernanceFirst ? 3 : savedLastTab
             deepScanEnabled = defaultDeepScan
+            if heroPeriod.isEmpty {
+                heroPeriod = ["1M": "1mo", "3M": "3mo", "6M": "6mo", "1Y": "1y"][defaultChartRange] ?? "1y"
+            }
             if viewModel.analysis == nil && !viewModel.isLoading {
                 if let cached = reportManager.getReport(for: ticker) {
                     previousAnalysis = cached
@@ -329,7 +337,9 @@ struct AnalysisScreen: View {
                 } else if previousAnalysis != nil {
                     showingRegenerateAlert = true
                 } else {
-                    viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: deepScanEnabled)
+                    let lang = analysisLanguage == "English" ? nil : analysisLanguage
+                    let rounds = Int(debateRoundsStr)
+                    viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: deepScanEnabled, language: lang, debateRounds: rounds)
                 }
             }
             startPricePolling()
@@ -571,7 +581,7 @@ private struct MacroChip: View {
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 10)
+        .padding(.vertical, Theme.Spacing.medium)
     }
 }
 
@@ -990,7 +1000,7 @@ private struct GlossarySheet: View {
                         .lineSpacing(6)
                     Spacer()
                 }
-                .padding(28)
+                .padding(Theme.Spacing.sectionGap)
             }
             .navigationTitle("शब्दावली / Glossary")
             .navigationBarTitleDisplayMode(.inline)
@@ -1109,7 +1119,7 @@ struct NewsReaderView: View {
                                     }
                                     .font(Theme.officialStampFont(size: 11))
                                     .foregroundStyle(.white)
-                                    .padding(.vertical, 14)
+                                    .padding(.vertical, Theme.Spacing.standard)
                                     .frame(maxWidth: .infinity)
                                     .background(Theme.inkPrimary)
                                     .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
@@ -1121,13 +1131,13 @@ struct NewsReaderView: View {
                                 }
                                 .font(Theme.officialStampFont(size: 11))
                                 .foregroundStyle(.white.opacity(0.5))
-                                .padding(.vertical, 14)
+                                .padding(.vertical, Theme.Spacing.standard)
                                 .frame(maxWidth: .infinity)
                                 .background(Theme.inkPrimary.opacity(0.5))
                                 .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                             }
                         }
-                        .padding(.top, 20)
+                        .padding(.top, Theme.Spacing.screen)
                     }
                     .padding(.horizontal, Theme.screenPadding)
 
@@ -1157,11 +1167,12 @@ struct TraceRow: View {
     let value: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.medium) {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+        return HStack(alignment: .top, spacing: Theme.Spacing.medium) {
             Text(label)
                 .font(Theme.serialNumberFont(size: 10))
                 .foregroundStyle(Theme.inkTertiary)
-                .frame(width: 90, alignment: .leading)
+                .frame(width: colW * 0.25, alignment: .leading)
             Text(value)
                 .font(Theme.serialNumberFont(size: 10))
                 .foregroundStyle(Theme.inkSecondary)
@@ -1197,8 +1208,8 @@ struct CollapsibleSection<Content: View>: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     content()
                 }
-                .padding(.leading, 16)
-                .padding(.vertical, 8)
+                .padding(.leading, Theme.Spacing.card)
+                .padding(.vertical, Theme.Spacing.medium)
                 .background(Theme.canvasDeep.opacity(0.5))
                 .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight))
             }
