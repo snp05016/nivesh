@@ -45,6 +45,9 @@ def _api_job(job: dict) -> dict:
     if status == "SUCCEEDED":
         return {
             "status": "completed",
+            "progress_pct": 100,
+            "stage": "Stress test complete",
+            "checkpoint": "done",
             "results": job.get("result") or [],
         }
     return {

@@ -43,12 +43,12 @@ struct StressTestJobResponse: Codable {
 }
 
 struct StressTestScores: Codable {
-    let riskScore: Int
-    let stressScore: Int
-    let macroFragility: Int
-    let liquidityScore: Int
-    let concentrationScore: Int
-    let tailRiskScore: Int
+    let riskScore: Double
+    let stressScore: Double
+    let macroFragility: Double
+    let liquidityScore: Double
+    let concentrationScore: Double
+    let tailRiskScore: Double
 
     enum CodingKeys: String, CodingKey {
         case riskScore = "risk_score"
@@ -831,12 +831,12 @@ struct StressScenarioSection: View {
 
 struct ScoreTile: View {
     let label: String
-    let value: Int
+    let value: Double
     let color: Color
 
     var body: some View {
         VStack(spacing: Theme.Spacing.small) {
-            Text("\(value)")
+            Text("\(Int(value.rounded()))")
                 .font(Theme.serialNumberFont(size: 24, relativeTo: .title2))
                 .foregroundColor(color)
             Text(label)
