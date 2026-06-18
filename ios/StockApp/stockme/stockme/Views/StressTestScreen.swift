@@ -171,6 +171,7 @@ class StressTestViewModel: ObservableObject {
     let checkpoints: [StressCheckpoint] = [
         StressCheckpoint(id: "init",      label: "Initializing",        icon: "cpu"),
         StressCheckpoint(id: "enrich",    label: "Loading Market Data", icon: "arrow.down.circle"),
+        StressCheckpoint(id: "covariance", label: "Building Risk Model", icon: "point.3.connected.trianglepath.dotted"),
         StressCheckpoint(id: "scenarios", label: "Running Scenarios",   icon: "waveform.path.ecg"),
         StressCheckpoint(id: "scoring",   label: "Risk Scoring",        icon: "chart.bar.xaxis"),
         StressCheckpoint(id: "done",      label: "Complete",            icon: "checkmark.seal.fill"),
@@ -556,25 +557,13 @@ struct StressCheckpointTracker: View {
                         .animation(.none, value: stage)
                 }
 
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Theme.canvasDeep)
-                            .frame(height: 6)
-
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(
-                                LinearGradient(
-                                    colors: [Theme.securityGold.opacity(0.7), Theme.securityGold],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .frame(width: geo.size.width * CGFloat(progressPct) / 100.0, height: 6)
-                            .animation(.easeInOut(duration: 0.5), value: progressPct)
-                    }
-                }
-                .frame(height: 6)
+                ProgressView(
+                    value: Double(min(max(progressPct, 0), 100)),
+                    total: 100
+                )
+                .progressViewStyle(.linear)
+                .tint(Theme.securityGold)
+                .animation(.easeInOut(duration: 0.5), value: progressPct)
 
                 HStack {
                     Text("\(progressPct)% complete")
