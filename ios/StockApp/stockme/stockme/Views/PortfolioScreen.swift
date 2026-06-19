@@ -402,7 +402,7 @@ struct PortfolioScreen: View {
                     .animation(.spring(response: 0.4), value: showAddedBanner)
                 }
 
-                // FAB — show "+" on Holdings or Watchlist tab to add
+                // FAB — sit left of chatbot button, same vertical plane
                 if selectedTab != 2 {
                     VStack {
                         Spacer()
@@ -413,9 +413,11 @@ struct PortfolioScreen: View {
                             } else {
                                 Spacer()
                                 addPortfolioButton
+                                    .padding(.trailing, Theme.Spacing.xLarge + Theme.Spacing.large + Theme.Spacing.standard)
                             }
                         }
-                        .padding(Theme.screenPadding)
+                        .padding(.horizontal, Theme.screenPadding)
+                        .padding(.bottom, Theme.Spacing.xLarge + Theme.Spacing.large)
                     }
                 }
             }

@@ -161,7 +161,7 @@ struct AlertsScreen: View {
                     .animation(.spring(response: 0.4), value: viewModel.showTriggeredBanner)
                 }
 
-                // FAB — opaque background prevents z-index bleed-through
+                // FAB — sit left of chatbot button, same vertical plane
                 VStack {
                     Spacer()
                     HStack {
@@ -173,10 +173,12 @@ struct AlertsScreen: View {
                                 Image(systemName: "bell.badge.plus").font(.title2.weight(.bold)).foregroundStyle(.white)
                             }
                         }
-                        .padding(Theme.screenPadding)
+                        .padding(.trailing, Theme.Spacing.xLarge + Theme.Spacing.large + Theme.Spacing.standard)
                         .accessibilityLabel("Add alert")
                     }
                 }
+                .padding(.horizontal, Theme.screenPadding)
+                .padding(.bottom, Theme.Spacing.xLarge + Theme.Spacing.large)
                 .background(Theme.canvas.opacity(0.85))
             }
         }
