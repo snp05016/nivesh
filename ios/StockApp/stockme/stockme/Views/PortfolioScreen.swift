@@ -402,24 +402,27 @@ struct PortfolioScreen: View {
                     .animation(.spring(response: 0.4), value: showAddedBanner)
                 }
 
-                // FAB — sit left of chatbot button, same vertical plane
-                if selectedTab != 2 {
+                // FAB — Holdings "+" sits bottom-right, just left of the AI
+                // chatbot FAB. Watchlist "+" is a mirror image of that chatbot
+                // FAB on the opposite (left) edge, on the same vertical plane.
+                if selectedTab == 0 {
                     VStack {
                         Spacer()
                         HStack {
-                            if selectedTab == 1 {
-                                // Watchlist add button: flush bottom-left at the
-                                // screen margin, on the same vertical plane as the
-                                // AI chatbot FAB.
-                                addPortfolioButton
-                                Spacer()
-                            } else {
-                                Spacer()
-                                addPortfolioButton
-                                    .padding(.trailing, Theme.Spacing.xLarge + Theme.Spacing.large + Theme.Spacing.standard)
-                            }
+                            Spacer()
+                            addPortfolioButton
+                                .padding(.trailing, Theme.Spacing.xLarge + Theme.Spacing.large + Theme.Spacing.standard)
                         }
                         .padding(.horizontal, Theme.screenPadding)
+                        .padding(.bottom, Theme.Spacing.xLarge + Theme.Spacing.large)
+                    }
+                } else if selectedTab == 1 {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            addWatchlistButton
+                            Spacer()
+                        }
                         .padding(.bottom, Theme.Spacing.xLarge + Theme.Spacing.large)
                     }
                 }
@@ -611,6 +614,27 @@ struct PortfolioScreen: View {
             }
         }
         .buttonStyle(EKPressStyle())
+    }
+
+    // Watchlist "+" — built from scratch to be an exact mirror image of the AI
+    // chatbot FAB (CopilotFloatingButtonModifier): same icon-padded circle, same
+    // edge inset, anchored to the opposite (left) edge on the same vertical plane.
+    private var addWatchlistButton: some View {
+        Button {
+            HapticManager.impact(.medium)
+            addSheetSearchText = ""
+            showAddWatchlistSheet = true
+        } label: {
+            Image(systemName: "plus")
+                .font(Theme.engravedSerif(size: 20, weight: .bold))
+                .foregroundColor(Theme.canvas)
+                .padding(Theme.Spacing.card)
+                .background(Theme.securityGold)
+                .clipShape(Circle())
+                .shadow(color: Theme.securityGold.opacity(0.4), radius: Theme.Spacing.medium, x: 0, y: Theme.Spacing.small)
+        }
+        .buttonStyle(EKPressStyle())
+        .padding(.leading, Theme.screenPadding + Theme.Spacing.standard)
     }
 
     @ViewBuilder
