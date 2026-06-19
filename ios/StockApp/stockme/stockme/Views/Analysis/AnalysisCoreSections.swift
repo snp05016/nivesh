@@ -10,9 +10,11 @@ struct AnalysisCoreSections: View {
     @State private var showQuantInspector = false
 
     var body: some View {
-        LazyVStack(spacing: Theme.sectionSpacing) {
+        LazyVStack(spacing: 48) { // Premium Spacing (Rule 8: White space increases perceived importance)
             stockHeaderSectionView
-            aiVerdictCardView
+            aiVerdictSectionView
+            aiSummarySectionView
+            
             if let prev = previousAnalysis, prev.analysisDate != analysis.analysisDate {
                 whatChangedSectionView(previous: prev)
             }
@@ -106,14 +108,11 @@ struct AnalysisCoreSections: View {
         }
     }
 
-    private var aiVerdictCardView: some View {
+    private var aiVerdictSectionView: some View {
         let sig = analysis.signal.rawValue
-        // Prefer calibrated confidence from quant engine; fall back to legacy confidencePercent
         let conf = analysis.calibratedConfidence != nil
             ? Int((analysis.calibratedConfidence ?? 0) * 100)
             : analysis.confidencePercent
-        let summ = analysis.keyFactors.fundamentalsSummary
-        let tier = analysis.analysisTier
         let segs = confidenceSegments(conf)
 
         return VStack(alignment: .leading, spacing: Theme.Spacing.card) {
@@ -130,14 +129,14 @@ struct AnalysisCoreSections: View {
 
             HStack(spacing: Theme.Spacing.standard) {
                 Text(sig)
-                    .font(Theme.engravedSerif(size: 18, weight: .bold))
+                    .font(Theme.engravedSerif(size: 20, weight: .bold))
                     .foregroundStyle(signalBadgeTextColor(analysis.signal))
-                    .padding(.horizontal, Theme.Spacing.card)
-                    .padding(.vertical, Theme.Spacing.medium)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 16)
                     .background(signalBadgeBgColor(analysis.signal))
                     .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.pill))
                 Spacer()
-                ConfidenceArcView(score: conf, size: 64)
+                ConfidenceArcView(score: conf, size: 72)
             }
 
             HStack(spacing: Theme.Spacing.small) {
@@ -160,7 +159,24 @@ struct AnalysisCoreSections: View {
                         .frame(height: 6)
                 }
             }
+            
+            Text("Analysis by Nivesh AI \u{2024} Dalal Street weighted")
+                .font(Theme.microLabel(size: 9))
+                .foregroundStyle(Theme.inkTertiary)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, Theme.Spacing.tight)
+        }
+    }
 
+    private var aiSummarySectionView: some View {
+        let summ = analysis.keyFactors.fundamentalsSummary
+        
+        return VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            Text("EXECUTIVE SUMMARY")
+                .font(Theme.sectionCapsLabel(size: 9))
+                .tracking(1.5)
+                .foregroundStyle(Theme.inkTertiary)
+                
             Button {
                 HapticManager.selection()
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -169,58 +185,26 @@ struct AnalysisCoreSections: View {
             } label: {
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text(summ)
-                        .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
-                        .foregroundStyle(Theme.inkSecondary)
-                        .lineSpacing(6)
+                        .font(Theme.engravedSerif(size: 15, weight: .regular, relativeTo: .body))
+                        .foregroundStyle(Theme.inkPrimary)
+                        .lineSpacing(7)
                         .lineLimit(showFullSummary ? nil : 4)
                         .multilineTextAlignment(.leading)
+                    
                     HStack {
                         Spacer()
-                        Text(showFullSummary ? "Show less" : "Tap to read more")
-                            .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+                        Text(showFullSummary ? "Read less" : "Read full summary")
+                            .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
                             .foregroundStyle(Theme.securityGold)
+                            .padding(.top, 4)
                     }
                 }
             }
             .buttonStyle(EKPressStyle())
-
-            VStack(spacing: Theme.Spacing.medium) {
-                horizonRow(label: "3 MONTHS", target: analysis.targetPrices.shortTerm3m, upside: analysis.upsideDownsidePct.shortTerm)
-                horizonRow(label: "12 MONTHS", target: analysis.targetPrices.mediumTerm12m, upside: analysis.upsideDownsidePct.mediumTerm, featured: true)
-                horizonRow(label: "3 YEARS", target: analysis.targetPrices.longTerm36m, upside: analysis.upsideDownsidePct.longTerm)
-                conformalBoundsView
-            }
-
-            Text("Analysis by Nivesh AI \u{2024} Dalal Street weighted")
-                .font(Theme.microLabel(size: 9))
-                .foregroundStyle(Theme.inkTertiary)
-                .frame(maxWidth: .infinity, alignment: .center)
-
-            if let t = tier {
-                HStack(spacing: Theme.Spacing.tight) {
-                    Text(t.uppercased())
-                        .font(Theme.microLabel(size: 7))
-                        .foregroundStyle(t == "extreme" ? Theme.bearRed : Theme.inkTertiary)
-                        .padding(.horizontal, Theme.Spacing.tight)
-                        .padding(.vertical, 2)
-                        .background((t == "extreme" ? Theme.bearRed : Theme.inkSecondary).opacity(0.12))
-                        .clipShape(Capsule())
-                    if let js = viewModel.jobStatus {
-                        let cs = js.status == "SUCCEEDED" ? "generated" : js.status.lowercased()
-                        Text(cs)
-                            .font(Theme.microLabel(size: 7))
-                            .foregroundStyle(js.status == "SUCCEEDED" ? Theme.bullGreen : Theme.inkTertiary)
-                            .padding(.horizontal, Theme.Spacing.tight)
-                            .padding(.vertical, 2)
-                            .background(js.status == "SUCCEEDED" ? Theme.bullGreen.opacity(0.12) : Theme.inkSecondary.opacity(0.06))
-                            .clipShape(Capsule())
-                    }
-                }
-            }
         }
         .padding(Theme.Spacing.cardInset)
         .background(Theme.surfaceElevated)
-        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderStrong, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderSubtle, lineWidth: 0.5))
         .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
     }
 
@@ -238,52 +222,59 @@ struct AnalysisCoreSections: View {
     private var dialecticDebateSectionView: some View {
         VStack(spacing: Theme.Spacing.standard) {
             SectionHeaderView(title: "DIALECTICAL ANALYSIS")
-            HStack(alignment: .top, spacing: Theme.Spacing.tight) {
+            
+            // Premium UI uses stacking on mobile to avoid horizontal text squishing
+            VStack(spacing: Theme.Spacing.card) {
+                // BULL CASE
                 VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                     HStack(spacing: Theme.Spacing.small) {
                         Image(systemName: "arrowtriangle.up.fill").font(.caption).foregroundStyle(Theme.dataPositive)
                         Text("BULL CASE").font(Theme.sectionCapsLabel()).foregroundStyle(Theme.dataPositive)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    
                     ForEach(Array(analysis.bullCase.prefix(3).enumerated()), id: \.offset) { idx, point in
                         HStack(alignment: .top, spacing: Theme.Spacing.medium) {
                             Text("\(idx + 1)")
-                                .font(Theme.officialStampFont(size: 10)).tracking(1.2)
+                                .font(Theme.officialStampFont(size: 11)).tracking(1.2)
                                 .foregroundStyle(Theme.securityGold)
-                                .frame(width: 20, height: 20)
+                                .frame(width: 24, height: 24)
                                 .background(Theme.securityGold.opacity(0.15))
                                 .clipShape(Circle())
                             Text(stripEmoji(point))
-                                .font(Theme.engravedSerif(size: 12, weight: .regular, relativeTo: .caption))
-                                .foregroundStyle(Theme.inkSecondary).lineSpacing(3)
+                                .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
+                                .foregroundStyle(Theme.inkPrimary).lineSpacing(4)
                         }
                     }
                 }
                 .padding(Theme.Spacing.card).frame(maxWidth: .infinity)
-                .background(Theme.dataPositiveMuted.opacity(0.3))
+                .background(Theme.dataPositiveMuted.opacity(0.2))
                 .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+                
+                // BEAR CASE
                 VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                     HStack(spacing: Theme.Spacing.small) {
                         Image(systemName: "arrowtriangle.down.fill").font(.caption).foregroundStyle(Theme.dataNegative)
                         Text("BEAR CASE").font(Theme.sectionCapsLabel(size: 12)).foregroundStyle(Theme.dataNegative)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    
                     ForEach(Array(analysis.bearCase.prefix(3).enumerated()), id: \.offset) { idx, point in
                         HStack(alignment: .top, spacing: Theme.Spacing.medium) {
                             Text("\(idx + 1)")
-                                .font(Theme.officialStampFont(size: 10)).tracking(1.2)
+                                .font(Theme.officialStampFont(size: 11)).tracking(1.2)
                                 .foregroundStyle(Theme.bearRed)
-                                .frame(width: 20, height: 20)
+                                .frame(width: 24, height: 24)
                                 .background(Theme.bearRed.opacity(0.15))
                                 .clipShape(Circle())
                             Text(stripEmoji(point))
-                                .font(Theme.engravedSerif(size: 13, weight: .medium, relativeTo: .caption))
-                                .foregroundStyle(Theme.inkPrimary).lineSpacing(3)
+                                .font(Theme.engravedSerif(size: 14, weight: .medium, relativeTo: .body))
+                                .foregroundStyle(Theme.inkPrimary).lineSpacing(4)
                         }
                     }
                 }
                 .padding(Theme.Spacing.card).frame(maxWidth: .infinity)
-                .background(Theme.dataNegativeMuted.opacity(0.3))
+                .background(Theme.dataNegativeMuted.opacity(0.2))
                 .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
             }
         }

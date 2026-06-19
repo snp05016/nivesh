@@ -231,7 +231,7 @@ struct InteractivePriceChartView: View {
                         )
                 }
             }
-            .frame(height: UIScreen.main.bounds.height * 0.30)
+            .frame(height: 260)
             .padding(.horizontal, Theme.Spacing.small)
 
             // Volume bars mini chart
@@ -247,7 +247,7 @@ struct InteractivePriceChartView: View {
                 }
                 .chartYAxis(.hidden)
                 .chartXAxis(.hidden)
-                .frame(height: UIScreen.main.bounds.height * 0.045)
+                .frame(height: 36)
                 .padding(.horizontal, Theme.Spacing.small)
             }
 
@@ -311,7 +311,6 @@ struct StockProfileView: View {
     @StateObject private var vm: StockProfileViewModel
     @State private var activeTab = 0
     @State private var chartPeriod = "1y"
-    @Environment(\.dismiss) var dismiss
 
     init(ticker: String, exchange: String = "NSE") {
         self.ticker = ticker
@@ -365,7 +364,7 @@ struct StockProfileView: View {
                     } else if vm.chartLoading {
                         RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
                             .fill(Theme.inkTertiary.opacity(0.08))
-                            .frame(height: UIScreen.main.bounds.height * 0.26)
+                            .frame(height: 240)
                             .shimmerPlaceholder(isLoading: true)
                             .padding(.horizontal, Theme.screenPadding)
                             .padding(.bottom, Theme.Spacing.standard)
@@ -469,16 +468,56 @@ struct StockProfileView: View {
 
                     SectionDivider()
 
-                    // Tab content
+                    // Tab content (4 consolidated tabs)
                     TabView(selection: $activeTab) {
-                        OverviewTabView(ticker: ticker, vm: vm).tag(0)
-                        HoldersTabView(vm: vm).tag(1)
-                        NewsTabView(vm: vm).tag(2)
-                        UpdatesTabView().tag(3)
-                        GovernanceTabView(ticker: ticker, vm: vm).tag(4)
-                        MacroTabView(ticker: ticker, exchange: exchange, vm: vm).tag(5)
-                        ChartTabView(ticker: ticker, vm: vm).tag(6)
-                        FinancialsTabView(vm: vm).tag(7)
+                        // 0: Overview = Overview + Chart + Financials
+                        ScrollView {
+                            LazyVStack(spacing: Theme.sectionSpacing) {
+                                OverviewTabView(ticker: ticker, vm: vm)
+                                if let hist = vm.history, !hist.prices.isEmpty {
+                                    GuillocheDivider()
+                                        .padding(.horizontal, Theme.screenPadding)
+                                    InteractivePriceChartView(
+                                        history: hist.prices,
+                                        niftyHistory: vm.niftyHistory,
+                                        ticker: ticker
+                                    )
+                                    .padding(.horizontal, Theme.screenPadding)
+                                }
+                                GuillocheDivider()
+                                    .padding(.horizontal, Theme.screenPadding)
+                                FinancialsTabView(vm: vm)
+                            }
+                            .padding(.bottom, Theme.sectionSpacing)
+                        }
+                        .tag(0)
+
+                        // 1: News & Events = News + Updates
+                        ScrollView {
+                            LazyVStack(spacing: Theme.sectionSpacing) {
+                                NewsTabView(vm: vm)
+                                GuillocheDivider()
+                                    .padding(.horizontal, Theme.screenPadding)
+                                UpdatesTabView()
+                            }
+                            .padding(.bottom, Theme.sectionSpacing)
+                        }
+                        .tag(1)
+
+                        // 2: Ownership = Holders + Governance
+                        ScrollView {
+                            LazyVStack(spacing: Theme.sectionSpacing) {
+                                HoldersTabView(vm: vm)
+                                GuillocheDivider()
+                                    .padding(.horizontal, Theme.screenPadding)
+                                GovernanceTabView(ticker: ticker, vm: vm)
+                            }
+                            .padding(.bottom, Theme.sectionSpacing)
+                        }
+                        .tag(2)
+
+                        // 3: Macro Analysis
+                        MacroTabView(ticker: ticker, exchange: exchange, vm: vm).tag(3)
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
                     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: activeTab)
@@ -486,33 +525,26 @@ struct StockProfileView: View {
                 }
             }
             .crashGuard("StockProfile")
-            .navigationTitle(ticker.uppercased())
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)  // we provide our own chevron; hide the system one
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .foregroundStyle(Theme.inkPrimary)
-                            .padding(Theme.Spacing.medium)
-                            .background(Theme.canvasDeep)
-                            .clipShape(Circle())
-                    }
+                ToolbarItem(placement: .principal) {
+                    Text(ticker.uppercased())
+                        .font(Theme.officialStampFont(size: 11))
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.inkPrimary)
                 }
             }
+            .toolbarBackground(Theme.canvas, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
         .task { await vm.fetchStockProfile() }
     }
 
     private var tabItems: [(label: String, icon: String)] {
         [
             ("Overview", "doc.text"),
-            ("Holders", "person.3"),
-            ("News", "newspaper"),
-            ("Updates", "bell"),
-            ("Governance", "shield.checkered"),
+            ("News & Events", "newspaper"),
+            ("Ownership", "person.3"),
             ("Macro", "globe.asia.australia"),
-            ("Chart", "chart.xyaxis.line"),
-            ("Financials", "tablecells"),
         ]
     }
 }

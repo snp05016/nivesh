@@ -264,6 +264,7 @@ enum Theme {
         static let xLarge: CGFloat = 32
         static let cardInset: CGFloat = 20
         static let sectionGap: CGFloat = 28
+        static let sectionBreath: CGFloat = 48
     }
 
     // MARK: - Corner Radii
