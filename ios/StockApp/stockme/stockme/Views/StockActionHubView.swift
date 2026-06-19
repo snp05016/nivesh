@@ -30,6 +30,7 @@ struct AnalysisDest: Hashable {
 struct StockActionHubView: View {
     let dest: StockActionHubDest
     @Binding var path: NavigationPath
+    @Environment(\.dismiss) private var dismiss
 
     @EnvironmentObject var reportManager: LocalReportManager
     @AppStorage("nivesh_autoRunOnTap") private var autoRunOnTap = false
@@ -167,6 +168,7 @@ struct StockActionHubView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.canvas, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+        .banknoteBackButton { dismiss() }
         .onAppear {
             guard autoRunOnTap, !didAutoRun else { return }
             didAutoRun = true
