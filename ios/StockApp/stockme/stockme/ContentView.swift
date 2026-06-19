@@ -20,6 +20,40 @@ struct ContentView: View {
         self.bypassLaunch = bypassLaunch
         _showLaunch = State(initialValue: !bypassLaunch)
         setupTabBarAppearance()
+        setupNavBarAppearance()
+    }
+
+    /// Make every navigation bar — and any remaining native back button — look
+    /// identical on every device: a bare chevron coin with no device/locale
+    /// dependent previous-screen title text, and a fixed (non-scaling) glyph.
+    private func setupNavBarAppearance() {
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(Theme.canvasDeep)
+        appearance.shadowColor = UIColor(Theme.inkSecondary).withAlphaComponent(0.12)
+
+        let titleColor = UIColor(Theme.inkPrimary)
+        appearance.titleTextAttributes = [.foregroundColor: titleColor]
+        appearance.largeTitleTextAttributes = [.foregroundColor: titleColor]
+
+        // Replace the system chevron+title back button with a consistent
+        // chevron-only glyph; the previous-screen title is suppressed so the
+        // control never varies by the title that happens to precede it.
+        let chevron = UIImage(
+            systemName: "chevron.left",
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold)
+        )?.withTintColor(UIColor(Theme.inkPrimary), renderingMode: .alwaysOriginal)
+        appearance.setBackIndicatorImage(chevron, transitionMaskImage: chevron)
+
+        let backItem = UIBarButtonItemAppearance()
+        backItem.normal.titleTextAttributes = [.foregroundColor: UIColor.clear]
+        backItem.highlighted.titleTextAttributes = [.foregroundColor: UIColor.clear]
+        appearance.backButtonAppearance = backItem
+
+        UINavigationBar.appearance().standardAppearance = appearance
+        UINavigationBar.appearance().scrollEdgeAppearance = appearance
+        UINavigationBar.appearance().compactAppearance = appearance
+        UINavigationBar.appearance().tintColor = UIColor(Theme.inkPrimary)
     }
 
     private func setupTabBarAppearance() {
@@ -71,10 +105,12 @@ struct ContentView: View {
         }
         .onAppear {
             setupTabBarAppearance()
+            setupNavBarAppearance()
             engineManager.startWatching()
         }
         .onChange(of: selectedTheme) { _, _ in
             setupTabBarAppearance()
+            setupNavBarAppearance()
         }
     }
 
