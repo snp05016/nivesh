@@ -79,11 +79,16 @@ struct ReportManagerView: View {
                     .foregroundStyle(Theme.securityGold)
             }
         }
-        .alert("Delete all saved reports?", isPresented: $confirmDeleteAll) {
-            Button("Cancel", role: .cancel) {}
-            Button("Delete All", role: .destructive) {
-                reportManager.savedReports.removeAll()
-            }
-        }
+        .banknoteDialog(
+            "Delete all saved reports?",
+            isPresented: $confirmDeleteAll,
+            message: "This permanently removes every saved report from this device.",
+            buttons: [
+                .init("Delete All", role: .destructive) {
+                    reportManager.savedReports.removeAll()
+                },
+                .cancel()
+            ]
+        )
     }
 }

@@ -154,17 +154,20 @@ struct StockActionHubView: View {
         .sheet(isPresented: $showHowItWorks) {
             NavigationStack { AIHowItWorksView() }
         }
-        .confirmationDialog("Cached Report Found", isPresented: $showCacheAlert, titleVisibility: .visible) {
-            Button("View Cached Report") {
-                path.append(AnalysisDest(ticker: dest.ticker, mode: .cached))
-            }
-            Button("Regenerate", role: .destructive) {
-                path.append(AnalysisDest(ticker: dest.ticker, mode: pendingMode))
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("A \(pendingModeLabel) analysis already exists. View the cached report or generate a fresh one?")
-        }
+        .banknoteDialog(
+            "Cached Report Found",
+            isPresented: $showCacheAlert,
+            message: "A \(pendingModeLabel) analysis already exists. View the cached report or generate a fresh one?",
+            buttons: [
+                .init("View Cached Report") {
+                    path.append(AnalysisDest(ticker: dest.ticker, mode: .cached))
+                },
+                .init("Regenerate", role: .destructive) {
+                    path.append(AnalysisDest(ticker: dest.ticker, mode: pendingMode))
+                },
+                .cancel()
+            ]
+        )
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.canvas, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)

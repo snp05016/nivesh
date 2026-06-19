@@ -513,37 +513,46 @@ struct PortfolioScreen: View {
                 }
             }
         }
-        .alert("Remove \(deletingTicker)?", isPresented: $showDeleteAlert) {
-            Button("Cancel", role: .cancel) {}
-            Button("Remove", role: .destructive) {
-                if let user = authManager.currentUser {
-                    Task {
-                        try? await viewModel.removeHolding(ticker: deletingTicker, userId: user.userId)
-                    }
-                }
-            }
-        } message: {
-            Text("This will permanently remove \(deletingTicker) from your portfolio.")
-        }
-        .confirmationDialog("Export Portfolio", isPresented: $showExportOptions, titleVisibility: .visible) {
-            // Fix 3.21: Disable export when portfolio has zero holdings
-            let hasHoldings = viewModel.holdings.count > 0
-            if hasHoldings {
-                Button("Export as Excel (.xlsx)") {
+        .banknoteDialog(
+            "Remove \(deletingTicker)?",
+            isPresented: $showDeleteAlert,
+            message: "This will permanently remove \(deletingTicker) from your portfolio.",
+            buttons: [
+                .init("Remove", role: .destructive) {
                     if let user = authManager.currentUser {
-                        Task { await exportAsExcel(userId: user.userId) }
+                        Task {
+                            try? await viewModel.removeHolding(ticker: deletingTicker, userId: user.userId)
+                        }
                     }
-                }
-            } else {
-                Button("No holdings to export", action: {}).disabled(true)
-            }
-            Button("Cancel", role: .cancel) {}
-        }
+                },
+                .cancel()
+            ]
+        )
+        .banknoteDialog(
+            "Export Portfolio",
+            isPresented: $showExportOptions,
+            // Fix 3.21: only offer export when the portfolio has holdings
+            message: viewModel.holdings.isEmpty ? "No holdings to export." : nil,
+            buttons: exportDialogButtons
+        )
         .sheet(isPresented: $showShareSheet) {
             if let url = exportedFileURL {
                 ShareSheet(items: [url])
             }
         }
+    }
+
+    private var exportDialogButtons: [BanknoteDialogButton] {
+        var buttons: [BanknoteDialogButton] = []
+        if viewModel.holdings.count > 0 {
+            buttons.append(.init("Export as Excel (.xlsx)") {
+                if let user = authManager.currentUser {
+                    Task { await exportAsExcel(userId: user.userId) }
+                }
+            })
+        }
+        buttons.append(.cancel())
+        return buttons
     }
 
     private func exportAsExcel(userId: Int) async {
