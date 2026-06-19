@@ -408,7 +408,11 @@ struct PortfolioScreen: View {
                         Spacer()
                         HStack {
                             if selectedTab == 1 {
+                                // Watchlist add button: bottom-left, mirroring the
+                                // AI chatbot FAB's trailing inset so the two sit
+                                // parallel on the same vertical plane.
                                 addPortfolioButton
+                                    .padding(.leading, Theme.Spacing.standard)
                                 Spacer()
                             } else {
                                 Spacer()
