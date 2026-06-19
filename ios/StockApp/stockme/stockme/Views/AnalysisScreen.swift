@@ -369,23 +369,29 @@ struct AnalysisScreen: View {
             pricePollingTask?.cancel()
             pricePollingTask = nil
         }
-        .alert("Cached Report Found", isPresented: $showingRegenerateAlert) {
+        .banknoteDialog(
+            "Cached Report Found",
+            isPresented: $showingRegenerateAlert,
+            message: "A report for \(ticker) was recently generated. Generating a new one takes time and credits. Do you want to view the existing report or generate a new one?",
+            buttons: [
+                .init("View Cached") {
+                    if let cached = reportManager.getReport(for: ticker) {
+                        viewModel.analysis = cached
+                    }
+                },
+                .init("Regenerate") {
+                    viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: deepScanEnabled)
+                },
+                .cancel()
+            ]
+        ) {
             // Fix 3.16: Disable Deep Scan for indices and newly listed tickers
-            let deepScanForbidden = Self.deepScanDisabledTickers.contains(ticker.uppercased())
             Toggle("Deep Scan (PKScreener + FinBERT)", isOn: $deepScanEnabled)
+                .font(Theme.engravedSerif(size: 13, weight: .regular))
                 .tint(Theme.securityGold)
-                .disabled(deepScanForbidden)
-                .opacity(deepScanForbidden ? 0.4 : 1.0)
-            Button("View Cached") {
-                if let cached = reportManager.getReport(for: ticker) {
-                    viewModel.analysis = cached
-                }
-            }
-            Button("Regenerate") {
-                viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: deepScanEnabled)
-            }
-        } message: {
-            Text("A report for \(ticker) was recently generated. Generating a new one takes time and credits. Do you want to view the existing report or generate a new one?")
+                .foregroundStyle(Theme.inkSecondary)
+                .disabled(Self.deepScanDisabledTickers.contains(ticker.uppercased()))
+                .opacity(Self.deepScanDisabledTickers.contains(ticker.uppercased()) ? 0.4 : 1.0)
         }
     }
 

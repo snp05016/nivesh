@@ -85,10 +85,15 @@ struct SettingsScreen: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
-            .alert("Void All Records?", isPresented: $showClearHistoryAlert) {
-                Button("Cancel", role: .cancel) {}
-                Button("Void", role: .destructive) { reportManager.savedReports.removeAll() }
-            }
+            .banknoteDialog(
+                "Void All Records?",
+                isPresented: $showClearHistoryAlert,
+                message: "This permanently clears all saved analysis reports.",
+                buttons: [
+                    .init("Void", role: .destructive) { reportManager.savedReports.removeAll() },
+                    .cancel()
+                ]
+            )
         }
     }
 

@@ -9,27 +9,28 @@ struct StockTapActionSheetModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .confirmationDialog(
+            .banknoteDialog(
                 companyName ?? (ticker.isEmpty ? "Stock" : ticker),
                 isPresented: $isPresented,
-                titleVisibility: .visible
-            ) {
-                if !ticker.isEmpty {
-                    Button("✦ Generate AI Analysis") {
-                        HapticManager.impact(.medium)
-                        onAIAnalysis(ticker)
-                    }
-                    Button("◉ View Stock Info & Charts") {
-                        HapticManager.impact(.medium)
-                        onStockProfile(ticker)
-                    }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                if !ticker.isEmpty {
-                    Text("Choose how you want to explore \(ticker.uppercased())")
-                }
-            }
+                message: ticker.isEmpty ? nil : "Choose how you want to explore \(ticker.uppercased())",
+                buttons: dialogButtons
+            )
+    }
+
+    private var dialogButtons: [BanknoteDialogButton] {
+        var buttons: [BanknoteDialogButton] = []
+        if !ticker.isEmpty {
+            buttons.append(.init("Generate AI Analysis") {
+                HapticManager.impact(.medium)
+                onAIAnalysis(ticker)
+            })
+            buttons.append(.init("View Stock Info & Charts") {
+                HapticManager.impact(.medium)
+                onStockProfile(ticker)
+            })
+        }
+        buttons.append(.cancel())
+        return buttons
     }
 }
 
