@@ -50,6 +50,7 @@ struct ContentView: View {
         ZStack {
             if authManager.isLoggedIn {
                 mainTabView
+                    .withCopilot()   // AI chatbot FAB only inside the authenticated app, never on Login
                     .opacity(showLaunch ? 0 : 1)
                     .offset(y: showLaunch ? launchOffset : 0)
                     .animation(.spring(response: 0.55, dampingFraction: 0.82), value: showLaunch)
@@ -75,7 +76,6 @@ struct ContentView: View {
         .onChange(of: selectedTheme) { _, _ in
             setupTabBarAppearance()
         }
-        .withCopilot()
     }
 
     @ViewBuilder
