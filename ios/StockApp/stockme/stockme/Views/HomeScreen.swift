@@ -2506,37 +2506,6 @@ extension HomeScreen {
 
                     MarketStatusStrip()
 
-                    // NEW: Horizontal Quick Nav Bar
-                    ScrollView(.horizontal) {
-                        HStack(spacing: Theme.Spacing.medium) {
-                            ForEach(HomeSectionID.allCases) { section in
-                                if section != .top {
-                                    Button(action: {
-                                        HapticManager.selection()
-                                        scrollTarget = section.rawValue
-                                    }) {
-                                        HStack(spacing: Theme.Spacing.small) {
-                                            Image(systemName: section.icon)
-                                                .font(.caption2)
-                                            Text(section.title.uppercased())
-                                                .font(Theme.officialStampFont(size: 9))
-                                        }
-                                        .foregroundStyle(Theme.inkPrimary)
-                                        .padding(.horizontal, Theme.Spacing.standard)
-                                        .padding(.vertical, Theme.Spacing.medium)
-                                        .background(Theme.securityGold.opacity(0.12))
-                                        .cornerRadius(Theme.CornerRadius.card)
-                                        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
-                                    }
-                                    .buttonStyle(EKPressStyle())
-                                }
-                            }
-                        }
-                        .padding(.horizontal, Theme.screenPadding)
-                        .padding(.bottom, Theme.Spacing.small)
-                    }
-                    .scrollIndicators(.hidden)
-
                     if let action = dailyAction {
                         DailyActionCard(response: action)
                             .padding(.horizontal, Theme.screenPadding)
@@ -2649,19 +2618,20 @@ extension HomeScreen {
                     TimeframeConflictsBanner(conflicts: timeframeConflicts)
                 }
         case .sectors:
-// ── Section 5: Sector Pulse ───────────────────────
+// ── Section 5: Sector Pulse (vertical grid) ──────
                 VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                     SectionHeader(title: "Sectors today", hindiTitle: "क्षेत्र प्रदर्शन")
                     if !viewModel.sectorData.isEmpty {
-                        // Screen D 12.5 — horizontal scroll of sector pills
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: Theme.Spacing.standard) {
-                                ForEach(viewModel.sectorData) { sector in
-                                    SectorPill(name: sector.name, change: sector.changePct)
-                                }
+                        let columns = [
+                            GridItem(.flexible(), spacing: Theme.Spacing.standard),
+                            GridItem(.flexible(), spacing: Theme.Spacing.standard)
+                        ]
+                        LazyVGrid(columns: columns, spacing: Theme.Spacing.standard) {
+                            ForEach(viewModel.sectorData) { sector in
+                                SectorPill(name: sector.name, change: sector.changePct)
                             }
-                            .padding(.horizontal, Theme.screenPadding)
                         }
+                        .padding(.horizontal, Theme.screenPadding)
                     } else {
                         DashboardLoadingCard(label: "Sector Pulse", isLoading: viewModel.isLoading)
                     }
@@ -2669,25 +2639,16 @@ extension HomeScreen {
                 .id(HomeSectionID.sectors.rawValue)
         case .morning:
             if shouldShowBriefToday, let briefData = viewModel.morningBriefData {
-                let moodColor: Color = {
-                    switch briefData.mood {
-                    case "positive": return Theme.bullGreen
-                    case "negative": return Theme.bearRed
-                    default: return Theme.holdAmber
-                    }
-                }()
-
                 VStack(spacing: Theme.Spacing.none) {
                     HStack(alignment: .center, spacing: Theme.Spacing.none) {
                         Rectangle()
-                            .fill(moodColor)
-                            .frame(width: 4)
+                            .fill(Theme.securityGold)
+                            .frame(width: 3)
                             .frame(maxHeight: .infinity)
 
                         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                             HStack(spacing: Theme.Spacing.tight) {
-                                Circle().fill(moodColor).frame(width: 8, height: 8)
-                                Text("MARKETS OPEN")
+                                Text("MORNING BRIEF")
                                     .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                                     .tracking(1.2)
                                     .foregroundStyle(Theme.inkSecondary)
@@ -2709,17 +2670,19 @@ extension HomeScreen {
                                 .lineLimit(3)
 
                             if let priority = briefData.priorityItems, !priority.isEmpty {
-                                        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                                            ForEach(Array(priority.prefix(2))) { item in
-                                                HStack(spacing: Theme.Spacing.small) {
-                                                    Text("⚠").font(.caption2)
-                                                    Text(item.message)
-                                                        .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .caption))
-                                                        .foregroundStyle(Theme.inkSecondary)
-                                                        .lineLimit(1)
-                                                }
-                                            }
+                                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                                    ForEach(Array(priority.prefix(2))) { item in
+                                        HStack(spacing: Theme.Spacing.small) {
+                                            Image(systemName: "exclamationmark.triangle")
+                                                .font(.caption2)
+                                                .foregroundStyle(Theme.inkTertiary)
+                                            Text(item.message)
+                                                .font(Theme.engravedSerif(size: 11, weight: .medium, relativeTo: .caption))
+                                                .foregroundStyle(Theme.inkPrimary)
+                                                .lineLimit(1)
                                         }
+                                    }
+                                }
                             }
 
                             HStack(spacing: Theme.Spacing.standard) {
@@ -2750,7 +2713,7 @@ extension HomeScreen {
                                         morningBriefShownDate = df.string(from: Date())
                                     }
                                 } label: {
-                                    Text("✕ DISMISS")
+                                    Text("DISMISS")
                                         .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                                         .tracking(1)
                                         .foregroundStyle(Theme.inkTertiary)
@@ -2760,7 +2723,9 @@ extension HomeScreen {
                         }
                         .padding(Theme.Spacing.card)
                     }
-                    .banknoteCard()
+                    .background(Theme.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderSubtle, lineWidth: 0.5))
                     .padding(.horizontal, Theme.screenPadding)
                 }
                 .id(HomeSectionID.morning.rawValue)
@@ -2778,49 +2743,31 @@ extension HomeScreen {
                 .id(HomeSectionID.morning.rawValue)
             }
         case .news:
-// ── Section 6a: NEWS FEED ─────────────────────────
+// ── Section 6a: NEWS FEED (vertical list) ────────
                 VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                    // Section header (bilingual, matches existing pattern)
-                    VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                        SectionHeader(title: "Market News", hindiTitle: "ताज़ा समाचार")
-                    }
-                    .padding(.horizontal, Theme.screenPadding)
+                    SectionHeader(title: "Market News", hindiTitle: "ताज़ा समाचार")
+                        .padding(.horizontal, Theme.screenPadding)
 
                     if let feed = feedVM.feed {
-                        // Horizontal scrolling news strip — all news in one scroll
-                        ScrollView(.horizontal) {
-                            HStack(alignment: .top, spacing: Theme.Spacing.card) {
-                                ForEach(Array((feed.news + feed.redFlagAlerts).prefix(50).enumerated()), id: \.element.id) { idx, article in
-                                    CompactNewsCell(article: article) { ticker in
-                                        navigationPath.append(ticker)
-                                    }
-                                    .frame(
-                                        width: UIScreen.main.bounds.width * 0.75,
-                                        height: 280
-                                    )
+                        VStack(spacing: Theme.Spacing.standard) {
+                            ForEach(Array((feed.news + feed.redFlagAlerts).prefix(8).enumerated()), id: \.element.id) { _, article in
+                                CompactNewsCell(article: article) { ticker in
+                                    navigationPath.append(ticker)
                                 }
                             }
-                            .padding(.horizontal, Theme.screenPadding)
-                            .padding(.vertical, Theme.Spacing.small)
                         }
-                        .scrollIndicators(.hidden)
+                        .padding(.horizontal, Theme.screenPadding)
                     } else if feedVM.isLoading {
-                        // Skeleton shimmer while loading
-                        ScrollView(.horizontal) {
-                            HStack(spacing: Theme.Spacing.card) {
-                                ForEach(0..<4, id: \.self) { _ in
-                                    RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                                        .fill(Theme.inkTertiary.opacity(0.08))
-                                        .frame(
-                                            width: UIScreen.main.bounds.width * 0.68,
-                                            height: UIScreen.main.bounds.width * 0.92
-                                        )
-                                        .shimmerPlaceholder(isLoading: true)
-                                }
+                        VStack(spacing: Theme.Spacing.standard) {
+                            ForEach(0..<3, id: \.self) { _ in
+                                RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                                    .fill(Theme.inkTertiary.opacity(0.08))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 100)
+                                    .shimmerPlaceholder(isLoading: true)
                             }
-                            .padding(.horizontal, Theme.screenPadding)
                         }
-                        .scrollIndicators(.hidden)
+                        .padding(.horizontal, Theme.screenPadding)
                     }
                 }
                 .id(HomeSectionID.news.rawValue)

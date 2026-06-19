@@ -25,10 +25,10 @@ struct NewsMultimediaView: View {
                     podcastSection
                     // 8.3 Behind-the-News Editorial
                     editorialSection
-                    // 8.4 All News — full vertical list
-                    allNewsSection
-                    // 8.5 Expert Execution Panel
+                    // 8.4 Expert Execution Panel (promoted above news feed)
                     expertPanel
+                    // 8.5 Recent News — truncated with drill-down
+                    allNewsSection
                 }
                 .padding(.bottom, Theme.Spacing.xLarge)
             }
@@ -82,28 +82,20 @@ struct NewsMultimediaView: View {
         }
     }
 
-    // MARK: 8.2 Podcast Network
+    // MARK: 8.2 Podcast Network (vertical list)
 
     private var podcastSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             SectionHeader(title: "MARKET DEEP DIVES", hindiTitle: "गहन विश्लेषण")
 
             if isLoading && videos.isEmpty {
-                HStack(spacing: Theme.Spacing.standard) {
-                    ForEach(0..<3, id: \.self) { _ in videoCardPlaceholder }
-                }
-                .padding(.horizontal, Theme.Spacing.card)
+                ForEach(0..<3, id: \.self) { _ in videoCardPlaceholder }
+                    .padding(.horizontal, Theme.screenPadding)
             } else {
-                ScrollView(.horizontal) {
-                    HStack(spacing: Theme.Spacing.standard) {
-                        ForEach(videos.prefix(8)) { video in
-                            VideoCard(video: video)
-                        }
-                    }
-                    .padding(.horizontal, Theme.Spacing.card)
-                    .padding(.vertical, 4)
+                ForEach(videos.prefix(6)) { video in
+                    VideoCard(video: video)
+                        .padding(.horizontal, Theme.screenPadding)
                 }
-                .scrollIndicators(.hidden)
             }
         }
     }
@@ -131,30 +123,60 @@ struct NewsMultimediaView: View {
         }
     }
 
-    // MARK: 8.4 All News — full vertical list
+    // MARK: 8.5 Recent News — truncated with drill-down
+
+    @State private var showAllNews = false
 
     private var allNewsSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-            SectionHeader(title: "ALL MARKET NEWS", hindiTitle: "सभी बाज़ार समाचार")
+            SectionHeader(title: "RECENT NEWS", hindiTitle: "हाल के समाचार")
 
             if isLoading && articles.isEmpty {
-                ForEach(0..<5, id: \.self) { _ in
+                ForEach(0..<3, id: \.self) { _ in
                     RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                         .fill(Theme.inkTertiary.opacity(0.08))
                         .frame(height: 100)
                         .padding(.horizontal, Theme.screenPadding)
                         .shimmerPlaceholder(isLoading: true)
                 }
+            } else if articles.isEmpty {
+                Text("No news available at this time.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .padding(.horizontal, Theme.screenPadding)
             } else {
-                ForEach(articles) { article in
+                ForEach(articles.prefix(5)) { article in
                     NewsListRow(article: article)
                         .padding(.horizontal, Theme.screenPadding)
                 }
-                if articles.isEmpty {
-                    Text("No news available at this time.")
-                        .font(.caption)
-                        .foregroundStyle(Theme.inkTertiary)
-                        .padding(.horizontal, Theme.screenPadding)
+
+                if articles.count > 5 {
+                    Button(action: {
+                        HapticManager.selection()
+                        showAllNews = true
+                    }) {
+                        HStack(spacing: Theme.Spacing.small) {
+                            Text("SEE ALL \(articles.count) ARTICLES")
+                                .font(Theme.officialStampFont(size: 9))
+                                .tracking(1.2)
+                            Image(systemName: "arrow.right")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(Theme.securityGold)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Theme.Spacing.standard)
+                        .background(Theme.securityGold.opacity(0.06))
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                                .stroke(Theme.securityGold.opacity(0.2), lineWidth: 0.5)
+                        )
+                    }
+                    .buttonStyle(EKPressStyle())
+                    .padding(.horizontal, Theme.screenPadding)
+                    .sheet(isPresented: $showAllNews) {
+                        AllNewsSheet(articles: articles)
+                    }
                 }
             }
         }
@@ -212,27 +234,40 @@ struct NewsMultimediaView: View {
     // MARK: Placeholders
 
     private var newsCardPlaceholder: some View {
-        let cardWidth = UIScreen.main.bounds.width * 0.58
-        let cardHeight = UIScreen.main.bounds.height * 0.16
-        return VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).fill(Theme.inkTertiary.opacity(0.10)).frame(width: cardWidth - Theme.Spacing.standard * 2, height: cardHeight * 0.40)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: (cardWidth - Theme.Spacing.standard * 2) * 0.8, height: 12)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: (cardWidth - Theme.Spacing.standard * 2) * 0.55, height: 10)
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.tight)
+                .fill(Theme.inkTertiary.opacity(0.10))
+                .frame(width: 220, height: 48)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                .fill(Theme.inkTertiary.opacity(0.10))
+                .frame(width: 180, height: 12)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                .fill(Theme.inkTertiary.opacity(0.10))
+                .frame(width: 130, height: 10)
         }
         .padding(Theme.Spacing.standard)
-        .frame(width: cardWidth, height: cardHeight)
+        .frame(width: 260, height: 140)
         .banknoteCard()
         .shimmerPlaceholder(isLoading: true)
     }
 
     private var videoCardPlaceholder: some View {
-        let cardWidth = UIScreen.main.bounds.width * 0.65
-        let thumbHeight = cardWidth * 0.5625  // 16:9
-        return VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).fill(Theme.inkTertiary.opacity(0.10)).frame(height: thumbHeight)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: cardWidth * 0.83, height: 12)
+        HStack(spacing: Theme.Spacing.standard) {
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.tight)
+                .fill(Theme.inkTertiary.opacity(0.10))
+                .frame(width: 160, height: 90)
+            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(Theme.inkTertiary.opacity(0.10))
+                    .frame(height: 12)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(Theme.inkTertiary.opacity(0.10))
+                    .frame(width: 100, height: 10)
+            }
         }
-        .frame(width: cardWidth)
+        .padding(Theme.Spacing.standard)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .banknoteCard()
         .shimmerPlaceholder(isLoading: true)
     }
 
@@ -283,20 +318,20 @@ struct NewsCarouselCard: View {
         return Theme.holdAmber
     }
 
-    /// Freshness badge: ≤ 2h = HOT, ≤ 6h = TRENDING, red flag = RED FLAG
+    /// Freshness badge: ≤ 2h = HOT, ≤ 6h = TRENDING — neutral colors only (no financial red/green)
     private var signalBadge: (label: String, icon: String, color: Color)? {
         if article.isRedFlag { return ("RED FLAG", "exclamationmark.triangle.fill", Theme.bearRed) }
         let f = ISO8601DateFormatter()
         if let date = f.date(from: article.publishedAt) {
             let age = Date().timeIntervalSince(date)
-            if age < 2 * 3600 { return ("HOT", "flame.fill", Theme.bearRed) }
+            if age < 2 * 3600 { return ("HOT", "flame.fill", Theme.securityGold) }
             if age < 6 * 3600 { return ("TRENDING", "chart.line.uptrend.xyaxis", Theme.securityGold) }
-            if age < 12 * 3600 { return ("BREAKING", "dot.radiowaves.left.and.right", Theme.bullGreen) }
+            if age < 12 * 3600 { return ("BREAKING", "dot.radiowaves.left.and.right", Theme.inkSecondary) }
         }
         return nil
     }
 
-    private let cardWidth: CGFloat = UIScreen.main.bounds.width * 0.75
+    private let cardWidth: CGFloat = 280
 
     var body: some View {
         Button(action: {
@@ -457,7 +492,7 @@ struct NewsCarouselCard: View {
                 }
                 .padding(Theme.Spacing.standard)
             }
-            .frame(width: cardWidth, height: UIScreen.main.bounds.height * 0.28)
+            .frame(width: cardWidth, height: 320)
             .banknoteCard()
         }
         .buttonStyle(EKPressStyle())
@@ -473,12 +508,9 @@ struct VideoCard: View {
     let video: YouTubeVideoItem
     @State private var showPlayer = false
 
-    private let cardWidth: CGFloat = UIScreen.main.bounds.width * 0.65
-
     var body: some View {
         Button(action: { showPlayer = true }) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                // Thumbnail with AsyncImage
+            HStack(spacing: Theme.Spacing.standard) {
                 ZStack(alignment: .bottomTrailing) {
                     if let thumbUrl = video.thumbnailUrl, let url = URL(string: thumbUrl) {
                         AsyncImage(url: url) { phase in
@@ -487,38 +519,19 @@ struct VideoCard: View {
                                 image
                                     .resizable()
                                     .aspectRatio(16/9, contentMode: .fill)
-                                    .frame(height: cardWidth * 0.5625)  // 16:9
+                                    .frame(width: 160, height: 90)
                                     .clipped()
                                     .cornerRadius(Theme.CornerRadius.tight)
                             case .failure(_), .empty:
-                                Rectangle()
-                                    .fill(Theme.canvasDeep)
-                                    .aspectRatio(16/9, contentMode: .fill)
-                                    .frame(height: cardWidth * 0.5625)
-                                    .cornerRadius(Theme.CornerRadius.tight)
-                                    .overlay(
-                                        Image(systemName: "play.circle.fill")
-                                            .font(.largeTitle)
-                                            .foregroundStyle(Theme.inkTertiary.opacity(0.4))
-                                    )
+                                videoFallbackThumb
                             @unknown default:
                                 EmptyView()
                             }
                         }
                     } else {
-                        Rectangle()
-                            .fill(Theme.canvasDeep)
-                            .aspectRatio(16/9, contentMode: .fill)
-                            .frame(height: cardWidth * 0.5625)
-                            .cornerRadius(Theme.CornerRadius.tight)
-                            .overlay(
-                                Image(systemName: "play.circle.fill")
-                                    .font(.largeTitle)
-                                    .foregroundStyle(Theme.inkTertiary.opacity(0.4))
-                            )
+                        videoFallbackThumb
                     }
 
-                    // Duration badge
                     if (video.durationSeconds ?? 0) > 0 {
                         Text(video.formattedDuration)
                             .font(.caption2.weight(.semibold).monospaced())
@@ -527,29 +540,29 @@ struct VideoCard: View {
                             .padding(.vertical, Theme.Spacing.xSmall)
                             .background(Color.black.opacity(0.65))
                             .cornerRadius(Theme.CornerRadius.small)
-                            .padding(Theme.Spacing.tight)
+                            .padding(Theme.Spacing.small)
                     }
                 }
 
-                // Title
-                Text(video.title)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Theme.inkPrimary)
-                    .lineLimit(2)
-                    .lineSpacing(2)
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                    Text(video.title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.inkPrimary)
+                        .lineLimit(3)
+                        .lineSpacing(2)
 
-                // Channel + views footer
-                HStack {
                     Text(video.channelName)
                         .font(.caption2)
                         .foregroundStyle(Theme.inkSecondary)
-                    Spacer()
+
                     Text("\(video.formattedViewCount) views")
                         .font(.caption2)
                         .foregroundStyle(Theme.inkTertiary)
                 }
             }
-            .frame(width: cardWidth)
+            .padding(Theme.Spacing.standard)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .banknoteCard()
         }
         .buttonStyle(EKPressStyle())
         .sheet(isPresented: $showPlayer) {
@@ -557,6 +570,18 @@ struct VideoCard: View {
                 SafariSheetView(url: url)
             }
         }
+    }
+
+    private var videoFallbackThumb: some View {
+        Rectangle()
+            .fill(Theme.canvasDeep)
+            .frame(width: 160, height: 90)
+            .cornerRadius(Theme.CornerRadius.tight)
+            .overlay(
+                Image(systemName: "play.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(Theme.inkTertiary.opacity(0.4))
+            )
     }
 }
 
@@ -705,15 +730,15 @@ struct NewsListRow: View {
         return Theme.holdAmber
     }
 
-    /// Freshness badge
+    /// Freshness badge — neutral colors only (no financial red/green)
     private var signalBadge: (label: String, icon: String, color: Color)? {
         if article.isRedFlag { return ("RED FLAG", "exclamationmark.triangle.fill", Theme.bearRed) }
         let f = ISO8601DateFormatter()
         if let date = f.date(from: article.publishedAt) {
             let age = Date().timeIntervalSince(date)
-            if age < 2 * 3600 { return ("HOT", "flame.fill", Theme.bearRed) }
+            if age < 2 * 3600 { return ("HOT", "flame.fill", Theme.securityGold) }
             if age < 6 * 3600 { return ("TRENDING", "chart.line.uptrend.xyaxis", Theme.securityGold) }
-            if age < 12 * 3600 { return ("BREAKING", "dot.radiowaves.left.and.right", Theme.bullGreen) }
+            if age < 12 * 3600 { return ("BREAKING", "dot.radiowaves.left.and.right", Theme.inkSecondary) }
         }
         return nil
     }
@@ -840,6 +865,45 @@ struct NewsListRow: View {
                     .foregroundStyle(Theme.inkTertiary.opacity(0.3))
                     .font(.title3)
             )
+    }
+}
+
+// MARK: - All News Sheet (drill-down from truncated list)
+
+struct AllNewsSheet: View {
+    let articles: [NewsArticleItem]
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(spacing: Theme.Spacing.medium) {
+                    ForEach(articles) { article in
+                        NewsListRow(article: article)
+                    }
+                }
+                .padding(.horizontal, Theme.screenPadding)
+                .padding(.vertical, Theme.Spacing.standard)
+            }
+            .background(Theme.canvas)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("ALL MARKET NEWS")
+                        .font(Theme.officialStampFont(size: 11))
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.inkPrimary)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
+                }
+            }
+            .toolbarBackground(Theme.canvas, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+        }
     }
 }
 

@@ -83,6 +83,10 @@ struct AnalysisFullView: View {
             }
 
             if isExtreme {
+                GuillocheDivider()
+                    .padding(.horizontal, Theme.screenPadding)
+                    .padding(.top, Theme.Spacing.sectionBreath)
+
                 AnalysisExtremeSections(
                     analysis: analysis,
                     previousAnalysis: previousAnalysis,

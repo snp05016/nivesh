@@ -244,53 +244,6 @@ private struct GlobalOverlayModifier: ViewModifier {
     }
 }
 
-// MARK: - Markets Tab
-
-enum MarketsTab: String, CaseIterable {
-    case overview  = "OVERVIEW"
-    case earnings  = "EARNINGS"
-    case technical = "TECHNICAL"
-    case unlisted  = "UNLISTED"
-    case screener  = "SCREENER"
-    case alerts    = "ALERTS"
-    case strategy  = "STRATEGY LAB"
-}
-
-// MARK: - Markets Tab Bar
-
-struct MarketsTabBar: View {
-    @Binding var selected: MarketsTab
-
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Theme.Spacing.standard) {
-                ForEach(MarketsTab.allCases, id: \.self) { tab in
-                    Button(action: { HapticManager.selection(); selected = tab }) {
-                        Text(tab.rawValue)
-                            .font(Theme.officialStampFont(size: 10))
-                            .tracking(1.0)
-                            .foregroundStyle(selected == tab ? Theme.canvas : Theme.inkSecondary)
-                            .padding(.horizontal, Theme.Spacing.card)
-                            .padding(.vertical, Theme.Spacing.medium)
-                            .background(selected == tab ? Theme.securityGold : Theme.canvasDeep)
-                            .clipShape(Capsule())
-                            .overlay(
-                                Capsule().stroke(
-                                    selected == tab ? Theme.securityGold : Theme.borderSage,
-                                    lineWidth: 0.5
-                                )
-                            )
-                    }
-                    .buttonStyle(EKPressStyle())
-                }
-            }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.vertical, Theme.Spacing.medium)
-        }
-        .background(Theme.canvas)
-    }
-}
-
 // MARK: - Market Section Enum
 
 enum MarketSection: String, Hashable, CaseIterable {
@@ -410,64 +363,61 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .options_strategy: return Theme.bullGreen
         }
     }
+
+    // Categorization for chunked overview
+    enum Category: String, CaseIterable {
+        case discovery = "DISCOVERY & RESEARCH"
+        case analytics = "ADVANCED ANALYTICS"
+        case trading   = "TRADING & STRATEGY"
+
+        var sections: [MarketSection] {
+            switch self {
+            case .discovery: return [.nl_screener, .screener, .earnings, .earnings_surprise]
+            case .analytics: return [.correlation, .stress_test, .sector_rotation, .anomalies]
+            case .trading:   return [.options_strategy, .strategy, .alerts, .technical]
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .discovery: return "magnifyingglass"
+            case .analytics: return "chart.xyaxis.line"
+            case .trading:   return "bolt.fill"
+            }
+        }
+    }
 }
 
-// MARK: - Markets View (Section 10: Markets tab hub)
+// MARK: - Markets View (NavigationStack-based)
 
 struct MarketsView: View {
     @EnvironmentObject var authManager: AuthManager
 
-    @State private var selectedTab: MarketsTab = .overview
-    @State private var activeSection: MarketSection? = nil
     @State private var livePulse = false
     @State private var indices: [LiveMarketIndex] = []
     @State private var isLoadingIndices = false
 
     var body: some View {
-        ZStack {
-            Theme.canvas.ignoresSafeArea()
-
-            if let section = activeSection {
-                sectionShell(section)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .trailing).combined(with: .opacity),
-                        removal:   .move(edge: .trailing).combined(with: .opacity)
-                    ))
-            } else {
-                VStack(spacing: Theme.Spacing.none) {
-                    // Sticky tab bar
-                    MarketsTabBar(selected: $selectedTab)
-                        .background(Theme.canvas)
-
-                    SectionDivider()
-                        .padding(.horizontal, Theme.screenPadding)
-
-                    // Content area
-                    Group {
-                        switch selectedTab {
-                        case .overview:
-                            overviewContent
-                        case .earnings:
-                            sectionPage(.earnings)
-                        case .technical:
-                            sectionPage(.technical)
-                        case .unlisted:
-                            sectionPage(.unlisted)
-                        case .screener:
-                            sectionPage(.screener)
-                        case .alerts:
-                            sectionPage(.alerts)
-                        case .strategy:
-                            sectionPage(.strategy)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .transition(.opacity)
-                    .animation(.easeInOut(duration: 0.18), value: selectedTab)
+        NavigationStack {
+            ZStack {
+                Theme.canvas.ignoresSafeArea()
+                overviewContent
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("MARKETS")
+                        .font(Theme.officialStampFont(size: 11))
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.inkPrimary)
                 }
             }
+            .toolbarBackground(Theme.canvas, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .navigationDestination(for: MarketSection.self) { section in
+                sectionDestination(section)
+            }
         }
-        .animation(.spring(response: 0.38, dampingFraction: 0.84), value: activeSection)
         .task { await loadIndices() }
         .onAppear {
             withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
@@ -476,12 +426,11 @@ struct MarketsView: View {
         }
     }
 
-    // MARK: - Overview (formerly hub)
+    // MARK: - Overview (chunked categories)
 
     private var overviewContent: some View {
         ScrollView {
             VStack(spacing: Theme.sectionSpacing) {
-                // Live indices strip
                 VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                     Text("LIVE INDICES")
                         .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
@@ -511,63 +460,38 @@ struct MarketsView: View {
                 }
                 .padding(.top, Theme.Spacing.standard)
 
-                SectionDivider()
-                    .padding(.horizontal, Theme.screenPadding)
-
-                // Section cards
-                ForEach(MarketSection.allCases, id: \.self) { section in
-                    sectionCard(section)
+                ForEach(MarketSection.Category.allCases, id: \.self) { category in
+                    VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                        HStack(spacing: Theme.Spacing.small) {
+                            Image(systemName: category.icon)
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(Theme.securityGold)
+                            Text(category.rawValue)
+                                .font(Theme.officialStampFont(size: 9))
+                                .tracking(1.2)
+                                .foregroundStyle(Theme.inkSecondary)
+                        }
                         .padding(.horizontal, Theme.screenPadding)
+
+                        ForEach(category.sections, id: \.self) { section in
+                            NavigationLink(value: section) {
+                                sectionCardContent(section)
+                            }
+                            .buttonStyle(EKPressStyle())
+                            .padding(.horizontal, Theme.screenPadding)
+                        }
+                    }
                 }
+
+                NavigationLink(value: MarketSection.unlisted) {
+                    sectionCardContent(.unlisted)
+                }
+                .buttonStyle(EKPressStyle())
+                .padding(.horizontal, Theme.screenPadding)
             }
             .padding(.bottom, Theme.sectionSpacing)
         }
         .scrollIndicators(.hidden)
-    }
-
-    // MARK: - Section page (tab content for non-overview tabs)
-
-    @ViewBuilder
-    private func sectionPage(_ section: MarketSection) -> some View {
-        VStack(spacing: Theme.Spacing.none) {
-            // Inline header with push button
-            HStack(spacing: Theme.Spacing.standard) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                    Text(section.hindi)
-                        .font(Theme.hindiFont(size: 10))
-                        .foregroundStyle(Theme.inkTertiary)
-                    Text(section.englishTitle)
-                        .font(Theme.engravedSerif(size: 16, weight: .bold, relativeTo: .headline))
-                        .foregroundStyle(Theme.inkPrimary)
-                }
-                Spacer()
-                Button(action: {
-                    HapticManager.selection()
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) {
-                        activeSection = section
-                    }
-                }) {
-                    HStack(spacing: Theme.Spacing.small) {
-                        Text("FULL VIEW")
-                            .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
-                            .tracking(1.2)
-                        Image(systemName: "arrow.up.left.and.arrow.down.right")
-                            .font(.caption2)
-                    }
-                    .foregroundStyle(Theme.securityGold)
-                    .padding(.horizontal, Theme.Spacing.standard)
-                    .padding(.vertical, Theme.Spacing.small)
-                    .background(Theme.securityGold.opacity(0.08))
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(EKPressStyle())
-            }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.vertical, Theme.Spacing.standard)
-
-            sectionContent(section)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
     }
 
     // MARK: - Index chips
@@ -599,131 +523,95 @@ struct MarketsView: View {
         }
         .padding(.horizontal, Theme.Spacing.standard)
         .padding(.vertical, Theme.Spacing.medium)
-        .frame(minWidth: UIScreen.main.bounds.width * 0.22, alignment: .leading)
+        .frame(minWidth: 80, alignment: .leading)
         .banknoteCard()
     }
 
     private func indexPlaceholderChip(name: String) -> some View {
-        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
-        return VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
             Text(name)
                 .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                 .tracking(1.0)
                 .foregroundStyle(Theme.inkTertiary)
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                 .fill(Theme.inkTertiary.opacity(0.12))
-                .frame(width: UIScreen.main.bounds.width * 0.18, height: UIScreen.main.bounds.height * 0.016)
+                .frame(width: 64, height: 14)
                 .shimmerPlaceholder(isLoading: true)
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                 .fill(Theme.inkTertiary.opacity(0.08))
-                .frame(width: colW * 0.14, height: 10)
+                .frame(width: 48, height: 10)
                 .shimmerPlaceholder(isLoading: true)
         }
         .padding(.horizontal, Theme.Spacing.standard)
         .padding(.vertical, Theme.Spacing.medium)
-        .frame(minWidth: UIScreen.main.bounds.width * 0.22, alignment: .leading)
+        .frame(minWidth: 80, alignment: .leading)
         .banknoteCard()
     }
 
-    // MARK: - Section card (overview grid card)
+    // MARK: - Section card content (shared between overview and NavigationLink)
 
-    private func sectionCard(_ section: MarketSection) -> some View {
-        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
-        return Button(action: {
-            HapticManager.selection()
-            withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) { activeSection = section }
-        }) {
-            HStack(spacing: Theme.Spacing.large) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                        .fill(section.accentColor.opacity(0.12))
-                        .frame(width: colW * 0.14, height: colW * 0.14)
-                    Image(systemName: section.icon)
-                        .font(Theme.serialNumberFont(size: 20, relativeTo: .headline))
-                        .foregroundStyle(section.accentColor)
-                }
-
-                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                    Text(section.hindi)
-                        .font(Theme.hindiFont(size: 10))
-                        .foregroundStyle(Theme.inkTertiary)
-                    Text(section.englishTitle)
-                        .font(Theme.engravedSerif(size: 15, weight: .bold, relativeTo: .headline))
-                        .foregroundStyle(Theme.inkPrimary)
-                    Text(section.description)
-                        .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .caption))
-                        .foregroundStyle(Theme.inkSecondary)
-                        .lineLimit(2)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(section.accentColor.opacity(0.5))
+    private func sectionCardContent(_ section: MarketSection) -> some View {
+        HStack(spacing: Theme.Spacing.large) {
+            ZStack {
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                    .fill(section.accentColor.opacity(0.12))
+                    .frame(width: 48, height: 48)
+                Image(systemName: section.icon)
+                    .font(Theme.serialNumberFont(size: 20, relativeTo: .headline))
+                    .foregroundStyle(section.accentColor)
             }
-            .padding(Theme.Spacing.card)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .banknoteCard()
-            .overlay(
-                Rectangle()
-                    .fill(section.accentColor.opacity(0.8))
-                    .frame(width: 3)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small)),
-                alignment: .leading
-            )
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                Text(section.hindi)
+                    .font(Theme.hindiFont(size: 10))
+                    .foregroundStyle(Theme.inkTertiary)
+                Text(section.englishTitle)
+                    .font(Theme.engravedSerif(size: 15, weight: .bold, relativeTo: .headline))
+                    .foregroundStyle(Theme.inkPrimary)
+                Text(section.description)
+                    .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .caption))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(section.accentColor.opacity(0.5))
         }
-        .buttonStyle(EKPressStyle())
+        .padding(Theme.Spacing.card)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .banknoteCard()
+        .overlay(
+            Rectangle()
+                .fill(section.accentColor.opacity(0.8))
+                .frame(width: 3)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small)),
+            alignment: .leading
+        )
     }
 
-// MARK: - Section Shell (fullscreen with back strip)
+    // MARK: - Section destination (NavigationStack push)
 
     @ViewBuilder
-    private func sectionShell(_ section: MarketSection) -> some View {
-        VStack(spacing: Theme.Spacing.none) {
-            // ← MARKETS branded back strip
-            HStack(spacing: Theme.Spacing.standard) {
-                Button(action: {
-                    HapticManager.selection()
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.84)) { activeSection = nil }
-                }) {
-                    HStack(spacing: Theme.Spacing.small) {
-                        Image(systemName: "chevron.left")
-                            .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
-                        Text("MARKETS")
+    private func sectionDestination(_ section: MarketSection) -> some View {
+        sectionContent(section)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: Theme.Spacing.xSmall) {
+                        Image(systemName: section.icon)
+                            .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
+                        Text(section.englishTitle)
                             .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
                             .tracking(1.5)
                     }
-                    .foregroundStyle(Theme.securityGold)
-                    .padding(.leading, Theme.screenPadding)
-                    .padding(.vertical, Theme.Spacing.medium)
+                    .foregroundStyle(Theme.inkPrimary)
                 }
-                .buttonStyle(EKPressStyle())
-
-                Spacer()
-
-                HStack(spacing: Theme.Spacing.xSmall) {
-                    Image(systemName: section.icon)
-                        .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
-                    Text(section.englishTitle)
-                        .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
-                        .tracking(1.5)
-                }
-                .foregroundStyle(Theme.inkTertiary)
-                .padding(.trailing, Theme.screenPadding)
             }
-            .background(Theme.canvasDeep)
-            .overlay(
-                Rectangle()
-                    .fill(section.accentColor.opacity(0.5))
-                    .frame(height: 1.5),
-                alignment: .bottom
-            )
-
-            // The actual section view — unchanged, full screen
-            sectionContent(section)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
+            .toolbarBackground(Theme.canvas, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
     }
 
     @ViewBuilder

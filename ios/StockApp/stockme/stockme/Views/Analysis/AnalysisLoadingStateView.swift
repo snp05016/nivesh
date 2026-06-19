@@ -12,6 +12,9 @@ struct AnalysisLoadingStateView: View {
                 if let info = viewModel.quickInfo {
                     AnalysisStockHeaderCard(info: info)
                 }
+
+                AnalysisSkeletonView()
+
                 VStack(spacing: Theme.Spacing.screen) {
                     let scanType = viewModel.jobStatus?.scanType ?? "standard"
                     if viewModel.isLoading || viewModel.jobStatus != nil {
@@ -94,6 +97,105 @@ struct AnalysisLoadingStateView: View {
             .padding(.horizontal, Theme.screenPadding)
             .padding(.bottom, 100)
         }
+    }
+}
+
+// MARK: - Skeleton View (matches Verdict + Factor Radar geometry)
+
+private struct AnalysisSkeletonView: View {
+    var body: some View {
+        VStack(spacing: Theme.Spacing.card) {
+            // Skeleton Card 1: Verdict card shape
+            VStack(alignment: .leading, spacing: Theme.Spacing.card) {
+                HStack {
+                    SkeletonPill(width: 90, height: 10)
+                    Spacer()
+                    SkeletonPill(width: 70, height: 8)
+                }
+
+                HStack(spacing: Theme.Spacing.standard) {
+                    SkeletonPill(width: 100, height: 36)
+                    Spacer()
+                    SkeletonCircle(size: 64)
+                }
+
+                SkeletonPill(width: 140, height: 8)
+
+                HStack(spacing: Theme.Spacing.xSmall) {
+                    ForEach(0..<5, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                            .fill(Theme.inkTertiary.opacity(0.08))
+                            .frame(height: 6)
+                    }
+                }
+            }
+            .padding(Theme.Spacing.cardInset)
+            .background(Theme.surfaceElevated)
+            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderSubtle, lineWidth: 0.5))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
+            .shimmerPlaceholder(isLoading: true)
+
+            // Skeleton Card 2: Summary text shape
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                SkeletonPill(width: 80, height: 8)
+                SkeletonLine()
+                SkeletonLine()
+                SkeletonLine(widthFraction: 0.7)
+            }
+            .padding(Theme.Spacing.cardInset)
+            .background(Theme.surfaceElevated)
+            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderSubtle, lineWidth: 0.5))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
+            .shimmerPlaceholder(isLoading: true)
+
+            // Skeleton Card 3: Price targets shape
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                SkeletonPill(width: 100, height: 8)
+                ForEach(0..<3, id: \.self) { _ in
+                    HStack {
+                        SkeletonPill(width: 70, height: 12)
+                        Spacer()
+                        SkeletonPill(width: 60, height: 14)
+                        SkeletonPill(width: 50, height: 12)
+                    }
+                }
+            }
+            .padding(Theme.Spacing.cardInset)
+            .background(Theme.surfaceElevated)
+            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderSubtle, lineWidth: 0.5))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
+            .shimmerPlaceholder(isLoading: true)
+        }
+    }
+}
+
+private struct SkeletonPill: View {
+    let width: CGFloat
+    let height: CGFloat
+    var body: some View {
+        RoundedRectangle(cornerRadius: height / 2)
+            .fill(Theme.inkTertiary.opacity(0.08))
+            .frame(width: width, height: height)
+    }
+}
+
+private struct SkeletonCircle: View {
+    let size: CGFloat
+    var body: some View {
+        Circle()
+            .fill(Theme.inkTertiary.opacity(0.08))
+            .frame(width: size, height: size)
+    }
+}
+
+private struct SkeletonLine: View {
+    var widthFraction: CGFloat = 1.0
+    var body: some View {
+        RoundedRectangle(cornerRadius: 3)
+            .fill(Theme.inkTertiary.opacity(0.08))
+            .frame(maxWidth: .infinity)
+            .frame(height: 12)
+            .frame(maxWidth: widthFraction < 1.0 ? UIScreen.main.bounds.width * widthFraction : .infinity)
     }
 }
 
