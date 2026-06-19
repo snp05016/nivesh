@@ -609,7 +609,7 @@ struct PortfolioScreen: View {
             }
             .padding(.horizontal, Theme.screenPadding)
         } else if viewModel.watchlistItems.isEmpty {
-            VStack(spacing: Theme.Spacing.xSmall) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                 BanknoteSignalBadge(text: "EMPTY", color: Theme.inkSecondary.opacity(0.4))
                 Text("Add stocks to your watchlist to track them here")
                     .font(Theme.serialNumberFont(size: 13))
