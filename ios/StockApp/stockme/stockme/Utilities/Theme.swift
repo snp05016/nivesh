@@ -283,6 +283,11 @@ enum Theme {
     static var screenPadding: CGFloat  { Spacing.screen * spacingMultiplier }
     static var sectionSpacing: CGFloat { Spacing.xLarge * spacingMultiplier }
 
+    /// Standard iOS tab-bar content height. Used to lift screen-level floating
+    /// buttons (e.g. the AI chatbot FAB, anchored to the full screen) up to the
+    /// same vertical plane as per-screen FABs, whose content stops at the tab bar.
+    static let tabBarHeight: CGFloat = 49
+
     // MARK: - Gradients
 
     static var securityThreadGradient: LinearGradient {
