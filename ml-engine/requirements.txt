@@ -1,11 +1,11 @@
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 torch>=2.0.0
-polars>=1.0.0
+polars>=0.20.0,<1.0.0
 onnxruntime>=1.18.0
 pydantic>=2.0.0
 lightgbm>=4.0.0
 numpy>=1.24.0
 yfinance>=0.2.40
-jugaad-data>=1.0.0
-celery[redis]>=5.4.0
+jugaad-data>=0.30
+httpx>=0.27.0
