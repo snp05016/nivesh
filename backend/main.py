@@ -451,7 +451,8 @@ async def _on_startup():
             from services.harvest_worker import harvest_youtube_metadata, harvest_news
             from services.portfolio_snapshot import snapshot_all_users
             from services.rag_ingestion import ingest_new
-            
+            from services.outcome_backfill import backfill_outcomes
+
             scheduler = AsyncIOScheduler()
             scheduler.add_job(harvest_youtube_metadata, "cron", hour=0, minute=30)
             scheduler.add_job(harvest_news, "cron", hour=1, minute=30)
@@ -459,6 +460,10 @@ async def _on_startup():
 
             # Nightly RAG refresh at 2 AM
             scheduler.add_job(ingest_new, "cron", hour=2, minute=0, id="rag_ingestion")
+
+            # Nightly outcome backfill at 3 AM — prices forward returns for
+            # resolved AnalysisHistory rows, feeding calibration engines
+            scheduler.add_job(backfill_outcomes, "cron", hour=3, minute=0, id="outcome_backfill")
 
             scheduler.start()
             logging.info("Main APScheduler started.")
