@@ -50,6 +50,8 @@ def compute_staleness(
         reasons.append("never analysed")
     else:
         now_uae = datetime.now(timezone.utc) + UAE_OFFSET
+        if last_analysis_date.tzinfo is None:
+            last_analysis_date = last_analysis_date.replace(tzinfo=timezone.utc)
         age_days = (now_uae - last_analysis_date).days
         if age_days > 30:
             score += 40
