@@ -30,7 +30,7 @@ async def predict_cross_section(ticker: str, ohlcv_data: list) -> dict | None:
     try:
         async with httpx.AsyncClient(timeout=ML_ENGINE_TIMEOUT) as client:
             response = await client.post(
-                f"{ML_ENGINE_URL}/predict/cross-section",
+                f"{ML_ENGINE_URL}/predict/single",
                 json={
                     "ticker": ticker,
                     "ohlcv_data": ohlcv_data,

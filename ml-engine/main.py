@@ -87,10 +87,17 @@ class CrossSectionRequest(BaseModel):
 class SingleStockRequest(BaseModel):
     """Single-stock prediction request."""
     ohlcv: list[OHLCVRow] = Field(
-        ...,
-        min_length=60,
+        default_factory=list,
+        min_length=0,
         max_length=500,
         description="OHLCV data — minimum 60 rows for feature computation",
+        alias="ohlcv",
+    )
+    ohlcv_data: list[OHLCVRow] = Field(
+        default_factory=list,
+        min_length=0,
+        max_length=500,
+        description="OHLCV data (alternate key from Nivesh orchestrator)",
     )
     ticker: str = Field(default="UNKNOWN", description="Stock ticker for logging")
     model_type: str = Field(
@@ -277,7 +284,7 @@ async def predict_single(req: SingleStockRequest) -> PredictionResult:
 
     t0 = time.perf_counter()
 
-    df = _ohlcv_to_polars(req.ohlcv)
+    df = _ohlcv_to_polars(req.ohlcv_data or req.ohlcv)
 
     try:
         features_df = _feature_computer.compute_all(df)
