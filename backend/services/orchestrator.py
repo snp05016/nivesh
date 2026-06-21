@@ -1155,6 +1155,22 @@ def _normalize_response(result: dict, scan_type: str = "standard", quant_payload
             "description": "Not computed.",
         }
 
+    # 24c. ML Engine cross-section prediction — optional, may be None
+    if result.get("ml_direction") is None:
+        result["ml_direction"] = None
+    else:
+        try:
+            result["ml_direction"] = int(result["ml_direction"])
+        except (ValueError, TypeError):
+            result["ml_direction"] = None
+    if result.get("ml_confidence") is None:
+        result["ml_confidence"] = None
+    else:
+        try:
+            result["ml_confidence"] = float(result["ml_confidence"])
+        except (ValueError, TypeError):
+            result["ml_confidence"] = None
+
     # 25. Deterministic Nivesh Hierarchy Enforcement
     gov_score = result.get("governance_score", 100)
     if isinstance(gov_score, (int, float)) and gov_score < 40:
@@ -1409,6 +1425,19 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
         from services.math_engines.currency_commodity import CurrencyCommodityEngine
         from services.math_engines.monte_carlo_bootstrap import MonteCarloBootstrapEngine
         from database import get_session as _cal_get_session
+        # --- ML Engine cross-section client ---
+        from services.qlib_engine.ml_client import predict_cross_section_sync
+
+        # Prepare OHLCV list for ml-engine cross-section call
+        _cal_ohlcv: list = []
+        if price_df is not None and not price_df.empty:
+            _ohlcv_cols = {"Open": "open", "High": "high", "Low": "low",
+                           "Close": "close", "Volume": "volume"}
+            for _, row in price_df.tail(252).iterrows():
+                _cal_ohlcv.append({
+                    _ohlcv_cols.get(col, col.lower()): float(row[col])
+                    for col in _ohlcv_cols if col in row.index
+                })
 
         _cal_tasks = {
             "agreement": lambda: compute_signal_agreement(agent_reports),
@@ -1437,6 +1466,9 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
             # --- Tier B: Deterministic modifiers ---
             "currency_commodity": lambda: CurrencyCommodityEngine().compute(
                 base_symbol, {"sector": final_state.get("sector", "") if isinstance(final_state, dict) else ""}),
+            # --- ML Engine cross-section prediction ---
+            "ml_cross_section": lambda: predict_cross_section_sync(
+                base_symbol, _cal_ohlcv) if _cal_ohlcv else None,
         }
         _cal_results: dict = {}
         with ThreadPoolExecutor(max_workers=8) as _cal_executor:
@@ -1464,6 +1496,7 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
         venn_abers_raw    = _cal_results.get("venn_abers", {})
         rank_ic_raw       = _cal_results.get("rank_ic", {})
         currency_raw      = _cal_results.get("currency_commodity", {})
+        ml_cross_raw      = _cal_results.get("ml_cross_section")
 
         # Extract outputs from engine results (each returns {status, output})
         cal_metrics_out = cal_metrics_raw.get("output", {}) if isinstance(cal_metrics_raw, dict) else {}
@@ -1504,6 +1537,13 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
             # Venn-Abers calibrated confidence (for quant_engine override)
             if venn_abers_out.get("calibrated_confidence") is not None:
                 final_state["_venn_abers_confidence"] = venn_abers_out["calibrated_confidence"]
+            # ML Engine cross-section prediction
+            if isinstance(ml_cross_raw, dict) and ml_cross_raw.get("direction") is not None:
+                final_state["_ml_direction"] = int(ml_cross_raw["direction"])
+                final_state["_ml_confidence"] = float(ml_cross_raw.get("confidence", 0.0))
+            else:
+                final_state["_ml_direction"] = None
+                final_state["_ml_confidence"] = None
 
         def _nf(v, default=0):
             """Return default if v is None, else v. Prevents None.__format__ errors."""
@@ -1524,6 +1564,11 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
         if currency_out.get("modifier", 0) != 0:
             _cal_summary_lines.append(
                 f"Macro Spillover: {currency_out['modifier']:+.2%}")
+        if isinstance(ml_cross_raw, dict) and ml_cross_raw.get("direction") is not None:
+            _ml_dir_label = {-1: "BEARISH", 0: "NEUTRAL", 1: "BULLISH"}.get(
+                ml_cross_raw.get("direction"), "UNKNOWN")
+            _cal_summary_lines.append(
+                f"ML X-Section: {_ml_dir_label} (conf={ml_cross_raw.get('confidence', 0):.3f})")
         if mc_out.get("monte_carlo_cvar_99") is not None:
             _cal_summary_lines.append(
                 f"MC CVaR-99: {mc_out['monte_carlo_cvar_99']:.2%} | P(+): {_nf(mc_out.get('prob_positive'), 0):.0%}")
@@ -1994,6 +2039,9 @@ def analyze(
             result["monte_carlo"] = final_state["_monte_carlo"]
         if final_state.get("_currency_commodity_spillover"):
             result["currency_commodity_spillover"] = final_state["_currency_commodity_spillover"]
+        if final_state.get("_ml_direction") is not None:
+            result["ml_direction"] = final_state["_ml_direction"]
+            result["ml_confidence"] = final_state["_ml_confidence"]
 
     result["ticker"] = ticker.upper()
     result["exchange"] = exchange
