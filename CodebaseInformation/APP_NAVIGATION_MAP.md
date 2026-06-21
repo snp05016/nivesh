@@ -1,6 +1,6 @@
 # Nivesh App Navigation Map
 
-> Last verified: 2026-06-16 from `ContentView.swift` and current Swift screen files.
+> Last verified: 2026-06-21 from `ContentView.swift` and current Swift screen files.
 
 ## Global Surfaces
 
@@ -8,7 +8,7 @@
 |---|---|---|
 | Authentication gate | `ContentView.swift`, `LoginScreen.swift` | Shows login when `AuthManager.isLoggedIn` is false |
 | Launch overlay | `LaunchSequenceView.swift` | Controlled by `ContentView` launch state |
-| Global Copilot | `CopilotScreen.swift` | Applied with `.withCopilot()` on root `ContentView` |
+| Global Copilot | `CopilotScreen.swift` | Applied with `.withCopilot()` exclusively on the authenticated `mainTabView` (hidden on Login) |
 | Tutorial/global overlays | `GlobalOverlayModifier` in `ContentView.swift` | Handles tutorial and app-level overlays |
 
 ## Bottom Tab Bar
@@ -51,6 +51,8 @@ Common stock navigation flow:
 2. `StockProfileView` shows the high-level profile, price/history context, and related actions.
 3. `AnalysisScreen` shows the AI analysis output and supporting sections from `Views/Analysis/`.
 4. `CompareScreen` is available for side-by-side stock comparison flows.
+
+*Note on Back Navigation:* The entire application enforces a global `UINavigationBarAppearance` via `ContentView.swift`. Nested views explicitly hide the native back button and inject the custom `BanknoteBackButton` component to guarantee a device-agnostic, premium "Chevron + Coin" aesthetic without default iOS previous-screen titles.
 
 ## Portfolio Surfaces
 

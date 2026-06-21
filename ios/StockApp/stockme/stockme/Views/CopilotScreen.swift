@@ -540,11 +540,7 @@ struct CopilotFloatingButtonModifier: ViewModifier {
                     }
                     .buttonStyle(EKPressStyle())
                     .padding(.trailing, Theme.screenPadding + Theme.Spacing.standard)
-                    // This FAB is anchored to the full screen, so it floats over
-                    // the tab bar. Add the tab-bar height so it sits on the same
-                    // vertical plane as per-screen FABs (e.g. the Portfolio "+"),
-                    // whose content stops at the top of the tab bar.
-                    .padding(.bottom, Theme.Spacing.xLarge + Theme.Spacing.large + Theme.tabBarHeight)
+                    .padding(.bottom, Theme.Spacing.standard + Theme.tabBarHeight)
                 }
             }
         }

@@ -414,7 +414,7 @@ struct PortfolioScreen: View {
                                 .padding(.trailing, Theme.Spacing.xLarge + Theme.Spacing.large + Theme.Spacing.standard)
                         }
                         .padding(.horizontal, Theme.screenPadding)
-                        .padding(.bottom, Theme.Spacing.xLarge + Theme.Spacing.large)
+                        .padding(.bottom, Theme.Spacing.standard)
                     }
                 } else if selectedTab == 1 {
                     VStack {
@@ -423,7 +423,7 @@ struct PortfolioScreen: View {
                             addWatchlistButton
                             Spacer()
                         }
-                        .padding(.bottom, Theme.Spacing.xLarge + Theme.Spacing.large)
+                        .padding(.bottom, Theme.Spacing.standard)
                     }
                 }
             }

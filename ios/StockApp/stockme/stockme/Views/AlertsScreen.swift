@@ -178,7 +178,7 @@ struct AlertsScreen: View {
                     }
                 }
                 .padding(.horizontal, Theme.screenPadding)
-                .padding(.bottom, Theme.Spacing.xLarge + Theme.Spacing.large)
+                .padding(.bottom, Theme.Spacing.standard)
                 .background(Theme.canvas.opacity(0.85))
             }
         }
