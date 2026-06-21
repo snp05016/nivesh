@@ -287,6 +287,12 @@ struct AnalysisScreen: View {
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: Theme.Spacing.medium) {
+                    // Stock profile quick-access while analysis is running
+                    NavigationLink(value: StockProfileDest(ticker: ticker, exchange: portfolioHolding?.exchange ?? "NSE")) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .foregroundStyle(Theme.securityGold)
+                    }
+                    .buttonStyle(EKPressStyle())
                     // Screen C — price + ChangeBadge inline on the right
                     if let info = viewModel.quickInfo {
                         Text(IndianFormatter.price(livePrice ?? info.price ?? 0))

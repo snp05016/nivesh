@@ -35,7 +35,7 @@ class StockProfileViewModel: ObservableObject {
     }
 
     func fetchOverview() async {
-        guard quickInfo == nil else { return }
+        guard quickInfo?.recentNews == nil else { return }
         await MainActor.run { overviewLoading = true }
         let info = await NetworkManager.shared.quickInfo(ticker: ticker, exchange: exchange)
         await MainActor.run {
