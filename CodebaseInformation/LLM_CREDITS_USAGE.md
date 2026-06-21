@@ -1,6 +1,6 @@
 # Nivesh LLM Credits Usage Map
 
-> Last verified: 2026-06-16 from `backend/services/llm_utils.py`, routers, and service call sites. Costs are qualitative because actual usage depends on request size, cache hits, retries, and provider pricing.
+> Last verified: 2026-06-21 from `backend/services/llm_utils.py`, routers, and service call sites. Costs are qualitative because actual usage depends on request size, cache hits, retries, and provider pricing.
 
 ## Canonical Model Constants
 

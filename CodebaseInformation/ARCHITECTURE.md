@@ -10,6 +10,7 @@ Nivesh is an Indian equity intelligence app with three main surfaces:
 |---|---|
 | Backend | FastAPI app in `backend/main.py` with routers in `backend/routers/` |
 | Data and AI services | Python services in `backend/services/`, including LangGraph orchestration, market data, screeners, harvesters, and portfolio analytics |
+| Quantitative Engines | Math engines (`backend/services/math_engines/`) for risk/scoring and Qlib ML skeleton (`backend/services/qlib_engine/`) |
 | iOS app | SwiftUI app in `ios/StockApp/stockme/stockme/` with Banknote-themed design tokens and components |
 
 ## Backend

@@ -33,6 +33,8 @@
 | `backend/services/llm_utils.py` | Canonical LLM model constants and DeepSeek client helper |
 | `backend/services/nse_data_provider.py` | NSE/yfinance data provider with `jugaad-data` support |
 | `backend/services/cache_service.py` | Redis-backed cache with fallback behavior |
+| `backend/services/math_engines/` | Quantitative models (Vasicek Shrinkage, Cornish-Fisher, Broken Arrow) |
+| `backend/services/qlib_engine/` | Microsoft Qlib ML integration skeleton (requires Python 3.10 microservice) |
 | `backend/services/*_engine.py` | Deterministic analysis engines and quantitative helpers |
 | `backend/database.py` | SQLAlchemy engine/session setup and ORM models |
 
