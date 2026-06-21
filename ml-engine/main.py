@@ -60,7 +60,7 @@ _inference_engine: InferenceEngine | None = None
 
 class OHLCVRow(BaseModel):
     """Single day of OHLCV data."""
-    date: str
+    date: str | None = None
     open: float
     high: float
     low: float
