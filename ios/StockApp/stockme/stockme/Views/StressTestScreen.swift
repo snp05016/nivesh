@@ -546,33 +546,7 @@ struct StressCheckpointTracker: View {
             }
             .padding(.horizontal, Theme.screenPadding)
 
-            // Active stage label + progress bar
-            VStack(spacing: Theme.Spacing.small) {
-                if !stage.isEmpty {
-                    Text(stage)
-                        .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .caption))
-                        .foregroundColor(Theme.inkSecondary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .animation(.none, value: stage)
-                }
-
-                ProgressView(
-                    value: Double(min(max(progressPct, 0), 100)),
-                    total: 100
-                )
-                .progressViewStyle(.linear)
-                .tint(Theme.securityGold)
-                .animation(.easeInOut(duration: 0.5), value: progressPct)
-
-                HStack {
-                    Text("\(progressPct)% complete")
-                        .font(Theme.serialNumberFont(size: 11, relativeTo: .caption2))
-                        .foregroundColor(Theme.inkTertiary)
-                    Spacer()
-                }
-            }
-            .padding(.horizontal, Theme.screenPadding)
+            // Checkpoint circles only — stage + progress shown in the top pill
         }
         .padding(.vertical, Theme.Spacing.card)
         .banknoteCard()
@@ -643,29 +617,38 @@ struct StressTestScreen: View {
                     }
                 }
 
-                // RUN / CANCEL BUTTON
+                // RUN / CANCEL BUTTON with stage + progress when loading
                 if vm.isLoading {
-                    Button {
-                        vm.cancel()
-                        HapticManager.selection()
-                    } label: {
-                        HStack(spacing: Theme.Spacing.standard) {
-                            Image(systemName: "xmark.circle")
-                                .font(Theme.engravedSerif(size: 16))
-                            Text("Cancel Simulation")
-                                .font(Theme.roundedSecondary(size: 16, weight: .semibold, relativeTo: .headline))
+                    VStack(spacing: Theme.Spacing.tight) {
+                        if !vm.progressStage.isEmpty {
+                            Text(vm.progressStage)
+                                .font(Theme.engravedSerif(size: 12, weight: .regular, relativeTo: .caption))
+                                .foregroundColor(Theme.inkSecondary)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(2)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, Theme.Spacing.card)
-                        .background(Theme.bearRedLight)
-                        .foregroundColor(Theme.bearRed)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
-                                .strokeBorder(Theme.bearRed.opacity(0.4), lineWidth: 1)
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
+                        Button {
+                            vm.cancel()
+                            HapticManager.selection()
+                        } label: {
+                            HStack(spacing: Theme.Spacing.standard) {
+                                Image(systemName: "xmark.circle")
+                                    .font(Theme.engravedSerif(size: 16))
+                                Text("Cancel Simulation — \(vm.progressPct)%")
+                                    .font(Theme.roundedSecondary(size: 14, weight: .semibold, relativeTo: .headline))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, Theme.Spacing.card)
+                            .background(Theme.bearRedLight)
+                            .foregroundColor(Theme.bearRed)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
+                                    .strokeBorder(Theme.bearRed.opacity(0.4), lineWidth: 1)
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
+                        }
+                        .buttonStyle(EKPressStyle())
                     }
-                    .buttonStyle(EKPressStyle())
                     .padding(.horizontal, Theme.screenPadding)
                 } else {
                     Button {
