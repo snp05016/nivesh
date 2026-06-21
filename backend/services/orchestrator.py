@@ -1433,11 +1433,16 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
         if price_df is not None and not price_df.empty:
             _ohlcv_cols = {"Open": "open", "High": "high", "Low": "low",
                            "Close": "close", "Volume": "volume"}
-            for _, row in price_df.tail(252).iterrows():
-                _cal_ohlcv.append({
+            for idx, row in price_df.tail(252).iterrows():
+                d = {
                     _ohlcv_cols.get(col, col.lower()): float(row[col])
                     for col in _ohlcv_cols if col in row.index
-                })
+                }
+                # Add date (required by ml-engine OHLCVRow) and vwap fallback
+                d["date"] = str(idx.date()) if hasattr(idx, "date") else str(idx)
+                if "vwap" not in d:
+                    d["vwap"] = d.get("close", 0.0)
+                _cal_ohlcv.append(d)
 
         _cal_tasks = {
             "agreement": lambda: compute_signal_agreement(agent_reports),
