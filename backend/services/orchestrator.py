@@ -1506,12 +1506,9 @@ def analyze(
     from services.checkpoints import CheckpointEmitter
     emitter = CheckpointEmitter(job_id)
 
-    # Fix 2.38: Generate anonymous session hash for unauthenticated requests.
-    # Prevents duplicate LLM cycles from the same public session.
-    if user_id is None:
-        import hashlib as _hl
-        _anon_key = f"{full_ticker}|{analysis_date}|public"
-        user_id = abs(hash(_anon_key)) % (10 ** 8)
+    # Fix 2.38 was generating a fake hash-based user_id for anonymous requests,
+    # but it breaks the FK constraint on analysis_history.user_id → users.id.
+    # Anonymous dedup is already handled by the ticker+date cache check above.
 
     with get_session() as session:
         # 1. Query Cache: exact scan_type match only.
