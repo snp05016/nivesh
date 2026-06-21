@@ -299,14 +299,16 @@ class QuantitativeEngine:
 
     @staticmethod
     def _compute_calibrated_confidence(
-        regime: str, shap_drivers: Dict[str, float], tail_risks: Dict[str, bool]
+        regime: str, shap_drivers: Dict[str, float], tail_risks: Dict[str, bool],
+        venn_abers_base: float = None,
     ) -> Tuple[float, Dict[str, float]]:
         """Compute calibrated confidence score (0.05–0.95).
 
-        Base confidence of 0.50, adjusted by SHAP driver sum,
+        Base confidence from Venn-Abers isotonic calibration when available,
+        otherwise defaults to 0.50. Adjusted by SHAP driver sum,
         multiplied by regime factor, then penalized for tail risks.
         """
-        base_probability = 0.50
+        base_probability = venn_abers_base if venn_abers_base is not None else 0.50
         net_shap_adjustment = sum(shap_drivers.values())
         adjusted_confidence = base_probability + net_shap_adjustment
 

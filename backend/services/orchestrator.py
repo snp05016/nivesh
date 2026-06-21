@@ -1132,6 +1132,29 @@ def _normalize_response(result: dict, scan_type: str = "standard", quant_payload
             "tail_risk_flags", {}
         )
 
+    # 24b. Calibration diagnostics — Brier/ECE/IC/Venn-Abers from math_engines
+    if not isinstance(result.get("calibration_diagnostics"), dict):
+        result["calibration_diagnostics"] = {
+            "brier_score": None,
+            "ece": None,
+            "rank_ic": None,
+            "sample_size": 0,
+            "interpretation": "Calibration data not yet available.",
+        }
+    if not isinstance(result.get("confidence_interval"), list):
+        result["confidence_interval"] = [None, None]
+    if not isinstance(result.get("monte_carlo"), dict):
+        result["monte_carlo"] = {
+            "cvar_99": None,
+            "expected_return": None,
+            "prob_positive": None,
+        }
+    if not isinstance(result.get("currency_commodity_spillover"), dict):
+        result["currency_commodity_spillover"] = {
+            "modifier": 0.0,
+            "description": "Not computed.",
+        }
+
     # 25. Deterministic Nivesh Hierarchy Enforcement
     gov_score = result.get("governance_score", 100)
     if isinstance(gov_score, (int, float)) and gov_score < 40:
@@ -1337,6 +1360,12 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
     return raw_output, pk_signal, deep_scan_used
 
 
+def _run_engine_with_session(engine_cls, ticker: str, data: dict, get_session_fn):
+    """Helper: run a math engine that needs a DB session, opening/closing one safely."""
+    with get_session_fn() as session:
+        return engine_cls().compute(ticker, data, session=session)
+
+
 def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -> str:
     """Phase 9: Confidence Calibration Pipeline with 8 parallel tasks.
     Prepends calibration_block to raw_output. Returns raw_output unchanged on error.
@@ -1373,6 +1402,14 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
         } if isinstance(final_state, dict) else {}
 
         # Parallelize all independent calibration HTTP/DB calls with ThreadPoolExecutor
+        # --- New calibration engine imports ---
+        from services.math_engines.calibration_metrics import CalibrationMetricsEngine
+        from services.math_engines.venn_abers import VennAbersEngine
+        from services.math_engines.information_coefficient import InformationCoefficientEngine
+        from services.math_engines.currency_commodity import CurrencyCommodityEngine
+        from services.math_engines.monte_carlo_bootstrap import MonteCarloBootstrapEngine
+        from database import get_session as _cal_get_session
+
         _cal_tasks = {
             "agreement": lambda: compute_signal_agreement(agent_reports),
             "delivery":  lambda: get_delivery_data(base_symbol),
@@ -1388,6 +1425,18 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
                 "momentum_score": regime_indicators.get("momentum_score", 0),
             }),
             "conformal": lambda: compute_conformal_bounds(ns_ticker_for_cal, current_price_raw, price_df),
+            # --- Tier A: Statistical calibration ---
+            "cal_metrics": lambda: _run_engine_with_session(
+                CalibrationMetricsEngine, base_symbol, {}, _cal_get_session),
+            "venn_abers": lambda: _run_engine_with_session(
+                VennAbersEngine, base_symbol,
+                {"raw_confidence": regime_indicators.get("regime_confidence_multiplier", 0.5)},
+                _cal_get_session),
+            "rank_ic": lambda: _run_engine_with_session(
+                InformationCoefficientEngine, base_symbol, {}, _cal_get_session),
+            # --- Tier B: Deterministic modifiers ---
+            "currency_commodity": lambda: CurrencyCommodityEngine().compute(
+                base_symbol, {"sector": final_state.get("sector", "") if isinstance(final_state, dict) else ""}),
         }
         _cal_results: dict = {}
         with ThreadPoolExecutor(max_workers=8) as _cal_executor:
@@ -1410,9 +1459,76 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
         analogue_data     = _cal_results.get("analogues", {})
         conformal_data    = _cal_results.get("conformal", {})
 
+        # --- Tier A: Extract statistical calibration results ---
+        cal_metrics_raw   = _cal_results.get("cal_metrics", {})
+        venn_abers_raw    = _cal_results.get("venn_abers", {})
+        rank_ic_raw       = _cal_results.get("rank_ic", {})
+        currency_raw      = _cal_results.get("currency_commodity", {})
+
+        # Extract outputs from engine results (each returns {status, output})
+        cal_metrics_out = cal_metrics_raw.get("output", {}) if isinstance(cal_metrics_raw, dict) else {}
+        venn_abers_out  = venn_abers_raw.get("output", {}) if isinstance(venn_abers_raw, dict) else {}
+        rank_ic_out     = rank_ic_raw.get("output", {}) if isinstance(rank_ic_raw, dict) else {}
+        currency_out    = currency_raw.get("output", {}) if isinstance(currency_raw, dict) else {}
+
+        # --- Tier B: Monte-Carlo bootstrap (depends on analogue_data) ---
+        mc_out = {}
+        try:
+            analogue_returns = analogue_data.get("analogue_returns", []) if isinstance(analogue_data, dict) else []
+            if analogue_returns and len(analogue_returns) >= 5:
+                mc_result = MonteCarloBootstrapEngine().compute(
+                    base_symbol, {"analogue_returns": analogue_returns})
+                mc_out = mc_result.get("output", {}) if isinstance(mc_result, dict) else {}
+        except Exception as _mc_err:
+            print(f"[CALIBRATION] Monte-Carlo bootstrap failed: {_mc_err}")
+
+        # Store calibration results in final_state for _normalize_response to pick up
+        if isinstance(final_state, dict):
+            final_state["_calibration_diagnostics"] = {
+                "brier_score": cal_metrics_out.get("brier_score"),
+                "ece": cal_metrics_out.get("ece"),
+                "rank_ic": rank_ic_out.get("rank_ic"),
+                "sample_size": cal_metrics_out.get("sample_size", 0),
+                "interpretation": cal_metrics_out.get("interpretation", "Calibration data not yet available."),
+            }
+            final_state["_confidence_interval"] = venn_abers_out.get("confidence_interval", [None, None])
+            final_state["_monte_carlo"] = {
+                "cvar_99": mc_out.get("monte_carlo_cvar_99"),
+                "expected_return": mc_out.get("expected_return"),
+                "prob_positive": mc_out.get("prob_positive"),
+            }
+            final_state["_currency_commodity_spillover"] = {
+                "modifier": currency_out.get("modifier", 0.0),
+                "description": currency_out.get("description", "Not computed."),
+            }
+            # Venn-Abers calibrated confidence (for quant_engine override)
+            if venn_abers_out.get("calibrated_confidence") is not None:
+                final_state["_venn_abers_confidence"] = venn_abers_out["calibrated_confidence"]
+
         def _nf(v, default=0):
             """Return default if v is None, else v. Prevents None.__format__ errors."""
             return default if v is None else v
+
+        # Build calibration summary lines
+        _cal_summary_lines = []
+        if cal_metrics_out.get("brier_score") is not None:
+            _cal_summary_lines.append(
+                f"Brier: {cal_metrics_out['brier_score']:.4f} | ECE: {_nf(cal_metrics_out.get('ece'), 0):.4f}")
+        if rank_ic_out.get("rank_ic") is not None:
+            _cal_summary_lines.append(
+                f"Rank IC: {rank_ic_out['rank_ic']:.4f} (p={_nf(rank_ic_out.get('p_value'), 1):.4f})")
+        if venn_abers_out.get("calibrated_confidence") is not None:
+            _ci = venn_abers_out.get("confidence_interval", [0, 0])
+            _cal_summary_lines.append(
+                f"VA Calibrated: {venn_abers_out['calibrated_confidence']:.3f} [{_ci[0]:.3f}–{_ci[1]:.3f}]")
+        if currency_out.get("modifier", 0) != 0:
+            _cal_summary_lines.append(
+                f"Macro Spillover: {currency_out['modifier']:+.2%}")
+        if mc_out.get("monte_carlo_cvar_99") is not None:
+            _cal_summary_lines.append(
+                f"MC CVaR-99: {mc_out['monte_carlo_cvar_99']:.2%} | P(+): {_nf(mc_out.get('prob_positive'), 0):.0%}")
+
+        _cal_extra = "\n".join(_cal_summary_lines)
 
         calibration_block = f"""
 === CALIBRATION ENGINE OUTPUT (AUTHORITATIVE) ===
@@ -1426,6 +1542,7 @@ Bear Adj: {_nf(bear_data.get('adjustment'), 0):+.3f}
 Auditor: {_nf(auditor_data.get('auditor_name'), '')} ({_nf(auditor_data.get('tenure_years'), 0)}y Big-4:{_nf(auditor_data.get('is_big4'), False)})
 Analogues: {_nf(analogue_data.get('k_found'), 0)} WR:{_nf(analogue_data.get('historical_win_rate_pct'), 'N/A')}%
 Bounds 3M: {_nf((conformal_data.get('short_term_3m') or {}).get('lower'), 'N/A')}–{_nf((conformal_data.get('short_term_3m') or {}).get('upper'), 'N/A')}
+{_cal_extra}
 === END CALIBRATION ===
 """
         return calibration_block + "\n\n" + raw_output
@@ -1866,6 +1983,18 @@ def analyze(
         language=language
     )
     result = _normalize_response(result, scan_type, quant_payload)
+
+    # Inject statistical calibration results from the calibration pipeline
+    if isinstance(final_state, dict):
+        if final_state.get("_calibration_diagnostics"):
+            result["calibration_diagnostics"] = final_state["_calibration_diagnostics"]
+        if final_state.get("_confidence_interval"):
+            result["confidence_interval"] = final_state["_confidence_interval"]
+        if final_state.get("_monte_carlo"):
+            result["monte_carlo"] = final_state["_monte_carlo"]
+        if final_state.get("_currency_commodity_spillover"):
+            result["currency_commodity_spillover"] = final_state["_currency_commodity_spillover"]
+
     result["ticker"] = ticker.upper()
     result["exchange"] = exchange
     result["_cache_type"] = "FULL AI"
