@@ -39,8 +39,8 @@ async def predict_cross_section(ticker: str, ohlcv_data: list) -> dict | None:
             if response.status_code == 200:
                 data = response.json()
                 return {
-                    "direction": data.get("direction"),
-                    "confidence": data.get("confidence"),
+                    "direction": data.get("expected_direction"),
+                    "confidence": data.get("confidence_score"),
                 }
             return None
     except (
