@@ -639,3 +639,21 @@ class StockUniverse(Base):
         Index("ix_stock_universe_sector", "sector"),
     )
 
+
+class Alpha158Feature(Base):
+    """Nightly computed Alpha158 features for stock universe.
+    Features dict maps feature name to scaled/unscaled float value.
+    """
+    __tablename__ = "alpha158_features"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ticker = Column(String(30), nullable=False, index=True)
+    date = Column(String(20), nullable=False, index=True)
+    features = Column(JSON, nullable=False, default="{}")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("ticker", "date", name="uq_alpha158_ticker_date"),
+    )
+
+
