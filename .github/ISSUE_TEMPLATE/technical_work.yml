@@ -1,0 +1,66 @@
+name: Technical work
+description: Track refactoring, maintenance, migrations, tooling, or operational changes
+title: "chore(<area>): "
+labels:
+  - "type:maintenance"
+  - "status:ready"
+body:
+  - type: dropdown
+    id: change_type
+    attributes:
+      label: Change type
+      options:
+        - Refactor
+        - Maintenance
+        - Migration
+        - Tooling or CI
+        - Documentation
+        - Security hardening
+        - Operational change
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or obligation
+      description: Explain the technical debt, operational need, or required change with repository evidence.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: List exact components in scope and explicit non-goals.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Provide a testable completion checklist.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: List static checks, tests, server checks, migration checks, and inspection steps.
+    validations:
+      required: true
+  - type: textarea
+    id: rollout
+    attributes:
+      label: Rollout and rollback
+      description: Describe deployment order, data migration, observability, and rollback. Write "Not applicable" when none apply.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Risks and dependencies
+      description: Link blocked work and identify compatibility, security, data, or operational risks.
+    validations:
+      required: true

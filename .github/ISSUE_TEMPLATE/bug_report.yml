@@ -1,0 +1,75 @@
+name: Bug report
+description: Report a reproducible defect or regression
+title: "fix(<area>): "
+labels:
+  - "type:bug"
+  - "status:ready"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search open and closed issues before submitting. Do not disclose security vulnerabilities here; use a private security advisory.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the observed behavior and why it is incorrect.
+      placeholder: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the smallest reliable sequence that demonstrates the problem.
+      placeholder: |
+        1. Start from...
+        2. Run...
+        3. Observe...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: State the correct result.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add logs, screenshots, failing checks, stack traces, or source references. Remove secrets and personal data.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: List affected components, environments, and known unaffected areas.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Provide a testable checklist that proves the defect is fixed.
+      placeholder: |
+        - [ ] The reproduction no longer fails.
+        - [ ] A regression check covers the failure.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: List permitted commands and manual checks. Backend verification must run on the remote server.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Risks and dependencies
+      description: Link blocked work and describe deployment, migration, rollback, or compatibility risks.
+    validations:
+      required: true
