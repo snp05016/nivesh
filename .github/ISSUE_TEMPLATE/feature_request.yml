@@ -1,0 +1,68 @@
+name: Feature request
+description: Propose a user or operational capability
+title: "feat(<area>): "
+labels:
+  - "type:feature"
+  - "status:ready"
+body:
+  - type: markdown
+    attributes:
+      value: Search open and closed issues before proposing a duplicate capability.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: State who needs the capability, what they need, and why.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Context and evidence
+      description: Add user context, source references, screenshots, metrics, or examples.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Separate in-scope behavior from explicit non-goals.
+      placeholder: |
+        In scope:
+        - ...
+
+        Out of scope:
+        - ...
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Provide observable, testable completion criteria.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: design
+    attributes:
+      label: Proposed behavior
+      description: Describe the user flow, API contract, data flow, or operational workflow without prescribing unsupported architecture.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: List required automated checks, manual checks, and performance or accessibility evidence.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Risks and dependencies
+      description: Link blocked work and describe migration, deployment, security, rollback, and compatibility concerns.
+    validations:
+      required: true
