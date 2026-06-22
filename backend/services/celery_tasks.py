@@ -35,9 +35,22 @@ try:
         except Exception as exc:
             raise self.retry(exc=exc, countdown=2 ** self.request.retries)
 
+    @celery_app.task(bind=True, max_retries=3)
+    def run_nightly_materialization_task(self, target_date: str, scaler_type: str = "RobustZScoreNorm"):
+        """Celery task wrapper for nightly feature materialization."""
+        try:
+            from services.nightly_pipeline import run_nightly_materialization
+            return run_nightly_materialization(target_date=target_date, scaler_type=scaler_type)
+        except Exception as exc:
+            raise self.retry(exc=exc, countdown=2 ** self.request.retries)
+
 except ImportError:
     CELERY_AVAILABLE = False
     celery_app = None
 
     def run_analysis_task(*args, **kwargs):
         raise RuntimeError("Celery not installed. Run: pip install celery redis")
+
+    def run_nightly_materialization_task(*args, **kwargs):
+        raise RuntimeError("Celery not installed. Run: pip install celery redis")
+
