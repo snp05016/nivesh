@@ -182,54 +182,52 @@ struct NLScreenerScreen: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Theme.canvas.ignoresSafeArea()
-                
-                VStack(spacing: Theme.Spacing.standard) {
-                    searchBar
-                    
-                    if viewModel.isLoading {
-                        Spacer()
-                        ProgressView("Analyzing query...")
-                        Spacer()
-                    } else if let error = viewModel.errorMessage {
-                        NLScreenerErrorState(
-                            message: error,
-                            diagnostic: viewModel.errorDiagnostic ?? ErrorDiagnostic(
-                                endpoint: "\(NetworkManager.shared.baseURL)/api/v1/screener/natural-language",
-                                swiftFile: #fileID
-                            ),
-                            retryAction: { viewModel.performSearch() }
-                        )
-                    } else {
-                        ScrollView {
-                            VStack(spacing: Theme.Spacing.card) {
-                                if !viewModel.parsedFilters.isEmpty {
-                                    filtersSection
-                                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
-                                }
-                                
-                                if !filteredResults.isEmpty {
-                                    resultsSection
-                                } else if !viewModel.query.isEmpty && !viewModel.isLoading {
-                                    Text("No stocks matched your criteria.")
-                                        .font(Theme.engravedSerif(size: 16, relativeTo: .body))
-                                        .foregroundColor(Theme.inkSecondary)
-                                        .padding(.top, Theme.sectionSpacing)
-                                } else {
-                                    historySection
-                                }
+        ZStack {
+            Theme.canvas.ignoresSafeArea()
+
+            VStack(spacing: Theme.Spacing.standard) {
+                searchBar
+
+                if viewModel.isLoading {
+                    Spacer()
+                    ProgressView("Analyzing query...")
+                    Spacer()
+                } else if let error = viewModel.errorMessage {
+                    NLScreenerErrorState(
+                        message: error,
+                        diagnostic: viewModel.errorDiagnostic ?? ErrorDiagnostic(
+                            endpoint: "\(NetworkManager.shared.baseURL)/api/v1/screener/natural-language",
+                            swiftFile: #fileID
+                        ),
+                        retryAction: { viewModel.performSearch() }
+                    )
+                } else {
+                    ScrollView {
+                        VStack(spacing: Theme.Spacing.card) {
+                            if !viewModel.parsedFilters.isEmpty {
+                                filtersSection
+                                GuillocheDivider().padding(.horizontal, Theme.screenPadding)
                             }
-                            .padding(.bottom, Theme.screenPadding)
+
+                            if !filteredResults.isEmpty {
+                                resultsSection
+                            } else if !viewModel.query.isEmpty && !viewModel.isLoading {
+                                Text("No stocks matched your criteria.")
+                                    .font(Theme.engravedSerif(size: 16, relativeTo: .body))
+                                    .foregroundColor(Theme.inkSecondary)
+                                    .padding(.top, Theme.sectionSpacing)
+                            } else {
+                                historySection
+                            }
                         }
+                        .padding(.bottom, Theme.screenPadding)
                     }
                 }
             }
-            .navigationTitle("NL Screener")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { HelpTypedButton(showHelp: $showHelp) } }
         }
+        .navigationTitle("NL Screener")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .navigationBarTrailing) { HelpTypedButton(showHelp: $showHelp) } }
         .helpSheet(isPresented: $showHelp, title: FeatureHelp.nlScreener.title, subtitle: FeatureHelp.nlScreener.subtitle, sections: FeatureHelp.nlScreener.sections)
     }
     
