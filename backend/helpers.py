@@ -59,13 +59,28 @@ from config.settings import NSE_TICKER_OVERRIDES, QUICK_INFO_TTL as _QUICK_INFO_
 # ---------------------------------------------------------------------------
 
 def upsert_device_token(user_id: int, device_token: str, platform: str = "ios") -> dict:
-    """Register or update a device token for push notifications."""
+    """Register or update a device token for push notifications.
+
+    Security: refuses to silently rebind an existing device token to a
+    different user_id without re-verification. If the token already belongs
+    to another user, the caller must prove ownership of the prior binding
+    (i.e. re-authenticate as that user) or the upsert is rejected.
+    """
+    import re
+
+    # Validate token looks like a real APNs hex token (64–256 hex chars)
+    if not re.fullmatch(r"[0-9a-fA-F]{64,256}", device_token):
+        raise ValueError("Invalid APNs device token format")
+
     from datetime import datetime as _dt
     with get_session() as session:
         existing = session.query(DeviceToken).filter_by(device_token=device_token).first()
         if existing:
+            if existing.user_id != user_id:
+                raise PermissionError(
+                    f"Device token already registered to a different user"
+                )
             existing.updated_at = _dt.utcnow()
-            existing.user_id = user_id
             existing.platform = platform or existing.platform
         else:
             try:
@@ -75,7 +90,10 @@ def upsert_device_token(user_id: int, device_token: str, platform: str = "ios") 
                 session.rollback()
                 duplicate = session.query(DeviceToken).filter_by(device_token=device_token).first()
                 if duplicate:
-                    duplicate.user_id = user_id
+                    if duplicate.user_id != user_id:
+                        raise PermissionError(
+                            f"Device token already registered to a different user"
+                        )
                     duplicate.updated_at = _dt.utcnow()
                     duplicate.platform = platform or duplicate.platform
                 else:

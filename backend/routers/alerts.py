@@ -169,17 +169,18 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
         logger.warning(f"APNs credentials not configured — logged push for {ticker} to user {user_id} with {len(tokens)} device(s)")
         return
 
+    # ── Load and JWT-encode outside the HTTP dispatch try block ──────────
+    # Failures here are configuration/kay-material errors — they are logged
+    # distinctly (no user-controlled data) and never leak secrets.
     try:
         import jwt as pyjwt
         import time
+        from urllib.parse import quote as _url_quote
 
         with open(apns_key_path, "r") as f:
             auth_key = f.read()
 
-        token_payload = {
-            "iss": apns_team_id,
-            "iat": int(time.time()),
-        }
+        token_payload = {"iss": apns_team_id, "iat": int(time.time())}
         apns_token = pyjwt.encode(token_payload, auth_key, algorithm="ES256", headers={"kid": apns_key_id})
 
         headers = {
@@ -188,19 +189,28 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
             "apns-priority": "10",
             "authorization": f"bearer {apns_token}",
         }
+    except FileNotFoundError:
+        logger.error("APNs auth key not found at configured path")
+        return
+    except Exception:
+        logger.error("APNs JWT signing failed (%s)", type(e).__name__)
+        return
 
-        async with httpx.AsyncClient(http2=True) as client:
-            for (device_token,) in tokens:
-                url = f"{apns_host}/3/device/{device_token}"
+    # ── Dispatch one push per registered device ──────────────────────────
+    for (device_token,) in tokens:
+        url = f"{apns_host}/3/device/{_url_quote(device_token)}"
+        try:
+            async with httpx.AsyncClient(http2=True) as client:
                 response = await client.post(url, json=payload, headers=headers)
                 if response.status_code == 200:
-                    logger.info(f"APNs push sent to user {user_id} device {device_token[:8]}... for {ticker}")
+                    logger.info("APNs push sent to user %d for %s", user_id, ticker)
                 else:
-                    logger.warning(f"APNs push failed for device {device_token[:8]}...: {response.status_code} {response.text}")
-    except FileNotFoundError:
-        logger.error(f"APNs auth key not found at {apns_key_path}")
-    except Exception as e:
-        logger.error(f"Failed to send APNs push to user {user_id}: {e}")
+                    logger.warning("APNs push rejected %d for user %d: %s",
+                                   response.status_code, user_id, response.text[:200])
+        except httpx.HTTPError:
+            logger.warning("APNs HTTP transport error for user %d", user_id)
+        except Exception:
+            logger.warning("APNs dispatch error for user %d (%s)", user_id, type(e).__name__)
 
 
 @router.get("/alerts/{user_id}")
