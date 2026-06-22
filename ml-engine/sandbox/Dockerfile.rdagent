@@ -1,0 +1,59 @@
+# =============================================================================
+# Dockerfile.rdagent — Air-Gapped RD-Agent Sandbox
+# =============================================================================
+# Build-time:  network access is ALLOWED (pip installs rdagent from PyPI).
+# Runtime:     network_mode: "none" is enforced by docker-compose.sandbox.yml.
+#              The container has ZERO outbound/inbound network access when run.
+# =============================================================================
+
+FROM python:3.10-slim
+
+# Prevent interactive prompts during apt-get
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ---------------------------------------------------------------------------
+# System dependencies
+# Installed at build time while network is available.
+# ---------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        git \
+        libgomp1 \
+        graphviz \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---------------------------------------------------------------------------
+# Create non-root user for security isolation
+# ---------------------------------------------------------------------------
+RUN useradd -m -s /bin/bash rduser
+
+# ---------------------------------------------------------------------------
+# Python packages — installed at build time (network allowed here)
+# Install numpy + pandas first to satisfy qlib's setup-time requirements,
+# then install qlib and rdagent.
+# ---------------------------------------------------------------------------
+RUN pip install --no-cache-dir numpy pandas
+RUN pip install --no-cache-dir qlib rdagent
+
+# ---------------------------------------------------------------------------
+# Static historic data mount point
+# /data/historic_csv is populated by the host with NSE bhavcopy CSV files.
+# Declared as VOLUME so Docker tracks it; docker-compose mounts it :ro.
+# ---------------------------------------------------------------------------
+RUN mkdir -p /data/historic_csv /workspace \
+    && chown -R rduser:rduser /data/historic_csv /workspace
+
+VOLUME ["/data/historic_csv"]
+
+# ---------------------------------------------------------------------------
+# Working directory and user switch
+# ---------------------------------------------------------------------------
+WORKDIR /workspace
+USER rduser
+
+# ---------------------------------------------------------------------------
+# Entrypoint — runs the RD-Agent Qlib research loop.
+# At runtime the compose file enforces network_mode: "none".
+# ---------------------------------------------------------------------------
+ENTRYPOINT ["python", "-m", "rdagent.app.qlib.loop"]
