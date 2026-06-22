@@ -92,4 +92,7 @@ scipy>=1.13.0
 
 orjson>=3.9.0  # fast JSON serialization (rank_14)
 
+polars>=1.0.0
+
 # celery[redis]>=5.3.0  # Uncomment to enable Celery background workers
+
