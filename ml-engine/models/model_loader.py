@@ -71,7 +71,7 @@ class ModelLoader:
         from config import TRA_CONFIG
 
         # Lazy import to avoid circular dependency — TRA is defined in pipeline.inference
-        from pipeline.tra_model import TRAModel
+        from pipeline.tra_sequence import TRAModel
 
         model = TRAModel(
             input_dim=TRA_CONFIG["input_dim"],

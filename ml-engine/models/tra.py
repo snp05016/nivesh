@@ -1,26 +1,13 @@
 """
-Temporal Routing Adaptor (TRA) — Lightweight regime classifier.
+TRARouter — MLP-based REGIME classifier for the UnifiedPredictor pipeline.
 
-Routes stocks to specialized sub-models based on learned trading patterns.
-Based on "Learning Multiple Stock Trading Patterns with Temporal Routing
-Adaptor and Optimal Transport" (Lin et al., KDD 2021), simplified for
-standalone use without Qlib.
+Routes single feature vectors [batch, 158] into K trading regimes, each
+with its own predictor head. Used by models/predictor.py (UnifiedPredictor)
+for the two-stage pipeline: TRA routing -> per-regime LightGBM.
 
-Architecture
-------------
-Input:  Alpha158 feature vector → [batch, 158]
-        ↓
-        Shared backbone: 3-layer MLP with BatchNorm + Dropout → [batch, hidden_dim]
-        ↓
-        ┌──────────────┬──────────────────┐
-        ↓              ↓                  ↓
-   Regime Head    Predictor 0       Predictor 1    Predictor 2
-   (classifier)   (regression)      (regression)   (regression)
-        ↓              ↓                  ↓              ↓
-   regime_id     pred_momentum     pred_neutral     pred_reversal
-   + confidence
-        ↓
-        Final output: softmax-weighted blend of K predictor outputs
+This is the REGIME variant. The SEQUENCE variant (GRU-based, takes
+[batch, seq_len, 158]) lives at pipeline/tra_sequence.py (TRAModel) and
+is used by InferenceEngine._predict_tra().
 
 Regimes
 -------

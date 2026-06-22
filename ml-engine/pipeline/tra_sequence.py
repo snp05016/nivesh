@@ -1,18 +1,15 @@
 """
-TRAModel — Temporal Routing Adaptor (KDD 2021, Microsoft Research).
+TRAModel — GRU-based sequence model for the inference pipeline.
 
-A lightweight PyTorch module that wraps any backbone feature extractor
-with K parallel linear predictor heads and a learned router that dispatches
-each sample to the most appropriate predictor.
+Used by InferenceEngine._predict_tra() for sequence-based prediction.
+Input shape: [batch, seq_len=60, features=158].
 
-Architecture:
-  1. Raw features x_i [seq_len, 158] -> backbone GRU -> latent h_i [hidden_dim]
-  2. h_i -> K linear predictors -> K predictions [batch, K]
-  3. h_i + temporal error history -> router -> Gumbel-Softmax routing weights
-  4. Final: p_i = sum_k(routing_k * pred_k)  — scalar stock return prediction
+This is the SEQUENCE variant — it processes time-series windows via a GRU
+backbone. The REGIME variant lives at models/tra.py (TRARouter) and classifies
+single feature vectors [batch, 158] into trading regimes for the
+UnifiedPredictor two-stage pipeline.
 
-Reference: Hengxu Lin et al., "Learning Multiple Stock Trading Patterns
-with Temporal Routing Adaptor and Optimal Transport", KDD 2021.
+Reference: Hengxu Lin et al., KDD 2021.
 """
 
 from __future__ import annotations
