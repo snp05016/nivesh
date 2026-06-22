@@ -98,3 +98,21 @@ def test_perform_asof_join():
     joined = perform_asof_join(df)
     assert "macro_benchmark" in joined.columns
     assert joined.select("macro_benchmark").to_series().to_list() == [1.0, 1.0]
+
+
+def test_perform_asof_join_multiple_tickers_and_dates():
+    """Verify perform_asof_join with multiple tickers and dates does not crash due to sort order."""
+    data = [
+        {"ticker": "T1", "date": "2026-06-21", "Open": 100.0, "High": 105.0, "Low": 95.0, "Close": 101.0, "Volume": 1000.0},
+        {"ticker": "T1", "date": "2026-06-22", "Open": 101.0, "High": 106.0, "Low": 96.0, "Close": 102.0, "Volume": 1100.0},
+        {"ticker": "T2", "date": "2026-06-21", "Open": 200.0, "High": 205.0, "Low": 195.0, "Close": 201.0, "Volume": 2000.0},
+        {"ticker": "T2", "date": "2026-06-22", "Open": 201.0, "High": 206.0, "Low": 196.0, "Close": 202.0, "Volume": 2100.0},
+    ]
+    df = pl.DataFrame(data)
+
+    # This should not crash when sorting is applied internally
+    joined = perform_asof_join(df)
+    assert "macro_benchmark" in joined.columns
+    assert joined.shape[0] == 4
+    assert joined.select("macro_benchmark").to_series().to_list() == [1.0, 1.0, 1.0, 1.0]
+
