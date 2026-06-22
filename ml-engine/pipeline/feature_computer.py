@@ -65,6 +65,11 @@ class FeatureComputer:
         # Categories 3-8: Windowed factors
         features.update(self._compute_windowed(df))
 
+        # Fill any missing features with 0.0 (windows larger than available data)
+        for f in self.feature_list:
+            if f not in features:
+                features[f] = 0.0
+
         # Assemble into a single-row DataFrame with ordered columns
         result = pl.DataFrame(
             [features],
