@@ -206,30 +206,49 @@ class InferenceEngine:
     def _calibrate_confidence(self, raw_score: float, features_df: Any) -> float:
         """Calibrate confidence score (0-1) from model output.
 
-        Uses:
-        1. Signal magnitude (larger |score| → higher confidence)
-        2. Feature stability (lower recent volatility → higher confidence)
-        3. Clamp to [min_confidence, max_confidence]
+        Five components combined multiplicatively:
+        1. Signal magnitude — stronger |score| = higher base confidence
+        2. Feature coverage — more valid windows = more data = higher confidence
+        3. Volatility penalty — high STD = uncertain = lower confidence
+        4. Trend agreement — short/medium momentum agreement boosts confidence
+        5. Extremity boost — RSV near 0 or 1 = clearer signal
         """
         min_conf = self._conf.get("min_confidence", 0.05)
         max_conf = self._conf.get("max_confidence", 0.95)
-        base_prob = self._conf.get("default_base_probability", 0.50)
 
-        # 1. Signal-strength component
-        sigmoid = 1.0 / (1.0 + np.exp(-abs(raw_score) * 100))  # scale raw score to [0.5, 1)
-        signal_conf = base_prob + (sigmoid - 0.5) * 0.4  # maps to [0.5, 0.9]
+        def _get(col: str, default: float) -> float:
+            if not hasattr(features_df, "columns") or col not in features_df.columns:
+                return default
+            val = features_df[col][0]
+            return float(val) if val is not None else default
 
-        # 2. Feature stability: check RSI proximity to extremes
-        #    RSI near 30 or 70 → stronger signal → boost confidence
-        stability_mult = 1.0
-        if hasattr(features_df, "columns"):
-            cols = list(features_df.columns)
-            rsi_proxies = [c for c in cols if c.startswith("RSV") and len(c) <= 6]
-            if rsi_proxies:
-                val = features_df[rsi_proxies[0]][0]
-                recent_rsv = float(val) if val is not None else 0.5
-                extremity = abs(recent_rsv - 0.5) * 2.0  # [0, 1]
-                stability_mult = 1.0 + extremity * 0.15  # up to 15% boost
+        # 1. Signal strength: sigmoid scaled for typical heuristic range [0, 0.05]
+        # Use a gentler scaling (×40) to spread the range more
+        abs_score = abs(raw_score)
+        signal_conf = 1.0 / (1.0 + np.exp(-abs_score * 40))  # [0.5, ~0.88] for [0, 0.05]
 
-        confidence = signal_conf * stability_mult
-        return round(max(min_conf, min(max_conf, confidence)), 4)
+        # 2. Feature coverage: count how many of the 5 windows produced non-zero features
+        coverage = 0
+        for w in [5, 10, 20, 30, 60]:
+            if _get(f"ROC{w}", 0.0) != 0.0:
+                coverage += 1
+        coverage_mult = 0.5 + 0.5 * (coverage / 5.0)  # [0.5, 1.0]
+
+        # 3. Volatility penalty: high STD5 = noisy = less confident
+        std5 = _get("STD5", 0.01)
+        vol_penalty = 1.0 / (1.0 + std5 * 30.0)  # [0.25, 1.0] for typical range
+
+        # 4. Trend agreement: short vs medium momentum alignment
+        roc5 = _get("ROC5", 1.0)
+        roc20 = _get("ROC20", 1.0)
+        short_dir = np.sign(1.0 - roc5)
+        med_dir = np.sign(1.0 - roc20)
+        agreement = 0.8 if short_dir != med_dir else 1.0
+
+        # 5. Extremity: RSV near 0 or 1 = clearer directional signal
+        rsv20 = _get("RSV20", 0.5)
+        extremity = abs(rsv20 - 0.5) * 2.0  # [0, 1]
+        extremity_mult = 1.0 + extremity * 0.15
+
+        confidence = signal_conf * coverage_mult * vol_penalty * agreement * extremity_mult
+        return round(float(np.clip(confidence, min_conf, max_conf)), 4)
