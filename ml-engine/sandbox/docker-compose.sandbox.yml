@@ -1,0 +1,41 @@
+# =============================================================================
+# docker-compose.sandbox.yml — Air-Gapped RD-Agent Sandbox
+# =============================================================================
+# Enforces ZERO network access at runtime via network_mode: "none".
+# The rdagent container can read historic CSV data from ./historic_csv (ro)
+# and write research artefacts to ./workspace.
+#
+# Usage:
+#   docker compose -f docker-compose.sandbox.yml build
+#   docker compose -f docker-compose.sandbox.yml up
+# =============================================================================
+
+version: "3.9"
+
+services:
+  rdagent:
+    build:
+      context: .
+      dockerfile: Dockerfile.rdagent
+    # ---------------------------------------------------------------------------
+    # CRITICAL: air-gap enforcement — the container has ZERO network access.
+    # Outbound calls to PyPI, yfinance, or any external API will fail/timeout.
+    # All data must be pre-injected into ./historic_csv before container start.
+    # ---------------------------------------------------------------------------
+    network_mode: "none"
+
+    volumes:
+      # NSE bhavcopy CSV files injected by host — read-only inside container
+      - ./historic_csv:/data/historic_csv:ro
+      # Research output written by rdagent (factors, model artefacts, reports)
+      - ./workspace:/workspace
+
+    # Restart policy: "no" keeps failures visible during research iterations.
+    restart: "no"
+
+    # Resource limits prevent runaway training jobs from starving the host.
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: "8g"
