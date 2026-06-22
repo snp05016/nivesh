@@ -639,3 +639,53 @@ class StockUniverse(Base):
         Index("ix_stock_universe_sector", "sector"),
     )
 
+
+class Alpha158Feature(Base):
+    """Nightly computed Alpha158 features for stock universe.
+    Features dict maps feature name to scaled/unscaled float value.
+    """
+    __tablename__ = "alpha158_features"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ticker = Column(String(30), nullable=False, index=True)
+    date = Column(String(20), nullable=False, index=True)
+    features = Column(JSON, nullable=False, default="{}")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("ticker", "date", name="uq_alpha158_ticker_date"),
+    )
+
+
+class Alpha158Features(Base):
+    """Normalized (long-form) Alpha158 feature store — one row per (ticker, date, feature_name).
+
+    Produced by the nightly Alpha158 materialization Celery task
+    (backend/tasks/alpha158_task.py). Stored alongside the wide-JSON
+    Alpha158Feature table: this table enables efficient per-feature
+    queries and ML training set assembly without deserialising blobs.
+
+    Point-in-Time safety: the ``date`` column records the T for which
+    features were computed.  All upstream OHLCV data used to compute
+    features for a given ``date`` must only include rows with
+    trade_date <= T (enforced in alpha158_task.py).
+    """
+    __tablename__ = "alpha158_features_normalized"
+
+    id           = Column(Integer, primary_key=True, autoincrement=True)
+    ticker       = Column(String(30), nullable=False, index=True)
+    date         = Column(String(20), nullable=False, index=True)   # ISO date string "YYYY-MM-DD"
+    feature_name = Column(String(30), nullable=False)
+    feature_value = Column(Float, nullable=False)
+    computed_at  = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "ticker", "date", "feature_name",
+            name="uq_alpha158_norm_ticker_date_feature",
+        ),
+        Index("ix_alpha158_norm_ticker_date", "ticker", "date"),
+        Index("ix_alpha158_norm_feature_name", "feature_name"),
+    )
+
+

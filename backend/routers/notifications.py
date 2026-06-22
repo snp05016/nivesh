@@ -42,24 +42,40 @@ class PushMockRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 @router.post("/api/v1/notifications/register")
-def register_device(req: RegisterDeviceRequest):
+def register_device(req: RegisterDeviceRequest, authorization: str = Header(None)):
     """Register or update a device token for push notifications.
-    Delegates to shared upsert_device_token helper (same as
-    POST /notifications/register-device used by the iOS client).
+
+    Requires Bearer token authentication. The user_id is derived from the
+    token, not from the request body — this prevents push notification
+    hijacking via a forged user_id.
     """
+    from helpers import verify_access_token
+
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Bearer token required")
+    token_user = verify_access_token(authorization.split(" ", 1)[1])
+    if token_user is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    if token_user != req.user_id:
+        # Despite the body, only the authenticated principal matters.
+        # If there's a mismatch we still use the token identity.
+        pass
+
     try:
-        upsert_device_token(req.user_id, req.device_token, req.platform)
+        upsert_device_token(token_user, req.device_token, req.platform)
         return {
             "status": "registered",
             "device_token": req.device_token,
         }
+    except (ValueError, PermissionError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         log_notification_error(
             failure_point="token_registration",
-            error_trace=str(e),
+            error_trace=type(e).__name__,
             target_device=req.device_token,
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -69,8 +85,11 @@ def register_device(req: RegisterDeviceRequest):
 @router.post("/api/v1/dev/push-mock")
 def push_mock(req: PushMockRequest):
     """Dev-only mock push notification — logs payload, returns success.
-    Real APNs dispatch requires production certificates and key provisioning.
+    Disabled in production. Real APNs dispatch goes through alerts.py.
     """
+    import os
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        raise HTTPException(status_code=404, detail="Not found")
     payload = {
         "aps": {
             "alert": {

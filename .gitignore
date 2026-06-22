@@ -51,6 +51,14 @@ token_log.jsonl
 graphify-out/
 .opencode/
 .claude/
+.agents/
+.agent-artifacts/
+.file-test-ralph-loop/
+.specify/
+.superpowers/
+.remember/
+.gitnexus/
+.codex/
 
 # OS files
 .DS_Store
@@ -61,3 +69,6 @@ Thumbs.db
 dist/
 build/
 .worktrees/
+
+# CI/CD
+.github/

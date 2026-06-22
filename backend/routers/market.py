@@ -1655,18 +1655,7 @@ async def dashboard_pulse_endpoint():
     bullish = [_ticker_dict(s) for s in raw_signals if s.get("signal") == "GOLDEN_CROSS"]
     bearish = [_ticker_dict(s) for s in raw_signals if s.get("signal") == "DEATH_CROSS"]
 
-    if not bullish and not bearish:
-        bullish = [
-            {"ticker": "RELIANCE",  "last_price": 2820.0, "ma20": 2790.0, "ma50": 2720.0, "sparkline": [], "trend_date": now_iso[:10], "crossover": "GOLDEN_CROSS"},
-            {"ticker": "TCS",       "last_price": 3480.0, "ma20": 3420.0, "ma50": 3350.0, "sparkline": [], "trend_date": now_iso[:10], "crossover": "GOLDEN_CROSS"},
-            {"ticker": "INFY",      "last_price": 1580.0, "ma20": 1550.0, "ma50": 1510.0, "sparkline": [], "trend_date": now_iso[:10], "crossover": "GOLDEN_CROSS"},
-            {"ticker": "HDFCBANK",  "last_price": 1720.0, "ma20": 1690.0, "ma50": 1650.0, "sparkline": [], "trend_date": now_iso[:10], "crossover": "GOLDEN_CROSS"},
-            {"ticker": "ICICIBANK", "last_price": 1240.0, "ma20": 1210.0, "ma50": 1180.0, "sparkline": [], "trend_date": now_iso[:10], "crossover": "GOLDEN_CROSS"},
-        ]
-        bearish = [
-            {"ticker": "BAJFINANCE",  "last_price": 6800.0, "ma20": 6900.0, "ma50": 7100.0, "sparkline": [], "trend_date": now_iso[:10], "crossover": "DEATH_CROSS"},
-            {"ticker": "HEROMOTOCO", "last_price": 4200.0, "ma20": 4350.0, "ma50": 4500.0, "sparkline": [], "trend_date": now_iso[:10], "crossover": "DEATH_CROSS"},
-        ]
+    # No hardcoded fallback — if no real crossover signals exist, return empty lists
 
     # ── SECTION 1: Live Reporting Sync ───────────────────────────────────────
     live_sync: dict = {"declared_count": 0, "total_expected": 5042,
