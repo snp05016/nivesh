@@ -3,6 +3,7 @@
 import logging
 import math
 from datetime import datetime, timezone
+import concurrent.futures
 import pandas as pd
 import polars as pl
 
@@ -117,6 +118,10 @@ def perform_asof_join(df: pl.DataFrame) -> pl.DataFrame:
     df_dt = df.with_columns(pl.col("date").str.strptime(pl.Date, "%Y-%m-%d"))
     bench_dt = benchmark_df.with_columns(pl.col("date").str.strptime(pl.Date, "%Y-%m-%d"))
 
+    # Sort dataframes globally by date before calling join_asof to prevent crashes
+    df_dt = df_dt.sort("date")
+    bench_dt = bench_dt.sort("date")
+
     joined = df_dt.join_asof(
         bench_dt,
         on="date",
@@ -141,7 +146,8 @@ def run_nightly_materialization(target_date: str, scaler_type: str = "RobustZSco
 
     # 2. Fetch EOD historical data (retrieve 180 days to compute 60-day windows correctly)
     dfs = []
-    for ticker in tickers:
+
+    def fetch_and_process(ticker):
         try:
             df_pd = get_price_history(ticker, period_days=180)
             if df_pd is not None and not df_pd.empty:
@@ -150,10 +156,19 @@ def run_nightly_materialization(target_date: str, scaler_type: str = "RobustZSco
                 df_pd["ticker"] = ticker
                 # Keep required columns only
                 df_pd = df_pd[["ticker", "date", "Open", "High", "Low", "Close", "Volume"]]
-                df_pl = pl.from_pandas(df_pd)
-                dfs.append(df_pl)
+                # Convert pandas DataFrame to polars DataFrame without pyarrow dependency
+                df_pl = pl.DataFrame(df_pd.to_dict(orient="list"))
+                return df_pl
         except Exception as e:
             logger.error(f"Failed to fetch history for {ticker}: {e}")
+        return None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
+        futures = {executor.submit(fetch_and_process, ticker): ticker for ticker in tickers}
+        for future in concurrent.futures.as_completed(futures):
+            res = future.result()
+            if res is not None:
+                dfs.append(res)
 
     if not dfs:
         logger.warning(f"No price history retrieved for any tickers on {target_date}")
