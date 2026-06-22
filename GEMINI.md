@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **nivesh** (16830 symbols, 35967 relationships, 291 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **nivesh** (21217 symbols, 53575 relationships, 296 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -325,38 +325,193 @@ Defining class Foo(Base) in a service file forbidden.
 All ORM models MUST live in models/db_models.py only.
 ```
 
-### 6.4 Commit Workflow
-Commit after EVERY small task or phase. Incremental, reviewable checkpoints.
+### 6.4 Git and GitHub Workflow
 
-**When:** After each discrete task (e.g. "added search bar" → commit, "added results list" → commit), each phase (frontend done, backend done, integration done), and after the final task.
+This workflow governs every agent and every change. Use GitHub Issues and pull requests as the durable record of intent, implementation, review, and completion.
 
-**Format:** Conventional commits — `type(scope): description` (e.g. `feat(ios): add voice search to SearchScreen`, `fix(backend): screener rate limiting`)
+#### 6.4.1 Start Safely
 
-**Types:** `feat` (new feature), `fix` (bug fix), `chore` (refactor/deps/config), `docs` (documentation/help/guides), `style` (UI polish/theming), `perf` (performance)
+Before changing files:
 
-**Scopes:** `ios`, `backend`, `copilot`, `earnings`, `correlation`, `stress-test`, `nl-screener`, `anomalies`, `sector-rotation`, `settings`, `home`, `portfolio`, `markets`, `analysis`
+1. Run `git status --short --branch`, `git remote -v`, and `git branch --show-current`.
+2. Identify unrelated modified or untracked files. Preserve them and stage only explicit task paths.
+3. Fetch the target base branch. Do not pull, rebase, switch branches, stash, reset, or clean when unrelated work could be affected.
+4. Search open and closed issues and pull requests for duplicate or related work.
+5. For non-trivial work, create or confirm an issue before implementation.
+6. Work in an isolated branch or worktree. Never implement directly on `main`.
 
-**Pre-commit:** Run `gitnexus_detect_changes()`, review `git status` + `git diff --stat`, NO secrets/.env/binary assets, NO xcodebuild artifacts.
+If the worktree is dirty and safe isolation is unavailable, stop and ask the user how to proceed.
 
-**Merging:** NEVER run `git merge` or merge any branch into `main` unless the user explicitly gives you permission. Also make sure that if you are in a branch `x` that is not `main`, anything committed should be committed to that branch only and should not be merged to `main`.
+#### 6.4.2 Issue Tracking
+
+An issue is required for every feature, bug, refactor, migration, security hardening task, operational change, or multi-file documentation change. A typo or one-line documentation correction may proceed without an issue.
+
+Every issue MUST include:
+
+- concise problem or outcome statement;
+- evidence, reproduction steps, or user context;
+- explicit in-scope and out-of-scope boundaries;
+- testable acceptance criteria;
+- verification commands or manual checks;
+- risks, dependencies, and blocked work;
+- affected components and deployment or migration impact.
+
+Search for duplicates before issue creation. Link related issues with `Blocked by #N`, `Blocks #N`, or a parent task list. Use milestones for release-bound work and GitHub Projects for multi-issue delivery tracking.
+
+Use labels consistently:
+
+- Type: `type:feature`, `type:bug`, `type:refactor`, `type:docs`, `type:security`, `type:maintenance`
+- Priority: `priority:critical`, `priority:high`, `priority:medium`, `priority:low`
+- Status: `status:blocked`, `status:ready`, `status:in-progress`
+- Area: `area:<component>`
+
+Never disclose a vulnerability in a public issue. Use GitHub Private Vulnerability Reporting or a private security advisory.
+
+#### 6.4.3 Branches and Worktrees
+
+Create branches from the latest `origin/main` unless the issue names another base. Use:
+
+```
+<agent-prefix>/<type>/<issue-number>-<short-slug>
+```
+
+Example: `codex/fix/142-cache-race`. A platform-mandated prefix may replace `<agent-prefix>`, but the issue number and short slug remain required.
+
+Push the branch after its first coherent commit and after every meaningful checkpoint. Confirm that the remote branch is visible. Never force-push, rewrite shared history, delete branches, or run destructive Git commands without explicit user approval.
+
+#### 6.4.4 Commits
+
+Commit after every small task or independently reviewable phase. Each commit MUST leave the branch coherent and describe one logical change.
+
+Use Conventional Commits:
+
+```
+type(scope): imperative description
+```
+
+Allowed types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `style`, `perf`, `ci`, `build`, `revert`.
+
+Preferred scopes: `ios`, `backend`, `copilot`, `earnings`, `correlation`, `stress-test`, `nl-screener`, `anomalies`, `sector-rotation`, `settings`, `home`, `portfolio`, `markets`, `analysis`, `repository`.
+
+Use `Refs #N` when useful. Do not use `Closes #N` in intermediate commits; close issues through the pull request. Never mix unrelated cleanup, generated artifacts, or broad formatting into a task commit.
+
+Before every commit:
+
+1. Run `gitnexus_detect_changes()`.
+2. Run `git status --short`, `git diff --check`, `git diff --stat`, and inspect the complete diff.
+3. Run the smallest relevant verification suite. Backend execution remains remote-only under §6.5.
+4. Apply all checks in §6.1.
+5. Scan staged paths for secrets, `.env` files, credentials, binary artifacts, local databases, logs, and `xcodebuild` output.
+6. Stage explicit paths. Do not use `git add -A` or `git add .` in a dirty worktree.
+7. Review `git diff --cached` before committing.
+
+#### 6.4.5 Pull Requests
+
+Open a draft pull request after the first coherent branch checkpoint. Keep the pull request focused on one issue or one tightly related issue group.
+
+The title MUST follow Conventional Commits. The body MUST contain:
+
+- `Closes #N` or `Refs #N`;
+- summary and rationale;
+- files and components changed;
+- acceptance-criteria mapping;
+- exact verification performed and results;
+- risk and rollback notes;
+- database migration and deployment impact;
+- screenshots or recordings for UI changes;
+- known limitations and linked follow-up issues.
+
+Convert the pull request from draft only when acceptance criteria pass, required checks are green, and the description reflects the final diff.
+
+#### 6.4.6 Reviews and CI
+
+Treat review comments as technical claims to verify. Do not apply feedback blindly. Address each actionable thread with a fix or a reasoned response.
+
+When CI fails, inspect the failing GitHub Actions job and logs, identify the root cause, reproduce it when permitted, and push a focused fix. Do not rerun checks repeatedly without a change or a documented transient failure.
+
+A pull request is merge-ready only when:
+
+- required checks pass on the current head commit;
+- required review is present;
+- requested changes are resolved;
+- all review conversations are resolved;
+- the branch has no merge conflicts;
+- migrations, deployment steps, and rollback notes are complete;
+- no unresolved critical or high-risk finding remains.
+
+Agents MUST NOT dismiss reviews, bypass checks, use administrator merge privileges, or weaken protections to make a pull request pass.
+
+#### 6.4.7 Merge and Cleanup
+
+Prefer squash merge for ordinary pull requests. Preserve individual commits only when the history provides operational or review value.
+
+NEVER run `git merge`, merge a pull request, merge into `main`, or enable auto-merge without explicit user permission. Never push directly to `main`.
+
+After an authorized merge:
+
+1. Confirm the linked issue closed.
+2. Confirm the deployed or released commit when deployment applies.
+3. Create follow-up issues for deferred work.
+4. Delete the remote feature branch.
+5. Do not delete a local branch or worktree that contains unmerged changes.
+
+#### 6.4.8 Releases and Deployment Records
+
+Use annotated semantic-version tags and GitHub Releases for versioned releases. Release notes must link included pull requests and issues, group changes by type, identify migrations and breaking changes, and include rollback guidance.
+
+Every deployment record MUST identify the source branch, full commit SHA, environment, operator or agent, verification result, and rollback action. A deployment is incomplete until its health checks and required remote tests pass.
+
+#### 6.4.9 Definition of Done
+
+A task is complete only when:
+
+- acceptance criteria pass;
+- required checks and repository-specific verification pass;
+- GitNexus change detection matches the intended scope;
+- Graphify is updated after code changes;
+- the branch is pushed and visible;
+- the pull request and issue are linked;
+- documentation, migrations, screenshots, and rollout notes are included when applicable;
+- deployment verification passes when applicable;
+- deferred work exists as explicit follow-up issues.
+
+Implemented code, a passing local check, an open pull request, and a checked checklist are separate states. Never report completion without evidence for every applicable state.
 
 ### 6.5 Deployment & Remote Verification
-After committing and pushing your code, you MUST deploy and verify on the remote server by executing commands non-interactively. NEVER open an interactive SSH session.
-**Anything to be tested in the backend should be done on the server using (`saumyapatel@192.168.1.122`). No backend Python files and tests will be ran in the local computer. All testing, checking for bugs by running the files will be done on the server (`saumyapatel@192.168.1.122`).**
 
-**After EVERY backend change and git pull, you MUST:**
-1. Kill all stale server processes to prevent zombie workers from consuming server CPU:
+After committing and pushing backend code, deploy and verify it on `saumyapatel@192.168.1.122` with non-interactive SSH commands. NEVER open an interactive SSH session. NEVER execute backend Python files or backend tests on the local computer.
+
+Every backend deployment MUST use the intended branch and verify the exact commit SHA:
+
+1. Record and push the local branch:
+   ```bash
+   BRANCH="$(git branch --show-current)"
+   SHA="$(git rev-parse HEAD)"
+   git push origin "$BRANCH"
+   ```
+2. Confirm that the remote checkout is clean. Stop if this command fails:
+   ```bash
+   ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && test -z \"\$(git status --porcelain)\""
+   ```
+3. Kill every stale backend process before pulling or restarting:
    ```bash
    ssh saumyapatel@192.168.1.122 "pkill -f 'uvicorn' || true; pkill -f 'python.*main' || true; sleep 2"
    ```
-2. Pull latest code remotely: `ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && git pull"`
-3. Restart the backend server (in background):
+4. Fetch, switch, fast-forward, and verify the deployed commit:
+   ```bash
+   ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && git fetch origin '$BRANCH' && git switch '$BRANCH' && git pull --ff-only origin '$BRANCH' && test \"\$(git rev-parse HEAD)\" = '$SHA'"
+   ```
+5. Restart the backend in the background:
    ```bash
    ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh/backend && nohup ../venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload > /tmp/uvicorn.log 2>&1 &"
    ```
-4. Run tests remotely: `ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && pytest"` (or relevant verification command)
+6. Run the relevant tests remotely:
+   ```bash
+   ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && python3 -m pytest"
+   ```
+7. Run the required health checks, inspect `/tmp/uvicorn.log`, and record the branch, full SHA, commands, and results in the pull request.
 
-**NEVER skip the kill step.** Stale uvicorn/Python processes run indefinitely in the background and waste server CPU. Always kill before restart.
+**NEVER skip the clean-check, kill, exact-SHA verification, restart, or health-check steps.** If deployment fails after the kill step, restore the last verified commit and record the rollback in the issue and pull request.
 
 ---
 
