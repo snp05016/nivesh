@@ -135,40 +135,56 @@ class InferenceEngine:
         return float(output.item())
 
     def _fallback_score(self, features_df: Any) -> float:
-        """Simple heuristic: momentum signal from ROC5 and RSI.
+        """Multi-factor heuristic combining momentum, mean-reversion, and volatility.
 
-        Used when no trained model is available — provides a reasonable
-        baseline until models are trained.
+        Used when no trained model is available. Balances trend-following
+        with overbought/oversold detection to avoid always-bullish bias.
         """
+        def _get(col: str, default: float) -> float:
+            if col not in col_list:
+                return default
+            val = features_df[col][0]
+            return float(val) if val is not None else default
+
         columns = features_df.columns if hasattr(features_df, "columns") else []
         col_list = list(columns)
 
-        # ROC5: ratio of close 5 days ago to current close
-        roc5 = 1.0
-        if "ROC5" in col_list:
-            val = features_df["ROC5"][0]
-            roc5 = float(val) if val is not None else 1.0
+        # Alpha158 ROC = Ref(close, N) / close
+        # ROC < 1 means price rose over N days (bullish momentum)
+        # ROC > 1 means price fell over N days (bearish momentum)
+        roc5 = _get("ROC5", 1.0)
+        roc20 = _get("ROC20", 1.0)
 
-        # RSV20: position within 20-day range
-        rsv20 = 0.5
-        if "RSV20" in col_list:
-            val = features_df["RSV20"][0]
-            rsv20 = float(val) if val is not None else 0.5
+        # Short-term momentum: how much price moved in 5 days
+        short_mom = 1.0 - roc5   # positive = bullish
+        # Medium-term momentum: how much price moved in 20 days
+        med_mom = 1.0 - roc20    # positive = bullish
 
-        # Simple momentum: ROC5 > 1 means price was lower 5 days ago (bearish for reverse-ROC)
-        # Actually ROC = Ref(close,N)/close, so ROC5 > 1 means close was higher 5 days ago.
-        # Score = simple mean-reversion signal: if ROC5 is high, expect reversal (negative).
-        momentum = (1.0 - (roc5 - 1.0))  # mean-reversion: high ROC -> negative signal
-        position = (rsv20 - 0.5) * 2.0    # center and scale RSV to [-1, 1]
+        # RSV: position within N-day range [0=bottom, 1=top]
+        rsv5 = _get("RSV5", 0.5)
+        rsv20 = _get("RSV20", 0.5)
 
-        # Exponentially weighted: 30-day window gets more weight
-        if "ROC20" in col_list:
-            val = features_df["ROC20"][0]
-            if val is not None:
-                roc20 = float(val)
-                momentum = 0.6 * momentum + 0.4 * (1.0 - (roc20 - 1.0))
+        # Overbought/oversold: blend short and medium RSV for mean-reversion
+        rsv_blend = 0.4 * rsv5 + 0.6 * rsv20
+        overbought_penalty = max(0.0, (rsv_blend - 0.7) * 3.0)
+        oversold_boost = max(0.0, (0.3 - rsv_blend) * 3.0)
 
-        return 0.02 * momentum + 0.01 * position
+        # Volatility: high STD relative to price = uncertain = dampen signal
+        std5 = _get("STD5", 0.01)
+        vol_dampening = 1.0 / (1.0 + std5 * 50.0)  # high vol -> lower confidence
+
+        # Trend divergence: short-term vs medium-term disagreement
+        # If short momentum and medium momentum disagree, reduce signal
+        divergence = abs(short_mom - med_mom)
+        agreement_mult = 1.0 / (1.0 + divergence * 10.0)
+
+        # Composite: blend momentum with mean-reversion
+        raw_momentum = 0.5 * short_mom + 0.5 * med_mom
+        mean_reversion = oversold_boost - overbought_penalty
+
+        score = (0.6 * raw_momentum + 0.4 * mean_reversion) * vol_dampening * agreement_mult
+
+        return np.clip(score * 0.05, -0.05, 0.05)
 
     # ── Direction mapping ──────────────────────────────────────────────────
 
