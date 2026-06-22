@@ -90,7 +90,7 @@ class SingleStockRequest(BaseModel):
         default_factory=list,
         min_length=0,
         max_length=500,
-        description="OHLCV data — minimum 60 rows for feature computation",
+        description="OHLCV data — 60+ rows recommended, minimum 5",
         alias="ohlcv",
     )
     ohlcv_data: list[OHLCVRow] = Field(
