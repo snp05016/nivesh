@@ -206,25 +206,25 @@ class LGBEnsembleModel:
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Predict returns with per-sample confidence via sub-ensemble variance.
 
-        Repeatedly predicts using a random subset of trees and measures
-        the standard deviation across runs as a proxy for confidence.
-        Low variance = high confidence; high variance = low confidence.
+        Uses random contiguous slices of the tree ensemble (via
+        start_iteration + num_iteration) to produce genuinely different
+        predictions. The standard deviation across slices proxies
+        model uncertainty: low variance = high confidence.
 
         Parameters
         ----------
         X : np.ndarray [N, 158]
         n_estimators_sample : float
-            Fraction of trees to use per iteration (0 < f <= 1).
+            Fraction of trees per slice (0 < f <= 1).
         n_iterations : int
-            Number of sub-ensemble runs.
+            Number of random slices to evaluate.
 
         Returns
         -------
         expected_return : np.ndarray [N]
-            Mean prediction across iterations.
+            Full-model prediction (all trees).
         confidence : np.ndarray [N]
-            Confidence score in [0, 1].  1 = perfect agreement.
-            Computed as 1 / (1 + σ²) then min-max scaled per batch.
+            Confidence score in [0, 1].  1 = perfect agreement across slices.
         """
         self._check_fitted()
 
@@ -234,27 +234,32 @@ class LGBEnsembleModel:
 
         n_total = self._model.num_trees()  # type: ignore[union-attr]
         n_sample = max(1, int(n_total * n_estimators_sample))
+        max_start = max(0, n_total - n_sample)
 
-        preds = np.zeros((n_iterations, len(X)), dtype=np.float64)
+        slice_preds = np.zeros((n_iterations, len(X)), dtype=np.float64)
         rng = np.random.RandomState(42)
         for i in range(n_iterations):
-            indices = sorted(rng.choice(n_total, size=n_sample, replace=False))
-            preds[i] = self._model.predict(X, num_iteration=indices[-1] + 1)  # type: ignore[union-attr]
+            start = rng.randint(0, max_start + 1) if max_start > 0 else 0
+            slice_preds[i] = self._model.predict(  # type: ignore[union-attr]
+                X, start_iteration=start, num_iteration=n_sample,
+            )
 
-        mean_pred = preds.mean(axis=0)
-        std_pred = preds.std(axis=0, ddof=1)
+        full_pred = self._model.predict(X).astype(np.float64)  # type: ignore[union-attr]
+        std_pred = slice_preds.std(axis=0, ddof=1)
 
-        # Confidence: σ² → [0, 1].  Lower variance = higher confidence.
-        raw_conf = 1.0 / (1.0 + std_pred**2)
+        # Confidence: 1 / (1 + scaled_σ²).  Scale σ by 1000 so that
+        # typical return-prediction variance (~1e-5) produces meaningful
+        # separation in the 0-1 range.
+        raw_conf = 1.0 / (1.0 + (std_pred * 1000) ** 2)
 
-        # Min-max scale to [0, 1] within the batch
+        # Min-max scale within batch, fallback to 0.5 if all identical
         c_min, c_max = raw_conf.min(), raw_conf.max()
         if c_max - c_min > 1e-12:
             confidence = (raw_conf - c_min) / (c_max - c_min)
         else:
-            confidence = np.ones_like(raw_conf)
+            confidence = np.full_like(raw_conf, 0.5)
 
-        return mean_pred, confidence
+        return full_pred, confidence
 
     # ------------------------------------------------------------------
     # feature importance
