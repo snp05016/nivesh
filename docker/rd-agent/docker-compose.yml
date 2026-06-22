@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  rd-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rd-agent-sandbox
+    network_mode: "none"
+    volumes:
+      - ./historic_data:/data/static_historic:ro
