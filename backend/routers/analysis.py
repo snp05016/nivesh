@@ -1346,20 +1346,6 @@ def screener_endpoint(preset: str):
         else:
             return []
 
-        if not results:
-            _seed = {
-                "ghar_ghar_modi":         [("TCS","Tata Consultancy Services"),("INFY","Infosys"),("HCLTECH","HCL Technologies"),("TECHM","Tech Mahindra"),("WIPRO","Wipro")],
-                "earnings_pioneers":      [("TATAMOTORS","Tata Motors"),("BAJFINANCE","Bajaj Finance"),("LT","Larsen & Toubro"),("BHARTIARTL","Bharti Airtel"),("TITAN","Titan")],
-                "institutional_capitulation": [("HDFCBANK","HDFC Bank"),("ICICIBANK","ICICI Bank"),("SBIN","SBI"),("AXISBANK","Axis Bank"),("KOTAKBANK","Kotak Mahindra")],
-                "quality_value":        [("RELIANCE","Reliance Industries"),("TCS","Tata Consultancy Services"),("INFY","Infosys"),("HDFCBANK","HDFC Bank"),("ICICIBANK","ICICI Bank")],
-                "promoter_conviction":  [("WIPRO","Wipro"),("HCLTECH","HCL Technologies"),("BAJAJFINSV","Bajaj Finserv"),("TITAN","Titan Company"),("PIDILITIND","Pidilite Industries")],
-                "fii_accumulation":     [("LT","Larsen & Toubro"),("SBIN","State Bank of India"),("AXISBANK","Axis Bank"),("KOTAKBANK","Kotak Mahindra Bank"),("ADANIPORTS","Adani Ports")],
-                "turnaround":           [("TATASTEEL","Tata Steel"),("HINDALCO","Hindalco Industries"),("JSWSTEEL","JSW Steel"),("VEDL","Vedanta"),("SAIL","Steel Authority of India")],
-                "52w_low_bullish":      [("DRREDDY","Dr Reddys Labs"),("SUNPHARMA","Sun Pharma"),("CIPLA","Cipla"),("DIVISLAB","Divis Labs"),("APOLLOHOSP","Apollo Hospitals")],
-            }
-            for _ticker, _name in _seed.get(preset, []):
-                results.append({"ticker": _ticker, "company_name": _name, "signal": "CAUTIOUSLY BULLISH", "confidence_pct": 60, "reason": "Seed pick — run a deep analysis to get a live signal"})
-
         _yf_circuit_record_success()
         return results
     except Exception as _top_err:

@@ -69,8 +69,11 @@ def register_device(req: RegisterDeviceRequest):
 @router.post("/api/v1/dev/push-mock")
 def push_mock(req: PushMockRequest):
     """Dev-only mock push notification — logs payload, returns success.
-    Real APNs dispatch requires production certificates and key provisioning.
+    Disabled in production. Real APNs dispatch goes through alerts.py.
     """
+    import os
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        raise HTTPException(status_code=404, detail="Not found")
     payload = {
         "aps": {
             "alert": {

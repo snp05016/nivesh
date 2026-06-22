@@ -122,47 +122,85 @@ async def _price_alert_poller():
 
 
 async def _send_apns_push(user_id: int, ticker: str, target_price: float, current_price: float, direction: str):
-    """Sends an Apple Push Notification using HTTP/2 to the user's device."""
-    # Placeholder for APNs config
-    apns_topic = "com.nivesh.app"
-    apns_auth_key_path = "/path/to/AuthKey_XYZ123.p8"
-    apns_key_id = "XYZ123"
-    apns_team_id = "TEAM123"
-    
-    # In production, we would fetch the user's APNs device token from the DB.
-    # We mock it here since Nivesh is currently mocking device tokens.
-    mock_device_token = f"mock_device_token_for_user_{user_id}"
-    apns_url = f"https://api.development.push.apple.com/3/device/{mock_device_token}"
-    
+    """Sends an Apple Push Notification via APNs HTTP/2 to the user's registered device(s).
+
+    Reads device tokens from the DeviceToken table. If no tokens are registered
+    or APNs credentials are not configured, logs and returns silently.
+    """
+    import os
+    from models.db_models import DeviceToken
+
+    apns_topic = os.getenv("APNS_TOPIC", "com.nivesh.app")
+    apns_key_path = os.getenv("APNS_AUTH_KEY_PATH", "")
+    apns_key_id = os.getenv("APNS_KEY_ID", "")
+    apns_team_id = os.getenv("APNS_TEAM_ID", "")
+    apns_env = os.getenv("APNS_ENVIRONMENT", "development")
+
+    apns_host = (
+        "https://api.push.apple.com" if apns_env == "production"
+        else "https://api.sandbox.push.apple.com"
+    )
+
+    with get_session() as session:
+        tokens = (
+            session.query(DeviceToken.device_token)
+            .filter_by(user_id=user_id, platform="ios")
+            .all()
+        )
+
+    if not tokens:
+        logger.info(f"No device tokens registered for user {user_id}, skipping APNs push for {ticker}")
+        return
+
     payload = {
         "aps": {
             "alert": {
-                "title": f"🚨 {ticker} Alert Triggered!",
-                "body": f"{ticker} is now {'above' if direction == 'above' else 'below'} ₹{target_price} (Current: ₹{current_price}).",
+                "title": f"{ticker} Alert Triggered",
+                "body": f"{ticker} is now {'above' if direction == 'above' else 'below'} {target_price} (Current: {current_price})",
             },
             "sound": "default",
-            "badge": 1
+            "badge": 1,
         },
         "ticker": ticker,
-        "type": "price_alert"
+        "type": "price_alert",
     }
-    
-    headers = {
-        "apns-topic": apns_topic,
-        "apns-push-type": "alert",
-        "apns-priority": "10",
-        # We would generate a JWT token here using the AuthKey.p8
-        "authorization": "bearer MOCKED_JWT_TOKEN"
-    }
-    
+
+    if not apns_key_path or not apns_key_id or not apns_team_id:
+        logger.warning(f"APNs credentials not configured — logged push for {ticker} to user {user_id} with {len(tokens)} device(s)")
+        return
+
     try:
-        # APNs requires HTTP/2, httpx supports it with http2=True
+        import jwt as pyjwt
+        import time
+
+        with open(apns_key_path, "r") as f:
+            auth_key = f.read()
+
+        token_payload = {
+            "iss": apns_team_id,
+            "iat": int(time.time()),
+        }
+        apns_token = pyjwt.encode(token_payload, auth_key, algorithm="ES256", headers={"kid": apns_key_id})
+
+        headers = {
+            "apns-topic": apns_topic,
+            "apns-push-type": "alert",
+            "apns-priority": "10",
+            "authorization": f"bearer {apns_token}",
+        }
+
         async with httpx.AsyncClient(http2=True) as client:
-            # We don't await the actual call to avoid breaking if the URL is unreachable in dev
-            # response = await client.post(apns_url, json=payload, headers=headers)
-            logger.info(f"Mocked APNs Push sent to {mock_device_token} for {ticker}")
+            for (device_token,) in tokens:
+                url = f"{apns_host}/3/device/{device_token}"
+                response = await client.post(url, json=payload, headers=headers)
+                if response.status_code == 200:
+                    logger.info(f"APNs push sent to user {user_id} device {device_token[:8]}... for {ticker}")
+                else:
+                    logger.warning(f"APNs push failed for device {device_token[:8]}...: {response.status_code} {response.text}")
+    except FileNotFoundError:
+        logger.error(f"APNs auth key not found at {apns_key_path}")
     except Exception as e:
-        logger.error(f"Failed to send APNs push: {e}")
+        logger.error(f"Failed to send APNs push to user {user_id}: {e}")
 
 
 @router.get("/alerts/{user_id}")
