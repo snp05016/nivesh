@@ -146,12 +146,14 @@ class InferenceEngine:
         # ROC5: ratio of close 5 days ago to current close
         roc5 = 1.0
         if "ROC5" in col_list:
-            roc5 = float(features_df["ROC5"][0])
+            val = features_df["ROC5"][0]
+            roc5 = float(val) if val is not None else 1.0
 
         # RSV20: position within 20-day range
         rsv20 = 0.5
         if "RSV20" in col_list:
-            rsv20 = float(features_df["RSV20"][0])
+            val = features_df["RSV20"][0]
+            rsv20 = float(val) if val is not None else 0.5
 
         # Simple momentum: ROC5 > 1 means price was lower 5 days ago (bearish for reverse-ROC)
         # Actually ROC = Ref(close,N)/close, so ROC5 > 1 means close was higher 5 days ago.
@@ -161,8 +163,10 @@ class InferenceEngine:
 
         # Exponentially weighted: 30-day window gets more weight
         if "ROC20" in col_list:
-            roc20 = float(features_df["ROC20"][0])
-            momentum = 0.6 * momentum + 0.4 * (1.0 - (roc20 - 1.0))
+            val = features_df["ROC20"][0]
+            if val is not None:
+                roc20 = float(val)
+                momentum = 0.6 * momentum + 0.4 * (1.0 - (roc20 - 1.0))
 
         return 0.02 * momentum + 0.01 * position
 
@@ -206,8 +210,8 @@ class InferenceEngine:
             cols = list(features_df.columns)
             rsi_proxies = [c for c in cols if c.startswith("RSV") and len(c) <= 6]
             if rsi_proxies:
-                recent_rsv = float(features_df[rsi_proxies[0]][0])
-                # RSV near 0 or 1 = extreme position = stronger signal
+                val = features_df[rsi_proxies[0]][0]
+                recent_rsv = float(val) if val is not None else 0.5
                 extremity = abs(recent_rsv - 0.5) * 2.0  # [0, 1]
                 stability_mult = 1.0 + extremity * 0.15  # up to 15% boost
 
