@@ -182,16 +182,16 @@
                         │ HTTPS / REST
                         ▼
  ┌─────────────────────────────────────────────────┐
- │            FastAPI Backend (6 workers)           │
- │  Auth · Routing · Rate Limit · CORS · Telemetry  │
+ │            FastAPI Backend (6 workers)          |
+ │  Auth · Routing · Rate Limit · CORS · Telemetry │
  └──┬─────────┬──────────┬──────────┬──────────────┘
     │         │          │          │
     ▼         ▼          ▼          ▼
  ┌──────┐ ┌──────┐ ┌────────┐ ┌──────────────┐
- │Routers│ │Service│ │Repos   │ │  ML Engine   │
- │21 APIs│ │Layer │ │   + DB │ │  (port 8001) │
- │       │ │20 svc│ │        │ │ LightGBM/TRA │
- └───────┘ └──┬───┘ └──┬─────┘ └──────────────┘
+ │ Rtr  │ │ srvce│ │  Repos │ │  ML Engine   │
+ │21 API│ │Layer │ │   + DB │ │  (port 8001) │
+ │      │ │20 svc│ │        │ │ LightGBM/TRA │
+ └──────┘ └──┬───┘ └──┬─────┘ └──────────────┘
               │         │
               ▼         ▼
  ┌──────────────────┐ ┌──────────────────┐
@@ -203,9 +203,9 @@
               │
               ▼
  ┌─────────────────────────────────────────────┐
- │         Data Harvesting Layer                │
+ │         Data Harvesting Layer               │
  │  YouTube · SEBI · News · NSE · AMFI · PK    │
- │  FinBERT · APScheduler · Celery Nightlies    │
+ │  FinBERT · APScheduler · Celery Nightlies   │
  └─────────────────────────────────────────────┘
 
 </pre>
