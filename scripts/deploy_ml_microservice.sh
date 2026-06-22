@@ -20,9 +20,9 @@ echo "📂 Project root: ${PROJECT_ROOT}"
 # 1. Verify Docker Availability & Permissions
 if command -v docker &> /dev/null; then
     if docker info &> /dev/null; then
-        DOCKER_CMD="docker"
+        DOCKER_CMD=(docker)
     elif sudo docker info &> /dev/null; then
-        DOCKER_CMD="sudo docker"
+        DOCKER_CMD=(sudo docker)
     else
         echo "❌ Error: Docker daemon is not running or accessible." >&2
         exit 1
@@ -38,35 +38,35 @@ else
     exit 1
 fi
 
-echo "✅ Docker command verified: Using '${DOCKER_CMD}'"
+echo "✅ Docker command verified: Using '${DOCKER_CMD[*]}'"
 
 # 2. Stop and remove existing container named ml-engine
-if "${DOCKER_CMD}" ps -a --format '{{.Names}}' | grep -Eq "^${CONTAINER_NAME}$"; then
+if "${DOCKER_CMD[@]}" ps -a --format '{{.Names}}' | grep -Eq "^${CONTAINER_NAME}$"; then
     echo "🛑 Stopping existing container: ${CONTAINER_NAME}..."
-    "${DOCKER_CMD}" stop "${CONTAINER_NAME}" || true
+    "${DOCKER_CMD[@]}" stop "${CONTAINER_NAME}" || true
     echo "🗑️ Removing existing container: ${CONTAINER_NAME}..."
-    "${DOCKER_CMD}" rm "${CONTAINER_NAME}" || true
+    "${DOCKER_CMD[@]}" rm "${CONTAINER_NAME}" || true
 fi
 
 # 3. Stop and remove any conflicting container using port 8001
-CONFLICTING_CONTAINERS=$("${DOCKER_CMD}" ps -a --filter "publish=${PORT}" --format '{{.ID}}')
+CONFLICTING_CONTAINERS=$("${DOCKER_CMD[@]}" ps -a --filter "publish=${PORT}" --format '{{.ID}}')
 if [ -n "${CONFLICTING_CONTAINERS}" ]; then
     # shellcheck disable=SC2086
     for container in ${CONFLICTING_CONTAINERS}; do
         echo "🛑 Stopping conflicting container on port ${PORT}: ${container}..."
-        "${DOCKER_CMD}" stop "${container}" || true
+        "${DOCKER_CMD[@]}" stop "${container}" || true
         echo "🗑️ Removing conflicting container on port ${PORT}: ${container}..."
-        "${DOCKER_CMD}" rm "${container}" || true
+        "${DOCKER_CMD[@]}" rm "${container}" || true
     done
 fi
 
 # 4. Build the ML Engine Docker Image
 echo "🔨 Building Docker image: ${IMAGE_NAME}:latest..."
-"${DOCKER_CMD}" build -t "${IMAGE_NAME}:latest" -f "${PROJECT_ROOT}/ml-engine/Dockerfile" "${PROJECT_ROOT}/ml-engine"
+"${DOCKER_CMD[@]}" build -t "${IMAGE_NAME}:latest" -f "${PROJECT_ROOT}/ml-engine/Dockerfile" "${PROJECT_ROOT}/ml-engine"
 
 # 5. Run the new container
 echo "🚀 Starting new container ${CONTAINER_NAME} on port ${PORT}..."
-"${DOCKER_CMD}" run -d \
+"${DOCKER_CMD[@]}" run -d \
     --name "${CONTAINER_NAME}" \
     -p "${PORT}:${PORT}" \
     --restart unless-stopped \
@@ -90,7 +90,7 @@ done
 if [ "${HEALTHY}" = false ]; then
     echo "❌ Error: ml-engine health check failed or timed out." >&2
     echo "📋 Showing last 20 lines of container logs:"
-    "${DOCKER_CMD}" logs "${CONTAINER_NAME}" | tail -n 20
+    "${DOCKER_CMD[@]}" logs "${CONTAINER_NAME}" | tail -n 20
     exit 1
 fi
 
