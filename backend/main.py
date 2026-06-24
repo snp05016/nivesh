@@ -358,7 +358,7 @@ async def _data_harvesting_error_handler(_req: _FRequest, exc: DataHarvestingErr
 # ---------------------------------------------------------------------------
 # Import and register routers
 # ---------------------------------------------------------------------------
-from routers import auth, portfolio, market, analysis, alerts, user, dashboard, notifications, brainstorming, strategy, copilot, anomalies, correlation, nl_screener, stress_test, sector_rotation, earnings_surprise, options_strategy, predictions
+from routers import auth, portfolio, market, analysis, alerts, user, dashboard, notifications, brainstorming, strategy, copilot, anomalies, correlation, nl_screener, stress_test, sector_rotation, earnings_surprise, options_strategy, predictions, backtests, stock_financials
 from routers import harvester as harvester_router
 from routers.health import router as health_router  # Task 56
 
@@ -383,6 +383,8 @@ app.include_router(sector_rotation.router, prefix="/api/v1")
 app.include_router(earnings_surprise.router)
 app.include_router(options_strategy.router)
 app.include_router(predictions.router)
+app.include_router(backtests.router, prefix="/api/v1/backtests")
+app.include_router(stock_financials.router)
 
 # ---------------------------------------------------------------------------
 # Static files — serve generated portfolio charts

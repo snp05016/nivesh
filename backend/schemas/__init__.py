@@ -27,3 +27,32 @@ from schemas.market import (
     EarningsSyncRatioResponse,
     YoYAggregateResponse,
 )
+from schemas.stock_fundamentals import (
+    # Financial statements
+    FinancialPeriod,
+    FinancialLineItem,
+    FinancialStatementResponse,
+    # Shareholding
+    ShareholderCategory,
+    TopHolder,
+    ShareholdingQuarter,
+    ShareholdingResponse,
+    # Corporate actions
+    CorporateAction,
+    CorporateActionsResponse,
+    # Valuation
+    ValuationSnapshot,
+    ValuationResponse,
+    # Risk signals
+    RiskSignal,
+    RiskSignalsResponse,
+    # Stock profile
+    StockProfileBasic,
+    StockProfileHoldings,
+    StockProfileProfitability,
+    StockProfilePriceRange,
+    PriceHistoryPoint,
+    PriceHistoryData,
+    QuarterlyFinancialData,
+    StockProfileResponse,
+)
