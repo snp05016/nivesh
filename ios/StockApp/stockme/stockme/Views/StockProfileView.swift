@@ -468,7 +468,7 @@ struct StockProfileView: View {
 
                     SectionDivider()
 
-                    // Tab content (4 consolidated tabs)
+                    // Tab content (5 consolidated tabs)
                     TabView(selection: $activeTab) {
                         // 0: Overview = Overview + Chart + Financials
                         ScrollView {
@@ -492,7 +492,19 @@ struct StockProfileView: View {
                         }
                         .tag(0)
 
-                        // 1: News & Events = News + Updates
+                        // 1: Fundamentals
+                        ScrollView {
+                            LazyVStack(spacing: Theme.sectionSpacing) {
+                                FundamentalsTabView(
+                                    financials: MockFundamentals.mockFinancials,
+                                    shareholding: MockFundamentals.mockShareholding
+                                )
+                            }
+                            .padding(.bottom, Theme.sectionSpacing)
+                        }
+                        .tag(1)
+
+                        // 2: News & Events = News + Updates
                         ScrollView {
                             LazyVStack(spacing: Theme.sectionSpacing) {
                                 NewsTabView(vm: vm)
@@ -502,9 +514,9 @@ struct StockProfileView: View {
                             }
                             .padding(.bottom, Theme.sectionSpacing)
                         }
-                        .tag(1)
+                        .tag(2)
 
-                        // 2: Ownership = Holders + Governance
+                        // 3: Ownership = Holders + Governance
                         ScrollView {
                             LazyVStack(spacing: Theme.sectionSpacing) {
                                 HoldersTabView(vm: vm)
@@ -514,10 +526,10 @@ struct StockProfileView: View {
                             }
                             .padding(.bottom, Theme.sectionSpacing)
                         }
-                        .tag(2)
+                        .tag(3)
 
-                        // 3: Macro Analysis
-                        MacroTabView(ticker: ticker, exchange: exchange, vm: vm).tag(3)
+                        // 4: Macro Analysis
+                        MacroTabView(ticker: ticker, exchange: exchange, vm: vm).tag(4)
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
                     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: activeTab)
@@ -542,6 +554,7 @@ struct StockProfileView: View {
     private var tabItems: [(label: String, icon: String)] {
         [
             ("Overview", "doc.text"),
+            ("Fundamentals", "chart.bar.doc.horizontal"),
             ("News & Events", "newspaper"),
             ("Ownership", "person.3"),
             ("Macro", "globe.asia.australia"),
