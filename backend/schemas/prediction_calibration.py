@@ -88,3 +88,29 @@ class ModelVersionStats(BaseModel):
 class ModelVersionsResponse(BaseModel):
     versions: List[ModelVersionStats]
     total_predictions: int
+
+
+# ---------------------------------------------------------------------------
+# Calibration Health
+# ---------------------------------------------------------------------------
+
+class CalibrationHealthResponse(BaseModel):
+    total_predictions: int
+    matured_7d: int
+    matured_30d: int
+    matured_90d: int
+    latest_prediction_date: Optional[str] = None
+    is_ready_for_calibration: bool
+    warnings: List[str]
+
+
+# ---------------------------------------------------------------------------
+# Fusion Weight Recommendations
+# ---------------------------------------------------------------------------
+
+class FusionWeightRecommendationResponse(BaseModel):
+    recommended_weights: dict
+    warnings: List[str]
+    apply_recommendation: bool
+    is_confident: bool
+

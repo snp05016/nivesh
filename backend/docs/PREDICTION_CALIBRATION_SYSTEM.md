@@ -329,23 +329,43 @@ Key response fields for the chart:
 **Response schema**: `ModelVersionsResponse`
 
 Returns per-model-version performance: hit rates across horizons, average returns,
-Brier scores, calibration error, and the confidence-accuracy gap.
+Brier scores, calibration error, and the gap between stated confidence and realized accuracy.
 
-**iOS usage**: Version comparison table. Each row is a model version. Columns include
-hit rates (7d, 30d, 90d), Brier score, calibration error, and the confidence gap.
-The `confidence_realized_accuracy_gap` column is the most actionable -- positive values
-mean the model was overconfident for that version, negative means underconfident.
+### GET /api/v1/predictions/calibration/health
 
-Key response fields for the table:
-- `versions[].model_version` -- row identifier
-- `versions[].hit_rate_7d`, `hit_rate_30d`, `hit_rate_90d` -- hit rate columns
-- `versions[].brier_score_30d` -- quality score
-- `versions[].calibration_error_30d` -- calibration column
-- `versions[].confidence_realized_accuracy_gap` -- overconfidence indicator
+**Response schema**: `CalibrationHealthResponse`
+
+Returns counts of matured predictions (7d, 30d, 90d) and a boolean `is_ready_for_calibration` indicating if enough data exists to reliably tune fusion weights.
+
+### GET /api/v1/predictions/fusion-weight-recommendations
+
+**Response schema**: `FusionWeightRecommendationResponse`
+
+Returns proposed confidence fusion weights derived from the point-biserial correlations computed in the pillar attribution endpoint. Includes warnings if sample sizes are too low.
 
 ---
 
-## 8. Known Limitations
+## 8. Offline Reporting
+
+An offline script (`backend/scripts/generate_calibration_report.py`) can be run via:
+```bash
+python -m scripts.generate_calibration_report
+```
+This generates a markdown report in `reports/` summarizing model calibration, pillar performance, and proposed fusion weights. Run this periodically to review if confidence fusion logic needs updating.
+
+---
+
+## 9. Null & Missing Data Safeguards
+
+The calibration system is designed to handle sparse data typical in early deployments:
+- **Zero Division**: All averaging and correlation math prevents division by zero.
+- **Null Pillars**: Pillars that fail to compute (e.g. `ml_confidence` when ML engine is disabled) safely return `missing_rate > 0` and are excluded from correlations.
+- **Identical Confidences**: If all predictions share the exact same confidence score, variance is 0. The system safely returns NULL correlation rather than crashing.
+- **Empty Databases**: Safe fallbacks return empty lists rather than raising 500s when no predictions exist.
+
+---
+
+## 10. Known Limitations
 
 ### Small Sample Sizes in Early Buckets
 

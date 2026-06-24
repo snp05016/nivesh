@@ -38,11 +38,24 @@ async def predict_cross_section(ticker: str, ohlcv_data: list) -> dict | None:
             )
             if response.status_code == 200:
                 data = response.json()
+                lightgbm_loaded = bool(data.get("lightgbm_loaded", False))
+                ml_engine_mode = data.get("ml_engine_mode") or (
+                    "trained_lightgbm_baseline"
+                    if lightgbm_loaded
+                    else "fallback_technical_heuristic"
+                )
                 return {
-                    "direction": data.get("expected_direction"),
-                    "confidence": data.get("confidence_score"),
-                    "ml_engine_mode": data.get("ml_engine_mode", "fallback_technical_heuristic"),
-                    "lightgbm_loaded": data.get("lightgbm_loaded", False),
+                    "direction": data.get("direction", data.get("expected_direction")),
+                    "confidence": data.get("confidence", data.get("confidence_score")),
+                    "ml_engine_mode": ml_engine_mode,
+                    "model_version": data.get("model_version"),
+                    "lightgbm_loaded": lightgbm_loaded,
+                    "horizon": data.get("horizon"),
+                    "feature_count": data.get("feature_count"),
+                    "fallback_used": data.get(
+                        "fallback_used",
+                        ml_engine_mode != "trained_lightgbm_baseline",
+                    ),
                 }
             return None
     except (
