@@ -1,0 +1,743 @@
+{
+  "LightGBM": {
+    "n_folds": 5,
+    "folds": [
+      "train<=2019 | val=2020",
+      "train<=2020 | val=2021",
+      "train<=2021 | val=2022",
+      "train<=2022 | val=2023",
+      "train<=2023 | val=2024"
+    ],
+    "mean_hit_rate": 0.5266,
+    "std_hit_rate": 0.0063,
+    "mean_roc_auc": 0.5179,
+    "mean_brier_score": 0.2529,
+    "mean_precision": 0.5911,
+    "mean_recall": 0.6918,
+    "total_val_samples": 60662,
+    "per_fold": [
+      {
+        "fold_id": 0,
+        "val_year": 2020,
+        "hit_rate": 0.5152,
+        "roc_auc": 0.5264,
+        "brier_score": 0.2575,
+        "n_val": 12299
+      },
+      {
+        "fold_id": 1,
+        "val_year": 2021,
+        "hit_rate": 0.5276,
+        "roc_auc": 0.5174,
+        "brier_score": 0.252,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 2,
+        "val_year": 2022,
+        "hit_rate": 0.5281,
+        "roc_auc": 0.5386,
+        "brier_score": 0.2509,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 3,
+        "val_year": 2023,
+        "hit_rate": 0.5275,
+        "roc_auc": 0.5219,
+        "brier_score": 0.2487,
+        "n_val": 12005
+      },
+      {
+        "fold_id": 4,
+        "val_year": 2024,
+        "hit_rate": 0.5348,
+        "roc_auc": 0.4853,
+        "brier_score": 0.2554,
+        "n_val": 12054
+      }
+    ]
+  },
+  "random": {
+    "n_folds": 5,
+    "folds": [
+      "train<=2019 | val=2020",
+      "train<=2020 | val=2021",
+      "train<=2021 | val=2022",
+      "train<=2022 | val=2023",
+      "train<=2023 | val=2024"
+    ],
+    "mean_hit_rate": 0.5011,
+    "std_hit_rate": 0.0052,
+    "mean_roc_auc": 0.5,
+    "mean_brier_score": 0.3336,
+    "mean_precision": 0.5892,
+    "mean_recall": 0.5024,
+    "total_val_samples": 60662,
+    "per_fold": [
+      {
+        "fold_id": 0,
+        "val_year": 2020,
+        "hit_rate": 0.5011,
+        "roc_auc": 0.5007,
+        "brier_score": 0.3334,
+        "n_val": 12299
+      },
+      {
+        "fold_id": 1,
+        "val_year": 2021,
+        "hit_rate": 0.5066,
+        "roc_auc": 0.5067,
+        "brier_score": 0.3297,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 2,
+        "val_year": 2022,
+        "hit_rate": 0.5026,
+        "roc_auc": 0.5048,
+        "brier_score": 0.3315,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 3,
+        "val_year": 2023,
+        "hit_rate": 0.4913,
+        "roc_auc": 0.4848,
+        "brier_score": 0.3403,
+        "n_val": 12005
+      },
+      {
+        "fold_id": 4,
+        "val_year": 2024,
+        "hit_rate": 0.5041,
+        "roc_auc": 0.503,
+        "brier_score": 0.333,
+        "n_val": 12054
+      }
+    ]
+  },
+  "bullish": {
+    "n_folds": 5,
+    "folds": [
+      "train<=2019 | val=2020",
+      "train<=2020 | val=2021",
+      "train<=2021 | val=2022",
+      "train<=2022 | val=2023",
+      "train<=2023 | val=2024"
+    ],
+    "mean_hit_rate": 0.5882,
+    "std_hit_rate": 0.0467,
+    "mean_roc_auc": 0.5,
+    "mean_brier_score": 0.4036,
+    "mean_precision": 0.5882,
+    "mean_recall": 1.0,
+    "total_val_samples": 60662,
+    "per_fold": [
+      {
+        "fold_id": 0,
+        "val_year": 2020,
+        "hit_rate": 0.6236,
+        "roc_auc": 0.5,
+        "brier_score": 0.3689,
+        "n_val": 12299
+      },
+      {
+        "fold_id": 1,
+        "val_year": 2021,
+        "hit_rate": 0.588,
+        "roc_auc": 0.5,
+        "brier_score": 0.4039,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 2,
+        "val_year": 2022,
+        "hit_rate": 0.5263,
+        "roc_auc": 0.5,
+        "brier_score": 0.4643,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 3,
+        "val_year": 2023,
+        "hit_rate": 0.6539,
+        "roc_auc": 0.5,
+        "brier_score": 0.3393,
+        "n_val": 12005
+      },
+      {
+        "fold_id": 4,
+        "val_year": 2024,
+        "hit_rate": 0.5494,
+        "roc_auc": 0.5,
+        "brier_score": 0.4416,
+        "n_val": 12054
+      }
+    ]
+  },
+  "bearish": {
+    "n_folds": 5,
+    "folds": [
+      "train<=2019 | val=2020",
+      "train<=2020 | val=2021",
+      "train<=2021 | val=2022",
+      "train<=2022 | val=2023",
+      "train<=2023 | val=2024"
+    ],
+    "mean_hit_rate": 0.4118,
+    "std_hit_rate": 0.0467,
+    "mean_roc_auc": 0.5,
+    "mean_brier_score": 0.5766,
+    "mean_precision": 0.0,
+    "mean_recall": 0.0,
+    "total_val_samples": 60662,
+    "per_fold": [
+      {
+        "fold_id": 0,
+        "val_year": 2020,
+        "hit_rate": 0.3764,
+        "roc_auc": 0.5,
+        "brier_score": 0.6113,
+        "n_val": 12299
+      },
+      {
+        "fold_id": 1,
+        "val_year": 2021,
+        "hit_rate": 0.412,
+        "roc_auc": 0.5,
+        "brier_score": 0.5763,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 2,
+        "val_year": 2022,
+        "hit_rate": 0.4737,
+        "roc_auc": 0.5,
+        "brier_score": 0.5159,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 3,
+        "val_year": 2023,
+        "hit_rate": 0.3461,
+        "roc_auc": 0.5,
+        "brier_score": 0.6409,
+        "n_val": 12005
+      },
+      {
+        "fold_id": 4,
+        "val_year": 2024,
+        "hit_rate": 0.4506,
+        "roc_auc": 0.5,
+        "brier_score": 0.5386,
+        "n_val": 12054
+      }
+    ]
+  },
+  "rsi": {
+    "n_folds": 5,
+    "folds": [
+      "train<=2019 | val=2020",
+      "train<=2020 | val=2021",
+      "train<=2021 | val=2022",
+      "train<=2022 | val=2023",
+      "train<=2023 | val=2024"
+    ],
+    "mean_hit_rate": 0.4183,
+    "std_hit_rate": 0.0417,
+    "mean_roc_auc": 0.4896,
+    "mean_brier_score": 0.4754,
+    "mean_precision": 0.5382,
+    "mean_recall": 0.0864,
+    "total_val_samples": 60662,
+    "per_fold": [
+      {
+        "fold_id": 0,
+        "val_year": 2020,
+        "hit_rate": 0.3756,
+        "roc_auc": 0.4704,
+        "brier_score": 0.5096,
+        "n_val": 12299
+      },
+      {
+        "fold_id": 1,
+        "val_year": 2021,
+        "hit_rate": 0.4212,
+        "roc_auc": 0.4952,
+        "brier_score": 0.473,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 2,
+        "val_year": 2022,
+        "hit_rate": 0.4852,
+        "roc_auc": 0.5061,
+        "brier_score": 0.4218,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 3,
+        "val_year": 2023,
+        "hit_rate": 0.3728,
+        "roc_auc": 0.4999,
+        "brier_score": 0.5117,
+        "n_val": 12005
+      },
+      {
+        "fold_id": 4,
+        "val_year": 2024,
+        "hit_rate": 0.4366,
+        "roc_auc": 0.4763,
+        "brier_score": 0.4607,
+        "n_val": 12054
+      }
+    ]
+  },
+  "mom20": {
+    "n_folds": 5,
+    "folds": [
+      "train<=2019 | val=2020",
+      "train<=2020 | val=2021",
+      "train<=2021 | val=2022",
+      "train<=2022 | val=2023",
+      "train<=2023 | val=2024"
+    ],
+    "mean_hit_rate": 0.5216,
+    "std_hit_rate": 0.0334,
+    "mean_roc_auc": 0.5038,
+    "mean_brier_score": 0.3927,
+    "mean_precision": 0.5905,
+    "mean_recall": 0.5925,
+    "total_val_samples": 60662,
+    "per_fold": [
+      {
+        "fold_id": 0,
+        "val_year": 2020,
+        "hit_rate": 0.5676,
+        "roc_auc": 0.5424,
+        "brier_score": 0.3559,
+        "n_val": 12299
+      },
+      {
+        "fold_id": 1,
+        "val_year": 2021,
+        "hit_rate": 0.4961,
+        "roc_auc": 0.4799,
+        "brier_score": 0.4131,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 2,
+        "val_year": 2022,
+        "hit_rate": 0.4734,
+        "roc_auc": 0.4706,
+        "brier_score": 0.4313,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 3,
+        "val_year": 2023,
+        "hit_rate": 0.543,
+        "roc_auc": 0.5053,
+        "brier_score": 0.3756,
+        "n_val": 12005
+      },
+      {
+        "fold_id": 4,
+        "val_year": 2024,
+        "hit_rate": 0.5278,
+        "roc_auc": 0.5206,
+        "brier_score": 0.3878,
+        "n_val": 12054
+      }
+    ]
+  },
+  "mom60": {
+    "n_folds": 5,
+    "folds": [
+      "train<=2019 | val=2020",
+      "train<=2020 | val=2021",
+      "train<=2021 | val=2022",
+      "train<=2022 | val=2023",
+      "train<=2023 | val=2024"
+    ],
+    "mean_hit_rate": 0.5208,
+    "std_hit_rate": 0.0249,
+    "mean_roc_auc": 0.4909,
+    "mean_brier_score": 0.3934,
+    "mean_precision": 0.582,
+    "mean_recall": 0.6478,
+    "total_val_samples": 60662,
+    "per_fold": [
+      {
+        "fold_id": 0,
+        "val_year": 2020,
+        "hit_rate": 0.532,
+        "roc_auc": 0.506,
+        "brier_score": 0.3844,
+        "n_val": 12299
+      },
+      {
+        "fold_id": 1,
+        "val_year": 2021,
+        "hit_rate": 0.5004,
+        "roc_auc": 0.4535,
+        "brier_score": 0.4097,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 2,
+        "val_year": 2022,
+        "hit_rate": 0.4834,
+        "roc_auc": 0.4803,
+        "brier_score": 0.4233,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 3,
+        "val_year": 2023,
+        "hit_rate": 0.5499,
+        "roc_auc": 0.4934,
+        "brier_score": 0.37,
+        "n_val": 12005
+      },
+      {
+        "fold_id": 4,
+        "val_year": 2024,
+        "hit_rate": 0.5382,
+        "roc_auc": 0.5214,
+        "brier_score": 0.3794,
+        "n_val": 12054
+      }
+    ]
+  },
+  "sma_cross": {
+    "n_folds": 5,
+    "folds": [
+      "train<=2019 | val=2020",
+      "train<=2020 | val=2021",
+      "train<=2021 | val=2022",
+      "train<=2022 | val=2023",
+      "train<=2023 | val=2024"
+    ],
+    "mean_hit_rate": 0.4977,
+    "std_hit_rate": 0.0244,
+    "mean_roc_auc": 0.4838,
+    "mean_brier_score": 0.4118,
+    "mean_precision": 0.5741,
+    "mean_recall": 0.5533,
+    "total_val_samples": 60662,
+    "per_fold": [
+      {
+        "fold_id": 0,
+        "val_year": 2020,
+        "hit_rate": 0.4845,
+        "roc_auc": 0.4962,
+        "brier_score": 0.4224,
+        "n_val": 12299
+      },
+      {
+        "fold_id": 1,
+        "val_year": 2021,
+        "hit_rate": 0.4952,
+        "roc_auc": 0.4559,
+        "brier_score": 0.4138,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 2,
+        "val_year": 2022,
+        "hit_rate": 0.4641,
+        "roc_auc": 0.4675,
+        "brier_score": 0.4387,
+        "n_val": 12152
+      },
+      {
+        "fold_id": 3,
+        "val_year": 2023,
+        "hit_rate": 0.5075,
+        "roc_auc": 0.4748,
+        "brier_score": 0.404,
+        "n_val": 12005
+      },
+      {
+        "fold_id": 4,
+        "val_year": 2024,
+        "hit_rate": 0.5373,
+        "roc_auc": 0.5247,
+        "brier_score": 0.3801,
+        "n_val": 12054
+      }
+    ]
+  },
+  "Ablation": {
+    "Base_Alpha158": {
+      "n_folds": 5,
+      "folds": [
+        "train<=2019 | val=2020",
+        "train<=2020 | val=2021",
+        "train<=2021 | val=2022",
+        "train<=2022 | val=2023",
+        "train<=2023 | val=2024"
+      ],
+      "mean_hit_rate": 0.5344,
+      "std_hit_rate": 0.0126,
+      "mean_roc_auc": 0.5192,
+      "mean_brier_score": 0.2528,
+      "mean_precision": 0.593,
+      "mean_recall": 0.7192,
+      "total_val_samples": 60662,
+      "per_fold": [
+        {
+          "fold_id": 0,
+          "val_year": 2020,
+          "hit_rate": 0.521,
+          "roc_auc": 0.5125,
+          "brier_score": 0.2604,
+          "n_val": 12299
+        },
+        {
+          "fold_id": 1,
+          "val_year": 2021,
+          "hit_rate": 0.5247,
+          "roc_auc": 0.5041,
+          "brier_score": 0.2531,
+          "n_val": 12152
+        },
+        {
+          "fold_id": 2,
+          "val_year": 2022,
+          "hit_rate": 0.5279,
+          "roc_auc": 0.545,
+          "brier_score": 0.251,
+          "n_val": 12152
+        },
+        {
+          "fold_id": 3,
+          "val_year": 2023,
+          "hit_rate": 0.5539,
+          "roc_auc": 0.5349,
+          "brier_score": 0.2442,
+          "n_val": 12005
+        },
+        {
+          "fold_id": 4,
+          "val_year": 2024,
+          "hit_rate": 0.5445,
+          "roc_auc": 0.4993,
+          "brier_score": 0.2555,
+          "n_val": 12054
+        }
+      ]
+    },
+    "Alpha_Sector": {
+      "n_folds": 5,
+      "folds": [
+        "train<=2019 | val=2020",
+        "train<=2020 | val=2021",
+        "train<=2021 | val=2022",
+        "train<=2022 | val=2023",
+        "train<=2023 | val=2024"
+      ],
+      "mean_hit_rate": 0.5344,
+      "std_hit_rate": 0.0126,
+      "mean_roc_auc": 0.5192,
+      "mean_brier_score": 0.2528,
+      "mean_precision": 0.593,
+      "mean_recall": 0.7192,
+      "total_val_samples": 60662,
+      "per_fold": [
+        {
+          "fold_id": 0,
+          "val_year": 2020,
+          "hit_rate": 0.521,
+          "roc_auc": 0.5125,
+          "brier_score": 0.2604,
+          "n_val": 12299
+        },
+        {
+          "fold_id": 1,
+          "val_year": 2021,
+          "hit_rate": 0.5247,
+          "roc_auc": 0.5041,
+          "brier_score": 0.2531,
+          "n_val": 12152
+        },
+        {
+          "fold_id": 2,
+          "val_year": 2022,
+          "hit_rate": 0.5279,
+          "roc_auc": 0.545,
+          "brier_score": 0.251,
+          "n_val": 12152
+        },
+        {
+          "fold_id": 3,
+          "val_year": 2023,
+          "hit_rate": 0.5539,
+          "roc_auc": 0.5349,
+          "brier_score": 0.2442,
+          "n_val": 12005
+        },
+        {
+          "fold_id": 4,
+          "val_year": 2024,
+          "hit_rate": 0.5445,
+          "roc_auc": 0.4993,
+          "brier_score": 0.2555,
+          "n_val": 12054
+        }
+      ]
+    },
+    "Alpha_Sector_Vol": {
+      "n_folds": 5,
+      "folds": [
+        "train<=2019 | val=2020",
+        "train<=2020 | val=2021",
+        "train<=2021 | val=2022",
+        "train<=2022 | val=2023",
+        "train<=2023 | val=2024"
+      ],
+      "mean_hit_rate": 0.5307,
+      "std_hit_rate": 0.0044,
+      "mean_roc_auc": 0.5139,
+      "mean_brier_score": 0.254,
+      "mean_precision": 0.5942,
+      "mean_recall": 0.6987,
+      "total_val_samples": 60662,
+      "per_fold": [
+        {
+          "fold_id": 0,
+          "val_year": 2020,
+          "hit_rate": 0.5252,
+          "roc_auc": 0.5239,
+          "brier_score": 0.2573,
+          "n_val": 12299
+        },
+        {
+          "fold_id": 1,
+          "val_year": 2021,
+          "hit_rate": 0.5321,
+          "roc_auc": 0.5147,
+          "brier_score": 0.253,
+          "n_val": 12152
+        },
+        {
+          "fold_id": 2,
+          "val_year": 2022,
+          "hit_rate": 0.5259,
+          "roc_auc": 0.5295,
+          "brier_score": 0.2522,
+          "n_val": 12152
+        },
+        {
+          "fold_id": 3,
+          "val_year": 2023,
+          "hit_rate": 0.5339,
+          "roc_auc": 0.5253,
+          "brier_score": 0.2503,
+          "n_val": 12005
+        },
+        {
+          "fold_id": 4,
+          "val_year": 2024,
+          "hit_rate": 0.5363,
+          "roc_auc": 0.4762,
+          "brier_score": 0.2573,
+          "n_val": 12054
+        }
+      ]
+    },
+    "All_Features": {
+      "n_folds": 5,
+      "folds": [
+        "train<=2019 | val=2020",
+        "train<=2020 | val=2021",
+        "train<=2021 | val=2022",
+        "train<=2022 | val=2023",
+        "train<=2023 | val=2024"
+      ],
+      "mean_hit_rate": 0.5266,
+      "std_hit_rate": 0.0063,
+      "mean_roc_auc": 0.5179,
+      "mean_brier_score": 0.2529,
+      "mean_precision": 0.5911,
+      "mean_recall": 0.6918,
+      "total_val_samples": 60662,
+      "per_fold": [
+        {
+          "fold_id": 0,
+          "val_year": 2020,
+          "hit_rate": 0.5152,
+          "roc_auc": 0.5264,
+          "brier_score": 0.2575,
+          "n_val": 12299
+        },
+        {
+          "fold_id": 1,
+          "val_year": 2021,
+          "hit_rate": 0.5276,
+          "roc_auc": 0.5174,
+          "brier_score": 0.252,
+          "n_val": 12152
+        },
+        {
+          "fold_id": 2,
+          "val_year": 2022,
+          "hit_rate": 0.5281,
+          "roc_auc": 0.5386,
+          "brier_score": 0.2509,
+          "n_val": 12152
+        },
+        {
+          "fold_id": 3,
+          "val_year": 2023,
+          "hit_rate": 0.5275,
+          "roc_auc": 0.5219,
+          "brier_score": 0.2487,
+          "n_val": 12005
+        },
+        {
+          "fold_id": 4,
+          "val_year": 2024,
+          "hit_rate": 0.5348,
+          "roc_auc": 0.4853,
+          "brier_score": 0.2554,
+          "n_val": 12054
+        }
+      ]
+    }
+  },
+  "Regime": {
+    "Bull": [
+      {
+        "hit_rate": 0.515163834458086,
+        "sharpe": 3.316430642087611,
+        "year": 2020
+      },
+      {
+        "hit_rate": 0.5276497695852534,
+        "sharpe": 4.9283222950686865,
+        "year": 2021
+      },
+      {
+        "hit_rate": 0.5280612244897959,
+        "sharpe": 1.8476471072871223,
+        "year": 2022
+      },
+      {
+        "hit_rate": 0.5275301957517701,
+        "sharpe": 5.655774136213866,
+        "year": 2023
+      },
+      {
+        "hit_rate": 0.5348432055749129,
+        "sharpe": 2.1705740050516527,
+        "year": 2024
+      }
+    ],
+    "Bear": [],
+    "Sideways": []
+  }
+}
