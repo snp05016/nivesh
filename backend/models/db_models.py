@@ -708,6 +708,8 @@ class AnalysisPrediction(Base):
     signal_agreement      = Column(Float, nullable=True)          # bull/bear vote ratio (0–1)
     ml_engine_mode        = Column(String(50), nullable=True)     # "fallback_technical_heuristic" / "lgbm_trained"
     model_version         = Column(String(50), nullable=True, default="nivesh-v1.0-heuristic")
+    scan_type             = Column(String(50), nullable=True, default="standard")
+    regime_id             = Column(String(50), nullable=True)     # Market regime context
 
     # Prices at prediction time
     entry_price           = Column(Float, nullable=True)
@@ -717,8 +719,12 @@ class AnalysisPrediction(Base):
     actual_return_7d      = Column(Float, nullable=True)
     actual_return_30d     = Column(Float, nullable=True)
     actual_return_90d     = Column(Float, nullable=True)
+    hit_direction_7d      = Column(Boolean, nullable=True)        # predicted direction matched 7d reality
     hit_direction_30d     = Column(Boolean, nullable=True)        # predicted direction matched 30d reality
-    brier_score           = Column(Float, nullable=True)          # (confidence - outcome)^2
+    hit_direction_90d     = Column(Boolean, nullable=True)        # predicted direction matched 90d reality
+    brier_score_7d        = Column(Float, nullable=True)          # (confidence - outcome)^2 for 7d
+    brier_score_30d       = Column(Float, nullable=True)          # (confidence - outcome)^2 for 30d
+    brier_score_90d       = Column(Float, nullable=True)          # (confidence - outcome)^2 for 90d
 
     __table_args__ = (
         Index("ix_ap_symbol_created", "symbol", "created_at"),
