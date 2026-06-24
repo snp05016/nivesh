@@ -119,6 +119,16 @@ def _build_sector_query(session) -> List[Dict[str, Any]]:
     ]
 
 
+def _available_horizons():
+    """Return horizons whose outcome columns actually exist on the model."""
+    horizons = []
+    for days, prefix in [(7, "7d"), (30, "30d"), (90, "90d")]:
+        hit = f"hit_direction_{prefix}"
+        if hasattr(AnalysisPrediction, hit):
+            horizons.append((days, prefix))
+    return horizons
+
+
 def get_performance_metrics() -> Dict[str, Any]:
     """Returns a comprehensive performance report for all predictions."""
     with get_session() as session:
@@ -126,7 +136,7 @@ def get_performance_metrics() -> Dict[str, Any]:
 
         # ── Per-horizon stats ──
         by_horizon = {}
-        for horizon_days, prefix in [(7, "7d"), (30, "30d"), (90, "90d")]:
+        for horizon_days, prefix in _available_horizons():
             hit_col = getattr(AnalysisPrediction, f"hit_direction_{prefix}")
             ret_col = getattr(AnalysisPrediction, f"actual_return_{prefix}")
             brier_col = getattr(AnalysisPrediction, f"brier_score_{prefix}")
