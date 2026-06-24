@@ -1,0 +1,9 @@
+# Training data (too large for git)
+*.csv
+*.parquet
+*.h5
+*.hdf5
+
+# Python
+__pycache__/
+*.pyc
