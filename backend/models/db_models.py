@@ -730,3 +730,61 @@ class AnalysisPrediction(Base):
         Index("ix_ap_symbol_created", "symbol", "created_at"),
         Index("ix_ap_model_version", "model_version"),
     )
+
+# ── Fundamentals Expansion Models ─────────────────────────────────
+
+class CompanyFinancial(Base):
+    __tablename__ = "company_financials"
+    id = Column(Integer, primary_key=True, index=True)
+    ticker = Column(String(30), nullable=False, index=True)
+    period = Column(String(20), nullable=False) # e.g. "FY26" or "Q1_2026"
+    revenue = Column(Float, nullable=True)
+    net_income = Column(Float, nullable=True)
+    eps = Column(Float, nullable=True)
+    operating_margin = Column(Float, nullable=True)
+    free_cash_flow = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class ShareholdingPattern(Base):
+    __tablename__ = "shareholding_patterns"
+    id = Column(Integer, primary_key=True, index=True)
+    ticker = Column(String(30), nullable=False, index=True)
+    quarter = Column(String(20), nullable=False) # e.g. "Q1_2026"
+    promoter_pct = Column(Float, nullable=True)
+    fii_pct = Column(Float, nullable=True)
+    dii_pct = Column(Float, nullable=True)
+    public_pct = Column(Float, nullable=True)
+    pledged_pct = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class CorporateAction(Base):
+    __tablename__ = "corporate_actions"
+    id = Column(Integer, primary_key=True, index=True)
+    ticker = Column(String(30), nullable=False, index=True)
+    ex_date = Column(String(20), nullable=False)
+    record_date = Column(String(20), nullable=True)
+    purpose = Column(String(200), nullable=False)
+    dividend_amount = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class CompanyValuation(Base):
+    __tablename__ = "company_valuations"
+    id = Column(Integer, primary_key=True, index=True)
+    ticker = Column(String(30), nullable=False, index=True)
+    date = Column(String(20), nullable=False)
+    current_pe = Column(Float, nullable=True)
+    forward_pe = Column(Float, nullable=True)
+    pb_ratio = Column(Float, nullable=True)
+    ev_ebitda = Column(Float, nullable=True)
+    market_cap = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class RiskSignal(Base):
+    __tablename__ = "risk_signals"
+    id = Column(Integer, primary_key=True, index=True)
+    ticker = Column(String(30), nullable=False, index=True)
+    date = Column(String(20), nullable=False)
+    signal_type = Column(String(50), nullable=False)
+    severity = Column(String(20), nullable=False) # HIGH / MEDIUM / LOW
+    description = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
