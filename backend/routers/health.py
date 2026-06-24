@@ -12,6 +12,12 @@ router = APIRouter(tags=["Health"])
 logger = get_logger("health")
 
 
+@router.get("/api/v1/ping")
+def ping():
+    """Lightweight liveness check — no dependency checks."""
+    return {"status": "ok"}
+
+
 @router.get("/healthz")
 def healthz():
     """
