@@ -311,6 +311,7 @@ struct StockProfileView: View {
     @StateObject private var vm: StockProfileViewModel
     @State private var activeTab = 0
     @State private var chartPeriod = "1y"
+    @State private var showQuantLab = false
 
     init(ticker: String, exchange: String = "NSE") {
         self.ticker = ticker
@@ -486,6 +487,18 @@ struct StockProfileView: View {
                                 }
                                 GuillocheDivider()
                                     .padding(.horizontal, Theme.screenPadding)
+                                StockMLSignalCard(
+                                    signal: vm.mlSignal,
+                                    isLoading: vm.mlSignalLoading,
+                                    error: nil,
+                                    onOpenQuantLab: {
+                                        HapticManager.selection()
+                                        showQuantLab = true
+                                    }
+                                )
+                                .padding(.horizontal, Theme.screenPadding)
+                                GuillocheDivider()
+                                    .padding(.horizontal, Theme.screenPadding)
                                 FinancialsTabView(vm: vm)
                             }
                             .padding(.bottom, Theme.sectionSpacing)
@@ -536,6 +549,9 @@ struct StockProfileView: View {
             }
             .toolbarBackground(Theme.canvas, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+        .navigationDestination(isPresented: $showQuantLab) {
+            QuantLabView(symbol: ticker)
+        }
         .task { await vm.fetchStockProfile() }
     }
 
