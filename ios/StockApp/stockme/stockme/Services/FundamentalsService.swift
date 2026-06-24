@@ -11,8 +11,6 @@ public protocol FundamentalsAPI {
 public class FundamentalsService: FundamentalsAPI {
     public static let shared = FundamentalsService()
     
-    // Using the same base URL as NetworkManager. In a real app this would be injected.
-    private let baseURL = "https://api.nivesh.qzz.io"
     private let session: URLSession
     
     public init(session: URLSession = .shared) {
@@ -20,6 +18,7 @@ public class FundamentalsService: FundamentalsAPI {
     }
     
     private func fetch<T: Decodable>(endpoint: String) async throws -> T {
+        let baseURL = await NetworkManager.shared.baseURL
         guard let url = URL(string: "\(baseURL)/fundamentals\(endpoint)") else {
             throw URLError(.badURL)
         }
