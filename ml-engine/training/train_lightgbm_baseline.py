@@ -26,6 +26,12 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+# Ensure ml-engine root is on sys.path so that imports like
+# `from models.lgb_model import ...` resolve when running as `python -m training.train_lightgbm_baseline`
+_ML_ENGINE_ROOT = Path(__file__).resolve().parent.parent
+if str(_ML_ENGINE_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ML_ENGINE_ROOT))
+
 # ---------------------------------------------------------------------------
 # Logging setup
 # ---------------------------------------------------------------------------
