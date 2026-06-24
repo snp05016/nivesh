@@ -689,3 +689,38 @@ class Alpha158Features(Base):
     )
 
 
+class AnalysisPrediction(Base):
+    __tablename__ = "analysis_predictions"
+
+    id                    = Column(Integer, primary_key=True, autoincrement=True)
+    analysis_history_id   = Column(Integer, ForeignKey("analysis_history.id"), nullable=True, index=True)
+    symbol                = Column(String(30), nullable=False, index=True)
+    created_at            = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    horizon_days          = Column(Integer, nullable=False, default=30)
+
+    # Prediction inputs
+    recommendation        = Column(String(20), nullable=False)   # BULLISH / BEARISH / HOLD
+    confidence_pct        = Column(Integer, nullable=False)       # final fused value (0–100)
+    llm_confidence        = Column(Float, nullable=True)          # raw LLM output (0–100)
+    quant_confidence      = Column(Float, nullable=True)          # QuantitativeEngine (0–1)
+    ml_confidence         = Column(Float, nullable=True)          # ml-engine (0–1)
+    venn_abers_confidence = Column(Float, nullable=True)          # Venn-Abers calibrated (0–1)
+    signal_agreement      = Column(Float, nullable=True)          # bull/bear vote ratio (0–1)
+    ml_engine_mode        = Column(String(50), nullable=True)     # "fallback_technical_heuristic" / "lgbm_trained"
+    model_version         = Column(String(50), nullable=True, default="nivesh-v1.0-heuristic")
+
+    # Prices at prediction time
+    entry_price           = Column(Float, nullable=True)
+    target_price          = Column(Float, nullable=True)          # medium 12m target
+
+    # Outcome fields — filled by nightly outcome tracker
+    actual_return_7d      = Column(Float, nullable=True)
+    actual_return_30d     = Column(Float, nullable=True)
+    actual_return_90d     = Column(Float, nullable=True)
+    hit_direction_30d     = Column(Boolean, nullable=True)        # predicted direction matched 30d reality
+    brier_score           = Column(Float, nullable=True)          # (confidence - outcome)^2
+
+    __table_args__ = (
+        Index("ix_ap_symbol_created", "symbol", "created_at"),
+        Index("ix_ap_model_version", "model_version"),
+    )

@@ -100,6 +100,7 @@ from prompts import INDIAN_MARKET_SYSTEM_PROMPT, NEWS_ANALYST_PERSONA, EXTREME_A
 
 from services.staleness import compute_staleness
 from services.piotroski import compute_piotroski
+from services.confidence_fusion import _fuse_final_confidence, get_ml_engine_mode
 
 # ---------------------------------------------------------------------------
 # TradingAgents framework
@@ -1542,13 +1543,18 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
             # Venn-Abers calibrated confidence (for quant_engine override)
             if venn_abers_out.get("calibrated_confidence") is not None:
                 final_state["_venn_abers_confidence"] = venn_abers_out["calibrated_confidence"]
-            # ML Engine cross-section prediction
             if isinstance(ml_cross_raw, dict) and ml_cross_raw.get("direction") is not None:
                 final_state["_ml_direction"] = int(ml_cross_raw["direction"])
                 final_state["_ml_confidence"] = float(ml_cross_raw.get("confidence", 0.0))
+                final_state["_ml_engine_mode"] = ml_cross_raw.get("ml_engine_mode", "fallback_technical_heuristic")
+                final_state["_lightgbm_loaded"] = ml_cross_raw.get("lightgbm_loaded", False)
             else:
                 final_state["_ml_direction"] = None
                 final_state["_ml_confidence"] = None
+                final_state["_ml_engine_mode"] = "fallback_technical_heuristic"
+                final_state["_lightgbm_loaded"] = False
+                
+        final_state["_signal_agreement"] = agreement_data.get("agreement_ratio")
 
         def _nf(v, default=0):
             """Return default if v is None, else v. Prevents None.__format__ errors."""
@@ -2047,6 +2053,62 @@ def analyze(
         if final_state.get("_ml_direction") is not None:
             result["ml_direction"] = final_state["_ml_direction"]
             result["ml_confidence"] = final_state["_ml_confidence"]
+
+    # === DETERMINISTIC CONFIDENCE FUSION ===
+    _llm_conf = result.get("confidence_pct")
+    _quant_conf = quant_payload.get("calibrated_confidence") if isinstance(quant_payload, dict) else None
+    
+    _va_conf = None
+    _ml_conf = None
+    _agree = None
+    _ml_engine_mode = "fallback_technical_heuristic"
+    _lightgbm_loaded = False
+    
+    if isinstance(final_state, dict):
+        _va_conf = final_state.get("_venn_abers_confidence")
+        _ml_conf = final_state.get("_ml_confidence")
+        _agree = final_state.get("_signal_agreement")
+        _ml_engine_mode = final_state.get("_ml_engine_mode", "fallback_technical_heuristic")
+        _lightgbm_loaded = final_state.get("_lightgbm_loaded", False)
+
+    fused_conf, breakdown = _fuse_final_confidence(
+        llm_conf=_llm_conf,
+        quant_conf=_quant_conf,
+        venn_abers_conf=_va_conf,
+        signal_agreement=_agree,
+        ml_conf=_ml_conf,
+    )
+    
+    breakdown["ml_engine_mode"] = get_ml_engine_mode(_lightgbm_loaded)
+    breakdown["ml_model_loaded"] = _lightgbm_loaded
+    breakdown["ml_weight_applied"] = 0.05
+    
+    # Overwrite the LLM-generated confidence with the deterministic fused value
+    result["confidence_pct"] = fused_conf
+    result["confidence_breakdown"] = breakdown
+    
+    # Log it to AnalysisPrediction
+    try:
+        from database import AnalysisPrediction
+        with get_session() as session:
+            pred = AnalysisPrediction(
+                symbol=ticker.upper(),
+                recommendation=result.get("signal", "HOLD"),
+                confidence_pct=fused_conf,
+                llm_confidence=_llm_conf,
+                quant_confidence=_quant_conf,
+                ml_confidence=_ml_conf,
+                venn_abers_confidence=_va_conf,
+                signal_agreement=_agree,
+                ml_engine_mode=breakdown["ml_engine_mode"],
+                model_version="nivesh-v1.0-heuristic",
+                entry_price=result.get("current_price_inr"),
+                target_price=result.get("target_prices", {}).get("medium_term_12m"),
+            )
+            session.add(pred)
+            session.commit()
+    except Exception as _log_err:
+        print(f"[PREDICTION LOG] Failed to write to analysis_predictions: {_log_err}")
 
     result["ticker"] = ticker.upper()
     result["exchange"] = exchange

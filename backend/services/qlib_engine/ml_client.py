@@ -41,6 +41,8 @@ async def predict_cross_section(ticker: str, ohlcv_data: list) -> dict | None:
                 return {
                     "direction": data.get("expected_direction"),
                     "confidence": data.get("confidence_score"),
+                    "ml_engine_mode": data.get("ml_engine_mode", "fallback_technical_heuristic"),
+                    "lightgbm_loaded": data.get("lightgbm_loaded", False),
                 }
             return None
     except (

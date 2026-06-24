@@ -44,6 +44,15 @@ try:
         except Exception as exc:
             raise self.retry(exc=exc, countdown=2 ** self.request.retries)
 
+    @celery_app.task(bind=True, max_retries=3)
+    def run_outcome_tracking_task(self):
+        """Celery task wrapper for daily prediction outcome tracking."""
+        try:
+            from services.outcome_tracker import update_prediction_outcomes
+            return update_prediction_outcomes()
+        except Exception as exc:
+            raise self.retry(exc=exc, countdown=2 ** self.request.retries)
+
 except ImportError:
     CELERY_AVAILABLE = False
     celery_app = None
@@ -52,5 +61,8 @@ except ImportError:
         raise RuntimeError("Celery not installed. Run: pip install celery redis")
 
     def run_nightly_materialization_task(*args, **kwargs):
+        raise RuntimeError("Celery not installed. Run: pip install celery redis")
+
+    def run_outcome_tracking_task(*args, **kwargs):
         raise RuntimeError("Celery not installed. Run: pip install celery redis")
 

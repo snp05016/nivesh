@@ -121,6 +121,14 @@ class PredictionResult(BaseModel):
         le=1.0,
         description="Calibrated confidence (0-1)",
     )
+    ml_engine_mode: str = Field(
+        default="fallback_technical_heuristic",
+        description="Mode of ML Engine prediction",
+    )
+    lightgbm_loaded: bool = Field(
+        default=False,
+        description="Whether LightGBM model was loaded and used",
+    )
     features: list[str] = Field(
         default_factory=list,
         description="Feature names used for prediction",
@@ -308,6 +316,8 @@ async def predict_single(req: SingleStockRequest) -> PredictionResult:
         ticker=req.ticker,
         expected_direction=result["expected_direction"],
         confidence_score=result["confidence_score"],
+        ml_engine_mode="lgbm_trained" if _lightgbm_model is not None else "fallback_technical_heuristic",
+        lightgbm_loaded=_lightgbm_model is not None,
         features=FEATURE_LIST[:20],  # first 20 feature names as context
         prediction_time_ms=round(elapsed_ms, 2),
         raw_score=result.get("raw_score"),
@@ -338,6 +348,8 @@ async def predict_cross_section(req: CrossSectionRequest) -> CrossSectionRespons
                     ticker=ticker,
                     expected_direction=result["expected_direction"],
                     confidence_score=result["confidence_score"],
+                    ml_engine_mode="lgbm_trained" if _lightgbm_model is not None else "fallback_technical_heuristic",
+                    lightgbm_loaded=_lightgbm_model is not None,
                     features=FEATURE_LIST[:20],
                     prediction_time_ms=0.0,  # individual timings not meaningful in batch
                     raw_score=result.get("raw_score"),
@@ -350,6 +362,8 @@ async def predict_cross_section(req: CrossSectionRequest) -> CrossSectionRespons
                     ticker=ticker,
                     expected_direction=0,
                     confidence_score=0.0,
+                    ml_engine_mode="fallback_technical_heuristic",
+                    lightgbm_loaded=False,
                     features=[],
                     prediction_time_ms=0.0,
                     raw_score=None,
