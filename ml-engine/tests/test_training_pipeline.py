@@ -422,7 +422,9 @@ class TestPredictSingleTrainedMode:
         # Simulate what predict_single returns when model is loaded
         result = PredictionResult(
             ticker="RELIANCE",
+            direction=1,
             expected_direction=1,
+            confidence=0.72,
             confidence_score=0.72,
             ml_engine_mode="trained_lightgbm_baseline",
             lightgbm_loaded=True,
@@ -430,11 +432,19 @@ class TestPredictSingleTrainedMode:
             prediction_time_ms=15.3,
             raw_score=0.65,
             model_version="lightgbm_baseline_alpha158_v1_20260620",
+            horizon=20,
+            feature_count=158,
+            fallback_used=False,
         )
 
+        assert result.direction == result.expected_direction
+        assert result.confidence == result.confidence_score
         assert result.ml_engine_mode == "trained_lightgbm_baseline"
         assert result.model_version is not None
         assert result.lightgbm_loaded is True
+        assert result.horizon == 20
+        assert result.feature_count == 158
+        assert result.fallback_used is False
         assert result.confidence_score >= 0.0
         assert result.confidence_score <= 1.0
         assert result.expected_direction in (-1, 0, 1)
@@ -445,7 +455,9 @@ class TestPredictSingleTrainedMode:
 
         result = PredictionResult(
             ticker="TCS",
+            direction=-1,
             expected_direction=-1,
+            confidence=0.38,
             confidence_score=0.38,
             ml_engine_mode="trained_lightgbm_baseline",
             lightgbm_loaded=True,
@@ -453,11 +465,15 @@ class TestPredictSingleTrainedMode:
             prediction_time_ms=8.1,
             raw_score=0.35,
             model_version="lightgbm_baseline_alpha158_v1_20260620",
+            horizon=20,
+            feature_count=158,
+            fallback_used=False,
         )
 
         assert result.model_version != ""
         assert len(result.features) > 0
         assert result.prediction_time_ms > 0
+        assert result.feature_count == 158
 
 
 # ===========================================================================
@@ -473,7 +489,9 @@ class TestPredictSingleFallback:
 
         result = PredictionResult(
             ticker="INFY",
+            direction=0,
             expected_direction=0,
+            confidence=0.50,
             confidence_score=0.50,
             ml_engine_mode="fallback_technical_heuristic",
             lightgbm_loaded=False,
@@ -481,11 +499,15 @@ class TestPredictSingleFallback:
             prediction_time_ms=2.1,
             raw_score=None,
             model_version=None,
+            horizon=20,
+            feature_count=158,
+            fallback_used=True,
         )
 
         assert result.ml_engine_mode == "fallback_technical_heuristic"
         assert result.model_version is None
         assert result.lightgbm_loaded is False
+        assert result.fallback_used is True
 
     def test_fallback_defaults(self):
         """PredictionResult defaults should match fallback mode."""
@@ -503,6 +525,33 @@ class TestPredictSingleFallback:
         assert result.lightgbm_loaded is False
         assert result.model_version is None
         assert result.features == []
+        assert result.horizon == 20
+        assert result.feature_count == 0
+        assert result.fallback_used is True
+
+
+class TestModelStatusContract:
+    """Model status exposes production routing metadata."""
+
+    def test_model_status_includes_mode_horizon_and_feature_count(self):
+        from main import ModelStatus
+
+        status = ModelStatus(
+            lightgbm_loaded=True,
+            tra_loaded=False,
+            scaler_loaded=False,
+            ml_engine_mode="trained_lightgbm_baseline",
+            supported_horizons=[20],
+            feature_count=158,
+            lightgbm_path="/app/models/lgb_model.txt",
+            model_version="lightgbm_baseline_alpha158_v1_20260624",
+        )
+
+        assert status.lightgbm_loaded is True
+        assert status.ml_engine_mode == "trained_lightgbm_baseline"
+        assert status.supported_horizons == [20]
+        assert status.feature_count == 158
+        assert status.model_version == "lightgbm_baseline_alpha158_v1_20260624"
 
 
 # ===========================================================================

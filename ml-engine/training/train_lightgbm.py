@@ -128,13 +128,13 @@ class _WalkForwardModelAdapter:
 
 
 # ---------------------------------------------------------------------------
-# FoldResult -> dict conversion for evaluation.aggregate_fold_results
+# FoldResult -> dict conversion for metrics.aggregate_fold_results
 # ---------------------------------------------------------------------------
 
-def _fold_result_to_eval_dict(fr: Any) -> dict[str, Any]:
-    """Convert a walk_forward.FoldResult dataclass to the dict format
-    that evaluation.aggregate_fold_results expects."""
-    d = asdict(fr)
+def fold_result_to_dict(res: Any) -> dict[str, Any]:
+    """Convert a validation.FoldResult dataclass to the dict format
+    that metrics.aggregate_fold_results expects."""
+    d = asdict(res)
     # aggregate_fold_results expects 'train_samples' / 'val_samples'
     d["train_samples"] = d.pop("n_train", 0)
     d["val_samples"] = d.pop("n_val", 0)
@@ -264,7 +264,7 @@ def _load_ohlcv(data_path: str | None) -> pd.DataFrame:
 def _get_feature_columns(feature_df: pd.DataFrame) -> list[str]:
     """Extract the ordered list of feature columns (Alpha158 + extra + sector dummies)."""
     from config import FEATURE_LIST
-    from training.feature_builder import EXTRA_FEATURES
+    from training.feature_pipeline import EXTRA_FEATURES
 
     feature_cols: list[str] = []
 
@@ -340,7 +340,7 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("STEP 2: Building feature matrix (Alpha158 + extras)")
     logger.info("=" * 60)
 
-    from training.feature_builder import build_feature_matrix
+    from training.feature_pipeline import build_feature_matrix
 
     feature_df = build_feature_matrix(ohlcv_df)
     if feature_df.empty:
@@ -366,7 +366,7 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("STEP 3: Configuring walk-forward validation")
     logger.info("=" * 60)
 
-    from training.walk_forward import WalkForwardConfig, generate_splits, run_walk_forward
+    from training.validation import WalkForwardConfig, generate_splits, run_walk_forward
 
     if args.folds:
         folds = _parse_folds(args.folds)
@@ -479,13 +479,12 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("STEP 7: Computing aggregate metrics and calibration")
     logger.info("=" * 60)
 
-    from training.evaluation import (
+    from training.metrics import (
         aggregate_fold_results,
-        compute_calibration_report,
-        generate_training_report,
+        generate_markdown_report,
     )
 
-    fold_dicts = [_fold_result_to_eval_dict(fr) for fr in fold_results]
+    fold_dicts = [fold_result_to_dict(fr) for fr in fold_results]
     aggregate = aggregate_fold_results(fold_dicts)
 
     # Compute calibration from all validation predictions pooled together

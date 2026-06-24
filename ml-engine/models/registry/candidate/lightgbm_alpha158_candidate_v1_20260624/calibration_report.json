@@ -1,0 +1,40 @@
+{
+  "buckets": [
+    {
+      "label": "low",
+      "range": "[0.0, 0.3)",
+      "count": 4,
+      "accuracy": 0.0,
+      "avg_probability": 0.0,
+      "overconfidence": 0.0
+    },
+    {
+      "label": "medium-low",
+      "range": "[0.3, 0.5)",
+      "count": 2391,
+      "accuracy": 0.4835,
+      "avg_probability": 0.4835,
+      "overconfidence": 0.0
+    },
+    {
+      "label": "medium-high",
+      "range": "[0.5, 0.7)",
+      "count": 45995,
+      "accuracy": 0.5809,
+      "avg_probability": 0.5809,
+      "overconfidence": 0.0
+    },
+    {
+      "label": "high",
+      "range": "[0.7, 1.0]",
+      "count": 22,
+      "accuracy": 1.0,
+      "avg_probability": 1.0,
+      "overconfidence": 0.0
+    }
+  ],
+  "ece": 0.0,
+  "mce": 0.0,
+  "best_method": "isotonic",
+  "brier_score": 0.2433
+}

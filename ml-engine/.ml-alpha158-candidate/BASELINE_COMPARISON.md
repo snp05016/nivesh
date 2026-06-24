@@ -1,0 +1,1 @@
+# Baseline Comparison\n\n| Model | Hit Rate | Brier Score | Precision |\n|---|---|---|---|\n| **Alpha158 Candidate** | 0.5762 | 0.2433 | N/A |\n| mom20 | 0.5216 | 0.3927 | 0.5905 |\n| mom60 | 0.5208 | 0.3934 | 0.582 |\n| sma_cross | 0.4977 | 0.4118 | 0.5741 |\n| random | 0.5013 | 0.3335 | 0.59 |\n| bullish | 0.5882 | 0.4036 | 0.5882 |\n

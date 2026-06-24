@@ -1,0 +1,1 @@
+# Regime Stress Test Report\n\n| Period | Hit Rate | ROC AUC |\n|---|---|---|\n| 2022 | 0.5263 | 0.5388 |\n

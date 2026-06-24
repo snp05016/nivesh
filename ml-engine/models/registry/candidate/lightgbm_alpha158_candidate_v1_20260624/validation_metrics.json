@@ -1,0 +1,2702 @@
+[
+  {
+    "fold_id": 0,
+    "train_end_year": 2021,
+    "val_year": 2022,
+    "hit_rate": 0.5263,
+    "precision": 0.5273,
+    "recall": 0.9664,
+    "roc_auc": 0.5388,
+    "brier_score": 0.2499,
+    "avg_return_when_bullish": 0.008125,
+    "avg_return_when_bearish": 0.011979,
+    "calibration_by_bucket": [
+      {
+        "bucket": "0.0-0.3",
+        "count": 0,
+        "actual_hit_rate": 0.0,
+        "avg_predicted_prob": 0.0
+      },
+      {
+        "bucket": "0.3-0.5",
+        "count": 430,
+        "actual_hit_rate": 0.5,
+        "avg_predicted_prob": 0.4823
+      },
+      {
+        "bucket": "0.5-0.7",
+        "count": 11547,
+        "actual_hit_rate": 0.5267,
+        "avg_predicted_prob": 0.5704
+      },
+      {
+        "bucket": "0.7-1.0",
+        "count": 175,
+        "actual_hit_rate": 0.5657,
+        "avg_predicted_prob": 0.7162
+      }
+    ],
+    "feature_importance": [
+      {
+        "feature": "BETA60",
+        "importance": 2873.659023284912
+      },
+      {
+        "feature": "WVMA60",
+        "importance": 2815.1799144744873
+      },
+      {
+        "feature": "MIN60",
+        "importance": 1948.0947971343994
+      },
+      {
+        "feature": "STD60",
+        "importance": 1894.6410160064697
+      },
+      {
+        "feature": "IMXD60",
+        "importance": 1658.7306003570557
+      },
+      {
+        "feature": "CORR60",
+        "importance": 1410.0595951080322
+      },
+      {
+        "feature": "RESI30",
+        "importance": 998.5520076751709
+      },
+      {
+        "feature": "RSQR60",
+        "importance": 943.1600074768066
+      },
+      {
+        "feature": "WVMA30",
+        "importance": 801.3640956878662
+      },
+      {
+        "feature": "CORD60",
+        "importance": 775.3668003082275
+      },
+      {
+        "feature": "IMIN60",
+        "importance": 711.6322956085205
+      },
+      {
+        "feature": "CORR30",
+        "importance": 650.6305065155029
+      },
+      {
+        "feature": "STD20",
+        "importance": 569.5052967071533
+      },
+      {
+        "feature": "CORD30",
+        "importance": 564.5942001342773
+      },
+      {
+        "feature": "ROC60",
+        "importance": 541.7228031158447
+      },
+      {
+        "feature": "IMAX30",
+        "importance": 512.0754928588867
+      },
+      {
+        "feature": "CORD20",
+        "importance": 478.6091957092285
+      },
+      {
+        "feature": "IMAX60",
+        "importance": 456.0593013763428
+      },
+      {
+        "feature": "STD30",
+        "importance": 405.0138988494873
+      },
+      {
+        "feature": "IMXD30",
+        "importance": 396.0423011779785
+      },
+      {
+        "feature": "WVMA20",
+        "importance": 384.95179557800293
+      },
+      {
+        "feature": "RSQR30",
+        "importance": 359.75419998168945
+      },
+      {
+        "feature": "CORR20",
+        "importance": 312.2038993835449
+      },
+      {
+        "feature": "CNTP60",
+        "importance": 310.7887992858887
+      },
+      {
+        "feature": "MAX60",
+        "importance": 295.9708023071289
+      },
+      {
+        "feature": "CORR10",
+        "importance": 258.59580421447754
+      },
+      {
+        "feature": "RSQR20",
+        "importance": 225.26930236816406
+      },
+      {
+        "feature": "BETA30",
+        "importance": 221.40859603881836
+      },
+      {
+        "feature": "MIN30",
+        "importance": 188.7071990966797
+      },
+      {
+        "feature": "CNTD60",
+        "importance": 185.39109802246094
+      },
+      {
+        "feature": "SUMP30",
+        "importance": 182.99739837646484
+      },
+      {
+        "feature": "WVMA10",
+        "importance": 172.29750061035156
+      },
+      {
+        "feature": "CNTP30",
+        "importance": 160.25790214538574
+      },
+      {
+        "feature": "QTLD60",
+        "importance": 159.45240020751953
+      },
+      {
+        "feature": "VSTD30",
+        "importance": 159.23180198669434
+      },
+      {
+        "feature": "IMXD20",
+        "importance": 137.3037986755371
+      },
+      {
+        "feature": "SUMP60",
+        "importance": 130.78579902648926
+      },
+      {
+        "feature": "ROC30",
+        "importance": 125.73880004882812
+      },
+      {
+        "feature": "MIN20",
+        "importance": 116.88660049438477
+      },
+      {
+        "feature": "SUMP20",
+        "importance": 93.91700172424316
+      },
+      {
+        "feature": "STD10",
+        "importance": 89.95429992675781
+      },
+      {
+        "feature": "CNTN60",
+        "importance": 89.5969009399414
+      },
+      {
+        "feature": "BETA10",
+        "importance": 89.54530334472656
+      },
+      {
+        "feature": "BETA20",
+        "importance": 89.48299980163574
+      },
+      {
+        "feature": "SUMN20",
+        "importance": 76.80749893188477
+      },
+      {
+        "feature": "QTLD30",
+        "importance": 70.85289764404297
+      },
+      {
+        "feature": "CORD10",
+        "importance": 69.84260177612305
+      },
+      {
+        "feature": "IMIN30",
+        "importance": 68.07260131835938
+      },
+      {
+        "feature": "CNTN30",
+        "importance": 63.53350067138672
+      },
+      {
+        "feature": "CNTN20",
+        "importance": 63.437700271606445
+      },
+      {
+        "feature": "MIN10",
+        "importance": 62.52910232543945
+      },
+      {
+        "feature": "RESI60",
+        "importance": 57.291500091552734
+      },
+      {
+        "feature": "RSV60",
+        "importance": 57.08650016784668
+      },
+      {
+        "feature": "QTLU30",
+        "importance": 52.385799407958984
+      },
+      {
+        "feature": "MA30",
+        "importance": 47.26570129394531
+      },
+      {
+        "feature": "SUMN30",
+        "importance": 36.50619888305664
+      },
+      {
+        "feature": "MA60",
+        "importance": 36.05870056152344
+      },
+      {
+        "feature": "SUMN10",
+        "importance": 33.807701110839844
+      },
+      {
+        "feature": "SUMN60",
+        "importance": 33.48419952392578
+      },
+      {
+        "feature": "RSQR10",
+        "importance": 31.520000457763672
+      },
+      {
+        "feature": "IMAX20",
+        "importance": 30.421899795532227
+      },
+      {
+        "feature": "RESI20",
+        "importance": 28.82670021057129
+      },
+      {
+        "feature": "VSTD20",
+        "importance": 28.09469985961914
+      },
+      {
+        "feature": "CNTP20",
+        "importance": 26.64389991760254
+      },
+      {
+        "feature": "MAX20",
+        "importance": 26.007299423217773
+      },
+      {
+        "feature": "MAX30",
+        "importance": 25.94770050048828
+      },
+      {
+        "feature": "CNTD30",
+        "importance": 23.858600616455078
+      },
+      {
+        "feature": "KMID",
+        "importance": 0.0
+      },
+      {
+        "feature": "KLEN",
+        "importance": 0.0
+      },
+      {
+        "feature": "KMID2",
+        "importance": 0.0
+      },
+      {
+        "feature": "KUP",
+        "importance": 0.0
+      },
+      {
+        "feature": "KUP2",
+        "importance": 0.0
+      },
+      {
+        "feature": "KLOW",
+        "importance": 0.0
+      },
+      {
+        "feature": "KLOW2",
+        "importance": 0.0
+      },
+      {
+        "feature": "KSFT",
+        "importance": 0.0
+      },
+      {
+        "feature": "KSFT2",
+        "importance": 0.0
+      },
+      {
+        "feature": "OPEN0",
+        "importance": 0.0
+      },
+      {
+        "feature": "HIGH0",
+        "importance": 0.0
+      },
+      {
+        "feature": "LOW0",
+        "importance": 0.0
+      },
+      {
+        "feature": "VWAP0",
+        "importance": 0.0
+      },
+      {
+        "feature": "ROC5",
+        "importance": 0.0
+      },
+      {
+        "feature": "ROC10",
+        "importance": 0.0
+      },
+      {
+        "feature": "ROC20",
+        "importance": 0.0
+      },
+      {
+        "feature": "MA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "MA10",
+        "importance": 0.0
+      },
+      {
+        "feature": "MA20",
+        "importance": 0.0
+      },
+      {
+        "feature": "BETA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSQR5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RESI5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RESI10",
+        "importance": 0.0
+      },
+      {
+        "feature": "STD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "MAX5",
+        "importance": 0.0
+      },
+      {
+        "feature": "MAX10",
+        "importance": 0.0
+      },
+      {
+        "feature": "MIN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLU5",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLU10",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLU20",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLU60",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV10",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV20",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV30",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMAX5",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMAX10",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMIN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMIN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMIN20",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMXD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMXD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORR5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTP5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTP10",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMP5",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMP10",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD60",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK10",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK20",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK30",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK60",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA60",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSTD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSTD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSTD60",
+        "importance": 0.0
+      },
+      {
+        "feature": "WVMA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP60",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN60",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD60",
+        "importance": 0.0
+      }
+    ],
+    "best_iteration": 19,
+    "train_samples": 42472,
+    "val_samples": 12152
+  },
+  {
+    "fold_id": 1,
+    "train_end_year": 2022,
+    "val_year": 2023,
+    "hit_rate": 0.6539,
+    "precision": 0.6539,
+    "recall": 1.0,
+    "roc_auc": 0.5131,
+    "brier_score": 0.2342,
+    "avg_return_when_bullish": 0.025163,
+    "avg_return_when_bearish": 0.0,
+    "calibration_by_bucket": [
+      {
+        "bucket": "0.0-0.3",
+        "count": 0,
+        "actual_hit_rate": 0.0,
+        "avg_predicted_prob": 0.0
+      },
+      {
+        "bucket": "0.3-0.5",
+        "count": 0,
+        "actual_hit_rate": 0.0,
+        "avg_predicted_prob": 0.0
+      },
+      {
+        "bucket": "0.5-0.7",
+        "count": 12005,
+        "actual_hit_rate": 0.6539,
+        "avg_predicted_prob": 0.5649
+      },
+      {
+        "bucket": "0.7-1.0",
+        "count": 0,
+        "actual_hit_rate": 0.0,
+        "avg_predicted_prob": 0.0
+      }
+    ],
+    "feature_importance": [
+      {
+        "feature": "MAX60",
+        "importance": 406.7331962585449
+      },
+      {
+        "feature": "WVMA60",
+        "importance": 253.56819915771484
+      },
+      {
+        "feature": "STD60",
+        "importance": 226.15630722045898
+      },
+      {
+        "feature": "MIN60",
+        "importance": 198.1455955505371
+      },
+      {
+        "feature": "CORR30",
+        "importance": 154.26219940185547
+      },
+      {
+        "feature": "IMAX30",
+        "importance": 123.14399719238281
+      },
+      {
+        "feature": "QTLU30",
+        "importance": 121.21700286865234
+      },
+      {
+        "feature": "IMXD60",
+        "importance": 107.93120193481445
+      },
+      {
+        "feature": "MIN20",
+        "importance": 75.14859771728516
+      },
+      {
+        "feature": "STD20",
+        "importance": 72.07889938354492
+      },
+      {
+        "feature": "SUMP60",
+        "importance": 54.86259841918945
+      },
+      {
+        "feature": "STD30",
+        "importance": 53.862098693847656
+      },
+      {
+        "feature": "CORR10",
+        "importance": 41.70869827270508
+      },
+      {
+        "feature": "MA20",
+        "importance": 40.85820007324219
+      },
+      {
+        "feature": "ROC60",
+        "importance": 40.68519973754883
+      },
+      {
+        "feature": "RANK30",
+        "importance": 39.73759841918945
+      },
+      {
+        "feature": "RSQR60",
+        "importance": 39.270198822021484
+      },
+      {
+        "feature": "CNTD60",
+        "importance": 36.44929885864258
+      },
+      {
+        "feature": "IMXD30",
+        "importance": 34.528099060058594
+      },
+      {
+        "feature": "BETA30",
+        "importance": 33.7958984375
+      },
+      {
+        "feature": "KMID",
+        "importance": 0.0
+      },
+      {
+        "feature": "KLEN",
+        "importance": 0.0
+      },
+      {
+        "feature": "KMID2",
+        "importance": 0.0
+      },
+      {
+        "feature": "KUP",
+        "importance": 0.0
+      },
+      {
+        "feature": "KUP2",
+        "importance": 0.0
+      },
+      {
+        "feature": "KLOW",
+        "importance": 0.0
+      },
+      {
+        "feature": "KLOW2",
+        "importance": 0.0
+      },
+      {
+        "feature": "KSFT",
+        "importance": 0.0
+      },
+      {
+        "feature": "KSFT2",
+        "importance": 0.0
+      },
+      {
+        "feature": "OPEN0",
+        "importance": 0.0
+      },
+      {
+        "feature": "HIGH0",
+        "importance": 0.0
+      },
+      {
+        "feature": "LOW0",
+        "importance": 0.0
+      },
+      {
+        "feature": "VWAP0",
+        "importance": 0.0
+      },
+      {
+        "feature": "ROC5",
+        "importance": 0.0
+      },
+      {
+        "feature": "ROC10",
+        "importance": 0.0
+      },
+      {
+        "feature": "ROC20",
+        "importance": 0.0
+      },
+      {
+        "feature": "ROC30",
+        "importance": 0.0
+      },
+      {
+        "feature": "MA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "MA10",
+        "importance": 0.0
+      },
+      {
+        "feature": "MA30",
+        "importance": 0.0
+      },
+      {
+        "feature": "MA60",
+        "importance": 0.0
+      },
+      {
+        "feature": "BETA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "BETA10",
+        "importance": 0.0
+      },
+      {
+        "feature": "BETA20",
+        "importance": 0.0
+      },
+      {
+        "feature": "BETA60",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSQR5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSQR10",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSQR20",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSQR30",
+        "importance": 0.0
+      },
+      {
+        "feature": "RESI5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RESI10",
+        "importance": 0.0
+      },
+      {
+        "feature": "RESI20",
+        "importance": 0.0
+      },
+      {
+        "feature": "RESI30",
+        "importance": 0.0
+      },
+      {
+        "feature": "RESI60",
+        "importance": 0.0
+      },
+      {
+        "feature": "STD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "STD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "MAX5",
+        "importance": 0.0
+      },
+      {
+        "feature": "MAX10",
+        "importance": 0.0
+      },
+      {
+        "feature": "MAX20",
+        "importance": 0.0
+      },
+      {
+        "feature": "MAX30",
+        "importance": 0.0
+      },
+      {
+        "feature": "MIN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "MIN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "MIN30",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLU5",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLU10",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLU20",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLU60",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLD60",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV10",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV20",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV30",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV60",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMAX5",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMAX10",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMAX20",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMAX60",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMIN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMIN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMIN20",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMIN30",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMIN60",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMXD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMXD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMXD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORR5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORR20",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORR60",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORD60",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTP5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTP10",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTP20",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTP30",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTP60",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTN20",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTN30",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTN60",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMP5",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMP10",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMP20",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMP30",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMN20",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMN30",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMN60",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD60",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK10",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK20",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK60",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA60",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSTD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSTD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSTD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSTD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSTD60",
+        "importance": 0.0
+      },
+      {
+        "feature": "WVMA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "WVMA10",
+        "importance": 0.0
+      },
+      {
+        "feature": "WVMA20",
+        "importance": 0.0
+      },
+      {
+        "feature": "WVMA30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP60",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN60",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD60",
+        "importance": 0.0
+      }
+    ],
+    "best_iteration": 1,
+    "train_samples": 54624,
+    "val_samples": 12005
+  },
+  {
+    "fold_id": 2,
+    "train_end_year": 2023,
+    "val_year": 2024,
+    "hit_rate": 0.5494,
+    "precision": 0.5494,
+    "recall": 1.0,
+    "roc_auc": 0.5086,
+    "brier_score": 0.2487,
+    "avg_return_when_bullish": 0.010025,
+    "avg_return_when_bearish": 0.0,
+    "calibration_by_bucket": [
+      {
+        "bucket": "0.0-0.3",
+        "count": 0,
+        "actual_hit_rate": 0.0,
+        "avg_predicted_prob": 0.0
+      },
+      {
+        "bucket": "0.3-0.5",
+        "count": 0,
+        "actual_hit_rate": 0.0,
+        "avg_predicted_prob": 0.0
+      },
+      {
+        "bucket": "0.5-0.7",
+        "count": 12054,
+        "actual_hit_rate": 0.5494,
+        "avg_predicted_prob": 0.5826
+      },
+      {
+        "bucket": "0.7-1.0",
+        "count": 0,
+        "actual_hit_rate": 0.0,
+        "avg_predicted_prob": 0.0
+      }
+    ],
+    "feature_importance": [
+      {
+        "feature": "STD60",
+        "importance": 500.16870880126953
+      },
+      {
+        "feature": "IMAX30",
+        "importance": 269.00639724731445
+      },
+      {
+        "feature": "RESI30",
+        "importance": 162.73849487304688
+      },
+      {
+        "feature": "WVMA60",
+        "importance": 138.7479019165039
+      },
+      {
+        "feature": "CORR30",
+        "importance": 129.23380279541016
+      },
+      {
+        "feature": "IMXD60",
+        "importance": 106.23899841308594
+      },
+      {
+        "feature": "MAX60",
+        "importance": 77.8400993347168
+      },
+      {
+        "feature": "RSQR60",
+        "importance": 65.80110168457031
+      },
+      {
+        "feature": "IMIN30",
+        "importance": 43.42190170288086
+      },
+      {
+        "feature": "QTLD20",
+        "importance": 43.39189910888672
+      },
+      {
+        "feature": "CORD60",
+        "importance": 43.38240051269531
+      },
+      {
+        "feature": "QTLU30",
+        "importance": 41.8572998046875
+      },
+      {
+        "feature": "CNTP30",
+        "importance": 40.84960174560547
+      },
+      {
+        "feature": "STD30",
+        "importance": 39.90599822998047
+      },
+      {
+        "feature": "WVMA30",
+        "importance": 38.8114013671875
+      },
+      {
+        "feature": "MIN60",
+        "importance": 37.089698791503906
+      },
+      {
+        "feature": "RSV60",
+        "importance": 34.20309829711914
+      },
+      {
+        "feature": "STD20",
+        "importance": 33.882598876953125
+      },
+      {
+        "feature": "CNTN60",
+        "importance": 33.20759963989258
+      },
+      {
+        "feature": "SUMD60",
+        "importance": 32.56549835205078
+      },
+      {
+        "feature": "KMID",
+        "importance": 0.0
+      },
+      {
+        "feature": "KLEN",
+        "importance": 0.0
+      },
+      {
+        "feature": "KMID2",
+        "importance": 0.0
+      },
+      {
+        "feature": "KUP",
+        "importance": 0.0
+      },
+      {
+        "feature": "KUP2",
+        "importance": 0.0
+      },
+      {
+        "feature": "KLOW",
+        "importance": 0.0
+      },
+      {
+        "feature": "KLOW2",
+        "importance": 0.0
+      },
+      {
+        "feature": "KSFT",
+        "importance": 0.0
+      },
+      {
+        "feature": "KSFT2",
+        "importance": 0.0
+      },
+      {
+        "feature": "OPEN0",
+        "importance": 0.0
+      },
+      {
+        "feature": "HIGH0",
+        "importance": 0.0
+      },
+      {
+        "feature": "LOW0",
+        "importance": 0.0
+      },
+      {
+        "feature": "VWAP0",
+        "importance": 0.0
+      },
+      {
+        "feature": "ROC5",
+        "importance": 0.0
+      },
+      {
+        "feature": "ROC10",
+        "importance": 0.0
+      },
+      {
+        "feature": "ROC20",
+        "importance": 0.0
+      },
+      {
+        "feature": "ROC30",
+        "importance": 0.0
+      },
+      {
+        "feature": "ROC60",
+        "importance": 0.0
+      },
+      {
+        "feature": "MA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "MA10",
+        "importance": 0.0
+      },
+      {
+        "feature": "MA20",
+        "importance": 0.0
+      },
+      {
+        "feature": "MA30",
+        "importance": 0.0
+      },
+      {
+        "feature": "MA60",
+        "importance": 0.0
+      },
+      {
+        "feature": "BETA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "BETA10",
+        "importance": 0.0
+      },
+      {
+        "feature": "BETA20",
+        "importance": 0.0
+      },
+      {
+        "feature": "BETA30",
+        "importance": 0.0
+      },
+      {
+        "feature": "BETA60",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSQR5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSQR10",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSQR20",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSQR30",
+        "importance": 0.0
+      },
+      {
+        "feature": "RESI5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RESI10",
+        "importance": 0.0
+      },
+      {
+        "feature": "RESI20",
+        "importance": 0.0
+      },
+      {
+        "feature": "RESI60",
+        "importance": 0.0
+      },
+      {
+        "feature": "STD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "STD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "MAX5",
+        "importance": 0.0
+      },
+      {
+        "feature": "MAX10",
+        "importance": 0.0
+      },
+      {
+        "feature": "MAX20",
+        "importance": 0.0
+      },
+      {
+        "feature": "MAX30",
+        "importance": 0.0
+      },
+      {
+        "feature": "MIN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "MIN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "MIN20",
+        "importance": 0.0
+      },
+      {
+        "feature": "MIN30",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLU5",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLU10",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLU20",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLU60",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLD60",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV10",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV20",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV30",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMAX5",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMAX10",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMAX20",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMAX60",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMIN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMIN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMIN20",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMIN60",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMXD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMXD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMXD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMXD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORR5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORR10",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORR20",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORR60",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTP5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTP10",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTP20",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTP60",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTN20",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTN30",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTD60",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMP5",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMP10",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMP20",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMP30",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMP60",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMN20",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMN30",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMN60",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK10",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK20",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK30",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK60",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA60",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSTD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSTD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSTD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSTD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSTD60",
+        "importance": 0.0
+      },
+      {
+        "feature": "WVMA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "WVMA10",
+        "importance": 0.0
+      },
+      {
+        "feature": "WVMA20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP60",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN60",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD60",
+        "importance": 0.0
+      }
+    ],
+    "best_iteration": 1,
+    "train_samples": 66629,
+    "val_samples": 12054
+  },
+  {
+    "fold_id": 3,
+    "train_end_year": 2024,
+    "val_year": 2025,
+    "hit_rate": 0.5752,
+    "precision": 0.5759,
+    "recall": 0.9953,
+    "roc_auc": 0.529,
+    "brier_score": 0.2438,
+    "avg_return_when_bullish": 0.012719,
+    "avg_return_when_bearish": 0.042884,
+    "calibration_by_bucket": [
+      {
+        "bucket": "0.0-0.3",
+        "count": 0,
+        "actual_hit_rate": 0.0,
+        "avg_predicted_prob": 0.0
+      },
+      {
+        "bucket": "0.3-0.5",
+        "count": 57,
+        "actual_hit_rate": 0.5789,
+        "avg_predicted_prob": 0.4874
+      },
+      {
+        "bucket": "0.5-0.7",
+        "count": 12045,
+        "actual_hit_rate": 0.5767,
+        "avg_predicted_prob": 0.5768
+      },
+      {
+        "bucket": "0.7-1.0",
+        "count": 99,
+        "actual_hit_rate": 0.4848,
+        "avg_predicted_prob": 0.7175
+      }
+    ],
+    "feature_importance": [
+      {
+        "feature": "WVMA60",
+        "importance": 2885.7078895568848
+      },
+      {
+        "feature": "BETA60",
+        "importance": 2610.4773750305176
+      },
+      {
+        "feature": "STD60",
+        "importance": 2477.0039978027344
+      },
+      {
+        "feature": "MIN60",
+        "importance": 1465.6549892425537
+      },
+      {
+        "feature": "CORR60",
+        "importance": 1246.0773944854736
+      },
+      {
+        "feature": "CORD60",
+        "importance": 1185.6650943756104
+      },
+      {
+        "feature": "RESI30",
+        "importance": 1129.9524040222168
+      },
+      {
+        "feature": "WVMA30",
+        "importance": 1079.0685997009277
+      },
+      {
+        "feature": "CORR30",
+        "importance": 1052.024990081787
+      },
+      {
+        "feature": "IMIN60",
+        "importance": 970.8014068603516
+      },
+      {
+        "feature": "IMXD60",
+        "importance": 920.8024082183838
+      },
+      {
+        "feature": "IMXD30",
+        "importance": 909.1786975860596
+      },
+      {
+        "feature": "CORD30",
+        "importance": 815.0079021453857
+      },
+      {
+        "feature": "IMAX60",
+        "importance": 737.2192993164062
+      },
+      {
+        "feature": "CORD20",
+        "importance": 584.0418910980225
+      },
+      {
+        "feature": "RSQR30",
+        "importance": 567.1139945983887
+      },
+      {
+        "feature": "CNTP60",
+        "importance": 540.6124992370605
+      },
+      {
+        "feature": "BETA20",
+        "importance": 463.64299392700195
+      },
+      {
+        "feature": "RSQR60",
+        "importance": 402.43530464172363
+      },
+      {
+        "feature": "WVMA20",
+        "importance": 366.9702033996582
+      },
+      {
+        "feature": "RSQR20",
+        "importance": 364.09510231018066
+      },
+      {
+        "feature": "IMAX30",
+        "importance": 363.2733917236328
+      },
+      {
+        "feature": "MIN30",
+        "importance": 357.69719886779785
+      },
+      {
+        "feature": "MAX60",
+        "importance": 353.0328998565674
+      },
+      {
+        "feature": "SUMP30",
+        "importance": 337.0255012512207
+      },
+      {
+        "feature": "STD30",
+        "importance": 321.97650146484375
+      },
+      {
+        "feature": "CORR20",
+        "importance": 299.03900146484375
+      },
+      {
+        "feature": "ROC60",
+        "importance": 294.2531986236572
+      },
+      {
+        "feature": "STD20",
+        "importance": 288.79500007629395
+      },
+      {
+        "feature": "QTLU60",
+        "importance": 225.74270057678223
+      },
+      {
+        "feature": "SUMP60",
+        "importance": 208.0645980834961
+      },
+      {
+        "feature": "QTLD20",
+        "importance": 207.01930236816406
+      },
+      {
+        "feature": "BETA30",
+        "importance": 195.33419799804688
+      },
+      {
+        "feature": "RESI60",
+        "importance": 194.04730033874512
+      },
+      {
+        "feature": "CNTD60",
+        "importance": 187.30200386047363
+      },
+      {
+        "feature": "MA60",
+        "importance": 181.0256004333496
+      },
+      {
+        "feature": "SUMD20",
+        "importance": 176.93529891967773
+      },
+      {
+        "feature": "IMIN30",
+        "importance": 169.39780044555664
+      },
+      {
+        "feature": "CNTN60",
+        "importance": 166.69639778137207
+      },
+      {
+        "feature": "SUMN30",
+        "importance": 152.55929946899414
+      },
+      {
+        "feature": "RSV60",
+        "importance": 150.03850173950195
+      },
+      {
+        "feature": "MIN20",
+        "importance": 139.39509963989258
+      },
+      {
+        "feature": "IMXD10",
+        "importance": 136.29199981689453
+      },
+      {
+        "feature": "MA20",
+        "importance": 122.10089874267578
+      },
+      {
+        "feature": "SUMD60",
+        "importance": 109.63999938964844
+      },
+      {
+        "feature": "WVMA10",
+        "importance": 109.19319725036621
+      },
+      {
+        "feature": "IMXD20",
+        "importance": 108.38700103759766
+      },
+      {
+        "feature": "QTLU20",
+        "importance": 104.61840057373047
+      },
+      {
+        "feature": "QTLU30",
+        "importance": 104.01160049438477
+      },
+      {
+        "feature": "SUMN20",
+        "importance": 103.53190040588379
+      },
+      {
+        "feature": "VSUMN60",
+        "importance": 94.97900009155273
+      },
+      {
+        "feature": "MAX20",
+        "importance": 92.60519981384277
+      },
+      {
+        "feature": "CNTD30",
+        "importance": 92.1372013092041
+      },
+      {
+        "feature": "ROC30",
+        "importance": 89.18919944763184
+      },
+      {
+        "feature": "SUMD30",
+        "importance": 86.35519790649414
+      },
+      {
+        "feature": "MA30",
+        "importance": 86.16999816894531
+      },
+      {
+        "feature": "MAX10",
+        "importance": 82.04669952392578
+      },
+      {
+        "feature": "BETA10",
+        "importance": 81.30690002441406
+      },
+      {
+        "feature": "CORD10",
+        "importance": 79.19969940185547
+      },
+      {
+        "feature": "MAX30",
+        "importance": 77.75699996948242
+      },
+      {
+        "feature": "ROC20",
+        "importance": 72.56780052185059
+      },
+      {
+        "feature": "QTLD60",
+        "importance": 70.62289810180664
+      },
+      {
+        "feature": "VSTD30",
+        "importance": 68.02939987182617
+      },
+      {
+        "feature": "CNTP30",
+        "importance": 65.72720146179199
+      },
+      {
+        "feature": "MIN10",
+        "importance": 65.43659973144531
+      },
+      {
+        "feature": "VSTD10",
+        "importance": 63.24880027770996
+      },
+      {
+        "feature": "VSTD60",
+        "importance": 45.00149917602539
+      },
+      {
+        "feature": "SUMN60",
+        "importance": 41.885501861572266
+      },
+      {
+        "feature": "SUMP20",
+        "importance": 39.31919860839844
+      },
+      {
+        "feature": "VSTD20",
+        "importance": 37.098899841308594
+      },
+      {
+        "feature": "ROC5",
+        "importance": 36.11249923706055
+      },
+      {
+        "feature": "MAX5",
+        "importance": 35.950199127197266
+      },
+      {
+        "feature": "IMAX10",
+        "importance": 35.88169860839844
+      },
+      {
+        "feature": "CNTN20",
+        "importance": 34.9828987121582
+      },
+      {
+        "feature": "CNTN30",
+        "importance": 33.92179870605469
+      },
+      {
+        "feature": "RSV30",
+        "importance": 32.82809829711914
+      },
+      {
+        "feature": "RSQR10",
+        "importance": 31.59589958190918
+      },
+      {
+        "feature": "QTLU5",
+        "importance": 31.471200942993164
+      },
+      {
+        "feature": "CNTP10",
+        "importance": 29.440000534057617
+      },
+      {
+        "feature": "KLEN",
+        "importance": 29.10740089416504
+      },
+      {
+        "feature": "CORR10",
+        "importance": 26.614299774169922
+      },
+      {
+        "feature": "KMID",
+        "importance": 0.0
+      },
+      {
+        "feature": "KMID2",
+        "importance": 0.0
+      },
+      {
+        "feature": "KUP",
+        "importance": 0.0
+      },
+      {
+        "feature": "KUP2",
+        "importance": 0.0
+      },
+      {
+        "feature": "KLOW",
+        "importance": 0.0
+      },
+      {
+        "feature": "KLOW2",
+        "importance": 0.0
+      },
+      {
+        "feature": "KSFT",
+        "importance": 0.0
+      },
+      {
+        "feature": "KSFT2",
+        "importance": 0.0
+      },
+      {
+        "feature": "OPEN0",
+        "importance": 0.0
+      },
+      {
+        "feature": "HIGH0",
+        "importance": 0.0
+      },
+      {
+        "feature": "LOW0",
+        "importance": 0.0
+      },
+      {
+        "feature": "VWAP0",
+        "importance": 0.0
+      },
+      {
+        "feature": "ROC10",
+        "importance": 0.0
+      },
+      {
+        "feature": "MA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "MA10",
+        "importance": 0.0
+      },
+      {
+        "feature": "BETA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSQR5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RESI5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RESI10",
+        "importance": 0.0
+      },
+      {
+        "feature": "RESI20",
+        "importance": 0.0
+      },
+      {
+        "feature": "STD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "STD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "MIN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLU10",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "QTLD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV10",
+        "importance": 0.0
+      },
+      {
+        "feature": "RSV20",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMAX5",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMAX20",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMIN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMIN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMIN20",
+        "importance": 0.0
+      },
+      {
+        "feature": "IMXD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORR5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CORD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTP5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTP20",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "CNTD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMP5",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMP10",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "SUMD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK5",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK10",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK20",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK30",
+        "importance": 0.0
+      },
+      {
+        "feature": "RANK60",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VMA60",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSTD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "WVMA5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMP60",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMN30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD5",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD10",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD20",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD30",
+        "importance": 0.0
+      },
+      {
+        "feature": "VSUMD60",
+        "importance": 0.0
+      }
+    ],
+    "best_iteration": 22,
+    "train_samples": 78683,
+    "val_samples": 12201
+  }
+]

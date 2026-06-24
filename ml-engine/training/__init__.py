@@ -1,6 +1,6 @@
 """Walk-forward temporal validation for ML training pipeline."""
 
-from .walk_forward import (
+from .validation import (
     FoldResult,
     WalkForwardConfig,
     WalkForwardSplit,

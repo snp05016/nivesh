@@ -55,6 +55,9 @@ _feature_computer: FeatureComputer | None = None
 _inference_engine: InferenceEngine | None = None
 _model_version: str | None = None
 
+SUPPORTED_HORIZONS = [20]
+DEFAULT_PREDICTION_HORIZON = 20
+
 
 # ── Request / Response Models ──────────────────────────────────────────────────
 
@@ -110,11 +113,23 @@ class SingleStockRequest(BaseModel):
 class PredictionResult(BaseModel):
     """Prediction result for a single stock."""
     ticker: str = ""
+    direction: int | None = Field(
+        default=None,
+        ge=-1,
+        le=1,
+        description="Alias for expected_direction used by backend clients",
+    )
     expected_direction: int = Field(
         ...,
         ge=-1,
         le=1,
         description="-1 (bearish), 0 (neutral), 1 (bullish)",
+    )
+    confidence: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Alias for confidence_score used by backend clients",
     )
     confidence_score: float = Field(
         ...,
@@ -146,6 +161,18 @@ class PredictionResult(BaseModel):
         default=None,
         description="Trained model version identifier",
     )
+    horizon: int = Field(
+        default=DEFAULT_PREDICTION_HORIZON,
+        description="Prediction target horizon in trading days",
+    )
+    feature_count: int = Field(
+        default=0,
+        description="Total feature count expected by the active model",
+    )
+    fallback_used: bool = Field(
+        default=True,
+        description="Whether the response came from a fallback path",
+    )
 
 
 class CrossSectionResponse(BaseModel):
@@ -160,6 +187,8 @@ class ModelStatus(BaseModel):
     lightgbm_loaded: bool
     tra_loaded: bool
     scaler_loaded: bool
+    ml_engine_mode: str
+    supported_horizons: list[int]
     feature_count: int
     lightgbm_path: str | None = None
     model_version: str | None = None
@@ -170,6 +199,13 @@ class ModelStatus(BaseModel):
 
 def _detect_model_version(model_path: Path) -> str | None:
     """Try to read model version from VERSION file next to model or training artifacts."""
+    deployed_version_file = model_path.parent / "DEPLOYED_VERSION"
+    if deployed_version_file.exists():
+        try:
+            return deployed_version_file.read_text().strip()
+        except Exception:
+            pass
+
     # Check for VERSION file next to the model
     version_file = model_path.parent / "VERSION"
     if version_file.exists():
@@ -304,12 +340,15 @@ async def health() -> dict[str, str]:
 @app.get("/model/status", response_model=ModelStatus)
 async def model_status() -> ModelStatus:
     """Return loaded model metadata."""
+    lightgbm_loaded = _lightgbm_model is not None
     return ModelStatus(
-        lightgbm_loaded=_lightgbm_model is not None,
+        lightgbm_loaded=lightgbm_loaded,
         tra_loaded=_tra_model is not None,
         scaler_loaded=_feature_scaler is not None,
+        ml_engine_mode="trained_lightgbm_baseline" if lightgbm_loaded else "fallback_technical_heuristic",
+        supported_horizons=SUPPORTED_HORIZONS,
         feature_count=len(FEATURE_LIST),
-        lightgbm_path=str(LIGHTGBM_MODEL_PATH) if _lightgbm_model else None,
+        lightgbm_path=str(LIGHTGBM_MODEL_PATH) if lightgbm_loaded else None,
         model_version=_model_version,
     )
 
@@ -365,16 +404,24 @@ async def predict_single(req: SingleStockRequest) -> PredictionResult:
 
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
 
+    expected_direction = result["expected_direction"]
+    confidence_score = result["confidence_score"]
+    lightgbm_loaded = _lightgbm_model is not None
     return PredictionResult(
         ticker=req.ticker,
-        expected_direction=result["expected_direction"],
-        confidence_score=result["confidence_score"],
-        ml_engine_mode="trained_lightgbm_baseline" if _lightgbm_model is not None else "fallback_technical_heuristic",
-        lightgbm_loaded=_lightgbm_model is not None,
+        direction=expected_direction,
+        expected_direction=expected_direction,
+        confidence=confidence_score,
+        confidence_score=confidence_score,
+        ml_engine_mode="trained_lightgbm_baseline" if lightgbm_loaded else "fallback_technical_heuristic",
+        lightgbm_loaded=lightgbm_loaded,
         features=FEATURE_LIST[:20],  # first 20 feature names as context
         prediction_time_ms=round(elapsed_ms, 2),
         raw_score=result.get("raw_score"),
-        model_version=_model_version if _lightgbm_model is not None else None,
+        model_version=_model_version if lightgbm_loaded else None,
+        horizon=DEFAULT_PREDICTION_HORIZON,
+        feature_count=len(FEATURE_LIST),
+        fallback_used=not lightgbm_loaded,
     )
 
 
@@ -397,17 +444,25 @@ async def predict_cross_section(req: CrossSectionRequest) -> CrossSectionRespons
                 ticker=ticker,
                 model_type=req.model_type,
             )
+            expected_direction = result["expected_direction"]
+            confidence_score = result["confidence_score"]
+            lightgbm_loaded = _lightgbm_model is not None
             predictions.append(
                 PredictionResult(
                     ticker=ticker,
-                    expected_direction=result["expected_direction"],
-                    confidence_score=result["confidence_score"],
-                    ml_engine_mode="trained_lightgbm_baseline" if _lightgbm_model is not None else "fallback_technical_heuristic",
-                    lightgbm_loaded=_lightgbm_model is not None,
+                    direction=expected_direction,
+                    expected_direction=expected_direction,
+                    confidence=confidence_score,
+                    confidence_score=confidence_score,
+                    ml_engine_mode="trained_lightgbm_baseline" if lightgbm_loaded else "fallback_technical_heuristic",
+                    lightgbm_loaded=lightgbm_loaded,
                     features=FEATURE_LIST[:20],
                     prediction_time_ms=0.0,  # individual timings not meaningful in batch
                     raw_score=result.get("raw_score"),
-                    model_version=_model_version if _lightgbm_model is not None else None,
+                    model_version=_model_version if lightgbm_loaded else None,
+                    horizon=DEFAULT_PREDICTION_HORIZON,
+                    feature_count=len(FEATURE_LIST),
+                    fallback_used=not lightgbm_loaded,
                 )
             )
         except Exception as exc:
@@ -422,6 +477,10 @@ async def predict_cross_section(req: CrossSectionRequest) -> CrossSectionRespons
                     features=[],
                     prediction_time_ms=0.0,
                     raw_score=None,
+                    model_version=None,
+                    horizon=DEFAULT_PREDICTION_HORIZON,
+                    feature_count=len(FEATURE_LIST),
+                    fallback_used=True,
                 )
             )
 
