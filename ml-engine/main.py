@@ -53,6 +53,7 @@ _tra_model: Any = None
 _feature_scaler: dict[str, dict[str, float]] | None = None
 _feature_computer: FeatureComputer | None = None
 _inference_engine: InferenceEngine | None = None
+_model_version: str | None = None
 
 
 # ── Request / Response Models ──────────────────────────────────────────────────
@@ -141,6 +142,10 @@ class PredictionResult(BaseModel):
         default=None,
         description="Raw model score before thresholding",
     )
+    model_version: str | None = Field(
+        default=None,
+        description="Trained model version identifier",
+    )
 
 
 class CrossSectionResponse(BaseModel):
@@ -157,6 +162,46 @@ class ModelStatus(BaseModel):
     scaler_loaded: bool
     feature_count: int
     lightgbm_path: str | None = None
+    model_version: str | None = None
+
+
+# ── Version Detection ─────────────────────────────────────────────────────────
+
+
+def _detect_model_version(model_path: Path) -> str | None:
+    """Try to read model version from VERSION file next to model or training artifacts."""
+    # Check for VERSION file next to the model
+    version_file = model_path.parent / "VERSION"
+    if version_file.exists():
+        try:
+            return version_file.read_text().strip()
+        except Exception:
+            pass
+
+    # Check training/artifacts for version directories or metadata
+    artifacts_dir = model_path.parent.parent / "training" / "artifacts"
+    if artifacts_dir.exists():
+        # Look for a version metadata JSON
+        meta_file = artifacts_dir / "model_metadata.json"
+        if meta_file.exists():
+            try:
+                meta = json.loads(meta_file.read_text())
+                return meta.get("version") or meta.get("model_version")
+            except Exception:
+                pass
+
+        # Fall back to latest versioned subdirectory name
+        try:
+            version_dirs = sorted(
+                [d.name for d in artifacts_dir.iterdir() if d.is_dir()],
+                reverse=True,
+            )
+            if version_dirs:
+                return version_dirs[0]
+        except Exception:
+            pass
+
+    return None
 
 
 # ── Lifespan ───────────────────────────────────────────────────────────────────
@@ -166,7 +211,7 @@ class ModelStatus(BaseModel):
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Load models and scaler at startup; clean up at shutdown."""
     global _lightgbm_model, _tra_model, _feature_scaler
-    global _feature_computer, _inference_engine
+    global _feature_computer, _inference_engine, _model_version
 
     _LOG.info("ml-engine starting up — loading models...")
 
@@ -174,6 +219,13 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     try:
         _lightgbm_model = ModelLoader.load_lightgbm(LIGHTGBM_MODEL_PATH)
         _LOG.info("LightGBM model loaded from %s", LIGHTGBM_MODEL_PATH)
+
+        # Detect model version from VERSION file or training artifacts
+        _model_version = _detect_model_version(LIGHTGBM_MODEL_PATH)
+        if _model_version:
+            _LOG.info("Model version detected: %s", _model_version)
+        else:
+            _LOG.info("No model version file found — version will be None")
     except FileNotFoundError:
         _LOG.warning(
             "LightGBM model not found at %s — prediction will use fallback heuristic",
@@ -258,6 +310,7 @@ async def model_status() -> ModelStatus:
         scaler_loaded=_feature_scaler is not None,
         feature_count=len(FEATURE_LIST),
         lightgbm_path=str(LIGHTGBM_MODEL_PATH) if _lightgbm_model else None,
+        model_version=_model_version,
     )
 
 
@@ -316,11 +369,12 @@ async def predict_single(req: SingleStockRequest) -> PredictionResult:
         ticker=req.ticker,
         expected_direction=result["expected_direction"],
         confidence_score=result["confidence_score"],
-        ml_engine_mode="lgbm_trained" if _lightgbm_model is not None else "fallback_technical_heuristic",
+        ml_engine_mode="trained_lightgbm_baseline" if _lightgbm_model is not None else "fallback_technical_heuristic",
         lightgbm_loaded=_lightgbm_model is not None,
         features=FEATURE_LIST[:20],  # first 20 feature names as context
         prediction_time_ms=round(elapsed_ms, 2),
         raw_score=result.get("raw_score"),
+        model_version=_model_version if _lightgbm_model is not None else None,
     )
 
 
@@ -348,11 +402,12 @@ async def predict_cross_section(req: CrossSectionRequest) -> CrossSectionRespons
                     ticker=ticker,
                     expected_direction=result["expected_direction"],
                     confidence_score=result["confidence_score"],
-                    ml_engine_mode="lgbm_trained" if _lightgbm_model is not None else "fallback_technical_heuristic",
+                    ml_engine_mode="trained_lightgbm_baseline" if _lightgbm_model is not None else "fallback_technical_heuristic",
                     lightgbm_loaded=_lightgbm_model is not None,
                     features=FEATURE_LIST[:20],
                     prediction_time_ms=0.0,  # individual timings not meaningful in batch
                     raw_score=result.get("raw_score"),
+                    model_version=_model_version if _lightgbm_model is not None else None,
                 )
             )
         except Exception as exc:
