@@ -192,7 +192,7 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
     except FileNotFoundError:
         logger.error("APNs auth key not found at configured path")
         return
-    except Exception:
+    except Exception as e:
         logger.error("APNs JWT signing failed (%s)", type(e).__name__)
         return
 
@@ -209,7 +209,7 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
                                    response.status_code, user_id, response.text[:200])
         except httpx.HTTPError:
             logger.warning("APNs HTTP transport error for user %d", user_id)
-        except Exception:
+        except Exception as e:
             logger.warning("APNs dispatch error for user %d (%s)", user_id, type(e).__name__)
 
 

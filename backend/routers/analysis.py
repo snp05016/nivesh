@@ -861,7 +861,7 @@ async def get_home_feed(user_id: int, ticker: str = None, authorization: str = H
                         _news = yf.Ticker(_t).news or []
                         for _n in _news[:4]:
                             _pub_ts = _n.get("providerPublishTime", 0)
-                            _pub_iso = datetime.utcfromtimestamp(_pub_ts).isoformat() + "Z" if _pub_ts else datetime.now(timezone.utc).isoformat() + "Z"
+                            _pub_iso = datetime.fromtimestamp(_pub_ts, tz=timezone.utc).isoformat() if _pub_ts else datetime.now(timezone.utc).isoformat()
                             _fb_arts.append({
                                 "id": abs(hash(_n.get("link", "") + _t)) % 1_000_000,
                                 "source": _n.get("publisher", "Yahoo Finance"),

@@ -2125,7 +2125,30 @@ def dashboard_data(authorization: str = Header(None)):
 
     try:
         import services.scraper as scr
-        scraper_cache = {k: {"age_s": round(time.time() - v["ts"])} for k, v in scr._CACHE.items()}
+        scraper_cache = {}
+        raw_items = None
+        try:
+            # TTLLRUCache or similar has no items() — convert to dict first
+            raw_items = list(scr._CACHE.items())
+        except (AttributeError, TypeError):
+            # fallback: try dict access
+            try:
+                raw_items = list(dict(scr._CACHE).items())
+            except Exception:
+                raw_items = {}
+        if raw_items:
+            for k, v in raw_items:
+                try:
+                    # v may be a (value, timestamp) tuple or a {"ts": ...} dict
+                    if isinstance(v, dict):
+                        ts = v.get("ts", 0)
+                    elif isinstance(v, (tuple, list)) and len(v) >= 2:
+                        ts = v[1]
+                    else:
+                        ts = 0
+                    scraper_cache[str(k)] = {"age_s": round(time.time() - float(ts))}
+                except Exception:
+                    continue
     except Exception:
         scraper_cache = {}
 

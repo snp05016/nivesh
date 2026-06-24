@@ -262,7 +262,7 @@ def _fetch_videos_ytdlp(channel_id: str, lookback_hours: int) -> list[dict]:
         else:
             # Timestamp field
             ts = entry.get("timestamp")
-            published_at = datetime.utcfromtimestamp(ts) if ts else datetime.now(timezone.utc)
+            published_at = datetime.fromtimestamp(ts, tz=timezone.utc) if ts else datetime.now(timezone.utc)
 
         if published_at < cutoff:
             continue

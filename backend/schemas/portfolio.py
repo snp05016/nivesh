@@ -1,7 +1,7 @@
 """Portfolio, trading, and analysis Pydantic request schemas."""
 
 from typing import Optional
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 
 
 class AnalyzeRequest(BaseModel):
@@ -11,7 +11,7 @@ class AnalyzeRequest(BaseModel):
     deep_scan: bool = False
     scan_type: str = "standard"   # "standard" | "extreme"
 
-    @validator("ticker")
+    @field_validator("ticker")
     def validate_ticker(cls, v):
         import re
         v = v.strip().upper()
@@ -19,7 +19,7 @@ class AnalyzeRequest(BaseModel):
             raise ValueError("Invalid ticker format")
         return v
 
-    @validator("exchange")
+    @field_validator("exchange")
     def validate_exchange(cls, v):
         if v not in ("NSE", "BSE"):
             raise ValueError("Exchange must be NSE or BSE")

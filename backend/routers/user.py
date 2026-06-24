@@ -4,6 +4,8 @@ import time
 from pydantic import BaseModel
 from typing import Optional
 
+from services.harvester_reformatter import strip_emoji
+
 from helpers import (
     get_session, verify_access_token, User, Portfolio, AnalysisHistory,
     DeviceToken, AdvisorInsight, _to_ns, _yf_price, _yf_fetch_info,
@@ -260,9 +262,9 @@ def notifications_morning_summary_push(req: MorningSummaryPushRequest):
         first_action = ""
         if priority_items:
             item = priority_items[0]
-            first_action = f"\n• {item.get('ticker', '')}: {item.get('action', '')}"
+            first_action = f"\n• {strip_emoji(item.get('ticker', ''))}: {strip_emoji(item.get('action', ''))}"
 
-        body = f"Good morning, {display_name}! {mood_emoji} {summary_data.get('summary', '')[:80]}{first_action}"
+        body = f"Good morning, {display_name}! {mood_emoji} {strip_emoji(summary_data.get('summary', '')[:80])}{first_action}"
 
         payload = {
             "title": f"☀️ Daily Market Brief — {mood.upper()}",

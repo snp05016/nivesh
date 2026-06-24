@@ -1810,7 +1810,8 @@ async def portfolio_charts_endpoint(
             cached_meta: dict[str, dict] = {}
             if os.path.exists(meta_path):
                 try:
-                    cached_meta = _json.loads(open(meta_path).read())
+                    with open(meta_path) as f:
+                        cached_meta = _json.loads(f.read())
                 except Exception:
                     cached_meta = {}
             cached_charts = []

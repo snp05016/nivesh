@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional
 from collections import deque
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 from fastapi import HTTPException, Header
 
 from database import (
@@ -72,7 +72,7 @@ def upsert_device_token(user_id: int, device_token: str, platform: str = "ios") 
     if not re.fullmatch(r"[0-9a-fA-F]{64,256}", device_token):
         raise ValueError("Invalid APNs device token format")
 
-    from datetime import datetime as _dt
+    from datetime import datetime as _dt, timezone
     with get_session() as session:
         existing = session.query(DeviceToken).filter_by(device_token=device_token).first()
         if existing:
@@ -80,7 +80,7 @@ def upsert_device_token(user_id: int, device_token: str, platform: str = "ios") 
                 raise PermissionError(
                     f"Device token already registered to a different user"
                 )
-            existing.updated_at = _dt.utcnow()
+            existing.updated_at = _dt.now(timezone.utc)
             existing.platform = platform or existing.platform
         else:
             try:
@@ -94,7 +94,7 @@ def upsert_device_token(user_id: int, device_token: str, platform: str = "ios") 
                         raise PermissionError(
                             f"Device token already registered to a different user"
                         )
-                    duplicate.updated_at = _dt.utcnow()
+                    duplicate.updated_at = _dt.now(timezone.utc)
                     duplicate.platform = platform or duplicate.platform
                 else:
                     raise
@@ -151,7 +151,7 @@ class AnalyzeRequest(BaseModel):
     debate_rounds: Optional[int] = None
     risk_tolerance: Optional[str] = None
 
-    @validator("ticker")
+    @field_validator("ticker")
     def validate_ticker(cls, v):
         import re
         v = v.strip().upper()
@@ -159,7 +159,7 @@ class AnalyzeRequest(BaseModel):
             raise ValueError("Ticker contains invalid characters")
         return v
 
-    @validator("exchange")
+    @field_validator("exchange")
     def validate_exchange(cls, v):
         if v not in ("NSE", "BSE"):
             raise ValueError("Exchange must be NSE or BSE")

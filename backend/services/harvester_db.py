@@ -79,7 +79,7 @@ class HarvestedCard(Base):
     card_type = Column(String(20), index=True, nullable=False, default="EXPERT")
     expert_credential = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
     def to_dict(self) -> dict:
         """Serialize for the REST API. snake_case keys (iOS decodes them)."""
@@ -121,7 +121,7 @@ class SourceHealth(Base):
     error_message = Column(Text, nullable=True)
     items_scraped = Column(Integer, nullable=False, default=0)
     is_healthy = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict:
         return {

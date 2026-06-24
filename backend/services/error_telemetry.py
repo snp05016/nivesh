@@ -223,8 +223,8 @@ def generate_daily_digest() -> str:
         with get_session() as session:
             rows = (
                 session.query(MarketErrorLog)
-                .filter(MarketErrorLog.created_at >= since)
-                .order_by(MarketErrorLog.created_at.desc())
+                .filter(MarketErrorLog.timestamp >= since)
+                .order_by(MarketErrorLog.timestamp.desc())
                 .all()
             )
     except Exception as e:
@@ -245,7 +245,7 @@ def generate_daily_digest() -> str:
         # Most recent 10 errors
         digest_lines.append("\n  ── Most recent 10 errors ──")
         for r in rows[:10]:
-            ts = r.created_at.strftime("%H:%M") if r.created_at else "??"
+            ts = r.timestamp.strftime("%H:%M") if r.timestamp else "??"
             ticker = f" [{r.context_ticker}]" if r.context_ticker else ""
             msg_preview = (r.error_message or "")[:120].replace("\n", " ")
             digest_lines.append(f"    {ts}  {r.component}{ticker}: {msg_preview}")
