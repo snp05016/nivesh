@@ -308,7 +308,8 @@ Base URL: `http://localhost:8001` (or configured via `ML_ENGINE_URL` env var)
   "ticker": "RELIANCE",
   "expected_direction": 1,
   "confidence_score": 0.72,
-  "feature_count": 158
+  "feature_count": 158,
+  "ml_engine_mode": "lgbm_trained"
 }
 ```
 

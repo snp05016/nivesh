@@ -1548,11 +1548,19 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
                 final_state["_ml_confidence"] = float(ml_cross_raw.get("confidence", 0.0))
                 final_state["_ml_engine_mode"] = ml_cross_raw.get("ml_engine_mode", "fallback_technical_heuristic")
                 final_state["_lightgbm_loaded"] = ml_cross_raw.get("lightgbm_loaded", False)
+                final_state["_ml_model_version"] = ml_cross_raw.get("model_version")
+                final_state["_ml_horizon"] = ml_cross_raw.get("horizon")
+                final_state["_ml_feature_count"] = ml_cross_raw.get("feature_count")
+                final_state["_ml_fallback_used"] = bool(ml_cross_raw.get("fallback_used", False))
             else:
                 final_state["_ml_direction"] = None
                 final_state["_ml_confidence"] = None
-                final_state["_ml_engine_mode"] = "fallback_technical_heuristic"
+                final_state["_ml_engine_mode"] = "unavailable"
                 final_state["_lightgbm_loaded"] = False
+                final_state["_ml_model_version"] = None
+                final_state["_ml_horizon"] = None
+                final_state["_ml_feature_count"] = None
+                final_state["_ml_fallback_used"] = True
                 
         final_state["_signal_agreement"] = agreement_data.get("agreement_ratio")
 
@@ -2053,6 +2061,12 @@ def analyze(
         if final_state.get("_ml_direction") is not None:
             result["ml_direction"] = final_state["_ml_direction"]
             result["ml_confidence"] = final_state["_ml_confidence"]
+        result["ml_engine_mode"] = final_state.get("_ml_engine_mode", "unavailable")
+        result["model_version"] = final_state.get("_ml_model_version")
+        result["lightgbm_loaded"] = final_state.get("_lightgbm_loaded", False)
+        result["ml_feature_count"] = final_state.get("_ml_feature_count")
+        result["ml_horizon"] = final_state.get("_ml_horizon")
+        result["ml_fallback_used"] = final_state.get("_ml_fallback_used", True)
 
     # === DETERMINISTIC CONFIDENCE FUSION ===
     _llm_conf = result.get("confidence_pct")
@@ -2063,6 +2077,10 @@ def analyze(
     _agree = None
     _ml_engine_mode = "fallback_technical_heuristic"
     _lightgbm_loaded = False
+    _ml_model_version = None
+    _ml_horizon = None
+    _ml_feature_count = None
+    _ml_fallback_used = True
     
     if isinstance(final_state, dict):
         _va_conf = final_state.get("_venn_abers_confidence")
@@ -2070,6 +2088,10 @@ def analyze(
         _agree = final_state.get("_signal_agreement")
         _ml_engine_mode = final_state.get("_ml_engine_mode", "fallback_technical_heuristic")
         _lightgbm_loaded = final_state.get("_lightgbm_loaded", False)
+        _ml_model_version = final_state.get("_ml_model_version")
+        _ml_horizon = final_state.get("_ml_horizon")
+        _ml_feature_count = final_state.get("_ml_feature_count")
+        _ml_fallback_used = final_state.get("_ml_fallback_used", True)
 
     fused_conf, breakdown = _fuse_final_confidence(
         llm_conf=_llm_conf,
@@ -2077,19 +2099,31 @@ def analyze(
         venn_abers_conf=_va_conf,
         signal_agreement=_agree,
         ml_conf=_ml_conf,
+        ml_engine_mode=_ml_engine_mode,
     )
     
-    breakdown["ml_engine_mode"] = get_ml_engine_mode(_lightgbm_loaded)
+    breakdown["ml_engine_mode"] = get_ml_engine_mode(_lightgbm_loaded, _ml_engine_mode)
     breakdown["ml_model_loaded"] = _lightgbm_loaded
-    breakdown["ml_weight_applied"] = 0.05
+    breakdown["model_version"] = _ml_model_version
+    breakdown["feature_count"] = _ml_feature_count
+    breakdown["horizon"] = _ml_horizon
+    breakdown["fallback_used"] = _ml_fallback_used
     
     # Overwrite the LLM-generated confidence with the deterministic fused value
     result["confidence_pct"] = fused_conf
     result["confidence_breakdown"] = breakdown
+    result["ml_direction"] = final_state.get("_ml_direction") if isinstance(final_state, dict) else None
+    result["ml_confidence"] = _ml_conf
+    result["ml_engine_mode"] = breakdown["ml_engine_mode"]
+    result["model_version"] = _ml_model_version
+    result["lightgbm_loaded"] = _lightgbm_loaded
+    result["ml_feature_count"] = _ml_feature_count
+    result["ml_horizon"] = _ml_horizon
+    result["ml_fallback_used"] = _ml_fallback_used
     
     # Log it to AnalysisPrediction
     try:
-        from database import AnalysisPrediction
+        from models.db_models import AnalysisPrediction
         with get_session() as session:
             pred = AnalysisPrediction(
                 symbol=ticker.upper(),
@@ -2101,7 +2135,10 @@ def analyze(
                 venn_abers_confidence=_va_conf,
                 signal_agreement=_agree,
                 ml_engine_mode=breakdown["ml_engine_mode"],
-                model_version="nivesh-v1.0-heuristic",
+                model_version=_ml_model_version or breakdown["ml_engine_mode"],
+                horizon_days=int(_ml_horizon or 30),
+                scan_type=scan_type,
+                regime_id=result.get("market_regime", "Unknown"),
                 entry_price=result.get("current_price_inr"),
                 target_price=result.get("target_prices", {}).get("medium_term_12m"),
             )

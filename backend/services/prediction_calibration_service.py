@@ -609,3 +609,98 @@ def get_model_version_analytics() -> Dict[str, Any]:
             "total_predictions": total,
             "model_versions": versions,
         }
+
+
+# ---------------------------------------------------------------------------
+# 4. get_calibration_health
+# ---------------------------------------------------------------------------
+
+def get_calibration_health() -> Dict[str, Any]:
+    """
+    Returns counts and readiness flags to determine if there is enough data
+    for reliable calibration.
+    """
+    with get_session() as session:
+        total = session.query(func.count(AnalysisPrediction.id)).scalar() or 0
+        latest = session.query(func.max(AnalysisPrediction.created_at)).scalar()
+        
+        hit_by_horizon = _compute_hit_rate_by_horizon(session)
+        
+        matured_7d = hit_by_horizon.get("7d", {}).get("matured_count", 0)
+        matured_30d = hit_by_horizon.get("30d", {}).get("matured_count", 0)
+        matured_90d = hit_by_horizon.get("90d", {}).get("matured_count", 0)
+        
+        warnings = []
+        if matured_30d < 100:
+            warnings.append(f"Insufficient 30d matured data for reliable calibration ({matured_30d}/100).")
+        if matured_7d < 30:
+            warnings.append(f"Low 7d matured data ({matured_7d}/30).")
+            
+        return {
+            "total_predictions": total,
+            "matured_7d": matured_7d,
+            "matured_30d": matured_30d,
+            "matured_90d": matured_90d,
+            "latest_prediction_date": latest.isoformat() if latest else None,
+            "is_ready_for_calibration": matured_30d >= 100,
+            "warnings": warnings,
+        }
+
+
+# ---------------------------------------------------------------------------
+# 5. get_fusion_weight_recommendations
+# ---------------------------------------------------------------------------
+
+def get_fusion_weight_recommendations(min_sample: int = 100) -> Dict[str, Any]:
+    """
+    Generate advisory weights for confidence fusion based on historical 
+    point-biserial correlations from pillar attribution.
+    """
+    attr = get_pillar_attribution()
+    total = attr.get("total_predictions", 0)
+    
+    # Base weights if not enough data or fallback needed
+    base_weights = {
+        "llm_confidence": 0.45,
+        "quant_confidence": 0.25,
+        "venn_abers_confidence": 0.15,
+        "signal_agreement": 0.10,
+        "ml_confidence": 0.05,
+    }
+    
+    if total < min_sample:
+        return {
+            "recommended_weights": base_weights,
+            "warnings": [f"Sample size ({total}) below minimum ({min_sample}). Using base weights."],
+            "apply_recommendation": False,
+            "is_confident": False,
+        }
+        
+    pillars = attr.get("pillars", {})
+    raw_weights = {}
+    
+    for p_name in PILLAR_COLUMNS:
+        p_info = pillars.get(p_name, {})
+        corr = p_info.get("correlation_with_hit_30d")
+        missing_rate = p_info.get("missing_rate", 0.0)
+        
+        if corr is None or corr <= 0:
+            raw_weights[p_name] = 0.01  # Minimum floor
+        else:
+            # Penalize by missing rate
+            effective_corr = corr * (1.0 - missing_rate)
+            raw_weights[p_name] = max(0.01, effective_corr)
+            
+    total_raw = sum(raw_weights.values())
+    
+    if total_raw <= 0:
+        recommended = base_weights
+    else:
+        recommended = {k: round(v / total_raw, 4) for k, v in raw_weights.items()}
+        
+    return {
+        "recommended_weights": recommended,
+        "warnings": [],
+        "apply_recommendation": False,  # Always False to ensure manual application
+        "is_confident": True,
+    }

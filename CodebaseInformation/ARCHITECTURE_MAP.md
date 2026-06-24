@@ -40,6 +40,7 @@
 | `orchestrator.py` | Full 8-stage AI analysis pipeline, LangGraph graph, `analyze()` entry — 96 KB |
 | `factor_engine.py` | RSI, MACD, Bollinger Bands, ATR, OBV, SMA/EMA, volatility regime — 20 KB |
 | `confidence_engine.py` | Signal agreement, conformal prediction, KNN analogues, bear asymmetry — 23 KB |
+| `confidence_fusion.py` | Strict fusion formula (0.45*LLM + 0.25*Quant + 0.15*Venn-Abers + 0.10*Signal Agreement + 0.05*ML) |
 | `stress_test.py` | 14 scenarios, factor betas, EWMA shrinkage, Almgren-Chriss liquidity, 6 risk scores — 19 KB |
 | `stress_test_jobs.py` | Async job state management for stress test runs — 7 KB |
 | `correlation_engine.py` | MPT mean-variance, 11-sector proxy, pairwise NaN handling, 1hr TTL — 10 KB |
@@ -88,6 +89,7 @@
 | `job_manager.py` | AnalysisJob lifecycle (create/update/read) — 2 KB |
 | `job_worker.py` | Worker for async job execution — 3 KB |
 | `outcome_backfill.py` | Nightly forward-return backfill for calibration — 5 KB |
+| `outcome_tracker.py` | Nightly Celery task: actual returns (7/30/90-day) via yfinance for LightGBM |
 | `pkscreener_runner.py` | PKScreener signal runner — 7 KB |
 | `ticker_matcher.py` | Fuzzy ticker and company name matching — 11 KB |
 | `celery_tasks.py` | Canonical Celery app (referenced by tasks/) — 2 KB |
@@ -103,7 +105,7 @@
 
 | File | Purpose |
 |------|---------|
-| `backend/models/db_models.py` | 24 ORM classes: User, Portfolio, AnalysisHistory, AnalysisJob, NewsArticle, YouTubeVideo, StockUniverse, Alpha158Features, etc. — 32 KB |
+| `backend/models/db_models.py` | 25 ORM classes: User, Portfolio, AnalysisHistory, AnalysisJob, NewsArticle, AnalysisPrediction (w/ 7d/30d/90d brier, 5 confidence pillars), etc. — 32 KB |
 | `backend/models/signal_config.py` | `_SIGNAL_MAP` — sole authority for signal string constants (BULLISH/BEARISH/HOLD/NEUTRAL/WATCHLIST) |
 
 ---
@@ -155,7 +157,7 @@
 | File | Purpose |
 |------|---------|
 | `ml-engine/pipeline/feature_computer.py` | Computes all 158 Alpha158 features from raw OHLCV pandas/polars DataFrame — 14 KB |
-| `ml-engine/pipeline/inference.py` | End-to-end pipeline: OHLCV list -> feature vector -> ensemble prediction -> response — 11 KB |
+| `ml-engine/pipeline/inference.py` | End-to-end pipeline: OHLCV list -> feature vector -> ensemble prediction -> response (returns explicit `ml_engine_mode` as lgbm_trained or fallback_technical_heuristic) — 11 KB |
 | `ml-engine/pipeline/tra_sequence.py` | Prepares temporal sequences (sliding windows) for TRA model input — 5 KB |
 
 ### ML Engine Sandbox (RD-Agent)

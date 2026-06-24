@@ -131,7 +131,7 @@ async def harvest_news(lookback_hours: int = 26):
 
                         # Parse publish date
                         try:
-                            pub_date = datetime(*entry.published_parsed[:6]) \
+                            pub_date = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc) \
                                 if hasattr(entry, 'published_parsed') and entry.published_parsed \
                                 else datetime.now(timezone.utc)
                         except (TypeError, AttributeError, ValueError):

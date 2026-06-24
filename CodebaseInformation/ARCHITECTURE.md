@@ -57,7 +57,7 @@ All monetary values use the Indian numbering system: Lakhs and Crores. "Million/
 +--------------------+ +--------------------------+
 |  AI Pipeline       | |  PostgreSQL 18           |
 |  LangGraph . 8     | |  + pgvector RAG          |
-|  agents . DeepSeek | |  + 24 ORM tables         |
+|  agents . DeepSeek | |  + 25 ORM tables         |
 |  Haiku . Sonnet    | |  + Alembic migrations    |
 +--------------------+ +--------------------------+
                |
@@ -78,7 +78,7 @@ All monetary values use the Indian numbering system: Lakhs and Crores. "Million/
 | **Controller** | `backend/routers/` (21 files) | HTTP validation, rate limiting, spawn `multiprocessing.Process` for heavy AI jobs |
 | **Service** | `backend/services/` (~60 files) | All business logic, LLM orchestration, computations, data harvesting |
 | **Repository** | `backend/repositories/` + `database.py` | `get_session()` context manager, ORM queries, Alembic migrations |
-| **Models** | `backend/models/db_models.py` | 24 centralized ORM classes — duplication forbidden |
+| **Models** | `backend/models/db_models.py` | 25 centralized ORM classes — duplication forbidden |
 | **Config** | `backend/config/settings.py` | Sector PE maps, cache TTLs, rate limit configs |
 | **Helpers** | `backend/helpers.py` | `EXCHANGE_SUFFIX`, `_resolve_ticker`, `_to_ns`, `_check_rate_limit` |
 | **Core** | `backend/core/security.py` | JWT auth: `get_current_user_id`, `require_auth`, `require_admin` |
@@ -144,7 +144,7 @@ ml-engine/
 |--------|------|-------------|
 | `GET` | `/health` | Liveness probe — confirms model is loaded |
 | `POST` | `/predict/cross-section` | Batch predictions for multiple stocks |
-| `POST` | `/predict/single` | Single-stock prediction from raw OHLCV list |
+| `POST` | `/predict/single` | Single-stock prediction from raw OHLCV list (returns explicit `ml_engine_mode`) |
 | `GET` | `/model/status` | Loaded model metadata (paths, feature count, load time) |
 
 ### Backend → ML Engine Client
@@ -168,6 +168,7 @@ ml-engine/
 | `orchestrator.py` | 8-stage AI analysis pipeline; LangGraph graph setup, `analyze()` entry point |
 | `factor_engine.py` | RSI, MACD, Bollinger Bands, ATR, OBV, SMA/EMA crossovers, volatility regimes |
 | `confidence_engine.py` | Signal agreement scoring, conformal prediction bounds, KNN historical analogues |
+| `confidence_fusion.py` | Strict fusion formula for confidence calculation: 0.45*LLM + 0.25*Quant + 0.15*Venn-Abers + 0.10*Signal Agreement + 0.05*ML |
 | `stress_test.py` | 14 Indian-market stress scenarios; EWMA Vasicek shrinkage, Almgren-Chriss liquidity |
 | `stress_test_jobs.py` | Async job management for stress test runs |
 | `correlation_engine.py` | MPT mean-variance, 11-sector proxy, pairwise NaN handling, 1hr TTL cache |
@@ -216,6 +217,7 @@ ml-engine/
 | `job_manager.py` | AnalysisJob lifecycle management |
 | `job_worker.py` | Worker for async job execution |
 | `outcome_backfill.py` | Nightly forward-return backfill for resolved analyses |
+| `outcome_tracker.py` | Nightly Celery task calculating actual returns (7, 30, 90-day) via yfinance to build LightGBM training datasets |
 | `pkscreener_runner.py` | PKScreener technical signal runner |
 | `ticker_matcher.py` | Fuzzy ticker/company name matching |
 | `celery_tasks.py` | Celery app definition (canonical, referenced by tasks/) |
@@ -257,7 +259,7 @@ ml-engine/
 
 ## Database
 
-### ORM Models (backend/models/db_models.py) — 24 Classes
+### ORM Models (backend/models/db_models.py) — 25 Classes
 
 All models centralized in one file. Duplication forbidden — never define `class Foo(Base)` in a service file.
 
@@ -265,7 +267,7 @@ All models centralized in one file. Duplication forbidden — never define `clas
 |--------|-------------|
 | **User & Auth** | `User`, `DeviceToken` |
 | **Portfolio** | `Portfolio`, `PortfolioValuationHistory`, `NetWorthLedger`, `TradeJournal` |
-| **Analysis** | `AnalysisHistory`, `AnalysisJob`, `SignalEvent`, `PriceTarget` |
+| **Analysis** | `AnalysisHistory`, `AnalysisJob`, `SignalEvent`, `PriceTarget`, `AnalysisPrediction` (with 7d/30d/90d brier scores, hit directions, scan_type, regime_id, and 5 confidence pillars) |
 | **Content** | `NewsArticle`, `YouTubeVideo`, `AdvisorInsight`, `AdvisorBiography`, `TextAdvisoryInsight` |
 | **Market** | `StockUniverse` (2000+ tickers), `BlockDeal`, `FIIDIIFlow`, `MacroEvent`, `EarningsAlert`, `EarningsSurpriseHistory`, `MarketAnomaly` |
 | **Risk** | `EquityRiskFactor`, `CovarianceMatrix` |
@@ -377,6 +379,10 @@ All configuration via `build_ta_config()` — never modify `DEFAULT_CONFIG` dire
 5. Upsert into alpha158_features_normalized using get_session() per ticker (isolated failures)
 
 Retries up to 3x on transient failures. Uses httpx with 30-second timeout.
+
+### Outcome Tracking (Celery)
+
+`backend/services/outcome_tracker.py` — Nightly Celery task calculates actual returns across 7, 30, and 90-day horizons using `yfinance` to build LightGBM training datasets.
 
 ### APScheduler Jobs
 
@@ -552,7 +558,7 @@ Open `ios/StockApp/stockme.xcodeproj` in Xcode 15+. Configure API URL in `Networ
 ```
 Backend:    21 routers  .  ~60 services  .  24 ORM models
 iOS:        47 View files  .  60+ screens  .  7 theme presets
-Database:   9 migration files  .  24 ORM tables
+Database:   9 migration files  .  25 ORM tables
 ML Engine:  Python 3.10 Docker  .  158 Alpha158 features  .  LightGBM + TRA
 Tests:      103 backend test files  .  1 ML engine test file
 Scripts:    13 shell scripts in scripts/

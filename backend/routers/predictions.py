@@ -18,6 +18,8 @@ from services.prediction_calibration_service import (
     get_calibration_metrics,
     get_pillar_attribution,
     get_model_version_analytics,
+    get_calibration_health,
+    get_fusion_weight_recommendations,
 )
 from schemas.prediction_calibration import (
     CalibrationBucket,
@@ -28,6 +30,8 @@ from schemas.prediction_calibration import (
     ModelVersionStats,
     PillarAttribution,
     PillarAttributionResponse,
+    CalibrationHealthResponse,
+    FusionWeightRecommendationResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -224,3 +228,35 @@ def get_predictions_model_versions(user_id: int = Depends(require_auth)):
     except Exception:
         logger.exception("Failed to compute model version analytics")
         raise HTTPException(status_code=500, detail="Internal error computing model version analytics")
+
+
+@router.get(
+    "/api/v1/predictions/calibration/health",
+    response_model=CalibrationHealthResponse,
+    summary="Calibration Data Health",
+    description="Returns data readiness counts to determine if enough matured predictions exist for reliable fusion weight calibration.",
+)
+def get_calibration_readiness_health(user_id: int = Depends(require_auth)):
+    """Check if the system has enough prediction outcomes to calibrate confidence fusion."""
+    try:
+        data = get_calibration_health()
+        return CalibrationHealthResponse(**data)
+    except Exception:
+        logger.exception("Failed to compute calibration health")
+        raise HTTPException(status_code=500, detail="Internal error computing calibration health")
+
+
+@router.get(
+    "/api/v1/predictions/fusion-weight-recommendations",
+    response_model=FusionWeightRecommendationResponse,
+    summary="Fusion Weight Recommendations",
+    description="Returns advisory confidence fusion weights based on historical pillar performance. Never mutates code automatically.",
+)
+def get_fusion_weight_recommendations_endpoint(user_id: int = Depends(require_auth)):
+    """Generates recommended weights for prediction confidence fusion based on historical performance."""
+    try:
+        data = get_fusion_weight_recommendations()
+        return FusionWeightRecommendationResponse(**data)
+    except Exception:
+        logger.exception("Failed to compute fusion weight recommendations")
+        raise HTTPException(status_code=500, detail="Internal error computing fusion weight recommendations")

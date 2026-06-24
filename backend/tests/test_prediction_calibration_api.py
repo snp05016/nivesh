@@ -25,12 +25,15 @@ from main import app
 MOCK_USER_ID = 1
 
 
+from helpers import require_auth
+
 @pytest.fixture()
 def authed_client():
     """TestClient with require_auth bypassed to return a fixed user_id."""
-    with patch("routers.predictions.require_auth", return_value=MOCK_USER_ID):
-        with TestClient(app) as c:
-            yield c
+    app.dependency_overrides[require_auth] = lambda: MOCK_USER_ID
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture()
@@ -51,7 +54,7 @@ EMPTY_CALIBRATION = {
     "calibration_error": None,
     "expected_calibration_error": None,
     "max_calibration_error": None,
-    "hit_rate_by_horizon": [],
+    "hit_rate_by_horizon": {},
     "calibration_by_scan_type": [],
     "calibration_by_regime": [],
     "calibration_by_sector": [],
@@ -75,11 +78,11 @@ SAMPLE_CALIBRATION = {
     "calibration_error": 0.05,
     "expected_calibration_error": 0.04,
     "max_calibration_error": 0.12,
-    "hit_rate_by_horizon": [
-        {"horizon": "7d", "matured_count": 5, "hit_rate": 0.6},
-        {"horizon": "30d", "matured_count": 10, "hit_rate": 0.7},
-        {"horizon": "90d", "matured_count": 3, "hit_rate": 0.67},
-    ],
+    "hit_rate_by_horizon": {
+        "7d": {"matured_count": 5, "hit_rate": 0.6},
+        "30d": {"matured_count": 10, "hit_rate": 0.7},
+        "90d": {"matured_count": 3, "hit_rate": 0.67},
+    },
     "calibration_by_scan_type": [
         {"group_key": "standard", "count": 15, "accuracy": 0.73,
          "avg_brier_score": 0.19, "avg_confidence": 0.72, "calibration_error": 0.01},
@@ -96,61 +99,56 @@ SAMPLE_CALIBRATION = {
 # ---------------------------------------------------------------------------
 
 EMPTY_PILLAR_ATTRIBUTION = {
-    "pillars": [],
+    "pillars": {},
     "total_predictions": 0,
 }
 
 SAMPLE_PILLAR_ATTRIBUTION = {
-    "pillars": [
-        {
-            "pillar_name": "llm_confidence",
-            "correlation_with_outcome": 0.35,
+    "pillars": {
+        "llm_confidence": {
+            "correlation_with_hit_30d": 0.35,
             "bucketed_accuracy": [
-                {"bucket_label": "70-80%", "count": 8, "accuracy": 0.75,
-                 "avg_brier_score": 0.17, "avg_confidence": 0.74, "overconfidence": -0.01},
+                {"range": "70-80%", "count": 8, "hit_rate": 0.75,
+                 "avg_brier_score_30d": 0.17, "avg_confidence": 0.74, "overconfidence": -0.01},
             ],
-            "avg_brier_score": 0.19,
+            "avg_brier_score_30d": 0.19,
             "predictive_lift": 0.02,
             "missing_rate": 0.0,
             "usefulness_rank": 1,
         },
-        {
-            "pillar_name": "quant_confidence",
-            "correlation_with_outcome": 0.28,
+        "quant_confidence": {
+            "correlation_with_hit_30d": 0.28,
             "bucketed_accuracy": [],
-            "avg_brier_score": 0.22,
+            "avg_brier_score_30d": 0.22,
             "predictive_lift": -0.01,
             "missing_rate": 0.1,
             "usefulness_rank": 2,
         },
-        {
-            "pillar_name": "venn_abers_confidence",
-            "correlation_with_outcome": 0.20,
+        "venn_abers_confidence": {
+            "correlation_with_hit_30d": 0.20,
             "bucketed_accuracy": [],
-            "avg_brier_score": 0.25,
+            "avg_brier_score_30d": 0.25,
             "predictive_lift": -0.03,
             "missing_rate": 0.15,
             "usefulness_rank": 3,
         },
-        {
-            "pillar_name": "signal_agreement",
-            "correlation_with_outcome": 0.15,
+        "signal_agreement": {
+            "correlation_with_hit_30d": 0.15,
             "bucketed_accuracy": [],
-            "avg_brier_score": 0.30,
+            "avg_brier_score_30d": 0.30,
             "predictive_lift": -0.05,
             "missing_rate": 0.05,
             "usefulness_rank": 4,
         },
-        {
-            "pillar_name": "ml_confidence",
-            "correlation_with_outcome": 0.10,
+        "ml_confidence": {
+            "correlation_with_hit_30d": 0.10,
             "bucketed_accuracy": [],
-            "avg_brier_score": 0.35,
+            "avg_brier_score_30d": 0.35,
             "predictive_lift": -0.08,
             "missing_rate": 0.20,
             "usefulness_rank": 5,
         },
-    ],
+    },
     "total_predictions": 50,
 }
 

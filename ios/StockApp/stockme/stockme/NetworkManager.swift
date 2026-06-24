@@ -848,6 +848,54 @@ class NetworkManager: ObservableObject {
         return try? JSONDecoder().decode(PiotroskiData.self, from: data)
     }
 
+    // MARK: - Fundamentals v1
+
+    func fetchFinancials(
+        symbol: String,
+        exchange: String = "NSE",
+        periodType: String = "quarterly",
+        consolidation: String = "standalone",
+        periods: Int = 8
+    ) async throws -> FinancialStatementResponse {
+        return try await _fetchDecode(
+            FinancialStatementResponse.self,
+            endpoint: "/api/v1/fundamentals/financials?ticker=\(symbol)&exchange=\(exchange)&period_type=\(periodType)&consolidation=\(consolidation)&periods=\(periods)",
+            timeout: 20
+        )
+    }
+
+    func fetchShareholding(symbol: String, exchange: String = "NSE") async throws -> ShareholdingResponse {
+        return try await _fetchDecode(
+            ShareholdingResponse.self,
+            endpoint: "/api/v1/fundamentals/shareholding?ticker=\(symbol)&exchange=\(exchange)",
+            timeout: 20
+        )
+    }
+
+    func fetchCorporateActions(symbol: String, exchange: String = "NSE") async throws -> CorporateActionsResponse {
+        return try await _fetchDecode(
+            CorporateActionsResponse.self,
+            endpoint: "/api/v1/fundamentals/corporate-actions?ticker=\(symbol)&exchange=\(exchange)",
+            timeout: 20
+        )
+    }
+
+    func fetchValuation(symbol: String, exchange: String = "NSE") async throws -> ValuationResponse {
+        return try await _fetchDecode(
+            ValuationResponse.self,
+            endpoint: "/api/v1/fundamentals/valuation?ticker=\(symbol)&exchange=\(exchange)",
+            timeout: 20
+        )
+    }
+
+    func fetchRiskSignals(symbol: String, exchange: String = "NSE") async throws -> RiskSignalsResponse {
+        return try await _fetchDecode(
+            RiskSignalsResponse.self,
+            endpoint: "/api/v1/fundamentals/risk-signals?ticker=\(symbol)&exchange=\(exchange)",
+            timeout: 20
+        )
+    }
+
     // MARK: - Search
 
     func searchStocks(q: String) async -> [StockEntry] {

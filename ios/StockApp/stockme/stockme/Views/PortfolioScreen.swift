@@ -185,10 +185,10 @@ struct PortfolioScreen: View {
                     HStack {
                         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                             Text("निवेश पोर्टफोलियो")
-                                .font(Theme.hindiFont(size: 11))
+                                .font(Theme.hindiFont(size: 11, relativeTo: .caption))
                                 .foregroundStyle(Theme.inkSecondary)
                             Text("MY PORTFOLIO")
-                                .font(Theme.engravedSerif(size: 28, weight: .bold))
+                                .font(Theme.engravedSerif(size: 28, weight: .bold, relativeTo: .largeTitle))
                                 .foregroundStyle(Theme.inkPrimary)
                         }
                         Spacer()
@@ -207,15 +207,15 @@ struct PortfolioScreen: View {
                             Button { HapticManager.selection(); showTransactionSheet = true } label: {
                                 ZStack {
                                     Circle().stroke(Theme.borderSage, lineWidth: 0.5).frame(width: 44, height: 44)
-                                    Text("₹").font(Theme.engravedSerif(size: 18, weight: .bold)).foregroundStyle(Theme.inkPrimary)
+                                    Text("₹").font(Theme.engravedSerif(size: 18, weight: .bold, relativeTo: .headline)).foregroundStyle(Theme.inkPrimary)
                                 }
                             }
                             .buttonStyle(EKPressStyle())
                         }
                     }
                     .padding(.horizontal, Theme.screenPadding)
-                    .padding(.top, 12)
-                    .padding(.bottom, 20)
+                    .padding(.top, Theme.Spacing.standard)
+                    .padding(.bottom, Theme.screenPadding)
 
                     ScrollView {
                         VStack(spacing: Theme.sectionSpacing) {
@@ -303,7 +303,7 @@ struct PortfolioScreen: View {
                                             }
                                         }
                                         if idx != viewModel.holdings.count - 1 {
-                                            Rectangle().fill(Theme.borderFine).frame(height: 0.5)
+                                            GuillocheDivider()
                                                 .padding(.horizontal, Theme.Spacing.card)
                                         }
                                     }
@@ -319,7 +319,7 @@ struct PortfolioScreen: View {
                                                 activeWatchlistTag = activeWatchlistTag == tag ? nil : tag
                                             } label: {
                                                 Text(tag.uppercased())
-                                                    .font(Theme.officialStampFont(size: 9))
+                                                    .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                                                     .foregroundStyle(activeWatchlistTag == tag ? Theme.canvasDeep : Theme.inkPrimary)
                                                     .padding(.horizontal, Theme.Spacing.standard)
                                                     .padding(.vertical, Theme.Spacing.tight)
@@ -385,16 +385,16 @@ struct PortfolioScreen: View {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(Theme.bullGreen)
                             Text("\(addedBannerTicker) added to watchlist")
-                                .font(Theme.serialNumberFont(size: 13))
+                                .font(Theme.serialNumberFont(size: 13, relativeTo: .footnote))
                                 .foregroundStyle(Theme.inkPrimary)
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, Theme.screenPadding)
                         .padding(.vertical, Theme.Spacing.standard)
                         .background(Theme.canvas)
                         .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
-                        .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
+                        .shadow(color: .black.opacity(0.12), radius: Theme.Spacing.medium, x: 0, y: Theme.Spacing.small)
                         .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.large).stroke(Theme.bullGreen.opacity(0.4), lineWidth: 1))
-                        .padding(.top, 60)
+                        .padding(.top, Theme.screenPadding * 3)
                         Spacer()
                     }
                     .transition(.move(edge: .top).combined(with: .opacity))
@@ -626,7 +626,7 @@ struct PortfolioScreen: View {
             showAddWatchlistSheet = true
         } label: {
             Image(systemName: "plus")
-                .font(Theme.engravedSerif(size: 20, weight: .bold))
+                .font(Theme.engravedSerif(size: 20, weight: .bold, relativeTo: .title3))
                 .foregroundColor(Theme.canvas)
                 .padding(Theme.Spacing.card)
                 .background(Theme.securityGold)
@@ -650,10 +650,10 @@ struct PortfolioScreen: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                 BanknoteSignalBadge(text: "EMPTY", color: Theme.inkSecondary.opacity(0.4))
                 Text("Add stocks to your watchlist to track them here")
-                    .font(Theme.serialNumberFont(size: 13))
+                    .font(Theme.serialNumberFont(size: 13, relativeTo: .footnote))
                     .foregroundStyle(Theme.inkSecondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, Theme.Spacing.xLarge)
                 Button {
                     addSheetSearchText = ""
                     showAddWatchlistSheet = true
@@ -661,15 +661,15 @@ struct PortfolioScreen: View {
                     HStack(spacing: Theme.Spacing.tight) {
                         Image(systemName: "plus.circle")
                         Text("ADD STOCK")
-                            .font(Theme.officialStampFont(size: 10))
+                            .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
                     }
                     .foregroundStyle(Theme.securityGold)
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, Theme.screenPadding)
                     .padding(.vertical, Theme.Spacing.medium)
                     .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.securityGold, lineWidth: 1))
                 }
             }
-            .padding(.top, 40)
+            .padding(.top, Theme.screenPadding * 2)
         } else {
             VStack(spacing: Theme.Spacing.standard) {
                 // Filter Chips
@@ -683,7 +683,7 @@ struct PortfolioScreen: View {
                                     activeWatchlistTag = activeWatchlistTag == tag ? nil : tag
                                 } label: {
                                     Text(tag.uppercased())
-                                        .font(Theme.officialStampFont(size: 9))
+                                        .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                                         .foregroundStyle(activeWatchlistTag == tag ? Theme.canvasDeep : Theme.inkPrimary)
                                         .padding(.horizontal, Theme.Spacing.standard)
                                         .padding(.vertical, Theme.Spacing.tight)
@@ -704,9 +704,9 @@ struct PortfolioScreen: View {
                 if filteredWatchlist.isEmpty && activeWatchlistTag != nil {
                     VStack {
                         Text("No stocks found with tag '\(activeWatchlistTag!)'")
-                            .font(Theme.serialNumberFont(size: 13))
+                            .font(Theme.serialNumberFont(size: 13, relativeTo: .footnote))
                             .foregroundStyle(Theme.inkSecondary)
-                            .padding(.top, 20)
+                            .padding(.top, Theme.screenPadding)
                     }
                 }
 
@@ -748,12 +748,12 @@ private struct TaggingSheet: View {
                 Theme.canvas.ignoresSafeArea()
                 VStack(alignment: .leading, spacing: Theme.Spacing.large) {
                     Text("TAG \(ticker)")
-                        .font(Theme.officialStampFont(size: 9))
+                        .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                         .foregroundStyle(Theme.inkSecondary)
                     
                     HStack {
                         TextField("New Tag (e.g. Tech)", text: $newTag)
-                            .font(Theme.serialNumberFont(size: 14))
+                            .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
                             .foregroundStyle(Theme.inkPrimary)
                         Button("Add") {
                             tagsManager.addTag(newTag, to: ticker)
@@ -768,12 +768,12 @@ private struct TaggingSheet: View {
                     let currentTags = tagsManager.tags[ticker] ?? []
                     if !currentTags.isEmpty {
                         Text("CURRENT TAGS")
-                            .font(Theme.officialStampFont(size: 9))
+                            .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                             .foregroundStyle(Theme.inkSecondary)
                         
                         ForEach(currentTags, id: \.self) { tag in
                             HStack {
-                                Text(tag).font(Theme.serialNumberFont(size: 14)).foregroundStyle(Theme.inkPrimary)
+                                Text(tag).font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline)).foregroundStyle(Theme.inkPrimary)
                                 Spacer()
                                 Button(action: { tagsManager.removeTag(tag, from: ticker) }) {
                                     Image(systemName: "minus.circle.fill").foregroundStyle(Theme.bearRed)

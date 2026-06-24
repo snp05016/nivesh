@@ -68,12 +68,7 @@ DEFAULT_FOLDS: list[tuple[int, int]] = [
     (2024, 2025),
 ]
 
-CALIBRATION_BUCKETS: list[tuple[float, float]] = [
-    (0.0, 0.3),
-    (0.3, 0.5),
-    (0.5, 0.7),
-    (0.7, 1.0),
-]
+from training.calibration import CALIBRATION_BUCKETS
 
 
 @dataclass
@@ -226,11 +221,11 @@ def generate_splits(
 def _compute_calibration(
     y_true: np.ndarray,
     y_prob: np.ndarray,
-    buckets: list[tuple[float, float]] = CALIBRATION_BUCKETS,
+    buckets: list[tuple[float, float, str]] = CALIBRATION_BUCKETS,
 ) -> list[dict[str, Any]]:
     """Compute actual hit rate per predicted-probability bucket."""
     results: list[dict[str, Any]] = []
-    for lo, hi in buckets:
+    for lo, hi, label in buckets:
         if hi < 1.0:
             mask = (y_prob >= lo) & (y_prob < hi)
         else:
