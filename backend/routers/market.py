@@ -2992,7 +2992,13 @@ async def top_movers_endpoint():
                 continue
 
         if not movers:
-            raise ValueError("No mover data returned from yfinance")
+            empty_result = {
+                "gainers": [], "losers": [],
+                "active_by_value": [], "active_by_volume": [],
+                "fetched_at": _dt.utcnow().isoformat(),
+            }
+            _dc_set("market_pulse", cache_key, empty_result)
+            return empty_result
 
         gainers = sorted(movers, key=lambda x: x["change_pct"], reverse=True)[:10]
         losers = sorted(movers, key=lambda x: x["change_pct"])[:10]
