@@ -3,11 +3,11 @@ from typing import List, Optional
 
 class FinancialMetrics(BaseModel):
     period: str
-    revenue: Optional[float] = None
-    net_income: Optional[float] = None
+    revenue: Optional[str] = None
+    net_income: Optional[str] = None
     eps: Optional[float] = None
     operating_margin: Optional[float] = None
-    free_cash_flow: Optional[float] = None
+    free_cash_flow: Optional[str] = None
 
 class Shareholding(BaseModel):
     quarter: str
@@ -29,7 +29,7 @@ class ValuationMetrics(BaseModel):
     forward_pe: Optional[float] = None
     pb_ratio: Optional[float] = None
     ev_ebitda: Optional[float] = None
-    market_cap: Optional[float] = None
+    market_cap: Optional[str] = None
 
 class RiskSignalDTO(BaseModel):
     date: str
