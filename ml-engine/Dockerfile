@@ -15,4 +15,10 @@ COPY . .
 
 EXPOSE 8001
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+# Create non-root user for security
+RUN useradd --create-home --shell /bin/bash mluser && \
+    chown -R mluser:mluser /app
+
+USER mluser
+
+CMD ["uvicorn", "main:app", "--host", "127.0.0.1", "--port", "8001"]

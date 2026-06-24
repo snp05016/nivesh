@@ -347,11 +347,45 @@ app.add_middleware(CorrelationIDMiddleware)
 from fastapi import Request as _FRequest
 from fastapi.responses import JSONResponse as _JSONResponse
 
+logger = logging.getLogger("nivesh.main")
+
 @app.exception_handler(DataHarvestingError)
 async def _data_harvesting_error_handler(_req: _FRequest, exc: DataHarvestingError):
     return _JSONResponse(
         status_code=503,
         content={"detail": f"Data harvesting service unavailable: {exc}"},
+    )
+
+
+@app.exception_handler(HTTPException)
+async def _http_exception_handler(_req: _FRequest, exc: HTTPException):
+    """Sanitize HTTP exceptions — never expose internal details for 500 errors."""
+    headers = getattr(exc, "headers", None)
+    if exc.status_code >= 500:
+        logger.error(f"HTTP {exc.status_code} at {_req.method} {_req.url.path}: {exc.detail}")
+        return _JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": "Internal server error. The error has been logged."},
+            headers=headers,
+        )
+    return _JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=headers,
+    )
+
+
+@app.exception_handler(Exception)
+async def _global_exception_handler(_req: _FRequest, exc: Exception):
+    """Catch-all handler — log full traceback, return sanitized error to client.
+    Prevents internal details (file paths, stack traces, SQL) from leaking to clients.
+    """
+    import traceback
+    tb = traceback.format_exc()
+    logger.error(f"Unhandled exception at {_req.method} {_req.url.path}:\n{tb}")
+    return _JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error. The error has been logged."},
     )
 
 
