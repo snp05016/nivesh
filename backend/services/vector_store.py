@@ -25,7 +25,9 @@ def _get_conn() -> "psycopg2.extensions.connection":
     if _conn is None or _conn.closed:
         db_name = os.getenv("RAG_DB_NAME", "nivesh")
         db_user = os.getenv("RAG_DB_USER", "saumyapatel")
-        db_pass = os.getenv("RAG_DB_PASS", "nivesh123")
+        db_pass = os.getenv("RAG_DB_PASS", "")
+        if not db_pass:
+            raise RuntimeError("RAG_DB_PASS environment variable must be set")
         db_host = os.getenv("RAG_DB_HOST", "127.0.0.1")
         _conn = psycopg2.connect(
             dbname=db_name, user=db_user, password=db_pass, host=db_host

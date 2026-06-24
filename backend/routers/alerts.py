@@ -105,16 +105,20 @@ async def _price_alert_poller():
                         
                     if triggered:
                         alert.triggered = True
-                        session.commit()
-                        
-                        # Fire APNs Push Notification
-                        await _send_apns_push(
+
+                        # Fire APNs Push Notification BEFORE commit (AGENTS.md §4.2)
+                        push_ok = await _send_apns_push(
                             user_id=alert.user_id,
                             ticker=alert.ticker,
                             target_price=alert.target_price,
                             current_price=current_price,
                             direction=alert.direction
                         )
+                        if not push_ok:
+                            logger.warning("APNs push failed for alert %d — not marking triggered", alert.id)
+                            continue
+
+                        session.commit()
         except Exception as e:
             logger.error(f"Error in price alert poller: {e}")
             
@@ -150,7 +154,7 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
 
     if not tokens:
         logger.info(f"No device tokens registered for user {user_id}, skipping APNs push for {ticker}")
-        return
+        return True
 
     payload = {
         "aps": {
@@ -167,7 +171,7 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
 
     if not apns_key_path or not apns_key_id or not apns_team_id:
         logger.warning(f"APNs credentials not configured — logged push for {ticker} to user {user_id} with {len(tokens)} device(s)")
-        return
+        return True
 
     # ── Load and JWT-encode outside the HTTP dispatch try block ──────────
     # Failures here are configuration/kay-material errors — they are logged
@@ -191,12 +195,13 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
         }
     except FileNotFoundError:
         logger.error("APNs auth key not found at configured path")
-        return
+        return False
     except Exception as e:
         logger.error("APNs JWT signing failed (%s)", type(e).__name__)
-        return
+        return False
 
     # ── Dispatch one push per registered device ──────────────────────────
+    any_success = False
     for (device_token,) in tokens:
         url = f"{apns_host}/3/device/{_url_quote(device_token)}"
         try:
@@ -204,6 +209,7 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
                 response = await client.post(url, json=payload, headers=headers)
                 if response.status_code == 200:
                     logger.info("APNs push sent to user %d for %s", user_id, ticker)
+                    any_success = True
                 else:
                     logger.warning("APNs push rejected %d for user %d: %s",
                                    response.status_code, user_id, response.text[:200])
@@ -211,6 +217,7 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
             logger.warning("APNs HTTP transport error for user %d", user_id)
         except Exception as e:
             logger.warning("APNs dispatch error for user %d (%s)", user_id, type(e).__name__)
+    return any_success or not tokens  # success if at least one push sent or no tokens to notify
 
 
 @router.get("/alerts/{user_id}")
