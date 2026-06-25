@@ -137,6 +137,7 @@ struct ContentView: View {
                 .tabItem { Label("Portfolio", systemImage: "briefcase.fill") }
                 .tag(4)
         }
+        .tabViewStyle(DefaultTabViewStyle())
         .tint(Theme.securityGold)
         .toolbarBackground(Theme.canvasDeep, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)

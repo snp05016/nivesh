@@ -338,9 +338,9 @@ Before changing files:
 3. Fetch the target base branch. Do not pull, rebase, switch branches, stash, reset, or clean when unrelated work could be affected.
 4. Search open and closed issues and pull requests for duplicate or related work.
 5. For non-trivial work, create or confirm an issue before implementation.
-6. Work in an isolated branch or worktree. Never implement directly on `main`.
+6. Work in an isolated branch. Never implement directly on `main`.
 
-If the worktree is dirty and safe isolation is unavailable, stop and ask the user how to proceed.
+If the working directory is dirty and safe isolation is unavailable, stop and ask the user how to proceed.
 
 #### 6.4.2 Issue Tracking
 
@@ -367,7 +367,7 @@ Use labels consistently:
 
 Never disclose a vulnerability in a public issue. Use GitHub Private Vulnerability Reporting or a private security advisory.
 
-#### 6.4.3 Branches and Worktrees
+#### 6.4.3 Branches
 
 Create branches from the latest `origin/main` unless the issue names another base. Use:
 
@@ -402,7 +402,7 @@ Before every commit:
 3. Run the smallest relevant verification suite. Backend execution remains remote-only under §6.5.
 4. Apply all checks in §6.1.
 5. Scan staged paths for secrets, `.env` files, credentials, binary artifacts, local databases, logs, and `xcodebuild` output.
-6. Stage explicit paths. Do not use `git add -A` or `git add .` in a dirty worktree.
+6. Stage explicit paths. Do not use `git add -A` or `git add .` in a dirty working directory.
 7. Review `git diff --cached` before committing.
 
 #### 6.4.5 Pull Requests
@@ -453,7 +453,7 @@ After an authorized merge:
 2. Confirm the deployed or released commit when deployment applies.
 3. Create follow-up issues for deferred work.
 4. Delete the remote feature branch.
-5. Do not delete a local branch or worktree that contains unmerged changes.
+5. Do not delete a local branch that contains unmerged changes.
 
 #### 6.4.8 Releases and Deployment Records
 
