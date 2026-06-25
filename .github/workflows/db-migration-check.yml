@@ -1,0 +1,123 @@
+name: DB Migration Check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/models/db_models.py"
+      - "backend/database.py"
+      - "backend/migrations/**"
+      - "backend/alembic.ini"
+      - ".github/workflows/db-migration-check.yml"
+  workflow_dispatch:
+    inputs:
+      run_remote_validation:
+        description: "Run remote Alembic validation against a temporary DB"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  LLM_MODE: mock
+  DISABLE_LIVE_LLM: "1"
+  DISABLE_PAID_APIS: "1"
+  ENABLE_SCHEDULER: "false"
+  FORCE_DISABLE_SCHEDULER: "1"
+  DISABLE_RAG_INGESTION: "1"
+
+jobs:
+  migration-static:
+    name: Migration static checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check migration presence for ORM changes
+        run: |
+          set -euo pipefail
+          base="${{ github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}"
+          if git rev-parse "$base" >/dev/null 2>&1; then
+            changed="$(git diff --name-only "$base"...HEAD)"
+          else
+            changed="$(git diff --name-only HEAD~1...HEAD)"
+          fi
+          echo "$changed"
+          if echo "$changed" | grep -q '^backend/models/db_models.py$'; then
+            echo "$changed" | grep -q '^backend/migrations/versions/.*\.py$' || {
+              echo "ORM model changed without an Alembic migration."
+              exit 1
+            }
+          fi
+
+      - name: Static Alembic migration lint
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import ast
+          from pathlib import Path
+          versions = sorted(Path("backend/migrations/versions").glob("*.py"))
+          if not versions:
+              raise SystemExit("No Alembic migration versions found")
+          failures = []
+          revisions = {}
+          for path in versions:
+              tree = ast.parse(path.read_text(errors="ignore"), filename=str(path))
+              vals = {}
+              for node in tree.body:
+                  if isinstance(node, ast.Assign):
+                      for target in node.targets:
+                          if isinstance(target, ast.Name) and target.id in {"revision", "down_revision"}:
+                              vals[target.id] = ast.literal_eval(node.value)
+              revision = vals.get("revision")
+              if not revision:
+                  failures.append(f"{path}: missing revision")
+              if revision in revisions:
+                  failures.append(f"{path}: duplicate revision {revision} also in {revisions[revision]}")
+              revisions[revision] = str(path)
+          if failures:
+              print("\n".join(failures))
+              raise SystemExit(1)
+          print(f"Validated {len(versions)} Alembic migration files")
+          PY
+
+  migration-remote:
+    name: Remote migration validation
+    needs: migration-static
+    if: github.event_name == 'workflow_dispatch' && inputs.run_remote_validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.NIVESH_REMOTE_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.NIVESH_REMOTE_HOST }}
+          REMOTE_PORT: ${{ vars.NIVESH_REMOTE_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$REMOTE_HOST"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/nivesh_ci_key
+          chmod 600 ~/.ssh/nivesh_ci_key
+          ssh-keyscan -p "$REMOTE_PORT" "$REMOTE_HOST" >> ~/.ssh/known_hosts
+
+      - name: Validate migrations remotely against temporary DB
+        env:
+          REMOTE_USER: ${{ secrets.NIVESH_REMOTE_USER }}
+          REMOTE_HOST: ${{ secrets.NIVESH_REMOTE_HOST }}
+          REMOTE_PORT: ${{ vars.NIVESH_REMOTE_PORT || '22' }}
+          REMOTE_PATH: ${{ vars.NIVESH_REMOTE_PATH || '/home/saumyapatel/Desktop/nivesh' }}
+          TARGET_SHA: ${{ github.sha }}
+          TARGET_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/nivesh_ci_key -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" \
+            "cd '$REMOTE_PATH' && test -z \"\$(git status --porcelain)\" && git fetch origin '$TARGET_BRANCH' && git switch --detach '$TARGET_SHA' && test \"\$(git rev-parse HEAD)\" = '$TARGET_SHA' && cd backend && LLM_MODE=mock DISABLE_PAID_APIS=1 DISABLE_LIVE_LLM=1 ENABLE_SCHEDULER=false FORCE_DISABLE_SCHEDULER=1 DISABLE_RAG_INGESTION=1 ../venv/bin/python3 scripts/verify_model_migration_drift.py"

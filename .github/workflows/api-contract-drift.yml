@@ -1,0 +1,141 @@
+name: API Contract Drift
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**/*.py"
+      - "ios/**/*.swift"
+      - ".github/workflows/api-contract-drift.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  LLM_MODE: mock
+  DISABLE_LIVE_LLM: "1"
+  DISABLE_PAID_APIS: "1"
+  ENABLE_SCHEDULER: "false"
+  FORCE_DISABLE_SCHEDULER: "1"
+  DISABLE_RAG_INGESTION: "1"
+
+jobs:
+  drift:
+    name: Static backend/iOS route drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Extract and compare route contracts
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          python3 - <<'PY'
+          import ast, json, re
+          from pathlib import Path
+
+          methods = {"get", "post", "put", "delete", "patch", "options", "head"}
+          paid_or_live_patterns = (
+              "/analyze",
+              "/api/v1/copilot/chat",
+              "/api/v1/screener/natural-language",
+              "/api/v1/admin/harvest",
+              "/api/v1/ideas",
+              "/harvest-",
+              "/trigger/scrape",
+          )
+
+          def normalize(path: str) -> str:
+              path = path.split("?")[0].strip()
+              path = re.sub(r"\\$\\([^)]*\\)", "{value}", path)
+              path = re.sub(r"\\\\\\([A-Za-z0-9_]+)", "{value}", path)
+              path = re.sub(r"\\{[A-Za-z0-9_]+\\}", "{value}", path)
+              path = re.sub(r"/+", "/", path)
+              return path.rstrip("/") or "/"
+
+          def join(prefix: str, path: str) -> str:
+              prefix = (prefix or "").rstrip("/")
+              path = (path or "").strip()
+              if not path.startswith("/"):
+                  path = "/" + path
+              return (prefix + path).replace("//", "/") or "/"
+
+          backend = set()
+          route_rows = []
+          for file in Path("backend").rglob("*.py"):
+              if any(part in {"__pycache__", ".venv", "venv"} for part in file.parts):
+                  continue
+              try:
+                  tree = ast.parse(file.read_text(errors="ignore"), filename=str(file))
+              except SyntaxError:
+                  continue
+              router_prefix = ""
+              for node in tree.body:
+                  if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
+                      func = node.value.func
+                      if isinstance(func, ast.Name) and func.id == "APIRouter":
+                          for kw in node.value.keywords:
+                              if kw.arg == "prefix" and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
+                                  router_prefix = kw.value.value
+              for node in ast.walk(tree):
+                  if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                      continue
+                  for deco in node.decorator_list:
+                      call = deco if isinstance(deco, ast.Call) else None
+                      func = call.func if call else deco
+                      if isinstance(func, ast.Attribute) and func.attr in methods:
+                          first = call.args[0] if call and call.args else None
+                          if isinstance(first, ast.Constant) and isinstance(first.value, str):
+                              raw = join(router_prefix, first.value)
+                              normalized = normalize(raw)
+                              backend.add(normalized)
+                              route_rows.append({"method": func.attr.upper(), "path": raw, "normalized": normalized, "file": str(file), "line": node.lineno})
+
+          swift = set()
+          swift_rows = []
+          string_re = re.compile(r'"([^"]*)"')
+          for file in Path("ios").rglob("*.swift"):
+              text = file.read_text(errors="ignore")
+              for match in string_re.finditer(text):
+                  value = match.group(1)
+                  for route in re.findall(r"/(?:api/v1/)?[A-Za-z0-9_./{}?=&%#@\\()\\-]+", value):
+                      if route.startswith("//"):
+                          continue
+                      normalized = normalize(route)
+                      if normalized in {"/", "/."}:
+                          continue
+                      swift.add(normalized)
+                      line = text.count("\n", 0, match.start()) + 1
+                      swift_rows.append({"path": route, "normalized": normalized, "file": str(file), "line": line})
+
+          missing = sorted(
+              route for route in swift - backend
+              if not route.startswith("/http")
+              and not any(pattern in route for pattern in paid_or_live_patterns)
+          )
+          stale_backend = sorted(route for route in backend - swift if route.startswith("/api/v1/"))
+
+          report = {
+              "backend_route_count": len(backend),
+              "swift_route_count": len(swift),
+              "missing_backend_routes_for_swift": missing,
+              "backend_routes_without_swift_consumers": stale_backend,
+          }
+          Path("artifacts/backend-routes.json").write_text(json.dumps(route_rows, indent=2, sort_keys=True) + "\n")
+          Path("artifacts/swift-routes.json").write_text(json.dumps(swift_rows, indent=2, sort_keys=True) + "\n")
+          Path("artifacts/api-contract-drift-report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+          print(json.dumps(report, indent=2, sort_keys=True))
+          if missing:
+              raise SystemExit("Swift references backend paths that were not found in static FastAPI route decorators")
+          PY
+
+      - name: Upload drift artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-contract-drift
+          path: artifacts/

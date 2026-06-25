@@ -383,7 +383,12 @@ async def _on_startup():
     # Wire up structured JSON logging (fixes #83)
     from core.logging_config import configure_logging
     configure_logging()
-    start_scheduler()
+    force_disable_scheduler = os.getenv("FORCE_DISABLE_SCHEDULER", "").lower() in {"1", "true", "yes"}
+    scheduler_enabled = os.getenv("ENABLE_SCHEDULER", "false").lower() == "true"
+    if scheduler_enabled and not force_disable_scheduler:
+        start_scheduler()
+    else:
+        logging.info("[startup] scheduler disabled by environment")
     # Init DB and seed on startup (fixes #87 — moved from module level)
     init_db()
     # v2 engine crash recovery: any analysis job left RUNNING/QUEUED by a previous
@@ -411,25 +416,28 @@ async def _on_startup():
     # causes memory spikes during model load, cascading worker death with uvicorn
     # --workers > 1. The 3-5s cost on first sentiment request is acceptable.
 
-    # Initial RAG vector ingestion at startup (always runs, regardless of scheduler)
-    def _startup_ingest():
-        try:
-            from services.vector_store import init_store
-            if not init_store():
-                logging.warning("ChromaDB init failed, skipping RAG ingestion")
-                return
-            logging.info("Starting initial RAG ingestion...")
-            from services.rag_ingestion import ingest_all
-            count = ingest_all()
-            logging.info("Initial RAG ingestion complete: %d chunks", count)
-        except Exception as e:
-            logging.warning("Initial RAG ingestion failed (non-blocking): %s", e)
-    threading.Thread(target=_startup_ingest, daemon=True).start()
+    # Initial RAG vector ingestion is opt-out for CI/deploy workflows that must
+    # never spend API credits or refresh embeddings as part of health checks.
+    rag_ingestion_disabled = os.getenv("DISABLE_RAG_INGESTION", "").lower() in {"1", "true", "yes"}
+    if rag_ingestion_disabled:
+        logging.info("[startup] RAG ingestion disabled by environment")
+    else:
+        def _startup_ingest():
+            try:
+                from services.vector_store import init_store
+                if not init_store():
+                    logging.warning("ChromaDB init failed, skipping RAG ingestion")
+                    return
+                logging.info("Starting initial RAG ingestion...")
+                from services.rag_ingestion import ingest_all
+                count = ingest_all()
+                logging.info("Initial RAG ingestion complete: %d chunks", count)
+            except Exception as e:
+                logging.warning("Initial RAG ingestion failed (non-blocking): %s", e)
+        threading.Thread(target=_startup_ingest, daemon=True).start()
     
-    # ENABLE_SCHEDULER block removed (fixes #85): start_scheduler() from
-    # harvest_worker (called above) already registers all cron jobs including
-    # harvest_youtube_metadata, harvest_news, and snapshot_all_users.
-    # The duplicate AsyncIOScheduler was causing double job execution.
+    # Scheduler startup is centralized through harvest_worker and remains
+    # environment-gated so CI/deploy health checks cannot start paid jobs.
 
 
 @app.on_event("shutdown")
@@ -2451,4 +2459,3 @@ def _get_db():
 
 
 # ── /api/v1/market/dashboard-pulse ───────────────────────────────────────────
-

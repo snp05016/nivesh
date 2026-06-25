@@ -1,0 +1,75 @@
+name: ML Engine CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "ml-engine/**"
+      - ".github/workflows/ml-engine-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "ml-engine/**"
+      - ".github/workflows/ml-engine-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  LLM_MODE: mock
+  DISABLE_LIVE_LLM: "1"
+  DISABLE_PAID_APIS: "1"
+  ENABLE_SCHEDULER: "false"
+
+jobs:
+  ml-engine:
+    name: Docker build and local/mock ML tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Fail closed on paid API keys
+        run: |
+          set -euo pipefail
+          for name in OPENAI_API_KEY ANTHROPIC_API_KEY DEEPSEEK_API_KEY GOOGLE_API_KEY GEMINI_API_KEY; do
+            if [ -n "${!name:-}" ]; then
+              echo "$name must not be available to ML Engine CI."
+              exit 1
+            fi
+          done
+
+      - name: Build ML Engine Docker image
+        run: docker build -t nivesh-ml-engine-ci:${{ github.sha }} ml-engine
+
+      - name: Run ML tests with local/mock data only
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e LLM_MODE=mock \
+            -e DISABLE_LIVE_LLM=1 \
+            -e DISABLE_PAID_APIS=1 \
+            nivesh-ml-engine-ci:${{ github.sha }} \
+            python -m pytest -q tests
+
+      - name: Check free ML health endpoints
+        run: |
+          set -euo pipefail
+          cid="$(docker run -d -p 127.0.0.1:8001:8001 \
+            -e LLM_MODE=mock \
+            -e DISABLE_LIVE_LLM=1 \
+            -e DISABLE_PAID_APIS=1 \
+            nivesh-ml-engine-ci:${{ github.sha }} \
+            uvicorn main:app --host 0.0.0.0 --port 8001)"
+          trap 'docker logs "$cid" || true; docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+          for i in $(seq 1 40); do
+            curl -fsS http://127.0.0.1:8001/health >/dev/null && break
+            sleep 2
+            if [ "$i" = "40" ]; then exit 1; fi
+          done
+          curl -fsS http://127.0.0.1:8001/health
+          curl -fsS http://127.0.0.1:8001/model/status

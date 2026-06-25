@@ -1,0 +1,111 @@
+name: Nightly Safe Regression
+
+on:
+  schedule:
+    - cron: "17 21 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-safe-regression
+  cancel-in-progress: false
+
+env:
+  LLM_MODE: mock
+  DISABLE_LIVE_LLM: "1"
+  DISABLE_PAID_APIS: "1"
+  ENABLE_SCHEDULER: "false"
+  FORCE_DISABLE_SCHEDULER: "1"
+  DISABLE_RAG_INGESTION: "1"
+
+jobs:
+  regression:
+    name: Remote mocked regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.NIVESH_REMOTE_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.NIVESH_REMOTE_HOST }}
+          REMOTE_PORT: ${{ vars.NIVESH_REMOTE_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$REMOTE_HOST"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/nivesh_ci_key
+          chmod 600 ~/.ssh/nivesh_ci_key
+          ssh-keyscan -p "$REMOTE_PORT" "$REMOTE_HOST" >> ~/.ssh/known_hosts
+
+      - name: Run safe regression remotely
+        env:
+          REMOTE_USER: ${{ secrets.NIVESH_REMOTE_USER }}
+          REMOTE_HOST: ${{ secrets.NIVESH_REMOTE_HOST }}
+          REMOTE_PORT: ${{ vars.NIVESH_REMOTE_PORT || '22' }}
+          REMOTE_PATH: ${{ vars.NIVESH_REMOTE_PATH || '/home/saumyapatel/Desktop/nivesh' }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/nivesh_ci_key -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" \
+            "cd '$REMOTE_PATH/backend' && bash -s" <<'REMOTE'
+          set -euo pipefail
+          export LLM_MODE=mock
+          export DISABLE_LIVE_LLM=1
+          export DISABLE_PAID_APIS=1
+          export ENABLE_SCHEDULER=false
+          export FORCE_DISABLE_SCHEDULER=1
+          export DISABLE_RAG_INGESTION=1
+          export DATABASE_URL=sqlite:///./stockapp_nightly_ci.db
+          unset OPENAI_API_KEY ANTHROPIC_API_KEY DEEPSEEK_API_KEY GOOGLE_API_KEY GEMINI_API_KEY LANGCHAIN_API_KEY
+
+          backup="$(mktemp)"
+          had_env=0
+          if [ -f .env ]; then cp .env "$backup"; had_env=1; fi
+          cleanup() {
+            pkill -f 'uvicorn main:app.*--port 8000' || true
+            if [ "$had_env" = "1" ]; then cp "$backup" .env; else rm -f .env; fi
+            rm -f "$backup"
+          }
+          trap cleanup EXIT
+
+          cat > .env <<'EOF'
+          LLM_MODE=mock
+          DISABLE_LIVE_LLM=1
+          DISABLE_PAID_APIS=1
+          ENABLE_SCHEDULER=false
+          FORCE_DISABLE_SCHEDULER=1
+          DISABLE_RAG_INGESTION=1
+          DATABASE_URL=sqlite:///./stockapp_nightly_ci.db
+          JWT_SECRET=ci_mock_secret
+          ADMIN_TOKEN=ci_admin
+          ANTHROPIC_API_KEY=
+          DEEPSEEK_API_KEY=
+          OPENAI_API_KEY=
+          GOOGLE_API_KEY=
+          GEMINI_API_KEY=
+          LANGCHAIN_API_KEY=
+          EOF
+
+          ../venv/bin/python3 -m pytest -q \
+            tests/backend_integrity_tests \
+            tests/database_integrity_tests \
+            tests/migrations \
+            tests/morning_briefing/test_scheduler.py \
+            tests/morning_briefing/test_cache.py \
+            tests/test_backend_contract_routes.py \
+            tests/test_backend_contract_migrations.py \
+            tests/test_backend_contract_database.py
+
+          pkill -f 'uvicorn main:app.*--port 8000' || true
+          nohup ../venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 > /tmp/nivesh-nightly-uvicorn.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8000/ping >/dev/null && break
+            sleep 2
+            if [ "$i" = "30" ]; then tail -n 160 /tmp/nivesh-nightly-uvicorn.log; exit 1; fi
+          done
+          curl -fsS http://127.0.0.1:8000/ping
+          curl -fsS http://127.0.0.1:8000/health
+          curl -fsS http://127.0.0.1:8000/health/live
+          REMOTE

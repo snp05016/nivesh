@@ -1,0 +1,231 @@
+name: PR Static Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: pr-static-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  LLM_MODE: mock
+  DISABLE_LIVE_LLM: "1"
+  DISABLE_PAID_APIS: "1"
+  ENABLE_SCHEDULER: "false"
+  FORCE_DISABLE_SCHEDULER: "1"
+  DISABLE_RAG_INGESTION: "1"
+
+jobs:
+  static:
+    name: Static no-credit checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Fail closed on paid API enablement
+        run: |
+          set -euo pipefail
+          if [ "${ENABLE_PAID_API_TESTS:-}" = "1" ] || [ "${ENABLE_PAID_API_TESTS:-}" = "true" ]; then
+            echo "Paid API tests are not allowed in default PR CI."
+            exit 1
+          fi
+          for name in OPENAI_API_KEY ANTHROPIC_API_KEY DEEPSEEK_API_KEY GOOGLE_API_KEY GEMINI_API_KEY LANGCHAIN_API_KEY; do
+            if [ -n "${!name:-}" ]; then
+              echo "$name must not be present in PR workflows."
+              exit 1
+            fi
+          done
+
+      - name: Whitespace checks
+        run: |
+          set -euo pipefail
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          bad = []
+          for path in Path(".").rglob("*"):
+              if ".git" in path.parts or not path.is_file():
+                  continue
+              if path.suffix.lower() in {".py", ".swift", ".yml", ".yaml", ".md", ".sh", ".dockerfile"} or path.name == "Dockerfile":
+                  text = path.read_text(errors="ignore").splitlines()
+                  for idx, line in enumerate(text, 1):
+                      if line.rstrip() != line:
+                          bad.append(f"{path}:{idx}: trailing whitespace")
+          if bad:
+              print("\n".join(bad))
+              raise SystemExit(1)
+          PY
+
+      - name: Secret scanning
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Dependency scan
+        run: |
+          set -euo pipefail
+          python3 -m pip install --upgrade pip pip-audit
+          for req in backend/requirements.txt ml-engine/requirements.txt nivesh-harvester/requirements.txt; do
+            if [ -f "$req" ]; then
+              python3 -m pip_audit --requirement "$req" --progress-spinner off --desc --format columns
+            fi
+          done
+
+      - name: Python syntax and static import checks
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import ast, py_compile
+          from pathlib import Path
+          roots = [Path("backend"), Path("scripts"), Path("ml-engine")]
+          failures = []
+          imports = []
+          for root in roots:
+              if not root.exists():
+                  continue
+              for path in root.rglob("*.py"):
+                  if any(part in {"__pycache__", ".venv", "venv"} for part in path.parts):
+                      continue
+                  try:
+                      py_compile.compile(str(path), doraise=True)
+                      tree = ast.parse(path.read_text(errors="ignore"), filename=str(path))
+                  except (SyntaxError, py_compile.PyCompileError) as exc:
+                      failures.append(f"{path}: {exc}")
+                      continue
+                  for node in ast.walk(tree):
+                      if isinstance(node, ast.Import):
+                          imports.extend((str(path), alias.name) for alias in node.names)
+                      elif isinstance(node, ast.ImportFrom) and node.module:
+                          imports.append((str(path), node.module))
+          Path("artifacts").mkdir(exist_ok=True)
+          Path("artifacts/python-imports.tsv").write_text(
+              "\n".join(f"{file}\t{name}" for file, name in sorted(set(imports))) + "\n"
+          )
+          if failures:
+              print("\n".join(failures))
+              raise SystemExit(1)
+          PY
+
+      - name: Extract FastAPI routes
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          python3 - <<'PY'
+          import ast, json
+          from pathlib import Path
+          methods = {"get", "post", "put", "delete", "patch", "options", "head"}
+          def join(prefix, path):
+              prefix = (prefix or "").rstrip("/")
+              path = (path or "").strip()
+              if not path.startswith("/"):
+                  path = "/" + path
+              return (prefix + path).replace("//", "/") or "/"
+          routes = []
+          for path in Path("backend").rglob("*.py"):
+              if any(part in {"__pycache__", ".venv", "venv"} for part in path.parts):
+                  continue
+              try:
+                  tree = ast.parse(path.read_text(errors="ignore"), filename=str(path))
+              except SyntaxError:
+                  continue
+              router_prefix = ""
+              for node in tree.body:
+                  if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
+                      func = node.value.func
+                      if isinstance(func, ast.Name) and func.id == "APIRouter":
+                          for kw in node.value.keywords:
+                              if kw.arg == "prefix" and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
+                                  router_prefix = kw.value.value
+              for node in ast.walk(tree):
+                  if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                      continue
+                  for deco in node.decorator_list:
+                      call = deco if isinstance(deco, ast.Call) else None
+                      func = call.func if call else deco
+                      if isinstance(func, ast.Attribute) and func.attr in methods:
+                          first = call.args[0] if call and call.args else None
+                          if isinstance(first, ast.Constant) and isinstance(first.value, str):
+                              full_path = join(router_prefix, first.value)
+                              routes.append({
+                                  "method": func.attr.upper(),
+                                  "path": full_path,
+                                  "handler": node.name,
+                                  "file": str(path),
+                                  "line": node.lineno,
+                              })
+          print(json.dumps(routes, indent=2, sort_keys=True))
+          Path("artifacts/backend-routes.json").write_text(json.dumps(routes, indent=2, sort_keys=True) + "\n")
+          if not routes:
+              raise SystemExit("No FastAPI routes extracted")
+          PY
+
+      - name: Swift source scan
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          failures = []
+          warnings = []
+          endpoints = set()
+          forbidden_fail = [r"xcodebuild"]
+          forbidden_warn = [r"Color\(hex:", r"\.font\(\.system\(size:"]
+          string_re = re.compile(r'"([^"]*)"')
+          for path in Path("ios").rglob("*.swift"):
+              text = path.read_text(errors="ignore")
+              for pattern in forbidden_fail:
+                  for match in re.finditer(pattern, text):
+                      line = text.count("\n", 0, match.start()) + 1
+                      failures.append(f"{path}:{line}: forbidden Swift CI/static pattern {pattern}")
+              for pattern in forbidden_warn:
+                  for match in re.finditer(pattern, text):
+                      line = text.count("\n", 0, match.start()) + 1
+                      warnings.append(f"{path}:{line}: Swift style warning {pattern}")
+              for match in string_re.finditer(text):
+                  value = match.group(1)
+                  for route in re.findall(r"/(?:api/v1/)?[A-Za-z0-9_./{}?=&%#@\\()\\-]+", value):
+                      endpoints.add(route.split("?")[0])
+          Path("artifacts").mkdir(exist_ok=True)
+          Path("artifacts/swift-endpoints.txt").write_text("\n".join(sorted(endpoints)) + "\n")
+          Path("artifacts/swift-style-warnings.txt").write_text("\n".join(warnings) + ("\n" if warnings else ""))
+          if failures:
+              print("\n".join(failures))
+              raise SystemExit(1)
+          PY
+
+      - name: Dockerfile validation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          failures = []
+          for path in [p for p in Path(".").rglob("*") if p.name == "Dockerfile" or p.name.startswith("Dockerfile.")]:
+              if any(part in {".git", "venv", ".venv", "__pycache__"} for part in path.parts):
+                  continue
+              text = path.read_text(errors="ignore").splitlines()
+              non_comment = [line.strip() for line in text if line.strip() and not line.strip().startswith("#")]
+              if not non_comment or not non_comment[0].upper().startswith("FROM "):
+                  failures.append(f"{path}: first non-comment instruction must be FROM")
+              if any("ADD http" in line.upper() or "ADD https" in line.upper() for line in non_comment):
+                  failures.append(f"{path}: remote ADD is forbidden")
+              if not any(line.upper().startswith("USER ") for line in non_comment):
+                  failures.append(f"{path}: missing non-root USER instruction")
+          if failures:
+              print("\n".join(failures))
+              raise SystemExit(1)
+          PY
+
+      - name: Upload static artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-static-artifacts
+          path: artifacts/

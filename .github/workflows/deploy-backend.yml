@@ -1,0 +1,100 @@
+name: Deploy Backend
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to deploy"
+        required: false
+        type: string
+      sha:
+        description: "Exact SHA to deploy. Defaults to current workflow SHA."
+        required: false
+        type: string
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+env:
+  LLM_MODE: mock
+  DISABLE_LIVE_LLM: "1"
+  DISABLE_PAID_APIS: "1"
+  ENABLE_SCHEDULER: "false"
+  FORCE_DISABLE_SCHEDULER: "1"
+  DISABLE_RAG_INGESTION: "1"
+
+jobs:
+  deploy:
+    name: SSH deploy with free health checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: backend-production
+    steps:
+      - name: Resolve target
+        id: target
+        run: |
+          set -euo pipefail
+          echo "branch=${{ inputs.branch || github.ref_name }}" >> "$GITHUB_OUTPUT"
+          echo "sha=${{ inputs.sha || github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.NIVESH_REMOTE_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.NIVESH_REMOTE_HOST }}
+          REMOTE_PORT: ${{ vars.NIVESH_REMOTE_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$REMOTE_HOST"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/nivesh_ci_key
+          chmod 600 ~/.ssh/nivesh_ci_key
+          ssh-keyscan -p "$REMOTE_PORT" "$REMOTE_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy exact SHA
+        env:
+          REMOTE_USER: ${{ secrets.NIVESH_REMOTE_USER }}
+          REMOTE_HOST: ${{ secrets.NIVESH_REMOTE_HOST }}
+          REMOTE_PORT: ${{ vars.NIVESH_REMOTE_PORT || '22' }}
+          REMOTE_PATH: ${{ vars.NIVESH_REMOTE_PATH || '/home/saumyapatel/Desktop/nivesh' }}
+          TARGET_BRANCH: ${{ steps.target.outputs.branch }}
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/nivesh_ci_key -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" \
+            "cd '$REMOTE_PATH' && test -z \"\$(git status --porcelain)\""
+          ssh -i ~/.ssh/nivesh_ci_key -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" \
+            "pkill -f 'uvicorn' || true; pkill -f 'python.*main' || true; sleep 2"
+          ssh -i ~/.ssh/nivesh_ci_key -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" \
+            "cd '$REMOTE_PATH' && git fetch origin '$TARGET_BRANCH' && git switch '$TARGET_BRANCH' && git pull --ff-only origin '$TARGET_BRANCH' && test \"\$(git rev-parse HEAD)\" = '$TARGET_SHA'"
+          ssh -i ~/.ssh/nivesh_ci_key -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" \
+            "cd '$REMOTE_PATH/backend' && nohup env LLM_MODE=mock DISABLE_LIVE_LLM=1 DISABLE_PAID_APIS=1 ENABLE_SCHEDULER=false FORCE_DISABLE_SCHEDULER=1 DISABLE_RAG_INGESTION=1 ../venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 > /tmp/uvicorn.log 2>&1 &"
+
+      - name: Free health checks only
+        env:
+          REMOTE_USER: ${{ secrets.NIVESH_REMOTE_USER }}
+          REMOTE_HOST: ${{ secrets.NIVESH_REMOTE_HOST }}
+          REMOTE_PORT: ${{ vars.NIVESH_REMOTE_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/nivesh_ci_key -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" "bash -s" <<'REMOTE'
+          set -euo pipefail
+          for i in $(seq 1 40); do
+            curl -fsS http://127.0.0.1:8000/ping >/dev/null && break
+            sleep 2
+            if [ "$i" = "40" ]; then
+              tail -n 160 /tmp/uvicorn.log || true
+              exit 1
+            fi
+          done
+          curl -fsS http://127.0.0.1:8000/ping
+          curl -fsS http://127.0.0.1:8000/health
+          curl -fsS http://127.0.0.1:8000/health/live
+          tail -n 80 /tmp/uvicorn.log || true
+          REMOTE
