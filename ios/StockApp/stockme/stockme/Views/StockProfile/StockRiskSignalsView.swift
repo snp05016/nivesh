@@ -328,7 +328,7 @@ struct RiskSignalCardsView: View {
         }
     }
 
-    private func buildSignals(from info: QuickInfo) -> [RiskSignal] {
+    private func buildSignals(from info: QuickInfo) -> [RiskSignalCard] {
         var signals: [RiskSignalCard] = []
 
         // Governance score check
