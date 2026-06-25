@@ -216,7 +216,6 @@ struct SectorWeeklyItem: Codable, Identifiable { var id: String { sector ?? UUID
 struct InstitutionalLeader: Codable, Identifiable { var id: String { ticker ?? UUID().uuidString }; let ticker: String?; let fii_holding_pct: Double?; let dii_holding_pct: Double?; let change_qoq: Double? }
 struct SentimentTrend: Codable { let ticker: String?; let sentiment_scores: [SentimentPoint]? }
 struct SentimentPoint: Codable, Identifiable { var id: String { date ?? UUID().uuidString }; let date: String?; let score: Double? }
-struct ScreenerResult: Codable, Identifiable { var id: String { ticker ?? UUID().uuidString }; let ticker: String?; let company: String?; let score: Double? }
 struct OptionsChain: Codable { let ticker: String?; let spot_price: Double?; let calls: [OptionContract]?; let puts: [OptionContract]? }
 struct OptionContract: Codable, Identifiable { var id: String { "\(strike ?? 0)_\(expiry ?? "")" }; let strike: Double?; let expiry: String?; let premium: Double?; let oi: Int? }
 struct EarningsSyncData: Codable { let sync_ratio: Double?; let total_estimates: Int?; let total_actuals: Int? }
