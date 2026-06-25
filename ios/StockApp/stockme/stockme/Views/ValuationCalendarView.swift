@@ -42,7 +42,7 @@ struct ValuationCalendarView: View {
                             // Period selector
                             HStack(spacing: Theme.Spacing.small) {
                                 ForEach(["1M", "3M", "6M", "1Y"], id: \.self) { period in
-                                    Button(action: { HapticManager.selection(); vm.fetchHistory(userId: userId, period: period) }) {.buttonStyle(EKPressStyle())
+                                    Button(action: { HapticManager.selection(); vm.fetchHistory(userId: userId, period: period) }) {
                                         Text(period)
                                             .font(Theme.serialNumberFont(size: 9))
                                             .foregroundStyle(vm.selectedPeriod == period ? goldAccent : dimText)
@@ -58,7 +58,7 @@ struct ValuationCalendarView: View {
                     }
                     .padding(.bottom, Theme.Spacing.medium)
 
-                    SectionGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.bottom, Theme.Spacing.card)
 
                     // Summary Stats Row
@@ -248,7 +248,7 @@ struct CalendarHeatGrid: View {
         VStack(spacing: Theme.Spacing.small) {
             // Month navigation
             HStack {
-                Button(action: { HapticManager.selection(); changeMonth(-1) }) {.buttonStyle(EKPressStyle())
+                Button(action: { HapticManager.selection(); changeMonth(-1) }) {
                     Image(systemName: "chevron.left")
                         .font(Theme.officialStampFont(size: 11))
                         .foregroundStyle(Theme.inkSecondary)
@@ -259,7 +259,7 @@ struct CalendarHeatGrid: View {
                     .font(Theme.serialNumberFont(size: 11))
                     .foregroundStyle(Theme.inkPrimary)
                 Spacer()
-                Button(action: { HapticManager.selection(); changeMonth(1) }) {.buttonStyle(EKPressStyle())
+                Button(action: { HapticManager.selection(); changeMonth(1) }) {
                     Image(systemName: "chevron.right")
                         .font(Theme.officialStampFont(size: 11))
                         .foregroundStyle(Theme.inkSecondary)
