@@ -41,6 +41,8 @@ jobs:
           def join(prefix, path):
               prefix = (prefix or "").rstrip("/")
               path = (path or "").strip()
+              if prefix and (path == prefix or path.startswith(prefix + "/")):
+                  return path
               if not path.startswith("/"):
                   path = "/" + path
               return (prefix + path).replace("//", "/") or "/"

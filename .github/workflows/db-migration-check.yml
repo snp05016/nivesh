@@ -76,6 +76,10 @@ jobs:
                       for target in node.targets:
                           if isinstance(target, ast.Name) and target.id in {"revision", "down_revision"}:
                               vals[target.id] = ast.literal_eval(node.value)
+                  elif isinstance(node, ast.AnnAssign):
+                      target = node.target
+                      if isinstance(target, ast.Name) and target.id in {"revision", "down_revision"} and node.value is not None:
+                          vals[target.id] = ast.literal_eval(node.value)
               revision = vals.get("revision")
               if not revision:
                   failures.append(f"{path}: missing revision")

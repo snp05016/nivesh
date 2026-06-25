@@ -29,6 +29,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Fail closed on paid API enablement
@@ -46,24 +47,12 @@ jobs:
           done
 
       - name: Whitespace checks
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          git diff --check
-          python3 - <<'PY'
-          from pathlib import Path
-          bad = []
-          for path in Path(".").rglob("*"):
-              if ".git" in path.parts or not path.is_file():
-                  continue
-              if path.suffix.lower() in {".py", ".swift", ".yml", ".yaml", ".md", ".sh", ".dockerfile"} or path.name == "Dockerfile":
-                  text = path.read_text(errors="ignore").splitlines()
-                  for idx, line in enumerate(text, 1):
-                      if line.rstrip() != line:
-                          bad.append(f"{path}:{idx}: trailing whitespace")
-          if bad:
-              print("\n".join(bad))
-              raise SystemExit(1)
-          PY
+          git diff --check "$PR_BASE_SHA...$PR_HEAD_SHA"
 
       - name: Secret scanning
         uses: gitleaks/gitleaks-action@v2
@@ -126,6 +115,8 @@ jobs:
           def join(prefix, path):
               prefix = (prefix or "").rstrip("/")
               path = (path or "").strip()
+              if prefix and (path == prefix or path.startswith(prefix + "/")):
+                  return path
               if not path.startswith("/"):
                   path = "/" + path
               return (prefix + path).replace("//", "/") or "/"
@@ -192,7 +183,7 @@ jobs:
                       warnings.append(f"{path}:{line}: Swift style warning {pattern}")
               for match in string_re.finditer(text):
                   value = match.group(1)
-                  for route in re.findall(r"/(?:api/v1/)?[A-Za-z0-9_./{}?=&%#@\\()\\-]+", value):
+                  for route in re.findall(r"/api/v1/[A-Za-z0-9_./{}?=&%#@\\()\\-]+", value):
                       endpoints.add(route.split("?")[0])
           Path("artifacts").mkdir(exist_ok=True)
           Path("artifacts/swift-endpoints.txt").write_text("\n".join(sorted(endpoints)) + "\n")

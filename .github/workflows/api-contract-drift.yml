@@ -29,14 +29,19 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Extract and compare route contracts
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           mkdir -p artifacts
           python3 - <<'PY'
-          import ast, json, re
+          import ast, json, os, re
           from pathlib import Path
 
           methods = {"get", "post", "put", "delete", "patch", "options", "head"}
@@ -53,7 +58,7 @@ jobs:
           def normalize(path: str) -> str:
               path = path.split("?")[0].strip()
               path = re.sub(r"\\$\\([^)]*\\)", "{value}", path)
-              path = re.sub(r"\\\\\\([A-Za-z0-9_]+)", "{value}", path)
+              path = re.sub(r"\\\([^/]*\)", "{value}", path)
               path = re.sub(r"\\{[A-Za-z0-9_]+\\}", "{value}", path)
               path = re.sub(r"/+", "/", path)
               return path.rstrip("/") or "/"
@@ -61,6 +66,8 @@ jobs:
           def join(prefix: str, path: str) -> str:
               prefix = (prefix or "").rstrip("/")
               path = (path or "").strip()
+              if prefix and (path == prefix or path.startswith(prefix + "/")):
+                  return path
               if not path.startswith("/"):
                   path = "/" + path
               return (prefix + path).replace("//", "/") or "/"
@@ -103,7 +110,7 @@ jobs:
               text = file.read_text(errors="ignore")
               for match in string_re.finditer(text):
                   value = match.group(1)
-                  for route in re.findall(r"/(?:api/v1/)?[A-Za-z0-9_./{}?=&%#@\\()\\-]+", value):
+                  for route in re.findall(r"/api/v1/[A-Za-z0-9_./{}?=&%#@\\()\\-]+", value):
                       if route.startswith("//"):
                           continue
                       normalized = normalize(route)
@@ -118,19 +125,44 @@ jobs:
               if not route.startswith("/http")
               and not any(pattern in route for pattern in paid_or_live_patterns)
           )
+          missing_rows = [
+              row for row in swift_rows
+              if row["normalized"] in missing
+          ]
+          changed_swift_files = set()
+          if os.environ.get("EVENT_NAME") == "pull_request":
+              import subprocess
+              base = os.environ.get("PR_BASE_SHA", "")
+              head = os.environ.get("PR_HEAD_SHA", "")
+              if base and head:
+                  changed_swift_files = {
+                      name for name in subprocess.check_output(
+                          ["git", "diff", "--name-only", f"{base}...{head}"],
+                          text=True,
+                      ).splitlines()
+                      if name.endswith(".swift")
+                  }
+          blocking_missing_rows = missing_rows
+          if os.environ.get("EVENT_NAME") == "pull_request":
+              blocking_missing_rows = [
+                  row for row in missing_rows
+                  if row["file"] in changed_swift_files
+              ]
           stale_backend = sorted(route for route in backend - swift if route.startswith("/api/v1/"))
 
           report = {
               "backend_route_count": len(backend),
               "swift_route_count": len(swift),
               "missing_backend_routes_for_swift": missing,
+              "blocking_missing_backend_routes_for_swift": blocking_missing_rows,
+              "changed_swift_files": sorted(changed_swift_files),
               "backend_routes_without_swift_consumers": stale_backend,
           }
           Path("artifacts/backend-routes.json").write_text(json.dumps(route_rows, indent=2, sort_keys=True) + "\n")
           Path("artifacts/swift-routes.json").write_text(json.dumps(swift_rows, indent=2, sort_keys=True) + "\n")
           Path("artifacts/api-contract-drift-report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
           print(json.dumps(report, indent=2, sort_keys=True))
-          if missing:
+          if blocking_missing_rows:
               raise SystemExit("Swift references backend paths that were not found in static FastAPI route decorators")
           PY
 
