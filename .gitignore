@@ -60,6 +60,20 @@ graphify-out/
 .gitnexus/
 .codex/
 
+# Agent work directories (temporary planning/report artifacts)
+.alpha-validation/
+.backtests/
+.calibration-hardening/
+.calibration-ultracode/
+.lightgbm-baseline-ultracode/
+.ml-audit/
+.ml-production-integration/
+.ml-roadmap/
+.ml-training/
+.ml-truth/
+.quant-lab-implementation/
+.stock-profile-planning/
+
 # OS files
 .DS_Store
 Thumbs.db
@@ -69,6 +83,3 @@ Thumbs.db
 dist/
 build/
 .worktrees/
-
-# CI/CD
-.github/
