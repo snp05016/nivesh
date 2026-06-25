@@ -191,7 +191,7 @@ struct NewsMultimediaView: View {
             // Tab bar
             HStack(spacing: Theme.Spacing.none) {
                 ForEach(Array(expertTabs.enumerated()), id: \.offset) { idx, tab in
-                    Button(action: { HapticManager.selection(); expertTab = idx }) {.buttonStyle(EKPressStyle())
+                    Button(action: { HapticManager.selection(); expertTab = idx }) {
                         Text(tab)
                             .font(.caption2.weight(expertTab == idx ? .bold : .regular))
                             .foregroundStyle(expertTab == idx ? Theme.securityGold : Theme.inkTertiary)
@@ -509,7 +509,7 @@ struct VideoCard: View {
     @State private var showPlayer = false
 
     var body: some View {
-        Button(action: { HapticManager.selection(); showPlayer = true }) {.buttonStyle(EKPressStyle())
+        Button(action: { HapticManager.selection(); showPlayer = true }) {
             HStack(spacing: Theme.Spacing.standard) {
                 ZStack(alignment: .bottomTrailing) {
                     if let thumbUrl = video.thumbnailUrl, let url = URL(string: thumbUrl) {
@@ -895,7 +895,7 @@ struct AllNewsSheet: View {
                         .foregroundStyle(Theme.inkPrimary)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: { HapticManager.selection(); dismiss() }) {.buttonStyle(EKPressStyle())
+                    Button(action: { HapticManager.selection(); dismiss() }) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(Theme.inkTertiary)
                     }

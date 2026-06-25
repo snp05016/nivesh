@@ -241,7 +241,7 @@ struct PreIPOMarketplaceView: View {
                 .font(Theme.officialStampFont(size: 13))
                 .foregroundStyle(Theme.inkPrimary)
             if !vm.searchText.isEmpty {
-                Button(action: { HapticManager.selection(); vm.searchText = "" }) {.buttonStyle(EKPressStyle())
+                Button(action: { HapticManager.selection(); vm.searchText = "" }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(Theme.inkTertiary)
                 }
@@ -321,7 +321,7 @@ struct PreIPOMarketplaceView: View {
                 }
 
                 // Bookmark
-                Button(action: { HapticManager.selection(); vm.toggleBookmark(company.id); HapticManager.impact(.light) }) {.buttonStyle(EKPressStyle())
+                Button(action: { HapticManager.selection(); vm.toggleBookmark(company.id); HapticManager.impact(.light) }) {
                     Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
                         .font(Theme.officialStampFont(size: 13))
                         .foregroundStyle(isBookmarked ? Theme.securityGold : Theme.inkTertiary)
@@ -329,7 +329,7 @@ struct PreIPOMarketplaceView: View {
                 .accessibilityLabel("Toggle bookmark")
 
                 // 6.4 Chevron Expand Control
-                Button(action: { HapticManager.selection(); withAnimation(.easeInOut(duration: 0.25)) { vm.toggleExpand(company.id) } }) {.buttonStyle(EKPressStyle())
+                Button(action: { HapticManager.selection(); withAnimation(.easeInOut(duration: 0.25)) { vm.toggleExpand(company.id) } }) {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(Theme.officialStampFont(size: 11))
                         .foregroundStyle(Theme.inkTertiary)

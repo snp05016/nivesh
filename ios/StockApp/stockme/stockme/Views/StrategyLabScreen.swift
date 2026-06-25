@@ -204,7 +204,7 @@ struct StrategyLabScreen: View {
                             .font(Theme.roundedCaption(size: 12))
                             .foregroundStyle(Theme.inkSecondary)
                             .multilineTextAlignment(.center)
-                        Button(action: { HapticManager.selection(); Task { await viewModel.runBacktest() } }) {.buttonStyle(EKPressStyle())
+                        Button(action: { HapticManager.selection(); Task { await viewModel.runBacktest() } }) {
                             Text("Retry")
                                 .font(Theme.roundedSecondary(size: 14, weight: .bold))
                                 .foregroundStyle(Theme.inkPrimary)
@@ -303,7 +303,7 @@ struct StrategyLabScreen: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { showingCompareSheet = false }.buttonStyle(EKPressStyle())
+                        Button("Cancel") { showingCompareSheet = false 
                             .foregroundStyle(Theme.goldPrimary)
                     }
                 }

@@ -90,7 +90,7 @@ struct YouTubeCardView: View {
 
                         // Ticker chips (tappable)
                         ForEach(video.tickersMentioned.prefix(2), id: \.self) { ticker in
-                            Button(action: { HapticManager.selection(); onTickerTap?(ticker) }) {.buttonStyle(EKPressStyle())
+                            Button(action: { HapticManager.selection(); onTickerTap?(ticker) }) {
                                 Text(ticker)
                                     .font(.caption2.weight(.semibold).monospaced())
                                     .foregroundStyle(.primary.opacity(0.65))
@@ -212,7 +212,7 @@ struct YouTubeCompactCard: View {
                 if !video.tickersMentioned.isEmpty {
                     HStack(spacing: Theme.Spacing.xSmall) {
                         ForEach(video.tickersMentioned.prefix(2), id: \.self) { ticker in
-                            Button(action: { HapticManager.selection(); onTickerTap?(ticker) }) {.buttonStyle(EKPressStyle())
+                            Button(action: { HapticManager.selection(); onTickerTap?(ticker) }) {
                                 Text(ticker)
                                     .font(.caption2.weight(.semibold).monospaced())
                                     .foregroundStyle(.primary.opacity(0.65))

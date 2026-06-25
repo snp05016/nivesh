@@ -682,7 +682,7 @@ struct HomeScreen: View {
                             }
 
 
-                            Button(action: { HapticManager.selection(); showingEditLayout = true }) {.buttonStyle(EKPressStyle())
+                            Button(action: { HapticManager.selection(); showingEditLayout = true }) {
                                 HStack(spacing: Theme.Spacing.medium) {
                                     Image(systemName: "slider.horizontal.3")
                                     Text("CUSTOMIZE LAYOUT")
@@ -2130,7 +2130,7 @@ struct NewsDetailSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { HapticManager.selection(); dismiss() }) {.buttonStyle(EKPressStyle())
+                    Button(action: { HapticManager.selection(); dismiss() }) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(Theme.inkSecondary)
                             .font(.title3)
@@ -2999,7 +2999,7 @@ struct HomeLayoutEditorSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
+                    Button("Cancel") { dismiss() 
                         .foregroundStyle(Theme.inkSecondary)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {

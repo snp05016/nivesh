@@ -275,7 +275,7 @@ private struct SIPCalculatorSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }.buttonStyle(EKPressStyle())
+                    Button("Done") { dismiss() 
                         .foregroundStyle(Theme.inkPrimary)
                 }
             }
@@ -530,7 +530,7 @@ private struct BenchmarkComparisonSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }.buttonStyle(EKPressStyle())
+                    Button("Done") { dismiss() 
                         .foregroundStyle(Theme.inkPrimary)
                 }
             }
