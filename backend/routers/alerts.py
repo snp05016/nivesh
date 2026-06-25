@@ -283,16 +283,3 @@ def alerts_check_endpoint(user_id: int, authorization: str = Header(None)):
         return _get_alerts_data(user_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to check alerts: {str(e)}")
-                "target_price": row["target_price"],
-                "direction": row["direction"],
-                "current_price": current_price,
-                "distance_pct": distance_pct,
-                "triggered": row["triggered"],
-                "created_at": row["created_at"],
-            })
-
-        return {"alerts": result}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
