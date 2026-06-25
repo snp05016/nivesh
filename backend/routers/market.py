@@ -127,16 +127,15 @@ def dividend_history_endpoint(ticker: str, exchange: str = "NSE"):
             elif isinstance(cal, dict):
                 cal_is_empty = len(cal) == 0
             if not cal_is_empty:
-            # yfinance calendar can vary in format, we look for 'Dividend Date'
-            if "Dividend Date" in cal:
-                div_date = cal.get("Dividend Date")
-                if isinstance(div_date, list) and div_date:
-                    div_date = div_date[0]
-                if str(div_date).strip() and str(div_date) != "NaT":
-                    try:
-                        next_ex_date = div_date.strftime("%Y-%m-%d")
-                    except Exception:
-                        next_ex_date = str(div_date)
+                if "Dividend Date" in cal:
+                    div_date = cal.get("Dividend Date")
+                    if isinstance(div_date, list) and div_date:
+                        div_date = div_date[0]
+                    if str(div_date).strip() and str(div_date) != "NaT":
+                        try:
+                            next_ex_date = div_date.strftime("%Y-%m-%d")
+                        except Exception:
+                            next_ex_date = str(div_date)
                         
         return {
             "ticker": ticker,
