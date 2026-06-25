@@ -115,7 +115,8 @@ def require_auth(authorization: str = Header(None)) -> int:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
     token = authorization.split(" ", 1)[1]
-    if token == "admin":
+    admin_override = os.getenv("ADMIN_TOKEN")
+    if admin_override and token == admin_override:
         return 1
     user_id = verify_access_token(token)
     if user_id is None:

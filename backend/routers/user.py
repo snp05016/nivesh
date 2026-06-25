@@ -12,6 +12,7 @@ from helpers import (
     _check_rate_limit, WatchlistAddRequest, WatchlistRemoveRequest,
     _get_asm_gsm_lists, upsert_device_token,
 )
+from core.security import require_admin
 
 router = APIRouter(tags=["User"])
 
@@ -357,17 +358,13 @@ def get_expert_posts(limit: int = 30):
         return {"posts": [], "fetched_at": now_iso}
 
 @router.get("/api/v1/admin/error-telemetry")
-def get_error_telemetry(current_user: User = Depends(verify_access_token)):
+def get_error_telemetry(token: int = Depends(require_admin)):
     """Admin endpoint to get recent error logs."""
-    from database import get_session, MarketErrorLog, is_admin
+    from database import get_session, MarketErrorLog
     import json
     from fastapi import HTTPException
 
-    
     with get_session() as db:
-        if not is_admin(db, current_user.id):
-            raise HTTPException(status_code=403, detail="Admin access required")
-            
         logs = db.query(MarketErrorLog).order_by(MarketErrorLog.timestamp.desc()).limit(100).all()
         results = []
         for log in logs:

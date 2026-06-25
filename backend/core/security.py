@@ -16,14 +16,22 @@ def get_current_user_id(authorization: str = Header(None)) -> Optional[int]:
     return verify_access_token(token)
 
 
+"""Core security utilities — JWT auth, admin controls, rate limiting."""
+import os
+from fastapi import HTTPException, Header, status
+
+from database import verify_access_token, is_admin
+
+
 def require_auth(authorization: str = Header(None)) -> int:
     """Require valid JWT token. Raises 401 if missing/invalid."""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
     token = authorization.split(" ", 1)[1]
 
-    # Dev bypass for admin dashboard
-    if token == "admin":
+    # Dev bypass — ONLY when ADMIN_TOKEN env var is set (never in production)
+    admin_override = os.getenv("ADMIN_TOKEN")
+    if admin_override and token == admin_override:
         return 1
 
     user_id = verify_access_token(token)
