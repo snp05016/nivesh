@@ -1767,6 +1767,64 @@ def analyze(
             cached_today["pkscreener_signals"] = None
             _inject_piotroski(cached_today, ticker)
             cached_today = _inject_live_data(cached_today, ticker)
+
+            # === DETERMINISTIC CONFIDENCE FUSION (cache path) ===
+            _llm_conf = cached_today.get("confidence_pct")
+            _quant_conf = _quant_from_cache.get("calibrated_confidence")
+            _va_conf = cached_today.get("venn_abers_confidence")
+            _ml_conf = cached_today.get("ml_confidence")
+            _agree = cached_today.get("signal_agreement")
+            _ml_engine_mode = cached_today.get("ml_engine_mode", "fallback_technical_heuristic")
+            _lightgbm_loaded = cached_today.get("lightgbm_loaded", False)
+            _ml_model_version = cached_today.get("model_version")
+            _ml_feature_count = cached_today.get("ml_feature_count")
+            _ml_fallback_used = cached_today.get("ml_fallback_used", True)
+
+            try:
+                fused_conf, breakdown = _fuse_final_confidence(
+                    llm_conf=_llm_conf,
+                    quant_conf=_quant_conf,
+                    venn_abers_conf=_va_conf,
+                    signal_agreement=_agree,
+                    ml_conf=_ml_conf,
+                    ml_engine_mode=_ml_engine_mode,
+                )
+                breakdown["ml_engine_mode"] = get_ml_engine_mode(_lightgbm_loaded, _ml_engine_mode)
+                breakdown["ml_model_loaded"] = _lightgbm_loaded
+                breakdown["model_version"] = _ml_model_version
+                breakdown["feature_count"] = _ml_feature_count
+                breakdown["fallback_used"] = _ml_fallback_used
+                breakdown["_cache_path"] = True
+
+                cached_today["confidence_pct"] = fused_conf
+                cached_today["confidence_breakdown"] = breakdown
+                cached_today["ml_engine_mode"] = breakdown["ml_engine_mode"]
+                cached_today["model_version"] = _ml_model_version
+
+                # Log prediction (cache path)
+                from models.db_models import AnalysisPrediction
+                with get_session() as _ps:
+                    _pred = AnalysisPrediction(
+                        symbol=ticker.upper(),
+                        recommendation=cached_today.get("signal", "HOLD"),
+                        confidence_pct=fused_conf,
+                        llm_confidence=_llm_conf,
+                        quant_confidence=_quant_conf,
+                        ml_confidence=_ml_conf,
+                        venn_abers_confidence=_va_conf,
+                        signal_agreement=_agree,
+                        ml_engine_mode=breakdown["ml_engine_mode"],
+                        model_version=_ml_model_version,
+                scan_type=scan_type,
+                regime_id=cached_today.get("market_regime", "Unknown"),
+                entry_price=cached_today.get("current_price_inr"),
+                target_price=cached_today.get("target_prices", {}).get("medium_term_12m"),
+                    )
+                    _ps.add(_pred)
+                    _ps.commit()
+            except Exception as _fuse_err:
+                print(f"[WARN] Cache-path confidence fusion failed: {_fuse_err}")
+
             return cached_today
 
         # 2. Fetch deep history for AI context
