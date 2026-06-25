@@ -54,7 +54,7 @@ jobs:
             -e DISABLE_LIVE_LLM=1 \
             -e DISABLE_PAID_APIS=1 \
             nivesh-ml-engine-ci:${{ github.sha }} \
-            python -m pytest -q tests
+            sh -c 'python -m pip install pytest && python -m pytest -q tests'
 
       - name: Check free ML health endpoints
         run: |
