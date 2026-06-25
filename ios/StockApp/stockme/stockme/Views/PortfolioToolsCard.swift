@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Benchmark Data Model
+// MARK: - Models
 
 struct BenchmarkData: Codable {
     let portfolio_cagr: Double?
@@ -8,6 +8,20 @@ struct BenchmarkData: Codable {
     let alpha: Double?
     let tracking_error: Double?
     let information_ratio: Double?
+}
+
+struct SIPResult: Codable {
+    let total_investment: Double?
+    let maturity_value: Double?
+    let total_gain: Double?
+    let yearly_breakdown: [SIPYearRow]?
+}
+
+struct SIPYearRow: Codable, Identifiable {
+    var id: String { "\(year ?? 0)" }
+    let year: Int?
+    let invested: Double?
+    let value: Double?
 }
 
 // MARK: - Portfolio Tools Card
@@ -275,7 +289,7 @@ private struct SIPCalculatorSheet: View {
         let n = Int(years) ?? 10
         let step = (Double(stepUpPct) ?? 0) / 100.0
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task {
             let (invested, maturity, gain, breakdown) = computeSIP(
                 monthly: m, annualReturn: r, years: n, stepUp: step
             )
@@ -285,7 +299,7 @@ private struct SIPCalculatorSheet: View {
                 total_gain: gain,
                 yearly_breakdown: breakdown
             )
-            DispatchQueue.main.async {
+            await MainActor.run {
                 result = s
                 isCalculating = false
                 HapticManager.success()
