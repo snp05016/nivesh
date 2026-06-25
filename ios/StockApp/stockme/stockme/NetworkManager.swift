@@ -836,6 +836,14 @@ class NetworkManager: ObservableObject {
         }
     }
 
+    // MARK: - Dividends
+
+    func fetchDividends(ticker: String, exchange: String = "NSE") async throws -> DividendData {
+        let endpoint = "/dividends/\(ticker.uppercased())?exchange=\(exchange)"
+        let data = try await _fetchDecode(endpoint, as: DividendData.self)
+        return data
+    }
+
     // MARK: - Piotroski F-Score
 
     func fetchPiotroski(ticker: String) async -> PiotroskiData? {

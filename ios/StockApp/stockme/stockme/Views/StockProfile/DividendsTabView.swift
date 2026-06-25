@@ -1,5 +1,20 @@
 import SwiftUI
 
+// MARK: - Dividend Models
+
+struct DividendData: Codable {
+    let ticker: String?
+    let next_ex_date: String?
+    let dividends: [DividendEntry]?
+}
+
+struct DividendEntry: Codable, Identifiable {
+    var id: String { date ?? UUID().uuidString }
+    let date: String?
+    let amount: Double?
+    let yield_pct: Double?
+}
+
 // MARK: - Dividends Tab
 
 struct DividendsTabView: View {
