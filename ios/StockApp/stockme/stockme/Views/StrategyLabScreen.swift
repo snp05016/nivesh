@@ -40,7 +40,7 @@ struct EquityCurvePoint: Decodable, Identifiable {
     }
 }
 
-struct BacktestResult: Decodable {
+struct StrategyStrategyBacktestResult: Decodable {
     let cagr: Double
     let sharpeRatio: Double
     let maxDrawdown: Double
@@ -87,9 +87,9 @@ class StrategyLabViewModel: ObservableObject {
     
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
-    @Published var result: BacktestResult? = nil
+    @Published var result: StrategyBacktestResult? = nil
     
-    @Published var compareResult: BacktestResult? = nil
+    @Published var compareResult: StrategyBacktestResult? = nil
     @Published var compareStrategy: StrategyOption? = nil
     @Published var isComparing: Bool = false
     
@@ -139,7 +139,7 @@ class StrategyLabViewModel: ObservableObject {
         compareResult = nil
     }
     
-    private func fetchBacktest(ticker: String, strategyId: String, years: Int) async throws -> BacktestResult {
+    private func fetchBacktest(ticker: String, strategyId: String, years: Int) async throws -> StrategyBacktestResult {
         guard let url = URL(string: "http://127.0.0.1:8000/api/v1/analysis/backtest") else {
             throw URLError(.badURL)
         }
@@ -166,7 +166,7 @@ class StrategyLabViewModel: ObservableObject {
             throw URLError(.badServerResponse)
         }
         
-        return try JSONDecoder().decode(BacktestResult.self, from: data)
+        return try JSONDecoder().decode(StrategyBacktestResult.self, from: data)
     }
 }
 
@@ -386,7 +386,7 @@ struct StrategyLabScreen: View {
         }
     }
     
-    private func resultsSection(_ result: BacktestResult) -> some View {
+    private func resultsSection(_ result: StrategyBacktestResult) -> some View {
         VStack(spacing: Theme.Spacing.standard) {
             let isPositive = result.cagr >= 0
             let cagrColor = isPositive ? Theme.bullGreen : Theme.bearRed
@@ -436,7 +436,7 @@ struct StrategyLabScreen: View {
         }
     }
     
-    private func chartSection(_ result: BacktestResult) -> some View {
+    private func chartSection(_ result: StrategyBacktestResult) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.card) {
             Text("EQUITY CURVE")
                 .font(Theme.sectionCapsLabel())
@@ -524,7 +524,7 @@ struct StrategyLabScreen: View {
         }
     }
     
-    private func tradeLogSection(_ result: BacktestResult) -> some View {
+    private func tradeLogSection(_ result: StrategyBacktestResult) -> some View {
         VStack(spacing: Theme.Spacing.none) {
             Button(action: {
                 HapticManager.selection()

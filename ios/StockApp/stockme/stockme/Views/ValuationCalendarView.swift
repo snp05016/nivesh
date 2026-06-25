@@ -6,7 +6,7 @@ struct ValuationCalendarView: View {
     @StateObject private var vm = ValuationCalendarViewModel()
     let userId: Int
 
-    @State private var selectedSnapshot: ValuationSnapshot? = nil
+    @State private var selectedSnapshot: PortfolioValuationSnapshot? = nil
     @State private var selectedMonth: Date = Date()
 
     private let goldAccent = Theme.securityGold
@@ -216,7 +216,7 @@ struct ValuationCalendarView: View {
 // MARK: - Calendar Heat Grid
 
 struct CalendarHeatGrid: View {
-    let snapshots: [ValuationSnapshot]
+    let snapshots: [PortfolioValuationSnapshot]
     @Binding var selectedMonth: Date
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.small), count: 7)
@@ -336,7 +336,7 @@ struct DayCell: View {
 // MARK: - Supporting ViewModel
 
 class ValuationCalendarViewModel: ObservableObject {
-    @Published var snapshots: [ValuationSnapshot] = []
+    @Published var snapshots: [PortfolioValuationSnapshot] = []
     @Published var summary: ValuationSummary? = nil
     @Published var isLoading = false
     @Published var selectedPeriod: String = "3M"

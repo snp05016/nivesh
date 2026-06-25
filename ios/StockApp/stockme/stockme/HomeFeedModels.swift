@@ -99,7 +99,7 @@ struct YouTubeVideoItem: Codable, Identifiable {
 struct ValuationHistoryResponse: Codable {
     let userId: Int
     let days: Int
-    let snapshots: [ValuationSnapshot]
+    let snapshots: [PortfolioValuationSnapshot]
     let summary: ValuationSummary
 
     enum CodingKeys: String, CodingKey {
@@ -108,7 +108,7 @@ struct ValuationHistoryResponse: Codable {
     }
 }
 
-struct ValuationSnapshot: Codable, Identifiable {
+struct PortfolioValuationSnapshot: Codable, Identifiable {
     var id: String { date }
     let date: String
     let totalValue: Double

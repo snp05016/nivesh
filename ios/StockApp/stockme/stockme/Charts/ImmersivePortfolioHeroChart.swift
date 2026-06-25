@@ -76,7 +76,7 @@ struct GlowAreaShape: Shape {
 // Public API preserved: `ImmersivePortfolioHeroChart(snapshots:)`.
 
 struct ImmersivePortfolioHeroChart: View {
-    let snapshots: [ValuationSnapshot]
+    let snapshots: [PortfolioValuationSnapshot]
     /// When false the static value header is omitted (e.g. Portfolio, where
     /// `PortfolioHeroBlock` is already the resting hero). The scrub tooltip still appears.
     var showValueHeader: Bool = true

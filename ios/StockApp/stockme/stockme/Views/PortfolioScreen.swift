@@ -156,11 +156,11 @@ struct PortfolioScreen: View {
     @AppStorage("nivesh_hidePortfolioValues") private var hidePortfolioValues = false
 
     // Screen B — immersive valuation chart (fetched at view level; ViewModel untouched)
-    @State private var snapshots: [ValuationSnapshot] = []
+    @State private var snapshots: [PortfolioValuationSnapshot] = []
     @State private var selectedRange: TimeRange = .year
 
     /// Snapshots filtered to the selected time range (tail of the 90-day series).
-    private var rangedSnapshots: [ValuationSnapshot] {
+    private var rangedSnapshots: [PortfolioValuationSnapshot] {
         guard !snapshots.isEmpty else { return [] }
         let n: Int
         switch selectedRange {

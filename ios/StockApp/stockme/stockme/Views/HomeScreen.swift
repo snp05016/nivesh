@@ -623,11 +623,11 @@ struct HomeScreen: View {
     // Item 7: YouTube channel filter
     @State private var selectedChannel: String? = nil
 
-    @State private var valuationHistory: [ValuationSnapshot] = []
+    @State private var valuationHistory: [PortfolioValuationSnapshot] = []
     @State private var valuationLoading = false
     @State private var portfolioRange: TimeRange = .month
 
-    private var rangedValuationHistory: [ValuationSnapshot] {
+    private var rangedValuationHistory: [PortfolioValuationSnapshot] {
         guard !valuationHistory.isEmpty else { return [] }
         let n: Int
         switch portfolioRange {
