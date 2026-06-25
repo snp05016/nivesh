@@ -139,8 +139,7 @@ struct EarningsSurpriseScreen: View {
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: Theme.Spacing.small) {
-                    Button { HapticManager.selection(); vm.showHelp = true }.buttonStyle(EKPressStyle())
-                    label: {
+                    Button { HapticManager.selection(); vm.showHelp = true } label: {
                         Image(systemName: "questionmark.circle")
                             .font(Theme.engravedSerif(size: 18, weight: .medium))
                             .foregroundColor(Theme.securityGold)
@@ -148,7 +147,6 @@ struct EarningsSurpriseScreen: View {
                     .buttonStyle(EKPressStyle())
                     
                     Button {
-    HapticManager.selection()
                         HapticManager.selection()
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                             vm.isCalendarView.toggle()
