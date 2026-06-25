@@ -119,7 +119,14 @@ def dividend_history_endpoint(ticker: str, exchange: str = "NSE"):
                 
         next_ex_date = None
         cal = t.calendar
-        if cal is not None and not cal.empty:
+        if cal is not None:
+            # yfinance calendar can be a dict or DataFrame depending on version
+            cal_is_empty = False
+            if hasattr(cal, "empty"):
+                cal_is_empty = cal.empty
+            elif isinstance(cal, dict):
+                cal_is_empty = len(cal) == 0
+            if not cal_is_empty:
             # yfinance calendar can vary in format, we look for 'Dividend Date'
             if "Dividend Date" in cal:
                 div_date = cal.get("Dividend Date")
