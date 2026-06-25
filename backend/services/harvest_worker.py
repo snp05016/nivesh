@@ -62,6 +62,7 @@ async def _run_news_harvest_bg():
 # ── Admin trigger endpoints ────────────────────────────────────────────────────
 
 @router.post("/harvest-youtube")
+@router.post("/api/v1/admin/harvest-youtube")
 async def admin_harvest_youtube(bg_tasks: BackgroundTasks, authorization: str = Header(None)):
     """Trigger both YouTube harvests on demand. Admin-only."""
     require_admin(authorization)

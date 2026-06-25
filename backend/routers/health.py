@@ -18,6 +18,12 @@ def ping():
     return {"status": "ok"}
 
 
+@router.get("/health")
+def health_lite():
+    """iOS health check alias — lightweight 200 with no dependency checks."""
+    return {"status": "ok"}
+
+
 @router.get("/healthz")
 def healthz():
     """

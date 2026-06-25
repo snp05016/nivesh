@@ -220,42 +220,69 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
     return any_success or not tokens  # success if at least one push sent or no tokens to notify
 
 
+def _get_alerts_data(user_id: int):
+    """Shared helper: fetch and enrich alert data for a user."""
+    with get_session() as session:
+        alerts = (
+            session.query(PriceTarget)
+            .filter_by(user_id=user_id)
+            .order_by(PriceTarget.created_at.desc())
+            .all()
+        )
+        alerts_data = [
+            {
+                "id": a.id,
+                "ticker": a.ticker,
+                "target_price": a.target_price,
+                "direction": a.direction,
+                "triggered": a.triggered,
+                "created_at": a.created_at.strftime("%Y-%m-%d") if a.created_at else "",
+            }
+            for a in alerts
+        ]
+
+    result = []
+    for row in alerts_data:
+        ns_ticker = _to_ns(row["ticker"])
+        current_price, _ = _yf_price(ns_ticker)
+        distance_pct = None
+        if current_price and row["target_price"]:
+            distance_pct = round(abs(current_price - row["target_price"]) / row["target_price"] * 100, 2)
+        result.append({
+            "id": row["id"],
+            "ticker": row["ticker"],
+            "company_name": row["ticker"],
+            "target_price": row["target_price"],
+            "direction": row["direction"],
+            "current_price": current_price,
+            "distance_pct": distance_pct,
+            "triggered": row["triggered"],
+            "created_at": row["created_at"],
+        })
+    return result
+
+
 @router.get("/alerts/{user_id}")
 def alerts_get_endpoint(user_id: int, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
     if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
-        with get_session() as session:
-            alerts = (
-                session.query(PriceTarget)
-                .filter_by(user_id=user_id)
-                .order_by(PriceTarget.created_at.desc())
-                .all()
-            )
-            alerts_data = [
-                {
-                    "id": a.id,
-                    "ticker": a.ticker,
-                    "target_price": a.target_price,
-                    "direction": a.direction,
-                    "triggered": a.triggered,
-                    "created_at": a.created_at.strftime("%Y-%m-%d") if a.created_at else "",
-                }
-                for a in alerts
-            ]
+        return _get_alerts_data(user_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch alerts: {str(e)}")
 
-        result = []
-        for row in alerts_data:
-            ns_ticker = _to_ns(row["ticker"])
-            current_price, _ = _yf_price(ns_ticker)
-            distance_pct = None
-            if current_price and row["target_price"]:
-                distance_pct = round(abs(current_price - row["target_price"]) / row["target_price"] * 100, 2)
-            result.append({
-                "id": row["id"],
-                "ticker": row["ticker"],
-                "company_name": row["ticker"],
+
+@router.get("/alerts/check/{user_id}")
+def alerts_check_endpoint(user_id: int, authorization: str = Header(None)):
+    """iOS alert check alias — returns alerts with triggered status."""
+    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
+    if token_user != user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        return _get_alerts_data(user_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to check alerts: {str(e)}")
                 "target_price": row["target_price"],
                 "direction": row["direction"],
                 "current_price": current_price,
