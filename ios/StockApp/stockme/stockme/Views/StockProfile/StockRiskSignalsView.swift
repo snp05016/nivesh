@@ -533,7 +533,7 @@ struct RiskSignalCardsView: View {
 
 // MARK: - Risk Signal Data Model
 
-private struct RiskSignalCard {
+fileprivate struct RiskSignalCard {
     let id = UUID()
     let severity: RiskSeverity
     let title: String

@@ -38,9 +38,9 @@ struct FinancialLineItem: Codable, Identifiable {
     var id: String { label }
     let label: String
     let group: String
-    let values: [String: Double?]
-    let qoqChangePct: [String: Double?]
-    let yoyChangePct: [String: Double?]
+    let values: [String: Double]
+    let qoqChangePct: [String: Double]
+    let yoyChangePct: [String: Double]
     let isPercentage: Bool
     let bankSpecific: Bool
 
