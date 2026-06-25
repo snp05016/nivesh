@@ -265,12 +265,12 @@ struct ModelVersionsResponse: Codable {
 // MARK: - Backtest
 
 struct BacktestParams: Codable {
-    let horizon: String
-    let strategyType: String
-    let topK: Int
-    let confidenceThreshold: Double
-    let positionSizing: String
-    let costPreset: String
+    let horizon: String = "30d"
+    let strategyType: String = "momentum"
+    let topK: Int = 10
+    let confidenceThreshold: Double = 0.5
+    let positionSizing: String = "equal"
+    let costPreset: String = "medium"
 
     enum CodingKeys: String, CodingKey {
         case horizon
