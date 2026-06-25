@@ -40,7 +40,7 @@ struct EquityCurvePoint: Decodable, Identifiable {
     }
 }
 
-struct StrategyStrategyBacktestResult: Decodable {
+struct StrategyBacktestResult: Decodable {
     let cagr: Double
     let sharpeRatio: Double
     let maxDrawdown: Double
