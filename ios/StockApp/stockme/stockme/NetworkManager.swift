@@ -844,6 +844,14 @@ class NetworkManager: ObservableObject {
         return data
     }
 
+    // MARK: - Sentiment Trend
+
+    func fetchSentimentTrend(ticker: String, days: Int = 30) async throws -> SentimentTrend {
+        let endpoint = "/market/sentiment-trend/\(ticker.uppercased())?days=\(days)"
+        let data = try await _fetchDecode(endpoint, as: SentimentTrend.self)
+        return data
+    }
+
     // MARK: - Piotroski F-Score
 
     func fetchPiotroski(ticker: String) async -> PiotroskiData? {

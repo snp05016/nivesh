@@ -1,6 +1,21 @@
 import SwiftUI
 import Charts
 
+// MARK: - Sentiment Models
+
+struct SentimentTrend: Codable {
+    let ticker: String?
+    let sentiment_scores: [SentimentPoint]?
+}
+
+struct SentimentPoint: Codable, Identifiable {
+    var id: String { date ?? UUID().uuidString }
+    let date: String?
+    let score: Double?
+}
+
+// MARK: - Sentiment Trend Tab
+
 struct SentimentTrendTabView: View {
     let ticker: String
     @State private var trend: SentimentTrend?
