@@ -50,6 +50,7 @@ else:
         dbapi_conn.execute("PRAGMA synchronous=NORMAL")
         dbapi_conn.execute("PRAGMA busy_timeout=5000")
         dbapi_conn.execute("PRAGMA foreign_keys=ON")
+        dbapi_conn.execute("PRAGMA wal_autocheckpoint=100")  # Fixes #129: keep WAL small
 
 SessionLocal = sessionmaker(bind=ENGINE, autoflush=False, autocommit=False)
 

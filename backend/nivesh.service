@@ -1,13 +1,13 @@
 [Unit]
 Description=Nivesh Stock Analysis Backend
-After=network.target postgresql.service
+After=network.target
 
 [Service]
 Type=simple
-User=nivesh
-WorkingDirectory=/home/nivesh/stocks
-EnvironmentFile=/home/nivesh/stocks/.env
-ExecStart=/home/nivesh/stocks/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2
+User=saumyapatel
+WorkingDirectory=/home/saumyapatel/Desktop/nivesh/backend
+EnvironmentFile=/home/saumyapatel/Desktop/nivesh/backend/.env
+ExecStart=/home/saumyapatel/Desktop/nivesh/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal

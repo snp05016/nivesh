@@ -4,16 +4,18 @@ After=network.target
 
 [Service]
 Type=simple
-User=root
-WorkingDirectory=/root/nivesh/nivesh-harvester
+# Fixes #128: Non-root user for security
+User=saumyapatel
+# Fixes #190: Correct deployment path
+WorkingDirectory=/home/saumyapatel/Desktop/nivesh/nivesh-harvester
 # Dedicated venv — fully isolated from the main backend's venv so dependency
 # installs can never disturb nivesh.service.
-ExecStart=/root/nivesh/nivesh-harvester/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8001
+ExecStart=/home/saumyapatel/Desktop/nivesh/nivesh-harvester/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8001
 Restart=always
 RestartSec=10
 # Reuse the main backend's API keys (DEEPSEEK_API_KEY, YOUTUBE_API_KEY) without
 # duplicating secrets. The leading '-' makes the file optional.
-EnvironmentFile=-/root/nivesh/backend/.env
+EnvironmentFile=-/home/saumyapatel/Desktop/nivesh/backend/.env
 Environment="PYTHONUNBUFFERED=1"
 StandardOutput=journal
 StandardError=journal

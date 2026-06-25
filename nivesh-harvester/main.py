@@ -18,6 +18,7 @@ Endpoints (all under /harvester):
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Query
@@ -47,10 +48,12 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Nivesh Harvester", version="1.0.0", lifespan=lifespan)
+# Fixes #117: Restrict CORS to configured origins (not wildcard)
+_HV_ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
+    allow_origins=_HV_ALLOWED_ORIGINS or ["http://localhost:3000"],  # dev-only fallback
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
