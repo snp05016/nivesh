@@ -130,7 +130,6 @@ struct EarningsSurpriseScreen: View {
             ToolbarItem(placement: .principal) {
                 HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: "sparkles.rectangle")
-                        .font(Theme.engravedSerif(size: 12, weight: .semibold))
                         .foregroundColor(Theme.securityGold)
                     Text("EARNINGS SURPRISE")
                         .font(Theme.officialStampFont(size: 11, relativeTo: .caption))
