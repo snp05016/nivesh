@@ -35,7 +35,7 @@ struct AppHeader: View {
                 }
             }
 
-            SectionGuillocheDivider()
+            GuillocheDivider()
         }
         .padding(.horizontal, Theme.screenPadding)
         .padding(.top, Theme.Spacing.standard)
@@ -78,7 +78,7 @@ private struct StockPreviewCard: View {
                     }
                 }
 
-                SectionGuillocheDivider()
+                GuillocheDivider()
 
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                     Text("₹")

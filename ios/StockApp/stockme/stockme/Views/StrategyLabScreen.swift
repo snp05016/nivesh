@@ -579,7 +579,7 @@ struct StrategyLabScreen: View {
                             .padding(Theme.Spacing.card)
                             
                             if trade.id != result.trades.last?.id {
-                                SectionGuillocheDivider()
+                                GuillocheDivider()
                             }
                         }
                     }

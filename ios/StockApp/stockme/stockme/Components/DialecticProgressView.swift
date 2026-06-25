@@ -129,7 +129,7 @@ struct DialecticProgressView: View {
             }
             .padding(.bottom, Theme.Spacing.card)
 
-            SectionGuillocheDivider()
+            GuillocheDivider()
                 .padding(.bottom, Theme.Spacing.card)
 
             // Progress bar — uses actual total from events (fallback = stages count)

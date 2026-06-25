@@ -242,7 +242,7 @@ struct GovernancePromoterSectionView: View {
             }
 
             if !promoterHistory.isEmpty {
-                SectionGuillocheDivider()
+                GuillocheDivider()
                 Text("HISTORICAL TREND")
                     .font(Theme.officialStampFont(size: 8))
                     .tracking(1.0)

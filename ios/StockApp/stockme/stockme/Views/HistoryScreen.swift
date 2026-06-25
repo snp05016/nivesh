@@ -23,7 +23,7 @@ struct HistoryScreen: View {
                     .padding(.horizontal, Theme.screenPadding)
                     .padding(.top, 12)
 
-                    SectionGuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     if reportManager.savedReports.isEmpty {
                         Spacer()

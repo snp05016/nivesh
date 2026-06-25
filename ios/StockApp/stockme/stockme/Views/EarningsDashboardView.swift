@@ -713,7 +713,7 @@ struct EarningsCalendarView: View {
             VStack(spacing: Theme.Spacing.card) {
                 // 1.2 Horizontal Calendar Day Scroller
                 calendarScrollRow
-                SectionGuillocheDivider()
+                GuillocheDivider()
                 // Results for selected date
                 selectedDayResults
             }
@@ -1048,7 +1048,7 @@ struct EarningsResultCard: View {
                 .padding(.vertical, 4)
             }
 
-            SectionGuillocheDivider()
+            GuillocheDivider()
 
             // 2.4 Historical period baseline rows
             HStack(spacing: Theme.Spacing.none) {
@@ -1283,7 +1283,7 @@ struct ScreenerView: View {
 
     private var noResultsForPreset: some View {
         VStack(spacing: Theme.Spacing.standard) {
-            SectionGuillocheDivider()
+            GuillocheDivider()
                 .padding(.horizontal, 16)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
@@ -1489,7 +1489,7 @@ struct ScreenerView: View {
 
         return AnyView(
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                SectionGuillocheDivider()
+                GuillocheDivider()
 
                 HStack {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
@@ -1586,7 +1586,7 @@ struct ScreenerView: View {
         }
         return AnyView(
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                SectionGuillocheDivider()
+                GuillocheDivider()
 
                 HStack {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {

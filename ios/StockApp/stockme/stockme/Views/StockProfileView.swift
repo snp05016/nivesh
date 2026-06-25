@@ -472,7 +472,7 @@ struct StockProfileView: View {
                     }
                     .background(Theme.canvasDeep)
 
-                    SectionGuillocheDivider()
+                    GuillocheDivider()
 
                     // Tab content (5 consolidated tabs)
                     TabView(selection: $activeTab) {

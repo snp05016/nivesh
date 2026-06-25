@@ -41,7 +41,7 @@ struct AdvisoryMatrixCard: View {
             .padding(.top, Theme.Spacing.standard)
             .padding(.trailing, 16)
 
-            SectionGuillocheDivider()
+            GuillocheDivider()
                 .padding(.horizontal, 4)
 
             if insights.isEmpty {

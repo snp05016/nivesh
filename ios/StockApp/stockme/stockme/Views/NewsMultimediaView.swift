@@ -651,7 +651,7 @@ struct EditorialRow: View {
             // ── Expandable content ───────────────────────────────────────
             if expanded {
                 VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                    SectionGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.top, Theme.Spacing.medium)
 
                     if let summary = article.summary, !summary.isEmpty {

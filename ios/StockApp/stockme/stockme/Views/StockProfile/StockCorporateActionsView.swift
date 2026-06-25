@@ -76,14 +76,14 @@ struct StockCorporateActionsView: View {
             dividendSummarySection
 
             if !upcomingSorted.isEmpty {
-                SectionGuillocheDivider()
+                GuillocheDivider()
                     .padding(.top, Theme.sectionSpacing)
                     .padding(.bottom, Theme.Spacing.xLarge)
                 upcomingActionsSection
             }
 
             if !sortedActions.isEmpty {
-                SectionGuillocheDivider()
+                GuillocheDivider()
                     .padding(.top, Theme.sectionSpacing)
                     .padding(.bottom, Theme.Spacing.xLarge)
                 historicalTimelineSection

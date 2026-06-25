@@ -442,7 +442,7 @@ struct AdvisoryConsensusEmptyCard: View {
                     }
                     .padding(.bottom, Theme.Spacing.standard)
 
-                    SectionGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.bottom, Theme.Spacing.standard)
 
                     HStack(alignment: .top, spacing: Theme.Spacing.standard) {
@@ -1024,7 +1024,7 @@ private struct MorningDecreeCard: View {
                     .padding(.leading, Theme.Spacing.medium)
                     .padding(.trailing, cardHPad)
 
-                    SectionGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.Spacing.small)
                         .padding(.top, Theme.Spacing.tight)
                         .padding(.bottom, Theme.Spacing.standard)
@@ -1094,7 +1094,7 @@ private struct MorningDecreeCard: View {
                     }
 
                     // Timestamp footer
-                    SectionGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.Spacing.small)
                         .padding(.top, Theme.Spacing.tight)
 
@@ -1306,7 +1306,7 @@ private struct MarketPulseDashCard: View {
                     .padding(.leading, Theme.Spacing.medium)
                     .padding(.trailing, cardHPad)
 
-                    SectionGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.Spacing.small)
                         .padding(.top, Theme.Spacing.tight)
                         .padding(.bottom, Theme.Spacing.standard)
@@ -1388,7 +1388,7 @@ private struct MomentumDashCard: View {
                     .padding(.leading, Theme.Spacing.medium)
                     .padding(.trailing, cardHPad)
 
-                    SectionGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.Spacing.small)
                         .padding(.top, Theme.Spacing.tight)
                         .padding(.bottom, Theme.Spacing.standard)
@@ -1474,7 +1474,7 @@ private struct MacroDashCard: View {
                     .padding(.leading, Theme.Spacing.medium)
                     .padding(.trailing, cardHPad)
 
-                    SectionGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.Spacing.small)
                         .padding(.top, Theme.Spacing.tight)
                         .padding(.bottom, Theme.Spacing.standard)
@@ -2053,7 +2053,7 @@ struct NewsDetailSheet: View {
                                     .foregroundStyle(Theme.inkTertiary)
                             }
 
-                            SectionGuillocheDivider()
+                            GuillocheDivider()
 
                             // Headline
                             Text(stripEmoji(article.headline))
@@ -2087,7 +2087,7 @@ struct NewsDetailSheet: View {
                                 .buttonStyle(EKPressStyle())
                             }
 
-                            SectionGuillocheDivider()
+                            GuillocheDivider()
 
                             // Summary / body
                             if let summary = article.summary, !summary.isEmpty {
@@ -2211,7 +2211,7 @@ private struct InstitutionalDashCard: View {
                     .padding(.leading, Theme.Spacing.medium)
                     .padding(.trailing, cardHPad)
 
-                    SectionGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.Spacing.small)
                         .padding(.top, Theme.Spacing.tight)
                         .padding(.bottom, Theme.Spacing.standard)
@@ -2495,7 +2495,7 @@ extension HomeScreen {
                     if !valuationHistory.isEmpty {
                         ImmersivePortfolioHeroChart(snapshots: rangedValuationHistory)
                         TimeRangeSelector(selected: $portfolioRange, ranges: TimeRange.allCases)
-                        SectionGuillocheDivider()
+                        GuillocheDivider()
                             .padding(.horizontal, Theme.screenPadding)
                     }
                 }

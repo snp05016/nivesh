@@ -1204,7 +1204,7 @@ private struct PortfolioHeroNote: View {
                 }
                 .padding(.bottom, 8)
 
-                SectionGuillocheDivider()
+                GuillocheDivider()
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text("निवेश पोर्टफोलियो")
@@ -1235,7 +1235,7 @@ private struct PortfolioHeroNote: View {
                 }
                 .padding(.top, 4)
 
-                SectionGuillocheDivider()
+                GuillocheDivider()
 
                 HStack {
                     StatNoteBlock(label: "DAILY", value: todayPnL.inrFormatted, color: todayPnL >= 0 ? Theme.bullGreen : Theme.bearRed)
@@ -2316,7 +2316,7 @@ struct PortfolioBriefSheet: View {
                     }.buttonStyle(EKPressStyle())
                 }
 
-                SectionGuillocheDivider()
+                GuillocheDivider()
 
                 // Summary
                 HStack(spacing: Theme.Spacing.standard) {
@@ -2338,7 +2338,7 @@ struct PortfolioBriefSheet: View {
                 }
                 .padding(Theme.Spacing.card).banknoteCard()
 
-                SectionGuillocheDivider()
+                GuillocheDivider()
 
                 // Top 3 performers
                 Text("TOP PERFORMERS")
@@ -2355,7 +2355,7 @@ struct PortfolioBriefSheet: View {
                     .padding(.vertical, Theme.Spacing.small)
                 }
 
-                SectionGuillocheDivider()
+                GuillocheDivider()
 
                 // Bottom 3 performers
                 Text("NEEDS ATTENTION")

@@ -69,7 +69,7 @@ struct TermTooltipCard: View {
                     .foregroundStyle(Theme.inkPrimary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                SectionGuillocheDivider()
+                GuillocheDivider()
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text("EXAMPLE")

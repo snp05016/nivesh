@@ -267,7 +267,7 @@ struct TechnicalMomentumView: View {
                                  pct: Double(pulse.unchanged) / Double(total) * 100,
                                  color: Theme.holdAmber)
 
-                    SectionGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     // Breadth ratio card

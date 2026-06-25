@@ -140,7 +140,7 @@ struct CompareScreen: View {
             }
             .padding(.horizontal, Theme.screenPadding)
 
-            SectionGuillocheDivider().padding(.horizontal, Theme.screenPadding)
+            GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
             // Rows
             Group {
