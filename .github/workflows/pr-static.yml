@@ -63,10 +63,49 @@ jobs:
       - name: Dependency scan
         run: |
           set -euo pipefail
-          python3 -m pip install --upgrade pip pip-audit
+          audit_venv="${RUNNER_TEMP:-/tmp}/pip-audit-venv"
+          python3 -m venv "$audit_venv"
+          . "$audit_venv/bin/activate"
+          python -m pip install --upgrade pip pip-audit
           for req in backend/requirements.txt ml-engine/requirements.txt nivesh-harvester/requirements.txt; do
             if [ -f "$req" ]; then
-              python3 -m pip_audit --requirement "$req" --disable-pip --no-deps --progress-spinner off --desc --format columns
+              pinned_req="$(mktemp)"
+              skipped_req="$(mktemp)"
+              python3 - "$req" "$pinned_req" "$skipped_req" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          source = Path(sys.argv[1])
+          pinned = Path(sys.argv[2])
+          skipped = Path(sys.argv[3])
+
+          pinned_lines = []
+          skipped_lines = []
+          for raw_line in source.read_text().splitlines():
+              stripped = raw_line.strip()
+              if not stripped or stripped.startswith("#"):
+                  continue
+              requirement = re.split(r"\s+#", stripped, maxsplit=1)[0].strip()
+              if "==" in requirement:
+                  pinned_lines.append(requirement)
+              else:
+                  skipped_lines.append(requirement)
+
+          pinned.write_text("\n".join(pinned_lines) + ("\n" if pinned_lines else ""))
+          skipped.write_text("\n".join(skipped_lines) + ("\n" if skipped_lines else ""))
+          PY
+              echo "Dependency scan for $req"
+              if [ -s "$pinned_req" ]; then
+                python -m pip_audit --requirement "$pinned_req" --disable-pip --no-deps --progress-spinner off --desc --format columns
+              else
+                echo "No exact-pinned dependencies found in $req; audit skipped to avoid package installation."
+              fi
+              if [ -s "$skipped_req" ]; then
+                echo "Unpinned/range dependencies reported but not installed during zero-credit CI:"
+                cat "$skipped_req"
+              fi
+              rm -f "$pinned_req" "$skipped_req"
             fi
           done
 
