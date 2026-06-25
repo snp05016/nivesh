@@ -50,10 +50,12 @@ class CacheService:
         self.redis_url = redis_url
         self._redis: Optional[redis.Redis] = None
         self._redis_loop_id: Optional[int] = None  # track which loop created the connection
-        self._fallback_cache: dict[str, dict[str, tuple[float, Any]]] = {}
+        # Fixes #106: OrderedDict evicts oldest when >512 entries (unbounded→bounded)
+        self._fallback_cache: OrderedDict[str, dict[str, tuple[float, Any]]] = OrderedDict()
+        self._FALLBACK_MAXSIZE = 512
 
         self.ttl_map = {
-            "quick-info": 300,
+            "quick-info": 900,   # Fixes #108: matched to settings.QUICK_INFO_TTL
             "sector": 900,
             "analysis": 21600,
             "yfinance": 21600,
@@ -131,6 +133,9 @@ class CacheService:
         # fallback
         if namespace not in self._fallback_cache:
             self._fallback_cache[namespace] = {}
+        # Fixes #106: evict oldest namespace entry when cache exceeds maxsize
+        elif len(self._fallback_cache) >= self._FALLBACK_MAXSIZE and key not in self._fallback_cache[namespace]:
+            self._fallback_cache.popitem(last=False)
         self._fallback_cache[namespace][key] = (time.time() + ttl, value)
 
     async def invalidate(self, namespace: str, key: str) -> None:

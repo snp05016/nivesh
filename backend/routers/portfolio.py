@@ -137,7 +137,8 @@ _INDICES_TICKERS = [
 
 _indices_cache: dict = {"data": None, "ts": 0}
 
-_INDICES_CACHE_TTL = 300  # 5 minutes
+# Fixes #131: use centralized config instead of hardcoded value
+from config.settings import INDICES_CACHE_TTL as _INDICES_CACHE_TTL
 
 
 def _get_indices_data() -> dict:
@@ -418,7 +419,7 @@ def portfolio_stress_test(user_id: int, authorization: str = Header(None)):
 from config.settings import MORNING_BRIEF_TTL as _MORNING_CACHE_TTL
 _MACRO_IMPACT_TTL = 7200  # 2 hours
 
-_ASM_GSM_CACHE_TTL = 21600  # 6 hours
+from config.settings import ASM_GSM_CACHE_TTL as _ASM_GSM_CACHE_TTL  # Fixes #131: use config
 
 
 def _nse_session():

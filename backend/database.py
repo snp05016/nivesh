@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import secrets
 import bcrypt
@@ -178,6 +179,11 @@ def init_db() -> None:
     with get_session() as session:
         if session.query(User).count() > 0:
             return  # already seeded
+
+        # Fixes #112: Only seed dev accounts in non-production environments
+        if os.environ.get("ENVIRONMENT", "development") == "production":
+            logging.info("[init_db] Skipping seed users in production environment")
+            return
 
         users_created = []
         for username, display_name, password in SEED_USERS:
