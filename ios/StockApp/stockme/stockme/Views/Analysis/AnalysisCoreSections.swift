@@ -94,7 +94,7 @@ struct AnalysisCoreSections: View {
                     Spacer()
                 }
             }
-            GuillocheGuillocheDivider()
+            GuillocheDivider()
             if let prices = viewModel.quickInfo?.priceHistory90d, !prices.isEmpty {
                 PriceHistoryChart(
                     prices: prices,
@@ -401,7 +401,7 @@ struct AnalysisCoreSections: View {
 
     private var disclaimerSectionView: some View {
         VStack(spacing: Theme.Spacing.standard) {
-            GuillocheGuillocheDivider()
+            GuillocheDivider()
             Text(stripEmoji(analysis.disclaimer))
                 .font(Theme.microLabel(size: 9)).foregroundStyle(Theme.inkTertiary)
                 .lineSpacing(4).frame(maxWidth: .infinity, alignment: .leading)

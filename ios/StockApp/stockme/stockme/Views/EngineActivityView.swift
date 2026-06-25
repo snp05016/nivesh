@@ -21,7 +21,7 @@ struct EngineActivityView: View {
                         // Progress bar
                         progressSection
 
-                        GuillocheGuillocheDivider()
+                        GuillocheDivider()
                             .padding(.horizontal, Theme.screenPadding)
 
                         // Live checkpoints

@@ -303,7 +303,7 @@ struct PortfolioScreen: View {
                                             }
                                         }
                                         if idx != viewModel.holdings.count - 1 {
-                                            GuillocheGuillocheDivider()
+                                            GuillocheDivider()
                                                 .padding(.horizontal, Theme.Spacing.card)
                                         }
                                     }

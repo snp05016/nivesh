@@ -662,7 +662,7 @@ private struct KeyFactorCard: View {
                         .foregroundStyle(Theme.inkPrimary)
                 }
             }
-            GuillocheGuillocheDivider()
+            GuillocheDivider()
             Text(text)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Theme.inkSecondary)
@@ -747,7 +747,7 @@ struct NewsSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-            GuillocheGuillocheDivider()
+            GuillocheDivider()
             HStack {
                 Text("RECENT NEWS")
                     .font(Theme.officialStampFont(size: 9))
@@ -1023,7 +1023,7 @@ private struct GlossarySheet: View {
                     Text(term)
                         .font(Theme.engravedSerif(size: 22, weight: .bold))
                         .foregroundStyle(Theme.inkPrimary)
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
                     Text(glossaryDefinitions[term] ?? "No definition available for this term.")
                         .font(.body.weight(.medium))
                         .foregroundStyle(Theme.inkSecondary)
@@ -1126,7 +1126,7 @@ struct NewsReaderView: View {
                         .font(Theme.serialNumberFont(size: 11))
                         .foregroundStyle(Theme.inkTertiary)
 
-                        GuillocheGuillocheDivider()
+                        GuillocheDivider()
 
                         if let summary = item.summary, !summary.isEmpty {
                             Text(summary)

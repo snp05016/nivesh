@@ -699,7 +699,7 @@ struct PiotroskiScoreCardView: View {
 
             // Check grid
             if let checks = data.checks, !checks.isEmpty {
-                GuillocheGuillocheDivider()
+                GuillocheDivider()
 
                 LazyVGrid(
                     columns: [

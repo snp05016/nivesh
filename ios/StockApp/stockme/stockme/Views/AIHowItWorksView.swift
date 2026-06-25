@@ -60,17 +60,17 @@ struct AIHowItWorksView: View {
                         }
                     }
 
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     durationSection
 
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     mathematicsSection
 
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     whatItAnalysesSection

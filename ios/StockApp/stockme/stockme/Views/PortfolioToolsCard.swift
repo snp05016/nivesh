@@ -50,7 +50,7 @@ struct PortfolioToolsCard: View {
             .padding(.horizontal, Theme.Spacing.card)
             .padding(.vertical, Theme.Spacing.standard)
 
-            GuillocheGuillocheDivider()
+            GuillocheDivider()
                 .padding(.horizontal, Theme.Spacing.card)
 
             VStack(spacing: Theme.Spacing.none) {
@@ -64,7 +64,7 @@ struct PortfolioToolsCard: View {
                     showSIPSheet = true
                 }
 
-                GuillocheGuillocheDivider()
+                GuillocheDivider()
                     .padding(.horizontal, Theme.Spacing.card)
 
                 ToolButtonRow(
@@ -77,7 +77,7 @@ struct PortfolioToolsCard: View {
                     exportPDF()
                 }
 
-                GuillocheGuillocheDivider()
+                GuillocheDivider()
                     .padding(.horizontal, Theme.Spacing.card)
 
                 ToolButtonRow(
@@ -384,7 +384,7 @@ private struct SIPResultView: View {
             }
 
             if let breakdown = result.yearly_breakdown, !breakdown.isEmpty {
-                GuillocheGuillocheDivider()
+                GuillocheDivider()
                     .padding(.vertical, Theme.Spacing.small)
 
                 Text("YEAR-BY-YEAR")
@@ -490,14 +490,14 @@ private struct BenchmarkComparisonSheet: View {
                                     value: d.portfolio_cagr,
                                     isPercent: true
                                 )
-                                GuillocheGuillocheDivider()
+                                GuillocheDivider()
                                     .padding(.horizontal, Theme.Spacing.card)
                                 BenchmarkRow(
                                     label: "Benchmark CAGR",
                                     value: d.benchmark_cagr,
                                     isPercent: true
                                 )
-                                GuillocheGuillocheDivider()
+                                GuillocheDivider()
                                     .padding(.horizontal, Theme.Spacing.card)
                                 BenchmarkRow(
                                     label: "Alpha",
@@ -505,14 +505,14 @@ private struct BenchmarkComparisonSheet: View {
                                     isPercent: true,
                                     isAlpha: true
                                 )
-                                GuillocheGuillocheDivider()
+                                GuillocheDivider()
                                     .padding(.horizontal, Theme.Spacing.card)
                                 BenchmarkRow(
                                     label: "Tracking Error",
                                     value: d.tracking_error,
                                     isPercent: true
                                 )
-                                GuillocheGuillocheDivider()
+                                GuillocheDivider()
                                     .padding(.horizontal, Theme.Spacing.card)
                                 BenchmarkRow(
                                     label: "Information Ratio",

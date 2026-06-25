@@ -21,35 +21,35 @@ struct QuantLabView: View {
 
                     ModelSignalSection(signal: vm.mlSignal, isLoading: vm.mlSignalLoading, error: vm.mlSignalError)
 
-                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     FeatureDriversSection(signal: vm.mlSignal, isLoading: vm.mlSignalLoading)
 
-                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     CalibrationSection(data: vm.calibration, isLoading: vm.calibrationLoading, error: vm.calibrationError)
 
-                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     PillarAttributionSection(data: vm.pillarAttribution, isLoading: vm.pillarAttributionLoading, error: vm.pillarAttributionError)
 
-                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     ModelVersionsSection(data: vm.modelVersions, isLoading: vm.modelVersionsLoading, error: vm.modelVersionsError)
 
-                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     AlphaValidationSection(data: vm.alphaValidation, isLoading: vm.alphaValidationLoading, error: vm.alphaValidationError)
 
-                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     StrategySweepSection(data: vm.strategySweep, isLoading: vm.strategySweepLoading, error: vm.strategySweepError)
 
-                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     RegimeBreakdownSection(data: vm.regimeBreakdown, isLoading: vm.regimeBreakdownLoading, error: vm.regimeBreakdownError)
 
-                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     CostSensitivitySection(data: vm.costSensitivity, isLoading: vm.costSensitivityLoading, error: vm.costSensitivityError)
 

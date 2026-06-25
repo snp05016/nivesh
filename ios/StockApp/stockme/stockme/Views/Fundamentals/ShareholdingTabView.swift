@@ -13,7 +13,7 @@ struct ShareholdingTabView: View {
                             .font(Theme.officialStampFont(size: 11))
                             .foregroundStyle(Theme.inkPrimary)
                         
-                        GuillocheGuillocheDivider()
+                        GuillocheDivider()
                         
                         // Proportional Bar Comparison using Chart
                         Chart {

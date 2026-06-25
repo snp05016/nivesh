@@ -180,7 +180,7 @@ struct StrategyLabScreen: View {
             VStack(spacing: Theme.Spacing.card) {
                 settingsSection
                 
-                GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                GuillocheDivider().padding(.horizontal, Theme.screenPadding)
                 
                 if viewModel.isLoading {
                     VStack(spacing: Theme.Spacing.medium) {

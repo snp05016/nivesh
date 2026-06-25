@@ -315,7 +315,7 @@ struct OptionsStrategyScreen: View {
                     .foregroundStyle(r.netPremium >= 0 ? Theme.bullGreen : Theme.bearRed)
             }
 
-            GuillocheGuillocheDivider()
+            GuillocheDivider()
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Theme.Spacing.standard) {
                 metricBox("MAX PROFIT", r.maxProfitFormatted, Theme.bullGreen, unlimited: r.maxProfitUnlimited)
@@ -344,7 +344,7 @@ struct OptionsStrategyScreen: View {
                     .foregroundStyle(premium >= 0 ? Theme.bullGreen : Theme.bearRed)
             }
 
-            GuillocheGuillocheDivider()
+            GuillocheDivider()
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Theme.Spacing.standard) {
                 metricBox("MAX PROFIT", IndianFormatter.price(m.0), Theme.bullGreen)
@@ -526,7 +526,7 @@ struct OptionsStrategyScreen: View {
                         helpRow("5", "The payoff chart updates instantly showing P&L")
                     }
 
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
 
                     Group {
                         Text("STRATEGY EXAMPLES")
@@ -540,7 +540,7 @@ struct OptionsStrategyScreen: View {
                         exampleRow("SHORT STRANGLE", "Sell OTM Put + Sell OTM Call")
                     }
 
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
 
                     Group {
                         Text("READING THE CHART")
@@ -554,7 +554,7 @@ struct OptionsStrategyScreen: View {
                         chartLegendRow("Y axis", "Profit / Loss (₹)", Theme.inkPrimary)
                     }
 
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
 
                     Group {
                         Text("PAYOFF FORMULAS")

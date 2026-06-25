@@ -181,7 +181,7 @@ struct AnomalyCard: View {
                     }
                 }
                 
-                GuillocheGuillocheDivider()
+                GuillocheDivider()
                 
                 HStack {
                     Text(anomaly.anomaly_type.replacingOccurrences(of: "_", with: " "))

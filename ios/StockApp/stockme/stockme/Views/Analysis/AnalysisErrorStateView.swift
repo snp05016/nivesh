@@ -22,7 +22,7 @@ struct AnalysisErrorStateView: View {
                             }
                             Spacer()
                         }
-                        GuillocheGuillocheDivider()
+                        GuillocheDivider()
                         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                             HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                                 Text("₹")
@@ -68,7 +68,7 @@ struct AnalysisErrorStateView: View {
                         }
                     }
 
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
 
                     Text(info.suggestedActionText)
                         .font(.footnote.weight(.medium))

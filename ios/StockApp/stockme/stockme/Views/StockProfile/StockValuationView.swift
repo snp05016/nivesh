@@ -17,17 +17,17 @@ struct StockValuationView: View {
                 } else if let data = vm.valuationData {
                     ValuationMetricsGridView(snapshot: data.snapshot)
 
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     PEBandVisualizationView(snapshot: data.snapshot)
 
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     ValuationIndicatorsView(snapshot: data.snapshot)
 
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     PeerComparisonTableView(
@@ -36,7 +36,7 @@ struct StockValuationView: View {
                     )
 
                     if let peBand = data.peBandData, !peBand.isEmpty {
-                        GuillocheGuillocheDivider()
+                        GuillocheDivider()
                             .padding(.horizontal, Theme.screenPadding)
 
                         HistoricalPEBandView(peBandData: peBand)

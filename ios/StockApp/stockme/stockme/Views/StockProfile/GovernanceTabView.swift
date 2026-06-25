@@ -25,7 +25,7 @@ struct GovernanceTabView: View {
                     SPEmptyStateView(message: "Governance data unavailable")
                 }
 
-                GuillocheGuillocheDivider()
+                GuillocheDivider()
                 HarvesterGovernanceSectionView(ticker: ticker, cards: governanceCards)
             }
             .padding(.horizontal, Theme.screenPadding)

@@ -481,7 +481,7 @@ struct StockProfileView: View {
                             LazyVStack(spacing: Theme.sectionSpacing) {
                                 OverviewTabView(ticker: ticker, vm: vm)
                                 if let hist = vm.history, !hist.prices.isEmpty {
-                                    GuillocheGuillocheDivider()
+                                    GuillocheDivider()
                                         .padding(.horizontal, Theme.screenPadding)
                                     InteractivePriceChartView(
                                         history: hist.prices,
@@ -490,7 +490,7 @@ struct StockProfileView: View {
                                     )
                                     .padding(.horizontal, Theme.screenPadding)
                                 }
-                                GuillocheGuillocheDivider()
+                                GuillocheDivider()
                                     .padding(.horizontal, Theme.screenPadding)
                                 StockMLSignalCard(
                                     signal: vm.mlSignal,
@@ -502,7 +502,7 @@ struct StockProfileView: View {
                                     }
                                 )
                                 .padding(.horizontal, Theme.screenPadding)
-                                GuillocheGuillocheDivider()
+                                GuillocheDivider()
                                     .padding(.horizontal, Theme.screenPadding)
                                 FinancialsTabView(vm: vm)
                             }
@@ -526,7 +526,7 @@ struct StockProfileView: View {
                         ScrollView {
                             LazyVStack(spacing: Theme.sectionSpacing) {
                                 NewsTabView(vm: vm)
-                                GuillocheGuillocheDivider()
+                                GuillocheDivider()
                                     .padding(.horizontal, Theme.screenPadding)
                                 UpdatesTabView()
                             }
@@ -538,7 +538,7 @@ struct StockProfileView: View {
                         ScrollView {
                             LazyVStack(spacing: Theme.sectionSpacing) {
                                 HoldersTabView(vm: vm)
-                                GuillocheGuillocheDivider()
+                                GuillocheDivider()
                                     .padding(.horizontal, Theme.screenPadding)
                                 GovernanceTabView(ticker: ticker, vm: vm)
                             }

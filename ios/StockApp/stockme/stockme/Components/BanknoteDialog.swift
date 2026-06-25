@@ -75,7 +75,7 @@ private struct BanknoteDialogCard: View {
                     accessory
                 }
 
-                GuillocheGuillocheDivider()
+                GuillocheDivider()
 
                 VStack(spacing: Theme.Spacing.medium) {
                     ForEach(buttons) { button in

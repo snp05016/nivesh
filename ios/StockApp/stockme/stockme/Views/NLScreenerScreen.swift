@@ -206,7 +206,7 @@ struct NLScreenerScreen: View {
                         VStack(spacing: Theme.Spacing.card) {
                             if !viewModel.parsedFilters.isEmpty {
                                 filtersSection
-                                GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                                GuillocheDivider().padding(.horizontal, Theme.screenPadding)
                             }
                             
                             if !filteredResults.isEmpty {

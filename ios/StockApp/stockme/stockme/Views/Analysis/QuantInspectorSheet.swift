@@ -84,7 +84,7 @@ private struct QuantLedgerCard: View {
                 value: penalty("tail_risk_deduction")
             )
 
-            GuillocheGuillocheDivider()
+            GuillocheDivider()
 
             QuantLedgerRow(
                 label: "Calibrated Confidence",

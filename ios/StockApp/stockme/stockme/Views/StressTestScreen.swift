@@ -420,7 +420,7 @@ struct StressDiagnosticCard: View {
 
             // Debug rows (collapsed by default)
             if expanded {
-                GuillocheGuillocheDivider()
+                GuillocheDivider()
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     DiagRow(label: "Server", value: serverURL)
@@ -672,7 +672,7 @@ struct StressTestScreen: View {
                     .padding(.horizontal, Theme.screenPadding)
                 }
 
-                GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                 // CHECKPOINT TRACKER (shown while loading)
                 if vm.isLoading {
@@ -697,7 +697,7 @@ struct StressTestScreen: View {
                         StressScenarioSection(result: result)
 
                         if result.id != vm.results.last?.id {
-                            GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                            GuillocheDivider().padding(.horizontal, Theme.screenPadding)
                         }
                     }
                 }

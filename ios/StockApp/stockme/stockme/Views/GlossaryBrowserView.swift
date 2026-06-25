@@ -55,7 +55,7 @@ struct GlossaryBrowserView: View {
                 }
                 .padding(.bottom, Theme.Spacing.small)
 
-                GuillocheGuillocheDivider()
+                GuillocheDivider()
                     .padding(.horizontal, Theme.screenPadding)
 
                 // Results
@@ -100,7 +100,7 @@ struct GlossaryBrowserView: View {
                 // Recently viewed
                 if !recentlyViewed.isEmpty, searchText.isEmpty, selectedCategory == nil {
                     VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                        GuillocheGuillocheDivider()
+                        GuillocheDivider()
                             .padding(.horizontal, Theme.screenPadding)
                         Text("RECENTLY VIEWED")
                             .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))

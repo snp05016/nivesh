@@ -19,7 +19,7 @@ struct TermDefinitionSheet: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .lineSpacing(5)
 
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
 
                     VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                         Text("EXAMPLE")
@@ -34,7 +34,7 @@ struct TermDefinitionSheet: View {
                     }
 
                     if !entry.relatedTerms.isEmpty {
-                        GuillocheGuillocheDivider()
+                        GuillocheDivider()
 
                         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                             Text("RELATED")

@@ -123,7 +123,7 @@ struct SectorRotationScreen: View {
                     InstitutionalFlowHighlight(sectors: viewModel.sectors)
                         .padding(.horizontal, Theme.screenPadding)
                     
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
                     
                     // Quadrant Scatter Chart
@@ -175,7 +175,7 @@ struct SectorRotationScreen: View {
                     }
                     .padding(.horizontal, Theme.screenPadding)
                     
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
                     
                     // Sector Cards

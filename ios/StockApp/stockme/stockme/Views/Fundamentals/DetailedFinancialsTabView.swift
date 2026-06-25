@@ -12,7 +12,7 @@ struct DetailedFinancialsTabView: View {
                             .font(Theme.officialStampFont(size: 11))
                             .foregroundStyle(Theme.inkPrimary)
                         
-                        GuillocheGuillocheDivider()
+                        GuillocheDivider()
                         
                         HStack {
                             VStack(alignment: .leading, spacing: Theme.Spacing.small) {

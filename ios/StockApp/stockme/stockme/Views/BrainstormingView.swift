@@ -80,7 +80,7 @@ struct BrainstormingView: View {
                 .padding(.horizontal, Theme.screenPadding)
                 
                 if !results.isEmpty || isLoading {
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
                 }
                 

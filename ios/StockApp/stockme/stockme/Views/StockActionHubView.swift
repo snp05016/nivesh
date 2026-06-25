@@ -88,7 +88,7 @@ struct StockActionHubView: View {
                         }
                     }
 
-                    GuillocheGuillocheDivider()
+                    GuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     VStack(alignment: .leading, spacing: Theme.Spacing.card) {

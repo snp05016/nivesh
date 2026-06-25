@@ -84,7 +84,7 @@ struct AnalysisFullView: View {
             }
 
             if isExtreme {
-                GuillocheGuillocheDivider()
+                GuillocheDivider()
                     .padding(.horizontal, Theme.screenPadding)
                     .padding(.top, Theme.Spacing.sectionBreath)
 

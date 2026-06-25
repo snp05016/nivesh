@@ -197,7 +197,7 @@ struct ExpertNetworkView: View {
                             // MARK: Market Intelligence section (Harvester) — top
                             if !harvestedCards.isEmpty {
                                 marketIntelligenceSection
-                                GuillocheGuillocheDivider()
+                                GuillocheDivider()
                                     .padding(.horizontal, Theme.screenPadding)
                             }
 

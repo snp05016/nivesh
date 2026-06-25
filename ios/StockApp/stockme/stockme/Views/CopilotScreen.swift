@@ -109,7 +109,7 @@ struct CopilotScreen: View {
                     }
 
                     VStack(spacing: Theme.Spacing.none) {
-                        GuillocheGuillocheDivider()
+                        GuillocheDivider()
 
                         // Context chip
                         if let context = currentContext, let ticker = context["ticker"] as? String {
@@ -222,7 +222,7 @@ struct CopilotScreen: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, Theme.Spacing.large)
 
-            GuillocheGuillocheDivider()
+            GuillocheDivider()
                 .padding(.horizontal, Theme.Spacing.card)
 
             // Capability rows
