@@ -38,7 +38,7 @@ struct StockRiskSignalsView: View {
 
 // MARK: - Risk Score Computation
 
-private enum RiskScoreCalculator {
+fileprivate enum RiskScoreCalculator {
     /// Compute overall risk score 0–100 from available QuickInfo data.
     /// Higher = more risk. Graded: 0–29=LOW, 30–59=MODERATE, 60–79=HIGH, 80–100=CRITICAL.
     static func compute(using info: QuickInfo) -> Int {
@@ -172,7 +172,7 @@ struct RiskScoreHeaderView: View {
 
 // MARK: - Speedometer Gauge
 
-struct RiskGaugeView: View {
+fileprivate struct RiskGaugeView: View {
     let score: Int
     let level: RiskScoreCalculator.RiskLevel
 
@@ -304,7 +304,7 @@ private struct GaugeNeedle: View {
 
 // MARK: - 2. Risk Signal Cards
 
-struct RiskSignalCardsView: View {
+fileprivate struct RiskSignalCardsView: View {
     let info: QuickInfo
 
     private var signals: [RiskSignalCard] {
@@ -566,7 +566,7 @@ fileprivate struct RiskSignalCard {
 
 // MARK: - Risk Signal Card
 
-struct RiskSignalCardView: View {
+fileprivate struct RiskSignalCardView: View {
     let signal: RiskSignalCard
 
     var body: some View {
