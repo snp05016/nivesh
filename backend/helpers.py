@@ -265,3 +265,42 @@ class NetWorthSnapshotResponse(_BaseModel):
 class DataHarvestingError(Exception):
     """Raised when a market data scraping / harvest pipeline fails."""
     pass
+
+
+# ---------------------------------------------------------------------------
+# Indian Numbering System (GH #123 — canonical home in helpers.py)
+# All monetary outputs MUST use Lakhs/Crores. Never Millions/Billions.
+# ---------------------------------------------------------------------------
+
+def format_indian_currency(value, *, symbol="₹"):
+    if value is None:
+        return f"{symbol}0"
+    value = float(value)
+    negative = value < 0
+    abs_val = abs(value)
+    LAKH = 1_00_000
+    CRORE = 1_00_00_000
+    if abs_val >= CRORE:
+        formatted = f"{symbol}{abs_val / CRORE:,.2f} Crores"
+    elif abs_val >= LAKH:
+        formatted = f"{symbol}{abs_val / LAKH:,.2f} Lakhs"
+    else:
+        formatted = f"{symbol}{abs_val:,.0f}"
+    return f"-{formatted}" if negative else formatted
+
+
+def _ban_western_scale(text, company_name=""):
+    import re
+    check_text = text
+    if company_name:
+        check_text = check_text.replace(company_name, "[COMPANY_NAME]")
+    if re.search(r"\b(million|billion|trillion)\b", check_text, re.IGNORECASE):
+        raise ValueError(
+            "Western scale (Million/Billion/Trillion) detected in output — "
+            "use Lakhs/Crores instead."
+        )
+    return text
+
+class DataHarvestingError(Exception):
+    """Raised when a market data scraping / harvest pipeline fails."""
+    pass

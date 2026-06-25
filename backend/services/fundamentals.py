@@ -7,7 +7,7 @@ from models.db_models import (
 from models.pydantic_fundamentals import (
     FinancialMetrics, Shareholding, CorporateActionDTO, ValuationMetrics, RiskSignalDTO
 )
-from main import format_indian_currency, _ban_western_scale
+from helpers import format_indian_currency, _ban_western_scale
 import json
 
 def get_financials(ticker: str) -> List[FinancialMetrics]:
