@@ -1,6 +1,6 @@
 import Foundation
 import SwiftUI
-
+import Combine
 @MainActor
 class QuantLabViewModel: ObservableObject {
     let symbol: String

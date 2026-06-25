@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 // MARK: - ML Signal Card (Stock Profile Overview)

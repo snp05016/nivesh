@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 // MARK: - Risk Signals Tab
@@ -306,7 +307,7 @@ private struct GaugeNeedle: View {
 struct RiskSignalCardsView: View {
     let info: QuickInfo
 
-    private var signals: [RiskSignal] {
+    private var signals: [RiskSignalCard] {
         buildSignals(from: info)
     }
 
@@ -328,12 +329,12 @@ struct RiskSignalCardsView: View {
     }
 
     private func buildSignals(from info: QuickInfo) -> [RiskSignal] {
-        var signals: [RiskSignal] = []
+        var signals: [RiskSignalCard] = []
 
         // Governance score check
         if let gs = info.governanceScore {
             if gs < 30 {
-                signals.append(RiskSignal(
+                signals.append(RiskSignalCard(
                     severity: .critical,
                     title: "Governance Score Critical",
                     description: "AI governance assessment scores only \(gs)/100, indicating severe corporate governance deficiencies.",
@@ -343,7 +344,7 @@ struct RiskSignalCardsView: View {
                     date: nil
                 ))
             } else if gs < 50 {
-                signals.append(RiskSignal(
+                signals.append(RiskSignalCard(
                     severity: .high,
                     title: "Governance Score Weak",
                     description: "Governance score of \(gs)/100 suggests significant oversight gaps. Monitor for improvements.",
@@ -353,7 +354,7 @@ struct RiskSignalCardsView: View {
                     date: nil
                 ))
             } else if gs < 70 {
-                signals.append(RiskSignal(
+                signals.append(RiskSignalCard(
                     severity: .medium,
                     title: "Governance Score Moderate",
                     description: "Governance score of \(gs)/100 has room for improvement. Review flagged issues for details.",
@@ -368,7 +369,7 @@ struct RiskSignalCardsView: View {
         // Governance red flags
         if let flags = info.governanceRedFlags {
             for flag in flags {
-                signals.append(RiskSignal(
+                signals.append(RiskSignalCard(
                     severity: .high,
                     title: "Governance Red Flag",
                     description: flag,
@@ -383,7 +384,7 @@ struct RiskSignalCardsView: View {
         // Surveillance
         if let status = info.asmGsmStatus?.uppercased() {
             if status == "GSM" {
-                signals.append(RiskSignal(
+                signals.append(RiskSignalCard(
                     severity: .critical,
                     title: "GSM Surveillance Active",
                     description: "Stock is under Graded Surveillance Measure. Trading restricted to delivery-only with no intraday permitted.",
@@ -393,7 +394,7 @@ struct RiskSignalCardsView: View {
                     date: nil
                 ))
             } else if status == "ASM" {
-                signals.append(RiskSignal(
+                signals.append(RiskSignalCard(
                     severity: .high,
                     title: "ASM Surveillance Active",
                     description: "Stock is under Additional Surveillance Measures with higher margins. Monitor for potential GSM escalation.",
@@ -408,7 +409,7 @@ struct RiskSignalCardsView: View {
         // Pledge risk
         if let pledged = info.promoterPledgedPct {
             if pledged >= 50 {
-                signals.append(RiskSignal(
+                signals.append(RiskSignalCard(
                     severity: .critical,
                     title: "Extreme Promoter Pledging",
                     description: "\(String(format: "%.1f", pledged))% of promoter holding is pledged — severe margin-call cascade risk exists.",
@@ -418,7 +419,7 @@ struct RiskSignalCardsView: View {
                     date: nil
                 ))
             } else if pledged >= 30 {
-                signals.append(RiskSignal(
+                signals.append(RiskSignalCard(
                     severity: .high,
                     title: "High Promoter Pledging",
                     description: "\(String(format: "%.1f", pledged))% of promoter holding pledged. Elevated risk of forced sell-off in market downturns.",
@@ -428,7 +429,7 @@ struct RiskSignalCardsView: View {
                     date: nil
                 ))
             } else if pledged >= 20 {
-                signals.append(RiskSignal(
+                signals.append(RiskSignalCard(
                     severity: .medium,
                     title: "Moderate Promoter Pledging",
                     description: "\(String(format: "%.1f", pledged))% of promoter holding pledged. Within elevated range — monitor quarterly.",
@@ -443,7 +444,7 @@ struct RiskSignalCardsView: View {
         // Debt concern
         if let dte = info.debtToEquity {
             if dte > 3 {
-                signals.append(RiskSignal(
+                signals.append(RiskSignalCard(
                     severity: .critical,
                     title: "Severe Debt Load",
                     description: "Debt/Equity ratio of \(String(format: "%.2f", dte))x far exceeds safe thresholds. Interest burden may strain earnings.",
@@ -453,7 +454,7 @@ struct RiskSignalCardsView: View {
                     date: nil
                 ))
             } else if dte > 2 {
-                signals.append(RiskSignal(
+                signals.append(RiskSignalCard(
                     severity: .high,
                     title: "High Debt Concern",
                     description: "Debt/Equity ratio of \(String(format: "%.2f", dte))x signals elevated leverage. Review interest coverage and free cash flow.",
@@ -463,7 +464,7 @@ struct RiskSignalCardsView: View {
                     date: nil
                 ))
             } else if dte > 1 {
-                signals.append(RiskSignal(
+                signals.append(RiskSignalCard(
                     severity: .medium,
                     title: "Elevated Debt Levels",
                     description: "Debt/Equity ratio of \(String(format: "%.2f", dte))x is above conservative thresholds. Keep on watch for increasing trend.",
@@ -478,7 +479,7 @@ struct RiskSignalCardsView: View {
         // Low promoter holding
         if let promoter = info.promoterHoldingPct {
             if promoter < 15 {
-                signals.append(RiskSignal(
+                signals.append(RiskSignalCard(
                     severity: .high,
                     title: "Very Low Promoter Stake",
                     description: "Promoter holding is only \(String(format: "%.1f", promoter))% — weak alignment with minority shareholders.",
@@ -488,7 +489,7 @@ struct RiskSignalCardsView: View {
                     date: nil
                 ))
             } else if promoter < 25 {
-                signals.append(RiskSignal(
+                signals.append(RiskSignalCard(
                     severity: .medium,
                     title: "Low Promoter Stake",
                     description: "Promoter holding at \(String(format: "%.1f", promoter))% is below 25% — limited skin in the game.",
@@ -502,7 +503,7 @@ struct RiskSignalCardsView: View {
 
         // Bearish signal
         if let signal = info.signal, signal == .bearish || signal == .cautiously_bearish {
-            signals.append(RiskSignal(
+            signals.append(RiskSignalCard(
                 severity: signal == .bearish ? .high : .medium,
                 title: signal == .bearish ? "Bearish Market Signal" : "Cautious Market Signal",
                 description: "Multi-agent AI analysis classifies this stock as \(signal.rawValue). Review the full analysis for detailed rationale.",
@@ -515,7 +516,7 @@ struct RiskSignalCardsView: View {
 
         // Negative PE
         if let pe = info.peRatio, pe < 0 {
-            signals.append(RiskSignal(
+            signals.append(RiskSignalCard(
                 severity: .high,
                 title: "Negative Earnings",
                 description: "PE ratio is negative — the company is currently loss-making. Recovery timeline is uncertain.",
@@ -532,7 +533,7 @@ struct RiskSignalCardsView: View {
 
 // MARK: - Risk Signal Data Model
 
-private struct RiskSignal {
+private struct RiskSignalCard {
     let id = UUID()
     let severity: RiskSeverity
     let title: String
@@ -566,7 +567,7 @@ private struct RiskSignal {
 // MARK: - Risk Signal Card
 
 struct RiskSignalCardView: View {
-    let signal: RiskSignal
+    let signal: RiskSignalCard
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {

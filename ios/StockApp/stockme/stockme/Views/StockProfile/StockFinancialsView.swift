@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 // MARK: - Period & Consolidation Enums
@@ -620,7 +621,7 @@ struct RatioCardView: View {
 
             // Show per-period values
             ForEach(periodLabels.prefix(3), id: \.self) { period in
-                if let v = item.values[period], v != nil {
+                if let v = item.values[period] {
                     HStack(spacing: Theme.Spacing.xSmall) {
                         Text(period)
                             .font(Theme.officialStampFont(size: 7))

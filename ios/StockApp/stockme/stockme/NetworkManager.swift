@@ -146,7 +146,7 @@ class NetworkManager: ObservableObject {
         return fmt.string(from: date)
     }
 
-    private func authRequest(_ url: URL) -> URLRequest {
+    func authRequest(_ url: URL) -> URLRequest {
         var req = URLRequest(url: url)
         if let token = authToken {
             if !isJWTFormatValid(token) {
@@ -1125,7 +1125,7 @@ class NetworkManager: ObservableObject {
 
     /// Shared fetch + decode with detailed error diagnostics.
     /// Never returns nil/empty silently — errors are thrown with exact endpoint/status/body.
-    private func _fetchDecode<T: Decodable>(
+    func _fetchDecode<T: Decodable>(
         _ type: T.Type, endpoint: String, timeout: TimeInterval = 15
     ) async throws -> T {
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
