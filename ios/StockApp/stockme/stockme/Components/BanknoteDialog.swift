@@ -33,7 +33,6 @@ struct BanknoteDialogButton: Identifiable {
 
     /// Convenience cancel button.
     static func cancel(_ title: String = "Cancel", action: @escaping () -> Void = {}) -> BanknoteDialogButton {
-    HapticManager.selection()
         BanknoteDialogButton(title, role: .cancel, action: action)
     }
 }
