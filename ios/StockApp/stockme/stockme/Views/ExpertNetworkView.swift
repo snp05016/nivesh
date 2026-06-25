@@ -659,7 +659,7 @@ struct ExpertPostCard: View {
             // 7.4 Interaction row
             HStack(spacing: Theme.Spacing.card) {
                 // Like counter
-                Button(action: { HapticManager.selection(); onLike(); HapticManager.impact(.light) }) {.buttonStyle(EKPressStyle())
+                Button(action: { HapticManager.selection(); onLike(); HapticManager.impact(.light) }) {
                     HStack(spacing: Theme.Spacing.tight) {
                         Image(systemName: post.isLiked ? "heart.fill" : "heart")
                             .font(Theme.officialStampFont(size: 13))
@@ -671,7 +671,7 @@ struct ExpertPostCard: View {
                 }
 
                 // Bookmark
-                Button(action: { HapticManager.selection(); onBookmark(); HapticManager.impact(.light) }) {.buttonStyle(EKPressStyle())
+                Button(action: { HapticManager.selection(); onBookmark(); HapticManager.impact(.light) }) {
                     Image(systemName: post.isBookmarked ? "bookmark.fill" : "bookmark")
                         .font(Theme.officialStampFont(size: 13))
                         .foregroundStyle(post.isBookmarked ? Theme.securityGold : Theme.inkTertiary)

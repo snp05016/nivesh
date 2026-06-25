@@ -176,7 +176,7 @@ struct TutorialOverlayView: View {
 
             HStack(spacing: Theme.Spacing.standard) {
                 if tutorialManager.currentStep > 1 {
-                    Button(action: { HapticManager.selection(); tutorialManager.previous() }) {.buttonStyle(EKPressStyle())
+                    Button(action: { HapticManager.selection(); tutorialManager.previous() }) {
                         Text("← Back")
                             .font(Theme.officialStampFont(size: 10))
                             .foregroundStyle(Theme.securityGold)

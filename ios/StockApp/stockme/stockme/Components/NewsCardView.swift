@@ -94,7 +94,7 @@ struct NewsCardView: View {
 
                         // Ticker chip (tappable)
                         if let ticker = article.ticker {
-                            Button(action: { HapticManager.selection(); onTickerTap?(ticker) }) {.buttonStyle(EKPressStyle())
+                            Button(action: { HapticManager.selection(); onTickerTap?(ticker) }) {
                                 Text(ticker)
                                     .font(.caption2.weight(.semibold).monospaced())
                                     .foregroundStyle(.primary.opacity(0.75))

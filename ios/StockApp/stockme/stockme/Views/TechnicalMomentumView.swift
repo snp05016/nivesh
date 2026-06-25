@@ -86,7 +86,7 @@ struct TechnicalMomentumView: View {
         ScrollView(.horizontal) {
             HStack(spacing: Theme.Spacing.none) {
                 ForEach(Array(subTabs.enumerated()), id: \.offset) { idx, tab in
-                    Button(action: { HapticManager.selection(); selectedSubTab = idx }) {.buttonStyle(EKPressStyle())
+                    Button(action: { HapticManager.selection(); selectedSubTab = idx }) {
                         Text(tab)
                             .font(Theme.officialStampFont(size: 11))
                             .fontWeight(selectedSubTab == idx ? .bold : .regular)
@@ -159,7 +159,7 @@ struct TechnicalMomentumView: View {
 
             HStack(spacing: Theme.Spacing.medium) {
                 ForEach(momentumFilters, id: \.self) { filter in
-                    Button(action: { HapticManager.selection(); selectedMomentum = filter }) {.buttonStyle(EKPressStyle())
+                    Button(action: { HapticManager.selection(); selectedMomentum = filter }) {
                         HStack(spacing: Theme.Spacing.tight) {
                             // Radio circle
                             ZStack {

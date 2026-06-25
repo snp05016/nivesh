@@ -204,7 +204,7 @@ struct StrategyLabScreen: View {
                             .font(Theme.roundedCaption(size: 12))
                             .foregroundStyle(Theme.inkSecondary)
                             .multilineTextAlignment(.center)
-                        Button(action: { HapticManager.selection(); Task { await viewModel.runBacktest() } }) {.buttonStyle(EKPressStyle())
+                        Button(action: { HapticManager.selection(); Task { await viewModel.runBacktest() } }) {
                             Text("Retry")
                                 .font(Theme.roundedSecondary(size: 14, weight: .bold))
                                 .foregroundStyle(Theme.inkPrimary)

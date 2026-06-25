@@ -211,7 +211,7 @@ struct SearchScreen: View {
                                 .toolbar {
                                     ToolbarItemGroup(placement: .keyboard) {
                                         Spacer()
-                                        Button(action: { HapticManager.selection(); hideKeyboard() }) {.buttonStyle(EKPressStyle())
+                                        Button(action: { HapticManager.selection(); hideKeyboard() }) {
                                             Image(systemName: "keyboard.chevron.compact.down")
                                                 .foregroundStyle(Theme.securityGold)
                                         }
