@@ -675,7 +675,7 @@ class NetworkManager: ObservableObject {
 
     func fetchBenchmark(userId: Int) async throws -> BenchmarkData {
         let endpoint = "/portfolio/benchmark?user_id=\(userId)"
-        let data = try await _fetchDecode(endpoint, as: BenchmarkData.self)
+        let data = try await _fetchDecode(BenchmarkData.self, endpoint: endpoint)
         return data
     }
 
@@ -854,7 +854,7 @@ class NetworkManager: ObservableObject {
 
     func fetchDividends(ticker: String, exchange: String = "NSE") async throws -> DividendData {
         let endpoint = "/dividends/\(ticker.uppercased())?exchange=\(exchange)"
-        let data = try await _fetchDecode(endpoint, as: DividendData.self)
+        let data = try await _fetchDecode(DividendData.self, endpoint: endpoint)
         return data
     }
 
@@ -862,7 +862,7 @@ class NetworkManager: ObservableObject {
 
     func fetchSentimentTrend(ticker: String, days: Int = 30) async throws -> SentimentTrend {
         let endpoint = "/market/sentiment-trend/\(ticker.uppercased())?days=\(days)"
-        let data = try await _fetchDecode(endpoint, as: SentimentTrend.self)
+        let data = try await _fetchDecode(SentimentTrend.self, endpoint: endpoint)
         return data
     }
 
