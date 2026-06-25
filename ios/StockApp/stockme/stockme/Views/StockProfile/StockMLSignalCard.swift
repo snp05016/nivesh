@@ -106,7 +106,7 @@ private struct MLSignalLoadedContent: View {
             }
 
             // Row 3: CTA
-            Button(action: {
+            Button(action: { HapticManager.selection();  HapticManager.selection()
                 HapticManager.selection()
                 onOpenQuantLab()
             }) {

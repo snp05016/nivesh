@@ -7,6 +7,7 @@ struct ExplainableTermModifier: ViewModifier {
     func body(content: Content) -> some View {
         if let entry = FinanceTerms.shared.lookup(term) {
             Button {
+    HapticManager.selection()
                 HapticManager.selection()
                 showSheet = true
             } label: {

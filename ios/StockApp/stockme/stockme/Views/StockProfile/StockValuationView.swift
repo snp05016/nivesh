@@ -17,17 +17,17 @@ struct StockValuationView: View {
                 } else if let data = vm.valuationData {
                     ValuationMetricsGridView(snapshot: data.snapshot)
 
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     PEBandVisualizationView(snapshot: data.snapshot)
 
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     ValuationIndicatorsView(snapshot: data.snapshot)
 
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     PeerComparisonTableView(
@@ -36,7 +36,7 @@ struct StockValuationView: View {
                     )
 
                     if let peBand = data.peBandData, !peBand.isEmpty {
-                        GuillocheDivider()
+                        GuillocheGuillocheDivider()
                             .padding(.horizontal, Theme.screenPadding)
 
                         HistoricalPEBandView(peBandData: peBand)
@@ -458,6 +458,7 @@ struct PeerComparisonTableView: View {
 
                         ForEach(Array(columns.enumerated()), id: \.offset) { idx, col in
                             Button {
+    HapticManager.selection()
                                 HapticManager.selection()
                                 if sortColumn == idx {
                                     sortAscending.toggle()

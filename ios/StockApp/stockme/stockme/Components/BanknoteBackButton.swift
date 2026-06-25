@@ -20,6 +20,7 @@ struct BanknoteBackButton: View {
 
     var body: some View {
         Button {
+    HapticManager.selection()
             HapticManager.selection()
             action()
         } label: {

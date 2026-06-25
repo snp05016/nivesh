@@ -6,8 +6,7 @@ struct HelpTypedButton: View {
     @Binding var showHelp: Bool
     
     var body: some View {
-        Button { HapticManager.selection(); showHelp = true }
-        label: {
+        Button { HapticManager.selection(); showHelp = true } label: {
             Image(systemName: "questionmark.circle")
                 .font(Theme.engravedSerif(size: 18, weight: .medium))
                 .foregroundColor(Theme.securityGold)
@@ -23,8 +22,7 @@ struct HelpInlineButton: View {
     var body: some View {
         HStack {
             Spacer()
-            Button { HapticManager.selection(); showHelp = true }
-            label: {
+            Button { HapticManager.selection(); showHelp = true } label: {
                 HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: "questionmark.circle")
                         .font(Theme.engravedSerif(size: 14, weight: .medium))
@@ -118,7 +116,7 @@ struct GenericHelpSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { HapticManager.selection(); dismiss() }
+                    Button("Done") { HapticManager.selection(); dismiss() }.buttonStyle(EKPressStyle())
                         .font(Theme.officialStampFont(size: 12, relativeTo: .body))
                         .foregroundColor(Theme.securityGold)
                 }
@@ -136,8 +134,7 @@ struct HelpToolbarButton: ViewModifier {
         content
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { HapticManager.selection(); showHelp = true }
-                    label: {
+                    Button { HapticManager.selection(); showHelp = true } label: {
                         Image(systemName: "questionmark.circle")
                             .font(Theme.engravedSerif(size: 18, weight: .medium))
                             .foregroundColor(Theme.securityGold)

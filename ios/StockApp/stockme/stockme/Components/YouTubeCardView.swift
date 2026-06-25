@@ -8,7 +8,7 @@ struct YouTubeCardView: View {
     private let dimText    = Theme.inkSecondary
 
     var body: some View {
-        Button(action: {
+        Button(action: { HapticManager.selection();  HapticManager.selection()
             if let url = URL(string: video.videoUrl) {
                 UIApplication.shared.open(url)
             }
@@ -45,7 +45,7 @@ struct YouTubeCardView: View {
                     // Play button overlay
                     Image(systemName: "play.circle.fill")
                         .font(.title2.weight(.regular))
-                        .foregroundStyle(.white, Color.black.opacity(0.55))
+                        .foregroundStyle(.white, Theme.inkPrimary.opacity(0.55))
                         .padding(Theme.Spacing.small)
 
                     // Duration badge
@@ -55,7 +55,7 @@ struct YouTubeCardView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.small)
                             .padding(.vertical, Theme.Spacing.xSmall)
-                            .background(Color.black.opacity(0.70))
+                            .background(Theme.inkPrimary.opacity(0.70))
                             .cornerRadius(Theme.CornerRadius.small)
                             .padding(Theme.Spacing.small)
                     }
@@ -90,7 +90,7 @@ struct YouTubeCardView: View {
 
                         // Ticker chips (tappable)
                         ForEach(video.tickersMentioned.prefix(2), id: \.self) { ticker in
-                            Button(action: { onTickerTap?(ticker) }) {
+                            Button(action: { HapticManager.selection(); onTickerTap?(ticker) }) {.buttonStyle(EKPressStyle())
                                 Text(ticker)
                                     .font(.caption2.weight(.semibold).monospaced())
                                     .foregroundStyle(.primary.opacity(0.65))
@@ -131,7 +131,7 @@ struct YouTubeCompactCard: View {
     private var goldAccent: Color { Theme.securityGold }
 
     var body: some View {
-        Button(action: {
+        Button(action: { HapticManager.selection();  HapticManager.selection()
             if let url = URL(string: video.videoUrl) {
                 UIApplication.shared.open(url)
             }
@@ -168,7 +168,7 @@ struct YouTubeCompactCard: View {
                     // Play button
                     Image(systemName: "play.circle.fill")
                         .font(.title3.weight(.regular))
-                        .foregroundStyle(.white, Color.black.opacity(0.55))
+                        .foregroundStyle(.white, Theme.inkPrimary.opacity(0.55))
                         .padding(Theme.Spacing.small)
 
                     // Duration badge
@@ -178,7 +178,7 @@ struct YouTubeCompactCard: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.small)
                             .padding(.vertical, Theme.Spacing.xSmall)
-                            .background(Color.black.opacity(0.70))
+                            .background(Theme.inkPrimary.opacity(0.70))
                             .cornerRadius(Theme.CornerRadius.small)
                             .padding(Theme.Spacing.small)
                     }
@@ -212,7 +212,7 @@ struct YouTubeCompactCard: View {
                 if !video.tickersMentioned.isEmpty {
                     HStack(spacing: Theme.Spacing.xSmall) {
                         ForEach(video.tickersMentioned.prefix(2), id: \.self) { ticker in
-                            Button(action: { onTickerTap?(ticker) }) {
+                            Button(action: { HapticManager.selection(); onTickerTap?(ticker) }) {.buttonStyle(EKPressStyle())
                                 Text(ticker)
                                     .font(.caption2.weight(.semibold).monospaced())
                                     .foregroundStyle(.primary.opacity(0.65))

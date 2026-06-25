@@ -604,8 +604,8 @@ class CovarianceMatrix(Base):
     """Serialized covariance matrices for stress testing. Prevents recomputation."""
     __tablename__ = "covariance_matrices"
     matrix_type = Column(String(50), primary_key=True)
-    tickers_list = Column(JSON, default=list)
-    data_matrix = Column(JSON, default=list)
+    tickers_list = Column(JSON, default="[]")
+    data_matrix = Column(JSON, default="[]")
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class StockUniverse(Base):

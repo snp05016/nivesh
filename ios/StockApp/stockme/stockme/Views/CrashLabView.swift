@@ -101,6 +101,7 @@ private struct CrashCardView: View {
                 .foregroundStyle(Theme.inkPrimary)
 
             Button {
+    HapticManager.selection()
                 HapticManager.selection()
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { expanded.toggle() }
             } label: {
@@ -126,6 +127,7 @@ private struct CrashCardView: View {
 
             HStack(spacing: Theme.Spacing.standard) {
                 Button {
+    HapticManager.selection()
                     HapticManager.selection()
                     let json = (try? JSONEncoder().encode(report)).flatMap { String(data: $0, encoding: .utf8) } ?? ""
                     UIPasteboard.general.string = json

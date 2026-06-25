@@ -35,7 +35,7 @@ struct AppHeader: View {
                 }
             }
 
-            SectionDivider()
+            SectionGuillocheDivider()
         }
         .padding(.horizontal, Theme.screenPadding)
         .padding(.top, Theme.Spacing.standard)
@@ -78,7 +78,7 @@ private struct StockPreviewCard: View {
                     }
                 }
 
-                SectionDivider()
+                SectionGuillocheDivider()
 
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                     Text("₹")
@@ -204,11 +204,13 @@ struct StockRow: View {
         )
         .contextMenu {
             Button {
+    HapticManager.selection()
                 HapticManager.selection()
             } label: {
                 Label("Analyse \(stock.ticker)", systemImage: "chart.line.uptrend.xyaxis")
             }
             Button {
+    HapticManager.selection()
                 HapticManager.light()
                 UIPasteboard.general.string = stock.ticker
             } label: {
@@ -294,7 +296,7 @@ struct SectionHeader: View {
                 }
                 Spacer()
                 if let label = actionLabel, let action = action {
-                    Button(action: {
+                    Button(action: { HapticManager.selection();  HapticManager.selection()
                         HapticManager.selection()
                         action()
                     }) {

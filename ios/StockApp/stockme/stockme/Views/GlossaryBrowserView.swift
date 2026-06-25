@@ -55,7 +55,7 @@ struct GlossaryBrowserView: View {
                 }
                 .padding(.bottom, Theme.Spacing.small)
 
-                GuillocheDivider()
+                GuillocheGuillocheDivider()
                     .padding(.horizontal, Theme.screenPadding)
 
                 // Results
@@ -71,6 +71,7 @@ struct GlossaryBrowserView: View {
                         HStack(spacing: Theme.Spacing.small) {
                             ForEach(suggestedTerms, id: \.self) { term in
                                 Button {
+    HapticManager.selection()
                                     HapticManager.selection()
                                     searchText = term
                                 } label: {
@@ -99,7 +100,7 @@ struct GlossaryBrowserView: View {
                 // Recently viewed
                 if !recentlyViewed.isEmpty, searchText.isEmpty, selectedCategory == nil {
                     VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                        GuillocheDivider()
+                        GuillocheGuillocheDivider()
                             .padding(.horizontal, Theme.screenPadding)
                         Text("RECENTLY VIEWED")
                             .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
@@ -158,6 +159,7 @@ private struct TermRow: View {
 
     var body: some View {
         Button {
+    HapticManager.selection()
             HapticManager.selection()
             onTap()
             showSheet = true

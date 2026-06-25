@@ -74,7 +74,7 @@ struct AnalysisLoadingStateView: View {
                                 .foregroundStyle(Theme.inkSecondary)
                                 .lineSpacing(6)
                         }
-                        GuillocheDivider()
+                        GuillocheGuillocheDivider()
                         if let officers = info.officers, !officers.isEmpty {
                             VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                                 Text("KEY EXECUTIVES")
@@ -211,7 +211,7 @@ struct AnalysisStockHeaderCard: View {
                 }
                 Spacer()
             }
-            GuillocheDivider()
+            GuillocheGuillocheDivider()
             HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                 Text("₹").font(Theme.engravedSerif(size: 24, weight: .bold)).foregroundStyle(Theme.goldPrimary)
                 Text((info.price ?? 0.0).inrFormatted.replacingOccurrences(of: "₹", with: ""))

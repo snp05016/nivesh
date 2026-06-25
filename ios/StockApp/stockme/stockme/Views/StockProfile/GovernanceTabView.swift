@@ -25,7 +25,7 @@ struct GovernanceTabView: View {
                     SPEmptyStateView(message: "Governance data unavailable")
                 }
 
-                GuillocheDivider()
+                GuillocheGuillocheDivider()
                 HarvesterGovernanceSectionView(ticker: ticker, cards: governanceCards)
             }
             .padding(.horizontal, Theme.screenPadding)
@@ -242,7 +242,7 @@ struct GovernancePromoterSectionView: View {
             }
 
             if !promoterHistory.isEmpty {
-                SectionDivider()
+                SectionGuillocheDivider()
                 Text("HISTORICAL TREND")
                     .font(Theme.officialStampFont(size: 8))
                     .tracking(1.0)

@@ -442,7 +442,7 @@ struct AdvisoryConsensusEmptyCard: View {
                     }
                     .padding(.bottom, Theme.Spacing.standard)
 
-                    SectionDivider()
+                    SectionGuillocheDivider()
                         .padding(.bottom, Theme.Spacing.standard)
 
                     HStack(alignment: .top, spacing: Theme.Spacing.standard) {
@@ -673,15 +673,16 @@ struct HomeScreen: View {
                 Theme.canvas.ignoresSafeArea()
 
                 ScrollViewReader { proxy in
-                    ScrollView {
+                    ScrollView(.vertical, showsIndicators: false) {
                         VStack(spacing: Theme.Spacing.card) {
+
 
                             ForEach(activeSectionOrder, id: \.self) { sectionId in
                                 renderSection(id: sectionId)
                             }
 
 
-                            Button(action: { showingEditLayout = true }) {
+                            Button(action: { HapticManager.selection(); showingEditLayout = true }) {.buttonStyle(EKPressStyle())
                                 HStack(spacing: Theme.Spacing.medium) {
                                     Image(systemName: "slider.horizontal.3")
                                     Text("CUSTOMIZE LAYOUT")
@@ -698,6 +699,7 @@ struct HomeScreen: View {
 
                             Spacer(minLength: 100)
                         }
+                        .frame(maxWidth: UIScreen.main.bounds.width)
                     }
                     .refreshable {
                         HapticManager.impact(.medium)
@@ -766,6 +768,7 @@ struct HomeScreen: View {
                     }()
                     let isDismissedToday = morningBriefShownDate == todayStr
                     Button {
+    HapticManager.selection()
                         HapticManager.selection()
                         if isDismissedToday {
                             morningBriefShownDate = ""
@@ -1021,7 +1024,7 @@ private struct MorningDecreeCard: View {
                     .padding(.leading, Theme.Spacing.medium)
                     .padding(.trailing, cardHPad)
 
-                    SectionDivider()
+                    SectionGuillocheDivider()
                         .padding(.horizontal, Theme.Spacing.small)
                         .padding(.top, Theme.Spacing.tight)
                         .padding(.bottom, Theme.Spacing.standard)
@@ -1091,7 +1094,7 @@ private struct MorningDecreeCard: View {
                     }
 
                     // Timestamp footer
-                    SectionDivider()
+                    SectionGuillocheDivider()
                         .padding(.horizontal, Theme.Spacing.small)
                         .padding(.top, Theme.Spacing.tight)
 
@@ -1176,7 +1179,7 @@ private struct TimeframeConflictsBanner: View {
                 .foregroundStyle(Theme.securityGold)
                 .padding(.horizontal, Theme.screenPadding)
 
-            ScrollView(.horizontal) {
+            ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Theme.Spacing.standard) {
                     ForEach(conflicts) { conflict in
                         NavigationLink(value: conflict.ticker) {
@@ -1303,7 +1306,7 @@ private struct MarketPulseDashCard: View {
                     .padding(.leading, Theme.Spacing.medium)
                     .padding(.trailing, cardHPad)
 
-                    SectionDivider()
+                    SectionGuillocheDivider()
                         .padding(.horizontal, Theme.Spacing.small)
                         .padding(.top, Theme.Spacing.tight)
                         .padding(.bottom, Theme.Spacing.standard)
@@ -1385,7 +1388,7 @@ private struct MomentumDashCard: View {
                     .padding(.leading, Theme.Spacing.medium)
                     .padding(.trailing, cardHPad)
 
-                    SectionDivider()
+                    SectionGuillocheDivider()
                         .padding(.horizontal, Theme.Spacing.small)
                         .padding(.top, Theme.Spacing.tight)
                         .padding(.bottom, Theme.Spacing.standard)
@@ -1471,7 +1474,7 @@ private struct MacroDashCard: View {
                     .padding(.leading, Theme.Spacing.medium)
                     .padding(.trailing, cardHPad)
 
-                    SectionDivider()
+                    SectionGuillocheDivider()
                         .padding(.horizontal, Theme.Spacing.small)
                         .padding(.top, Theme.Spacing.tight)
                         .padding(.bottom, Theme.Spacing.standard)
@@ -1510,7 +1513,7 @@ private struct MacroDashCard: View {
     }
 }
 
-// MARK: - 14.4 Market Mood Gauge (Advance/Decline semi-circle dial)
+// MARK: - 14.4 Market Mood Gauge (Advance/Decline horizontal bar)
 
 struct MarketMoodGauge: View {
     /// advances / (advances + declines), range 0…1
@@ -1536,54 +1539,38 @@ struct MarketMoodGauge: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.standard) {
-            Text("MARKET MOOD GAUGE")
-                .font(.caption2.weight(.bold)).monospaced()
+            Text("MARKET MOOD")
+                .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
                 .tracking(2)
                 .foregroundStyle(Theme.inkSecondary)
 
-            ZStack {
-                // Background arc (full 180°)
-                ArcShape(startAngle: .degrees(180), endAngle: .degrees(360), clockwise: false)
-                    .stroke(Theme.inkTertiary.opacity(0.15), style: StrokeStyle(lineWidth: 16, lineCap: .round))
-
-                // Colored fill arc based on ratio
-                ArcShape(startAngle: .degrees(180), endAngle: .degrees(180 + ratio * 180), clockwise: false)
-                    .stroke(
-                        LinearGradient(colors: [Theme.bearRed, Theme.holdAmber, Theme.bullGreen],
-                                       startPoint: .leading, endPoint: .trailing),
-                        style: StrokeStyle(lineWidth: 16, lineCap: .round)
-                    )
-
-                // Needle
-                GeometryReader { geo in
-                    let cx = geo.size.width / 2
-                    let cy = geo.size.height
-                    let r = min(cx, cy) - 18
-                    let angle = Double.pi + ratio * Double.pi
-                    let nx = cx + CGFloat(cos(angle)) * r
-                    let ny = cy + CGFloat(sin(angle)) * r
-                    Path { p in
-                        p.move(to: CGPoint(x: cx, y: cy))
-                        p.addLine(to: CGPoint(x: nx, y: ny))
-                    }
-                    .stroke(Theme.inkPrimary, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                    // Center dot
-                    Circle()
-                        .fill(Theme.inkPrimary)
-                        .frame(width: 8, height: 8)
-                        .position(x: cx, y: cy)
-                }
-            }
-            .aspectRatio(2.0, contentMode: .fit)
-            .frame(maxHeight: 100)
-            .clipped()
-
+            // Linear Horizontal Gauge instead of Radial
             VStack(spacing: Theme.Spacing.small) {
+                HStack(spacing: 0) {
+                    Rectangle().fill(Theme.bearRed).frame(height: 12)
+                    Rectangle().fill(Theme.holdAmber).frame(height: 12)
+                    Rectangle().fill(Theme.bullGreen).frame(height: 12)
+                }
+                .clipShape(Capsule())
+                .overlay(
+                    GeometryReader { geo in
+                        let xPos = geo.size.width * CGFloat(ratio)
+                        Rectangle()
+                            .fill(Theme.inkPrimary)
+                            .frame(width: 4, height: 20)
+                            .position(x: xPos, y: geo.size.height / 2)
+                    }
+                )
+                .frame(height: 20)
+            }
+            .padding(.horizontal, Theme.screenPadding)
+
+            VStack(spacing: Theme.Spacing.xSmall) {
                 Text(moodLabel)
-                    .font(.footnote.weight(.bold))
+                    .font(Theme.engravedSerif(size: 14, weight: .bold, relativeTo: .footnote))
                     .foregroundStyle(needleColor)
                 Text(String(format: "A/D Ratio: %.2f", ratio))
-                    .font(.caption2).monospaced()
+                    .font(Theme.serialNumberFont(size: 11, relativeTo: .caption2))
                     .foregroundStyle(Theme.inkTertiary)
             }
         }
@@ -1592,24 +1579,6 @@ struct MarketMoodGauge: View {
     }
 }
 
-private struct ArcShape: Shape {
-    var startAngle: Angle
-    var endAngle: Angle
-    var clockwise: Bool
-
-    func path(in rect: CGRect) -> Path {
-        var p = Path()
-        let cx = rect.midX
-        let cy = rect.maxY
-        let r = min(rect.width / 2, rect.height) - 8
-        p.addArc(center: CGPoint(x: cx, y: cy),
-                 radius: r,
-                 startAngle: startAngle,
-                 endAngle: endAngle,
-                 clockwise: clockwise)
-        return p
-    }
-}
 
 // MARK: - 14.4 IndexCardView (snapping horizontal index chip)
 
@@ -1773,7 +1742,7 @@ struct CompactNewsCell: View {
     }
 
     var body: some View {
-        Button(action: {
+        Button(action: { HapticManager.selection();  HapticManager.selection()
             HapticManager.selection()
             showDetail = true
         }) {
@@ -1802,7 +1771,7 @@ struct CompactNewsCell: View {
 
                     // Gradient scrim at bottom
                     LinearGradient(
-                        colors: [Color.black.opacity(0.0), Color.black.opacity(0.6)],
+                        colors: [Theme.inkPrimary.opacity(0.0), Theme.inkPrimary.opacity(0.6)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -1816,7 +1785,7 @@ struct CompactNewsCell: View {
                             .foregroundStyle(Theme.securityGold)
                             .padding(.horizontal, Theme.Spacing.tight)
                             .padding(.vertical, 2)
-                            .background(Color.black.opacity(0.55))
+                            .background(Theme.inkPrimary.opacity(0.55))
                             .cornerRadius(Theme.CornerRadius.small)
 
                         if !timeLabel.isEmpty {
@@ -1825,7 +1794,7 @@ struct CompactNewsCell: View {
                                 .foregroundStyle(.white.opacity(0.9))
                                 .padding(.horizontal, Theme.Spacing.tight)
                                 .padding(.vertical, 2)
-                                .background(Color.black.opacity(0.45))
+                                .background(Theme.inkPrimary.opacity(0.45))
                                 .cornerRadius(Theme.CornerRadius.small)
                         }
 
@@ -1946,6 +1915,7 @@ struct CompactNewsCell: View {
         .contextMenu {
             if let url = URL(string: article.articleUrl) {
                 Button {
+    HapticManager.selection()
                     try? SSReadingList.default()?.addItem(
                         with: url,
                         title: article.headline,
@@ -1958,6 +1928,7 @@ struct CompactNewsCell: View {
             }
             if let url = URL(string: article.articleUrl) {
                 Button {
+    HapticManager.selection()
                     UIPasteboard.general.string = url.absoluteString
                     HapticManager.selection()
                 } label: {
@@ -2082,7 +2053,7 @@ struct NewsDetailSheet: View {
                                     .foregroundStyle(Theme.inkTertiary)
                             }
 
-                            SectionDivider()
+                            SectionGuillocheDivider()
 
                             // Headline
                             Text(stripEmoji(article.headline))
@@ -2092,7 +2063,7 @@ struct NewsDetailSheet: View {
 
                             // Ticker chip
                             if let ticker = article.ticker, !ticker.isEmpty {
-                                Button(action: {
+                                Button(action: { HapticManager.selection();  HapticManager.selection()
                                     HapticManager.selection()
                                     dismiss()
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
@@ -2116,7 +2087,7 @@ struct NewsDetailSheet: View {
                                 .buttonStyle(EKPressStyle())
                             }
 
-                            SectionDivider()
+                            SectionGuillocheDivider()
 
                             // Summary / body
                             if let summary = article.summary, !summary.isEmpty {
@@ -2131,7 +2102,7 @@ struct NewsDetailSheet: View {
                             }
 
                             // Read full article button
-                            Button(action: {
+                            Button(action: { HapticManager.selection();  HapticManager.selection()
                                 HapticManager.impact(.medium)
                                 showSafari = true
                             }) {
@@ -2159,7 +2130,7 @@ struct NewsDetailSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { dismiss() }) {
+                    Button(action: { HapticManager.selection(); dismiss() }) {.buttonStyle(EKPressStyle())
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(Theme.inkSecondary)
                             .font(.title3)
@@ -2240,7 +2211,7 @@ private struct InstitutionalDashCard: View {
                     .padding(.leading, Theme.Spacing.medium)
                     .padding(.trailing, cardHPad)
 
-                    SectionDivider()
+                    SectionGuillocheDivider()
                         .padding(.horizontal, Theme.Spacing.small)
                         .padding(.top, Theme.Spacing.tight)
                         .padding(.bottom, Theme.Spacing.standard)
@@ -2355,6 +2326,7 @@ extension HomeScreen {
                             }
                             Spacer()
                             Button {
+    HapticManager.selection()
                                 HapticManager.selection()
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                     showSearch.toggle()
@@ -2371,6 +2343,7 @@ extension HomeScreen {
                             }
                             .buttonStyle(EKPressStyle())
                             Button {
+    HapticManager.selection()
                                 HapticManager.selection()
                                 showGlossary = true
                             } label: {
@@ -2413,6 +2386,7 @@ extension HomeScreen {
                                     .autocapitalization(.allCharacters)
                                 if !searchText.isEmpty {
                                     Button {
+    HapticManager.selection()
                                         HapticManager.selection()
                                         searchText = ""
                                     } label: {
@@ -2423,6 +2397,7 @@ extension HomeScreen {
                                     .buttonStyle(.plain)
                                 }
                                 Button {
+    HapticManager.selection()
                                     HapticManager.selection()
                                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                         showSearch = false
@@ -2448,6 +2423,7 @@ extension HomeScreen {
                                 VStack(spacing: Theme.Spacing.none) {
                                     ForEach(searchResults.prefix(8)) { entry in
                                         Button {
+    HapticManager.selection()
                                             HapticManager.selection()
                                             stockTapTicker = entry.ticker
                                             stockTapCompanyName = entry.companyName
@@ -2519,7 +2495,7 @@ extension HomeScreen {
                     if !valuationHistory.isEmpty {
                         ImmersivePortfolioHeroChart(snapshots: rangedValuationHistory)
                         TimeRangeSelector(selected: $portfolioRange, ranges: TimeRange.allCases)
-                        SectionDivider()
+                        SectionGuillocheDivider()
                             .padding(.horizontal, Theme.screenPadding)
                     }
                 }
@@ -2539,7 +2515,7 @@ extension HomeScreen {
                                 .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.bearRed, lineWidth: 0.5))
                         }
                     }
-                    ScrollView(.horizontal) {
+                    ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: Theme.Spacing.standard) {
                             ForEach(viewModel.indices) { index in
                                 let valueStr: String = {
@@ -2687,6 +2663,7 @@ extension HomeScreen {
 
                             HStack(spacing: Theme.Spacing.standard) {
                                 Button {
+    HapticManager.selection()
                                     HapticManager.selection()
                                     let df = DateFormatter()
                                     df.dateFormat = "yyyy-MM-dd"
@@ -2706,6 +2683,7 @@ extension HomeScreen {
                                 .buttonStyle(EKPressStyle())
 
                                 Button {
+    HapticManager.selection()
                                     HapticManager.selection()
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                         let df = DateFormatter()
@@ -2820,10 +2798,11 @@ extension HomeScreen {
 
                         // ── Channel filter chip bar ───────────────
                         if channelNames.count > 1 {
-                            ScrollView(.horizontal) {
+                            ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: Theme.Spacing.medium) {
                                     // "All" chip
                                     Button {
+    HapticManager.selection()
                                         HapticManager.selection()
                                         selectedChannel = nil
                                     } label: {
@@ -2841,6 +2820,7 @@ extension HomeScreen {
 
                                     ForEach(channelNames, id: \.self) { channel in
                                         Button {
+    HapticManager.selection()
                                             HapticManager.selection()
                                             selectedChannel = channel
                                         } label: {
@@ -2863,7 +2843,7 @@ extension HomeScreen {
                             .scrollIndicators(.hidden)
                         }
 
-                        ScrollView(.horizontal) {
+                        ScrollView(.horizontal, showsIndicators: false) {
                             HStack(alignment: .top, spacing: Theme.Spacing.card) {
                                 ForEach(videos) { video in
                                     YouTubeCompactCard(video: video) { ticker in
@@ -3019,7 +2999,7 @@ struct HomeLayoutEditorSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
                         .foregroundStyle(Theme.inkSecondary)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {

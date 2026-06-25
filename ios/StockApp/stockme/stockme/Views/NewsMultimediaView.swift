@@ -151,7 +151,7 @@ struct NewsMultimediaView: View {
                 }
 
                 if articles.count > 5 {
-                    Button(action: {
+                    Button(action: { HapticManager.selection();  HapticManager.selection()
                         HapticManager.selection()
                         showAllNews = true
                     }) {
@@ -191,7 +191,7 @@ struct NewsMultimediaView: View {
             // Tab bar
             HStack(spacing: Theme.Spacing.none) {
                 ForEach(Array(expertTabs.enumerated()), id: \.offset) { idx, tab in
-                    Button(action: { expertTab = idx }) {
+                    Button(action: { HapticManager.selection(); expertTab = idx }) {.buttonStyle(EKPressStyle())
                         Text(tab)
                             .font(.caption2.weight(expertTab == idx ? .bold : .regular))
                             .foregroundStyle(expertTab == idx ? Theme.securityGold : Theme.inkTertiary)
@@ -334,7 +334,7 @@ struct NewsCarouselCard: View {
     private let cardWidth: CGFloat = 280
 
     var body: some View {
-        Button(action: {
+        Button(action: { HapticManager.selection();  HapticManager.selection()
             HapticManager.selection()
             showDetail = true
         }) {
@@ -386,7 +386,7 @@ struct NewsCarouselCard: View {
 
                     // Gradient scrim
                     LinearGradient(
-                        colors: [Color.black.opacity(0.0), Color.black.opacity(0.65)],
+                        colors: [Theme.inkPrimary.opacity(0.0), Theme.inkPrimary.opacity(0.65)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -400,7 +400,7 @@ struct NewsCarouselCard: View {
                                 .foregroundStyle(.white.opacity(0.9))
                                 .padding(.horizontal, Theme.Spacing.tight)
                                 .padding(.vertical, 2)
-                                .background(Color.black.opacity(0.5))
+                                .background(Theme.inkPrimary.opacity(0.5))
                                 .cornerRadius(Theme.CornerRadius.small)
                         }
 
@@ -509,7 +509,7 @@ struct VideoCard: View {
     @State private var showPlayer = false
 
     var body: some View {
-        Button(action: { showPlayer = true }) {
+        Button(action: { HapticManager.selection(); showPlayer = true }) {.buttonStyle(EKPressStyle())
             HStack(spacing: Theme.Spacing.standard) {
                 ZStack(alignment: .bottomTrailing) {
                     if let thumbUrl = video.thumbnailUrl, let url = URL(string: thumbUrl) {
@@ -538,7 +538,7 @@ struct VideoCard: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, Theme.Spacing.tight)
                             .padding(.vertical, Theme.Spacing.xSmall)
-                            .background(Color.black.opacity(0.65))
+                            .background(Theme.inkPrimary.opacity(0.65))
                             .cornerRadius(Theme.CornerRadius.small)
                             .padding(Theme.Spacing.small)
                     }
@@ -607,7 +607,7 @@ struct EditorialRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.none) {
             // ── Always-visible header (tap to expand) ───────────────────
-            Button(action: {
+            Button(action: { HapticManager.selection();  HapticManager.selection()
                 HapticManager.selection()
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
                     expanded.toggle()
@@ -651,7 +651,7 @@ struct EditorialRow: View {
             // ── Expandable content ───────────────────────────────────────
             if expanded {
                 VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                    SectionDivider()
+                    SectionGuillocheDivider()
                         .padding(.top, Theme.Spacing.medium)
 
                     if let summary = article.summary, !summary.isEmpty {
@@ -676,7 +676,7 @@ struct EditorialRow: View {
                         .cornerRadius(Theme.CornerRadius.medium)
                     }
 
-                    Button(action: {
+                    Button(action: { HapticManager.selection();  HapticManager.selection()
                         HapticManager.impact(.medium)
                         showSafari = true
                     }) {
@@ -744,7 +744,7 @@ struct NewsListRow: View {
     }
 
     var body: some View {
-        Button(action: {
+        Button(action: { HapticManager.selection();  HapticManager.selection()
             HapticManager.selection()
             showDetail = true
         }) {
@@ -895,7 +895,7 @@ struct AllNewsSheet: View {
                         .foregroundStyle(Theme.inkPrimary)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: { dismiss() }) {
+                    Button(action: { HapticManager.selection(); dismiss() }) {.buttonStyle(EKPressStyle())
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(Theme.inkTertiary)
                     }

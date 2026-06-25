@@ -90,18 +90,18 @@ struct CorrelationMatrixScreen: View {
                     // 1. Hero Ring Gauge
                     DiversificationHero(score: data.diversificationScore)
                     
-                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
                     
                     // 2. Heatmap
                     CorrelationHeatmap(matrix: data.correlationMatrix)
                     
-                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
                     
                     // 3. Sector Concentration
                     SectorConcentrationView(concentration: data.sectorConcentration)
                     
                     if !data.suggestions.isEmpty {
-                        GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                        GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
                         // 4. Suggestions
                         SuggestionsView(suggestions: data.suggestions)
                     }

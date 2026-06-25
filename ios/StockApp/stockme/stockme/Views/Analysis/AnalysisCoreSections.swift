@@ -94,7 +94,7 @@ struct AnalysisCoreSections: View {
                     Spacer()
                 }
             }
-            GuillocheDivider()
+            GuillocheGuillocheDivider()
             if let prices = viewModel.quickInfo?.priceHistory90d, !prices.isEmpty {
                 PriceHistoryChart(
                     prices: prices,
@@ -146,6 +146,7 @@ struct AnalysisCoreSections: View {
                     .explainableTerm("Mathematically Calibrated Confidence")
                 if analysis.confidenceMathBreakdown != nil {
                     QuantInspectorInfoButton {
+    HapticManager.selection()
                         showQuantInspector = true
                     }
                 }
@@ -178,6 +179,7 @@ struct AnalysisCoreSections: View {
                 .foregroundStyle(Theme.inkTertiary)
                 
             Button {
+    HapticManager.selection()
                 HapticManager.selection()
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     showFullSummary.toggle()
@@ -399,7 +401,7 @@ struct AnalysisCoreSections: View {
 
     private var disclaimerSectionView: some View {
         VStack(spacing: Theme.Spacing.standard) {
-            GuillocheDivider()
+            GuillocheGuillocheDivider()
             Text(stripEmoji(analysis.disclaimer))
                 .font(Theme.microLabel(size: 9)).foregroundStyle(Theme.inkTertiary)
                 .lineSpacing(4).frame(maxWidth: .infinity, alignment: .leading)
@@ -608,6 +610,7 @@ private struct QuantInspectorInfoButton: View {
 
     var body: some View {
         Button {
+    HapticManager.selection()
             HapticManager.selection()
             action()
         } label: {

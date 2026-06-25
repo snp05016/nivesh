@@ -112,10 +112,10 @@ enum Theme {
 
     private static var isDark: Bool { UITraitCollection.current.userInterfaceStyle == .dark }
 
-    static var borderFine: Color  { isDark ? Color.white.opacity(0.04) : Color.black.opacity(0.08) }
-    static var borderSage: Color  { isDark ? Color.white.opacity(0.08) : Color.black.opacity(0.12) }
-    static let paperBorder: Color = Color.white.opacity(0.06)  // RBI watermark border — dark-only by design
-    static let paperTexture: Color = Color.white.opacity(0.025)
+    static var borderFine: Color  { isDark ? Theme.canvas.opacity(0.04) : Theme.inkPrimary.opacity(0.08) }
+    static var borderSage: Color  { isDark ? Theme.canvas.opacity(0.08) : Theme.inkPrimary.opacity(0.12) }
+    static let paperBorder: Color = Theme.canvas.opacity(0.06)  // RBI watermark border — dark-only by design
+    static let paperTexture: Color = Theme.canvas.opacity(0.025)
 
     // MARK: - Surface Hierarchy (scheme-aware)
 
@@ -126,7 +126,7 @@ enum Theme {
 
     // MARK: - Enhanced Borders
 
-    static let borderSubtle = Color.white.opacity(0.06)
+    static let borderSubtle = Theme.canvas.opacity(0.06)
     static var borderStrong: Color { securityGold.opacity(0.25) }   // accent-tinted important borders
 
     // MARK: - Data Colors
@@ -358,7 +358,7 @@ struct GuillocheDivider: View {
 struct SectionDivider: View {
     var body: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.06))
+            .fill(Theme.canvas.opacity(0.06))
             .frame(height: 0.5)
             .padding(.horizontal, Theme.screenPadding)
     }
@@ -421,7 +421,7 @@ extension View {
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                    .stroke(Theme.canvas.opacity(0.08), lineWidth: 0.5)
             )
     }
 
@@ -432,7 +432,7 @@ extension View {
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                    .stroke(Theme.canvas.opacity(0.08), lineWidth: 0.5)
             )
     }
 
@@ -443,7 +443,7 @@ extension View {
             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                    .stroke(Theme.canvas.opacity(0.08), lineWidth: 0.5)
             )
     }
 }

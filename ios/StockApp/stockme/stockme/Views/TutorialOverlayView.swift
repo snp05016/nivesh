@@ -19,7 +19,7 @@ struct TutorialOverlayView: View {
                 if let rect = step.spotlightRect {
                     ZStack {
                         Rectangle()
-                            .fill(Color.black.opacity(0.82))
+                            .fill(Theme.inkPrimary.opacity(0.82))
                             .ignoresSafeArea()
                         RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                             .frame(width: rect.width + Theme.Spacing.standard, height: rect.height + Theme.Spacing.standard)
@@ -30,7 +30,7 @@ struct TutorialOverlayView: View {
                     .ignoresSafeArea()
                     .animation(.spring(response: 0.5, dampingFraction: 0.8), value: tutorialManager.currentStep)
                 } else {
-                    Color.black.opacity(0.88)
+                    Theme.inkPrimary.opacity(0.88)
                         .ignoresSafeArea()
                 }
 
@@ -146,7 +146,7 @@ struct TutorialOverlayView: View {
                     .font(Theme.serialNumberFont(size: 10))
                     .foregroundStyle(Theme.inkTertiary)
                 Spacer()
-                Button("Skip") { tutorialManager.skip() }
+                Button("Skip") { tutorialManager.skip() }.buttonStyle(EKPressStyle())
                     .font(Theme.officialStampFont(size: 9))
                     .foregroundStyle(Theme.inkTertiary)
             }
@@ -176,7 +176,7 @@ struct TutorialOverlayView: View {
 
             HStack(spacing: Theme.Spacing.standard) {
                 if tutorialManager.currentStep > 1 {
-                    Button(action: { tutorialManager.previous() }) {
+                    Button(action: { HapticManager.selection(); tutorialManager.previous() }) {.buttonStyle(EKPressStyle())
                         Text("← Back")
                             .font(Theme.officialStampFont(size: 10))
                             .foregroundStyle(Theme.securityGold)
@@ -188,7 +188,7 @@ struct TutorialOverlayView: View {
                     .buttonStyle(EKPressStyle())
                 }
                 Spacer()
-                Button(action: {
+                Button(action: { HapticManager.selection();  HapticManager.selection()
                     HapticManager.impact(.light)
                     tutorialManager.currentStep == tutorialManager.totalSteps
                         ? tutorialManager.complete()
@@ -219,6 +219,6 @@ struct TutorialOverlayView: View {
                     .padding(Theme.Spacing.small)
             }
         )
-        .shadow(color: Color.black.opacity(0.5), radius: 24, x: 0, y: 8)
+        .shadow(color: Theme.inkPrimary.opacity(0.5), radius: 24, x: 0, y: 8)
     }
 }

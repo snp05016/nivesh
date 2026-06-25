@@ -60,17 +60,17 @@ struct AIHowItWorksView: View {
                         }
                     }
 
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     durationSection
 
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     mathematicsSection
 
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     whatItAnalysesSection
@@ -104,6 +104,7 @@ struct AIHowItWorksView: View {
         let isExpanded = expandedStep == idx
 
         return Button {
+    HapticManager.selection()
             HapticManager.selection()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 expandedStep = isExpanded ? nil : idx

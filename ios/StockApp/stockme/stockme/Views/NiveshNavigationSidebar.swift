@@ -83,7 +83,7 @@ struct NiveshNavigationSidebar: View {
         let drawerWidth = UIScreen.main.bounds.width * 0.78
         ZStack(alignment: .leading) {
             // Scrim — transparent when closed, blocks touches only when open
-            Color.black
+            Theme.inkPrimary
                 .opacity(isOpen ? 0.52 : 0)
                 .ignoresSafeArea()
                 .onTapGesture { close() }
@@ -175,6 +175,7 @@ private struct DrawerContent: View {
             }
             Spacer()
             Button {
+    HapticManager.selection()
                 withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) { isOpen = false }
             } label: {
                 Image(systemName: "xmark")
@@ -201,7 +202,7 @@ private struct BookmarkRow: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: {
+        Button(action: { HapticManager.selection();  HapticManager.selection()
             HapticManager.selection()
             onTap()
         }) {
@@ -238,7 +239,7 @@ private struct BookmarkRow: View {
             }
             .padding(.horizontal, Theme.Spacing.screen)
             .padding(.vertical, Theme.Spacing.card)
-            .background(Color.white.opacity(0.001)) // Ensure the entire row is tappable
+            .background(Theme.canvas.opacity(0.001)) // Ensure the entire row is tappable
         }
         .buttonStyle(.plain)
     }

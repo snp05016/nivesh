@@ -269,6 +269,7 @@ struct AnalysisScreen: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
+    HapticManager.selection()
                         dismiss()
                     } label: {
                         Image(systemName: "chevron.left")
@@ -303,6 +304,7 @@ struct AnalysisScreen: View {
                         ChangeBadge(value: info.changePercent ?? 0)
                     }
                     Button {
+    HapticManager.selection()
                         shareAsImage()
                     } label: {
                         Image(systemName: "square.and.arrow.up")
@@ -660,7 +662,7 @@ private struct KeyFactorCard: View {
                         .foregroundStyle(Theme.inkPrimary)
                 }
             }
-            GuillocheDivider()
+            GuillocheGuillocheDivider()
             Text(text)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Theme.inkSecondary)
@@ -698,6 +700,7 @@ struct NewsItemCard: View {
 
     var body: some View {
         Button {
+    HapticManager.selection()
             HapticManager.impact(.light)
             onTap()
         } label: {
@@ -744,7 +747,7 @@ struct NewsSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-            GuillocheDivider()
+            GuillocheGuillocheDivider()
             HStack {
                 Text("RECENT NEWS")
                     .font(Theme.officialStampFont(size: 9))
@@ -1020,7 +1023,7 @@ private struct GlossarySheet: View {
                     Text(term)
                         .font(Theme.engravedSerif(size: 22, weight: .bold))
                         .foregroundStyle(Theme.inkPrimary)
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                     Text(glossaryDefinitions[term] ?? "No definition available for this term.")
                         .font(.body.weight(.medium))
                         .foregroundStyle(Theme.inkSecondary)
@@ -1033,7 +1036,7 @@ private struct GlossarySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }.foregroundStyle(Theme.securityGold)
+                    Button("Done") { dismiss() }.foregroundStyle(Theme.securityGold).buttonStyle(EKPressStyle())
                 }
             }
         }
@@ -1047,7 +1050,7 @@ struct AnalysisLimitationsCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-            Button(action: {
+            Button(action: { HapticManager.selection();  HapticManager.selection()
                 withAnimation(.easeInOut(duration: 0.25)) { expanded.toggle() }
             }) {
                 HStack {
@@ -1123,7 +1126,7 @@ struct NewsReaderView: View {
                         .font(Theme.serialNumberFont(size: 11))
                         .foregroundStyle(Theme.inkTertiary)
 
-                        GuillocheDivider()
+                        GuillocheGuillocheDivider()
 
                         if let summary = item.summary, !summary.isEmpty {
                             Text(summary)
@@ -1175,7 +1178,7 @@ struct NewsReaderView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { dismiss() } label: {
+                    Button { dismiss() } label: {.buttonStyle(EKPressStyle())
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(Theme.inkTertiary)
                             .font(Theme.engravedSerif(size: 24))
@@ -1216,7 +1219,7 @@ struct CollapsibleSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-            Button(action: {
+            Button(action: { HapticManager.selection();  HapticManager.selection()
                 withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
             }) {
                 HStack(spacing: Theme.Spacing.tight) {

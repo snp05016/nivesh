@@ -1609,7 +1609,7 @@ def portfolio_endpoint(user_id: int):
         return {
             "user": user.display_name,
             "user_id": user_id,
-            "as_of": datetime.utcnow().strftime("%d-%b-%Y %H:%M UTC"),
+            "as_of": datetime.now(timezone.utc).strftime("%d-%b-%Y %H:%M UTC"),
             "total_invested_inr": round(total_invested, 2),
             "total_current_inr": round(total_current, 2),
             "total_pnl_inr": round(total_pnl, 2),
@@ -1693,7 +1693,7 @@ def morning_summary_endpoint(user_id: int):
     if cached and (now - cached["ts"]) < _MORNING_CACHE_TTL:
         return cached["data"]
 
-    generated_at = datetime.utcnow().strftime("%H:%M")
+    generated_at = datetime.now(timezone.utc).strftime("%H:%M")
 
     fallback = {
         "summary": "• Market data loaded. AI brief unavailable at this time.",
@@ -1861,7 +1861,7 @@ mood must be exactly: "positive", "cautious", or "negative"
         # Priority 2: Signal changes in last 24h for held stocks
         try:
             from datetime import timedelta
-            cutoff = datetime.utcnow() - timedelta(hours=24)
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
             with get_session() as session:
                 held_tickers = {h.ticker for h in session.query(Portfolio).filter(
                     Portfolio.user_id == user_id,
@@ -1977,7 +1977,7 @@ def _get_indices_data() -> dict:
 
     payload = {
         "indices": result,
-        "fetched_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
+        "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
     }
     _indices_cache["data"] = payload
     _indices_cache["ts"] = now
@@ -3147,7 +3147,7 @@ def portfolio_red_flags_endpoint(user_id: int):
                         pass
                 fii_histories[ticker] = fiis
 
-            cutoff = datetime.utcnow() - timedelta(days=30)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=30)
             bearish_flips = session.query(SignalEvent).filter(
                 SignalEvent.created_at >= cutoff,
                 SignalEvent.ticker.in_(held_tickers),
@@ -3282,7 +3282,7 @@ def macro_impact_endpoint(user_id: int):
             holdings_data = [(h.ticker, h.company_name) for h in holdings]
 
         if not holdings_data:
-            return {"user_id": user_id, "macro_readings": {}, "impacts": [], "generated_at": datetime.utcnow().isoformat()}
+            return {"user_id": user_id, "macro_readings": {}, "impacts": [], "generated_at": datetime.now(timezone.utc).isoformat()}
 
         macro: dict = {}
         for sym, key in [("BZ=F", "brent_oil_usd"), ("^INDIAVIX", "india_vix"), ("USDINR=X", "usd_inr")]:
@@ -3344,7 +3344,7 @@ def macro_impact_endpoint(user_id: int):
             "user_id": user_id,
             "macro_readings": macro,
             "impacts": impacts,
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
         }
         _macro_impact_cache[user_id] = (now + _MACRO_IMPACT_TTL, result)
         return result
@@ -3537,7 +3537,7 @@ def trade_journal_update_endpoint(entry_id: int, req: TradeJournalUpdateRequest,
             except Exception:
                 pass
             try:
-                entry.updated_at = datetime.utcnow()
+                entry.updated_at = datetime.now(timezone.utc)
             except Exception:
                 pass
             session.commit()
@@ -3709,7 +3709,7 @@ def screener_endpoint(preset: str):
         if preset == "quality_value":
             try:
                 from datetime import timedelta
-                cutoff_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d")
+                cutoff_date = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d")
                 with get_session() as session:
                     rows = session.query(AnalysisHistory).filter(
                         AnalysisHistory.analysis_date >= cutoff_date,
@@ -3749,7 +3749,7 @@ def screener_endpoint(preset: str):
         elif preset == "promoter_conviction":
             try:
                 from datetime import timedelta
-                cutoff_60 = (datetime.utcnow() - timedelta(days=60)).strftime("%Y-%m-%d")
+                cutoff_60 = (datetime.now(timezone.utc) - timedelta(days=60)).strftime("%Y-%m-%d")
                 with get_session() as session:
                     # Get latest analysis per ticker
                     from sqlalchemy import func
@@ -3949,7 +3949,7 @@ def export_portfolio_pdf(user_id: int):
             # Step 3: Red flags (inline — no HTTP call)
             red_flag_list = []
             from datetime import timedelta
-            cutoff30 = datetime.utcnow() - timedelta(days=30)
+            cutoff30 = datetime.now(timezone.utc) - timedelta(days=30)
             bearish_flips_pdf = session.query(SignalEvent).filter(
                 SignalEvent.created_at >= cutoff30,
                 SignalEvent.ticker.in_([t for t, _, _, _ in holdings_snap]),
@@ -4305,7 +4305,7 @@ def notifications_register_device(req: DeviceTokenRegisterRequest):
         with get_session() as session:
             existing = session.query(DeviceToken).filter_by(device_token=req.device_token).first()
             if existing:
-                existing.updated_at = datetime.utcnow()
+                existing.updated_at = datetime.now(timezone.utc)
                 existing.user_id = req.user_id
             else:
                 session.add(DeviceToken(
@@ -4412,7 +4412,7 @@ def notifications_morning_summary_push(req: MorningSummaryPushRequest):
 @app.get("/health")
 def health_endpoint():
     import os
-    result = {"status": "ok", "version": "1.0", "timestamp": datetime.utcnow().isoformat()}
+    result = {"status": "ok", "version": "1.0", "timestamp": datetime.now(timezone.utc).isoformat()}
 
     # Check yfinance
     try:
@@ -4955,7 +4955,7 @@ def sector_performance_endpoint():
 
     result = {
         "sectors": sorted(sectors, key=lambda x: abs(x["change_pct"]), reverse=True),
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
     }
     _sector_cache = {"data": result, "ts": now}
     return result

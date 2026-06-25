@@ -50,7 +50,7 @@ struct BrainstormingView: View {
                         .colorMultiply(Theme.securityGold) // Security gold accent
                     }
                     
-                    Button(action: {
+                    Button(action: { HapticManager.selection();  HapticManager.selection()
                         HapticManager.selection()
                         Task {
                             await submitBrainstorm()
@@ -80,7 +80,7 @@ struct BrainstormingView: View {
                 .padding(.horizontal, Theme.screenPadding)
                 
                 if !results.isEmpty || isLoading {
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
                 }
                 

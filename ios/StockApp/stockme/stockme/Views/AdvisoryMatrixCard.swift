@@ -41,7 +41,7 @@ struct AdvisoryMatrixCard: View {
             .padding(.top, Theme.Spacing.standard)
             .padding(.trailing, 16)
 
-            SectionDivider()
+            SectionGuillocheDivider()
                 .padding(.horizontal, 4)
 
             if insights.isEmpty {
@@ -185,6 +185,7 @@ private struct AdvisorInsightRowView: View {
 
     private var watchButton: some View {
         Button {
+    HapticManager.selection()
             if let url = URL(string: insight.videoUrl) {
                 UIApplication.shared.open(url)
             }

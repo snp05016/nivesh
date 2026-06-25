@@ -120,7 +120,7 @@ struct TradeJournalScreen: View {
                         .font(.caption2).tracking(1).foregroundStyle(Theme.inkSecondary)
                     HStack(spacing: Theme.Spacing.medium) {
                         ForEach(actions, id: \.self) { action in
-                            Button(action: { newAction = action }) {
+                            Button(action: { HapticManager.selection(); newAction = action }) {.buttonStyle(EKPressStyle())
                                 Text(action)
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(newAction == action ? .white : Theme.inkSecondary)
@@ -169,7 +169,7 @@ struct TradeJournalScreen: View {
                         .font(.caption2).tracking(1).foregroundStyle(Theme.inkSecondary)
                     HStack(spacing: Theme.Spacing.medium) {
                         ForEach(moods, id: \.self) { mood in
-                            Button(action: { newMood = newMood == mood.lowercased() ? nil : mood.lowercased() }) {
+                            Button(action: { HapticManager.selection(); newMood = newMood == mood.lowercased() ? nil : mood.lowercased() }) {.buttonStyle(EKPressStyle())
                                 Text(mood)
                                     .font(.caption)
                                     .foregroundStyle(newMood == mood.lowercased() ? .white : Theme.inkSecondary)
@@ -183,7 +183,7 @@ struct TradeJournalScreen: View {
                 }
 
                 // Submit
-                Button(action: { Task { await submitEntry() } }) {
+                Button(action: { HapticManager.selection(); Task { await submitEntry() } }) {.buttonStyle(EKPressStyle())
                     HStack {
                         if isSubmitting {
                             ProgressView().tint(.black).scaleEffect(0.7)

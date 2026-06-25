@@ -206,7 +206,7 @@ struct NLScreenerScreen: View {
                         VStack(spacing: Theme.Spacing.card) {
                             if !viewModel.parsedFilters.isEmpty {
                                 filtersSection
-                                GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                                GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
                             }
                             
                             if !filteredResults.isEmpty {
@@ -242,7 +242,7 @@ struct NLScreenerScreen: View {
                 }
             
             if !viewModel.query.isEmpty {
-                Button(action: {
+                Button(action: { HapticManager.selection();  HapticManager.selection()
                     viewModel.query = ""
                     HapticManager.selection()
                 }) {
@@ -252,7 +252,7 @@ struct NLScreenerScreen: View {
                 .buttonStyle(EKPressStyle())
             }
             
-            Button(action: {
+            Button(action: { HapticManager.selection();  HapticManager.selection()
                 HapticManager.selection()
             }) {
                 Image(systemName: "mic.fill")
@@ -331,7 +331,7 @@ struct NLScreenerScreen: View {
                     .padding(.top, Theme.Spacing.large)
                 
                 ForEach(viewModel.history, id: \.self) { h in
-                    Button(action: {
+                    Button(action: { HapticManager.selection();  HapticManager.selection()
                         HapticManager.selection()
                         viewModel.performSearch(searchQuery: h)
                     }) {

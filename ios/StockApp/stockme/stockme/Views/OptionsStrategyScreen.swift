@@ -81,7 +81,7 @@ struct OptionsStrategyScreen: View {
                     .lineLimit(1)
             }
             Spacer()
-            Button(action: { HapticManager.selection(); showHelp = true }) {
+            Button(action: { HapticManager.selection();  HapticManager.selection(); showHelp = true }) {.buttonStyle(EKPressStyle())
                 Image(systemName: "questionmark.circle.fill")
                     .font(.title3)
                     .foregroundStyle(Theme.securityGold)
@@ -162,7 +162,7 @@ struct OptionsStrategyScreen: View {
 
                     Spacer()
 
-                    Button(action: {
+                    Button(action: { HapticManager.selection();  HapticManager.selection()
                         HapticManager.selection()
                         withAnimation { legs.remove(at: idx); computeLocal() }
                     }) {
@@ -210,7 +210,7 @@ struct OptionsStrategyScreen: View {
     private func typePicker(idx: Int) -> some View {
         HStack(spacing: 1) {
             ForEach(["CALL", "PUT"], id: \.self) { t in
-                Button(action: {
+                Button(action: { HapticManager.selection();  HapticManager.selection()
                     HapticManager.selection()
                     legs[idx].type = t; computeLocal()
                 }) {
@@ -233,7 +233,7 @@ struct OptionsStrategyScreen: View {
         HStack(spacing: 1) {
             ForEach(["BUY", "SELL"], id: \.self) { p in
                 let mapped = p == "BUY" ? "LONG" : "SHORT"
-                Button(action: {
+                Button(action: { HapticManager.selection();  HapticManager.selection()
                     HapticManager.selection()
                     legs[idx].position = mapped; computeLocal()
                 }) {
@@ -255,7 +255,7 @@ struct OptionsStrategyScreen: View {
     }
 
     private var addLegButton: some View {
-        Button(action: {
+        Button(action: { HapticManager.selection();  HapticManager.selection()
             HapticManager.soft()
             withAnimation { legs.append(OptionLegVM()); computeLocal() }
         }) {
@@ -315,7 +315,7 @@ struct OptionsStrategyScreen: View {
                     .foregroundStyle(r.netPremium >= 0 ? Theme.bullGreen : Theme.bearRed)
             }
 
-            GuillocheDivider()
+            GuillocheGuillocheDivider()
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Theme.Spacing.standard) {
                 metricBox("MAX PROFIT", r.maxProfitFormatted, Theme.bullGreen, unlimited: r.maxProfitUnlimited)
@@ -344,7 +344,7 @@ struct OptionsStrategyScreen: View {
                     .foregroundStyle(premium >= 0 ? Theme.bullGreen : Theme.bearRed)
             }
 
-            GuillocheDivider()
+            GuillocheGuillocheDivider()
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Theme.Spacing.standard) {
                 metricBox("MAX PROFIT", IndianFormatter.price(m.0), Theme.bullGreen)
@@ -353,7 +353,7 @@ struct OptionsStrategyScreen: View {
                 metricBox("SPOT PRICE", IndianFormatter.price(parsedSpot), Theme.securityGold)
             }
 
-            Button(action: { fetchFromAPI() }) {
+            Button(action: { HapticManager.selection(); fetchFromAPI() }) {.buttonStyle(EKPressStyle())
                 HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .font(.caption)
@@ -526,7 +526,7 @@ struct OptionsStrategyScreen: View {
                         helpRow("5", "The payoff chart updates instantly showing P&L")
                     }
 
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
 
                     Group {
                         Text("STRATEGY EXAMPLES")
@@ -540,7 +540,7 @@ struct OptionsStrategyScreen: View {
                         exampleRow("SHORT STRANGLE", "Sell OTM Put + Sell OTM Call")
                     }
 
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
 
                     Group {
                         Text("READING THE CHART")
@@ -554,7 +554,7 @@ struct OptionsStrategyScreen: View {
                         chartLegendRow("Y axis", "Profit / Loss (₹)", Theme.inkPrimary)
                     }
 
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
 
                     Group {
                         Text("PAYOFF FORMULAS")
@@ -578,7 +578,7 @@ struct OptionsStrategyScreen: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("DONE") { HapticManager.selection(); showHelp = false }
+                    Button("DONE") { HapticManager.selection(); showHelp = false }.buttonStyle(EKPressStyle())
                         .buttonStyle(EKPressStyle())
                 }
             }

@@ -193,18 +193,18 @@ struct PortfolioScreen: View {
                         }
                         Spacer()
                         HStack(spacing: Theme.Spacing.standard) {
-                            Button { showExportOptions = true } label: {
+                            Button { showExportOptions = true } label: {.buttonStyle(EKPressStyle())
                                 Image(systemName: "square.and.arrow.up")
                                     .foregroundStyle(Theme.inkSecondary)
                                     .padding(Theme.Spacing.medium)
                             }
-                            Button { HapticManager.selection(); showBriefSheet = true } label: {
+                            Button { HapticManager.selection(); showBriefSheet = true } label: {.buttonStyle(EKPressStyle())
                                 Image(systemName: "message")
                                     .foregroundStyle(Theme.inkSecondary)
                                     .padding(Theme.Spacing.medium)
                             }
                             .buttonStyle(EKPressStyle())
-                            Button { HapticManager.selection(); showTransactionSheet = true } label: {
+                            Button { HapticManager.selection(); showTransactionSheet = true } label: {.buttonStyle(EKPressStyle())
                                 ZStack {
                                     Circle().stroke(Theme.borderSage, lineWidth: 0.5).frame(width: 44, height: 44)
                                     Text("₹").font(Theme.engravedSerif(size: 18, weight: .bold, relativeTo: .headline)).foregroundStyle(Theme.inkPrimary)
@@ -303,7 +303,7 @@ struct PortfolioScreen: View {
                                             }
                                         }
                                         if idx != viewModel.holdings.count - 1 {
-                                            GuillocheDivider()
+                                            GuillocheGuillocheDivider()
                                                 .padding(.horizontal, Theme.Spacing.card)
                                         }
                                     }
@@ -315,6 +315,7 @@ struct PortfolioScreen: View {
                                     HStack(spacing: Theme.Spacing.medium) {
                                         ForEach(tagsManager.allUniqueTags, id: \.self) { tag in
                                             Button {
+    HapticManager.selection()
                                                 HapticManager.selection()
                                                 activeWatchlistTag = activeWatchlistTag == tag ? nil : tag
                                             } label: {
@@ -336,6 +337,7 @@ struct PortfolioScreen: View {
                                             activeWatchlistTag == nil || (tagsManager.tags[item.ticker]?.contains(activeWatchlistTag!) ?? false)
                                         }) { item in
                                             Button {
+    HapticManager.selection()
                                                 HapticManager.selection()
                                                 stockTapTicker = item.ticker
                                                 stockTapCompanyName = item.companyName
@@ -592,6 +594,7 @@ struct PortfolioScreen: View {
 
     private var addPortfolioButton: some View {
         Button {
+    HapticManager.selection()
             HapticManager.impact(.medium)
             if selectedTab == 0 {
                 showAddHoldingSheet = true
@@ -621,6 +624,7 @@ struct PortfolioScreen: View {
     // edge inset, anchored to the opposite (left) edge on the same vertical plane.
     private var addWatchlistButton: some View {
         Button {
+    HapticManager.selection()
             HapticManager.impact(.medium)
             addSheetSearchText = ""
             showAddWatchlistSheet = true
@@ -655,6 +659,7 @@ struct PortfolioScreen: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, Theme.Spacing.xLarge)
                 Button {
+    HapticManager.selection()
                     addSheetSearchText = ""
                     showAddWatchlistSheet = true
                 } label: {
@@ -679,6 +684,7 @@ struct PortfolioScreen: View {
                         HStack(spacing: Theme.Spacing.medium) {
                             ForEach(allTags, id: \.self) { tag in
                                 Button {
+    HapticManager.selection()
                                     HapticManager.selection()
                                     activeWatchlistTag = activeWatchlistTag == tag ? nil : tag
                                 } label: {
@@ -712,6 +718,7 @@ struct PortfolioScreen: View {
 
                 ForEach(filteredWatchlist) { item in
                     Button {
+    HapticManager.selection()
                         HapticManager.selection()
                         stockTapTicker = item.ticker
                         stockTapCompanyName = item.companyName
@@ -775,7 +782,7 @@ private struct TaggingSheet: View {
                             HStack {
                                 Text(tag).font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline)).foregroundStyle(Theme.inkPrimary)
                                 Spacer()
-                                Button(action: { tagsManager.removeTag(tag, from: ticker) }) {
+                                Button(action: { HapticManager.selection(); tagsManager.removeTag(tag, from: ticker) }) {.buttonStyle(EKPressStyle())
                                     Image(systemName: "minus.circle.fill").foregroundStyle(Theme.bearRed)
                                 }
                             }
@@ -791,7 +798,7 @@ private struct TaggingSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    Button("Done") { dismiss() }.buttonStyle(EKPressStyle())
                 }
             }
         }
@@ -897,7 +904,7 @@ private struct RedFlagsSection: View {
         if let rf = redFlags, rf.totalFlags > 0 {
             VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                 // Header
-                Button(action: { withAnimation(.easeInOut(duration: 0.25)) { isExpanded.toggle() } }) {
+                Button(action: { HapticManager.selection(); withAnimation(.easeInOut(duration: 0.25)) { isExpanded.toggle() } }) {.buttonStyle(EKPressStyle())
                     HStack {
                         Text("⚠")
                             .font(.caption)
@@ -922,6 +929,7 @@ private struct RedFlagsSection: View {
                 if isExpanded {
                     ForEach(rf.flags) { flag in
                         Button {
+    HapticManager.selection()
                             HapticManager.selection()
                             onTickerTap(flag.ticker)
                         } label: {
@@ -974,7 +982,7 @@ private struct TabNoteButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: {
+        Button(action: { HapticManager.selection();  HapticManager.selection()
             HapticManager.selection()
             action()
         }) {
@@ -1196,7 +1204,7 @@ private struct PortfolioHeroNote: View {
                 }
                 .padding(.bottom, 8)
 
-                SectionDivider()
+                SectionGuillocheDivider()
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text("निवेश पोर्टफोलियो")
@@ -1227,7 +1235,7 @@ private struct PortfolioHeroNote: View {
                 }
                 .padding(.top, 4)
 
-                SectionDivider()
+                SectionGuillocheDivider()
 
                 HStack {
                     StatNoteBlock(label: "DAILY", value: todayPnL.inrFormatted, color: todayPnL >= 0 ? Theme.bullGreen : Theme.bearRed)
@@ -1404,6 +1412,7 @@ private struct AddHoldingSheet: View {
                                         .lineLimit(1)
                                     Spacer()
                                     Button {
+    HapticManager.selection()
                                         selectedEntry = nil
                                         searchText = ""
                                     } label: {
@@ -1429,6 +1438,7 @@ private struct AddHoldingSheet: View {
                         if selectedEntry == nil && !searchResults.isEmpty {
                             List(searchResults) { entry in
                                 Button {
+    HapticManager.selection()
                                     selectedEntry = entry
                                     searchText = entry.ticker
                                 } label: {
@@ -1527,6 +1537,7 @@ private struct AddHoldingSheet: View {
                         }
                         
                         Button {
+    HapticManager.selection()
                             guard let entry = selectedEntry, let user = authManager.currentUser else { return }
                             // Fix 3.7+3.8: Validate quantity > 0 and buyPrice > 0
                             guard shares > 0 else {
@@ -1596,7 +1607,7 @@ private struct AddHoldingSheet: View {
                     .foregroundStyle(Theme.securityGold)
                 }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
                         .font(Theme.serialNumberFont(size: 13))
                         .foregroundStyle(Theme.inkSecondary)
                 }
@@ -1684,6 +1695,7 @@ private struct EditHoldingSheet: View {
                             }
                             
                             Button {
+    HapticManager.selection()
                                 guard let user = authManager.currentUser else { return }
                                 isSaving = true
                                 errorText = nil
@@ -1734,7 +1746,7 @@ private struct EditHoldingSheet: View {
                         .foregroundStyle(Theme.securityGold)
                     }
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { dismiss() }
+                        Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
                             .font(Theme.serialNumberFont(size: 13))
                             .foregroundStyle(Theme.inkSecondary)
                     }
@@ -1792,7 +1804,7 @@ private struct NoteEditorSheet: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { dismiss() }
+                            Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
                         }
                         ToolbarItem(placement: .confirmationAction) {
                             Button("Save") {
@@ -1843,6 +1855,7 @@ private struct NoteEditorSheet: View {
                             
                             List(results) { entry in
                                 Button {
+    HapticManager.selection()
                                     onAdd(entry)
                                 } label: {
                                     HStack(spacing: Theme.Spacing.small) {
@@ -1877,7 +1890,7 @@ private struct NoteEditorSheet: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { dismiss() }
+                            Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
                                 .font(Theme.serialNumberFont(size: 13))
                                 .foregroundStyle(Theme.inkSecondary)
                         }
@@ -2089,7 +2102,7 @@ private struct NoteEditorSheet: View {
                                 .foregroundStyle(Theme.bearRed.opacity(0.7))
                                 .lineLimit(3)
                                 .fixedSize(horizontal: false, vertical: true)
-                            Button(action: { fetchCharts() }) {
+                            Button(action: { HapticManager.selection(); fetchCharts() }) {.buttonStyle(EKPressStyle())
                                 HStack(spacing: Theme.Spacing.small) {
                                     Image(systemName: "arrow.clockwise")
                                         .font(.caption2)
@@ -2137,7 +2150,7 @@ private struct NoteEditorSheet: View {
             private func chartCard(_ chart: ChartItem) -> some View {
                 let cardWidth = UIScreen.main.bounds.width * 0.85
                 let imageHeight = UIScreen.main.bounds.height * 0.22
-                return Button(action: {
+                return Button(action: { HapticManager.selection();  HapticManager.selection()
                     HapticManager.impact(.light)
                     expandedChart = chart
                 }) {
@@ -2217,7 +2230,7 @@ private struct NoteEditorSheet: View {
                                         .foregroundStyle(Theme.inkSecondary)
                                 }
                                 Spacer()
-                                Button("Done") { expandedChart = nil }
+                                Button("Done") { expandedChart = nil }.buttonStyle(EKPressStyle())
                                     .font(.footnote.weight(.medium))
                                     .foregroundStyle(Theme.securityGold)
                             }
@@ -2297,13 +2310,13 @@ struct PortfolioBriefSheet: View {
                             .foregroundStyle(Theme.inkSecondary)
                     }
                     Spacer()
-                    Button(action: { HapticManager.selection(); dismiss() }) {
+                    Button(action: { HapticManager.selection();  HapticManager.selection(); dismiss() }) {.buttonStyle(EKPressStyle())
                         Image(systemName: "xmark.circle.fill")
                             .font(.title2).foregroundStyle(Theme.inkTertiary)
                     }.buttonStyle(EKPressStyle())
                 }
 
-                SectionDivider()
+                SectionGuillocheDivider()
 
                 // Summary
                 HStack(spacing: Theme.Spacing.standard) {
@@ -2325,7 +2338,7 @@ struct PortfolioBriefSheet: View {
                 }
                 .padding(Theme.Spacing.card).banknoteCard()
 
-                SectionDivider()
+                SectionGuillocheDivider()
 
                 // Top 3 performers
                 Text("TOP PERFORMERS")
@@ -2342,7 +2355,7 @@ struct PortfolioBriefSheet: View {
                     .padding(.vertical, Theme.Spacing.small)
                 }
 
-                SectionDivider()
+                SectionGuillocheDivider()
 
                 // Bottom 3 performers
                 Text("NEEDS ATTENTION")
@@ -2385,7 +2398,7 @@ struct QuickTransactionSheet: View {
                 // BUY / SELL toggle
                 HStack(spacing: Theme.Spacing.none) {
                     ForEach([TransactionType.buy, .sell], id: \.self) { type in
-                        Button(action: { HapticManager.selection(); transactionType = type }) {
+                        Button(action: { HapticManager.selection();  HapticManager.selection(); transactionType = type }) {.buttonStyle(EKPressStyle())
                             Text(type == .buy ? "BUY" : "SELL")
                                 .font(Theme.officialStampFont(size: 11)).tracking(1.5)
                                 .foregroundStyle(transactionType == type ? Theme.canvas : Theme.inkSecondary)
@@ -2431,7 +2444,7 @@ struct QuickTransactionSheet: View {
                 Spacer()
 
                 // Submit button
-                Button(action: { submitTransaction() }) {
+                Button(action: { HapticManager.selection(); submitTransaction() }) {.buttonStyle(EKPressStyle())
                     Text(isSubmitting ? "LOGGING..." : "LOG \(transactionType == .buy ? "BUY" : "SELL")")
                         .font(Theme.officialStampFont(size: 11)).tracking(1.5)
                         .foregroundStyle(Theme.canvas).frame(maxWidth: .infinity)

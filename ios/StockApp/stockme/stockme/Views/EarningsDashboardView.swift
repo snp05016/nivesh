@@ -229,7 +229,7 @@ struct EarningsDashboardView: View {
         ScrollView(.horizontal) {
             HStack(spacing: Theme.Spacing.small) {
                 ForEach(Array(tabs.enumerated()), id: \.offset) { idx, name in
-                    Button(action: { selectedTab = idx }) {
+                    Button(action: { HapticManager.selection(); selectedTab = idx }) {.buttonStyle(EKPressStyle())
                         Text(name)
                             .font(.caption.weight(selectedTab == idx ? .bold : .regular))
                             .foregroundStyle(selectedTab == idx ? Theme.securityGold : Theme.inkTertiary)
@@ -443,7 +443,7 @@ struct EarningsProgressView: View {
                 ScrollView(.horizontal) {
                     HStack(spacing: Theme.Spacing.tight) {
                         ForEach(["all", "nifty50", "large_cap", "mid_cap", "small_cap"], id: \.self) { cap in
-                            Button(action: { vm.selectedMarketCap = cap }) {
+                            Button(action: { HapticManager.selection(); vm.selectedMarketCap = cap }) {.buttonStyle(EKPressStyle())
                                 Text(capLabel(cap))
                                     .font(.caption.weight(vm.selectedMarketCap == cap ? .bold : .regular))
                                     .foregroundStyle(vm.selectedMarketCap == cap ? Theme.securityGold : Theme.inkSecondary)
@@ -713,7 +713,7 @@ struct EarningsCalendarView: View {
             VStack(spacing: Theme.Spacing.card) {
                 // 1.2 Horizontal Calendar Day Scroller
                 calendarScrollRow
-                SectionDivider()
+                SectionGuillocheDivider()
                 // Results for selected date
                 selectedDayResults
             }
@@ -727,7 +727,7 @@ struct EarningsCalendarView: View {
         return ScrollView(.horizontal) {
             HStack(spacing: Theme.Spacing.medium) {
                 ForEach(calendarDays, id: \.self) { date in
-                    Button(action: { vm.selectCalendarDate(date) }) {
+                    Button(action: { HapticManager.selection(); vm.selectCalendarDate(date) }) {.buttonStyle(EKPressStyle())
                         calendarDayCell(date)
                     }
                     .buttonStyle(EKPressStyle())
@@ -858,7 +858,7 @@ struct EarningsCalendarView: View {
             Spacer()
             // 1.4 Embedded Alert Trigger
             VStack(spacing: Theme.Spacing.small) {
-                Button(action: {
+                Button(action: { HapticManager.selection();  HapticManager.selection()
                     Task {
                         do {
                             try await NetworkManager.shared.setEarningsAlert(userId: userId, ticker: r.ticker, date: r.resultDate)
@@ -885,7 +885,7 @@ struct EarningsCalendarView: View {
                     .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.borderSage, lineWidth: 0.5))
                 }
                 
-                Button(action: {
+                Button(action: { HapticManager.selection();  HapticManager.selection()
                     addEventToCalendar(title: "\(r.ticker) Earnings", dateStr: r.resultDate)
                 }) {
                     HStack(spacing: Theme.Spacing.small) {
@@ -951,7 +951,7 @@ struct EarningsFeedView: View {
         VStack(spacing: Theme.Spacing.none) {
             HStack(spacing: Theme.Spacing.none) {
                 ForEach([("latest", "Latest Results"), ("best", "Best Performer"), ("worst", "Worst Performer")], id: \.0) { key, label in
-                    Button(action: { vm.selectedSort = key }) {
+                    Button(action: { HapticManager.selection(); vm.selectedSort = key }) {.buttonStyle(EKPressStyle())
                         Text(label)
                             .font(.caption.weight(vm.selectedSort == key ? .bold : .regular))
                             .foregroundStyle(vm.selectedSort == key ? Theme.securityGold : Theme.inkTertiary)
@@ -1048,7 +1048,7 @@ struct EarningsResultCard: View {
                 .padding(.vertical, 4)
             }
 
-            SectionDivider()
+            SectionGuillocheDivider()
 
             // 2.4 Historical period baseline rows
             HStack(spacing: Theme.Spacing.none) {
@@ -1283,7 +1283,7 @@ struct ScreenerView: View {
 
     private var noResultsForPreset: some View {
         VStack(spacing: Theme.Spacing.standard) {
-            SectionDivider()
+            SectionGuillocheDivider()
                 .padding(.horizontal, 16)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
@@ -1385,7 +1385,7 @@ struct ScreenerView: View {
             return "—"
         }()
 
-        return Button(action: {
+        return Button(action: { HapticManager.selection();  HapticManager.selection()
             HapticManager.selection()
             if isSelected {
                 selectedPreset = nil
@@ -1426,7 +1426,7 @@ struct ScreenerView: View {
                         Spacer()
 
                         // Bookmark toggle
-                        Button(action: {
+                        Button(action: { HapticManager.selection();  HapticManager.selection()
                             vm.toggleScreenerBookmark(preset.id)
                             HapticManager.impact(.light)
                         }) {
@@ -1489,7 +1489,7 @@ struct ScreenerView: View {
 
         return AnyView(
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                SectionDivider()
+                SectionGuillocheDivider()
 
                 HStack {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
@@ -1586,7 +1586,7 @@ struct ScreenerView: View {
         }
         return AnyView(
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                SectionDivider()
+                SectionGuillocheDivider()
 
                 HStack {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
@@ -1739,7 +1739,7 @@ struct VarianceTrackerView: View {
     private var expectationFilterBar: some View {
         HStack(spacing: Theme.Spacing.none) {
             ForEach([("all","All"), ("high","High Expectations"), ("low","Low Expectations")], id: \.0) { key, label in
-                Button(action: { expectationFilter = key }) {
+                Button(action: { HapticManager.selection(); expectationFilter = key }) {.buttonStyle(EKPressStyle())
                     Text(label)
                         .font(.caption.weight(expectationFilter == key ? .bold : .regular))
                         .foregroundStyle(expectationFilter == key ? Theme.securityGold : Theme.inkTertiary)

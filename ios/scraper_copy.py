@@ -196,7 +196,7 @@ def _fetch_pulse_fallback() -> dict:
         "declines": declines,
         "unchanged": unchanged,
         "breadth_ratio": round(advances / declines, 2) if declines else (1.0 if advances else None),
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -210,7 +210,7 @@ def fetch_market_pulse() -> dict:
         _PULSE_SCHEMA,
     )
     if extracted and extracted.get("indices"):
-        extracted.setdefault("fetched_at", datetime.utcnow().isoformat())
+        extracted.setdefault("fetched_at", datetime.now(timezone.utc).isoformat())
         _cache_set("market_pulse", extracted)
         return extracted
 
@@ -286,7 +286,7 @@ def fetch_momentum() -> dict:
     result = {
         "bullish": bullish[:8],
         "bearish": bearish[:8],
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
     }
     _cache_set("momentum", result)
     return result
@@ -339,7 +339,7 @@ def fetch_macro_alternatives() -> dict:
         except Exception:
             pass
 
-    result = {"items": items, "fetched_at": datetime.utcnow().isoformat()}
+    result = {"items": items, "fetched_at": datetime.now(timezone.utc).isoformat()}
     _cache_set("macro_alternatives", result)
     return result
 
@@ -436,6 +436,6 @@ def fetch_institutional_flow() -> dict:
         reverse=True,
     )[:10]
 
-    result = {"funds": funds, "fetched_at": datetime.utcnow().isoformat()}
+    result = {"funds": funds, "fetched_at": datetime.now(timezone.utc).isoformat()}
     _cache_set("institutional_flow", result)
     return result

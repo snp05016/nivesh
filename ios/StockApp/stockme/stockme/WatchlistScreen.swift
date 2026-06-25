@@ -47,6 +47,7 @@ struct WatchlistScreen: View {
                     } else {
                         ForEach(filteredItems) { item in
                             Button {
+    HapticManager.selection()
                                 HapticManager.selection()
                                 stockTapTicker = item.ticker
                                 stockTapCompanyName = item.companyName
@@ -140,6 +141,7 @@ struct WatchlistScreen: View {
             .textInputAutocapitalization(.characters)
             if !searchText.isEmpty {
                 Button {
+    HapticManager.selection()
                     HapticManager.selection()
                     searchText = ""
                 } label: {

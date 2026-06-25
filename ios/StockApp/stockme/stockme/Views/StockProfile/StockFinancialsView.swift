@@ -223,6 +223,7 @@ struct FinancialSegmentedPicker<T: RawRepresentable & CaseIterable & Hashable>: 
             HStack(spacing: Theme.Spacing.small) {
                 ForEach(cases, id: \.rawValue) { option in
                     Button {
+    HapticManager.selection()
                         HapticManager.selection()
                         selection = option
                     } label: {
@@ -269,6 +270,7 @@ struct FinancialPeriodStrip: View {
             HStack(spacing: Theme.Spacing.tight) {
                 ForEach(periods, id: \.self) { period in
                     Button {
+    HapticManager.selection()
                         HapticManager.selection()
                         selected = period
                     } label: {
@@ -697,7 +699,7 @@ struct PiotroskiScoreCardView: View {
 
             // Check grid
             if let checks = data.checks, !checks.isEmpty {
-                GuillocheDivider()
+                GuillocheGuillocheDivider()
 
                 LazyVGrid(
                     columns: [

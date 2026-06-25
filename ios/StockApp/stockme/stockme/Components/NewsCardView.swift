@@ -27,7 +27,7 @@ struct NewsCardView: View {
     }
 
     var body: some View {
-        Button(action: {
+        Button(action: { HapticManager.selection();  HapticManager.selection()
             if let url = URL(string: article.articleUrl) {
                 UIApplication.shared.open(url)
             }
@@ -94,7 +94,7 @@ struct NewsCardView: View {
 
                         // Ticker chip (tappable)
                         if let ticker = article.ticker {
-                            Button(action: { onTickerTap?(ticker) }) {
+                            Button(action: { HapticManager.selection(); onTickerTap?(ticker) }) {.buttonStyle(EKPressStyle())
                                 Text(ticker)
                                     .font(.caption2.weight(.semibold).monospaced())
                                     .foregroundStyle(.primary.opacity(0.75))

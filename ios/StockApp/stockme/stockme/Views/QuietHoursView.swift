@@ -46,6 +46,7 @@ struct QuietHoursView: View {
                     HStack(spacing: Theme.Spacing.small) {
                         ForEach(0..<7, id: \.self) { day in
                             Button {
+    HapticManager.selection()
                                 HapticManager.selection()
                                 if activeDays.contains(day) {
                                     activeDays.remove(day)

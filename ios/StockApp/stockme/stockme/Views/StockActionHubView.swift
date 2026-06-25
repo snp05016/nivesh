@@ -88,7 +88,7 @@ struct StockActionHubView: View {
                         }
                     }
 
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
 
                     VStack(alignment: .leading, spacing: Theme.Spacing.card) {
@@ -96,6 +96,7 @@ struct StockActionHubView: View {
                             SectionHeaderView(title: "AI ANALYSIS")
                             Spacer()
                             Button {
+    HapticManager.selection()
                                 HapticManager.selection()
                                 showHowItWorks = true
                             } label: {
@@ -286,6 +287,7 @@ struct StockActionHubView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button {
+    HapticManager.selection()
             HapticManager.selection()
             action()
         } label: {

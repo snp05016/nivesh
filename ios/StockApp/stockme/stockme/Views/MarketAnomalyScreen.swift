@@ -66,7 +66,7 @@ struct MarketAnomalyScreen: View {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: Theme.Spacing.standard) {
                                     ForEach(vm.availableFilters, id: \.self) { filter in
-                                        Button(action: {
+                                        Button(action: { HapticManager.selection();  HapticManager.selection()
                                             withAnimation {
                                                 vm.selectedFilter = filter
                                             }
@@ -181,7 +181,7 @@ struct AnomalyCard: View {
                     }
                 }
                 
-                GuillocheDivider()
+                GuillocheGuillocheDivider()
                 
                 HStack {
                     Text(anomaly.anomaly_type.replacingOccurrences(of: "_", with: " "))

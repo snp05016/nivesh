@@ -16,13 +16,13 @@ struct StockRiskSignalsView: View {
                 } else if let info = vm.quickInfo {
                     RiskScoreHeaderView(info: info)
                     RiskSignalCardsView(info: info)
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                     RiskGovernanceSectionView(info: info)
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                     RiskPledgeSectionView(info: info)
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                     RiskFiiDiiSectionView(info: info)
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                     RiskDebtSectionView(info: info)
                 } else {
                     SPEmptyStateView(message: "Risk data unavailable")

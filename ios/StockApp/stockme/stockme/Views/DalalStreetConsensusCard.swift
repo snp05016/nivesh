@@ -145,7 +145,7 @@ struct DalalStreetConsensusCard: View {
             .padding(.top, Theme.Spacing.standard)
             .padding(.trailing, 16)
 
-            SectionDivider()
+            SectionGuillocheDivider()
                 .padding(.horizontal, 4)
 
             // Sector heat section
@@ -165,7 +165,7 @@ struct DalalStreetConsensusCard: View {
                 .padding(.horizontal, Theme.Spacing.card)
                 .padding(.bottom, 12)
 
-                SectionDivider()
+                SectionGuillocheDivider()
                     .padding(.horizontal, 4)
             }
 

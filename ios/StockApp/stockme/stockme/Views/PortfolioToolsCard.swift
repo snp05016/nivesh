@@ -50,7 +50,7 @@ struct PortfolioToolsCard: View {
             .padding(.horizontal, Theme.Spacing.card)
             .padding(.vertical, Theme.Spacing.standard)
 
-            GuillocheDivider()
+            GuillocheGuillocheDivider()
                 .padding(.horizontal, Theme.Spacing.card)
 
             VStack(spacing: Theme.Spacing.none) {
@@ -64,7 +64,7 @@ struct PortfolioToolsCard: View {
                     showSIPSheet = true
                 }
 
-                GuillocheDivider()
+                GuillocheGuillocheDivider()
                     .padding(.horizontal, Theme.Spacing.card)
 
                 ToolButtonRow(
@@ -77,7 +77,7 @@ struct PortfolioToolsCard: View {
                     exportPDF()
                 }
 
-                GuillocheDivider()
+                GuillocheGuillocheDivider()
                     .padding(.horizontal, Theme.Spacing.card)
 
                 ToolButtonRow(
@@ -166,7 +166,7 @@ private struct ToolButtonRow: View {
         Button(action: action) {
             HStack(spacing: Theme.Spacing.standard) {
                 Image(systemName: icon)
-                    .font(.system(size: 18, weight: .medium))
+                    .font(Theme.engravedSerif(size: 18, weight: .medium))
                     .foregroundStyle(Theme.inkPrimary)
                     .frame(width: 36, height: 36)
 
@@ -242,6 +242,7 @@ private struct SIPCalculatorSheet: View {
                         .banknoteCard()
 
                         Button {
+    HapticManager.selection()
                             HapticManager.impact(.medium)
                             calculate()
                         } label: {
@@ -274,7 +275,7 @@ private struct SIPCalculatorSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    Button("Done") { dismiss() }.buttonStyle(EKPressStyle())
                         .foregroundStyle(Theme.inkPrimary)
                 }
             }
@@ -383,7 +384,7 @@ private struct SIPResultView: View {
             }
 
             if let breakdown = result.yearly_breakdown, !breakdown.isEmpty {
-                GuillocheDivider()
+                GuillocheGuillocheDivider()
                     .padding(.vertical, Theme.Spacing.small)
 
                 Text("YEAR-BY-YEAR")
@@ -454,7 +455,7 @@ private struct BenchmarkComparisonSheet: View {
                 if let error = errorMessage {
                     VStack(spacing: Theme.Spacing.large) {
                         Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 44, weight: .light))
+                            .font(Theme.engravedSerif(size: 44, weight: .light))
                             .foregroundStyle(Theme.bearRed)
                         Text("Failed to load benchmark data")
                             .font(Theme.engravedSerif(size: 16, weight: .medium, relativeTo: .title3))
@@ -489,14 +490,14 @@ private struct BenchmarkComparisonSheet: View {
                                     value: d.portfolio_cagr,
                                     isPercent: true
                                 )
-                                GuillocheDivider()
+                                GuillocheGuillocheDivider()
                                     .padding(.horizontal, Theme.Spacing.card)
                                 BenchmarkRow(
                                     label: "Benchmark CAGR",
                                     value: d.benchmark_cagr,
                                     isPercent: true
                                 )
-                                GuillocheDivider()
+                                GuillocheGuillocheDivider()
                                     .padding(.horizontal, Theme.Spacing.card)
                                 BenchmarkRow(
                                     label: "Alpha",
@@ -504,14 +505,14 @@ private struct BenchmarkComparisonSheet: View {
                                     isPercent: true,
                                     isAlpha: true
                                 )
-                                GuillocheDivider()
+                                GuillocheGuillocheDivider()
                                     .padding(.horizontal, Theme.Spacing.card)
                                 BenchmarkRow(
                                     label: "Tracking Error",
                                     value: d.tracking_error,
                                     isPercent: true
                                 )
-                                GuillocheDivider()
+                                GuillocheGuillocheDivider()
                                     .padding(.horizontal, Theme.Spacing.card)
                                 BenchmarkRow(
                                     label: "Information Ratio",
@@ -529,7 +530,7 @@ private struct BenchmarkComparisonSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    Button("Done") { dismiss() }.buttonStyle(EKPressStyle())
                         .foregroundStyle(Theme.inkPrimary)
                 }
             }

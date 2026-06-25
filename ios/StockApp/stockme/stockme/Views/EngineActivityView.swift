@@ -21,7 +21,7 @@ struct EngineActivityView: View {
                         // Progress bar
                         progressSection
 
-                        GuillocheDivider()
+                        GuillocheGuillocheDivider()
                             .padding(.horizontal, Theme.screenPadding)
 
                         // Live checkpoints
@@ -70,7 +70,7 @@ struct EngineActivityView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { dismiss() } label: {
+                    Button { dismiss() } label: {.buttonStyle(EKPressStyle())
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(Theme.inkTertiary)
                     }
@@ -169,6 +169,7 @@ struct EngineActivityView: View {
 
     private var cancelButton: some View {
         Button {
+    HapticManager.selection()
             HapticManager.warning()
             engineManager.cancelActiveJob()
         } label: {

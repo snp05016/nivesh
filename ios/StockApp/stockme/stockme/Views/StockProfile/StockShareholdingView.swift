@@ -17,18 +17,18 @@ struct StockShareholdingView: View {
                     ShareholdingDonutChartSection(data: sh)
 
                     if sh.availableQuarters.count > 1 {
-                        GuillocheDivider()
+                        GuillocheGuillocheDivider()
                         ShareholdingQuarterPicker(
                             quarters: sh.availableQuarters,
                             selected: sh.latestQuarter
                         )
                     }
 
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                     ShareholdingCategoryGrid(categories: sh.categories)
 
                     if !sh.categories.isEmpty {
-                        GuillocheDivider()
+                        GuillocheGuillocheDivider()
                         ShareholdingWarningBadges(
                             categories: sh.categories,
                             trend: sh.holdingTrend,
@@ -38,17 +38,17 @@ struct StockShareholdingView: View {
                     }
 
                     if !sh.topHolders.isEmpty {
-                        GuillocheDivider()
+                        GuillocheGuillocheDivider()
                         TopHoldersTableSection(holders: sh.topHolders)
                     }
 
                     if !sh.holdingTrend.isEmpty && sh.holdingTrend.count >= 2 {
-                        GuillocheDivider()
+                        GuillocheGuillocheDivider()
                         HoldingTrendChartSection(trend: sh.holdingTrend)
                     }
 
                     if let pledge = sh.promoterPledgePct {
-                        GuillocheDivider()
+                        GuillocheGuillocheDivider()
                         PledgePercentageSection(
                             pledgePct: pledge,
                             qoqChange: sh.promoterPledgeQoqChange

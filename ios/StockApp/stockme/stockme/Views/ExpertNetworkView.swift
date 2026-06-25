@@ -197,7 +197,7 @@ struct ExpertNetworkView: View {
                             // MARK: Market Intelligence section (Harvester) — top
                             if !harvestedCards.isEmpty {
                                 marketIntelligenceSection
-                                GuillocheDivider()
+                                GuillocheGuillocheDivider()
                                     .padding(.horizontal, Theme.screenPadding)
                             }
 
@@ -217,6 +217,7 @@ struct ExpertNetworkView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
+    HapticManager.selection()
                     HapticManager.selection()
                     showSourcesSheet = true
                 } label: {
@@ -658,7 +659,7 @@ struct ExpertPostCard: View {
             // 7.4 Interaction row
             HStack(spacing: Theme.Spacing.card) {
                 // Like counter
-                Button(action: { onLike(); HapticManager.impact(.light) }) {
+                Button(action: { HapticManager.selection(); onLike(); HapticManager.impact(.light) }) {.buttonStyle(EKPressStyle())
                     HStack(spacing: Theme.Spacing.tight) {
                         Image(systemName: post.isLiked ? "heart.fill" : "heart")
                             .font(Theme.officialStampFont(size: 13))
@@ -670,7 +671,7 @@ struct ExpertPostCard: View {
                 }
 
                 // Bookmark
-                Button(action: { onBookmark(); HapticManager.impact(.light) }) {
+                Button(action: { HapticManager.selection(); onBookmark(); HapticManager.impact(.light) }) {.buttonStyle(EKPressStyle())
                     Image(systemName: post.isBookmarked ? "bookmark.fill" : "bookmark")
                         .font(Theme.officialStampFont(size: 13))
                         .foregroundStyle(post.isBookmarked ? Theme.securityGold : Theme.inkTertiary)
@@ -777,6 +778,7 @@ struct MarketIntelligenceCard: View {
                     HStack(spacing: Theme.Spacing.small) {
                         ForEach(tickers, id: \.self) { ticker in
                             Button {
+    HapticManager.selection()
                                 onTickerTap(ticker)
                             } label: {
                                 Text(ticker)

@@ -211,7 +211,7 @@ struct SearchScreen: View {
                                 .toolbar {
                                     ToolbarItemGroup(placement: .keyboard) {
                                         Spacer()
-                                        Button(action: { hideKeyboard() }) {
+                                        Button(action: { HapticManager.selection(); hideKeyboard() }) {.buttonStyle(EKPressStyle())
                                             Image(systemName: "keyboard.chevron.compact.down")
                                                 .foregroundStyle(Theme.securityGold)
                                         }
@@ -223,7 +223,7 @@ struct SearchScreen: View {
                                     .scaleEffect(0.7)
                                     .tint(Theme.securityGold)
                             } else if !searchText.isEmpty {
-                                Button(action: {
+                                Button(action: { HapticManager.selection();  HapticManager.selection()
                                     searchText = ""
                                     hideKeyboard()
                                 }) {
@@ -233,7 +233,7 @@ struct SearchScreen: View {
                                 .accessibilityLabel("Clear search")
                             }
 
-                            Button(action: {
+                            Button(action: { HapticManager.selection();  HapticManager.selection()
                                 speechManager.toggleRecording()
                                 HapticManager.selection()
                             }) {
@@ -241,7 +241,7 @@ struct SearchScreen: View {
                                     .foregroundStyle(speechManager.isRecording ? Theme.bearRed : Theme.securityGold)
                             }
 
-                            Button(action: {
+                            Button(action: { HapticManager.selection();  HapticManager.selection()
                                 showFilterSheet = true
                             }) {
                                 Image(systemName: "line.3.horizontal.decrease.circle")
@@ -270,6 +270,7 @@ struct SearchScreen: View {
                                 HStack(spacing: Theme.Spacing.medium) {
                                     ForEach(screenerPresets, id: \.preset) { item in
                                         Button {
+    HapticManager.selection()
                                             HapticManager.light()
                                             activeCustomPreset = nil
                                             if activePreset == item.preset {
@@ -300,6 +301,7 @@ struct SearchScreen: View {
 
                                     ForEach(customPresetsManager.presets) { preset in
                                         Button {
+    HapticManager.selection()
                                             HapticManager.light()
                                             activePreset = nil
                                             if activeCustomPreset == preset {
@@ -382,6 +384,7 @@ struct SearchScreen: View {
                                 } else if activePreset != nil {
                                     ForEach(Array(screenerResults.enumerated()), id: \.element.id) { index, result in
                                         Button {
+    HapticManager.selection()
                                             HapticManager.selection()
                                             screenerActionResult = result
                                             showScreenerAction = true
@@ -394,6 +397,7 @@ struct SearchScreen: View {
                                 } else if searchText.isEmpty {
                                     ForEach(trendingStocks) { stock in
                                         Button {
+    HapticManager.selection()
                                             HapticManager.selection()
                                             stockTapTicker = stock.ticker
                                             stockTapCompanyName = stock.companyName
@@ -415,6 +419,7 @@ struct SearchScreen: View {
                                             // Still allow direct navigation — user may know the exact ticker
                                             let ticker = searchText.uppercased().trimmingCharacters(in: .whitespaces)
                                             Button {
+    HapticManager.selection()
                                                 HapticManager.selection()
                                                 stockTapTicker = ticker
                                                 stockTapCompanyName = nil
@@ -430,6 +435,7 @@ struct SearchScreen: View {
                                     } else {
                                         ForEach(searchResults) { entry in
                                             Button {
+    HapticManager.selection()
                                                 HapticManager.selection()
                                                 stockTapTicker = entry.ticker
                                                 stockTapCompanyName = entry.companyName
@@ -790,6 +796,7 @@ private struct FilterSheet: View {
                     } else {
                         ForEach(customPresetsManager.presets) { preset in
                             Button {
+    HapticManager.selection()
                                 onSelect(preset)
                                 dismiss()
                             } label: {
@@ -815,6 +822,7 @@ private struct FilterSheet: View {
                         .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
                     ForEach(allSectors, id: \.self) { sector in
                         Button {
+    HapticManager.selection()
                             if selectedSectors.contains(sector) {
                                 selectedSectors.remove(sector)
                             } else {
@@ -847,7 +855,7 @@ private struct FilterSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
                 }
             }
         }

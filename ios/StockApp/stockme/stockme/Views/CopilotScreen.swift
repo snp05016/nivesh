@@ -109,7 +109,7 @@ struct CopilotScreen: View {
                     }
 
                     VStack(spacing: Theme.Spacing.none) {
-                        GuillocheDivider()
+                        GuillocheGuillocheDivider()
 
                         // Context chip
                         if let context = currentContext, let ticker = context["ticker"] as? String {
@@ -179,7 +179,7 @@ struct CopilotScreen: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
+                    Button(action: { HapticManager.selection();  HapticManager.selection()
                         HapticManager.selection()
                         dismiss()
                     }) {
@@ -222,7 +222,7 @@ struct CopilotScreen: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, Theme.Spacing.large)
 
-            GuillocheDivider()
+            GuillocheGuillocheDivider()
                 .padding(.horizontal, Theme.Spacing.card)
 
             // Capability rows
@@ -526,7 +526,7 @@ struct CopilotFloatingButtonModifier: ViewModifier {
                 Spacer()
                 HStack {
                     Spacer()
-                    Button(action: {
+                    Button(action: { HapticManager.selection();  HapticManager.selection()
                         HapticManager.selection()
                         isShowingCopilot = true
                     }) {

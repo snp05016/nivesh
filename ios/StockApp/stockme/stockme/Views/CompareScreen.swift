@@ -79,7 +79,7 @@ struct CompareScreen: View {
             .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button { dismiss() } label: {
+                    Button { dismiss() } label: {.buttonStyle(EKPressStyle())
                         Image(systemName: "chevron.left")
                             .foregroundStyle(Theme.inkPrimary).padding(Theme.Spacing.medium)
                             .background(Theme.canvasDeep).clipShape(Circle())
@@ -140,7 +140,7 @@ struct CompareScreen: View {
             }
             .padding(.horizontal, Theme.screenPadding)
 
-            SectionDivider().padding(.horizontal, Theme.screenPadding)
+            SectionGuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
             // Rows
             Group {
@@ -238,7 +238,7 @@ private struct StockPickerButton: View {
     }
 
     var body: some View {
-        Button { showPicker = true } label: {
+        Button { showPicker = true } label: {.buttonStyle(EKPressStyle())
             VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 Text(label).font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                 Text(selected?.ticker ?? "Tap to select")
@@ -270,6 +270,7 @@ private struct StockPickerButton: View {
 
                         List(results) { entry in
                             Button {
+    HapticManager.selection()
                                 onSelect(entry)
                                 showPicker = false
                             } label: {
@@ -288,7 +289,7 @@ private struct StockPickerButton: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { showPicker = false }.foregroundStyle(Theme.inkSecondary)
+                        Button("Cancel") { showPicker = false }.foregroundStyle(Theme.inkSecondary).buttonStyle(EKPressStyle())
                     }
                 }
             }

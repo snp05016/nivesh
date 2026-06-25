@@ -408,6 +408,7 @@ struct StressDiagnosticCard: View {
                     .multilineTextAlignment(.leading)
                 Spacer()
                 Button {
+    HapticManager.selection()
                     withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
                 } label: {
                     Image(systemName: expanded ? "chevron.up" : "chevron.down")
@@ -419,7 +420,7 @@ struct StressDiagnosticCard: View {
 
             // Debug rows (collapsed by default)
             if expanded {
-                GuillocheDivider()
+                GuillocheGuillocheDivider()
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     DiagRow(label: "Server", value: serverURL)
@@ -592,6 +593,7 @@ struct StressTestScreen: View {
                             ForEach(vm.scenarios, id: \.0) { id, name, icon in
                                 let isSelected = vm.selectedScenarios.contains(id)
                                 Button {
+    HapticManager.selection()
                                     vm.toggleScenario(id)
                                 } label: {
                                     HStack(spacing: Theme.Spacing.small) {
@@ -628,6 +630,7 @@ struct StressTestScreen: View {
                                 .lineLimit(2)
                         }
                         Button {
+    HapticManager.selection()
                             vm.cancel()
                             HapticManager.selection()
                         } label: {
@@ -652,6 +655,7 @@ struct StressTestScreen: View {
                     .padding(.horizontal, Theme.screenPadding)
                 } else {
                     Button {
+    HapticManager.selection()
                         vm.runTest(userId: authManager.currentUser?.userId ?? 0, token: authManager.currentUser?.token ?? "")
                         HapticManager.impact(.medium)
                     } label: {
@@ -668,7 +672,7 @@ struct StressTestScreen: View {
                     .padding(.horizontal, Theme.screenPadding)
                 }
 
-                GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                 // CHECKPOINT TRACKER (shown while loading)
                 if vm.isLoading {
@@ -693,7 +697,7 @@ struct StressTestScreen: View {
                         StressScenarioSection(result: result)
 
                         if result.id != vm.results.last?.id {
-                            GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                            GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
                         }
                     }
                 }

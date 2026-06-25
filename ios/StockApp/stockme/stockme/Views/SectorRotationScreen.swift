@@ -87,7 +87,7 @@ struct SectorRotationScreen: View {
                 // Period Selector
                 HStack(spacing: Theme.Spacing.standard) {
                     ForEach(periods, id: \.self) { period in
-                        Button(action: {
+                        Button(action: { HapticManager.selection();  HapticManager.selection()
                             HapticManager.selection()
                             viewModel.selectedPeriod = period
                             viewModel.fetchRotation()
@@ -123,7 +123,7 @@ struct SectorRotationScreen: View {
                     InstitutionalFlowHighlight(sectors: viewModel.sectors)
                         .padding(.horizontal, Theme.screenPadding)
                     
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
                     
                     // Quadrant Scatter Chart
@@ -175,7 +175,7 @@ struct SectorRotationScreen: View {
                     }
                     .padding(.horizontal, Theme.screenPadding)
                     
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
                         .padding(.horizontal, Theme.screenPadding)
                     
                     // Sector Cards
@@ -238,7 +238,7 @@ struct SectorRotationCard: View {
     let sector: SectorRotationSector
     
     var body: some View {
-        Button(action: {
+        Button(action: { HapticManager.selection();  HapticManager.selection()
             HapticManager.selection()
         }) {
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {

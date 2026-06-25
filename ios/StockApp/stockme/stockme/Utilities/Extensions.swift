@@ -78,9 +78,9 @@ struct ShimmerModifier: ViewModifier {
                     GeometryReader { geo in
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0),
-                                Color.white.opacity(0.3),
-                                Color.white.opacity(0),
+                                Theme.canvas.opacity(0),
+                                Theme.canvas.opacity(0.3),
+                                Theme.canvas.opacity(0),
                             ],
                             startPoint: .leading,
                             endPoint: .trailing

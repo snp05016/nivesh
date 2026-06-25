@@ -33,6 +33,7 @@ struct AnalysisFullView: View {
         HStack(spacing: Theme.Spacing.small) {
             ForEach(Array(["AI REPORT", "FULL PROFILE"].enumerated()), id: \.offset) { idx, label in
                 Button {
+    HapticManager.selection()
                     HapticManager.selection()
                     extremeViewMode = idx
                 } label: {
@@ -83,7 +84,7 @@ struct AnalysisFullView: View {
             }
 
             if isExtreme {
-                GuillocheDivider()
+                GuillocheGuillocheDivider()
                     .padding(.horizontal, Theme.screenPadding)
                     .padding(.top, Theme.Spacing.sectionBreath)
 
@@ -119,6 +120,7 @@ struct AnalysisFullView: View {
                     id: \.0
                 ) { period, label in
                     Button {
+    HapticManager.selection()
                         HapticManager.selection()
                         heroPeriod = period
                         onPeriodChange(period)

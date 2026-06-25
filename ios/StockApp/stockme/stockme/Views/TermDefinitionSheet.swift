@@ -19,7 +19,7 @@ struct TermDefinitionSheet: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .lineSpacing(5)
 
-                    GuillocheDivider()
+                    GuillocheGuillocheDivider()
 
                     VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                         Text("EXAMPLE")
@@ -34,7 +34,7 @@ struct TermDefinitionSheet: View {
                     }
 
                     if !entry.relatedTerms.isEmpty {
-                        GuillocheDivider()
+                        GuillocheGuillocheDivider()
 
                         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                             Text("RELATED")
@@ -72,6 +72,7 @@ struct TermDefinitionSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+    HapticManager.selection()
                         HapticManager.selection()
                         dismiss()
                     } label: {

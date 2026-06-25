@@ -163,6 +163,7 @@ struct ErrorDiagnoserView: View {
 
                         if let retry = retryAction {
                             Button {
+    HapticManager.selection()
                                 HapticManager.selection()
                                 isRetrying = true
                                 Task { await retry(); isRetrying = false }
@@ -228,6 +229,7 @@ struct ErrorDiagnoserView: View {
     private var diagnosticExpander: some View {
         VStack(spacing: Theme.Spacing.none) {
             Button {
+    HapticManager.selection()
                 HapticManager.selection()
                 withAnimation(.easeInOut(duration: 0.2)) { showDiagnostics.toggle() }
             } label: {
@@ -250,6 +252,7 @@ struct ErrorDiagnoserView: View {
                     diagRow("Source", (context.swiftFile as NSString).lastPathComponent)
                     diagRow("Class", context.classification)
                     Button {
+    HapticManager.selection()
                         HapticManager.selection()
                         #if os(iOS)
                         UIPasteboard.general.string = "ERROR: \(error ?? "")\n\(context.summary)"

@@ -308,7 +308,7 @@ struct MacroAIInsightCardView: View {
                     .lineLimit(8)
 
                 if let sentiment = aiSentiment, !sentiment.isEmpty {
-                    SectionDivider()
+                    SectionGuillocheDivider()
                     HStack(spacing: Theme.Spacing.small) {
                         Text("SENTIMENT:")
                             .font(Theme.officialStampFont(size: 8))

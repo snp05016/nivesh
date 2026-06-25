@@ -213,7 +213,7 @@ struct ImmersivePortfolioHeroChart: View {
         Circle()
             .fill(lineColor)
             .frame(width: 9, height: 9)
-            .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+            .overlay(Circle().stroke(Theme.canvas, lineWidth: 1.5))
             .shadow(color: lineColor.opacity(0.6), radius: 4)
             .position(pt)
 

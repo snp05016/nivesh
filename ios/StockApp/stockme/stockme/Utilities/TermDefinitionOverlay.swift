@@ -69,7 +69,7 @@ struct TermTooltipCard: View {
                     .foregroundStyle(Theme.inkPrimary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                SectionDivider()
+                SectionGuillocheDivider()
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text("EXAMPLE")
@@ -86,7 +86,7 @@ struct TermTooltipCard: View {
             .banknoteCard()
             .frame(maxWidth: min(UIScreen.main.bounds.width * 0.85, 500))
 
-            Button(action: {
+            Button(action: { HapticManager.selection();  HapticManager.selection()
                 triggerSelectionHaptic()
                 onDismiss()
             }) {
@@ -99,7 +99,7 @@ struct TermTooltipCard: View {
         }
         .padding(Theme.screenPadding)
         .background(
-            Color.black.opacity(0.4)
+            Theme.inkPrimary.opacity(0.4)
                 .ignoresSafeArea()
                 .onTapGesture { onDismiss() }
         )

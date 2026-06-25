@@ -33,6 +33,7 @@ struct BanknoteDialogButton: Identifiable {
 
     /// Convenience cancel button.
     static func cancel(_ title: String = "Cancel", action: @escaping () -> Void = {}) -> BanknoteDialogButton {
+    HapticManager.selection()
         BanknoteDialogButton(title, role: .cancel, action: action)
     }
 }
@@ -47,7 +48,7 @@ private struct BanknoteDialogCard: View {
     var body: some View {
         ZStack {
             // Dimmed scrim — tapping it cancels, matching action-sheet behaviour.
-            Color.black.opacity(0.5)
+            Theme.inkPrimary.opacity(0.5)
                 .ignoresSafeArea()
                 .onTapGesture { onClose() }
 
@@ -74,7 +75,7 @@ private struct BanknoteDialogCard: View {
                     accessory
                 }
 
-                GuillocheDivider()
+                GuillocheGuillocheDivider()
 
                 VStack(spacing: Theme.Spacing.medium) {
                     ForEach(buttons) { button in
@@ -91,6 +92,7 @@ private struct BanknoteDialogCard: View {
 
     private func dialogButton(_ button: BanknoteDialogButton) -> some View {
         Button {
+    HapticManager.selection()
             HapticManager.selection()
             onClose()
             button.action()

@@ -21,35 +21,35 @@ struct QuantLabView: View {
 
                     ModelSignalSection(signal: vm.mlSignal, isLoading: vm.mlSignalLoading, error: vm.mlSignalError)
 
-                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     FeatureDriversSection(signal: vm.mlSignal, isLoading: vm.mlSignalLoading)
 
-                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     CalibrationSection(data: vm.calibration, isLoading: vm.calibrationLoading, error: vm.calibrationError)
 
-                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     PillarAttributionSection(data: vm.pillarAttribution, isLoading: vm.pillarAttributionLoading, error: vm.pillarAttributionError)
 
-                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     ModelVersionsSection(data: vm.modelVersions, isLoading: vm.modelVersionsLoading, error: vm.modelVersionsError)
 
-                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     AlphaValidationSection(data: vm.alphaValidation, isLoading: vm.alphaValidationLoading, error: vm.alphaValidationError)
 
-                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     StrategySweepSection(data: vm.strategySweep, isLoading: vm.strategySweepLoading, error: vm.strategySweepError)
 
-                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     RegimeBreakdownSection(data: vm.regimeBreakdown, isLoading: vm.regimeBreakdownLoading, error: vm.regimeBreakdownError)
 
-                    GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                    GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
                     CostSensitivitySection(data: vm.costSensitivity, isLoading: vm.costSensitivityLoading, error: vm.costSensitivityError)
 
@@ -914,7 +914,7 @@ struct SweepFilterChips: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.medium) {
             ForEach(SweepFilter.allCases, id: \.self) { filter in
-                Button(action: {
+                Button(action: { HapticManager.selection();  HapticManager.selection()
                     HapticManager.selection()
                     selectedFilter = filter
                 }) {

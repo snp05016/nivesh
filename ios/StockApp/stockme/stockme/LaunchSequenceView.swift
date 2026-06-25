@@ -14,7 +14,7 @@ struct LaunchSequenceView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Theme.inkPrimary.ignoresSafeArea()
 
             ZStack {
                 // Guilloche canvas
@@ -43,7 +43,7 @@ struct LaunchSequenceView: View {
                     .foregroundStyle(Theme.inkPrimary)
                     .opacity(wordmarkBaseOpacity)
                     .mask(
-                        Color.black
+                        Theme.inkPrimary
                             .frame(width: wordmarkMaskWidth, alignment: .leading)
                             .frame(maxWidth: wordmarkMeasuredWidth, alignment: .leading)
                     )

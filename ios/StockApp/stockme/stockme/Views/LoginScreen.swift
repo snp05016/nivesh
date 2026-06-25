@@ -151,7 +151,7 @@ struct LoginScreen: View {
                         .disabled(!canProceed || authManager.isLoggingIn)
 
                         // Toggle Mode Button
-                        Button(action: { 
+                        Button(action: { HapticManager.selection();  HapticManager.selection()
                             withAnimation { isRegistering.toggle() }
                         }) {
                             Text(isRegistering ? "ALREADY ENROLLED? SIGN IN" : "NEW USER? ENROLL HERE")
@@ -169,6 +169,7 @@ struct LoginScreen: View {
                                 HStack(spacing: Theme.Spacing.medium) {
                                     ForEach(["saumya", "nirav", "ankur"], id: \.self) { name in
                                         Button {
+    HapticManager.selection()
                                             username = name
                                             password = "123"
                                             focusedField = nil

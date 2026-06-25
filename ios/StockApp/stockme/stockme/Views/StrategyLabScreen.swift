@@ -180,7 +180,7 @@ struct StrategyLabScreen: View {
             VStack(spacing: Theme.Spacing.card) {
                 settingsSection
                 
-                GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                GuillocheGuillocheDivider().padding(.horizontal, Theme.screenPadding)
                 
                 if viewModel.isLoading {
                     VStack(spacing: Theme.Spacing.medium) {
@@ -204,7 +204,7 @@ struct StrategyLabScreen: View {
                             .font(Theme.roundedCaption(size: 12))
                             .foregroundStyle(Theme.inkSecondary)
                             .multilineTextAlignment(.center)
-                        Button(action: { Task { await viewModel.runBacktest() } }) {
+                        Button(action: { HapticManager.selection(); Task { await viewModel.runBacktest() } }) {.buttonStyle(EKPressStyle())
                             Text("Retry")
                                 .font(Theme.roundedSecondary(size: 14, weight: .bold))
                                 .foregroundStyle(Theme.inkPrimary)
@@ -226,7 +226,7 @@ struct StrategyLabScreen: View {
                     chartSection(result)
                     
                     if viewModel.isComparing {
-                        Button(action: {
+                        Button(action: { HapticManager.selection();  HapticManager.selection()
                             HapticManager.selection()
                             viewModel.stopCompare()
                         }) {
@@ -242,7 +242,7 @@ struct StrategyLabScreen: View {
                         .ekPress()
                         .padding(.horizontal, Theme.screenPadding)
                     } else {
-                        Button(action: {
+                        Button(action: { HapticManager.selection();  HapticManager.selection()
                             HapticManager.selection()
                             showingCompareSheet = true
                         }) {
@@ -282,7 +282,7 @@ struct StrategyLabScreen: View {
         .sheet(isPresented: $showingCompareSheet) {
             NavigationStack {
                 List(STRATEGY_OPTIONS) { strategy in
-                    Button(action: {
+                    Button(action: { HapticManager.selection();  HapticManager.selection()
                         showingCompareSheet = false
                         Task { await viewModel.runCompareBacktest(with: strategy) }
                     }) {
@@ -303,7 +303,7 @@ struct StrategyLabScreen: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { showingCompareSheet = false }
+                        Button("Cancel") { showingCompareSheet = false }.buttonStyle(EKPressStyle())
                             .foregroundStyle(Theme.goldPrimary)
                     }
                 }
@@ -338,7 +338,7 @@ struct StrategyLabScreen: View {
             HStack(spacing: Theme.Spacing.standard) {
                 ForEach([1, 3, 5, 10], id: \.self) { years in
                     let label = years == 10 ? "ALL" : "\(years)Y"
-                    Button(action: {
+                    Button(action: { HapticManager.selection();  HapticManager.selection()
                         HapticManager.selection()
                         viewModel.selectedYears = years
                     }) {
@@ -361,7 +361,7 @@ struct StrategyLabScreen: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Theme.Spacing.standard) {
                     ForEach(STRATEGY_OPTIONS) { strategy in
-                        Button(action: {
+                        Button(action: { HapticManager.selection();  HapticManager.selection()
                             HapticManager.selection()
                             viewModel.selectedStrategy = strategy
                         }) {
@@ -526,7 +526,7 @@ struct StrategyLabScreen: View {
     
     private func tradeLogSection(_ result: StrategyBacktestResult) -> some View {
         VStack(spacing: Theme.Spacing.none) {
-            Button(action: {
+            Button(action: { HapticManager.selection();  HapticManager.selection()
                 HapticManager.selection()
                 withAnimation { showingTradeLog.toggle() }
             }) {
@@ -579,7 +579,7 @@ struct StrategyLabScreen: View {
                             .padding(Theme.Spacing.card)
                             
                             if trade.id != result.trades.last?.id {
-                                SectionDivider()
+                                SectionGuillocheDivider()
                             }
                         }
                     }

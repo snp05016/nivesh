@@ -124,7 +124,7 @@ struct PiotroskiCardView: View {
             }
 
             if let checks = data.checks, !checks.isEmpty {
-                GuillocheDivider()
+                GuillocheGuillocheDivider()
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Theme.Spacing.tight) {
                     ForEach(Array(checks.keys.sorted()), id: \.self) { key in

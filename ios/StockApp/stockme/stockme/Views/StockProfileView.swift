@@ -273,6 +273,7 @@ struct InteractivePriceChartView: View {
 
                 // Candlestick toggle
                 Button {
+    HapticManager.selection()
                     HapticManager.selection()
                     showCandlestick.toggle()
                 } label: {
@@ -285,6 +286,7 @@ struct InteractivePriceChartView: View {
 
                 // Nifty benchmark toggle
                 Button {
+    HapticManager.selection()
                     HapticManager.selection()
                     showNifty.toggle()
                 } label: {
@@ -344,6 +346,7 @@ struct StockProfileView: View {
                         HStack(spacing: Theme.Spacing.tight) {
                             ForEach(Array(zip(["1mo","3mo","6mo","1y","2y","5y","max"], ["1M","3M","6M","1Y","2Y","5Y","ALL"])), id: \.0) { period, label in
                                 Button {
+    HapticManager.selection()
                                     HapticManager.selection()
                                     chartPeriod = period
                                     Task { await vm.fetchChart(period: period) }
@@ -412,6 +415,7 @@ struct StockProfileView: View {
                                 .textSelection(.enabled)
                                 .fixedSize(horizontal: false, vertical: true)
                             Button {
+    HapticManager.selection()
                                 UIPasteboard.general.string = error
                                 HapticManager.success()
                             } label: {
@@ -443,6 +447,7 @@ struct StockProfileView: View {
                         HStack(spacing: Theme.Spacing.none) {
                             ForEach(Array(tabItems.enumerated()), id: \.offset) { idx, item in
                                 Button {
+    HapticManager.selection()
                                     HapticManager.selection()
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
                                         activeTab = idx
@@ -467,7 +472,7 @@ struct StockProfileView: View {
                     }
                     .background(Theme.canvasDeep)
 
-                    SectionDivider()
+                    SectionGuillocheDivider()
 
                     // Tab content (5 consolidated tabs)
                     TabView(selection: $activeTab) {
@@ -476,7 +481,7 @@ struct StockProfileView: View {
                             LazyVStack(spacing: Theme.sectionSpacing) {
                                 OverviewTabView(ticker: ticker, vm: vm)
                                 if let hist = vm.history, !hist.prices.isEmpty {
-                                    GuillocheDivider()
+                                    GuillocheGuillocheDivider()
                                         .padding(.horizontal, Theme.screenPadding)
                                     InteractivePriceChartView(
                                         history: hist.prices,
@@ -485,7 +490,7 @@ struct StockProfileView: View {
                                     )
                                     .padding(.horizontal, Theme.screenPadding)
                                 }
-                                GuillocheDivider()
+                                GuillocheGuillocheDivider()
                                     .padding(.horizontal, Theme.screenPadding)
                                 StockMLSignalCard(
                                     signal: vm.mlSignal,
@@ -497,7 +502,7 @@ struct StockProfileView: View {
                                     }
                                 )
                                 .padding(.horizontal, Theme.screenPadding)
-                                GuillocheDivider()
+                                GuillocheGuillocheDivider()
                                     .padding(.horizontal, Theme.screenPadding)
                                 FinancialsTabView(vm: vm)
                             }
@@ -521,7 +526,7 @@ struct StockProfileView: View {
                         ScrollView {
                             LazyVStack(spacing: Theme.sectionSpacing) {
                                 NewsTabView(vm: vm)
-                                GuillocheDivider()
+                                GuillocheGuillocheDivider()
                                     .padding(.horizontal, Theme.screenPadding)
                                 UpdatesTabView()
                             }
@@ -533,7 +538,7 @@ struct StockProfileView: View {
                         ScrollView {
                             LazyVStack(spacing: Theme.sectionSpacing) {
                                 HoldersTabView(vm: vm)
-                                GuillocheDivider()
+                                GuillocheGuillocheDivider()
                                     .padding(.horizontal, Theme.screenPadding)
                                 GovernanceTabView(ticker: ticker, vm: vm)
                             }

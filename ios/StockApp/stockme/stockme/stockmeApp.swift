@@ -269,6 +269,7 @@ struct stockmeApp: App {
                 .font(.subheadline)
                 .foregroundStyle(Theme.inkSecondary)
             Button {
+    HapticManager.selection()
                 HapticManager.selection()
                 authenticateWithBiometrics()
             } label: {
@@ -353,7 +354,7 @@ struct InteractiveTutorialScreen: View {
 
             VStack {
                 Spacer()
-                Button(action: {
+                Button(action: { HapticManager.selection();  HapticManager.selection()
                     if currentPage < 2 {
                         withAnimation { currentPage += 1 }
                     } else {

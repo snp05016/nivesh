@@ -143,7 +143,7 @@ struct AlertsScreen: View {
                                     .foregroundStyle(Theme.inkPrimary)
                             }
                             Spacer()
-                            Button("Dismiss") { viewModel.showTriggeredBanner = false }
+                            Button("Dismiss") { viewModel.showTriggeredBanner = false }.buttonStyle(EKPressStyle())
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.securityGold)
                         }
@@ -166,7 +166,7 @@ struct AlertsScreen: View {
                     Spacer()
                     HStack {
                         Spacer()
-                        Button { showAddAlert = true } label: {
+                        Button { showAddAlert = true } label: {.buttonStyle(EKPressStyle())
                             ZStack {
                                 Circle().fill(Theme.securityGold).frame(width: 56, height: 56)
                                     .shadow(color: Theme.securityGold.opacity(0.3), radius: 10, x: 0, y: 5)
@@ -334,6 +334,7 @@ struct AddAlertSheet: View {
                                     VStack(spacing: Theme.Spacing.none) {
                                         ForEach(searchResults.prefix(5)) { entry in
                                             Button {
+    HapticManager.selection()
                                                 selectedTicker = entry.ticker
                                                 selectedCompany = entry.companyName
                                                 searchText = ""
@@ -373,7 +374,7 @@ struct AddAlertSheet: View {
                                     }
                                 }
                                 Spacer()
-                                Button { selectedTicker = ""; selectedCompany = ""; currentPrice = nil } label: {
+                                Button { selectedTicker = ""; selectedCompany = ""; currentPrice = nil } label: {.buttonStyle(EKPressStyle())
                                     Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.inkTertiary)
                                 }
                             }
@@ -387,14 +388,14 @@ struct AddAlertSheet: View {
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.inkSecondary)
                             HStack(spacing: Theme.Spacing.none) {
-                                Button { direction = "above" } label: {
+                                Button { direction = "above" } label: {.buttonStyle(EKPressStyle())
                                     HStack { Image(systemName: "arrow.up"); Text("Above Target") }
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, Theme.Spacing.standard)
                                         .background(direction == "above" ? Theme.bullGreen.opacity(0.1) : Color.clear)
                                         .foregroundStyle(direction == "above" ? Theme.bullGreen : Theme.inkTertiary)
                                 }
-                                Button { direction = "below" } label: {
+                                Button { direction = "below" } label: {.buttonStyle(EKPressStyle())
                                     HStack { Image(systemName: "arrow.down"); Text("Below Target") }
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, Theme.Spacing.standard)
@@ -448,6 +449,7 @@ struct AddAlertSheet: View {
                         }
 
                         Button {
+    HapticManager.selection()
                             guard let price = calculatedTargetPrice, canAdd else { return }
                             isAdding = true
                             Task {
@@ -482,7 +484,7 @@ struct AddAlertSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
                 }
             }
         }
