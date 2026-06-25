@@ -1,5 +1,17 @@
 import SwiftUI
 
+// MARK: - Benchmark Data Model
+
+struct BenchmarkData: Codable {
+    let portfolio_cagr: Double?
+    let benchmark_cagr: Double?
+    let alpha: Double?
+    let tracking_error: Double?
+    let information_ratio: Double?
+}
+
+// MARK: - Portfolio Tools Card
+
 struct PortfolioToolsCard: View {
     let userId: Int
 

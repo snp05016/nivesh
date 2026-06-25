@@ -665,6 +665,20 @@ class NetworkManager: ObservableObject {
         return data
     }
 
+    func exportPortfolioPDF(userId: Int) async throws -> URL {
+        guard let url = URL(string: "\(baseURL)/portfolio/export/pdf/\(userId)") else { throw NetworkError.invalidURL }
+        var request = authRequest(url)
+        request.timeoutInterval = 30
+        let (tempURL, _) = try await session.download(for: request)
+        return tempURL
+    }
+
+    func fetchBenchmark(userId: Int) async throws -> BenchmarkData {
+        let endpoint = "/portfolio/benchmark?user_id=\(userId)"
+        let data = try await _fetchDecode(endpoint, as: BenchmarkData.self)
+        return data
+    }
+
     // MARK: - Nifty History
 
     func getNiftyHistory(days: Int = 365) async -> [NiftyPricePoint] {
