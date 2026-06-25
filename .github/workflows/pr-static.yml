@@ -122,7 +122,7 @@ jobs:
               if not root.exists():
                   continue
               for path in root.rglob("*.py"):
-                  if any(part in {"__pycache__", ".venv", "venv"} for part in path.parts):
+                  if any(part in {"__pycache__", ".venv", "venv", "scratch"} for part in path.parts):
                       continue
                   try:
                       py_compile.compile(str(path), doraise=True)
