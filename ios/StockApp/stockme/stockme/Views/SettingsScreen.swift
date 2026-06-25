@@ -247,12 +247,12 @@ struct SettingsScreen: View {
             PickerRow(icon: "indianrupeesign", color: Theme.securityGold, title: "Currency Format", selection: $currencyDisplay, options: ["Lakhs/Crores", "Absolute"])
             PickerRow(icon: "arrow.triangle.2.circlepath", color: Theme.inkSecondary, title: "Home Auto-refresh", selection: $homeAutoRefreshSeconds, options: ["0", "30", "60", "120"])
             ToggleRow(icon: "newspaper", color: Theme.securityGold, title: "IPO Alerts", isOn: $ipoAlerts)
-            Button(role: .destructive) { showClearHistoryAlert = true } label: {.buttonStyle(EKPressStyle())
+            Button(role: .destructive) { showClearHistoryAlert = true } label: {
                 RowLabel(icon: "trash", color: Theme.bearRed, title: "VOID ALL RECORDS", tint: Theme.bearRed)
             }
             .buttonStyle(EKPressStyle())
             Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
-            Button(role: .destructive) { authManager.logout() } label: {.buttonStyle(EKPressStyle())
+            Button(role: .destructive) { authManager.logout() } label: {
                 RowLabel(icon: "door.right.hand.open", color: Theme.bearRed, title: "VOID SESSION", tint: Theme.bearRed)
             }
             .buttonStyle(EKPressStyle())

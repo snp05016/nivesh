@@ -166,7 +166,7 @@ struct AlertsScreen: View {
                     Spacer()
                     HStack {
                         Spacer()
-                        Button { showAddAlert = true } label: {.buttonStyle(EKPressStyle())
+                        Button { showAddAlert = true } label: {
                             ZStack {
                                 Circle().fill(Theme.securityGold).frame(width: 56, height: 56)
                                     .shadow(color: Theme.securityGold.opacity(0.3), radius: 10, x: 0, y: 5)
@@ -374,7 +374,7 @@ struct AddAlertSheet: View {
                                     }
                                 }
                                 Spacer()
-                                Button { selectedTicker = ""; selectedCompany = ""; currentPrice = nil } label: {.buttonStyle(EKPressStyle())
+                                Button { selectedTicker = ""; selectedCompany = ""; currentPrice = nil } label: {
                                     Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.inkTertiary)
                                 }
                             }
@@ -388,14 +388,14 @@ struct AddAlertSheet: View {
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.inkSecondary)
                             HStack(spacing: Theme.Spacing.none) {
-                                Button { direction = "above" } label: {.buttonStyle(EKPressStyle())
+                                Button { direction = "above" } label: {
                                     HStack { Image(systemName: "arrow.up"); Text("Above Target") }
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, Theme.Spacing.standard)
                                         .background(direction == "above" ? Theme.bullGreen.opacity(0.1) : Color.clear)
                                         .foregroundStyle(direction == "above" ? Theme.bullGreen : Theme.inkTertiary)
                                 }
-                                Button { direction = "below" } label: {.buttonStyle(EKPressStyle())
+                                Button { direction = "below" } label: {
                                     HStack { Image(systemName: "arrow.down"); Text("Below Target") }
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, Theme.Spacing.standard)

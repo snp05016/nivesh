@@ -193,18 +193,18 @@ struct PortfolioScreen: View {
                         }
                         Spacer()
                         HStack(spacing: Theme.Spacing.standard) {
-                            Button { showExportOptions = true } label: {.buttonStyle(EKPressStyle())
+                            Button { showExportOptions = true } label: {
                                 Image(systemName: "square.and.arrow.up")
                                     .foregroundStyle(Theme.inkSecondary)
                                     .padding(Theme.Spacing.medium)
                             }
-                            Button { HapticManager.selection(); showBriefSheet = true } label: {.buttonStyle(EKPressStyle())
+                            Button { HapticManager.selection(); showBriefSheet = true } label: {
                                 Image(systemName: "message")
                                     .foregroundStyle(Theme.inkSecondary)
                                     .padding(Theme.Spacing.medium)
                             }
                             .buttonStyle(EKPressStyle())
-                            Button { HapticManager.selection(); showTransactionSheet = true } label: {.buttonStyle(EKPressStyle())
+                            Button { HapticManager.selection(); showTransactionSheet = true } label: {
                                 ZStack {
                                     Circle().stroke(Theme.borderSage, lineWidth: 0.5).frame(width: 44, height: 44)
                                     Text("₹").font(Theme.engravedSerif(size: 18, weight: .bold, relativeTo: .headline)).foregroundStyle(Theme.inkPrimary)

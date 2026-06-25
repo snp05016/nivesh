@@ -79,7 +79,7 @@ struct CompareScreen: View {
             .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button { dismiss() } label: {.buttonStyle(EKPressStyle())
+                    Button { dismiss() } label: {
                         Image(systemName: "chevron.left")
                             .foregroundStyle(Theme.inkPrimary).padding(Theme.Spacing.medium)
                             .background(Theme.canvasDeep).clipShape(Circle())
@@ -238,7 +238,7 @@ private struct StockPickerButton: View {
     }
 
     var body: some View {
-        Button { showPicker = true } label: {.buttonStyle(EKPressStyle())
+        Button { showPicker = true } label: {
             VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 Text(label).font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                 Text(selected?.ticker ?? "Tap to select")
