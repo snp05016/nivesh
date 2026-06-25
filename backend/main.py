@@ -23,7 +23,6 @@ from services.disk_cache import get as _dcache_get, set as _dcache_set, stats as
 from services.ai_engine_monitor import build_ai_engine_monitor
 from services.error_telemetry import CorrelationIDMiddleware
 
-from dotenv import load_dotenv
 import multiprocessing
 import asyncio
 from fastapi import Request
@@ -54,70 +53,7 @@ if FPDF2_AVAILABLE:
         FPDF2_AVAILABLE = False
 
 from database import init_db, get_session, save_analysis, get_recent_analyses, get_user_by_credentials, Portfolio, User, AnalysisHistory, SignalEvent, get_analysis_for_date, get_all_ticker_history, PriceTarget, TradeJournal, DeviceToken, AdvisorInsight, NewsArticle, YouTubeVideo, PortfolioValuationHistory, PKScreenerSignal, MacroEvent, NetWorthLedger, create_access_token, verify_access_token, is_admin, promote_initial_admins
-
-
-# ---------------------------------------------------------------------------
-# Indian Numbering System — format_indian_currency
-# All monetary outputs MUST use Lakhs/Crores. Never Millions/Billions.
-# ---------------------------------------------------------------------------
-
-def format_indian_currency(value: float | int | None, *, symbol: str = "₹") -> str:
-    """
-    Format a numeric INR value using the Indian numbering system.
-
-    Rules:
-      - value < 0: prefix a minus sign, then format the absolute value
-      - 0 ≤ |value| < 1,00,000   → "₹X" (plain, with Indian commas)
-      - 1,00,000 ≤ |value| < 1,00,00,000 (< 1 Cr) → "₹X.XX Lakhs"
-      - |value| ≥ 1,00,00,000   → "₹X.XX Crores"
-
-    Examples:
-      format_indian_currency(0)           → "₹0"
-      format_indian_currency(75000)       → "₹75,000"
-      format_indian_currency(150000)      → "₹1.50 Lakhs"
-      format_indian_currency(12500000)    → "₹1.25 Crores"
-      format_indian_currency(-3750000)    → "-₹37.50 Lakhs"
-      format_indian_currency(1e10)        → "₹1,000.00 Crores"
-    """
-    if value is None:
-        return f"{symbol}0"
-
-    value = float(value)
-    negative = value < 0
-    abs_val = abs(value)
-
-    LAKH = 1_00_000       # 1,00,000
-    CRORE = 1_00_00_000   # 1,00,00,000
-
-    if abs_val >= CRORE:
-        formatted = f"{symbol}{abs_val / CRORE:,.2f} Crores"
-    elif abs_val >= LAKH:
-        formatted = f"{symbol}{abs_val / LAKH:,.2f} Lakhs"
-    else:
-        # Indian comma style for numbers below 1 Lakh:
-        # thousands separator only (no sub-lakh grouping difference at this scale)
-        formatted = f"{symbol}{abs_val:,.0f}"
-
-    return f"-{formatted}" if negative else formatted
-
-
-def _ban_western_scale(text: str, company_name: str = "") -> str:
-    """
-    Guard: raise ValueError if 'Million' or 'Billion' appears in output text.
-    Excludes company name from check — legally registered names may contain
-    these words (e.g., 'Million Lights Ltd', 'Billion Electric').
-    Use in test harness or as a post-processing assertion.
-    """
-    import re
-    check_text = text
-    if company_name:
-        check_text = check_text.replace(company_name, "[COMPANY_NAME]")
-    if re.search(r"\b(million|billion|trillion)\b", check_text, re.IGNORECASE):
-        raise ValueError(
-            "Western scale (Million/Billion/Trillion) detected in output — "
-            "use Lakhs/Crores instead."
-        )
-    return text
+from helpers import format_indian_currency, _ban_western_scale  # GH #123 — canonical home in helpers.py
 
 
 # ---------------------------------------------------------------------------
@@ -284,7 +220,9 @@ app = FastAPI(title="Indian Stock Market Analysis API")
 # ---------------------------------------------------------------------------
 from fastapi.middleware.cors import CORSMiddleware
 
-_ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+# Fixes #171: Default ALLOWED_ORIGINS is empty — restrictive by default.
+# localhost:3000 should only be added in dev via env var.
+_ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "")
 _origins = [o.strip() for o in _ALLOWED_ORIGINS.split(",") if o.strip()]
 
 app.add_middleware(
@@ -438,7 +376,12 @@ app.include_router(harvest_router)
 
 @app.on_event("startup")
 async def _on_startup():
+    # Wire up structured JSON logging (fixes #83)
+    from core.logging_config import configure_logging
+    configure_logging()
     start_scheduler()
+    # Init DB and seed on startup (fixes #87 — moved from module level)
+    init_db()
     # v2 engine crash recovery: any analysis job left RUNNING/QUEUED by a previous
     # process (deploy/crash) has a dead worker → mark it FAILED so the app shows an
     # honest error and the user can re-run.
@@ -479,34 +422,10 @@ async def _on_startup():
             logging.warning("Initial RAG ingestion failed (non-blocking): %s", e)
     threading.Thread(target=_startup_ingest, daemon=True).start()
     
-    import os
-    # NOTE: `logging` is module-level (line ~124). A local `import logging` here
-    # made it function-local, breaking earlier logging.* calls (UnboundLocalError).
-    if os.getenv("ENABLE_SCHEDULER", "false").lower() == "true":
-        try:
-            from apscheduler.schedulers.asyncio import AsyncIOScheduler
-            from services.harvest_worker import harvest_youtube_metadata, harvest_news
-            from services.portfolio_snapshot import snapshot_all_users
-            from services.rag_ingestion import ingest_new
-            from services.outcome_backfill import backfill_outcomes
-
-            scheduler = AsyncIOScheduler()
-            scheduler.add_job(harvest_youtube_metadata, "cron", hour=0, minute=30)
-            scheduler.add_job(harvest_news, "cron", hour=1, minute=30)
-            scheduler.add_job(snapshot_all_users, "cron", hour=16, minute=30)
-
-            # Nightly RAG refresh at 2 AM
-            scheduler.add_job(ingest_new, "cron", hour=2, minute=0, id="rag_ingestion")
-
-            # Nightly outcome backfill at 3 AM — prices forward returns for
-            # resolved AnalysisHistory rows, feeding calibration engines
-            scheduler.add_job(backfill_outcomes, "cron", hour=3, minute=0, id="outcome_backfill")
-
-            scheduler.start()
-            logging.info("Main APScheduler started.")
-        except ImportError:
-            # needs pip install apscheduler
-            logging.warning("apscheduler not installed, please run: pip install apscheduler. Skipping scheduler startup.")
+    # ENABLE_SCHEDULER block removed (fixes #85): start_scheduler() from
+    # harvest_worker (called above) already registers all cron jobs including
+    # harvest_youtube_metadata, harvest_news, and snapshot_all_users.
+    # The duplicate AsyncIOScheduler was causing double job execution.
 
 
 @app.on_event("shutdown")
@@ -526,8 +445,7 @@ def favicon():
     return Response(status_code=204)
 
 
-# Init DB and seed on startup
-init_db()
+# init_db() moved into _on_startup() handler (fixes #87)
 
 
 
