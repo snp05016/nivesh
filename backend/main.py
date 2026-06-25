@@ -53,7 +53,6 @@ if FPDF2_AVAILABLE:
         FPDF2_AVAILABLE = False
 
 from database import init_db, get_session, save_analysis, get_recent_analyses, get_user_by_credentials, Portfolio, User, AnalysisHistory, SignalEvent, get_analysis_for_date, get_all_ticker_history, PriceTarget, TradeJournal, DeviceToken, AdvisorInsight, NewsArticle, YouTubeVideo, PortfolioValuationHistory, PKScreenerSignal, MacroEvent, NetWorthLedger, create_access_token, verify_access_token, is_admin, promote_initial_admins
-from helpers import format_indian_currency, _ban_western_scale  # GH #123 — canonical home in helpers.py
 
 
 # ---------------------------------------------------------------------------
