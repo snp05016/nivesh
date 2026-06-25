@@ -229,7 +229,7 @@ struct EarningsDashboardView: View {
         ScrollView(.horizontal) {
             HStack(spacing: Theme.Spacing.small) {
                 ForEach(Array(tabs.enumerated()), id: \.offset) { idx, name in
-                    Button(action: { HapticManager.selection(); selectedTab = idx }) {
+                    Button(action: { HapticManager.selection(); selectedTab = idx }) {.buttonStyle(EKPressStyle())
                         Text(name)
                             .font(.caption.weight(selectedTab == idx ? .bold : .regular))
                             .foregroundStyle(selectedTab == idx ? Theme.securityGold : Theme.inkTertiary)
@@ -443,7 +443,7 @@ struct EarningsProgressView: View {
                 ScrollView(.horizontal) {
                     HStack(spacing: Theme.Spacing.tight) {
                         ForEach(["all", "nifty50", "large_cap", "mid_cap", "small_cap"], id: \.self) { cap in
-                            Button(action: { HapticManager.selection(); vm.selectedMarketCap = cap }) {
+                            Button(action: { HapticManager.selection(); vm.selectedMarketCap = cap }) {.buttonStyle(EKPressStyle())
                                 Text(capLabel(cap))
                                     .font(.caption.weight(vm.selectedMarketCap == cap ? .bold : .regular))
                                     .foregroundStyle(vm.selectedMarketCap == cap ? Theme.securityGold : Theme.inkSecondary)
@@ -727,7 +727,7 @@ struct EarningsCalendarView: View {
         return ScrollView(.horizontal) {
             HStack(spacing: Theme.Spacing.medium) {
                 ForEach(calendarDays, id: \.self) { date in
-                    Button(action: { HapticManager.selection(); vm.selectCalendarDate(date) }) {
+                    Button(action: { HapticManager.selection(); vm.selectCalendarDate(date) }) {.buttonStyle(EKPressStyle())
                         calendarDayCell(date)
                     }
                     .buttonStyle(EKPressStyle())
@@ -951,7 +951,7 @@ struct EarningsFeedView: View {
         VStack(spacing: Theme.Spacing.none) {
             HStack(spacing: Theme.Spacing.none) {
                 ForEach([("latest", "Latest Results"), ("best", "Best Performer"), ("worst", "Worst Performer")], id: \.0) { key, label in
-                    Button(action: { HapticManager.selection(); vm.selectedSort = key }) {
+                    Button(action: { HapticManager.selection(); vm.selectedSort = key }) {.buttonStyle(EKPressStyle())
                         Text(label)
                             .font(.caption.weight(vm.selectedSort == key ? .bold : .regular))
                             .foregroundStyle(vm.selectedSort == key ? Theme.securityGold : Theme.inkTertiary)
@@ -1739,7 +1739,7 @@ struct VarianceTrackerView: View {
     private var expectationFilterBar: some View {
         HStack(spacing: Theme.Spacing.none) {
             ForEach([("all","All"), ("high","High Expectations"), ("low","Low Expectations")], id: \.0) { key, label in
-                Button(action: { HapticManager.selection(); expectationFilter = key }) {
+                Button(action: { HapticManager.selection(); expectationFilter = key }) {.buttonStyle(EKPressStyle())
                     Text(label)
                         .font(.caption.weight(expectationFilter == key ? .bold : .regular))
                         .foregroundStyle(expectationFilter == key ? Theme.securityGold : Theme.inkTertiary)

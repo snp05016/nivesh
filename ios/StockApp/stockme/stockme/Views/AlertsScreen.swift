@@ -143,7 +143,7 @@ struct AlertsScreen: View {
                                     .foregroundStyle(Theme.inkPrimary)
                             }
                             Spacer()
-                            Button("Dismiss") { viewModel.showTriggeredBanner = false 
+                            Button("Dismiss") { viewModel.showTriggeredBanner = false }.buttonStyle(EKPressStyle())
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.securityGold)
                         }
@@ -484,7 +484,7 @@ struct AddAlertSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() 
+                    Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
                 }
             }
         }

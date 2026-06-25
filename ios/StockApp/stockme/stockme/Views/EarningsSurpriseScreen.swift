@@ -465,7 +465,7 @@ struct EarningsSurpriseHelpView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { HapticManager.selection(); dismiss() 
+                    Button("Done") { HapticManager.selection(); dismiss() }.buttonStyle(EKPressStyle())
                         .font(Theme.officialStampFont(size: 12, relativeTo: .body))
                         .foregroundColor(Theme.securityGold)
                 }

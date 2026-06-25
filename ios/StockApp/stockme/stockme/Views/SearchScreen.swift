@@ -211,7 +211,7 @@ struct SearchScreen: View {
                                 .toolbar {
                                     ToolbarItemGroup(placement: .keyboard) {
                                         Spacer()
-                                        Button(action: { HapticManager.selection(); hideKeyboard() }) {
+                                        Button(action: { HapticManager.selection(); hideKeyboard() }) {.buttonStyle(EKPressStyle())
                                             Image(systemName: "keyboard.chevron.compact.down")
                                                 .foregroundStyle(Theme.securityGold)
                                         }
@@ -855,7 +855,7 @@ private struct FilterSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() 
+                    Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
                 }
             }
         }

@@ -782,7 +782,7 @@ private struct TaggingSheet: View {
                             HStack {
                                 Text(tag).font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline)).foregroundStyle(Theme.inkPrimary)
                                 Spacer()
-                                Button(action: { HapticManager.selection(); tagsManager.removeTag(tag, from: ticker) }) {
+                                Button(action: { HapticManager.selection(); tagsManager.removeTag(tag, from: ticker) }) {.buttonStyle(EKPressStyle())
                                     Image(systemName: "minus.circle.fill").foregroundStyle(Theme.bearRed)
                                 }
                             }
@@ -798,7 +798,7 @@ private struct TaggingSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() 
+                    Button("Done") { dismiss() }.buttonStyle(EKPressStyle())
                 }
             }
         }
@@ -904,7 +904,7 @@ private struct RedFlagsSection: View {
         if let rf = redFlags, rf.totalFlags > 0 {
             VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                 // Header
-                Button(action: { HapticManager.selection(); withAnimation(.easeInOut(duration: 0.25)) { isExpanded.toggle() } }) {
+                Button(action: { HapticManager.selection(); withAnimation(.easeInOut(duration: 0.25)) { isExpanded.toggle() } }) {.buttonStyle(EKPressStyle())
                     HStack {
                         Text("⚠")
                             .font(.caption)
@@ -1607,7 +1607,7 @@ private struct AddHoldingSheet: View {
                     .foregroundStyle(Theme.securityGold)
                 }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() 
+                    Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
                         .font(Theme.serialNumberFont(size: 13))
                         .foregroundStyle(Theme.inkSecondary)
                 }
@@ -1746,7 +1746,7 @@ private struct EditHoldingSheet: View {
                         .foregroundStyle(Theme.securityGold)
                     }
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { dismiss() 
+                        Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
                             .font(Theme.serialNumberFont(size: 13))
                             .foregroundStyle(Theme.inkSecondary)
                     }
@@ -1804,7 +1804,7 @@ private struct NoteEditorSheet: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { dismiss() 
+                            Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
                         }
                         ToolbarItem(placement: .confirmationAction) {
                             Button("Save") {
@@ -1890,7 +1890,7 @@ private struct NoteEditorSheet: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { dismiss() 
+                            Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
                                 .font(Theme.serialNumberFont(size: 13))
                                 .foregroundStyle(Theme.inkSecondary)
                         }
@@ -2102,7 +2102,7 @@ private struct NoteEditorSheet: View {
                                 .foregroundStyle(Theme.bearRed.opacity(0.7))
                                 .lineLimit(3)
                                 .fixedSize(horizontal: false, vertical: true)
-                            Button(action: { HapticManager.selection(); fetchCharts() }) {
+                            Button(action: { HapticManager.selection(); fetchCharts() }) {.buttonStyle(EKPressStyle())
                                 HStack(spacing: Theme.Spacing.small) {
                                     Image(systemName: "arrow.clockwise")
                                         .font(.caption2)
@@ -2230,7 +2230,7 @@ private struct NoteEditorSheet: View {
                                         .foregroundStyle(Theme.inkSecondary)
                                 }
                                 Spacer()
-                                Button("Done") { expandedChart = nil 
+                                Button("Done") { expandedChart = nil }.buttonStyle(EKPressStyle())
                                     .font(.footnote.weight(.medium))
                                     .foregroundStyle(Theme.securityGold)
                             }
@@ -2310,10 +2310,10 @@ struct PortfolioBriefSheet: View {
                             .foregroundStyle(Theme.inkSecondary)
                     }
                     Spacer()
-                    Button(action: { HapticManager.selection();  HapticManager.selection(); dismiss() }) {
+                    Button(action: { HapticManager.selection();  HapticManager.selection(); dismiss() }) {.buttonStyle(EKPressStyle())
                         Image(systemName: "xmark.circle.fill")
                             .font(.title2).foregroundStyle(Theme.inkTertiary)
-                    
+                    }.buttonStyle(EKPressStyle())
                 }
 
                 GuillocheDivider()
@@ -2398,7 +2398,7 @@ struct QuickTransactionSheet: View {
                 // BUY / SELL toggle
                 HStack(spacing: Theme.Spacing.none) {
                     ForEach([TransactionType.buy, .sell], id: \.self) { type in
-                        Button(action: { HapticManager.selection();  HapticManager.selection(); transactionType = type }) {
+                        Button(action: { HapticManager.selection();  HapticManager.selection(); transactionType = type }) {.buttonStyle(EKPressStyle())
                             Text(type == .buy ? "BUY" : "SELL")
                                 .font(Theme.officialStampFont(size: 11)).tracking(1.5)
                                 .foregroundStyle(transactionType == type ? Theme.canvas : Theme.inkSecondary)
@@ -2444,7 +2444,7 @@ struct QuickTransactionSheet: View {
                 Spacer()
 
                 // Submit button
-                Button(action: { HapticManager.selection(); submitTransaction() }) {
+                Button(action: { HapticManager.selection(); submitTransaction() }) {.buttonStyle(EKPressStyle())
                     Text(isSubmitting ? "LOGGING..." : "LOG \(transactionType == .buy ? "BUY" : "SELL")")
                         .font(Theme.officialStampFont(size: 11)).tracking(1.5)
                         .foregroundStyle(Theme.canvas).frame(maxWidth: .infinity)

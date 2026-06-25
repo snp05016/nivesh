@@ -81,7 +81,7 @@ struct OptionsStrategyScreen: View {
                     .lineLimit(1)
             }
             Spacer()
-            Button(action: { HapticManager.selection();  HapticManager.selection(); showHelp = true }) {
+            Button(action: { HapticManager.selection();  HapticManager.selection(); showHelp = true }) {.buttonStyle(EKPressStyle())
                 Image(systemName: "questionmark.circle.fill")
                     .font(.title3)
                     .foregroundStyle(Theme.securityGold)
@@ -353,7 +353,7 @@ struct OptionsStrategyScreen: View {
                 metricBox("SPOT PRICE", IndianFormatter.price(parsedSpot), Theme.securityGold)
             }
 
-            Button(action: { HapticManager.selection(); fetchFromAPI() }) {
+            Button(action: { HapticManager.selection(); fetchFromAPI() }) {.buttonStyle(EKPressStyle())
                 HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .font(.caption)
@@ -578,7 +578,7 @@ struct OptionsStrategyScreen: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("DONE") { HapticManager.selection(); showHelp = false 
+                    Button("DONE") { HapticManager.selection(); showHelp = false }.buttonStyle(EKPressStyle())
                         .buttonStyle(EKPressStyle())
                 }
             }

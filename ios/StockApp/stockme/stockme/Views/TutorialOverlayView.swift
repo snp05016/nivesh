@@ -146,7 +146,7 @@ struct TutorialOverlayView: View {
                     .font(Theme.serialNumberFont(size: 10))
                     .foregroundStyle(Theme.inkTertiary)
                 Spacer()
-                Button("Skip") { tutorialManager.skip() 
+                Button("Skip") { tutorialManager.skip() }.buttonStyle(EKPressStyle())
                     .font(Theme.officialStampFont(size: 9))
                     .foregroundStyle(Theme.inkTertiary)
             }
@@ -176,7 +176,7 @@ struct TutorialOverlayView: View {
 
             HStack(spacing: Theme.Spacing.standard) {
                 if tutorialManager.currentStep > 1 {
-                    Button(action: { HapticManager.selection(); tutorialManager.previous() }) {
+                    Button(action: { HapticManager.selection(); tutorialManager.previous() }) {.buttonStyle(EKPressStyle())
                         Text("← Back")
                             .font(Theme.officialStampFont(size: 10))
                             .foregroundStyle(Theme.securityGold)

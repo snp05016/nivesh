@@ -68,7 +68,7 @@ struct TimeRangeSelector: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.small) {
             ForEach(ranges, id: \.self) { range in
-                Button(action: { HapticManager.selection();  HapticManager.selection(); selected = range }) {
+                Button(action: { HapticManager.selection();  HapticManager.selection(); selected = range }) {.buttonStyle(EKPressStyle())
                     Text(range.label)
                         .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
                         .foregroundStyle(selected == range ? Theme.securityGold : Theme.inkTertiary)
