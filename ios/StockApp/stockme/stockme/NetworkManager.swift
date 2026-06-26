@@ -1163,10 +1163,8 @@ class NetworkManager: ObservableObject {
             GlobalErrorDiagnoser.shared.trackNetworkError(err, endpoint: endpoint)
             throw err
         }
-        var req = URLRequest(url: url)
+        var req = authRequest(url)
         req.timeoutInterval = timeout
-        let corrId = generateCorrelationID(subsystem: "ios")
-        req.setValue(corrId, forHTTPHeaderField: "X-Correlation-ID")
         let data: Data, response: URLResponse
         do {
             (data, response) = try await session.data(for: req)

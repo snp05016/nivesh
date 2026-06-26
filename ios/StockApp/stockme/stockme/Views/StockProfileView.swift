@@ -548,6 +548,9 @@ struct StockProfileView: View {
 
                         // 4: Macro Analysis
                         MacroTabView(ticker: ticker, exchange: exchange, vm: vm).tag(4)
+
+                        // 5: Quant Lab
+                        QuantLabView(symbol: ticker).tag(5)
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
                     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: activeTab)
@@ -579,6 +582,7 @@ struct StockProfileView: View {
             ("News & Events", "newspaper"),
             ("Ownership", "person.3"),
             ("Macro", "globe.asia.australia"),
+            ("Quant Lab", "flask"),
         ]
     }
 }
