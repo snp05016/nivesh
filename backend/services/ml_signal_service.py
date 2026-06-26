@@ -15,7 +15,7 @@ from schemas.ml_signal import FeatureDriver, MLReliability, MLSignalResponse
 
 logger = logging.getLogger(__name__)
 
-ML_ENGINE_URL = "http://localhost:8001/predict/single"
+ML_ENGINE_URL = "http://localhost:8001"
 ML_ENGINE_TIMEOUT = 5.0  # seconds
 
 
