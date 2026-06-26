@@ -83,3 +83,7 @@ Thumbs.db
 dist/
 build/
 .worktrees/
+
+# Temp files
+.fuse_hidden*
+scratch_*.py

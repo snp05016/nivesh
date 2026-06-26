@@ -57,7 +57,7 @@ cd "${REPO_DIR}"
 
 # Execute the scanner. Ignore its exit code so we always log completion.
 set +o errexit
-${OPENCODE_BIN} run "using the gh-issue scanner please run $(cat "${RUNNER_FILE}")"
+${OPENCODE_BIN} run "using the gh-issue scanner please run $(cat "${RUNNER_FILE}")" >> "${LOGFILE}" 2>&1
 SCANNER_EXIT=$?
 set -o errexit
 
