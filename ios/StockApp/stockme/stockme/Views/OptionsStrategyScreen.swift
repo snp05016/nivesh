@@ -57,7 +57,7 @@ struct OptionsStrategyScreen: View {
             }
             .scrollIndicators(.hidden)
         }
-        .navigationBarHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showHelp) {
             helpSheet
         }

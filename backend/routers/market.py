@@ -328,7 +328,14 @@ def quarterly_financials_endpoint(ticker: str, exchange: str = "NSE"):
 
 @router.get("/macro-strip")
 def macro_strip_endpoint():
-    """Returns USD/INR rate, crude oil price, and RBI repo rate for context strip."""
+    """
+    Returns USD/INR rate, crude oil price, and RBI repo rate for context strip.
+
+    Args:
+
+    Returns:
+        Any: The response.
+    """
     try:
         import math
         result = {}
@@ -397,9 +404,19 @@ def macro_strip_endpoint():
 
 @router.get("/macro-context/{ticker}")
 def macro_context_endpoint(ticker: str, exchange: str = "NSE", sector: str = ""):
-    """Returns macro context for a specific stock: strip data, FII/DII trend,
-    sector performance, Market Mood Index, deterministic impact mapping, and
-    AI-generated analysis if a cached analysis exists."""
+    """
+    Returns macro context for a specific stock: strip data, FII/DII trend,
+sector performance, Market Mood Index, deterministic impact mapping, and
+AI-generated analysis if a cached analysis exists.
+
+    Args:
+        ticker (str): The ticker.
+        exchange (str): The exchange.
+        sector (str): The sector.
+
+    Returns:
+        Any: The response.
+    """
     import math as _m_ctx
     try:
         _dcache_key = f"macro_ctx_{ticker.upper()}_{sector}"
@@ -620,7 +637,14 @@ def macro_context_endpoint(ticker: str, exchange: str = "NSE", sector: str = "")
 
 @router.get("/earnings-calendar")
 def earnings_calendar_endpoint():
-    """Returns upcoming earnings dates for NSE portfolio stocks."""
+    """
+    Returns upcoming earnings dates for NSE portfolio stocks.
+
+    Args:
+
+    Returns:
+        Any: The response.
+    """
     cached = _dcache_get("market", "earnings_calendar")
     if cached is not None:
         return cached
@@ -728,7 +752,14 @@ def analyst_ratings_endpoint(ticker: str, exchange: str = "NSE"):
 
 @router.get("/ipo-calendar")
 def ipo_calendar_endpoint():
-    """Returns upcoming IPO data (best-effort from public sources)."""
+    """
+    Returns upcoming IPO data (best-effort from public sources).
+
+    Args:
+
+    Returns:
+        Any: The response.
+    """
     return {
         "ipos": UPCOMING_IPOS,
         "note": "IPO data from manual tracking.",
@@ -738,7 +769,14 @@ def ipo_calendar_endpoint():
 
 @router.get("/sector-weekly")
 def sector_weekly_endpoint():
-    """Returns sector performance with 1-week and 1-day change. Handles holidays and NaN."""
+    """
+    Returns sector performance with 1-week and 1-day change. Handles holidays and NaN.
+
+    Args:
+
+    Returns:
+        Any: The response.
+    """
     SECTOR_ETFS = {
         "Nifty Bank": "^NSEBANK",
         "Nifty IT": "^CNXIT",
@@ -982,7 +1020,16 @@ del _seen_tickers
 
 @router.get("/search")
 def search_endpoint(q: str = "", limit: int = 20):
-    """Fast in-memory NSE stock search. No yfinance, no DB. Returns in <5ms."""
+    """
+    Fast in-memory NSE stock search. No yfinance, no DB. Returns in <5ms.
+
+    Args:
+        q (str): The q.
+        limit (int): The limit.
+
+    Returns:
+        Any: The response.
+    """
     q = q.strip()
     if not q:
         return []
@@ -1095,7 +1142,14 @@ def sector_performance_endpoint():
 
 @router.get("/api/v1/market/pulse")
 def market_pulse_endpoint():
-    """Market indices + advance/decline breadth ratio."""
+    """
+    Market indices + advance/decline breadth ratio.
+
+    Args:
+
+    Returns:
+        Any: The response.
+    """
     try:
         return fetch_market_pulse()
     except Exception as e:
@@ -1103,7 +1157,14 @@ def market_pulse_endpoint():
 
 @router.get("/api/v1/market/momentum")
 def market_momentum_endpoint():
-    """Bullish/bearish MA crossover lists with sparkline coordinate arrays."""
+    """
+    Bullish/bearish MA crossover lists with sparkline coordinate arrays.
+
+    Args:
+
+    Returns:
+        Any: The response.
+    """
     try:
         return fetch_momentum()
     except Exception as e:
@@ -1111,7 +1172,14 @@ def market_momentum_endpoint():
 
 @router.get("/api/v1/market/macro-alternatives")
 def market_macro_alternatives_endpoint():
-    """Brent, Gold, USD/INR, US 10Y, India VIX, ETFs."""
+    """
+    Brent, Gold, USD/INR, US 10Y, India VIX, ETFs.
+
+    Args:
+
+    Returns:
+        Any: The response.
+    """
     try:
         return fetch_macro_alternatives()
     except Exception as e:
@@ -1119,7 +1187,14 @@ def market_macro_alternatives_endpoint():
 
 @router.get("/api/v1/market/institutional-flow")
 def market_institutional_flow_endpoint():
-    """Top 10 mutual funds by 1-year return (leaderboard)."""
+    """
+    Top 10 mutual funds by 1-year return (leaderboard).
+
+    Args:
+
+    Returns:
+        Any: The response.
+    """
     try:
         return fetch_institutional_flow()
     except Exception as e:
@@ -1128,7 +1203,17 @@ def market_institutional_flow_endpoint():
 
 @router.get("/api/v1/market/stock-history")
 def stock_history_endpoint(ticker: str, exchange: str = "NSE", period: str = "1y"):
-    """OHLCV price history for a stock. period: 1mo,3mo,6mo,1y,2y,5y"""
+    """
+    OHLCV price history for a stock. period: 1mo,3mo,6mo,1y,2y,5y
+
+    Args:
+        ticker (str): The ticker.
+        exchange (str): The exchange.
+        period (str): The period.
+
+    Returns:
+        Any: The response.
+    """
     try:
         cache_key = f"{ticker}_{exchange}_{period}"
         cached = _dcache_get("stock_history", cache_key)
@@ -1190,7 +1275,14 @@ def _yf_fetch_info(full_ticker: str) -> dict:
 def stock_profile_endpoint(ticker: str, exchange: str = "NSE"):
     """
     All data needed for StockProfileView in a single call.
-    Returns HTTP 200 on partial failures — errors array explains what's missing.
+Returns HTTP 200 on partial failures — errors array explains what's missing.
+
+    Args:
+        ticker (str): The ticker.
+        exchange (str): The exchange.
+
+    Returns:
+        Any: The response.
     """
     import math
     
@@ -1242,9 +1334,14 @@ def stock_profile_endpoint(ticker: str, exchange: str = "NSE"):
         if raw_promoter is not None:
             promoter_holding_pct = round(float(raw_promoter) * 100, 2)
 
+        # heldPercentInstitutions = total institutional (FII + DII combined).
+        # Store it separately so we can derive FII = institutional - DII later
+        # instead of misreporting the full institutional as FII alone (#256/#306).
         raw_inst = info.get("heldPercentInstitutions")
+        _institutional_total_pct: float | None = None
         if raw_inst is not None:
-            fii_holding_pct = round(float(raw_inst) * 100, 2)
+            _institutional_total_pct = round(float(raw_inst) * 100, 2)
+            fii_holding_pct = _institutional_total_pct  # provisional; revised below
 
         # Profitability — yfinance returns decimal (0.152 = 15.2%)
         roe = info.get("returnOnEquity")
@@ -1281,10 +1378,17 @@ def stock_profile_endpoint(ticker: str, exchange: str = "NSE"):
     try:
         fund = get_fundamentals(ticker, exchange)
         if fund:
-            if fund.get("fii_holding_pct"):
-                fii_holding_pct = fund.get("fii_holding_pct")
-            if fund.get("dii_holding_pct"):
-                dii_holding_pct = fund.get("dii_holding_pct")
+            fund_fii = fund.get("fii_holding_pct")
+            fund_dii = fund.get("dii_holding_pct")
+            if fund_fii:
+                fii_holding_pct = fund_fii
+            if fund_dii:
+                dii_holding_pct = fund_dii
+                # If fundamentals gave DII but not FII and we only have the
+                # yfinance institutional total (FII+DII combined), derive FII
+                # so FII + DII = institutional_total, not 135%+ (#256/#306).
+                if not fund_fii and _institutional_total_pct is not None:
+                    fii_holding_pct = max(0.0, round(_institutional_total_pct - fund_dii, 2))
     except Exception:
         pass
 
@@ -1477,8 +1581,13 @@ class YoYAggregateResponseLocal(_BaseModel):
 async def earnings_sync_ratio_endpoint():
     """
     Real-time tracking metric: total companies that have declared quarterly
-    results vs total statutory listed exchange obligations (e.g. 4432/5042).
-    Backed by 15-min in-memory TTL cache.
+results vs total statutory listed exchange obligations (e.g. 4432/5042).
+Backed by 15-min in-memory TTL cache.
+
+    Args:
+
+    Returns:
+        Any: The response.
     """
     try:
         raw = await asyncio.get_event_loop().run_in_executor(
@@ -1505,8 +1614,13 @@ async def earnings_sync_ratio_endpoint():
 async def yoy_aggregate_endpoint():
     """
     Composite market health: aggregate YoY Revenue and Net Profit
-    expansion/contraction metrics across NSE-listed companies.
-    Backed by 15-min in-memory TTL cache.
+expansion/contraction metrics across NSE-listed companies.
+Backed by 15-min in-memory TTL cache.
+
+    Args:
+
+    Returns:
+        Any: The response.
     """
     try:
         raw = await asyncio.get_event_loop().run_in_executor(
@@ -1590,7 +1704,14 @@ class NetWorthSnapshotResponseLocal(_BaseModel):
 
 @router.get("/api/v1/market/dashboard")
 def market_dashboard_endpoint():
-    """All four market intelligence feeds in a single round-trip."""
+    """
+    All four market intelligence feeds in a single round-trip.
+
+    Args:
+
+    Returns:
+        Any: The response.
+    """
     try:
         with _cf.ThreadPoolExecutor(max_workers=4) as ex:
             fp = ex.submit(fetch_market_pulse)
@@ -1614,11 +1735,16 @@ def market_dashboard_endpoint():
 async def dashboard_pulse_endpoint():
     """
     Unified market dashboard — returns full iOS MarketDashboardResponse shape:
-    { pulse, momentum: {bullish, bearish}, live_reporting_sync,
-      yoy_market_health, cap_index_aggregator, fetched_at }
+{ pulse, momentum: {bullish, bearish}, live_reporting_sync,
+  yoy_market_health, cap_index_aggregator, fetched_at }
 
-    All value strings use Indian numbering (Lakhs/Crores).
-    Errors are caught, logged to market_error_logs, and fallback values served.
+All value strings use Indian numbering (Lakhs/Crores).
+Errors are caught, logged to market_error_logs, and fallback values served.
+
+    Args:
+
+    Returns:
+        Any: The response.
     """
     now_iso = _dt.utcnow().isoformat()
     pulse_raw: dict = {}
@@ -1897,7 +2023,14 @@ def _fmt_inr_crores(value: float) -> str:
 def admin_error_logs_endpoint(limit: int = 50, authorization: str = Header(None)):
     """
     Admin diagnostic endpoint — returns recent market_error_logs entries
-    as a clean JSON stream for iOS console debugging. Requires admin auth.
+as a clean JSON stream for iOS console debugging. Requires admin auth.
+
+    Args:
+        limit (int): The limit.
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
     """
     from helpers import require_admin
     require_admin(authorization)
@@ -1933,8 +2066,13 @@ def admin_error_logs_endpoint(limit: int = 50, authorization: str = Header(None)
 async def institutional_leaderboard_endpoint():
     """
     Top-performing mutual funds sorted by 1-year return.
-    Proxies DII floor support intelligence. 15-min TTL cache.
-    Raises 503 on DataHarvestingError.
+Proxies DII floor support intelligence. 15-min TTL cache.
+Raises 503 on DataHarvestingError.
+
+    Args:
+
+    Returns:
+        Any: The response.
     """
     try:
         raw = await asyncio.get_event_loop().run_in_executor(None, fetch_institutional_flow)
@@ -2224,12 +2362,19 @@ def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple
 async def earnings_feed_endpoint(market_cap: str = "all", sort: str = "latest"):
     """
     Ranked earnings feed — returns results categorized by sort parameter:
-      - "latest":      most recently reported (default)
-      - "best_performer":   highest positive profit variance
-      - "worst_performer":  highest negative profit variance
-    Each result includes revenue_growth_pct and net_profit_growth_pct for sorting.
-    Falls back to yfinance quarterly data when no AnalysisHistory records exist.
-    Adds data_source and diagnostic fields for transparency.
+  - "latest":      most recently reported (default)
+  - "best_performer":   highest positive profit variance
+  - "worst_performer":  highest negative profit variance
+Each result includes revenue_growth_pct and net_profit_growth_pct for sorting.
+Falls back to yfinance quarterly data when no AnalysisHistory records exist.
+Adds data_source and diagnostic fields for transparency.
+
+    Args:
+        market_cap (str): The market_cap.
+        sort (str): The sort.
+
+    Returns:
+        Any: The response.
     """
     now_iso = datetime.now(timezone.utc).isoformat()
     data_source = "database"
@@ -2307,12 +2452,19 @@ async def earnings_feed_endpoint(market_cap: str = "all", sort: str = "latest"):
 async def earnings_calendar_day_endpoint(date: str = None, ticker: str = None):
     """
     Historical earnings calendar — returns results for a date with 7-day
-    price-action sparkline data per ticker. Pass ?ticker=SYM to filter.
+price-action sparkline data per ticker. Pass ?ticker=SYM to filter.
 
-    Each result includes:
-      - earnings metadata (ticker, revenue, profit, eps, etc.)
-      - sparkline: list of 7 closing prices preceding the result date
-      - price_change_7d_pct: % change over the 7-day window
+Each result includes:
+  - earnings metadata (ticker, revenue, profit, eps, etc.)
+  - sparkline: list of 7 closing prices preceding the result date
+  - price_change_7d_pct: % change over the 7-day window
+
+    Args:
+        date (str): The date.
+        ticker (str): The ticker.
+
+    Returns:
+        Any: The response.
     """
     now_iso = datetime.now(timezone.utc).isoformat()
     target_date = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -2507,7 +2659,13 @@ class EarningsAlertCreateRequest(_BaseModelLocal):
 def earnings_alerts_get_endpoint(user_id: int = 0):
     """
     Return all earnings alerts for a given user.
-    Pass ?user_id=<id> to filter. Returns empty list if none.
+Pass ?user_id=<id> to filter. Returns empty list if none.
+
+    Args:
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
     """
     try:
         with get_session() as session:
@@ -2540,7 +2698,14 @@ def earnings_alerts_get_endpoint(user_id: int = 0):
 def earnings_alerts_post_endpoint(body: EarningsAlertCreateRequest, user_id: int = Depends(require_auth)):
     """
     Create an earnings date alert for a user+ticker combination.
-    Deduplicates — if same user/ticker/date already exists, returns 200 with existing.
+Deduplicates — if same user/ticker/date already exists, returns 200 with existing.
+
+    Args:
+        body (EarningsAlertCreateRequest): The body.
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
     """
     ticker = body.ticker.upper().strip()
     try:
@@ -2586,7 +2751,16 @@ def earnings_alerts_post_endpoint(body: EarningsAlertCreateRequest, user_id: int
 
 @router.delete("/api/v1/earnings/alerts/{alert_id}")
 def earnings_alerts_delete_endpoint(alert_id: int, user_id: int = Depends(require_auth)):
-    """Delete a specific earnings alert by ID. Verifies alert belongs to authenticated user."""
+    """
+    Delete a specific earnings alert by ID. Verifies alert belongs to authenticated user.
+
+    Args:
+        alert_id (int): The alert_id.
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     try:
         with get_session() as session:
             entry = session.query(EarningsAlert).filter(
@@ -2611,7 +2785,14 @@ def earnings_alerts_delete_endpoint(alert_id: int, user_id: int = Depends(requir
 def admin_earnings_errors_endpoint(limit: int = 50, authorization: str = Header(None)):
     """
     Admin diagnostic endpoint — returns recent earnings_error_logs entries.
-    Requires admin auth.
+Requires admin auth.
+
+    Args:
+        limit (int): The limit.
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
     """
     from helpers import require_admin
     require_admin(authorization)
@@ -2649,7 +2830,14 @@ def admin_earnings_errors_endpoint(limit: int = 50, authorization: str = Header(
 def get_option_chain_metrics_endpoint(ticker: str, current_price: float = 0):
     """
     Returns pre-computed F&O derivatives metrics (PCR, Max Pain, OI Skew).
-    Cached 15 minutes. Returns error dict if NSE is unreachable.
+Cached 15 minutes. Returns error dict if NSE is unreachable.
+
+    Args:
+        ticker (str): The ticker.
+        current_price (float): The current_price.
+
+    Returns:
+        Any: The response.
     """
     from services.options_scraper import fetch_option_chain, compute_derivatives_metrics
     raw_chain = fetch_option_chain(ticker.upper())
@@ -2804,8 +2992,13 @@ def _populate_advisor_biographies() -> int:
 def ideas_advisors_endpoint():
     """
     Returns verified SEBI-registered research analysts with full biographies.
-    Auto-populates the table from the built-in SEBI_ADVISORS list if empty.
-    Response: { "advisors": [...], "count": N, "fetched_at": "..." }
+Auto-populates the table from the built-in SEBI_ADVISORS list if empty.
+Response: { "advisors": [...], "count": N, "fetched_at": "..." }
+
+    Args:
+
+    Returns:
+        Any: The response.
     """
     now_iso = datetime.now(timezone.utc).isoformat()
     try:
@@ -2840,10 +3033,17 @@ def ideas_advisors_endpoint():
 def ideas_feed_endpoint(limit: int = 20, sentiment: str = "all"):
     """
     Returns recent TextAdvisoryInsight rows joined with advisor names.
-    Filter by sentiment: ?sentiment=all (default), bullish, or bearish.
-    Falls back gracefully if no insights exist.
-    Response: { "insights": [{id, advisor_name, timestamp, content_text,
-                              target_ticker, extracted_sentiment}], "count": N }
+Filter by sentiment: ?sentiment=all (default), bullish, or bearish.
+Falls back gracefully if no insights exist.
+Response: { "insights": [{id, advisor_name, timestamp, content_text,
+                          target_ticker, extracted_sentiment}], "count": N }
+
+    Args:
+        limit (int): The limit.
+        sentiment (str): The sentiment.
+
+    Returns:
+        Any: The response.
     """
     now_iso = datetime.now(timezone.utc).isoformat()
     sentiment = sentiment.lower()
@@ -2891,8 +3091,15 @@ def ideas_feed_endpoint(limit: int = 20, sentiment: str = "all"):
 def admin_ideas_errors_endpoint(limit: int = 50, authorization: str = Header(None)):
     """
     Admin diagnostic endpoint — returns recent IdeasErrorLog entries.
-    Requires admin auth.
-    Response: { "errors": [...], "count": N }
+Requires admin auth.
+Response: { "errors": [...], "count": N }
+
+    Args:
+        limit (int): The limit.
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
     """
     from helpers import require_admin
     require_admin(authorization)
@@ -2941,12 +3148,17 @@ _NIFTY50_TICKERS = [
 async def top_movers_endpoint():
     """
     Returns top gainers, losers, active-by-value, active-by-volume from NIFTY 50.
-    Each list is capped at 10 entries. Uses yfinance batch download (fast).
-    Response: {
-        "gainers": [...], "losers": [...],
-        "active_by_value": [...], "active_by_volume": [...],
-        "fetched_at": str
-    }
+Each list is capped at 10 entries. Uses yfinance batch download (fast).
+Response: {
+    "gainers": [...], "losers": [...],
+    "active_by_value": [...], "active_by_volume": [...],
+    "fetched_at": str
+}
+
+    Args:
+
+    Returns:
+        Any: The response.
     """
     from services.disk_cache import get as _dc_get, set as _dc_set
     cache_key = "top_movers_today"
@@ -3030,7 +3242,16 @@ async def top_movers_endpoint():
 
 @router.get("/market/sentiment-trend/{ticker}")
 def sentiment_trend(ticker: str, days: int = 30):
-    """30-Day Rolling News Sentiment Chart per Ticker."""
+    """
+    30-Day Rolling News Sentiment Chart per Ticker.
+
+    Args:
+        ticker (str): The ticker.
+        days (int): The days.
+
+    Returns:
+        Any: The response.
+    """
     try:
         from services.sentiment_engine import get_sentiment_trend
         trend = get_sentiment_trend(ticker, days)
@@ -3041,7 +3262,15 @@ def sentiment_trend(ticker: str, days: int = 30):
 
 @router.get("/market/screener")
 def run_screener(preset: str = "52w_breakout"):
-    """Screener endpoint."""
+    """
+    Screener endpoint.
+
+    Args:
+        preset (str): The preset.
+
+    Returns:
+        Any: The response.
+    """
     try:
         import yfinance as yf
         if preset == "52w_breakout":

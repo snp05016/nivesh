@@ -140,11 +140,12 @@ class StrategyLabViewModel: ObservableObject {
     }
     
     private func fetchBacktest(ticker: String, strategyId: String, years: Int) async throws -> StrategyBacktestResult {
-        guard let url = URL(string: "http://127.0.0.1:8000/api/v1/analysis/backtest") else {
+        let urlStr = "\(NetworkManager.shared.baseURL)/analysis/backtest"
+        guard let url = URL(string: urlStr) else {
             throw URLError(.badURL)
         }
-        
-        var request = URLRequest(url: url)
+
+        var request = NetworkManager.shared.authRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         

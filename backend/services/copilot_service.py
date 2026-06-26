@@ -32,9 +32,18 @@ def claude_haiku(messages: List[Dict[str, Any]]) -> str:
     return response.content[0].text
 
 def strip_emoji(text: str) -> str:
-    """Strip emojis from text."""
-    # Basic emoji removal regex
-    return re.sub(r'[\U00010000-\U0010ffff]', '', text)
+    """Strip emojis from text — covers BMP + supplementary plane emoji."""
+    # BMP emoji (U+2000–U+2BFF: symbols, dingbats, misc) + supplementary planes
+    return re.sub(
+        r'[\U00010000-\U0010ffff'
+        r' -⯿'
+        r'　-〿'
+        r'︀-️'
+        r'\U0001F300-\U0001F9FF'
+        r']',
+        '',
+        text,
+    )
 
 def _deep_analysis_worker(queue, ticker: str, exchange: str, user_id: int):
     """Worker process for deep analysis to protect the main thread."""

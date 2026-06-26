@@ -25,6 +25,7 @@ from services.error_telemetry import CorrelationIDMiddleware
 
 import multiprocessing
 import asyncio
+from contextlib import asynccontextmanager
 from fastapi import Request
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
@@ -93,6 +94,14 @@ _harvest_status: dict = {
 
 
 def _dash_update_harvest(key: str, status: str, result: dict | None = None) -> None:
+    """
+    Update the dashboard state for harvesting jobs.
+
+    Args:
+        key: The harvest job identifier (e.g., 'youtube', 'news').
+        status: The current status of the job.
+        result: Optional result dictionary if the job has finished.
+    """
     with _dash_lock:
         if key in _harvest_status:
             _harvest_status[key]["status"] = status
@@ -108,6 +117,15 @@ def _dash_update_harvest(key: str, status: str, result: dict | None = None) -> N
                 })
 
 def _dash_start_job(job_id: str, ticker: str, exchange: str, user_id) -> None:
+    """
+    Register a new AI analysis job in the dashboard state.
+
+    Args:
+        job_id: Unique job identifier.
+        ticker: The stock ticker being analyzed.
+        exchange: The exchange for the ticker.
+        user_id: The ID of the user requesting the analysis.
+    """
     with _dash_lock:
         _active_analyses[job_id] = {
             "job_id": job_id,
@@ -119,6 +137,15 @@ def _dash_start_job(job_id: str, ticker: str, exchange: str, user_id) -> None:
         }
 
 def _dash_end_job(job_id: str, result: dict | None = None, error: str | None = None, killed: bool = False) -> None:
+    """
+    Mark an AI analysis job as completed or failed in the dashboard state.
+
+    Args:
+        job_id: Unique job identifier.
+        result: The result payload, if successful.
+        error: Error message, if the job failed.
+        killed: Boolean indicating if the job was forcibly terminated.
+    """
     with _dash_lock:
         job = _active_analyses.pop(job_id, None)
         if not job:
@@ -141,6 +168,16 @@ def _dash_end_job(job_id: str, result: dict | None = None, error: str | None = N
         _completed_analyses.appendleft(entry)
 
 def _dash_log_request(method: str, path: str, params: dict, status: int, duration_ms: float) -> None:
+    """
+    Log an incoming HTTP request for dashboard telemetry.
+
+    Args:
+        method: HTTP method.
+        path: The requested URL path.
+        params: Query parameters.
+        status: Response HTTP status code.
+        duration_ms: Duration of the request in milliseconds.
+    """
     with _dash_lock:
         _request_log.appendleft({
             "id": str(uuid.uuid4())[:8],
@@ -154,6 +191,13 @@ def _dash_log_request(method: str, path: str, params: dict, status: int, duratio
 
 
 def _log_token_usage(endpoint: str, usage) -> None:
+    """
+    Log AI token usage statistics.
+
+    Args:
+        endpoint: The API endpoint or component responsible for the AI call.
+        usage: Object containing usage metrics (input, output, cache tokens).
+    """
     # Handle both Anthropic (input_tokens) and OpenAI (prompt_tokens)
     inp = getattr(usage, "input_tokens", 0)
     if inp == 0:
@@ -213,7 +257,14 @@ class DataHarvestingError(Exception):
     pass
 
 
-app = FastAPI(title="Indian Stock Market Analysis API")
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    await _on_startup()
+    yield
+    await _on_shutdown()
+
+
+app = FastAPI(title="Indian Stock Market Analysis API", lifespan=_lifespan)
 
 # ---------------------------------------------------------------------------
 # CORS — env-configurable for production
@@ -235,6 +286,9 @@ app.add_middleware(
 
 
 class _RequestLogMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to log standard HTTP requests to the dashboard state.
+    """
     async def dispatch(self, request: Request, call_next):
         start = time.time()
         response = await call_next(request)
@@ -253,6 +307,9 @@ app.add_middleware(_RequestLogMiddleware)
 
 
 class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to inject security headers and enforce basic rate limits.
+    """
     async def dispatch(self, request: Request, call_next):
         client_ip = request.client.host if request.client else "unknown"
         endpoint = request.url.path
@@ -293,6 +350,7 @@ logger = logging.getLogger("nivesh.main")
 
 @app.exception_handler(DataHarvestingError)
 async def _data_harvesting_error_handler(_req: _FRequest, exc: DataHarvestingError):
+    """Exception handler for DataHarvestingError."""
     return _JSONResponse(
         status_code=503,
         content={"detail": f"Data harvesting service unavailable: {exc}"},
@@ -378,8 +436,13 @@ from services.harvest_worker import router as harvest_router, start_scheduler, s
 app.include_router(harvest_router)
 
 
-@app.on_event("startup")
 async def _on_startup():
+    """
+    Execute application startup routines.
+
+    Initializes structured logging, the scheduler, database tables, and kicks off
+    background syncs. Also sweeps any stale or abandoned jobs left in the database.
+    """
     # Wire up structured JSON logging (fixes #83)
     from core.logging_config import configure_logging
     configure_logging()
@@ -432,7 +495,6 @@ async def _on_startup():
     # The duplicate AsyncIOScheduler was causing double job execution.
 
 
-@app.on_event("shutdown")
 async def _on_shutdown():
     stop_scheduler()
 
@@ -440,13 +502,15 @@ async def _on_shutdown():
 @app.get("/ping")
 def ping():
     """Zero-dependency liveness probe — no DB, no yfinance."""
+    """Simple ping endpoint for load balancers."""
     return {"pong": True}
 
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
+    """Return an empty response for favicon requests to prevent 404s."""
     from fastapi.responses import Response
-    return Response(status_code=204)
+    return Response(content=b"", media_type="image/x-icon")
 
 
 # init_db() moved into _on_startup() handler (fixes #87)
@@ -667,7 +731,6 @@ _NSE_DIRECTORY = [
     {"ticker": "BIKAJI",      "company_name": "Bikaji Foods",                    "sector": "FMCG"},
     {"ticker": "TRENT",       "company_name": "Trent Ltd",                       "sector": "Retail"},
     {"ticker": "KALYANKJIL",  "company_name": "Kalyan Jewellers",                "sector": "Consumer"},
-    {"ticker": "TITAN",       "company_name": "Titan Company Ltd",               "sector": "Consumer"},
     {"ticker": "MANYAVAR",    "company_name": "Vedant Fashions",                 "sector": "Retail"},
     {"ticker": "METROBRAND",  "company_name": "Metro Brands",                    "sector": "Retail"},
     # Auto
@@ -725,7 +788,6 @@ _NSE_DIRECTORY = [
     {"ticker": "DEEPAKFERT",  "company_name": "Deepak Fertilisers",              "sector": "Fertilizers"},
     # Additional prominent names
     {"ticker": "NAUKRI",      "company_name": "Info Edge (Naukri)",              "sector": "IT"},
-    {"ticker": "ZOMATO",      "company_name": "Zomato Ltd",                      "sector": "Consumer Tech"},
     {"ticker": "SWIGGY",      "company_name": "Bundl Technologies (Swiggy)",     "sector": "Consumer Tech"},
     {"ticker": "IXIGO",       "company_name": "Le Travenues Technology (ixigo)", "sector": "Consumer Tech"},
     {"ticker": "KAYNES",      "company_name": "Kaynes Technology",               "sector": "Engineering"},
@@ -779,13 +841,18 @@ from schemas import (
 
 @app.get("/health")
 def health_endpoint():
-    """Lightweight health check for iOS client.
-    Swift checkHealth() only inspects HTTP status code — this returns
-    a minimal 200 to avoid unnecessary DB/disk/yfinance overhead.
-    For rich diagnostics, use GET /health/live (DB check) or
-    the admin liveness endpoint.
     """
-    return {"status": "ok"}
+    Deep health check endpoint for readiness probes.
+
+    Verifies database connectivity by querying the User table.
+    """
+    try:
+        with get_session() as session:
+            from sqlalchemy import text as _text
+            session.execute(_text("SELECT 1"))
+        return {"status": "ok"}
+    except Exception:
+        raise HTTPException(status_code=503, detail="Service unavailable")
 
 
 # ---------------------------------------------------------------------------
@@ -797,20 +864,11 @@ def health_endpoint():
 @app.get("/health/live")
 async def liveness_probe():
     """
-    Lightweight liveness probe for container orchestration.
-    Returns 200 {"status": "alive"} if the DB connection is healthy.
-    Returns 503 if the DB is unreachable.
+    Shallow liveness probe endpoint.
+
+    Always returns 200 OK as long as the HTTP server is responsive.
     """
-    try:
-        with get_session() as _session:
-            from sqlalchemy import text as _text
-            _session.execute(_text("SELECT 1"))
-        return {"status": "alive", "db": True, "ts": datetime.now(timezone.utc).isoformat()}
-    except Exception as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Database connection failed: {exc}",
-        )
+    return {"status": "alive", "time": datetime.now(timezone.utc).isoformat()}
 
 
 # ---------------------------------------------------------------------------
@@ -1830,7 +1888,7 @@ async function refreshAll(){
     document.getElementById('tc').textContent=(tok.total_calls||0)+' calls this session';
     const cl2=tok.recent||[];
     document.getElementById('clc').textContent=cl2.length+' recent';
-    document.getElementById('ct').innerHTML=cl2.length===0?'<tr><td colspan="6" class="empty">No AI calls</td></tr>':cl2.map(c=>`<tr><td class="ts">${ts(c.ts)}</td><td style="color:#bc8cff;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.endpoint||'-'}</td><td style="color:#f85149">${fmt(c.input)}</td><td style="color:#3fb950">${fmt(c.output)}</td><td style="color:#58a6ff">${fmt(c.cache_read)}</td><td style="color:#d29922">${fmt(c.cache_write)}</td></tr>`).join('');
+    document.getElementById('ct').innerHTML=cl2.length===0?'<tr><td colspan="6" class="empty">No AI calls</td></tr>':cl2.map(c=>`<tr><td class="ts">${ts(c.ts)}</td><td style="color:#bc8cff;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.endpoint||'-'}</td><td style="color:#f85149">${fmt(c.input)}</td><td style="color:#3fb950">${fmt(c.output)}</td><td style="color:#58a6ff">${fmt(c.cache_read)}</td><td style="color:#d29922">${fmt(c.cache_write)}</td></tr>`).join('').join('');
     if(d.cache_stats){
       const sg=document.getElementById('scraper_status_grid');
       const sdata=d.cache_stats.scraper||{};
@@ -1862,7 +1920,7 @@ async function refreshAll(){
   }
 }
 
-// ─── User dropdown ───────────────────────────────────────────
+// ─── User dropdown ──────────────────────────────────────────
 let _usersPopulated=false;
 async function populateUserDropdown(){
   if(_usersPopulated)return;
@@ -1989,11 +2047,22 @@ setInterval(loadAIEngine, 10000);
 
 @app.get("/", response_class=HTMLResponse)
 def dashboard_html():
+    """Return the raw HTML content for the admin dashboard."""
     return HTMLResponse(content=_DASHBOARD_HTML)
 
 
 @app.get("/dashboard-data")
 def dashboard_data(authorization: str = Header(None)):
+    """
+    Fetch comprehensive telemetry and state data for the admin dashboard.
+
+    Args:
+        authorization: Admin authorization header.
+
+    Returns:
+        A dictionary containing system uptime, active jobs, token stats, cache health,
+        and database entity counts.
+    """
     require_admin(authorization)
     uptime = (datetime.now() - _server_start).total_seconds()
     
@@ -2212,7 +2281,17 @@ def dashboard_data(authorization: str = Header(None)):
 
 @app.get("/dashboard-user-data")
 def dashboard_user_data(user_id: int, authorization: str = Header(None)):
-    """Per-user deep data for admin dashboard: portfolio, analyses, watchlist, journal, net worth."""
+    """
+    Fetch specific data and metrics for a given user for the admin dashboard.
+
+    Args:
+        user_id: Target user's ID.
+        authorization: Admin authorization header.
+
+    Returns:
+        A dictionary containing the user's details, portfolio holdings, generated
+        charts, and recent AI analyses.
+    """
     require_admin(authorization)
     result: dict = {"user_id": user_id}
     try:

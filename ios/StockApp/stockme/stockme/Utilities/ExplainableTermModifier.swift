@@ -30,11 +30,12 @@ extension View {
         modifier(ExplainableTermModifier(term: term))
     }
 
+    @ViewBuilder
     public func explainableTermOptional(_ term: String?) -> some View {
         if let term, FinanceTerms.shared.lookup(term) != nil {
-            AnyView(modifier(ExplainableTermModifier(term: term)))
+            modifier(ExplainableTermModifier(term: term))
         } else {
-            AnyView(self)
+            self
         }
     }
 }

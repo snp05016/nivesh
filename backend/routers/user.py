@@ -197,7 +197,15 @@ def watchlist_get_endpoint(user_id: int, authorization: str = Header(None)):
 
 @router.post("/notifications/register-device")
 def notifications_register_device(req: DeviceTokenRegisterRequest):
-    """Register or update a device token. Delegates to shared upsert helper."""
+    """
+    Register or update a device token. Delegates to shared upsert helper.
+
+    Args:
+        req (DeviceTokenRegisterRequest): The req.
+
+    Returns:
+        Any: The response.
+    """
     try:
         return upsert_device_token(req.user_id, req.device_token, req.platform or "ios")
     except Exception as e:
@@ -257,18 +265,18 @@ def notifications_morning_summary_push(req: MorningSummaryPushRequest):
             summary_data = {"summary": "Check your portfolio today.", "mood": "cautious", "priority_items": []}
 
         mood = summary_data.get("mood", "cautious")
-        mood_emoji = "📈" if mood == "positive" else "📉" if mood == "negative" else "📊"
+        mood_label = "UP" if mood == "positive" else "DOWN" if mood == "negative" else "NEUTRAL"
 
         priority_items = summary_data.get("priority_items", []) or []
         first_action = ""
         if priority_items:
             item = priority_items[0]
-            first_action = f"\n• {strip_emoji(item.get('ticker', ''))}: {strip_emoji(item.get('action', ''))}"
+            first_action = f"\n- {strip_emoji(item.get('ticker', ''))}: {strip_emoji(item.get('action', ''))}"
 
-        body = f"Good morning, {display_name}! {mood_emoji} {strip_emoji(summary_data.get('summary', '')[:80])}{first_action}"
+        body = f"Good morning, {display_name}! [{mood_label}] {strip_emoji(summary_data.get('summary', '')[:80])}{first_action}"
 
         payload = {
-            "title": f"☀️ Daily Market Brief — {mood.upper()}",
+            "title": f"Daily Market Brief — {mood.upper()}",
             "body": body,
             "data": {"type": "morning_summary"},
         }
@@ -359,7 +367,15 @@ def get_expert_posts(limit: int = 30):
 
 @router.get("/api/v1/admin/error-telemetry")
 def get_error_telemetry(token: int = Depends(require_admin)):
-    """Admin endpoint to get recent error logs."""
+    """
+    Admin endpoint to get recent error logs.
+
+    Args:
+        token (int): The token.
+
+    Returns:
+        Any: The response.
+    """
     from database import get_session, MarketErrorLog
     import json
     from fastapi import HTTPException
