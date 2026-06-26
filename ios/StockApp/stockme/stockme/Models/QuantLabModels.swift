@@ -283,24 +283,24 @@ struct BacktestParams: Codable {
 }
 
 struct PortfolioMetrics: Codable {
-    let grossReturn: Double
-    let netReturn: Double
-    let cagr: Double
-    let sharpe: Double
-    let sortino: Double
-    let maxDrawdown: Double
-    let volatility: Double
-    let hitRate: Double
-    let averageWin: Double
-    let averageLoss: Double
-    let profitFactor: Double
-    let turnover: Double
-    let averageHoldingPeriod: Double?
-    let exposure: Double?
-    let cashPercentage: Double?
-    let sectorConcentration: Double?
-    let drawdownDuration: Double?
-    let benchmarkExcessReturn: Double
+    let grossReturn: Double = 0
+    let netReturn: Double = 0
+    let cagr: Double = 0
+    let sharpe: Double = 0
+    let sortino: Double = 0
+    let maxDrawdown: Double = 0
+    let volatility: Double = 0
+    let hitRate: Double = 0
+    let averageWin: Double = 0
+    let averageLoss: Double = 0
+    let profitFactor: Double = 0
+    let turnover: Double = 0
+    let averageHoldingPeriod: Double? = nil
+    let exposure: Double? = nil
+    let cashPercentage: Double? = nil
+    let sectorConcentration: Double? = nil
+    let drawdownDuration: Double? = nil
+    let benchmarkExcessReturn: Double = 0
 
     enum CodingKeys: String, CodingKey {
         case cagr, sharpe, sortino, volatility, turnover, exposure
