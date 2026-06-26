@@ -29,18 +29,17 @@ Full-lifecycle GitHub issue triage → validation → fix → verify → close f
 
 ---
 
-## Phase 0 — Branch Enforcement
+## Phase 0 — Worktree Enforcement
+
+Never use `git checkout`. Always create a detached worktree.
 
 ```bash
-git branch --show-current
+WORKTREE_PATH="/Users/saumya/Desktop/nivesh-agy-fix-gh-issues"
+git -C /Users/saumya/Desktop/nivesh worktree add --detach "$WORKTREE_PATH"
+cd "$WORKTREE_PATH"
 ```
 
-If output is `main`:
-```bash
-git checkout -b agy/fix/gh-issue-fixer-run
-```
-
-All work happens on this branch.
+All work happens inside this detached worktree.
 
 ---
 
@@ -435,18 +434,20 @@ gh issue close <N>
 gh issue close <N> --reason "not planned"
 gh issue close <N> --reason "completed"
 
-# Check branch
-git branch --show-current
-
-# Create branch if on main
-git checkout -b agy/fix/gh-issue-fixer-run
+# Setup Worktree
+WORKTREE_PATH="/Users/saumya/Desktop/nivesh-agy-fix-gh-issues"
+git -C /Users/saumya/Desktop/nivesh worktree add --detach "$WORKTREE_PATH"
+cd "$WORKTREE_PATH"
 
 # Surgical add + commit
 git add <specific-files>
 git commit -m "fix: resolve gh-<N> <slug>"
 
-# Push (no PR unless user says so)
-git push -u origin HEAD
+# Ask user for approval to merge, then merge
+COMMIT_HASH=$(git rev-parse HEAD)
+git -C /Users/saumya/Desktop/nivesh merge --ff-only $COMMIT_HASH
+git -C /Users/saumya/Desktop/nivesh push origin main
+git -C /Users/saumya/Desktop/nivesh worktree remove "$WORKTREE_PATH" --force
 ```
 
 ---

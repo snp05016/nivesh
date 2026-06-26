@@ -31,7 +31,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from collections import deque
 import uuid
-from fastapi.responses import StreamingResponse, HTMLResponse
+from fastapi.responses import StreamingResponse, HTMLResponse, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel, validator
 from typing import Optional as _Optional, List as _List
@@ -279,11 +279,17 @@ _origins = [o.strip() for o in _ALLOWED_ORIGINS.split(",") if o.strip()]
 cors_origins = _origins if _origins and "*" not in _origins else ["http://localhost:3000"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=_origins if _origins != ["*"] else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Global OPTIONS handler — returns 200 for all preflight requests
+@app.options("/{rest_of_path:path}")
+async def global_options_handler(rest_of_path: str):
+    return Response(status_code=200)
 
 
 class _RequestLogMiddleware(BaseHTTPMiddleware):
@@ -420,6 +426,7 @@ app.include_router(earnings_surprise.router)
 app.include_router(options_strategy.router)
 app.include_router(predictions.router)
 app.include_router(fundamentals.router)
+app.include_router(fundamentals.router_v1)
 app.include_router(backtests.router, prefix="/api/v1/backtests")
 app.include_router(stock_financials.router)
 app.include_router(youtube_summary_router.router)
