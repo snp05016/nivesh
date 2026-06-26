@@ -1,3 +1,4 @@
+import logging
 """
 Analysis endpoints router.
 Handles quick-info, analyze, batch analysis, technical signals, home feed, screener, etc.
@@ -157,7 +158,7 @@ def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False, scan
         queue.put({"status": "ok", "result": result})
     except ImportError as e:
         tb = traceback.format_exc()
-        print(f"[WORKER] Import failed: {e}\n{tb}")
+        logging.info(f"[WORKER] Import failed: {e}\n{tb}")
         queue.put({
             "status": "error",
             "error": f"Failed to import analysis engine: {e}",
@@ -166,7 +167,7 @@ def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False, scan
         })
     except Exception as e:
         tb = traceback.format_exc()
-        print(f"[WORKER] Analysis failed: {e}\n{tb}")
+        logging.info(f"[WORKER] Analysis failed: {e}\n{tb}")
         queue.put({
             "status": "error",
             "error": str(e),
@@ -188,7 +189,7 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
         from services.disk_cache import get as _dcache_get, set as _dcache_set
         _disk_hit = _dcache_get("quick-info", cache_key)
         if _disk_hit:
-            print(f"[QUICK-INFO CACHE HIT] {cache_key}")
+            logging.info(f"[QUICK-INFO CACHE HIT] {cache_key}")
             return _disk_hit
 
         full_ticker = _resolve_ticker(ticker, exchange)
@@ -440,7 +441,7 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -481,7 +482,7 @@ def _save_analysis_result(user_id: int | None, ticker: str, result: dict) -> Non
         with get_session() as session:
             save_analysis(session, user_id, ticker.upper(), result)
     except Exception as e:
-        print(f"[dash] Failed to persist analysis for {ticker}: {e}")
+        logging.info(f"[dash] Failed to persist analysis for {ticker}: {e}")
 
 
 @router.post("/analyze", status_code=202)
@@ -796,7 +797,7 @@ async def batch_analyze_endpoint(req: BatchAnalyzeRequest):
                 batch = client.messages.batches.create(requests=requests_list)
                 break
             except Exception as e:
-                print(f"[Anthropic] Batch create attempt {attempt+1} failed: {e}")
+                logging.info(f"[Anthropic] Batch create attempt {attempt+1} failed: {e}")
                 if attempt == 2: raise
                 time.sleep(1.0 * (2 ** attempt))
 
@@ -808,7 +809,7 @@ async def batch_analyze_endpoint(req: BatchAnalyzeRequest):
             "note": "Poll GET /analyze/batch/{batch_id} for results"
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -826,7 +827,7 @@ async def batch_analyze_status(batch_id: str):
                 batch = client.messages.batches.retrieve(batch_id)
                 break
             except Exception as e:
-                print(f"[Anthropic] Batch retrieve attempt {attempt+1} failed: {e}")
+                logging.info(f"[Anthropic] Batch retrieve attempt {attempt+1} failed: {e}")
                 if attempt == 2: raise
                 time.sleep(1.0 * (2 ** attempt))
 
@@ -847,7 +848,7 @@ async def batch_analyze_status(batch_id: str):
 
         return {"status": batch.processing_status, "batch_id": batch_id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -931,7 +932,7 @@ async def get_home_feed(user_id: int, ticker: str = None, authorization: str = H
                     except Exception:
                         continue
             except Exception as _fe:
-                print(f"[HOME-FEED] yfinance fallback error: {_fe}")
+                logging.info(f"[HOME-FEED] yfinance fallback error: {_fe}")
 
         holdings = session.query(Portfolio).filter(
             Portfolio.user_id == user_id,
@@ -1082,7 +1083,7 @@ def screener_endpoint(preset: str):
                         continue
                 results = results[:12]
             except Exception as _se:
-                print(f"[SCREENER ghar_ghar_modi] {_se}")
+                logging.info(f"[SCREENER ghar_ghar_modi] {_se}")
 
         elif preset == "earnings_pioneers":
             try:
@@ -1129,7 +1130,7 @@ def screener_endpoint(preset: str):
                         continue
                 results = results[:12]
             except Exception as _se:
-                print(f"[SCREENER earnings_pioneers] {_se}")
+                logging.info(f"[SCREENER earnings_pioneers] {_se}")
 
         elif preset == "institutional_capitulation":
             try:
@@ -1194,7 +1195,7 @@ def screener_endpoint(preset: str):
                             continue
                 results = results[:12]
             except Exception as _se:
-                print(f"[SCREENER institutional_capitulation] {_se}")
+                logging.info(f"[SCREENER institutional_capitulation] {_se}")
 
         elif preset == "quality_value":
             try:
@@ -1233,7 +1234,7 @@ def screener_endpoint(preset: str):
                         continue
                 results = results[:12]
             except Exception as _se:
-                print(f"[SCREENER quality_value] {_se}")
+                logging.info(f"[SCREENER quality_value] {_se}")
 
         elif preset == "promoter_conviction":
             try:
@@ -1280,7 +1281,7 @@ def screener_endpoint(preset: str):
                             continue
                 results = results[:12]
             except Exception as _se:
-                print(f"[SCREENER promoter_conviction] {_se}")
+                logging.info(f"[SCREENER promoter_conviction] {_se}")
 
         elif preset == "fii_accumulation":
             try:
@@ -1318,7 +1319,7 @@ def screener_endpoint(preset: str):
                             continue
                 results = results[:12]
             except Exception as _se:
-                print(f"[SCREENER fii_accumulation] {_se}")
+                logging.info(f"[SCREENER fii_accumulation] {_se}")
 
         elif preset == "turnaround":
             try:
@@ -1351,7 +1352,7 @@ def screener_endpoint(preset: str):
                             continue
                 results = results[:12]
             except Exception as _se:
-                print(f"[SCREENER turnaround] {_se}")
+                logging.info(f"[SCREENER turnaround] {_se}")
 
         elif preset == "52w_low_bullish":
             try:
@@ -1394,7 +1395,7 @@ def screener_endpoint(preset: str):
                         continue
                 results = results[:12]
             except Exception as _se:
-                print(f"[SCREENER 52w_low_bullish] {_se}")
+                logging.info(f"[SCREENER 52w_low_bullish] {_se}")
 
         else:
             return []
@@ -1402,7 +1403,7 @@ def screener_endpoint(preset: str):
         _yf_circuit_record_success()
         return results
     except Exception as _top_err:
-        print(f"[SCREENER] Top-level error: {_top_err}")
+        logging.info(f"[SCREENER] Top-level error: {_top_err}")
         _yf_circuit_record_failure()
         return []
 
@@ -1531,7 +1532,7 @@ def daily_action_endpoint(user_id: int, authorization: str = Header(None)):
                     log_endpoint="daily_action",
                 ).strip().rstrip(".")
             except Exception as e:
-                print(f"[DAILY-ACTION] DeepSeek failed: {e}")
+                logging.info(f"[DAILY-ACTION] DeepSeek failed: {e}")
 
         return {"action": action, "urgency": urgency}
 
@@ -1640,7 +1641,7 @@ def token_stats_endpoint(authorization: str = Header(None)):
             "last_7_days": [{"date": d, "calls": day_calls[d], "cost_usd": round(day_costs[d], 6)} for d in last_7],
         }
     except Exception as e:
-        print(f"[TOKEN-STATS] Error: {e}")
+        logging.info(f"[TOKEN-STATS] Error: {e}")
         return {
             "total_cost_usd": 0.0,
             "total_calls": 0,

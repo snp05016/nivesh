@@ -1,3 +1,4 @@
+import logging
 """
 Canonical LLM utilities for the Nivesh backend.
 Single source of truth for DeepSeek client construction, chat completion,
@@ -115,7 +116,7 @@ def deepseek_chat(
 
         except Exception as exc:
             last_exc = exc
-            print(f"[DeepSeek] Attempt {attempt + 1}/3 failed: {exc}")
+            logging.info(f"[DeepSeek] Attempt {attempt + 1}/3 failed: {exc}")
             if attempt < 2:
                 _time.sleep(2.0 * (2 ** attempt))
 

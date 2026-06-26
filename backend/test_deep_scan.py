@@ -1,3 +1,4 @@
+import logging
 """
 Test script for invoking the /analyze endpoint with deep scan and mock options enabled.
 """
@@ -11,9 +12,9 @@ payload = {
     "use_mock": True
 }
 try:
-    print("Calling POST /analyze...")
+    logging.info("Calling POST /analyze...")
     res = requests.post(url, json=payload, timeout=30)
-    print("Status:", res.status_code)
-    print("Response:", res.text[:500])
+    logging.info("Status:", res.status_code)
+    logging.info("Response:", res.text[:500])
 except Exception as e:
-    print("Error:", e)
+    logging.info("Error:", e)

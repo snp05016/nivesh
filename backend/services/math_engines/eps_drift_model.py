@@ -1,3 +1,4 @@
+import logging
 """
 EPS Drift Model (Post-Earnings Announcement Drift / PEAD).
 Evaluates earnings surprises and estimate revision momentum to signal drift.
@@ -173,7 +174,7 @@ if __name__ == "__main__":
         consensus_eps=20.00,
         historical_surprise_pcts=[-2.0, 3.0, 1.5, -1.0, 4.0],
     )
-    print(f"Strong beat: signal={result['signal']}, drift={result['expected_drift_pct']}%, SUE={result['sue_score']}")
+    logging.info(f"Strong beat: signal={result['signal']}, drift={result['expected_drift_pct']}%, SUE={result['sue_score']}")
     assert result["signal"] in {"BUY", "MILD_BUY"}
 
     # Miss scenario
@@ -182,12 +183,12 @@ if __name__ == "__main__":
         consensus_eps=20.00,
         historical_surprise_pcts=[1.0, 2.0, -1.0, 0.5, 1.5],
     )
-    print(f"Miss: signal={result2['signal']}, drift={result2['expected_drift_pct']}%, SUE={result2['sue_score']}")
+    logging.info(f"Miss: signal={result2['signal']}, drift={result2['expected_drift_pct']}%, SUE={result2['sue_score']}")
     assert result2["signal"] in {"SELL", "MILD_SELL"}
 
     # Revision momentum
     rev = compute_revision_momentum([18.0, 18.5, 19.0, 19.8, 20.5])
-    print(f"Revision: {rev['revision_direction']}, velocity={rev['revision_velocity']}")
+    logging.info(f"Revision: {rev['revision_direction']}, velocity={rev['revision_velocity']}")
     assert rev["signal"] in {"BULLISH", "MILD_BULLISH"}
 
-    print("All eps_drift_model tests passed.")
+    logging.info("All eps_drift_model tests passed.")

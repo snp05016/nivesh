@@ -1,3 +1,4 @@
+import logging
 """
 Auditor Risk Quantification — deterministic risk scoring matrix (Task 30).
 
@@ -153,4 +154,4 @@ if __name__ == "__main__":
         has_qualified_opinion=True,
         promoter_pledging_pct=35,
     )
-    print(result)
+    logging.info(result)

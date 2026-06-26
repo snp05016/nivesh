@@ -1,3 +1,4 @@
+import logging
 """
 Test each harvester source individually and print what it returns.
 Usage: python3 debug_harvester_sources.py
@@ -36,32 +37,32 @@ sources = {
     "Moneycontrol": _scrape_moneycontrol_expert_columns,
 }
 
-print("=" * 60)
-print("HARVESTER SOURCE DEBUG —", __import__("datetime").datetime.now().isoformat())
-print("=" * 60)
+logging.info("=" * 60)
+logging.info("HARVESTER SOURCE DEBUG —", __import__("datetime").datetime.now().isoformat())
+logging.info("=" * 60)
 
 for name, fn in sources.items():
     try:
         results = fn()
         count = len(results) if isinstance(results, list) else 0
         status = "✅" if count > 0 else "❌"
-        print(f"{status} {name}: {count} items")
+        logging.info(f"{status} {name}: {count} items")
         if count > 0 and isinstance(results, list):
             first = results[0]
             safe = {k: str(v)[:120] for k, v in first.items() if k != "raw_text"}
-            print(f"   First: {json.dumps(safe, default=str)}")
+            logging.info(f"   First: {json.dumps(safe, default=str)}")
         else:
-            print(f"   → 0 items — URL likely stale, JS-rendered, or blocked")
+            logging.info(f"   → 0 items — URL likely stale, JS-rendered, or blocked")
     except Exception as e:
-        print(f"💥 {name}: CRASHED — {e}")
+        logging.info(f"💥 {name}: CRASHED — {e}")
 
 # Also test full aggregation
-print("\n--- scrape_all_expert_sources() ---")
+logging.info("\n--- scrape_all_expert_sources() ---")
 try:
     from services.harvester_expert import scrape_all_expert_sources
     all_cards = scrape_all_expert_sources()
-    print(f"Total combined cards: {len(all_cards)}")
+    logging.info(f"Total combined cards: {len(all_cards)}")
 except Exception as e:
-    print(f"CRASHED: {e}")
+    logging.info(f"CRASHED: {e}")
 
-print("\nDone.")
+logging.info("\nDone.")

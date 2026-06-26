@@ -1,3 +1,4 @@
+import logging
 """
 YFinance wrappers, ticker resolution, exchange suffixes, and L1 in-memory cache.
 
@@ -77,7 +78,7 @@ def _yf_fetch_info(sym: str) -> dict:
             if info and (info.get("currentPrice") or info.get("regularMarketPrice")):
                 return info
         except Exception as e:
-            print(f"[YF] Attempt {attempt+1} failed for {sym}: {e}")
+            logging.info(f"[YF] Attempt {attempt+1} failed for {sym}: {e}")
             if attempt < 2:
                 sleep_time = (_YF_BACKOFF_MULTIPLIER * (2 ** attempt)) + (random.random() * 0.5)
                 time.sleep(sleep_time)
@@ -113,13 +114,13 @@ def _yf_price(ticker_sym: str) -> tuple[float | None, float | None]:
             prev = float(closes[-2]) if len(closes) >= 2 else current
             return current, prev
         except Exception as e:
-            print(f"[YF Price Error] {sym}: {e}")
+            logging.info(f"[YF Price Error] {sym}: {e}")
             return None, None
 
     current, prev = _fetch(ticker_sym)
     if current is None and ticker_sym.upper().endswith(".BO"):
         ns_sym = ticker_sym[:-3] + ".NS"
-        print(f"[BSE FALLBACK] No data for {ticker_sym}, trying {ns_sym}")
+        logging.info(f"[BSE FALLBACK] No data for {ticker_sym}, trying {ns_sym}")
         current, prev = _fetch(ns_sym)
     return current, prev
 

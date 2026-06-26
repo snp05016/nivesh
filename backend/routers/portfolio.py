@@ -1,3 +1,4 @@
+import logging
 """
 Portfolio-related endpoints extracted from main.py.
 """
@@ -177,7 +178,7 @@ def _get_indices_data() -> dict:
                     if current is not None and not math.isnan(current):
                         break
                 except Exception as e:
-                    print(f"[YF] Indices attempt {attempt+1} failed for {ticker}: {e}")
+                    logging.info(f"[YF] Indices attempt {attempt+1} failed for {ticker}: {e}")
                     if attempt < 2:
                         time.sleep((1.0 * (2 ** attempt)) + (random.random() * 0.2))
 
@@ -194,7 +195,7 @@ def _get_indices_data() -> dict:
                 "change_abs": change_abs,
             })
         except Exception as e:
-            print(f"[indices] Skipping {ticker}: {e}")
+            logging.info(f"[indices] Skipping {ticker}: {e}")
             continue
 
     payload = {
@@ -444,7 +445,7 @@ def _get_asm_gsm_lists():
     if cached is not None:
         return cached
 
-    print("[NSE] Refreshing ASM/GSM lists...")
+    logging.info("[NSE] Refreshing ASM/GSM lists...")
     data = {"ASM": set(), "GSM": set()}
     try:
         session = _nse_session()
@@ -474,7 +475,7 @@ def _get_asm_gsm_lists():
         _dcache_set("asm_gsm", "lists", redis_data, ttl=_ASM_GSM_CACHE_TTL)
         return data  # keep returning sets for in-memory callers
     except Exception as e:
-        print(f"[NSE] ASM/GSM fetch failed: {e}")
+        logging.info(f"[NSE] ASM/GSM fetch failed: {e}")
         return data
 
 
@@ -615,7 +616,7 @@ async def portfolio_endpoint(user_id: int, authorization: str = Header(None)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -806,7 +807,7 @@ mood must be exactly: "positive", "cautious", or "negative"
                 )
                 break
             except Exception as e:
-                print(f"[Anthropic] Morning summary attempt {attempt+1} failed: {e}")
+                logging.info(f"[Anthropic] Morning summary attempt {attempt+1} failed: {e}")
                 if attempt == 2: raise
                 time.sleep(1.0 * (2 ** attempt))
         _log_token_usage("morning_summary", response.usage)
@@ -815,12 +816,12 @@ mood must be exactly: "positive", "cautious", or "negative"
         try:
             parsed = json.loads(raw)
         except json.JSONDecodeError as e:
-            print(f"[ERROR] Failed to parse morning summary JSON: {e}")
+            logging.info(f"[ERROR] Failed to parse morning summary JSON: {e}")
             parsed = fallback
 
         raw_summary = parsed.get("summary", fallback["summary"])
         if contains_devanagari(raw_summary):
-            print("[MORNING] Rejected Hindi morning brief output; using English fallback.")
+            logging.info("[MORNING] Rejected Hindi morning brief output; using English fallback.")
             parsed = fallback
             raw_summary = fallback["summary"]
 
@@ -869,7 +870,7 @@ mood must be exactly: "positive", "cautious", or "negative"
                         "message": f"Signal changed: {f.ticker} {f.from_signal} → {f.to_signal}",
                     })
         except Exception as e:
-            print(f"[MORNING] Signal flip check failed: {e}")
+            logging.info(f"[MORNING] Signal flip check failed: {e}")
 
         # Priority 2: Triggered price alerts
         try:
@@ -886,7 +887,7 @@ mood must be exactly: "positive", "cautious", or "negative"
                         "message": f"Price alert triggered: {a.ticker} {a.direction} ₹{a.target_price:.0f}",
                     })
         except Exception as e:
-            print(f"[MORNING] Alert priority check failed: {e}")
+            logging.info(f"[MORNING] Alert priority check failed: {e}")
 
         priority_items.sort(key=lambda x: x["priority"])
         result["priority_items"] = priority_items
@@ -897,7 +898,7 @@ mood must be exactly: "positive", "cautious", or "negative"
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[morning-summary] Error: {e}")
+        logging.info(f"[morning-summary] Error: {e}")
         _dcache_set("morning_brief", str(user_id), fallback, ttl=_MORNING_CACHE_TTL)
         return fallback
 
@@ -968,7 +969,7 @@ def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -994,7 +995,7 @@ def portfolio_remove_endpoint(req: PortfolioRemoveRequest, authorization: str = 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -1055,7 +1056,7 @@ def portfolio_update_endpoint(req: PortfolioUpdateRequest, authorization: str = 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -1081,7 +1082,7 @@ def portfolio_note_endpoint(req: PortfolioNoteRequest, authorization: str = Head
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -1526,7 +1527,7 @@ def portfolio_advisor_consensus(user_id: int, days: int = 7):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -1649,7 +1650,7 @@ def export_portfolio_excel(user_id: int, authorization: str = Header(None)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -1733,7 +1734,7 @@ async def get_valuation_history(user_id: int, days: int = 90, authorization: str
                             PortfolioValuationHistory.snapshot_date >= cutoff_date
                         ).order_by(PortfolioValuationHistory.snapshot_date.asc()).all()
                 except Exception as e:
-                    print(f"[Valuation Seeding] Error for user {user_id}: {e}")
+                    logging.info(f"[Valuation Seeding] Error for user {user_id}: {e}")
                     session.rollback()
 
         if snapshots:
@@ -1886,8 +1887,8 @@ Uses a thread-pool executor so the event loop is never blocked.
         raise
     except Exception as e:
         import traceback
-        print(f"[CHARTS] Generation failed: {e}\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logging.info(f"[CHARTS] Generation failed: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -2032,7 +2033,7 @@ def portfolio_risk_analysis_endpoint(user_id: int, authorization: str = Header(N
                         "correlation": round(max_corr, 4),
                     }
         except Exception as _corr_err:
-            print(f"[RISK] Correlation calc failed: {_corr_err}")
+            logging.info(f"[RISK] Correlation calc failed: {_corr_err}")
 
         return {
             "user_id": user_id,
@@ -2049,7 +2050,7 @@ def portfolio_risk_analysis_endpoint(user_id: int, authorization: str = Header(N
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -2191,7 +2192,7 @@ def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)
                         log_endpoint="red_flags_summary",
                     ).strip()
             except Exception as e:
-                print(f"[RED-FLAGS] Summary call failed: {e}")
+                logging.info(f"[RED-FLAGS] Summary call failed: {e}")
 
         return {
             "user_id": user_id,
@@ -2205,7 +2206,7 @@ def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -2275,7 +2276,7 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
                         item["direction"] = "neutral"
                 impacts = parsed
             except Exception as e:
-                print(f"[MACRO-IMPACT] AI call failed: {e}")
+                logging.info(f"[MACRO-IMPACT] AI call failed: {e}")
                 impacts = [{"ticker": t, "impact_statement": "Macro assessment unavailable.", "direction": "neutral"} for t, _ in holdings_data]
         else:
             impacts = [{"ticker": t, "impact_statement": "DeepSeek API key not configured.", "direction": "neutral"} for t, _ in holdings_data]
@@ -2291,7 +2292,7 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -2371,7 +2372,7 @@ def portfolio_timeframe_conflicts_endpoint(user_id: int, authorization: str = He
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -2415,7 +2416,7 @@ def trade_journal_add_endpoint(req: TradeJournalAddRequest, authorization: str =
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -2464,7 +2465,7 @@ def trade_journal_get_endpoint(user_id: int, authorization: str = Header(None)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -2514,7 +2515,7 @@ def trade_journal_update_endpoint(entry_id: int, req: TradeJournalUpdateRequest,
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -2539,7 +2540,7 @@ def trade_journal_delete_endpoint(entry_id: int, user_id: int, authorization: st
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -2624,7 +2625,7 @@ def trade_journal_stats_endpoint(user_id: int, auth_user_id: int = Depends(requi
                 if not isinstance(patterns, list):
                     patterns = []
         except Exception as _pe:
-            print(f"[TJ-STATS] Pattern AI call failed: {_pe}")
+            logging.info(f"[TJ-STATS] Pattern AI call failed: {_pe}")
             patterns = []
 
         return {
@@ -2639,7 +2640,7 @@ def trade_journal_stats_endpoint(user_id: int, auth_user_id: int = Depends(requi
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -2747,7 +2748,7 @@ def export_portfolio_pdf(user_id: int, authorization: str = Header(None)):
                 _log_token_usage("pdf_export", resp.usage)
                 markdown_text = resp.content[0].text.strip()
         except Exception as _ae:
-            print(f"[PDF-EXPORT] AI call failed: {_ae}")
+            logging.info(f"[PDF-EXPORT] AI call failed: {_ae}")
 
         # Step 5/6: Return PDF or plain text
         if FPDF2_AVAILABLE:
@@ -2783,7 +2784,7 @@ def export_portfolio_pdf(user_id: int, authorization: str = Header(None)):
                     headers={"Content-Disposition": f"attachment; filename=portfolio_review_{user_id}_{today_str}.pdf"},
                 )
             except Exception as _pdfe:
-                print(f"[PDF-EXPORT] fpdf2 render failed: {_pdfe}")
+                logging.info(f"[PDF-EXPORT] fpdf2 render failed: {_pdfe}")
                 # Fall through to plain text
 
         # Plain text fallback
@@ -2797,7 +2798,7 @@ def export_portfolio_pdf(user_id: int, authorization: str = Header(None)):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[PDF-EXPORT] Top-level error: {e}")
+        logging.info(f"[PDF-EXPORT] Top-level error: {e}")
         fallback_text = f"Portfolio review unavailable. Error: {str(e)}"
         return StreamingResponse(
             io.BytesIO(fallback_text.encode("utf-8")),
@@ -2976,4 +2977,4 @@ def get_signal_accuracy():
             return resp
     except Exception as e:
         from fastapi import HTTPException
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

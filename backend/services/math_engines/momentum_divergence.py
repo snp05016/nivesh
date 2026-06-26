@@ -1,3 +1,4 @@
+import logging
 """
 Task 17 — Momentum Divergence Detection.
 
@@ -361,15 +362,15 @@ if __name__ == "__main__":
         prices.append(prices[-1] * (1 + random.uniform(-0.02, 0.025)))
 
     rsi_result = detect_rsi_divergence(prices)
-    print(f"RSI divergence: {rsi_result['signal']} — {rsi_result['description']}")
+    logging.info(f"RSI divergence: {rsi_result['signal']} — {rsi_result['description']}")
     assert rsi_result["signal"] in {"BULLISH", "BEARISH", "NEUTRAL", "MIXED"}
 
     macd_result = detect_macd_crossover(prices)
-    print(f"MACD: {macd_result['signal']} — {macd_result['description']}")
+    logging.info(f"MACD: {macd_result['signal']} — {macd_result['description']}")
     assert macd_result["signal"] in {"BULLISH", "BEARISH", "NEUTRAL"}
 
     bb_result = detect_bollinger_squeeze(prices)
-    print(f"Bollinger: {bb_result['signal']} — {bb_result['description']}")
+    logging.info(f"Bollinger: {bb_result['signal']} — {bb_result['description']}")
     assert bb_result["signal"] in {"SQUEEZE", "NEUTRAL"}
 
-    print("All momentum_divergence tests passed.")
+    logging.info("All momentum_divergence tests passed.")

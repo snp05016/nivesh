@@ -1,3 +1,4 @@
+import logging
 """
 Offline Calibration Report Generator
 
@@ -15,7 +16,7 @@ from services.prediction_calibration_service import (
 )
 
 def generate_report():
-    print("Generating calibration report...")
+    logging.info("Generating calibration report...")
     health = get_calibration_health()
     metrics = get_calibration_metrics()
     recommendations = get_fusion_weight_recommendations()
@@ -62,7 +63,7 @@ def generate_report():
     with open(report_path, "w") as f:
         f.write("\n".join(report_lines))
         
-    print(f"Report successfully saved to {report_path}")
+    logging.info(f"Report successfully saved to {report_path}")
 
 if __name__ == "__main__":
     generate_report()

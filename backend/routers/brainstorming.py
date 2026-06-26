@@ -28,4 +28,4 @@ def brainstorming_endpoint(req: BrainstormingRequest):
             ideas=result.get("ideas", [])
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

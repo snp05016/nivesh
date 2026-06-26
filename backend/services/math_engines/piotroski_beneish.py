@@ -1,3 +1,4 @@
+import logging
 """
 Task 16 — Piotroski F-score and Beneish M-score engines.
 
@@ -255,7 +256,7 @@ if __name__ == "__main__":
         "prev_revenue": 35_00_00_000,
     }
     f_result = compute_piotroski_fscore(sample_fundamentals)
-    print(f"Piotroski F-score: {f_result['score']}/9 — {f_result['rating']}")
+    logging.info(f"Piotroski F-score: {f_result['score']}/9 — {f_result['rating']}")
     assert 0 <= f_result["score"] <= 9
 
     sample_financials = {
@@ -281,5 +282,5 @@ if __name__ == "__main__":
         "securities": 1_00_00_000,
     }
     m_result = compute_beneish_mscore(sample_financials)
-    print(f"Beneish M-score: {m_result['m_score']} — {m_result['interpretation']}")
-    print("All piotroski_beneish tests passed.")
+    logging.info(f"Beneish M-score: {m_result['m_score']} — {m_result['interpretation']}")
+    logging.info("All piotroski_beneish tests passed.")

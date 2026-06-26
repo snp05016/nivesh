@@ -1,3 +1,4 @@
+import logging
 """
 Euclidean and Cosine historical analogue matching.
 Finds historical price patterns that most closely resemble the current window.
@@ -213,17 +214,17 @@ if __name__ == "__main__":
     hist = [(f"2020-0{i+1}-01", gen_window(90, drift=random.uniform(-0.002, 0.003))) for i in range(9)]
 
     analogues_e = find_historical_analogues(current, hist, n_analogues=3, method="euclidean")
-    print("Euclidean analogues:")
+    logging.info("Euclidean analogues:")
     for a in analogues_e:
-        print(f"  Rank {a['rank']}: {a['date']} distance={a['distance']:.4f} sim={a['similarity_pct']}%")
+        logging.info(f"  Rank {a['rank']}: {a['date']} distance={a['distance']:.4f} sim={a['similarity_pct']}%")
     assert len(analogues_e) <= 3
 
     analogues_c = find_historical_analogues(current, hist, n_analogues=3, method="cosine")
-    print("Cosine analogues:")
+    logging.info("Cosine analogues:")
     for a in analogues_c:
-        print(f"  Rank {a['rank']}: {a['date']} distance={a['distance']:.4f} sim={a['similarity_pct']}%")
+        logging.info(f"  Rank {a['rank']}: {a['date']} distance={a['distance']:.4f} sim={a['similarity_pct']}%")
 
     fwd_returns = {f"2020-0{i+1}-01": random.uniform(-0.1, 0.15) for i in range(9)}
     consensus = compute_analogue_consensus(analogues_e, fwd_returns)
-    print(f"Consensus: {consensus['description']}")
-    print("All euclidean_analogues tests passed.")
+    logging.info(f"Consensus: {consensus['description']}")
+    logging.info("All euclidean_analogues tests passed.")

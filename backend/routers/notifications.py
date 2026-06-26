@@ -1,3 +1,4 @@
+import logging
 """
 Push notification pipeline — device token registration, dev push mock, error telemetry.
 """
@@ -120,7 +121,7 @@ Disabled in production. Real APNs dispatch goes through alerts.py.
     try:
         # In production, this would use aioapns / PyAPNs2 to dispatch.
         # For now, log the payload as proof the pipeline is wired correctly.
-        print(f"[APNs MOCK] Dispatching to {req.device_token}: {json.dumps(payload)}")
+        logging.info(f"[APNs MOCK] Dispatching to {req.device_token}: {json.dumps(payload)}")
 
         return {
             "status": "queued",
@@ -132,7 +133,7 @@ Disabled in production. Real APNs dispatch goes through alerts.py.
             error_trace=str(e),
             target_device=req.device_token,
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -180,4 +181,4 @@ def get_notification_errors(authorization: str = Header(None)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

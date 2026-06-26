@@ -1,3 +1,4 @@
+import logging
 """
 Task 22 — Deterministic DCF Valuation with Indian G-Sec Rate.
 
@@ -181,11 +182,11 @@ if __name__ == "__main__":
         shares_outstanding=366,  # crores of shares
         current_price=3500.0,   # INR per share
     )
-    print(f"Intrinsic Value: ₹{result['intrinsic_value']:,.0f} Cr")
-    print(f"Per Share: ₹{result['per_share_value']:,.2f}")
-    print(f"Margin of Safety: {result['margin_of_safety_pct']:.1f}%")
-    print(f"WACC: {result['wacc']:.2f}%")
-    print(f"Rating: {result['rating']}")
+    logging.info(f"Intrinsic Value: ₹{result['intrinsic_value']:,.0f} Cr")
+    logging.info(f"Per Share: ₹{result['per_share_value']:,.2f}")
+    logging.info(f"Margin of Safety: {result['margin_of_safety_pct']:.1f}%")
+    logging.info(f"WACC: {result['wacc']:.2f}%")
+    logging.info(f"Rating: {result['rating']}")
     assert result["intrinsic_value"] > 0
     assert result["wacc"] > 0
-    print("All deterministic_dcf tests passed.")
+    logging.info("All deterministic_dcf tests passed.")

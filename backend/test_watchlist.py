@@ -1,3 +1,4 @@
+import logging
 """
 Test script for invoking the watchlist endpoint using FastAPI's TestClient.
 """
@@ -6,5 +7,5 @@ from main import app
 
 client = TestClient(app)
 resp = client.get("/watchlist/1")
-print(resp.status_code)
-print(resp.json())
+logging.info(resp.status_code)
+logging.info(resp.json())

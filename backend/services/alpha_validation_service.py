@@ -1,3 +1,4 @@
+import logging
 """
 Realistic Alpha Validation Engine
 Implements realistic backtesting of Nivesh predictions against market frictions.
@@ -363,4 +364,4 @@ def generate_reports():
         with open(os.path.join(reports_dir, filename), "w") as f:
             f.write(content)
             
-    print(f"Generated reports in {reports_dir}")
+    logging.info(f"Generated reports in {reports_dir}")

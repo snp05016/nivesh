@@ -1,3 +1,4 @@
+import logging
 #!/usr/bin/env python3
 """
 Scan Python source files for raw SQL text() calls and flag any that reference
@@ -21,7 +22,7 @@ try:
     }
     all_known_columns = {col for cols in model_columns.values() for col in cols}
 except Exception as e:
-    print(f"[WARN] Could not load model metadata: {e}")
+    logging.info(f"[WARN] Could not load model metadata: {e}")
     sys.exit(0)
 
 BACKEND_DIR = Path(__file__).parent.parent
@@ -66,16 +67,16 @@ for py_file in BACKEND_DIR.rglob("*.py"):
                     suspicious.append((str(rel_path), lineno, cand, sql_fragment[:60]))
 
 if suspicious:
-    print(f"[WARN] {len(suspicious)} potentially stale raw SQL column references:")
+    logging.info(f"[WARN] {len(suspicious)} potentially stale raw SQL column references:")
     seen = set()
     for path, lineno, col, fragment in suspicious[:20]:  # cap at 20
         key = f"{path}:{col}"
         if key not in seen:
-            print(f"  {path}:{lineno} — '{col}' not in model (fragment: {fragment!r})")
+            logging.info(f"  {path}:{lineno} — '{col}' not in model (fragment: {fragment!r})")
             seen.add(key)
     if len(suspicious) > 20:
-        print(f"  ... and {len(suspicious)-20} more (run with -v for full list)")
+        logging.info(f"  ... and {len(suspicious)-20} more (run with -v for full list)")
 else:
-    print("[OK] No obviously stale raw SQL column references found")
+    logging.info("[OK] No obviously stale raw SQL column references found")
 
 sys.exit(0)

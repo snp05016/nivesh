@@ -1,3 +1,4 @@
+import logging
 """
 Task 27 — Signal Agreement Multiplier.
 
@@ -167,7 +168,7 @@ if __name__ == "__main__":
         sentiment_signal=0.5,
         macro_signal=0.4,
     )
-    print(f"All bullish: composite={result['composite_signal']:.3f}, "
+    logging.info(f"All bullish: composite={result['composite_signal']:.3f}, "
           f"agreement={result['agreement_score']:.2%}, "
           f"direction={result['direction']}")
     assert result["direction"] in {"BULLISH", "MILD_BULLISH"}
@@ -180,7 +181,7 @@ if __name__ == "__main__":
         sentiment_signal=0.3,
         macro_signal=-0.5,
     )
-    print(f"Mixed signals: composite={result2['composite_signal']:.3f}, "
+    logging.info(f"Mixed signals: composite={result2['composite_signal']:.3f}, "
           f"agreement={result2['agreement_score']:.2%}, "
           f"conflicts={result2['conflicts']}")
     assert result2["confidence_multiplier"] < 0.8
@@ -188,7 +189,7 @@ if __name__ == "__main__":
 
     # All bearish
     result3 = compute_signal_agreement(-0.7, -0.8, -0.6, -0.5)
-    print(f"All bearish: direction={result3['direction']}, high_conf={result3['high_confidence']}")
+    logging.info(f"All bearish: direction={result3['direction']}, high_conf={result3['high_confidence']}")
     assert result3["direction"] in {"BEARISH", "MILD_BEARISH"}
 
-    print("All signal_agreement tests passed.")
+    logging.info("All signal_agreement tests passed.")

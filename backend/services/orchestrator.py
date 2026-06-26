@@ -162,7 +162,7 @@ def enqueue_dlq(job: dict) -> None:
                     }) + "\n"
                 )
     except Exception as _e:
-        print(f"[DLQ] enqueue_dlq write failed: {_e}")
+        logging.info(f"[DLQ] enqueue_dlq write failed: {_e}")
 
 
 def drain_dlq() -> int:
@@ -179,7 +179,7 @@ def drain_dlq() -> int:
         with _DLQ_LOCK:
             lines = _DLQ_PATH.read_text().splitlines()
     except Exception as _read_err:
-        print(f"[DLQ] drain_dlq read failed: {_read_err}")
+        logging.info(f"[DLQ] drain_dlq read failed: {_read_err}")
         return 0
 
     for line in lines:
@@ -194,11 +194,11 @@ def drain_dlq() -> int:
             scan_type = job.get("scan_type", "standard")
             if not ticker:
                 continue
-            print(f"[DLQ] Retrying failed job: {ticker} ({exchange}) scan_type={scan_type}")
+            logging.info(f"[DLQ] Retrying failed job: {ticker} ({exchange}) scan_type={scan_type}")
             analyze(ticker, exchange, user_id=user_id, scan_type=scan_type)
             retried += 1
         except Exception as _retry_err:
-            print(f"[DLQ] Retry failed for job: {_retry_err}")
+            logging.info(f"[DLQ] Retry failed for job: {_retry_err}")
             remaining.append(line)
 
     # Rewrite DLQ with only the still-failing jobs
@@ -209,9 +209,9 @@ def drain_dlq() -> int:
             else:
                 _DLQ_PATH.unlink(missing_ok=True)
     except Exception as _write_err:
-        print(f"[DLQ] drain_dlq rewrite failed: {_write_err}")
+        logging.info(f"[DLQ] drain_dlq rewrite failed: {_write_err}")
 
-    print(f"[DLQ] drain complete — retried={retried}, still_pending={len(remaining)}")
+    logging.info(f"[DLQ] drain complete — retried={retried}, still_pending={len(remaining)}")
     return retried
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -584,17 +584,17 @@ def build_ta_config(scan_type: str = "standard", debate_rounds: int | None = Non
 
 def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "standard",
                        debate_rounds: int | None = None, language: str | None = None) -> tuple:
-    print(f"\n[AI] Initializing Analysis for {full_ticker}...")
-    print(f"[AI] Thinking: Gathering market data and fundamental ratios...")
+    logging.info(f"\n[AI] Initializing Analysis for {full_ticker}...")
+    logging.info(f"[AI] Thinking: Gathering market data and fundamental ratios...")
     config = build_ta_config(scan_type, debate_rounds=debate_rounds, language=language)
     ta = OptimizedTradingAgentsGraph(
         selected_analysts=["governance", "market", "news", "fundamentals"],
         debug=True,
         config=config,
     )
-    print(f"[AI] Thinking: Running Agent Graph propagation...")
+    logging.info(f"[AI] Thinking: Running Agent Graph propagation...")
     final_state, decision = ta.propagate(full_ticker, analysis_date)
-    print(f"[AI] Thinking: Analysis complete. Formatting output...")
+    logging.info(f"[AI] Thinking: Analysis complete. Formatting output...")
     governance_report = final_state.get("governance_report", "")
     output = str(decision)
     if governance_report:
@@ -697,7 +697,7 @@ def reformat_with_deepseek(
                             }) + "\n"
                         )
                 except Exception as _dlq_write_err:
-                    print(f"[DLQ] Failed to write dead-letter entry: {_dlq_write_err}")
+                    logging.info(f"[DLQ] Failed to write dead-letter entry: {_dlq_write_err}")
                 break
             time.sleep(2 ** attempt)  # 1s, 2s before final attempt
 
@@ -809,7 +809,7 @@ def reformat_with_claude(
                 validated = _validate_parsed(parsed)
                 if validated is not None:
                     return validated
-                print(
+                logging.info(
                     f"[WARN] Claude returned partial JSON, falling through to DeepSeek"
                 )
                 break
@@ -819,18 +819,18 @@ def reformat_with_claude(
                     "cache_expired", "ephemeral", "prompt_cache",
                     "cache_not_found", "evicted",
                 ))
-                print(f"[Anthropic] Reformat attempt {attempt + 1} failed: {e}")
+                logging.info(f"[Anthropic] Reformat attempt {attempt + 1} failed: {e}")
                 if attempt < 2:
                     # Fix 2.35: cache eviction errors get extended backoff
                     # to stay under the 1200s gateway timeout while cache repopulates
                     backoff = 4.0 * (2 ** attempt) if is_cache_eviction else 1.0 * (2 ** attempt)
                     if is_cache_eviction:
-                        print("[Anthropic] Cache eviction detected — extended backoff")
+                        logging.info("[Anthropic] Cache eviction detected — extended backoff")
                     time.sleep(backoff)
 
     # ── Phase 2: DeepSeek V4 Flash fallback ──────────────────────────────
     if os.getenv("DEEPSEEK_API_KEY"):
-        print(f"[DeepSeek] Reformatting {full_ticker} via DeepSeek V4 Flash...")
+        logging.info(f"[DeepSeek] Reformatting {full_ticker} via DeepSeek V4 Flash...")
         ds_messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
@@ -848,10 +848,10 @@ def reformat_with_claude(
             if validated is not None:
                 return validated
         except Exception as e:
-            print(f"[DeepSeek] Reformating failed: {e}")
+            logging.info(f"[DeepSeek] Reformating failed: {e}")
 
     # ── Phase 3: Ultimate fallback ────────────────────────────────────────
-    print(f"[FALLBACK] Returning normalized minimal analysis for {full_ticker}")
+    logging.info(f"[FALLBACK] Returning normalized minimal analysis for {full_ticker}")
     return _normalize_response(
         {
             "ticker": full_ticker,  # noqa: extreme bundles attached by analyze() on the happy path
@@ -1247,7 +1247,7 @@ def _inject_live_data(result: dict, ticker: str) -> dict:
         if curr_p:
             result["current_price_inr"] = float(curr_p)
     except Exception as e:
-        print(f"[LIVE_DATA] Price refresh failed for {ticker}: {e}")
+        logging.info(f"[LIVE_DATA] Price refresh failed for {ticker}: {e}")
 
     # 2. Recent news — DB first, yfinance fallback
     try:
@@ -1296,7 +1296,7 @@ def _inject_live_data(result: dict, ticker: str) -> dict:
         if recent_news:
             result["recent_news"] = recent_news
     except Exception as e:
-        print(f"[LIVE_DATA] News refresh failed for {ticker}: {e}")
+        logging.info(f"[LIVE_DATA] News refresh failed for {ticker}: {e}")
 
     # 3. Price performance — 3M / 6M / 12M % change
     try:
@@ -1318,7 +1318,7 @@ def _inject_live_data(result: dict, ticker: str) -> dict:
                 "change_12m_pct": _chg(365),
             }
     except Exception as e:
-        print(f"[LIVE_DATA] Price performance fetch failed for {ticker}: {e}")
+        logging.info(f"[LIVE_DATA] Price performance fetch failed for {ticker}: {e}")
 
     return result
 
@@ -1355,7 +1355,7 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
 """
             raw_output += f"\n\n{pkscreener_context}"
     except Exception as e:
-        print(f"[DEEP-SCAN] PKScreener context fetch failed: {e}")
+        logging.info(f"[DEEP-SCAN] PKScreener context fetch failed: {e}")
 
     # FinBERT sentiment context
     try:
@@ -1393,7 +1393,7 @@ If your RSI calculation differs from PKScreener's, note the divergence explicitl
                 )
                 raw_output += f"\n\n{finbert_context}"
     except Exception as e:
-        print(f"[DEEP-SCAN] FinBERT context build failed: {e}")
+        logging.info(f"[DEEP-SCAN] FinBERT context build failed: {e}")
 
     return raw_output, pk_signal, deep_scan_used
 
@@ -1505,7 +1505,7 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
                 try:
                     _cal_results[_cal_name] = _fut.result()
                 except Exception as _cal_task_err:
-                    print(f"[CALIBRATION] Task '{_cal_name}' failed: {_cal_task_err}")
+                    logging.info(f"[CALIBRATION] Task '{_cal_name}' failed: {_cal_task_err}")
                     _cal_results[_cal_name] = {}
 
         agreement_data    = _cal_results.get("agreement", {})
@@ -1540,7 +1540,7 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
                     base_symbol, {"analogue_returns": analogue_returns})
                 mc_out = mc_result.get("output", {}) if isinstance(mc_result, dict) else {}
         except Exception as _mc_err:
-            print(f"[CALIBRATION] Monte-Carlo bootstrap failed: {_mc_err}")
+            logging.info(f"[CALIBRATION] Monte-Carlo bootstrap failed: {_mc_err}")
 
         # Store calibration results in final_state for _normalize_response to pick up
         if isinstance(final_state, dict):
@@ -1632,7 +1632,7 @@ Bounds 3M: {_nf((conformal_data.get('short_term_3m') or {}).get('lower'), 'N/A')
 """
         return calibration_block + "\n\n" + raw_output
     except Exception as _cal_err:
-        print(f"[CALIBRATION] Pipeline failed: {_cal_err}")
+        logging.info(f"[CALIBRATION] Pipeline failed: {_cal_err}")
         return raw_output
 
 
@@ -1733,7 +1733,7 @@ def analyze(
         # Cross-tier fallback makes Standard/Deep/Extreme display the wrong report.
         cached_today = get_analysis_for_date(session, ticker, analysis_date, scan_type)
         if cached_today:
-            print(
+            logging.info(
                 f"[CACHE HIT] Returning existing analysis for {full_ticker} on {analysis_date}"
             )
             _quant_from_cache = {
@@ -1769,7 +1769,7 @@ def analyze(
                             raw_output=cached_today.get("raw_output"),
                         )
                     except Exception as _cache_save_err:
-                        print(
+                        logging.info(
                             f"[WARN] Cache hit save_analysis failed for {ticker}: {_cache_save_err}"
                         )
             from datetime import timezone as _tz
@@ -1860,7 +1860,7 @@ def analyze(
                     _ps.add(_pred)
                     _ps.commit()
             except Exception as _fuse_err:
-                print(f"[WARN] Cache-path confidence fusion failed: {_fuse_err}")
+                logging.info(f"[WARN] Cache-path confidence fusion failed: {_fuse_err}")
 
             return cached_today
 
@@ -1877,7 +1877,7 @@ def analyze(
                 t = yf.Ticker(ns_ticker)
                 recent_news = t.news[:5] if t.news else []
                 if recent_news:
-                    print(
+                    logging.info(
                         f"[AI] Thinking: Fast-checking recent news to see if full analysis is needed..."
                     )
                     news_text = "\n".join(
@@ -1921,7 +1921,7 @@ def analyze(
                         )
 
                         if "NO" in answer:
-                            print(
+                            logging.info(
                                 f"[SMART CACHE] No major news changes for {full_ticker} since {last_date_str}. Reusing previous report to save credits."
                             )
                             import copy
@@ -1967,7 +1967,7 @@ def analyze(
                                         .all()
                                     )
                             except Exception as _save_err:
-                                print(
+                                logging.info(
                                     f"[WARN] Smart cache save_analysis failed for {ticker}: {_save_err}"
                                 )
                                 _advisor_rows = []
@@ -1993,15 +1993,15 @@ def analyze(
                             new_analysis = _inject_live_data(new_analysis, ticker)
                             return new_analysis
                         else:
-                            print(
+                            logging.info(
                                 f"[AI] Thinking: News indicates possible changes ({answer}). Proceeding with full deep analysis."
                             )
             except Exception as e:
-                print(
+                logging.info(
                     f"[AI] Smart cache news check failed: {e}. Defaulting to full analysis."
                 )
 
-    print(f"[CACHE MISS] Generating new deep analysis for {full_ticker}...")
+    logging.info(f"[CACHE MISS] Generating new deep analysis for {full_ticker}...")
     emitter.emit("gather", "Data Pipeline",
                  "Fetching prices, fundamentals, pledging & news", pct=10)
 
@@ -2019,7 +2019,7 @@ def analyze(
                 _prefetch_data["financials"] = tk.financials
                 _prefetch_data["info"] = tk.info
         except Exception as _pf_err:
-            print(f"[PREFETCH] Background fetch failed for {t_ticker}: {_pf_err}")
+            logging.info(f"[PREFETCH] Background fetch failed for {t_ticker}: {_pf_err}")
         finally:
             _prefetch_done.set()
 
@@ -2064,7 +2064,7 @@ def analyze(
         )
         _quant_loop.close()
     except Exception as e:
-        print(f"[Orchestrator] QuantEngine failed for {ticker}: {e}")
+        logging.info(f"[Orchestrator] QuantEngine failed for {ticker}: {e}")
         quant_payload = {
             "market_regime": "Data Unavailable",
             "calibrated_confidence": 0.0,
@@ -2133,7 +2133,7 @@ def analyze(
                 "Base your bear and bull deep dives explicitly on these numbers.\n"
             )
         except Exception as _enrich_err:
-            print(f"[EXTREME] enrichment failed for {ticker}: {_enrich_err}")
+            logging.info(f"[EXTREME] enrichment failed for {ticker}: {_enrich_err}")
 
     emitter.emit("format", "Reformatter",
                  "Structuring the report into the final schema", pct=80)
@@ -2240,7 +2240,7 @@ def analyze(
             session.add(pred)
             session.commit()
     except Exception as _log_err:
-        print(f"[PREDICTION LOG] Failed to write to analysis_predictions: {_log_err}")
+        logging.info(f"[PREDICTION LOG] Failed to write to analysis_predictions: {_log_err}")
 
     result["ticker"] = ticker.upper()
     result["exchange"] = exchange
@@ -2258,7 +2258,7 @@ def analyze(
             result, raw_output, user_id, ticker, exchange, scan_type
         )
     except Exception as e:
-        print(
+        logging.info(
             f"[WARN] save_analysis failed for {ticker}, returning result anyway: {e}"
         )
         _advisor_rows_dicts = []

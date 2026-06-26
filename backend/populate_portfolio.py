@@ -1,3 +1,4 @@
+import logging
 """
 Populate saumya's portfolio with 50 diverse NSE stocks + trade journal history.
 Run once: python backend/populate_portfolio.py
@@ -70,12 +71,12 @@ def main():
             from database import _hash_password
             saumya = User(username="saumya", password_hash=_hash_password("123"), display_name="Saumya")
             session.add(saumya); session.commit(); session.refresh(saumya)
-        print(f"User: {saumya.username} (id={saumya.id})")
+        logging.info(f"User: {saumya.username} (id={saumya.id})")
 
         existing = session.query(Portfolio).filter(Portfolio.user_id == saumya.id).delete()
         session.query(TradeJournal).filter(TradeJournal.user_id == saumya.id).delete()
         session.commit()
-        print(f"Cleared {existing} holdings + journal entries")
+        logging.info(f"Cleared {existing} holdings + journal entries")
 
         added = 0
         for ticker, company, approx_price, sector in STOCKS:
@@ -88,7 +89,7 @@ def main():
             session.add(Portfolio(user_id=saumya.id, ticker=ticker, company_name=company, shares=shares, buy_price=buy_price, group_name=group, notes=f"Mock. Sector: {sector}"))
             added += 1
         session.commit()
-        print(f"Added {added} stocks")
+        logging.info(f"Added {added} stocks")
 
         holdings = session.query(Portfolio).filter(Portfolio.user_id == saumya.id, Portfolio.group_name == "holdings").all()
         actions, moods = ["BUY","SELL","HOLD","WATCH"], ["Confident","Cautious","Neutral","Bullish","Bearish"]
@@ -112,12 +113,12 @@ def main():
                 session.add(TradeJournal(user_id=saumya.id, ticker=holding.ticker, action=random.choice(actions), price_at_time=price_at_time, reason_text=random.choice(reasons), outcome_text=f"Position {'gained' if random.random()>0.5 else 'lost'} {random.uniform(1,20):.1f}%", company_name=holding.company_name, mood=random.choice(moods), created_at=datetime.now(timezone.utc) - timedelta(days=days_ago)))
                 jc += 1
         session.commit()
-        print(f"Added {jc} journal entries")
+        logging.info(f"Added {jc} journal entries")
 
         total = session.query(Portfolio).filter(Portfolio.user_id == saumya.id).count()
         hc = session.query(Portfolio).filter(Portfolio.user_id == saumya.id, Portfolio.group_name == "holdings").count()
         jt = session.query(TradeJournal).filter(TradeJournal.user_id == saumya.id).count()
-        print(f"Done: {total} stocks ({hc} holdings), {jt} journal entries")
+        logging.info(f"Done: {total} stocks ({hc} holdings), {jt} journal entries")
 
 if __name__ == "__main__":
     main()

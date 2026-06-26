@@ -1,3 +1,4 @@
+import logging
 """Utility functions and helpers for data processing and date manipulation.
 
 This module provides reusable functions for saving data, validating paths,
@@ -58,7 +59,7 @@ def save_output(data: pd.DataFrame, tag: str, save_path: SavePathType = None) ->
     """
     if save_path:
         data.to_csv(save_path, encoding="utf-8")
-        print(f"{tag} saved to {save_path}")
+        logging.info(f"{tag} saved to {save_path}")
 
 
 def get_current_date():

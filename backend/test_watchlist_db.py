@@ -1,3 +1,4 @@
+import logging
 """
 Test script for validating watchlist endpoint behavior by querying and mocking database interactions.
 """
@@ -15,7 +16,7 @@ def test_watchlist():
     with get_session() as session:
         user = session.query(User).first()
         if not user:
-            print("No users in db")
+            logging.info("No users in db")
             return
             
         uid = user.id
@@ -32,10 +33,10 @@ def test_watchlist():
         routers.user.verify_access_token = lambda x: uid
         
         result = watchlist_get_endpoint(uid, "Bearer token")
-        print("RESULT:")
-        print(json.dumps(result, indent=2))
+        logging.info("RESULT:")
+        logging.info(json.dumps(result, indent=2))
     except Exception as e:
-        print("ERROR:", str(e))
+        logging.info("ERROR:", str(e))
 
 if __name__ == "__main__":
     test_watchlist()

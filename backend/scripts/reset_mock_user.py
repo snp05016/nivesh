@@ -1,3 +1,4 @@
+import logging
 """
 reset_mock_user.py — Delete all records for snp050106@gmail.com, then reinsert complete mock data.
 
@@ -210,7 +211,7 @@ def main():
             ).delete()
             session.delete(existing_user)
             session.commit()
-            print(f"[0.1] Deleted all records for user_id={uid}")
+            logging.info(f"[0.1] Deleted all records for user_id={uid}")
 
         # ── 0.2: Recreate user ──────────────────────────────────────────────
         created_at = TODAY - timedelta(days=90)
@@ -223,7 +224,7 @@ def main():
         session.add(user)
         session.commit()
         session.refresh(user)
-        print(f"[0.2] Created user: {user.username} (id={user.id})")
+        logging.info(f"[0.2] Created user: {user.username} (id={user.id})")
 
         # ── 0.3: Insert holdings ────────────────────────────────────────────
         holdings_added = []
@@ -240,7 +241,7 @@ def main():
             session.add(h)
             holdings_added.append(h)
         session.commit()
-        print(f"[0.3] Added {len(holdings_added)} holdings")
+        logging.info(f"[0.3] Added {len(holdings_added)} holdings")
 
         # ── 0.4: Insert 90 valuation snapshots ──────────────────────────────
         snapshots = generate_valuation_trajectory()
@@ -259,7 +260,7 @@ def main():
                 nifty_close=round(nifty_val, 2),
             ))
         session.commit()
-        print(f"[0.4] Added 90 valuation snapshots "
+        logging.info(f"[0.4] Added 90 valuation snapshots "
               f"(start=₹{START_VALUE:,.0f}, end=₹{END_VALUE:,.0f})")
 
         # ── 0.5: Insert transactions ────────────────────────────────────────
@@ -317,7 +318,7 @@ def main():
             tx_count += 1
 
         session.commit()
-        print(f"[0.5] Added {tx_count} transactions (24 BUY + 4 SELL)")
+        logging.info(f"[0.5] Added {tx_count} transactions (24 BUY + 4 SELL)")
 
         # ── Verification ────────────────────────────────────────────────────
         h_count = session.query(Portfolio).filter(
@@ -330,44 +331,44 @@ def main():
             TradeJournal.user_id == user.id
         ).count()
 
-        print()
-        print("=" * 60)
-        print("VERIFICATION")
-        print("=" * 60)
-        print(f"  User:                {user.username} (id={user.id})")
-        print(f"  Email:               {USER_EMAIL}")
-        print(f"  Holdings:            {h_count} (expected 12)")
-        print(f"  Valuation snapshots: {v_count} (expected 90)")
-        print(f"  Transactions:        {t_count} (expected 28)")
-        print(f"  Invested:            ₹{INVESTED_VALUE:,.2f}")
-        print(f"  Current value:       ₹{END_VALUE:,.2f}")
-        print(f"  Total P&L:           ₹{END_VALUE - INVESTED_VALUE:,.2f}")
-        print(f"  Password:            {USER_PASSWORD}")
-        print("=" * 60)
+        logging.info()
+        logging.info("=" * 60)
+        logging.info("VERIFICATION")
+        logging.info("=" * 60)
+        logging.info(f"  User:                {user.username} (id={user.id})")
+        logging.info(f"  Email:               {USER_EMAIL}")
+        logging.info(f"  Holdings:            {h_count} (expected 12)")
+        logging.info(f"  Valuation snapshots: {v_count} (expected 90)")
+        logging.info(f"  Transactions:        {t_count} (expected 28)")
+        logging.info(f"  Invested:            ₹{INVESTED_VALUE:,.2f}")
+        logging.info(f"  Current value:       ₹{END_VALUE:,.2f}")
+        logging.info(f"  Total P&L:           ₹{END_VALUE - INVESTED_VALUE:,.2f}")
+        logging.info(f"  Password:            {USER_PASSWORD}")
+        logging.info("=" * 60)
 
         all_ok = True
         if h_count != 12:
-            print(f"  ❌ Holdings: {h_count} (expected 12)")
+            logging.info(f"  ❌ Holdings: {h_count} (expected 12)")
             all_ok = False
         else:
-            print(f"  ✅ Holdings: {h_count}")
+            logging.info(f"  ✅ Holdings: {h_count}")
         if v_count != 90:
-            print(f"  ❌ Snapshots: {v_count} (expected 90)")
+            logging.info(f"  ❌ Snapshots: {v_count} (expected 90)")
             all_ok = False
         else:
-            print(f"  ✅ Snapshots: {v_count}")
+            logging.info(f"  ✅ Snapshots: {v_count}")
         if t_count != 28:
-            print(f"  ❌ Transactions: {t_count} (expected 28)")
+            logging.info(f"  ❌ Transactions: {t_count} (expected 28)")
             all_ok = False
         else:
-            print(f"  ✅ Transactions: {t_count}")
+            logging.info(f"  ✅ Transactions: {t_count}")
 
         if all_ok:
-            print("\n✅ ALL CHECKS PASSED")
+            logging.info("\n✅ ALL CHECKS PASSED")
         else:
-            print("\n⚠️  Some checks failed — review above")
+            logging.info("\n⚠️  Some checks failed — review above")
 
-        print(f"\nLogin: {USER_EMAIL} / {USER_PASSWORD}")
+        logging.info(f"\nLogin: {USER_EMAIL} / {USER_PASSWORD}")
 
 
 if __name__ == "__main__":

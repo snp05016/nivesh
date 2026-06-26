@@ -1,3 +1,4 @@
+import logging
 """
 Financial News Sentiment Scoring engine.
 Tries FinBERT first; falls back to a financial lexicon to score text.
@@ -223,13 +224,13 @@ if __name__ == "__main__":
     ]
 
     result = analyze_news_sentiment(sample_texts)
-    print(f"Method: {result['method']}")
-    print(f"Aggregate score: {result['aggregate_score']:.3f} — {result['sentiment']}")
-    print(f"Bullish: {result['bullish_count']}, Bearish: {result['bearish_count']}, Neutral: {result['neutral_count']}")
+    logging.info(f"Method: {result['method']}")
+    logging.info(f"Aggregate score: {result['aggregate_score']:.3f} — {result['sentiment']}")
+    logging.info(f"Bullish: {result['bullish_count']}, Bearish: {result['bearish_count']}, Neutral: {result['neutral_count']}")
     for pt in result["per_text"]:
-        print(f"  [{pt['label']:12}] {pt['score']:+.3f}  {pt['text'][:60]}...")
+        logging.info(f"  [{pt['label']:12}] {pt['score']:+.3f}  {pt['text'][:60]}...")
 
     assert result["method"] in {"finbert", "lexicon"}
     assert -1.0 <= result["aggregate_score"] <= 1.0
     assert result["sentiment"] in {"BULLISH", "MILD_BULLISH", "NEUTRAL", "MILD_BEARISH", "BEARISH"}
-    print("All finbert_sentiment tests passed.")
+    logging.info("All finbert_sentiment tests passed.")

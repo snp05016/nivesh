@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 import json
 import yfinance as yf
@@ -58,7 +59,7 @@ async def compute_surprise_for_ticker(ticker: str):
             "serial_pattern": "4x consecutive beat" if classification == "BEAT" else ("3x miss" if classification == "MISS" else None)
         }
     except Exception as e:
-        print(f"Error computing surprise for {ticker}: {e}")
+        logging.info(f"Error computing surprise for {ticker}: {e}")
         return None
 
 async def get_all_surprises(period="current_quarter"):

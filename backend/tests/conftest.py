@@ -1,3 +1,4 @@
+import logging
 """
 Nivesh FastAPI Test Suite — conftest.py
 Handles module-level mocking of heavy AI/trading dependencies before app import.
@@ -271,7 +272,7 @@ def teardown_test_user(client, request):
                 session.delete(user)
                 session.commit()
     except Exception as e:
-        print(f"[Teardown] Warning — could not clean up test user: {e}")
+        logging.info(f"[Teardown] Warning — could not clean up test user: {e}")
 
 
 @pytest.fixture(scope="session", autouse=True)

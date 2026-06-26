@@ -1,3 +1,4 @@
+import logging
 #!/usr/bin/env python3
 """
 refresh_nse_symbols.py — Rebuild nse_bse_symbols.json from live sources
@@ -47,7 +48,7 @@ def guess_sector(name: str) -> str:
 
 # ── NSE ────────────────────────────────────────────────────────────────────
 def fetch_nse() -> list[dict]:
-    print("Fetching NSE EQUITY_L.csv...")
+    logging.info("Fetching NSE EQUITY_L.csv...")
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
         "Referer": "https://www.nseindia.com/",
@@ -57,7 +58,7 @@ def fetch_nse() -> list[dict]:
         with urllib.request.urlopen(req, timeout=30) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
     except Exception as e:
-        print(f"  NSE fetch failed: {e}")
+        logging.info(f"  NSE fetch failed: {e}")
         return []
 
     reader = csv.DictReader(StringIO(raw))
@@ -70,7 +71,7 @@ def fetch_nse() -> list[dict]:
         if ticker and name:
             stocks.append({"ticker": ticker, "name": name,
                            "sector": guess_sector(name), "exchange": "NSE"})
-    print(f"  NSE: {len(stocks)} equity symbols")
+    logging.info(f"  NSE: {len(stocks)} equity symbols")
     return stocks
 
 
@@ -80,7 +81,7 @@ def _tokens(s: str) -> set[str]:
     return set(re.findall(r'[A-Z]{2,}', s))
 
 def fetch_bse_from_repo(nse_stocks: list[dict]) -> list[dict]:
-    print("Cloning maanavshah/stock-market-india for BSE names...")
+    logging.info("Cloning maanavshah/stock-market-india for BSE names...")
     tmpdir = tempfile.mkdtemp()
     try:
         subprocess.run(
@@ -88,12 +89,12 @@ def fetch_bse_from_repo(nse_stocks: list[dict]) -> list[dict]:
             check=True, capture_output=True, timeout=60
         )
     except Exception as e:
-        print(f"  git clone failed: {e}")
+        logging.info(f"  git clone failed: {e}")
         return []
 
     names_js = os.path.join(tmpdir, "bse", "constant", "names.js")
     if not os.path.exists(names_js):
-        print("  bse/constant/names.js not found in repo")
+        logging.info("  bse/constant/names.js not found in repo")
         return []
 
     with open(names_js) as f:
@@ -101,7 +102,7 @@ def fetch_bse_from_repo(nse_stocks: list[dict]) -> list[dict]:
 
     pattern = re.compile(r"'(\d+)'\s*:\s*\{\s*'companyName'\s*:\s*'([^']+)'\s*\}")
     bse_raw = pattern.findall(content)
-    print(f"  BSE raw entries in repo: {len(bse_raw)}")
+    logging.info(f"  BSE raw entries in repo: {len(bse_raw)}")
 
     NON_EQ = re.compile(
         r'\d{2}[A-Z]|^[0-9]+[A-Z]{2}|BOND|NCD|DEBENTURE|PREF\b|WARR|SERIES|TRANCHE',
@@ -144,7 +145,7 @@ def fetch_bse_from_repo(nse_stocks: list[dict]) -> list[dict]:
             "exchange": "BSE",
         })
 
-    print(f"  BSE-only (not already in NSE): {len(bse_only)}")
+    logging.info(f"  BSE-only (not already in NSE): {len(bse_only)}")
     return bse_only
 
 
@@ -158,14 +159,14 @@ def merge_and_save(nse: list[dict], bse_only: list[dict]) -> None:
             seen.add(s["ticker"])
             merged.append(s)
 
-    print(f"\nMerge summary:")
-    print(f"  NSE:      {len(nse):>5}")
-    print(f"  BSE-only: {len(bse_only):>5}")
-    print(f"  Total:    {len(merged):>5}")
+    logging.info(f"\nMerge summary:")
+    logging.info(f"  NSE:      {len(nse):>5}")
+    logging.info(f"  BSE-only: {len(bse_only):>5}")
+    logging.info(f"  Total:    {len(merged):>5}")
 
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(merged, f, indent=2, ensure_ascii=False)
-    print(f"\nSaved: {OUTPUT_PATH}")
+    logging.info(f"\nSaved: {OUTPUT_PATH}")
 
 
 def main() -> None:
@@ -174,11 +175,11 @@ def main() -> None:
     bse_only = fetch_bse_from_repo(nse)
 
     if not nse and not bse_only:
-        print("\nBoth sources failed. Keeping existing file unchanged.")
+        logging.info("\nBoth sources failed. Keeping existing file unchanged.")
         sys.exit(1)
 
     merge_and_save(nse, bse_only)
-    print("\nDone. Restart the backend to pick up the new symbol list.")
+    logging.info("\nDone. Restart the backend to pick up the new symbol list.")
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+import logging
 """
 Task 19 — Relative Rotation Graph (RRG).
 
@@ -223,10 +224,10 @@ if __name__ == "__main__":
     }
 
     rrg = compute_rrg_vectors(sectors, benchmark)
-    print("RRG Results:")
+    logging.info("RRG Results:")
     for s, v in rrg["sectors"].items():
-        print(f"  {s}: RS-Ratio={v['rs_ratio']:.1f}, RS-Mom={v['rs_momentum']:.1f}, Quadrant={v['quadrant']}")
-    print(f"Leading: {rrg['leading_sectors']}")
-    print(f"Lagging: {rrg['lagging_sectors']}")
+        logging.info(f"  {s}: RS-Ratio={v['rs_ratio']:.1f}, RS-Mom={v['rs_momentum']:.1f}, Quadrant={v['quadrant']}")
+    logging.info(f"Leading: {rrg['leading_sectors']}")
+    logging.info(f"Lagging: {rrg['lagging_sectors']}")
     assert set(rrg["sectors"].keys()) == set(sectors.keys())
-    print("All relative_rotation_graph tests passed.")
+    logging.info("All relative_rotation_graph tests passed.")

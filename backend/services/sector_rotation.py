@@ -1,3 +1,4 @@
+import logging
 """
 services/sector_rotation.py — Sector rotation logic based on Relative Rotation Graphs (RRG).
 
@@ -142,7 +143,7 @@ def get_sector_rotation_data(period: str):
             })
 
         except Exception as e:
-            print(f"Error processing sector {name}: {e}")
+            logging.info(f"Error processing sector {name}: {e}")
 
     return {"period": period, "sectors": sectors}
 

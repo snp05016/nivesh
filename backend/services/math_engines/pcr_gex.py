@@ -1,3 +1,4 @@
+import logging
 """
 Task 18 — Put/Call Ratio (PCR) and Gamma Exposure (GEX).
 
@@ -194,15 +195,15 @@ if __name__ == "__main__":
         ],
     }
     pcr = compute_pcr(sample_chain)
-    print(f"PCR: {pcr}")
+    logging.info(f"PCR: {pcr}")
     assert pcr > 0
 
     pcr_sig = compute_pcr_with_signal(sample_chain)
-    print(f"PCR signal: {pcr_sig['sentiment']} — {pcr_sig['description']}")
+    logging.info(f"PCR signal: {pcr_sig['sentiment']} — {pcr_sig['description']}")
 
     gex = compute_gex(sample_chain, spot_price=19950.0)
-    print(f"GEX: {gex}")
+    logging.info(f"GEX: {gex}")
 
     gex_sig = compute_gex_with_signal(sample_chain, spot_price=19950.0)
-    print(f"GEX regime: {gex_sig['regime']} — {gex_sig['description']}")
-    print("All pcr_gex tests passed.")
+    logging.info(f"GEX regime: {gex_sig['regime']} — {gex_sig['description']}")
+    logging.info("All pcr_gex tests passed.")

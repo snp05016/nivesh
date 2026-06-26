@@ -1,3 +1,4 @@
+import logging
 """
 NSE session bootstrap, ASM/GSM surveillance list fetching, and market indices
 retrieval with Redis-backed caching.
@@ -56,7 +57,7 @@ def _get_asm_gsm_lists():
     if cached is not None:
         return cached
 
-    print("[NSE] Refreshing ASM/GSM lists...")
+    logging.info("[NSE] Refreshing ASM/GSM lists...")
     data = {"ASM": set(), "GSM": set()}
     try:
         session = _nse_session()
@@ -83,7 +84,7 @@ def _get_asm_gsm_lists():
         _dcache_set("asm_gsm", "lists", redis_data, ttl=_ASM_GSM_CACHE_TTL)
         return data
     except Exception as e:
-        print(f"[NSE] ASM/GSM fetch failed: {e}")
+        logging.info(f"[NSE] ASM/GSM fetch failed: {e}")
         return data
 
 

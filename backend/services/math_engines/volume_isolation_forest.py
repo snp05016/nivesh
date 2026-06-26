@@ -1,3 +1,4 @@
+import logging
 """
 Task 23 — Volume Anomaly Detection via Isolation Forest.
 
@@ -166,10 +167,10 @@ if __name__ == "__main__":
     volumes[60] = 8_000_000           # 8x volume
 
     result = detect_volume_anomalies(prices, volumes, contamination=0.05)
-    print(f"Detected {result['num_anomalies']} anomalies using {result['method']}")
-    print(f"Anomaly indices: {result['anomaly_indices']}")
+    logging.info(f"Detected {result['num_anomalies']} anomalies using {result['method']}")
+    logging.info(f"Anomaly indices: {result['anomaly_indices']}")
     if result["anomaly_details"]:
         for d in result["anomaly_details"][:3]:
-            print(f"  Index {d['index']}: {d['type']} | return={d['return_pct']}% vol={d['volume']:,}")
+            logging.info(f"  Index {d['index']}: {d['type']} | return={d['return_pct']}% vol={d['volume']:,}")
     assert result["num_anomalies"] > 0, "Should detect at least the injected anomalies"
-    print("All volume_isolation_forest tests passed.")
+    logging.info("All volume_isolation_forest tests passed.")

@@ -1,3 +1,4 @@
+import logging
 """Utility functions for the TradingAgents CLI.
 
 This module provides interactive prompts and helper functions for selecting
@@ -52,7 +53,7 @@ def get_ticker() -> str:
     ).ask()
 
     if ticker is None:
-        console.print("\n[red]No ticker symbol provided. Exiting...[/red]")
+        console.logging.info("\n[red]No ticker symbol provided. Exiting...[/red]")
         exit(1)
 
     return normalize_ticker_symbol(ticker) if ticker.strip() else "SPY"
@@ -135,7 +136,7 @@ def get_analysis_date() -> str:
     ).ask()
 
     if not date:
-        console.print("\n[red]No date provided. Exiting...[/red]")
+        console.logging.info("\n[red]No date provided. Exiting...[/red]")
         exit(1)
 
     return date.strip()
@@ -167,7 +168,7 @@ def select_analysts(asset_type: AssetType = AssetType.STOCK) -> List[AnalystType
     ).ask()
 
     if not choices:
-        console.print("\n[red]No analysts selected. Exiting...[/red]")
+        console.logging.info("\n[red]No analysts selected. Exiting...[/red]")
         exit(1)
 
     return choices
@@ -199,7 +200,7 @@ def select_research_depth() -> int:
     ).ask()
 
     if choice is None:
-        console.print("\n[red]No research depth selected. Exiting...[/red]")
+        console.logging.info("\n[red]No research depth selected. Exiting...[/red]")
         exit(1)
 
     return choice
@@ -214,7 +215,7 @@ def _fetch_openrouter_models() -> List[Tuple[str, str]]:
         models = resp.json().get("data", [])
         return [(m.get("name") or m["id"], m["id"]) for m in models]
     except Exception as e:
-        console.print(f"\n[yellow]Could not fetch OpenRouter models: {e}[/yellow]")
+        console.logging.info(f"\n[yellow]Could not fetch OpenRouter models: {e}[/yellow]")
         return []
 
 
@@ -281,7 +282,7 @@ def _select_model(provider: str, mode: str) -> str:
     ).ask()
 
     if choice is None:
-        console.print(f"\n[red]No {mode} thinking llm engine selected. Exiting...[/red]")
+        console.logging.info(f"\n[red]No {mode} thinking llm engine selected. Exiting...[/red]")
         exit(1)
 
     if choice == "custom":
@@ -337,7 +338,7 @@ def select_llm_provider() -> tuple[str, str | None]:
     ).ask()
     
     if choice is None:
-        console.print("\n[red]No LLM provider selected. Exiting...[/red]")
+        console.logging.info("\n[red]No LLM provider selected. Exiting...[/red]")
         exit(1)
 
     provider, url = choice
@@ -496,10 +497,10 @@ def confirm_ollama_endpoint(url: str) -> None:
     """
     from_env = os.environ.get("OLLAMA_BASE_URL")
     origin = " (from OLLAMA_BASE_URL)" if from_env and from_env == url else ""
-    console.print(f"[green]✓ Using Ollama at {url}{origin}[/green]")
+    console.logging.info(f"[green]✓ Using Ollama at {url}{origin}[/green]")
 
     if not url.startswith(("http://", "https://")):
-        console.print(
+        console.logging.info(
             f"[yellow]Note: {url!r} is missing a scheme. "
             f"Ollama-serve typically expects a URL like "
             f"http://<host>:11434/v1.[/yellow]"
@@ -507,7 +508,7 @@ def confirm_ollama_endpoint(url: str) -> None:
     elif ":11434" not in url and "://localhost" not in url and "://127.0.0.1" not in url:
         # Soft hint when the port differs from the ollama-serve default
         # and the host isn't local (where users sometimes proxy on :80).
-        console.print(
+        console.logging.info(
             f"[yellow]Note: {url!r} doesn't include port 11434. "
             f"Make sure your remote ollama-serve listens on the port "
             f"shown above.[/yellow]"
@@ -533,7 +534,7 @@ def ensure_api_key(provider: str) -> Optional[str]:
     if existing:
         return existing
 
-    console.print(
+    console.logging.info(
         f"\n[yellow]{env_var} is not set in your environment.[/yellow]"
     )
     key = questionary.password(
@@ -544,7 +545,7 @@ def ensure_api_key(provider: str) -> Optional[str]:
         ]),
     ).ask()
     if not key:
-        console.print(
+        console.logging.info(
             f"[red]Skipped. API calls will fail until {env_var} is set.[/red]"
         )
         return None
@@ -553,7 +554,7 @@ def ensure_api_key(provider: str) -> Optional[str]:
     Path(env_path).touch(exist_ok=True)
     set_key(env_path, env_var, key)
     os.environ[env_var] = key
-    console.print(f"[green]Saved {env_var} to {env_path}[/green]")
+    console.logging.info(f"[green]Saved {env_var} to {env_path}[/green]")
     return key
 
 

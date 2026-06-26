@@ -1,3 +1,4 @@
+import logging
 """Common Utilities for Alpha Vantage API Integration.
 
 This module provides common helper functions, authentication, and date formatting
@@ -124,5 +125,5 @@ def _filter_csv_by_date_range(csv_data: str, start_date: str, end_date: str) -> 
 
     except Exception as e:
         # If filtering fails, return original data with a warning
-        print(f"Warning: Failed to filter CSV data by date range: {e}")
+        logging.info(f"Warning: Failed to filter CSV data by date range: {e}")
         return csv_data

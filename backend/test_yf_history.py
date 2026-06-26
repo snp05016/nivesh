@@ -1,3 +1,4 @@
+import logging
 """
 Test script to verify historical data fetching using yfinance with fallback mechanisms.
 """
@@ -39,16 +40,16 @@ def _yf_price(ticker_sym: str):
             prev = float(closes[-2]) if len(closes) >= 2 else current
             return current, prev
         except Exception as e:
-            print(f"[YF Price Error] {sym}: {e}")
+            logging.info(f"[YF Price Error] {sym}: {e}")
             return None, None
 
     current, prev = _fetch(ticker_sym)
     if current is None and ticker_sym.upper().endswith(".BO"):
         ns_sym = ticker_sym[:-3] + ".NS"
-        print(f"[BSE FALLBACK] No data for {ticker_sym}, trying {ns_sym}")
+        logging.info(f"[BSE FALLBACK] No data for {ticker_sym}, trying {ns_sym}")
         current, prev = _fetch(ns_sym)
     return current, prev
 
-print("ICICIBANK.NS:", _yf_price("ICICIBANK.NS"))
-print("RELIANCE.NS:", _yf_price("RELIANCE.NS"))
-print("SUZLON.NS:", _yf_price("SUZLON.NS"))
+logging.info("ICICIBANK.NS:", _yf_price("ICICIBANK.NS"))
+logging.info("RELIANCE.NS:", _yf_price("RELIANCE.NS"))
+logging.info("SUZLON.NS:", _yf_price("SUZLON.NS"))

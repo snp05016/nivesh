@@ -1,3 +1,4 @@
+import logging
 """
 One-time migration: delete FK-orphaned rows from analysis_jobs and analysis_history.
 
@@ -24,7 +25,7 @@ def run():
             AnalysisJob.user_id.isnot(None),
             ~AnalysisJob.user_id.in_(valid_user_ids)
         ).all()
-        print(f"Deleting {len(orphan_jobs)} orphaned analysis_jobs rows")
+        logging.info(f"Deleting {len(orphan_jobs)} orphaned analysis_jobs rows")
         for row in orphan_jobs:
             db.delete(row)
 
@@ -33,15 +34,15 @@ def run():
             AnalysisHistory.user_id.isnot(None),
             ~AnalysisHistory.user_id.in_(valid_user_ids)
         ).all()
-        print(f"Deleting {len(orphan_hist)} orphaned analysis_history rows")
+        logging.info(f"Deleting {len(orphan_hist)} orphaned analysis_history rows")
         for row in orphan_hist:
             db.delete(row)
 
         db.commit()
-        print("Done. FK orphans removed.")
+        logging.info("Done. FK orphans removed.")
     except Exception as e:
         db.rollback()
-        print(f"ERROR: {e}")
+        logging.info(f"ERROR: {e}")
         sys.exit(1)
     finally:
         db.close()

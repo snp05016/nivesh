@@ -1,3 +1,4 @@
+import logging
 """
 services/nightly_jobs.py — Nightly batch jobs for pre-computing indicators.
 
@@ -49,7 +50,7 @@ def _get_nifty500_from_db() -> list[str]:
                     for t in tickers
                 ]
     except Exception as e:
-        print(f"[nightly] DB ticker fetch failed: {e}")
+        logging.info(f"[nightly] DB ticker fetch failed: {e}")
     return []
 
 
@@ -70,7 +71,7 @@ def compute_and_cache_indicators(ticker: str) -> bool:
 
         hist = yf.download(ticker, period="1y", auto_adjust=True, progress=False)
         if hist.empty:
-            print(f"[nightly] Empty history for {ticker} — skipping")
+            logging.info(f"[nightly] Empty history for {ticker} — skipping")
             return False
 
         closes = [float(x) for x in hist["Close"].dropna().tolist()]
@@ -95,7 +96,7 @@ def compute_and_cache_indicators(ticker: str) -> bool:
         return True
 
     except Exception as e:
-        print(f"[nightly] Failed {ticker}: {e}")
+        logging.info(f"[nightly] Failed {ticker}: {e}")
         return False
 
 
@@ -107,7 +108,7 @@ def run_nightly_precompute(max_workers: int = 10) -> dict:
     Returns a summary dict.
     """
     tickers = _get_nifty500_from_db() or NIFTY_500_SYMBOLS
-    print(f"[nightly] Pre-computing indicators for {len(tickers)} stocks...")
+    logging.info(f"[nightly] Pre-computing indicators for {len(tickers)} stocks...")
 
     start = time.monotonic()
     with ThreadPoolExecutor(max_workers=max_workers) as exe:
@@ -116,7 +117,7 @@ def run_nightly_precompute(max_workers: int = 10) -> dict:
     elapsed = round(time.monotonic() - start, 1)
     success = sum(results)
     failed = len(results) - success
-    print(f"[nightly] Done in {elapsed}s — {success}/{len(tickers)} succeeded, {failed} failed")
+    logging.info(f"[nightly] Done in {elapsed}s — {success}/{len(tickers)} succeeded, {failed} failed")
     return {
         "total": len(tickers),
         "success": success,
@@ -212,17 +213,17 @@ def compute_rrg_batch(benchmark: str = "^NSEI") -> dict:
     """
     import yfinance as yf
 
-    print(f"[nightly] Computing RRG batch for {len(SECTOR_ETFS)} sectors vs {benchmark}...")
+    logging.info(f"[nightly] Computing RRG batch for {len(SECTOR_ETFS)} sectors vs {benchmark}...")
 
     # Fetch benchmark once — used by all sector workers
     try:
         bench_hist = yf.download(benchmark, period="6mo", auto_adjust=True, progress=False)
         if bench_hist.empty:
-            print(f"[nightly] Benchmark {benchmark} returned empty — aborting RRG batch")
+            logging.info(f"[nightly] Benchmark {benchmark} returned empty — aborting RRG batch")
             return {}
         bench_closes = [float(x) for x in bench_hist["Close"].dropna().tolist()]
     except Exception as e:
-        print(f"[nightly] Benchmark fetch failed: {e}")
+        logging.info(f"[nightly] Benchmark fetch failed: {e}")
         return {}
 
     results: dict = {}
@@ -249,20 +250,20 @@ def compute_rrg_batch(benchmark: str = "^NSEI") -> dict:
                 "benchmark": benchmark,
                 "sectors": results,
             }, f, indent=2)
-        print(f"[nightly] RRG batch cached — {len(results)} sectors computed")
+        logging.info(f"[nightly] RRG batch cached — {len(results)} sectors computed")
     except Exception as e:
-        print(f"[nightly] RRG batch cache write failed: {e}")
+        logging.info(f"[nightly] RRG batch cache write failed: {e}")
 
     return results
 
 
 if __name__ == "__main__":
-    print("=== Nightly Pre-compute Run ===")
+    logging.info("=== Nightly Pre-compute Run ===")
     summary = run_nightly_precompute(max_workers=10)
-    print(f"Indicators: {summary}")
+    logging.info(f"Indicators: {summary}")
 
-    print("\n=== Nightly RRG Batch ===")
+    logging.info("\n=== Nightly RRG Batch ===")
     rrg = compute_rrg_batch()
     for sector, data in rrg.items():
         quadrant = data.get("rrg_quadrant", data.get("error", "?"))
-        print(f"  {sector:12s}: {quadrant}")
+        logging.info(f"  {sector:12s}: {quadrant}")

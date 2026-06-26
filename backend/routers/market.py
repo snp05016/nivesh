@@ -54,7 +54,7 @@ def nifty_history_endpoint(days: int = 365):
                 if not hist.empty:
                     break
             except Exception as e:
-                print(f"[YF] Nifty history attempt {attempt+1} failed: {e}")
+                logging.info(f"[YF] Nifty history attempt {attempt+1} failed: {e}")
                 if attempt < 2:
                     time.sleep((1.5 * (2 ** attempt)) + (random.random() * 0.5))
 
@@ -71,7 +71,7 @@ def nifty_history_endpoint(days: int = 365):
         _dcache_set("market", cache_key, payload, ttl=1800)
         return payload
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/dividends/{ticker}")
 def dividend_history_endpoint(ticker: str, exchange: str = "NSE"):
@@ -182,7 +182,7 @@ def mutual_fund_nav_endpoint(scheme_code: str):
             "nav_history": nav_history
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/block-deals/{ticker}")
 def block_deals_endpoint(
@@ -207,7 +207,7 @@ def block_deals_endpoint(
                 ]
             }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/fii-dii-flow")
 def fii_dii_flow_endpoint(
@@ -233,7 +233,7 @@ def fii_dii_flow_endpoint(
                 ]
             }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 def _get_quarterly_fin(full_ticker: str):
     """Fetch quarterly financials with retry, falling back to .BO if .NS returns empty."""
@@ -250,7 +250,7 @@ def _get_quarterly_fin(full_ticker: str):
                 if _fin is not None and not _fin.empty:
                     return _t, _fin
             except Exception as e:
-                print(f"[YF] Quarterly fin attempt {attempt+1} failed for {sym}: {e}")
+                logging.info(f"[YF] Quarterly fin attempt {attempt+1} failed for {sym}: {e}")
                 if attempt < 2:
                     time.sleep((1.5 * (2 ** attempt)) + (random.random() * 0.5))
         return _t, _fin
@@ -258,7 +258,7 @@ def _get_quarterly_fin(full_ticker: str):
     t, fin = _fetch(full_ticker)
     if (fin is None or fin.empty) and full_ticker.endswith(".NS"):
         alt = full_ticker[:-3] + ".BO"
-        print(f"[QF FALLBACK] No data for {full_ticker}, trying {alt}")
+        logging.info(f"[QF FALLBACK] No data for {full_ticker}, trying {alt}")
         t, fin = _fetch(alt)
     return t, fin
 
@@ -323,7 +323,7 @@ def quarterly_financials_endpoint(ticker: str, exchange: str = "NSE"):
         _dcache_set("market", cache_key, payload, ttl=3600)
         return payload
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/macro-strip")
@@ -399,7 +399,7 @@ def macro_strip_endpoint():
 
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/macro-context/{ticker}")
@@ -632,7 +632,7 @@ AI-generated analysis if a cached analysis exists.
         _dcache_set("market", _dcache_key, result, ttl=3600)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/earnings-calendar")
@@ -693,7 +693,7 @@ def earnings_calendar_endpoint():
         _dcache_set("market", "earnings_calendar", payload, ttl=900)
         return payload
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/analyst-ratings")
@@ -715,7 +715,7 @@ def analyst_ratings_endpoint(ticker: str, exchange: str = "NSE"):
                 if recs is not None and not recs.empty:
                     break
             except Exception as e:
-                print(f"[YF] Ratings attempt {attempt+1} failed for {full_ticker}: {e}")
+                logging.info(f"[YF] Ratings attempt {attempt+1} failed for {full_ticker}: {e}")
                 if attempt < 2:
                     time.sleep((1.5 * (2 ** attempt)) + (random.random() * 0.5))
 
@@ -747,7 +747,7 @@ def analyst_ratings_endpoint(ticker: str, exchange: str = "NSE"):
         _dcache_set("market", cache_key, payload, ttl=3600)
         return payload
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/ipo-calendar")
@@ -805,7 +805,7 @@ def sector_weekly_endpoint():
                     if not hist.empty and len(hist) >= 2:
                         break
                 except Exception as e:
-                    print(f"[YF] Sector attempt {attempt+1} failed for {sym}: {e}")
+                    logging.info(f"[YF] Sector attempt {attempt+1} failed for {sym}: {e}")
                     if attempt < 2:
                         time.sleep((1.0 * (2 ** attempt)) + (random.random() * 0.2))
 
@@ -1108,7 +1108,7 @@ def sector_performance_endpoint():
                     if current is not None:
                         break
                 except Exception as e:
-                    print(f"[YF] Sector perf attempt {attempt+1} failed for {ticker}: {e}")
+                    logging.info(f"[YF] Sector perf attempt {attempt+1} failed for {ticker}: {e}")
                     if attempt < 2:
                         time.sleep((1.0 * (2 ** attempt)) + (random.random() * 0.2))
 
@@ -1245,7 +1245,7 @@ def stock_history_endpoint(ticker: str, exchange: str = "NSE", period: str = "1y
         _dcache_set("stock_history", cache_key, result)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1755,12 +1755,12 @@ Errors are caught, logged to market_error_logs, and fallback values served.
         pulse_raw = await asyncio.get_event_loop().run_in_executor(None, fetch_market_pulse)
     except Exception as exc:
         log_market_error("market_pulse", str(exc))
-        print(f"[DASHBOARD-PULSE] pulse fetch error: {exc}")
+        logging.info(f"[DASHBOARD-PULSE] pulse fetch error: {exc}")
     try:
         momentum_raw = await asyncio.get_event_loop().run_in_executor(None, fetch_momentum)
     except Exception as exc:
         log_market_error("market_momentum", str(exc))
-        print(f"[DASHBOARD-PULSE] momentum fetch error: {exc}")
+        logging.info(f"[DASHBOARD-PULSE] momentum fetch error: {exc}")
 
     raw_breadth = pulse_raw.get("breadth") or {}
     pulse_section = {
@@ -2179,7 +2179,7 @@ async def earnings_progress_endpoint():
             "fetched_at": now_iso,
         }
     except Exception as e:
-        print(f"[EARNINGS/PROGRESS] {e}")
+        logging.info(f"[EARNINGS/PROGRESS] {e}")
         return {"reported": 0, "total": 50, "yoy_revenue_growth_pct": None, "yoy_net_profit_growth_pct": None, "fetched_at": now_iso}
 
 
@@ -2598,7 +2598,7 @@ async def earnings_estimates_endpoint(ticker: str):
             "eps_actual": float(eps_actual) if eps_actual else None,
         }
     except Exception as e:
-        print(f"[EARNINGS/ESTIMATES] {ticker}: {e}")
+        logging.info(f"[EARNINGS/ESTIMATES] {ticker}: {e}")
         return {"ticker": ticker, "company_name": ticker, "revenue_estimate": None, "revenue_actual": None,
                 "net_profit_estimate": None, "net_profit_actual": None, "eps_estimate": None, "eps_actual": None}
 
@@ -2643,7 +2643,7 @@ async def post_result_movers_endpoint():
         movers.sort(key=lambda x: abs(x["change_percent"]), reverse=True)
         return {"movers": movers, "fetched_at": now_iso}
     except Exception as e:
-        print(f"[EARNINGS/POST-RESULT-MOVERS] {e}")
+        logging.info(f"[EARNINGS/POST-RESULT-MOVERS] {e}")
         return {"movers": [], "fetched_at": now_iso}
 
 
@@ -2982,7 +2982,7 @@ def _populate_advisor_biographies() -> int:
             session.commit()
             return count
     except Exception as e:
-        print(f"[IDEAS] Failed to populate advisor biographies: {e}")
+        logging.info(f"[IDEAS] Failed to populate advisor biographies: {e}")
         return 0
 
 
@@ -3258,7 +3258,7 @@ def sentiment_trend(ticker: str, days: int = 30):
         return {"ticker": ticker, "trend": trend}
     except Exception as e:
         from fastapi import HTTPException
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/market/screener")
 def run_screener(preset: str = "52w_breakout"):
@@ -3305,4 +3305,4 @@ def run_screener(preset: str = "52w_breakout"):
             return {"preset": preset, "results": []}
     except Exception as e:
         from fastapi import HTTPException
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

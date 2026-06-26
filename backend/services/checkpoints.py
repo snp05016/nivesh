@@ -1,3 +1,4 @@
+import logging
 """Job-scoped checkpoint emitter — the single channel for per-agent progress.
 
 Each agent node calls ``emit(...)`` to record a one-line status + progress %.
@@ -22,4 +23,4 @@ class CheckpointEmitter:
                 message=message, state=state, pct=pct,
             )
         except Exception as e:  # progress must never break the analysis
-            print(f"[checkpoint] emit failed for job {self.job_id}: {e}")
+            logging.info(f"[checkpoint] emit failed for job {self.job_id}: {e}")

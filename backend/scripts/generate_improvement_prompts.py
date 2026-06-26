@@ -1,3 +1,4 @@
+import logging
 import os
 
 prompts = [
@@ -60,7 +61,7 @@ prompts = [
     ("Prompt 54: Global yfinance Rate Limit Handling", "Bugs/Issues", "Implement a global Token Bucket rate limiter for `yfinance` to prevent HTTP 429 errors from crashing the backend during extreme volume scans."),
     ("Prompt 55: Add Unit Tests for Calibration Engine", "Bugs/Issues", "Write comprehensive Pytest coverage for the newly added `Calibration Engine` block in `orchestrator.py` to ensure math correctness."),
     ("Prompt 56: Create /healthz System Check", "Bugs/Issues", "Develop a `/healthz` endpoint that actively pings the Database, Redis, yfinance, and Anthropic APIs to accurately report backend readiness."),
-    ("Prompt 57: Standardize Structured Logging", "Bugs/Issues", "Replace all generic `print()` statements throughout the backend with `structlog` to enable JSON logging, stack trace capture, and Datadog integration."),
+    ("Prompt 57: Standardize Structured Logging", "Bugs/Issues", "Replace all generic `logging.info()` statements throughout the backend with `structlog` to enable JSON logging, stack trace capture, and Datadog integration."),
     ("Prompt 58: Strict Pydantic Input Validation", "Bugs/Issues", "Enhance the `AnalyzeRequest` model with strict regex validation for tickers to prevent SQL injection and malformed requests reaching yfinance."),
     ("Prompt 59: Unify the Fragmentation of Caches", "Bugs/Issues", "Consolidate `disk_cache.py`, the in-memory dicts in `scraper.py`, and DB caching into a single `CacheService` interface for predictability."),
     ("Prompt 60: Clean up Monolithic Legacy Code", "Bugs/Issues", "Purge the unused `main_legacy_backup.py` and `main_old_monolithic.py` files and split `main.py` middleware into a dedicated `middleware/` folder.")
@@ -111,4 +112,4 @@ with open(rank_file_path, "w") as f:
     for rank, title, file_name in rankings:
         f.write(f"{rank}. [{title}](./{file_name})\n")
 
-print(f"Generated 60 prompts and rank.md in {target_dir}")
+logging.info(f"Generated 60 prompts and rank.md in {target_dir}")

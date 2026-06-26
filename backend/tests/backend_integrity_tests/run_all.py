@@ -1,3 +1,4 @@
+import logging
 """
 backend_integrity_tests/run_all.py
 ===================================
@@ -97,8 +98,8 @@ def main():
         fh.write(f"FAILED ({len(failed)}): {', '.join(failed) or 'none'}\n")
         fh.write(f"Finished: {datetime.datetime.now().isoformat()}\n")
 
-    print(f"\n[runner] Log written → {LOG_FILE}")
-    print(f"[runner] {len(passed)} passed / {len(failed)} failed")
+    logging.info(f"\n[runner] Log written → {LOG_FILE}")
+    logging.info(f"[runner] {len(passed)} passed / {len(failed)} failed")
     return 1 if failed else 0
 
 

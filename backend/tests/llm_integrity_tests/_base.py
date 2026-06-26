@@ -1,3 +1,4 @@
+import logging
 """
 database_integrity_tests/_base.py
 ====================================
@@ -129,7 +130,7 @@ class TestRunner:
 
     def ok(self, test_name: str, detail: str = ""):
         self.results.append({"status": "PASS", "test": test_name, "detail": detail})
-        print(f"  [PASS] {test_name}" + (f" — {detail}" if detail else ""))
+        logging.info(f"  [PASS] {test_name}" + (f" — {detail}" if detail else ""))
 
     def fail(self, test_name: str, detail: str, exc: Exception | None = None):
         frame = inspect.stack()[1]
@@ -142,17 +143,17 @@ class TestRunner:
             "location": loc,
             "traceback": tb,
         })
-        print(f"  [FAIL] {test_name} — {detail}")
+        logging.info(f"  [FAIL] {test_name} — {detail}")
         if tb:
-            print(tb)
+            logging.info(tb)
 
     def summarize(self) -> tuple[int, int]:
         passed = sum(1 for r in self.results if r["status"] == "PASS")
         failed = sum(1 for r in self.results if r["status"] == "FAIL")
-        print(f"\n{'='*60}")
-        print(f"  {self.name}")
-        print(f"  PASSED: {passed}  FAILED: {failed}")
-        print(f"{'='*60}")
+        logging.info(f"\n{'='*60}")
+        logging.info(f"  {self.name}")
+        logging.info(f"  PASSED: {passed}  FAILED: {failed}")
+        logging.info(f"{'='*60}")
         return passed, failed
 
     def write_log(self, log_path: Path):

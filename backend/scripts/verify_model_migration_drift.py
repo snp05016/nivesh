@@ -1,3 +1,4 @@
+import logging
 #!/usr/bin/env python3
 """
 Verify SQLAlchemy model metadata matches the migrated DB schema.
@@ -39,7 +40,7 @@ try:
         env=env,
     )
     if result.returncode != 0:
-        print(f"[DRIFT] alembic upgrade head FAILED:\n{result.stderr}")
+        logging.info(f"[DRIFT] alembic upgrade head FAILED:\n{result.stderr}")
         sys.exit(1)
 
     from models.db_models import Base
@@ -68,20 +69,20 @@ try:
             missing_cols[table_name] = sorted(missing)
 
     if missing_tables:
-        print(f"[DRIFT] Tables in model but not in DB: {sorted(missing_tables)}")
+        logging.info(f"[DRIFT] Tables in model but not in DB: {sorted(missing_tables)}")
         drift_found = True
     if extra_tables:
-        print(f"[INFO]  Tables in DB but not in model (may be OK): {sorted(extra_tables)}")
+        logging.info(f"[INFO]  Tables in DB but not in model (may be OK): {sorted(extra_tables)}")
     if missing_cols:
         for table, cols in missing_cols.items():
-            print(f"[DRIFT] Missing columns in '{table}': {cols}")
+            logging.info(f"[DRIFT] Missing columns in '{table}': {cols}")
         drift_found = True
 
     if drift_found:
-        print("[DRIFT] Model/migration drift detected — run: alembic revision --autogenerate")
+        logging.info("[DRIFT] Model/migration drift detected — run: alembic revision --autogenerate")
         sys.exit(1)
     else:
-        print("[OK] No model/migration drift detected")
+        logging.info("[OK] No model/migration drift detected")
         sys.exit(0)
 
 finally:

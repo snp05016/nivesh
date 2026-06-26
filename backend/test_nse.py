@@ -1,3 +1,4 @@
+import logging
 """
 Test script for testing HTTP requests to the NSE India API using a custom session and headers.
 """
@@ -10,4 +11,4 @@ s.headers.update({
 })
 s.get("https://www.nseindia.com", timeout=5)
 r = s.get("https://www.nseindia.com/api/historical/bulk-deals", timeout=5)
-print(r.text[:200])
+logging.info(r.text[:200])

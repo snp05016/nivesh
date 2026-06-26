@@ -71,11 +71,11 @@ TOKEN_LOG_PATH = Path(__file__).parent / "token_log.jsonl"
 # ---------------------------------------------------------------------------
 # Dashboard state (in-memory, main process only)
 # ---------------------------------------------------------------------------
-_server_start = datetime.now()
+_server_start = datetime.now(timezone.utc)
 _dash_lock = threading.Lock()
-_active_analyses: dict = {}          # job_id -> info dict
+_active_analyses = TTLCache(maxsize=1000, ttl=86400)
 _completed_analyses: deque = deque(maxlen=50)
-_request_log: deque = deque(maxlen=200)
+_request_log: deque = deque(maxlen=2000)
 _harvest_logs: deque = deque(maxlen=30)
 _token_stats: dict = {
     "total_input": 0,
@@ -106,11 +106,11 @@ def _dash_update_harvest(key: str, status: str, result: dict | None = None) -> N
         if key in _harvest_status:
             _harvest_status[key]["status"] = status
             if status == "running":
-                _harvest_status[key]["last_run"] = datetime.now().isoformat()
+                _harvest_status[key]["last_run"] = datetime.now(timezone.utc).isoformat()
             if result is not None:
                 _harvest_status[key]["last_result"] = result
                 _harvest_logs.appendleft({
-                    "ts": datetime.now().isoformat(),
+                    "ts": datetime.now(timezone.utc).isoformat(),
                     "key": key,
                     "status": status,
                     "result": result
@@ -132,7 +132,7 @@ def _dash_start_job(job_id: str, ticker: str, exchange: str, user_id) -> None:
             "ticker": ticker.upper(),
             "exchange": exchange,
             "user_id": user_id,
-            "start_ts": datetime.now().isoformat(),
+            "start_ts": datetime.now(timezone.utc).isoformat(),
             "stage": "AI agents initializing...",
         }
 
@@ -150,8 +150,8 @@ def _dash_end_job(job_id: str, result: dict | None = None, error: str | None = N
         job = _active_analyses.pop(job_id, None)
         if not job:
             return
-        duration = (datetime.now() - datetime.fromisoformat(job["start_ts"])).total_seconds()
-        entry = {**job, "end_ts": datetime.now().isoformat(), "duration_s": round(duration, 1)}
+        duration = (datetime.now(timezone.utc) - datetime.fromisoformat(job["start_ts"])).total_seconds()
+        entry = {**job, "end_ts": datetime.now(timezone.utc).isoformat(), "duration_s": round(duration, 1)}
         if result:
             entry["signal"] = result.get("signal")
             entry["confidence"] = result.get("confidence_pct")
@@ -181,7 +181,7 @@ def _dash_log_request(method: str, path: str, params: dict, status: int, duratio
     with _dash_lock:
         _request_log.appendleft({
             "id": str(uuid.uuid4())[:8],
-            "ts": datetime.now().isoformat(),
+            "ts": datetime.now(timezone.utc).isoformat(),
             "method": method,
             "path": path,
             "params": params,
@@ -211,7 +211,7 @@ def _log_token_usage(endpoint: str, usage) -> None:
     cw = getattr(usage, "cache_creation_input_tokens", 0)
     try:
         entry = {
-            "ts": datetime.now().isoformat(),
+            "ts": datetime.now(timezone.utc).isoformat(),
             "endpoint": endpoint,
             "input_tokens": inp,
             "output_tokens": out,
@@ -230,7 +230,7 @@ def _log_token_usage(endpoint: str, usage) -> None:
         _token_stats["total_cache_write"]+= cw
         _token_stats["total_calls"]      += 1
         _token_stats["recent"].appendleft({
-            "ts": datetime.now().isoformat(),
+            "ts": datetime.now(timezone.utc).isoformat(),
             "endpoint": endpoint,
             "input": inp, "output": out, "cache_read": cr, "cache_write": cw,
         })
@@ -276,9 +276,10 @@ from fastapi.middleware.cors import CORSMiddleware
 _ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "")
 _origins = [o.strip() for o in _ALLOWED_ORIGINS.split(",") if o.strip()]
 
+cors_origins = _origins if _origins and "*" not in _origins else ["http://localhost:3000"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_origins if _origins != ["*"] else ["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -489,7 +490,9 @@ async def _on_startup():
             logging.info("Initial RAG ingestion complete: %d chunks", count)
         except Exception as e:
             logging.warning("Initial RAG ingestion failed (non-blocking): %s", e)
-    threading.Thread(target=_startup_ingest, daemon=True).start()
+    global _startup_thread
+    _startup_thread = threading.Thread(target=_startup_ingest, daemon=True)
+    _startup_thread.start()
     
     # ENABLE_SCHEDULER block removed (fixes #85): start_scheduler() from
     # harvest_worker (called above) already registers all cron jobs including
@@ -499,6 +502,9 @@ async def _on_startup():
 
 async def _on_shutdown():
     stop_scheduler()
+    global _startup_thread
+    if '_startup_thread' in globals() and _startup_thread and _startup_thread.is_alive():
+        _startup_thread.join(timeout=2.0)
 
 
 @app.get("/ping")
@@ -2066,7 +2072,7 @@ def dashboard_data(authorization: str = Header(None)):
         and database entity counts.
     """
     require_admin(authorization)
-    uptime = (datetime.now() - _server_start).total_seconds()
+    uptime = (datetime.now(timezone.utc) - _server_start).total_seconds()
     
     # Fetch historical analyses and stats from DB
     history = []
@@ -2114,7 +2120,7 @@ def dashboard_data(authorization: str = Header(None)):
                     "ticker": v.matched_ticker
                 })
     except Exception as e:
-        print(f"Error fetching history for dashboard: {e}")
+        logging.info(f"Error fetching history for dashboard: {e}")
 
     try:
         import services.scraper as scr
@@ -2255,7 +2261,7 @@ def dashboard_data(authorization: str = Header(None)):
                 "error": j.get("error"),
             }
     except Exception as e:
-        print(f"[dashboard] DB active jobs read failed: {e}")
+        logging.info(f"[dashboard] DB active jobs read failed: {e}")
 
     merged_active = list({**db_active_jobs, **{a.get("job_id", ""): a for a in active}}.values())
 

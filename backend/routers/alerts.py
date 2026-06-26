@@ -40,7 +40,7 @@ def alerts_add_endpoint(req: AlertAddRequest, authorization: str = Header(None))
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/alerts/remove")
@@ -61,7 +61,7 @@ def alerts_remove_endpoint(req: AlertRemoveRequest, authorization: str = Header(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 import asyncio

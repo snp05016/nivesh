@@ -1,3 +1,4 @@
+import logging
 #!/usr/bin/env python3
 """Dry-run test for QuantitativeEngine — verifies math correctness."""
 import sys
@@ -12,11 +13,11 @@ async def main():
     engine = QuantitativeEngine("TATAMOTORS.NS")
     res = await engine.run_full_pipeline()
 
-    print("=" * 60)
-    print("QUANTITATIVE ENGINE DRY RUN")
-    print("=" * 60)
-    print(json.dumps(res, indent=2, default=str))
-    print("=" * 60)
+    logging.info("=" * 60)
+    logging.info("QUANTITATIVE ENGINE DRY RUN")
+    logging.info("=" * 60)
+    logging.info(json.dumps(res, indent=2, default=str))
+    logging.info("=" * 60)
 
     # Validations
     assert res is not None, "Result is None"
@@ -38,17 +39,17 @@ async def main():
     ]
     assert mr in valid_regimes, f"Invalid regime: {mr}"
 
-    print(f"\n✅ ALL ASSERTIONS PASSED")
-    print(f"   Regime: {mr}")
-    print(f"   Confidence: {cc}")
-    print(f"   Drivers: {len(res['quantitative_drivers'])} signals")
-    print(f"   Tail Risks: {sum(1 for v in res['tail_risk_flags'].values() if v)} active")
+    logging.info(f"\n✅ ALL ASSERTIONS PASSED")
+    logging.info(f"   Regime: {mr}")
+    logging.info(f"   Confidence: {cc}")
+    logging.info(f"   Drivers: {len(res['quantitative_drivers'])} signals")
+    logging.info(f"   Tail Risks: {sum(1 for v in res['tail_risk_flags'].values() if v)} active")
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except Exception as e:
-        print(f"\n❌ TEST FAILED: {e}")
+        logging.info(f"\n❌ TEST FAILED: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

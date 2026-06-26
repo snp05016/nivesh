@@ -1,3 +1,4 @@
+import logging
 """End-to-end smoke for structured-output agents against a real LLM provider.
 
 Runs the three decision-making agents (Research Manager, Trader, Portfolio
@@ -129,7 +130,7 @@ def _print_section(title: str, content: str) -> None:
         content: The text content to display.
     """
     bar = "=" * 70
-    print(f"\n{bar}\n{title}\n{bar}\n{content}")
+    logging.info(f"\n{bar}\n{title}\n{bar}\n{content}")
 
 
 def main() -> int:
@@ -148,9 +149,9 @@ def main() -> int:
     deep_model = args.deep_model or default_model
     quick_model = args.quick_model or default_model
 
-    print(f"Provider: {args.provider}")
-    print(f"Deep model:  {deep_model}")
-    print(f"Quick model: {quick_model}")
+    logging.info(f"Provider: {args.provider}")
+    logging.info(f"Deep model:  {deep_model}")
+    logging.info(f"Quick model: {quick_model}")
 
     # Build the LLM clients via the framework's factory.
     deep_client = create_llm_client(provider=args.provider, model=deep_model)
@@ -189,19 +190,19 @@ def main() -> int:
         ("Trader",           trader_plan,     ["**Action**:", "FINAL TRANSACTION PROPOSAL:"]),
         ("Portfolio Manager", final_decision, ["**Rating**:", "**Executive Summary**:", "**Investment Thesis**:"]),
     ]
-    print("\n" + "=" * 70 + "\nStructure checks\n" + "=" * 70)
+    logging.info("\n" + "=" * 70 + "\nStructure checks\n" + "=" * 70)
     failures = 0
     for name, text, required in checks:
         for marker in required:
             ok = marker in text
-            print(f"  {'PASS' if ok else 'FAIL'}  {name}: contains {marker!r}")
+            logging.info(f"  {'PASS' if ok else 'FAIL'}  {name}: contains {marker!r}")
             failures += int(not ok)
 
-    print()
+    logging.info()
     if failures:
-        print(f"Smoke FAILED: {failures} structure check(s) missing.")
+        logging.info(f"Smoke FAILED: {failures} structure check(s) missing.")
         return 1
-    print("Smoke PASSED: structured output → rendered markdown chain works for", args.provider)
+    logging.info("Smoke PASSED: structured output → rendered markdown chain works for", args.provider)
     return 0
 
 

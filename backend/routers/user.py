@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, HTTPException, Header, Depends
 from datetime import datetime, timezone
 import time
@@ -44,10 +45,10 @@ def _deliver_apns(user_id: int, payload: dict) -> bool:
             if not tokens:
                 return False
             for dt in tokens:
-                print(f"[APNs] Would deliver to {dt.platform} token {dt.device_token[:12]}... : {payload.get('title', '')}")
+                logging.info(f"[APNs] Would deliver to {dt.platform} token {dt.device_token[:12]}... : {payload.get('title', '')}")
         return True
     except Exception as e:
-        print(f"[APNs] Delivery failed for user {user_id}: {e}")
+        logging.info(f"[APNs] Delivery failed for user {user_id}: {e}")
         return False
 
 
@@ -94,7 +95,7 @@ def watchlist_add_endpoint(req: WatchlistAddRequest, authorization: str = Header
         _watchlist_price_cache.pop(req.user_id, None)
         return {"success": True, "ticker": ticker}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/watchlist/remove")
@@ -115,7 +116,7 @@ def watchlist_remove_endpoint(req: WatchlistRemoveRequest, authorization: str = 
         _watchlist_price_cache.pop(req.user_id, None)
         return {"success": True}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/watchlist/{user_id}")
@@ -192,7 +193,7 @@ def watchlist_get_endpoint(user_id: int, authorization: str = Header(None)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/notifications/register-device")
@@ -209,7 +210,7 @@ def notifications_register_device(req: DeviceTokenRegisterRequest):
     try:
         return upsert_device_token(req.user_id, req.device_token, req.platform or "ios")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/notifications/test")
@@ -284,7 +285,7 @@ def notifications_morning_summary_push(req: MorningSummaryPushRequest):
         _deliver_apns(req.user_id, payload)
         return {"success": True, "payload": payload}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/api/v1/experts")
@@ -329,7 +330,7 @@ def get_experts():
         experts.sort(key=lambda e: e["post_count"], reverse=True)
         return {"experts": experts[:20], "fetched_at": now_iso}
     except Exception as e:
-        print(f"[EXPERTS] {e}")
+        logging.info(f"[EXPERTS] {e}")
         return {"experts": [], "fetched_at": now_iso}
 
 
@@ -362,7 +363,7 @@ def get_expert_posts(limit: int = 30):
             })
         return {"posts": posts, "fetched_at": now_iso}
     except Exception as e:
-        print(f"[EXPERT-POSTS] {e}")
+        logging.info(f"[EXPERT-POSTS] {e}")
         return {"posts": [], "fetched_at": now_iso}
 
 @router.get("/api/v1/admin/error-telemetry")

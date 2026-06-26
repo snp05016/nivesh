@@ -256,8 +256,8 @@ def init_db() -> None:
         ]
         session.add_all(holdings)
         session.commit()
-        print(f"[DB] Seeded users: {[u.username for u in users_created]}")
-        print(f"[DB] Seeded {len(holdings)} holdings for nirav (user_id={nirav.id})")
+        logging.info(f"[DB] Seeded users: {[u.username for u in users_created]}")
+        logging.info(f"[DB] Seeded {len(holdings)} holdings for nirav (user_id={nirav.id})")
 
 
 # ---------------------------------------------------------------------------

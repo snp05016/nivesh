@@ -50,4 +50,4 @@ we'll await the service call which handles the processing.
         )
         return CopilotResponse(**result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

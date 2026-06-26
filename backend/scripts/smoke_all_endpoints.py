@@ -1,3 +1,4 @@
+import logging
 #!/usr/bin/env python3
 """
 Smoke test all safe GET endpoints by importing the FastAPI app and using
@@ -30,7 +31,7 @@ try:
     app = app_module.app
     client = TestClient(app, raise_server_exceptions=False)
 except Exception as e:
-    print(f"[FAIL] Cannot create TestClient: {e}")
+    logging.info(f"[FAIL] Cannot create TestClient: {e}")
     sys.exit(1)
 
 # Safe GET endpoints to smoke — no auth required, no path params that need real data
@@ -55,20 +56,20 @@ for endpoint in SAFE_ENDPOINTS:
         tested += 1
         if resp.status_code == 500:
             failures.append(f"GET {endpoint} → 500: {resp.text[:200]}")
-            print(f"  [FAIL] GET {endpoint} → 500")
+            logging.info(f"  [FAIL] GET {endpoint} → 500")
         else:
-            print(f"  [OK]   GET {endpoint} → {resp.status_code}")
+            logging.info(f"  [OK]   GET {endpoint} → {resp.status_code}")
     except Exception as e:
         failures.append(f"GET {endpoint} → exception: {e}")
-        print(f"  [FAIL] GET {endpoint} → exception: {e}")
+        logging.info(f"  [FAIL] GET {endpoint} → exception: {e}")
 
-print(f"\n[OK] Tested {tested} endpoints")
+logging.info(f"\n[OK] Tested {tested} endpoints")
 
 if failures:
-    print(f"[FAIL] {len(failures)} endpoints returned 500:")
+    logging.info(f"[FAIL] {len(failures)} endpoints returned 500:")
     for f in failures:
-        print(f"  {f}")
+        logging.info(f"  {f}")
     sys.exit(1)
 
-print("[OK] No unexpected 500s found")
+logging.info("[OK] No unexpected 500s found")
 sys.exit(0)

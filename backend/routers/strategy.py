@@ -21,4 +21,4 @@ def backtest_endpoint(req: BacktestRequest):
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         logger.error(f"Backtest error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

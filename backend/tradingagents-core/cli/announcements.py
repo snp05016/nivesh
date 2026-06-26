@@ -1,3 +1,4 @@
+import logging
 """Handles fetching and displaying system announcements."""
 import getpass
 import requests
@@ -44,9 +45,9 @@ def display_announcements(console: Console, data: dict) -> None:
         padding=(1, 2),
         title="Announcements",
     )
-    console.print(panel)
+    console.logging.info(panel)
 
     if require_attention:
         getpass.getpass("Press Enter to continue...")
     else:
-        console.print()
+        console.logging.info()

@@ -1,3 +1,4 @@
+import logging
 #!/usr/bin/env python3
 """Monitor confidence calibration drift across the last 100 analyses."""
 import sys
@@ -22,26 +23,26 @@ def check_confidence_drift():
             ]
 
             if not confidences:
-                print("DRIFT CHECK: No calibrated confidence data available yet.")
+                logging.info("DRIFT CHECK: No calibrated confidence data available yet.")
                 return
 
             mean_conf = float(np.mean(confidences))
             median_conf = float(np.median(confidences))
             std_conf = float(np.std(confidences))
 
-            print(f"Trailing {len(confidences)} analyses:")
-            print(f"  Mean confidence: {mean_conf:.3f}")
-            print(f"  Median confidence: {median_conf:.3f}")
-            print(f"  Std deviation: {std_conf:.3f}")
+            logging.info(f"Trailing {len(confidences)} analyses:")
+            logging.info(f"  Mean confidence: {mean_conf:.3f}")
+            logging.info(f"  Median confidence: {median_conf:.3f}")
+            logging.info(f"  Std deviation: {std_conf:.3f}")
 
             if mean_conf > 0.80:
-                print("⚠️  WARNING: Overconfidence detected (mean > 0.80). Calibration failure.")
+                logging.info("⚠️  WARNING: Overconfidence detected (mean > 0.80). Calibration failure.")
             elif mean_conf < 0.30:
-                print("⚠️  WARNING: Underconfidence detected (mean < 0.30). Model degradation.")
+                logging.info("⚠️  WARNING: Underconfidence detected (mean < 0.30). Model degradation.")
             else:
-                print("✅ Confidence distribution within acceptable bounds.")
+                logging.info("✅ Confidence distribution within acceptable bounds.")
     except Exception as e:
-        print(f"DRIFT CHECK ERROR: {e}")
+        logging.info(f"DRIFT CHECK ERROR: {e}")
 
 if __name__ == "__main__":
     check_confidence_drift()

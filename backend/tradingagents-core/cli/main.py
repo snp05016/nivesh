@@ -1,3 +1,4 @@
+import logging
 """CLI entrypoint for TradingAgents.
 
 Handles the interactive terminal UI, user selections, and running the analysis graph.
@@ -494,9 +495,9 @@ def get_user_selections():
         title="Welcome to TradingAgents",
         subtitle="Multi-Agents LLM Financial Trading Framework",
     )
-    console.print(Align.center(welcome_box))
-    console.print()
-    console.print()  # Add vertical space before announcements
+    console.logging.info(Align.center(welcome_box))
+    console.logging.info()
+    console.logging.info()  # Add vertical space before announcements
 
     # Fetch and display announcements (silent on failure)
     announcements = fetch_announcements()
@@ -511,7 +512,7 @@ def get_user_selections():
         return Panel(box_content, border_style="blue", padding=(1, 2))
 
     # Step 1: Ticker symbol
-    console.print(
+    console.logging.info(
         create_question_box(
             "Step 1: Ticker Symbol",
             "Enter the ticker, with exchange suffix when needed (e.g. SPY, 0700.HK, BTC-USD)",
@@ -523,13 +524,13 @@ def get_user_selections():
     # Only announce when it's not the default stock path, to avoid printing
     # "stock" on every run.
     if asset_type.value != "stock":
-        console.print(
+        console.logging.info(
             f"[green]Detected asset type:[/green] {asset_type.value}"
         )
 
     # Step 2: Analysis date
     default_date = datetime.datetime.now().strftime("%Y-%m-%d")
-    console.print(
+    console.logging.info(
         create_question_box(
             "Step 2: Analysis Date",
             "Enter the analysis date (YYYY-MM-DD)",
@@ -539,7 +540,7 @@ def get_user_selections():
     analysis_date = get_analysis_date()
 
     # Step 3: Output language
-    console.print(
+    console.logging.info(
         create_question_box(
             "Step 3: Output Language",
             "Select the language for analyst reports and final decision"
@@ -548,18 +549,18 @@ def get_user_selections():
     output_language = ask_output_language()
 
     # Step 4: Select analysts
-    console.print(
+    console.logging.info(
         create_question_box(
             "Step 4: Analysts Team", "Select your LLM analyst agents for the analysis"
         )
     )
     selected_analysts = select_analysts(asset_type)
-    console.print(
+    console.logging.info(
         f"[green]Selected analysts:[/green] {', '.join(analyst.value for analyst in selected_analysts)}"
     )
 
     # Step 5: Research depth
-    console.print(
+    console.logging.info(
         create_question_box(
             "Step 5: Research Depth", "Select your research depth level"
         )
@@ -567,7 +568,7 @@ def get_user_selections():
     selected_research_depth = select_research_depth()
 
     # Step 6: LLM Provider
-    console.print(
+    console.logging.info(
         create_question_box(
             "Step 6: LLM Provider", "Select your LLM provider"
         )
@@ -595,7 +596,7 @@ def get_user_selections():
     ensure_api_key(selected_llm_provider)
 
     # Step 7: Thinking agents
-    console.print(
+    console.logging.info(
         create_question_box(
             "Step 7: Thinking Agents", "Select your thinking agents for analysis"
         )
@@ -610,7 +611,7 @@ def get_user_selections():
 
     provider_lower = selected_llm_provider.lower()
     if provider_lower == "google":
-        console.print(
+        console.logging.info(
             create_question_box(
                 "Step 8: Thinking Mode",
                 "Configure Gemini thinking mode"
@@ -618,7 +619,7 @@ def get_user_selections():
         )
         thinking_level = ask_gemini_thinking_config()
     elif provider_lower == "openai":
-        console.print(
+        console.logging.info(
             create_question_box(
                 "Step 8: Reasoning Effort",
                 "Configure OpenAI reasoning effort level"
@@ -626,7 +627,7 @@ def get_user_selections():
         )
         reasoning_effort = ask_openai_reasoning_effort()
     elif provider_lower == "anthropic":
-        console.print(
+        console.logging.info(
             create_question_box(
                 "Step 8: Effort Level",
                 "Configure Claude effort level"
@@ -661,11 +662,11 @@ def get_analysis_date():
             # Validate date format and ensure it's not in the future
             analysis_date = datetime.datetime.strptime(date_str, "%Y-%m-%d")
             if analysis_date.date() > datetime.datetime.now().date():
-                console.print("[red]Error: Analysis date cannot be in the future[/red]")
+                console.logging.info("[red]Error: Analysis date cannot be in the future[/red]")
                 continue
             return date_str
         except ValueError:
-            console.print(
+            console.logging.info(
                 "[red]Error: Invalid date format. Please use YYYY-MM-DD[/red]"
             )
 
@@ -762,8 +763,8 @@ def save_report_to_disk(final_state, ticker: str, save_path: Path):
 
 def display_complete_report(final_state):
     """Display the complete analysis report sequentially (avoids truncation)."""
-    console.print()
-    console.print(Rule("Complete Analysis Report", style="bold green"))
+    console.logging.info()
+    console.logging.info(Rule("Complete Analysis Report", style="bold green"))
 
     # I. Analyst Team Reports
     analysts = []
@@ -776,9 +777,9 @@ def display_complete_report(final_state):
     if final_state.get("fundamentals_report"):
         analysts.append(("Fundamentals Analyst", final_state["fundamentals_report"]))
     if analysts:
-        console.print(Panel("[bold]I. Analyst Team Reports[/bold]", border_style="cyan"))
+        console.logging.info(Panel("[bold]I. Analyst Team Reports[/bold]", border_style="cyan"))
         for title, content in analysts:
-            console.print(Panel(Markdown(content), title=title, border_style="blue", padding=(1, 2)))
+            console.logging.info(Panel(Markdown(content), title=title, border_style="blue", padding=(1, 2)))
 
     # II. Research Team Reports
     if final_state.get("investment_debate_state"):
@@ -791,14 +792,14 @@ def display_complete_report(final_state):
         if debate.get("judge_decision"):
             research.append(("Research Manager", debate["judge_decision"]))
         if research:
-            console.print(Panel("[bold]II. Research Team Decision[/bold]", border_style="magenta"))
+            console.logging.info(Panel("[bold]II. Research Team Decision[/bold]", border_style="magenta"))
             for title, content in research:
-                console.print(Panel(Markdown(content), title=title, border_style="blue", padding=(1, 2)))
+                console.logging.info(Panel(Markdown(content), title=title, border_style="blue", padding=(1, 2)))
 
     # III. Trading Team
     if final_state.get("trader_investment_plan"):
-        console.print(Panel("[bold]III. Trading Team Plan[/bold]", border_style="yellow"))
-        console.print(Panel(Markdown(final_state["trader_investment_plan"]), title="Trader", border_style="blue", padding=(1, 2)))
+        console.logging.info(Panel("[bold]III. Trading Team Plan[/bold]", border_style="yellow"))
+        console.logging.info(Panel(Markdown(final_state["trader_investment_plan"]), title="Trader", border_style="blue", padding=(1, 2)))
 
     # IV. Risk Management Team
     if final_state.get("risk_debate_state"):
@@ -811,14 +812,14 @@ def display_complete_report(final_state):
         if risk.get("neutral_history"):
             risk_reports.append(("Neutral Analyst", risk["neutral_history"]))
         if risk_reports:
-            console.print(Panel("[bold]IV. Risk Management Team Decision[/bold]", border_style="red"))
+            console.logging.info(Panel("[bold]IV. Risk Management Team Decision[/bold]", border_style="red"))
             for title, content in risk_reports:
-                console.print(Panel(Markdown(content), title=title, border_style="blue", padding=(1, 2)))
+                console.logging.info(Panel(Markdown(content), title=title, border_style="blue", padding=(1, 2)))
 
         # V. Portfolio Manager Decision
         if risk.get("judge_decision"):
-            console.print(Panel("[bold]V. Portfolio Manager Decision[/bold]", border_style="green"))
-            console.print(Panel(Markdown(risk["judge_decision"]), title="Portfolio Manager", border_style="blue", padding=(1, 2)))
+            console.logging.info(Panel("[bold]V. Portfolio Manager Decision[/bold]", border_style="green"))
+            console.logging.info(Panel(Markdown(risk["judge_decision"]), title="Portfolio Manager", border_style="blue", padding=(1, 2)))
 
 
 def update_research_team_status(status):
@@ -1234,8 +1235,8 @@ def run_analysis(checkpoint: bool = False):
         update_display(layout, stats_handler=stats_handler, start_time=start_time)
 
     # Post-analysis prompts (outside Live context for clean interaction)
-    console.print("\n[bold cyan]Analysis Complete![/bold cyan]\n")
-    console.print(f"[dim]{analyst_wall_time_tracker.format_summary()}[/dim]")
+    console.logging.info("\n[bold cyan]Analysis Complete![/bold cyan]\n")
+    console.logging.info(f"[dim]{analyst_wall_time_tracker.format_summary()}[/dim]")
 
     # Prompt to save report
     save_choice = typer.prompt("Save report?", default="Y").strip().upper()
@@ -1249,10 +1250,10 @@ def run_analysis(checkpoint: bool = False):
         save_path = Path(save_path_str)
         try:
             report_file = save_report_to_disk(final_state, selections["ticker"], save_path)
-            console.print(f"\n[green]✓ Report saved to:[/green] {save_path.resolve()}")
-            console.print(f"  [dim]Complete report:[/dim] {report_file.name}")
+            console.logging.info(f"\n[green]✓ Report saved to:[/green] {save_path.resolve()}")
+            console.logging.info(f"  [dim]Complete report:[/dim] {report_file.name}")
         except Exception as e:
-            console.print(f"[red]Error saving report: {e}[/red]")
+            console.logging.info(f"[red]Error saving report: {e}[/red]")
 
     # Prompt to display full report
     display_choice = typer.prompt("\nDisplay full report on screen?", default="Y").strip().upper()
@@ -1276,7 +1277,7 @@ def analyze(
     if clear_checkpoints:
         from tradingagents.graph.checkpointer import clear_all_checkpoints
         n = clear_all_checkpoints(DEFAULT_CONFIG["data_cache_dir"])
-        console.print(f"[yellow]Cleared {n} checkpoint(s).[/yellow]")
+        console.logging.info(f"[yellow]Cleared {n} checkpoint(s).[/yellow]")
     run_analysis(checkpoint=checkpoint)
 
 

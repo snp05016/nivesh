@@ -1,3 +1,4 @@
+import logging
 """Check analysis job status. Usage: python3 check_jobs.py [running|--all|--stuck|TICKER]"""
 
 from __future__ import annotations
@@ -16,14 +17,14 @@ def _print_jobs(mode: str) -> int:
     monitor = build_ai_engine_monitor(mode=mode)
     jobs = monitor["jobs"]
     if not jobs:
-        print("No jobs found.")
+        logging.info("No jobs found.")
         return 0
 
-    print(
+    logging.info(
         f"{'TICKER':<12} {'STATUS':<12} {'STAGE':<18} {'PROG':>4}  "
         f"{'AGE':>7}  {'TOOK':>9}  {'SCAN':<8}  {'JOB ID'}"
     )
-    print("-" * 108)
+    logging.info("-" * 108)
     for job in jobs:
         name = str(job.get("ticker") or "").ljust(12)
         status = str(job.get("status") or "").ljust(12)
@@ -32,10 +33,10 @@ def _print_jobs(mode: str) -> int:
         age = str(job.get("age_label") or "-").rjust(7)
         took = str(job.get("took_label") or job.get("elapsed_label") or "-").rjust(9)
         scan = str(job.get("scan_type") or "standard").ljust(8)
-        print(f"{name} {status} {stage} {pct}  {age}  {took}  {scan}  {job.get('job_id')}")
+        logging.info(f"{name} {status} {stage} {pct}  {age}  {took}  {scan}  {job.get('job_id')}")
         error = job.get("error")
         if error:
-            print(f"  Error: {str(error)[:200]}")
+            logging.info(f"  Error: {str(error)[:200]}")
     return 0
 
 

@@ -24,7 +24,7 @@ async def api_get_earnings_surprises(period: str = "current_quarter"):
         results = await get_all_surprises(period)
         return results
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/api/v1/earnings/surprise-history/{ticker}", response_model=List[EarningsSurpriseResponse])
 async def api_get_earnings_surprise_history(ticker: str):
@@ -33,4 +33,4 @@ async def api_get_earnings_surprise_history(ticker: str):
         results = await get_surprise_history(ticker)
         return results
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Request, Header, HTTPException
 from fastapi.responses import StreamingResponse
 import asyncio
@@ -59,7 +60,7 @@ def get_dashboard_snapshot():
                 "checkpoints": j["checkpoints"][-3:],  # last few for a live ticker
             }
     except Exception as e:
-        print(f"[dashboard] active job read failed: {e}")
+        logging.info(f"[dashboard] active job read failed: {e}")
 
     with _dash_lock:
         merged = {**dict(_active_analyses), **db_jobs}

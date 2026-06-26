@@ -1,3 +1,4 @@
+import logging
 """
 Portfolio chart generation for Nivesh app.
 Pure Python data visualization using matplotlib — no AI/LLM calls.
@@ -271,7 +272,7 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
         })
         n += 1
     except Exception as exc:
-        print(f"[CHART] Sector Allocation failed: {exc}")
+        logging.info(f"[CHART] Sector Allocation failed: {exc}")
 
     # ═══════════════════════════════════════════════════════════════════
     # Chart 2: Sector P&L Horizontal Bar
@@ -310,7 +311,7 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
         })
         n += 1
     except Exception as exc:
-        print(f"[CHART] Sector P&L failed: {exc}")
+        logging.info(f"[CHART] Sector P&L failed: {exc}")
 
     # ═══════════════════════════════════════════════════════════════════
     # Chart 3: Top 10 Holdings by Value
@@ -344,7 +345,7 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
         })
         n += 1
     except Exception as exc:
-        print(f"[CHART] Top Holdings failed: {exc}")
+        logging.info(f"[CHART] Top Holdings failed: {exc}")
 
     # ═══════════════════════════════════════════════════════════════════
     # Chart 4: Portfolio Value Over Time (Line) or Current Value (Bar)
@@ -395,7 +396,7 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
         })
         n += 1
     except Exception as exc:
-        print(f"[CHART] Value History failed: {exc}")
+        logging.info(f"[CHART] Value History failed: {exc}")
 
     # ═══════════════════════════════════════════════════════════════════
     # Chart 5: Buy vs Current Price Scatter
@@ -436,7 +437,7 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
             })
             n += 1
     except Exception as exc:
-        print(f"[CHART] Buy vs Current failed: {exc}")
+        logging.info(f"[CHART] Buy vs Current failed: {exc}")
 
     # ═══════════════════════════════════════════════════════════════════
     # Chart 6: Price Distribution (Histogram / Bar)
@@ -481,7 +482,7 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
                 })
                 n += 1
     except Exception as exc:
-        print(f"[CHART] Price Distribution failed: {exc}")
+        logging.info(f"[CHART] Price Distribution failed: {exc}")
 
     # ═══════════════════════════════════════════════════════════════════
     # Chart 7: Daily P&L Waterfall (last 7 days)
@@ -524,7 +525,7 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
             })
             n += 1
     except Exception as exc:
-        print(f"[CHART] Daily P&L Waterfall failed: {exc}")
+        logging.info(f"[CHART] Daily P&L Waterfall failed: {exc}")
 
     # ═══════════════════════════════════════════════════════════════════
     # Chart 8: Sector Weight vs Nifty 50
@@ -573,7 +574,7 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
                 })
                 n += 1
     except Exception as exc:
-        print(f"[CHART] Sector vs Nifty failed: {exc}")
+        logging.info(f"[CHART] Sector vs Nifty failed: {exc}")
 
     # ═══════════════════════════════════════════════════════════════════
     # Chart 9: Top Gainers / Losers (or Dividend Yield if available)
@@ -659,7 +660,7 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
             })
             n += 1
     except Exception as exc:
-        print(f"[CHART] Gainers/Losers failed: {exc}")
+        logging.info(f"[CHART] Gainers/Losers failed: {exc}")
 
     # ═══════════════════════════════════════════════════════════════════
     # Chart 10: Portfolio Concentration (Top 5 vs Rest)
@@ -711,7 +712,7 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
             })
             n += 1
     except Exception as exc:
-        print(f"[CHART] Concentration failed: {exc}")
+        logging.info(f"[CHART] Concentration failed: {exc}")
 
     # ═══════════════════════════════════════════════════════════════════
     # Chart 11: Risk/Reward Scatter (P&L% vs Holding Period)
@@ -750,6 +751,6 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
             })
             n += 1
     except Exception as exc:
-        print(f"[CHART] Risk/Reward failed: {exc}")
+        logging.info(f"[CHART] Risk/Reward failed: {exc}")
 
     return charts

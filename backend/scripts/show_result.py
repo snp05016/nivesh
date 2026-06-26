@@ -1,3 +1,4 @@
+import logging
 """Display the latest successful AI analysis for a ticker."""
 
 from __future__ import annotations
@@ -16,43 +17,43 @@ from services.ai_engine_monitor import get_ai_engine_job_detail
 def _display_latest(ticker: str) -> int:
     latest = get_latest_successful_monitor_job(ticker)
     if not latest:
-        print(f"No successful analysis found for {ticker}.")
+        logging.info(f"No successful analysis found for {ticker}.")
         return 1
 
     detail = get_ai_engine_job_detail(str(latest["job_id"]))
     if not detail:
-        print(f"No successful analysis found for {ticker}.")
+        logging.info(f"No successful analysis found for {ticker}.")
         return 1
 
     job = detail["job"]
     summary = detail["latest_success_summary"] or {}
     result = job.get("result") or {}
 
-    print("=" * 60)
-    print(f"  AI ANALYSIS REPORT - {job.get('ticker')}")
-    print("=" * 60)
-    print(f"  Date:        {summary.get('analysis_date') or job.get('created_at') or '?'}")
-    print(f"  Signal:      {summary.get('signal') or '?'}")
-    print(f"  Confidence:  {summary.get('confidence_pct') or '?'}%")
-    print(f"  Scan type:   {summary.get('scan_type') or job.get('scan_type') or 'standard'}")
-    print(f"  Tier:        {summary.get('analysis_tier') or '?'}")
-    print()
+    logging.info("=" * 60)
+    logging.info(f"  AI ANALYSIS REPORT - {job.get('ticker')}")
+    logging.info("=" * 60)
+    logging.info(f"  Date:        {summary.get('analysis_date') or job.get('created_at') or '?'}")
+    logging.info(f"  Signal:      {summary.get('signal') or '?'}")
+    logging.info(f"  Confidence:  {summary.get('confidence_pct') or '?'}%")
+    logging.info(f"  Scan type:   {summary.get('scan_type') or job.get('scan_type') or 'standard'}")
+    logging.info(f"  Tier:        {summary.get('analysis_tier') or '?'}")
+    logging.info()
 
-    print(f"  Current:     Rs.{summary.get('current_price_inr') or '?'}")
-    print(f"  Target 12m:  Rs.{summary.get('target_12m') or '?'}  ({summary.get('upside_12m_pct') or '?'}%)")
-    print()
+    logging.info(f"  Current:     Rs.{summary.get('current_price_inr') or '?'}")
+    logging.info(f"  Target 12m:  Rs.{summary.get('target_12m') or '?'}  ({summary.get('upside_12m_pct') or '?'}%)")
+    logging.info()
 
     key_risks = result.get("key_risks") if isinstance(result.get("key_risks"), list) else []
     if key_risks:
-        print("  KEY RISKS:")
+        logging.info("  KEY RISKS:")
         for risk in key_risks[:3]:
-            print(f"    ! {str(risk)[:120]}")
-        print()
+            logging.info(f"    ! {str(risk)[:120]}")
+        logging.info()
 
-    print("=" * 60)
-    print(f"  Generated: {job.get('created_at')}")
-    print(f"  Job ID:     {job.get('job_id')}")
-    print(f"  Tokens:     {job.get('tokens_used') or 'N/A'}")
+    logging.info("=" * 60)
+    logging.info(f"  Generated: {job.get('created_at')}")
+    logging.info(f"  Job ID:     {job.get('job_id')}")
+    logging.info(f"  Tokens:     {job.get('tokens_used') or 'N/A'}")
     return 0
 
 

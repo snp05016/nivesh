@@ -190,8 +190,8 @@ def log_diagnostic_error(
     # ------------------------------------------------------------------
     # Print to stdout for server console
     # ------------------------------------------------------------------
-    print(f"[DIAGNOSTIC_ERROR] error_uuid={error_uuid}")
-    print(payload_json)
+    logging.info(f"[DIAGNOSTIC_ERROR] error_uuid={error_uuid}")
+    logging.info(payload_json)
 
     return error_uuid
 
@@ -265,7 +265,7 @@ def generate_daily_digest() -> str:
     except Exception as e:
         digest_lines.append(f"  [WARN] Could not write digest file: {e}")
 
-    print(digest_text)
+    logging.info(digest_text)
     return digest_text
 
 

@@ -34,4 +34,4 @@ def natural_language_screener(req: NLScreenerRequest):
     try:
         return process_nl_query(req.query)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

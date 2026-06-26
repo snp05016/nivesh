@@ -1,3 +1,4 @@
+import logging
 """
 Portfolio Correlation Matrix and Optimization.
 
@@ -149,5 +150,5 @@ if __name__ == "__main__":
         "B": [200, 198, 196, 194, 192],
         "C": [50, 51, 52, 53, 54],
     }
-    print(compute_correlation_matrix(test_prices))
-    print(optimize_portfolio_weights(test_prices))
+    logging.info(compute_correlation_matrix(test_prices))
+    logging.info(optimize_portfolio_weights(test_prices))

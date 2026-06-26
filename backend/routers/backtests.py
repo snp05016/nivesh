@@ -24,7 +24,7 @@ def backtest_alpha_validation(params: BacktestParams):
     try:
         return run_alpha_validation(params)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/strategy-sweep", response_model=StrategySweepResult)
 def backtest_strategy_sweep():
@@ -40,7 +40,7 @@ to find the optimal robust strategy.
     try:
         return run_strategy_sweep()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/regime-breakdown", response_model=RegimeBreakdownResult)
 def backtest_regime_breakdown(params: BacktestParams):
@@ -56,7 +56,7 @@ def backtest_regime_breakdown(params: BacktestParams):
     try:
         return run_regime_breakdown(params)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/cost-sensitivity", response_model=CostSensitivityResponse)
 def backtest_cost_sensitivity():
