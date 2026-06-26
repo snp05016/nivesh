@@ -1,3 +1,8 @@
+"""Main orchestrator for the TradingAgents graph.
+
+This module defines the TradingAgentsGraph class which wires up the LangGraph nodes,
+tools, LLMs, and handles execution for the trading agents analysis pipeline.
+"""
 # TradingAgents/graph/trading_graph.py
 
 import logging

@@ -28,7 +28,14 @@ class TranscriptError(Exception):
 
 
 def _devanagari_ratio(text: str) -> float:
-    """Return fraction of characters that are Devanagari Unicode."""
+    """Calculates the fraction of characters that are Devanagari Unicode.
+
+    Args:
+        text (str): The text to analyze.
+
+    Returns:
+        float: The ratio of Devanagari characters to total characters.
+    """
     if not text:
         return 0.0
     devanagari_count = sum(
@@ -39,15 +46,30 @@ def _devanagari_ratio(text: str) -> float:
 
 
 def _word_count(text: str) -> int:
-    """Return whitespace-split word count."""
+    """Calculates the whitespace-split word count.
+
+    Args:
+        text (str): The text to count words for.
+
+    Returns:
+        int: The number of words in the text.
+    """
     return len(text.split())
 
 
 def _passes_quality_gate(full_text: str, duration_seconds: float) -> bool:
-    """
-    Returns True if transcript passes quality requirements:
+    """Checks if the transcript passes quality requirements.
+
+    Requirements:
       - Devanagari ratio <= 15%
       - Word count >= 80 words per minute of video duration
+
+    Args:
+        full_text (str): The full text of the transcript.
+        duration_seconds (float): The duration of the video in seconds.
+
+    Returns:
+        bool: True if the transcript passes the quality gate, False otherwise.
     """
     ratio = _devanagari_ratio(full_text)
     if ratio > 0.15:
@@ -74,8 +96,16 @@ def _passes_quality_gate(full_text: str, duration_seconds: float) -> bool:
 
 
 def _normalize_western_scales(text: str) -> str:
-    """Fix 2.29: Convert Western number scales to Indian in transcript text.
-    Also flags broken Hinglish patterns (fix 2.15)."""
+    """Converts Western number scales to Indian in transcript text.
+
+    Fix 2.29: Also flags broken Hinglish patterns (fix 2.15).
+
+    Args:
+        text (str): The transcript text containing Western scales.
+
+    Returns:
+        str: The normalized text with Indian scales.
+    """
     import re as _re
     text = _re.sub(r'(\d+\.?\d*)\s*million', r'\1 million (≈\1×10 Lakhs)', text, flags=_re.IGNORECASE)
     text = _re.sub(r'(\d+\.?\d*)\s*billion', r'\1 billion (≈\1×100 Crores)', text, flags=_re.IGNORECASE)
@@ -84,8 +114,19 @@ def _normalize_western_scales(text: str) -> str:
 
 
 def _detect_hinglish_quality(text: str) -> dict:
-    """Fix 2.15: Detect broken Hinglish translations from Whisper.
-    Returns quality flags — high Hinglish ratio means risk of hallucination."""
+    """Detects broken Hinglish translations from Whisper.
+
+    Fix 2.15: Returns quality flags — high Hinglish ratio means risk of hallucination.
+
+    Args:
+        text (str): The transcript text to analyze.
+
+    Returns:
+        dict: A dictionary containing quality flags:
+            - "hinglish_flagged" (bool): Whether the text was flagged for poor quality.
+            - "devanagari_ratio" (float): The ratio of Devanagari characters.
+            - "hinglish_marker_count" (int): The count of common Hinglish words.
+    """
     devanagari_ratio = _devanagari_ratio(text)
     hinglish_markers = ["matlab", "ki matlab", "aise hi", "thoda", "bahut", "kyunki"]
     hinglish_count = sum(1 for m in hinglish_markers if m in text.lower())
@@ -97,7 +138,17 @@ def _detect_hinglish_quality(text: str) -> dict:
 
 
 def _build_result(source: str, segments: list, duration_seconds: float) -> dict:
-    """Assemble the standard output dict."""
+    """Assembles the standard output dictionary for a transcript result.
+
+    Args:
+        source (str): The source of the transcript (e.g., 'youtube_api' or 'whisper_local').
+        segments (list[dict]): List of transcript segments.
+        duration_seconds (float): The duration of the video in seconds.
+
+    Returns:
+        dict: The standardized transcript result dictionary containing segments,
+            full_text, duration_seconds, and quality_flags.
+    """
     full_text = " ".join(seg["text"] for seg in segments)
     full_text = _normalize_western_scales(full_text)
     quality = _detect_hinglish_quality(full_text)
@@ -119,7 +170,12 @@ def _build_result(source: str, segments: list, duration_seconds: float) -> dict:
 # ---------------------------------------------------------------------------
 
 def _load_cookies_session():
-    """Load Netscape-format cookies.txt into a requests.Session if available."""
+    """Loads Netscape-format cookies.txt into a requests.Session if available.
+
+    Returns:
+        requests.Session: A session object configured with the loaded cookies,
+            or an empty session if cookies.txt is not found or fails to load.
+    """
     import requests as _requests
     session = _requests.Session()
     if os.path.exists(_COOKIES_PATH):
@@ -135,9 +191,15 @@ def _load_cookies_session():
 
 
 def _fetch_youtube_api(video_id: str, duration_seconds: float) -> Optional[dict]:
-    """
-    Attempt to fetch transcript via youtube_transcript_api.
-    Returns result dict on success, None on failure.
+    """Attempts to fetch transcript via youtube_transcript_api.
+
+    Args:
+        video_id (str): The YouTube video ID.
+        duration_seconds (float): The duration of the video in seconds.
+
+    Returns:
+        Optional[dict]: A dictionary containing the transcript result on success,
+            or None on failure or if the quality gate fails.
     """
     try:
         from youtube_transcript_api import (
@@ -203,9 +265,18 @@ def _fetch_youtube_api(video_id: str, duration_seconds: float) -> Optional[dict]
 # ---------------------------------------------------------------------------
 
 def _fetch_whisper(video_id: str, duration_seconds: float) -> dict:
-    """
-    Download audio with yt-dlp, then transcribe with faster-whisper.
-    Returns result dict or raises TranscriptError.
+    """Downloads audio with yt-dlp, then transcribes with faster-whisper.
+
+    Args:
+        video_id (str): The YouTube video ID.
+        duration_seconds (float): The duration of the video in seconds.
+
+    Returns:
+        dict: A dictionary containing the transcript result.
+
+    Raises:
+        TranscriptError: If the yt-dlp download produces no file, or if the Whisper
+            transcription fails for any reason.
     """
     import yt_dlp
     from faster_whisper import WhisperModel
@@ -306,22 +377,21 @@ def _fetch_whisper(video_id: str, duration_seconds: float) -> dict:
 # ---------------------------------------------------------------------------
 
 async def get_transcript(video_id: str, duration_seconds: float = 0.0) -> dict:
-    """
-    Fetch transcript for a YouTube video.
+    """Fetches a transcript for a YouTube video.
 
     Tries Layer 1 (YouTube Transcript API) first; falls back to
     Layer 2 (local Whisper large-v3) if Layer 1 is unavailable or
     fails quality checks.
 
     Args:
-        video_id: YouTube video ID (e.g. "dQw4w9WgXcQ").
-        duration_seconds: Known video duration in seconds (0 = unknown).
+        video_id (str): YouTube video ID (e.g. "dQw4w9WgXcQ").
+        duration_seconds (float, optional): Known video duration in seconds (0 = unknown). Defaults to 0.0.
 
     Returns:
-        dict with keys: source, segments, full_text, duration_seconds
+        dict: Dictionary with keys: 'source', 'segments', 'full_text', 'duration_seconds', 'quality_flags'.
 
     Raises:
-        TranscriptError: if both layers fail.
+        TranscriptError: If both transcription layers fail.
     """
     # Layer 1
     result = _fetch_youtube_api(video_id, duration_seconds)

@@ -1,3 +1,9 @@
+"""News data retrieval tools.
+
+Provides tools for agents to fetch various news and insider transactions
+using the configured news data vendor.
+"""
+
 from langchain_core.tools import tool
 from typing import Annotated, Optional
 from tradingagents.dataflows.interface import route_to_vendor

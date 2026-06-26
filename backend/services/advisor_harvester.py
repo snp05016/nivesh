@@ -35,7 +35,7 @@ _LOGS_DIR.mkdir(parents=True, exist_ok=True)
 _ENV_PATH = Path(__file__).parent.parent / ".env"
 
 def _load_env() -> None:
-    """Load KEY=VALUE pairs from .env into os.environ (if not already set)."""
+    """Loads KEY=VALUE pairs from .env into os.environ (if not already set)."""
     if not _ENV_PATH.exists():
         return
     with open(_ENV_PATH) as f:
@@ -91,9 +91,13 @@ Rules:
 # ---------------------------------------------------------------------------
 
 def _parse_iso8601_duration(duration_str: str) -> int:
-    """
-    Parse ISO 8601 duration string (e.g. PT4M30S) → seconds (int).
-    Falls back to 0 if unparseable.
+    """Parses an ISO 8601 duration string into seconds.
+
+    Args:
+        duration_str (str): The ISO 8601 duration string (e.g. PT4M30S).
+
+    Returns:
+        int: The parsed duration in seconds, or 0 if unparseable.
     """
     if not duration_str:
         return 0
@@ -120,9 +124,14 @@ def _parse_iso8601_duration(duration_str: str) -> int:
 # ---------------------------------------------------------------------------
 
 async def _fetch_videos_youtube_api(channel_id: str, lookback_hours: int) -> list[dict]:
-    """
-    Fetch recent videos via YouTube Data API v3.
-    Returns list of dicts: {video_id, title, published_at, duration_seconds, view_count, url}
+    """Fetches recent videos from a channel using the YouTube Data API v3.
+
+    Args:
+        channel_id (str): The YouTube channel ID.
+        lookback_hours (int): The number of past hours to search for videos.
+
+    Returns:
+        list[dict]: A list of video dictionaries containing metadata.
     """
     import httpx
 
@@ -214,9 +223,14 @@ async def _fetch_videos_youtube_api(channel_id: str, lookback_hours: int) -> lis
 
 
 def _fetch_videos_ytdlp(channel_id: str, lookback_hours: int) -> list[dict]:
-    """
-    Fetch recent videos via yt-dlp (no API key needed).
-    Returns list of dicts: {video_id, title, published_at, duration_seconds, view_count, url}
+    """Fetches recent videos from a channel using yt-dlp without needing an API key.
+
+    Args:
+        channel_id (str): The YouTube channel ID.
+        lookback_hours (int): The number of past hours to search for videos.
+
+    Returns:
+        list[dict]: A list of video dictionaries containing metadata.
     """
     import yt_dlp  # type: ignore
 
@@ -284,7 +298,14 @@ def _fetch_videos_ytdlp(channel_id: str, lookback_hours: int) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def _video_already_processed(video_id: str) -> bool:
-    """Return True if this video_id has any row in advisor_insights."""
+    """Checks if a video has already been processed by querying the database.
+
+    Args:
+        video_id (str): The unique YouTube video ID.
+
+    Returns:
+        bool: True if the video exists in the advisor_insights table, False otherwise.
+    """
     from database import AdvisorInsight, get_session
 
     with get_session() as session:
@@ -312,9 +333,27 @@ def _insert_insight(
     raw_snippet: str,
     view_count: int,
 ) -> bool:
-    """
-    Insert a row into advisor_insights, silently skipping on UniqueConstraint.
-    Returns True if a new row was inserted.
+    """Inserts a new insight row into the advisor_insights database table.
+
+    Silently ignores duplicates if a UniqueConstraint is triggered.
+
+    Args:
+        ticker (str): The stock ticker symbol.
+        advisor_name (str): The name of the advisor.
+        channel_id (str): The YouTube channel ID.
+        video_id (str): The YouTube video ID.
+        video_title (str): The title of the video.
+        video_url (str): The URL of the video.
+        published_at (datetime): The publication date of the video.
+        transcript_source (str): The source of the transcript data.
+        stance (str): The extracted stance (e.g., BULLISH).
+        confidence (str): The extracted confidence level (e.g., HIGH).
+        catalyst_summary (str): The summary of the catalyst.
+        raw_snippet (str): The raw transcript snippet used for extraction.
+        view_count (int): The video view count.
+
+    Returns:
+        bool: True if a new row was successfully inserted, False otherwise.
     """
     from database import AdvisorInsight, get_session
     from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -350,10 +389,16 @@ def _insert_insight(
 # ---------------------------------------------------------------------------
 
 def _extract_stance_with_haiku(advisor_name: str, ticker: str, snippet: str) -> dict | None:
-    """
-    Extract stance JSON from a transcript snippet via DeepSeek V4 Flash (Tier 1).
-    Formerly used Claude Haiku; migrated to DeepSeek per model routing spec.
-    Returns parsed dict or None on failure.
+    """Extracts a structured stance from a transcript snippet using an LLM.
+
+    Args:
+        advisor_name (str): The name of the advisor.
+        ticker (str): The stock ticker being discussed.
+        snippet (str): The transcript snippet containing the discussion.
+
+    Returns:
+        dict | None: The parsed stance dictionary with keys 'stance', 'confidence', 
+        and 'catalyst_summary', or None if extraction fails.
     """
     user_content = HAIKU_USER_TEMPLATE.format(
         advisor_name=advisor_name,
@@ -431,8 +476,17 @@ _SECTOR_WEIGHTS = {
 
 
 def _get_sector_weight(sector: str) -> float:
-    """Return normalization weight for a sector. Mid/small-cap sectors
-    get >1.0 boost to prevent Banking/IT crowding on consensus view."""
+    """Retrieves the normalization weight for a given sector.
+
+    Mid/small-cap sectors get a boost (> 1.0) to prevent large sectors 
+    like Banking/IT from crowding out consensus views.
+
+    Args:
+        sector (str): The name of the sector.
+
+    Returns:
+        float: The sector weight multiplier.
+    """
     return _SECTOR_WEIGHTS.get(sector.upper(), 1.0)
 
 
@@ -441,14 +495,18 @@ def _get_sector_weight(sector: str) -> float:
 # ---------------------------------------------------------------------------
 
 async def harvest_single_advisor(advisor: dict, lookback_hours: int = 24) -> int:
-    """
-    Harvest one advisor's recent videos.
+    """Harvests insights from a single advisor's recent videos.
 
-    1. Fetch video list (YouTube API if key present, else yt-dlp).
-    2. Skip videos < 4 minutes or already in DB.
-    3. For each remaining video: get transcript, find tickers, call Haiku, insert rows.
+    Fetches the video list, filters out short or processed videos, fetches 
+    transcripts, identifies tickers, extracts stances using an LLM, and 
+    inserts the results into the database.
 
-    Returns count of rows inserted.
+    Args:
+        advisor (dict): A dictionary containing the advisor's metadata.
+        lookback_hours (int): The number of past hours to search for videos. Defaults to 24.
+
+    Returns:
+        int: The number of new insight rows inserted into the database.
     """
     from services.transcript_engine import get_transcript
     from services.ticker_matcher import find_tickers
@@ -601,9 +659,13 @@ async def harvest_single_advisor(advisor: dict, lookback_hours: int = 24) -> int
 
 
 async def harvest_all_advisors(lookback_hours: int = 24) -> None:
-    """
-    Harvest all advisors sequentially. Called by CRON.
-    Wraps the entire run in try/except and logs traceback on failure.
+    """Harvests insights from all registered advisors sequentially.
+
+    This function is intended to be called by a CRON scheduler. It wraps 
+    the entire process in a try/except block to ensure failures are logged.
+
+    Args:
+        lookback_hours (int): The number of past hours to search for videos. Defaults to 24.
     """
     _load_env()
     global YOUTUBE_API_KEY
@@ -646,9 +708,16 @@ async def harvest_all_advisors(lookback_hours: int = 24) -> None:
 
 
 def evaluate_analysis_outcomes(db) -> int:
-    """
-    Nightly: compute outcome_delta for analyses older than 7 days that haven't been evaluated.
-    Runs in the existing nightly CRON slot. Max 50 per night to avoid yfinance rate limits.
+    """Evaluates the outcomes of analyses older than 7 days.
+
+    Computes the price outcome delta for pending analyses and updates the database.
+    Designed to run nightly, processing a maximum of 50 records to respect API rate limits.
+
+    Args:
+        db: The SQLAlchemy database session.
+
+    Returns:
+        int: The number of analysis outcomes successfully evaluated and updated.
     """
     from database import AnalysisHistory
     import json

@@ -1,3 +1,9 @@
+"""Bull researcher agent module.
+
+This module provides the factory function to create a bull researcher node
+for the investment debate phase.
+"""
+
 from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
     get_language_instruction,
@@ -5,7 +11,23 @@ from tradingagents.agents.utils.agent_utils import (
 
 
 def create_bull_researcher(llm):
+    """Creates a bull researcher node for the debate graph.
+
+    Args:
+        llm: The language model instance to use for the agent.
+
+    Returns:
+        Callable[[dict], dict]: The node function representing the bull researcher.
+    """
     def bull_node(state) -> dict:
+        """Executes the bull analyst logic based on current state.
+
+        Args:
+            state (dict): The current graph state.
+
+        Returns:
+            dict: The updated state containing the new investment debate history.
+        """
         investment_debate_state = state["investment_debate_state"]
         history = investment_debate_state.get("history", "")
         bull_history = investment_debate_state.get("bull_history", "")

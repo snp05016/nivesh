@@ -87,7 +87,17 @@ def get_feed(
     limit: int = Query(default=20, ge=1, le=100),
     authorization: str = Header(None),
 ):
-    """Latest cards, newest first. Filtered by ticker when provided. Auth required."""
+    """
+    Latest cards, newest first. Filtered by ticker when provided. Auth required.
+
+    Args:
+        ticker (Any): The ticker.
+        limit (int): The limit.
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
+    """
     require_auth(authorization)
     with h_get_session() as s:
         q = s.query(HarvestedCard)
@@ -101,7 +111,17 @@ def get_feed(
 
 @router.get("/governance/{ticker}")
 def get_governance(ticker: str, limit: int = Query(default=20, ge=1, le=100), authorization: str = Header(None)):
-    """GOVERNANCE cards for a specific ticker, newest first. Auth required."""
+    """
+    GOVERNANCE cards for a specific ticker, newest first. Auth required.
+
+    Args:
+        ticker (str): The ticker.
+        limit (int): The limit.
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
+    """
     require_auth(authorization)
     with h_get_session() as s:
         q = s.query(HarvestedCard).filter(HarvestedCard.card_type == "GOVERNANCE")
@@ -112,7 +132,14 @@ def get_governance(ticker: str, limit: int = Query(default=20, ge=1, le=100), au
 
 @router.get("/sources")
 def get_sources():
-    """Per-source health for the iOS 'Sources' sheet. Returns an array."""
+    """
+    Per-source health for the iOS 'Sources' sheet. Returns an array.
+
+    Args:
+
+    Returns:
+        Any: The response.
+    """
     with h_get_session() as s:
         rows = s.query(SourceHealth).order_by(SourceHealth.source_name.asc()).all()
         return [r.to_dict() for r in rows]
@@ -120,7 +147,17 @@ def get_sources():
 
 @router.get("/search")
 def search(q: str = Query(..., min_length=1), limit: int = Query(default=30, ge=1, le=100), authorization: str = Header(None)):
-    """Full-text search across titles and summaries. Auth required."""
+    """
+    Full-text search across titles and summaries. Auth required.
+
+    Args:
+        q (str): The q.
+        limit (int): The limit.
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
+    """
     require_auth(authorization)
     needle = f"%{q.strip()}%"
     with h_get_session() as s:
@@ -145,7 +182,17 @@ def trigger_scrape(
     limit: int = Query(default=20, ge=1, le=100),
     authorization: str = Header(None),
 ):
-    """Manually run one scrape job synchronously. Admin only."""
+    """
+    Manually run one scrape job synchronously. Admin only.
+
+    Args:
+        source (str): The source.
+        limit (int): The limit.
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
+    """
     require_admin(authorization)
     try:
         if source == "sebi":
@@ -173,7 +220,15 @@ def trigger_scrape(
 
 @router.get("/stats")
 def stats(authorization: str = Header(None)):
-    """Aggregate counts: total, per source_type, per card_type, last runs. Admin only."""
+    """
+    Aggregate counts: total, per source_type, per card_type, last runs. Admin only.
+
+    Args:
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
+    """
     require_admin(authorization)
     with h_get_session() as s:
         total = s.query(HarvestedCard).count()

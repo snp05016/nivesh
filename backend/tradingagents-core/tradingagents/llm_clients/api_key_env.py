@@ -40,5 +40,11 @@ def get_api_key_env(provider: str) -> Optional[str]:
 
     Unknown providers also return None — callers should treat that as
     "no key check possible" rather than as "no key required".
+
+    Args:
+        provider: The name of the LLM provider.
+
+    Returns:
+        The name of the environment variable containing the API key, or None.
     """
     return PROVIDER_API_KEY_ENV.get(provider.lower())

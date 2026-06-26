@@ -1,3 +1,9 @@
+"""Common Utilities for Alpha Vantage API Integration.
+
+This module provides common helper functions, authentication, and date formatting
+utilities to facilitate interactions with the Alpha Vantage API.
+"""
+
 import os
 import requests
 import pandas as pd

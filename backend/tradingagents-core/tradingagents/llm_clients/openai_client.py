@@ -1,3 +1,9 @@
+"""OpenAI-compatible client implementation.
+
+This module provides the client implementation for OpenAI and compatible
+providers (xAI, DeepSeek, Qwen, GLM, MiniMax, Ollama, OpenRouter).
+"""
+
 import os
 from typing import Any, Optional
 
@@ -30,9 +36,32 @@ class NormalizedChatOpenAI(ChatOpenAI):
     """
 
     def invoke(self, input, config=None, **kwargs):
+        """Invoke the OpenAI-compatible chat model and normalize the output.
+
+        Args:
+            input: The input messages or prompt to process.
+            config: Optional configuration dictionary.
+            **kwargs: Additional keyword arguments for the invocation.
+
+        Returns:
+            The normalized response from the LLM.
+        """
         return normalize_content(super().invoke(input, config, **kwargs))
 
     def with_structured_output(self, schema, *, method=None, **kwargs):
+        """Bind a schema for structured output generation based on model capabilities.
+
+        Args:
+            schema: The Pydantic schema or type to output.
+            method: Optional method to override the model's preferred structured output method.
+            **kwargs: Additional keyword arguments for the binding.
+
+        Returns:
+            A runnable that generates structured output conforming to the schema.
+
+        Raises:
+            NotImplementedError: If the model does not support any structured output method.
+        """
         caps = get_capabilities(self.model_name)
         if caps.preferred_structured_method == "none":
             raise NotImplementedError(
@@ -57,6 +86,12 @@ def _input_to_messages(input_: Any) -> list:
     in particular DeepSeek thinking-mode propagation must work for
     both bare-list invocations and ChatPromptTemplate-driven ones, so
     treating only ``list`` here would silently skip half the call sites.
+
+    Args:
+        input_: The input to normalise.
+
+    Returns:
+        A list of message objects.
     """
     if isinstance(input_, list):
         return input_
@@ -81,6 +116,16 @@ class DeepSeekChatOpenAI(NormalizedChatOpenAI):
     """
 
     def _get_request_payload(self, input_, *, stop=None, **kwargs):
+        """Prepare the request payload, re-attaching reasoning content for DeepSeek models.
+
+        Args:
+            input_: The input messages or prompt.
+            stop: Optional list of stop sequences.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            The modified request payload dictionary.
+        """
         payload = super()._get_request_payload(input_, stop=stop, **kwargs)
         outgoing = payload.get("messages", [])
         for message_dict, message in zip(outgoing, _input_to_messages(input_)):
@@ -92,6 +137,15 @@ class DeepSeekChatOpenAI(NormalizedChatOpenAI):
         return payload
 
     def _create_chat_result(self, response, generation_info=None):
+        """Create a chat result from the API response, capturing reasoning content.
+
+        Args:
+            response: The raw API response.
+            generation_info: Optional generation info dictionary.
+
+        Returns:
+            A ChatResult object with reasoning content attached to additional_kwargs.
+        """
         chat_result = super()._create_chat_result(response, generation_info)
         response_dict = (
             response
@@ -131,6 +185,16 @@ class MinimaxChatOpenAI(NormalizedChatOpenAI):
     """
 
     def _get_request_payload(self, input_, *, stop=None, **kwargs):
+        """Prepare the request payload, injecting reasoning_split for MiniMax models.
+
+        Args:
+            input_: The input messages or prompt.
+            stop: Optional list of stop sequences.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            The modified request payload dictionary.
+        """
         payload = super()._get_request_payload(input_, stop=stop, **kwargs)
         if get_capabilities(self.model_name).requires_reasoning_split:
             # Pass via extra_body, not as a top-level kwarg: the openai SDK
@@ -175,6 +239,12 @@ def _resolve_provider_base_url(provider: str) -> Optional[str]:
     can point at a remote ollama-serve without editing code. The check is
     call-time, not import-time, so tests that monkeypatch the env after
     import behave correctly.
+
+    Args:
+        provider: The name of the LLM provider.
+
+    Returns:
+        The base URL for the provider, or None if not defined.
     """
     if provider == "ollama":
         env_url = os.environ.get("OLLAMA_BASE_URL")
@@ -199,11 +269,27 @@ class OpenAIClient(BaseLLMClient):
         provider: str = "openai",
         **kwargs,
     ):
+        """Initialize the OpenAI-compatible client.
+
+        Args:
+            model: The name of the model to use.
+            base_url: Optional base URL for the API endpoint.
+            provider: The name of the provider (e.g., 'openai', 'deepseek').
+            **kwargs: Additional client-specific configuration.
+        """
         super().__init__(model, base_url, **kwargs)
         self.provider = provider.lower()
 
     def get_llm(self) -> Any:
-        """Return configured ChatOpenAI instance."""
+        """Return configured ChatOpenAI instance.
+
+        Returns:
+            A NormalizedChatOpenAI instance (or provider-specific subclass) configured
+            with the provided settings.
+
+        Raises:
+            ValueError: If the required API key environment variable is missing.
+        """
         self.warn_if_unknown_model()
         llm_kwargs = {"model": self.model}
 
@@ -249,5 +335,9 @@ class OpenAIClient(BaseLLMClient):
         return chat_cls(**llm_kwargs)
 
     def validate_model(self) -> bool:
-        """Validate model for the provider."""
+        """Validate model for the provider.
+
+        Returns:
+            True if the model is valid for the provider, False otherwise.
+        """
         return validate_model(self.provider, self.model)

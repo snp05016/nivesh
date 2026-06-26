@@ -1,3 +1,9 @@
+"""Factory for creating provider-specific LLM clients.
+
+This module provides a unified factory function to instantiate the correct
+LLM client based on the specified provider name.
+"""
+
 from typing import Optional
 
 from .base_client import BaseLLMClient

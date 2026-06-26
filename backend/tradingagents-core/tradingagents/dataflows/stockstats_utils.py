@@ -1,3 +1,5 @@
+"""Utility functions for fetching and caching stock OHLCV data using yfinance."""
+
 import time
 import logging
 
@@ -19,6 +21,17 @@ def yf_retry(func, max_retries=3, base_delay=2.0):
     yfinance raises YFRateLimitError on HTTP 429 responses but does not
     retry them internally. This wrapper adds retry logic specifically
     for rate limits. Other exceptions propagate immediately.
+
+    Args:
+        func (Callable): The function to execute.
+        max_retries (int, optional): Maximum number of retries. Defaults to 3.
+        base_delay (float, optional): Base delay in seconds. Defaults to 2.0.
+
+    Returns:
+        Any: The result of the provided function.
+
+    Raises:
+        YFRateLimitError: If rate limit persists after maximum retries.
     """
     for attempt in range(max_retries + 1):
         try:
@@ -38,6 +51,12 @@ def _ensure_date_column(data: pd.DataFrame) -> pd.DataFrame:
     Some yfinance builds leave the index unnamed (so ``reset_index()`` yields
     ``index``) or use ``Datetime`` for intraday data. Rename the first
     date-like column so indicators don't silently drop when it isn't ``Date``.
+
+    Args:
+        data (pd.DataFrame): The input dataframe.
+
+    Returns:
+        pd.DataFrame: The dataframe with a normalized "Date" column.
     """
     if "Date" in data.columns:
         return data
@@ -48,7 +67,14 @@ def _ensure_date_column(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def _clean_dataframe(data: pd.DataFrame) -> pd.DataFrame:
-    """Normalize a stock DataFrame for stockstats: parse dates, drop invalid rows, fill price gaps."""
+    """Normalize a stock DataFrame for stockstats: parse dates, drop invalid rows, fill price gaps.
+
+    Args:
+        data (pd.DataFrame): The raw dataframe from yfinance.
+
+    Returns:
+        pd.DataFrame: The cleaned dataframe ready for technical analysis.
+    """
     data = _ensure_date_column(data)
     data["Date"] = pd.to_datetime(data["Date"], errors="coerce")
     data = data.dropna(subset=["Date"])
@@ -67,6 +93,13 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
     Downloads 15 years of data up to today and caches per symbol. On
     subsequent calls the cache is reused. Rows after curr_date are
     filtered out so backtests never see future prices.
+
+    Args:
+        symbol (str): The stock ticker symbol.
+        curr_date (str): The cutoff date in YYYY-MM-DD format.
+
+    Returns:
+        pd.DataFrame: The historical OHLCV data up to curr_date.
     """
     # Reject ticker values that would escape the cache directory when
     # interpolated into the cache filename (e.g. ``../../tmp/x``).
@@ -115,6 +148,13 @@ def filter_financials_by_date(data: pd.DataFrame, curr_date: str) -> pd.DataFram
     yfinance financial statements use fiscal period end dates as columns.
     Columns after curr_date represent future data and are removed to
     prevent look-ahead bias.
+
+    Args:
+        data (pd.DataFrame): Financial statement dataframe.
+        curr_date (str): The cutoff date in YYYY-MM-DD format.
+
+    Returns:
+        pd.DataFrame: The filtered dataframe with future periods removed.
     """
     if not curr_date or data.empty:
         return data
@@ -134,6 +174,16 @@ class StockstatsUtils:
             str, "curr date for retrieving stock price data, YYYY-mm-dd"
         ],
     ):
+        """Retrieve a technical indicator value using stockstats for a specific date.
+
+        Args:
+            symbol (str): Ticker symbol of the company.
+            indicator (str): The stockstats indicator name to calculate.
+            curr_date (str): The date for which to retrieve the value.
+
+        Returns:
+            Any: The calculated indicator value or a string if no data is available.
+        """
         data = load_ohlcv(symbol, curr_date)
         df = wrap(data)
         df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")

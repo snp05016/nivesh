@@ -1,3 +1,9 @@
+"""Base interfaces and common utilities for LLM clients.
+
+This module defines the abstract base class for all LLM clients and provides
+common utility functions for processing LLM responses.
+"""
+
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 import warnings
@@ -10,6 +16,12 @@ def normalize_content(response):
     as a list of typed blocks, e.g. [{'type': 'reasoning', ...}, {'type': 'text', 'text': '...'}].
     Downstream agents expect response.content to be a string. This extracts
     and joins the text blocks, discarding reasoning/metadata blocks.
+
+    Args:
+        response: The LLM response object containing a content attribute.
+
+    Returns:
+        The updated response object with content normalized to a string.
     """
     content = response.content
     if isinstance(content, list):
@@ -26,12 +38,23 @@ class BaseLLMClient(ABC):
     """Abstract base class for LLM clients."""
 
     def __init__(self, model: str, base_url: Optional[str] = None, **kwargs):
+        """Initialize the base LLM client.
+
+        Args:
+            model: The name of the model to use.
+            base_url: Optional base URL for the API endpoint.
+            **kwargs: Additional client-specific configuration.
+        """
         self.model = model
         self.base_url = base_url
         self.kwargs = kwargs
 
     def get_provider_name(self) -> str:
-        """Return the provider name used in warning messages."""
+        """Return the provider name used in warning messages.
+
+        Returns:
+            The normalized provider name as a string.
+        """
         provider = getattr(self, "provider", None)
         if provider:
             return str(provider)
@@ -53,10 +76,18 @@ class BaseLLMClient(ABC):
 
     @abstractmethod
     def get_llm(self) -> Any:
-        """Return the configured LLM instance."""
+        """Return the configured LLM instance.
+
+        Returns:
+            The provider-specific LLM instance.
+        """
         pass
 
     @abstractmethod
     def validate_model(self) -> bool:
-        """Validate that the model is supported by this client."""
+        """Validate that the model is supported by this client.
+
+        Returns:
+            True if the model is supported, False otherwise.
+        """
         pass

@@ -13,7 +13,12 @@ _YF_LAST: float = time.monotonic()
 
 
 def yf_acquire() -> None:
-    """Block until a yfinance request token is available (token bucket algorithm)."""
+    """Block until a yfinance request token is available (token bucket algorithm).
+    
+    This function implements a token bucket rate limiter to prevent hitting
+    the yfinance API rate limits. It blocks the calling thread if no tokens
+    are currently available until one is replenished.
+    """
     global _YF_TOKENS, _YF_LAST
     with _YF_BUCKET_LOCK:
         now = time.monotonic()
@@ -32,7 +37,12 @@ def yf_acquire() -> None:
 
 
 def yf_bucket_status() -> dict:
-    """Return current bucket state for health/debug endpoints."""
+    """Return current bucket state for health/debug endpoints.
+    
+    Returns:
+        dict: A dictionary containing the number of available tokens, the
+            rate per second, and the maximum token capacity.
+    """
     with _YF_BUCKET_LOCK:
         return {
             "tokens_available": round(_YF_TOKENS, 2),

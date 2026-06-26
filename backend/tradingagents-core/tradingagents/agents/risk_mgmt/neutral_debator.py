@@ -1,3 +1,9 @@
+"""Neutral debator agent module.
+
+Provides a neutral analyst node for the risk management debate phase,
+weighing both potential benefits and risks.
+"""
+
 from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
     get_language_instruction,
@@ -5,7 +11,23 @@ from tradingagents.agents.utils.agent_utils import (
 
 
 def create_neutral_debator(llm):
+    """Creates a neutral debator node for the risk debate graph.
+
+    Args:
+        llm: The language model instance to use for the agent.
+
+    Returns:
+        Callable[[dict], dict]: The node function representing the neutral debator.
+    """
     def neutral_node(state) -> dict:
+        """Executes the neutral analyst logic based on current state.
+
+        Args:
+            state (dict): The current graph state.
+
+        Returns:
+            dict: The updated state containing the new risk debate history.
+        """
         risk_debate_state = state["risk_debate_state"]
         history = risk_debate_state.get("history", "")
         neutral_history = risk_debate_state.get("neutral_history", "")

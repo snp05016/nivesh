@@ -1,3 +1,5 @@
+"""Defines the Governance Analyst agent node for detecting corporate governance red flags."""
+
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
@@ -9,7 +11,23 @@ from tradingagents.dataflows.config import get_config
 
 
 def create_governance_analyst(llm):
+    """Creates the Governance Analyst node for the agent graph.
+
+    Args:
+        llm: The language model instance to use for the analyst.
+
+    Returns:
+        Callable: A function representing the governance analyst node in the graph.
+    """
     def governance_analyst_node(state):
+        """Executes the Governance Analyst's logic to generate a governance report.
+
+        Args:
+            state (dict): The current state of the agent graph.
+
+        Returns:
+            dict: The updated state containing the new messages and governance report.
+        """
         current_date = state["trade_date"]
         instrument_context = get_instrument_context_from_state(state)
 

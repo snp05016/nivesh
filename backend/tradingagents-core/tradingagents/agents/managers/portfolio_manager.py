@@ -22,9 +22,25 @@ from tradingagents.agents.utils.structured import (
 
 
 def create_portfolio_manager(llm):
+    """Creates a portfolio manager node for the risk debate graph.
+
+    Args:
+        llm: The language model instance to use for the agent.
+
+    Returns:
+        Callable[[dict], dict]: The node function representing the portfolio manager.
+    """
     structured_llm = bind_structured(llm, PortfolioDecision, "Portfolio Manager")
 
     def portfolio_manager_node(state) -> dict:
+        """Executes the portfolio manager logic to finalize the trade decision.
+
+        Args:
+            state (dict): The current graph state.
+
+        Returns:
+            dict: The updated state containing the final decision and updated history.
+        """
         instrument_context = get_instrument_context_from_state(state)
 
         history = state["risk_debate_state"]["history"]

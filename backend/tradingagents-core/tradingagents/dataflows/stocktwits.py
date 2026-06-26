@@ -34,6 +34,14 @@ def fetch_stocktwits_messages(ticker: str, limit: int = 30, timeout: float = 10.
     Returns a placeholder string when the endpoint is unreachable, the
     symbol has no messages, or the response shape is unexpected — the
     caller never has to special-case None or exceptions.
+
+    Args:
+        ticker (str): The stock ticker symbol.
+        limit (int, optional): Maximum number of messages to fetch. Defaults to 30.
+        timeout (float, optional): Request timeout in seconds. Defaults to 10.0.
+
+    Returns:
+        str: A formatted plaintext block of recent messages.
     """
     url = _API.format(ticker=ticker.upper())
     req = Request(url, headers={"User-Agent": _UA, "Accept": "application/json"})

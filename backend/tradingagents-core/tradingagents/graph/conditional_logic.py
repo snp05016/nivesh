@@ -11,21 +11,34 @@ class ConditionalLogic:
         self.max_debate_rounds = max_debate_rounds
         self.max_risk_discuss_rounds = max_risk_discuss_rounds
 
-    def should_continue_market(self, state: AgentState):
-        """Determine if market analysis should continue."""
+    def should_continue_market(self, state: AgentState) -> str:
+        """Determine if market analysis should continue.
+        
+        Args:
+            state (AgentState): The current state of the agent.
+            
+        Returns:
+            str: The name of the next node to execute.
+        """
         messages = state["messages"]
         last_message = messages[-1]
         if last_message.tool_calls:
             return "tools_market"
         return "Msg Clear Market"
 
-    def should_continue_social(self, state: AgentState):
+    def should_continue_social(self, state: AgentState) -> str:
         """Determine if sentiment-analyst tool round should continue.
 
         Method name keeps the legacy ``social`` suffix to match the
         ``AnalystType.SOCIAL = "social"`` wire value (saved-config
         back-compat); the returned ``clear_node`` label uses the v0.2.5
         rename so it matches the node registered by the execution plan.
+        
+        Args:
+            state (AgentState): The current state of the agent.
+            
+        Returns:
+            str: The name of the next node to execute.
         """
         messages = state["messages"]
         last_message = messages[-1]
@@ -33,24 +46,45 @@ class ConditionalLogic:
             return "tools_social"
         return "Msg Clear Sentiment"
 
-    def should_continue_news(self, state: AgentState):
-        """Determine if news analysis should continue."""
+    def should_continue_news(self, state: AgentState) -> str:
+        """Determine if news analysis should continue.
+        
+        Args:
+            state (AgentState): The current state of the agent.
+            
+        Returns:
+            str: The name of the next node to execute.
+        """
         messages = state["messages"]
         last_message = messages[-1]
         if last_message.tool_calls:
             return "tools_news"
         return "Msg Clear News"
 
-    def should_continue_fundamentals(self, state: AgentState):
-        """Determine if fundamentals analysis should continue."""
+    def should_continue_fundamentals(self, state: AgentState) -> str:
+        """Determine if fundamentals analysis should continue.
+        
+        Args:
+            state (AgentState): The current state of the agent.
+            
+        Returns:
+            str: The name of the next node to execute.
+        """
         messages = state["messages"]
         last_message = messages[-1]
         if last_message.tool_calls:
             return "tools_fundamentals"
         return "Msg Clear Fundamentals"
 
-    def should_continue_governance(self, state: AgentState):
-        """Determine if governance analysis should continue."""
+    def should_continue_governance(self, state: AgentState) -> str:
+        """Determine if governance analysis should continue.
+        
+        Args:
+            state (AgentState): The current state of the agent.
+            
+        Returns:
+            str: The name of the next node to execute.
+        """
         messages = state["messages"]
         last_message = messages[-1]
         if last_message.tool_calls:
@@ -59,7 +93,15 @@ class ConditionalLogic:
 
     def should_fast_track_governance(self, state: AgentState) -> str:
         """After governance clears, check for 2+ CRITICAL red flags.
-        If found, skip remaining analysts + debate → route directly to Portfolio Manager."""
+        
+        If found, skip remaining analysts + debate → route directly to Portfolio Manager.
+        
+        Args:
+            state (AgentState): The current state of the agent.
+            
+        Returns:
+            str: The name of the next node to execute.
+        """
         governance_report = state.get("governance_report", "")
         critical_count = governance_report.count("⚠ CRITICAL")
         if critical_count >= 2:
@@ -85,7 +127,14 @@ class ConditionalLogic:
         return "Market Analyst"  # normal flow
 
     def should_continue_debate(self, state: AgentState) -> str:
-        """Determine if debate should continue with strict fallback routing."""
+        """Determine if debate should continue with strict fallback routing.
+        
+        Args:
+            state (AgentState): The current state of the agent.
+            
+        Returns:
+            str: The name of the next node to execute in the debate.
+        """
         # Safety fallback if state is missing
         debate_state = state.get("investment_debate_state")
         if not debate_state:
@@ -114,7 +163,14 @@ class ConditionalLogic:
         return "Bull Researcher"
 
     def should_continue_risk_analysis(self, state: AgentState) -> str:
-        """Determine if risk analysis should continue with strict fallback routing."""
+        """Determine if risk analysis should continue with strict fallback routing.
+        
+        Args:
+            state (AgentState): The current state of the agent.
+            
+        Returns:
+            str: The name of the next node to execute in risk analysis.
+        """
         # Safety fallback if state is missing
         risk_state = state.get("risk_debate_state")
         if not risk_state:

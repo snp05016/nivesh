@@ -1,3 +1,4 @@
+"""Provides reflection mechanisms for agent trading decisions."""
 # TradingAgents/graph/reflection.py
 
 from typing import Any
@@ -7,7 +8,11 @@ class Reflector:
     """Handles reflection on trading decisions."""
 
     def __init__(self, quick_thinking_llm: Any):
-        """Initialize the reflector with an LLM."""
+        """Initialize the reflector with an LLM.
+        
+        Args:
+            quick_thinking_llm (Any): The LLM client used for generating quick reflections.
+        """
         self.quick_thinking_llm = quick_thinking_llm
         self.log_reflection_prompt = self._get_log_reflection_prompt()
 
@@ -16,6 +21,9 @@ class Reflector:
 
         Produces 2-4 sentences of plain prose — compact enough to be re-injected
         into future agent prompts without bloating the context window.
+        
+        Returns:
+            str: The reflection prompt.
         """
         return (
             "You are a trading analyst reviewing your own past decision now that the outcome is known.\n"
@@ -42,6 +50,15 @@ class Reflector:
         ``benchmark_name`` is the label used for the alpha line (e.g. ``"SPY"``
         for US tickers, ``"^N225"`` for ``.T`` listings); defaults to SPY for
         callers that haven't been updated to thread the benchmark through.
+        
+        Args:
+            final_decision (str): The final trade decision text.
+            raw_return (float): The actual raw return.
+            alpha_return (float): The alpha return compared to the benchmark.
+            benchmark_name (str): The benchmark used for comparison.
+            
+        Returns:
+            str: The concise reflection paragraph.
         """
         messages = [
             ("system", self.log_reflection_prompt),

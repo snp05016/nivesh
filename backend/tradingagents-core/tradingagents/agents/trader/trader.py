@@ -18,9 +18,26 @@ from tradingagents.agents.utils.structured import (
 
 
 def create_trader(llm):
+    """Creates a trader node for the execution phase.
+
+    Args:
+        llm: The language model instance to use for the agent.
+
+    Returns:
+        Callable: The node function representing the trader.
+    """
     structured_llm = bind_structured(llm, TraderProposal, "Trader")
 
     def trader_node(state, name):
+        """Executes the trader logic to generate a concrete investment plan.
+
+        Args:
+            state (dict): The current graph state.
+            name (str): The name of the sender.
+
+        Returns:
+            dict: The updated state containing the trader's plan.
+        """
         company_name = state["company_of_interest"]
         instrument_context = get_instrument_context_from_state(state)
         investment_plan = state["investment_plan"]

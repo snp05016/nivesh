@@ -30,6 +30,11 @@ _NSE_HEADERS = {
 
 
 def _get_nse_session() -> requests.Session:
+    """Initialize and return a requests.Session with NSE-specific headers.
+    
+    Returns:
+        requests.Session: The configured session object.
+    """
     session = requests.Session()
     session.headers.update(_NSE_HEADERS)
     try:

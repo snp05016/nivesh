@@ -1371,7 +1371,16 @@ _NSE_DIRECTORY = [
 
 @router.get("/api/v1/portfolio/advisor-consensus")
 def portfolio_advisor_consensus(user_id: int, days: int = 7):
-    """Aggregate AdvisorInsight rows into sector signals and trending tickers."""
+    """
+    Aggregate AdvisorInsight rows into sector signals and trending tickers.
+
+    Args:
+        user_id (int): The user_id.
+        days (int): The days.
+
+    Returns:
+        Any: The response.
+    """
 
     try:
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
@@ -1771,10 +1780,19 @@ async def portfolio_charts_endpoint(
     authorization: str = Header(None),
     regenerate: bool = False,
 ):
-    """Generate portfolio charts as PNG images. Returns list of chart metadata with URLs.
+    """
+    Generate portfolio charts as PNG images. Returns list of chart metadata with URLs.
 
-    Charts are cached on disk per user. Set ?regenerate=true to force re‑generation.
-    Uses a thread-pool executor so the event loop is never blocked.
+Charts are cached on disk per user. Set ?regenerate=true to force re‑generation.
+Uses a thread-pool executor so the event loop is never blocked.
+
+    Args:
+        user_id (int): The user_id.
+        authorization (str): The authorization.
+        regenerate (bool): The regenerate.
+
+    Returns:
+        Any: The response.
     """
     token_user = verify_access_token(
         authorization.split(" ", 1)[1]
@@ -2529,7 +2547,16 @@ def trade_journal_delete_endpoint(entry_id: int, user_id: int, authorization: st
 # ---------------------------------------------------------------------------
 @router.get("/trade-journal/{user_id}/stats")
 def trade_journal_stats_endpoint(user_id: int, auth_user_id: int = Depends(require_auth)):
-    """Compute analytics over all journal entries for a user. Auth required."""
+    """
+    Compute analytics over all journal entries for a user. Auth required.
+
+    Args:
+        user_id (int): The user_id.
+        auth_user_id (int): The auth_user_id.
+
+    Returns:
+        Any: The response.
+    """
     try:
         with get_session() as session:
             user = session.get(User, auth_user_id)
@@ -2798,8 +2825,15 @@ async def net_worth_ledger_endpoint(
 ):
     """
     Return the latest net-worth snapshot for a user.
-    All monetary values use Indian Lakhs/Crores formatting.
-    Requires valid JWT. Returns 404 if no snapshot exists yet.
+All monetary values use Indian Lakhs/Crores formatting.
+Requires valid JWT. Returns 404 if no snapshot exists yet.
+
+    Args:
+        user_id (int): The user_id.
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
     """
     # Auth guard
     authed_user_id = require_auth(authorization)
@@ -2907,7 +2941,14 @@ async def portfolio_attribution_endpoint(
 
 @router.get("/signal-accuracy")
 def get_signal_accuracy():
-    """Returns accuracy % by signal type."""
+    """
+    Returns accuracy % by signal type.
+
+    Args:
+
+    Returns:
+        Any: The response.
+    """
     try:
         from database import AnalysisHistory, get_session
         with get_session() as db:

@@ -30,6 +30,16 @@ class Propagator:
         ``TradingAgentsGraph.resolve_instrument_context``). When empty, agents
         fall back to ticker-only context via
         ``get_instrument_context_from_state``.
+        
+        Args:
+            company_name (str): The name or ticker of the company.
+            trade_date (str): The date of the analysis or trade.
+            asset_type (str, optional): The type of asset (e.g., 'stock' or 'crypto'). Defaults to "stock".
+            past_context (str, optional): Any previous context or analysis. Defaults to "".
+            instrument_context (str, optional): Detailed instrument identity. Defaults to "".
+            
+        Returns:
+            Dict[str, Any]: The initial state dictionary.
         """
         return {
             "messages": [("human", company_name)],
@@ -74,8 +84,11 @@ class Propagator:
         """Get arguments for the graph invocation.
 
         Args:
-            callbacks: Optional list of callback handlers for tool execution tracking.
-                       Note: LLM callbacks are handled separately via LLM constructor.
+            callbacks (Optional[List], optional): Optional list of callback handlers for tool execution tracking.
+                Note: LLM callbacks are handled separately via LLM constructor.
+                
+        Returns:
+            Dict[str, Any]: The graph execution arguments including stream_mode and config.
         """
         config = {"recursion_limit": self.max_recur_limit}
         if callbacks:

@@ -43,11 +43,19 @@ class PushMockRequest(BaseModel):
 
 @router.post("/api/v1/notifications/register")
 def register_device(req: RegisterDeviceRequest, authorization: str = Header(None)):
-    """Register or update a device token for push notifications.
+    """
+    Register or update a device token for push notifications.
 
-    Requires Bearer token authentication. The user_id is derived from the
-    token, not from the request body — this prevents push notification
-    hijacking via a forged user_id.
+Requires Bearer token authentication. The user_id is derived from the
+token, not from the request body — this prevents push notification
+hijacking via a forged user_id.
+
+    Args:
+        req (RegisterDeviceRequest): The req.
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
     """
     from helpers import verify_access_token
 
@@ -84,8 +92,15 @@ def register_device(req: RegisterDeviceRequest, authorization: str = Header(None
 
 @router.post("/api/v1/dev/push-mock")
 def push_mock(req: PushMockRequest):
-    """Dev-only mock push notification — logs payload, returns success.
-    Disabled in production. Real APNs dispatch goes through alerts.py.
+    """
+    Dev-only mock push notification — logs payload, returns success.
+Disabled in production. Real APNs dispatch goes through alerts.py.
+
+    Args:
+        req (PushMockRequest): The req.
+
+    Returns:
+        Any: The response.
     """
     import os
     if os.getenv("ENVIRONMENT", "development") == "production":
@@ -126,7 +141,15 @@ def push_mock(req: PushMockRequest):
 
 @router.get("/api/v1/admin/notification-errors")
 def get_notification_errors(authorization: str = Header(None)):
-    """Fetch the 50 most recent notification pipeline errors. Admin-only."""
+    """
+    Fetch the 50 most recent notification pipeline errors. Admin-only.
+
+    Args:
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
+    """
     require_admin(authorization)
 
     try:

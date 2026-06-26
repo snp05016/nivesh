@@ -17,7 +17,15 @@ from tradingagents.dataflows.utils import safe_ticker_component
 
 
 def _db_path(data_dir: str | Path, ticker: str) -> Path:
-    """Return the SQLite checkpoint DB path for a ticker."""
+    """Return the SQLite checkpoint DB path for a ticker.
+    
+    Args:
+        data_dir (str | Path): Base directory for data cache.
+        ticker (str): The ticker symbol.
+        
+    Returns:
+        Path: The path to the SQLite database file for the given ticker.
+    """
     # Reject ticker values that would escape the checkpoints directory.
     safe = safe_ticker_component(ticker).upper()
     p = Path(data_dir) / "checkpoints"
@@ -26,13 +34,29 @@ def _db_path(data_dir: str | Path, ticker: str) -> Path:
 
 
 def thread_id(ticker: str, date: str) -> str:
-    """Deterministic thread ID for a ticker+date pair."""
+    """Deterministic thread ID for a ticker+date pair.
+    
+    Args:
+        ticker (str): The ticker symbol.
+        date (str): The analysis date.
+        
+    Returns:
+        str: A deterministic thread ID string.
+    """
     return hashlib.sha256(f"{ticker.upper()}:{date}".encode()).hexdigest()[:16]
 
 
 @contextmanager
 def get_checkpointer(data_dir: str | Path, ticker: str) -> Generator[SqliteSaver, None, None]:
-    """Context manager yielding a SqliteSaver backed by a per-ticker DB."""
+    """Context manager yielding a SqliteSaver backed by a per-ticker DB.
+    
+    Args:
+        data_dir (str | Path): Base directory for data cache.
+        ticker (str): The ticker symbol.
+        
+    Yields:
+        SqliteSaver: The SQLite saver initialized with the connection.
+    """
     db = _db_path(data_dir, ticker)
     conn = sqlite3.connect(str(db), check_same_thread=False)
     try:
@@ -44,12 +68,30 @@ def get_checkpointer(data_dir: str | Path, ticker: str) -> Generator[SqliteSaver
 
 
 def has_checkpoint(data_dir: str | Path, ticker: str, date: str) -> bool:
-    """Check whether a resumable checkpoint exists for ticker+date."""
+    """Check whether a resumable checkpoint exists for ticker+date.
+    
+    Args:
+        data_dir (str | Path): Base directory for data cache.
+        ticker (str): The ticker symbol.
+        date (str): The analysis date.
+        
+    Returns:
+        bool: True if a checkpoint exists, False otherwise.
+    """
     return checkpoint_step(data_dir, ticker, date) is not None
 
 
 def checkpoint_step(data_dir: str | Path, ticker: str, date: str) -> int | None:
-    """Return the step number of the latest checkpoint, or None if none exists."""
+    """Return the step number of the latest checkpoint, or None if none exists.
+    
+    Args:
+        data_dir (str | Path): Base directory for data cache.
+        ticker (str): The ticker symbol.
+        date (str): The analysis date.
+        
+    Returns:
+        int | None: The step number of the latest checkpoint, or None.
+    """
     db = _db_path(data_dir, ticker)
     if not db.exists():
         return None
@@ -63,7 +105,14 @@ def checkpoint_step(data_dir: str | Path, ticker: str, date: str) -> int | None:
 
 
 def clear_all_checkpoints(data_dir: str | Path) -> int:
-    """Remove all checkpoint DBs. Returns number of files deleted."""
+    """Remove all checkpoint DBs.
+    
+    Args:
+        data_dir (str | Path): Base directory for data cache.
+        
+    Returns:
+        int: The number of checkpoint database files deleted.
+    """
     cp_dir = Path(data_dir) / "checkpoints"
     if not cp_dir.exists():
         return 0
@@ -74,7 +123,13 @@ def clear_all_checkpoints(data_dir: str | Path) -> int:
 
 
 def clear_checkpoint(data_dir: str | Path, ticker: str, date: str) -> None:
-    """Remove checkpoint for a specific ticker+date by deleting the thread's rows."""
+    """Remove checkpoint for a specific ticker+date by deleting the thread's rows.
+    
+    Args:
+        data_dir (str | Path): Base directory for data cache.
+        ticker (str): The ticker symbol.
+        date (str): The analysis date.
+    """
     db = _db_path(data_dir, ticker)
     if not db.exists():
         return

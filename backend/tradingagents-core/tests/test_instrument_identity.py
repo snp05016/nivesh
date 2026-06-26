@@ -21,6 +21,7 @@ class ResolveInstrumentIdentityTests(unittest.TestCase):
         resolve_instrument_identity.cache_clear()
 
     def test_resolves_company_metadata_from_yfinance(self):
+        """Verify that company metadata is correctly resolved from yfinance info."""
         with patch("tradingagents.agents.utils.agent_utils.yf.Ticker") as mock:
             mock.return_value.info = {
                 "longName": "TOTO LTD.",
@@ -38,18 +39,21 @@ class ResolveInstrumentIdentityTests(unittest.TestCase):
         self.assertEqual(identity["exchange"], "PNK")
 
     def test_falls_back_to_short_name(self):
+        """Verify that missing longName falls back to shortName."""
         with patch("tradingagents.agents.utils.agent_utils.yf.Ticker") as mock:
             mock.return_value.info = {"shortName": "TOTO", "sector": "Industrials"}
             identity = resolve_instrument_identity("TOTDY")
         self.assertEqual(identity["company_name"], "TOTO")
 
     def test_skips_placeholder_values(self):
+        """Verify that placeholder or empty strings from yfinance are skipped."""
         with patch("tradingagents.agents.utils.agent_utils.yf.Ticker") as mock:
             mock.return_value.info = {"longName": "  ", "sector": "None", "industry": "n/a"}
             identity = resolve_instrument_identity("TOTDY")
         self.assertEqual(identity, {})
 
     def test_fails_open_on_exception(self):
+        """Verify that network exceptions result in an empty identity without crashing."""
         with patch(
             "tradingagents.agents.utils.agent_utils.yf.Ticker",
             side_effect=RuntimeError("rate limited"),
@@ -57,6 +61,7 @@ class ResolveInstrumentIdentityTests(unittest.TestCase):
             self.assertEqual(resolve_instrument_identity("TOTDY"), {})
 
     def test_result_is_cached(self):
+        """Verify that subsequent queries for the same symbol are served from cache."""
         with patch("tradingagents.agents.utils.agent_utils.yf.Ticker") as mock:
             mock.return_value.info = {"longName": "TOTO LTD."}
             first = resolve_instrument_identity("TOTDY")
@@ -68,12 +73,14 @@ class ResolveInstrumentIdentityTests(unittest.TestCase):
 @pytest.mark.unit
 class BuildInstrumentContextTests(unittest.TestCase):
     def test_mentions_exact_symbol_without_identity(self):
+        """Verify that without identity data, the context includes the exact symbol."""
         context = build_instrument_context("7203.T")
         self.assertIn("7203.T", context)
         self.assertIn("exchange suffix", context)
         self.assertNotIn("Resolved identity", context)
 
     def test_injects_resolved_identity(self):
+        """Verify that resolved identity data is injected into the context."""
         context = build_instrument_context(
             "TOTDY", "stock",
             {
@@ -89,6 +96,7 @@ class BuildInstrumentContextTests(unittest.TestCase):
         self.assertIn("Do not substitute a different company", context)
 
     def test_crypto_uses_name_label_and_keeps_hint(self):
+        """Verify that crypto assets get appropriate labels and hints."""
         context = build_instrument_context(
             "BTC-USD", "crypto", {"company_name": "Bitcoin USD"}
         )
@@ -99,10 +107,12 @@ class BuildInstrumentContextTests(unittest.TestCase):
 @pytest.mark.unit
 class GetInstrumentContextFromStateTests(unittest.TestCase):
     def test_prefers_precomputed_context(self):
+        """Verify that an existing precomputed context is preferred over recalculation."""
         state = {"company_of_interest": "TOTDY", "instrument_context": "PRECOMPUTED"}
         self.assertEqual(get_instrument_context_from_state(state), "PRECOMPUTED")
 
     def test_fallback_is_network_free_ticker_only(self):
+        """Verify that fallback context does not use network calls."""
         # No instrument_context and no yfinance call — must not hit the network.
         with patch("tradingagents.agents.utils.agent_utils.yf.Ticker") as mock:
             context = get_instrument_context_from_state(
@@ -112,6 +122,7 @@ class GetInstrumentContextFromStateTests(unittest.TestCase):
         self.assertIn("NVDA", context)
 
     def test_fallback_respects_asset_type(self):
+        """Verify that fallback context respects the provided asset type."""
         context = get_instrument_context_from_state(
             {"company_of_interest": "BTC-USD", "asset_type": "crypto"}
         )
@@ -133,6 +144,7 @@ class ContextAnchoredPlaceholderTests(unittest.TestCase):
         return create_msg_delete()(state)
 
     def test_placeholder_is_not_bare_continue(self):
+        """Verify that the placeholder message has more context than just 'Continue'."""
         result = self._run(
             {"company_of_interest": "EC", "asset_type": "stock", "trade_date": "2026-05-28"}
         )
@@ -141,6 +153,7 @@ class ContextAnchoredPlaceholderTests(unittest.TestCase):
         self.assertNotEqual(placeholder.content.strip(), "Continue")
 
     def test_placeholder_carries_resolved_identity(self):
+        """Verify that the placeholder message carries the resolved identity data."""
         result = self._run(
             {
                 "company_of_interest": "EC",
@@ -153,6 +166,7 @@ class ContextAnchoredPlaceholderTests(unittest.TestCase):
         self.assertIn("2026-05-28", content)
 
     def test_old_messages_are_removed(self):
+        """Verify that old messages are correctly targeted for removal."""
         result = self._run({"company_of_interest": "EC", "trade_date": "2026-05-28"})
         removals = [m for m in result["messages"] if isinstance(m, RemoveMessage)]
         humans = [m for m in result["messages"] if isinstance(m, HumanMessage)]
@@ -160,6 +174,7 @@ class ContextAnchoredPlaceholderTests(unittest.TestCase):
         self.assertEqual(len(humans), 1)
 
     def test_safe_defaults_when_state_minimal(self):
+        """Verify safe fallback behavior when the provided state is minimal."""
         result = create_msg_delete()({"messages": [], "company_of_interest": "EC"})
         placeholder = result["messages"][-1]
         self.assertNotEqual(placeholder.content.strip(), "Continue")

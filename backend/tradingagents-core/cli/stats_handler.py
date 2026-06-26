@@ -1,3 +1,4 @@
+"""Provides a callback handler to track LLM and tool usage statistics."""
 import threading
 from typing import Any, Dict, List, Union
 

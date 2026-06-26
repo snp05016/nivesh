@@ -29,8 +29,16 @@ async def copilot_chat(
 ):
     """
     Handle chat request. For fast intent resolution, we run it directly.
-    For deep analysis, we could spawn a process, but to return the response,
-    we'll await the service call which handles the processing.
+For deep analysis, we could spawn a process, but to return the response,
+we'll await the service call which handles the processing.
+
+    Args:
+        req (CopilotRequest): The req.
+        background_tasks (BackgroundTasks): The background_tasks.
+        user_id (List/Dict): The user_id.
+
+    Returns:
+        Any: The response.
     """
     try:
         # Pass everything to the service, keeping the router clean.

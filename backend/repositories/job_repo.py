@@ -52,6 +52,17 @@ def _job_to_monitor_dict(j: "AnalysisJob") -> dict:
 
 
 def create_job(user_id: Optional[int], ticker: str, exchange: str, scan_type: str) -> dict:
+    """Create a new analysis job and set its status to QUEUED.
+
+    Args:
+        user_id (Optional[int]): ID of the user requesting the job, or None.
+        ticker (str): The stock ticker symbol.
+        exchange (str): The exchange symbol.
+        scan_type (str): The type of scan to perform.
+
+    Returns:
+        dict: A dictionary representation of the created AnalysisJob.
+    """
     jid = str(uuid.uuid4())[:12]
     with _get_session() as s:
         j = AnalysisJob(job_id=jid, user_id=user_id, ticker=ticker.upper(),
@@ -63,6 +74,14 @@ def create_job(user_id: Optional[int], ticker: str, exchange: str, scan_type: st
 
 
 def get_job(job_id: str) -> Optional[dict]:
+    """Retrieve an analysis job by its ID.
+
+    Args:
+        job_id (str): The unique identifier of the job.
+
+    Returns:
+        Optional[dict]: A dictionary representation of the job, including the parsed result if successful, or None.
+    """
     with _get_session() as s:
         j = s.get(AnalysisJob, job_id)
         if not j:
@@ -77,6 +96,14 @@ def get_job(job_id: str) -> Optional[dict]:
 
 
 def update_job(job_id: str, **fields) -> None:
+    """Update fields of an existing analysis job.
+
+    Automatically handles timestamps for terminal states and running status.
+
+    Args:
+        job_id (str): The unique identifier of the job.
+        **fields: Keyword arguments representing the fields to update.
+    """
     if fields.get("status") in _JOB_TERMINAL:
         fields.setdefault("finished_at", datetime.now(timezone.utc))
     if fields.get("status") == "RUNNING":
@@ -93,6 +120,16 @@ def update_job(job_id: str, **fields) -> None:
 
 def append_checkpoint(job_id: str, *, stage: str, agent: str,
                       message: str, state: str, pct: int) -> None:
+    """Append a progress checkpoint to a job's checkpoint log.
+
+    Args:
+        job_id (str): The unique identifier of the job.
+        stage (str): The current stage of the job.
+        agent (str): The name of the agent or component reporting.
+        message (str): A descriptive message for the checkpoint.
+        state (str): The state of the checkpoint.
+        pct (int): The current progress percentage (0-100).
+    """
     with _get_session() as s:
         j = s.get(AnalysisJob, job_id)
         if not j:
@@ -108,6 +145,15 @@ def append_checkpoint(job_id: str, *, stage: str, agent: str,
 
 
 def add_job_tokens(job_id: str, n: int) -> int:
+    """Add tokens to the job's total token usage.
+
+    Args:
+        job_id (str): The unique identifier of the job.
+        n (int): The number of tokens used to add.
+
+    Returns:
+        int: The updated total number of tokens used.
+    """
     with _get_session() as s:
         j = s.get(AnalysisJob, job_id)
         if not j:
@@ -119,6 +165,14 @@ def add_job_tokens(job_id: str, n: int) -> int:
 
 
 def get_active_job_for_user(user_id: Optional[int]) -> Optional[dict]:
+    """Retrieve the most recent active job for a user.
+
+    Args:
+        user_id (Optional[int]): ID of the user.
+
+    Returns:
+        Optional[dict]: A dictionary representation of the active job, or None.
+    """
     if user_id is None:
         return None
     with _get_session() as s:

@@ -1,3 +1,7 @@
+"""CLI entrypoint for TradingAgents.
+
+Handles the interactive terminal UI, user selections, and running the analysis graph.
+"""
 from typing import Optional
 import datetime
 import typer
@@ -44,6 +48,8 @@ app = typer.Typer(
 
 # Create a deque to store recent messages with a maximum length
 class MessageBuffer:
+    """Buffer for storing and managing agent messages and statuses for CLI display."""
+    
     # Fixed teams that always run (not user-selectable)
     FIXED_AGENTS = {
         "Research Team": ["Bull Researcher", "Bear Researcher", "Research Manager"],
@@ -119,7 +125,7 @@ class MessageBuffer:
         self.tool_calls.clear()
         self._processed_message_ids.clear()
 
-    def get_completed_reports_count(self):
+    def get_completed_reports_count(self) -> int:
         """Count reports that are finalized (their finalizing agent is completed).
 
         A report is considered complete when:
@@ -127,6 +133,9 @@ class MessageBuffer:
         2. The agent responsible for finalizing that report has status "completed"
 
         This prevents interim updates (like debate rounds) from counting as completed.
+        
+        Returns:
+            int: The number of completed reports.
         """
         count = 0
         for section in self.report_sections:

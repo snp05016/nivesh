@@ -14,13 +14,27 @@ logger = get_logger("health")
 
 @router.get("/api/v1/ping")
 def ping():
-    """Lightweight liveness check — no dependency checks."""
+    """
+    Lightweight liveness check — no dependency checks.
+
+    Args:
+
+    Returns:
+        Any: The response.
+    """
     return {"status": "ok"}
 
 
 @router.get("/health")
 def health_lite():
-    """iOS health check alias — lightweight 200 with no dependency checks."""
+    """
+    iOS health check alias — lightweight 200 with no dependency checks.
+
+    Args:
+
+    Returns:
+        Any: The response.
+    """
     return {"status": "ok"}
 
 
@@ -28,8 +42,13 @@ def health_lite():
 def healthz():
     """
     System health check. Returns status of each component.
-    200 = all critical components healthy.
-    503 = one or more critical components down.
+200 = all critical components healthy.
+503 = one or more critical components down.
+
+    Args:
+
+    Returns:
+        Any: The response.
     """
     results: dict = {}
     overall_ok = True

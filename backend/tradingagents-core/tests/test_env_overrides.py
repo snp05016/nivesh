@@ -19,6 +19,7 @@ def _reload_with_env(monkeypatch, **overrides):
 
 
 def test_no_env_uses_built_in_defaults(monkeypatch):
+    """Verify that when no environment variables are set, the default config is preserved."""
     dc = _reload_with_env(monkeypatch)
     assert dc.DEFAULT_CONFIG["llm_provider"] == "openai"
     assert dc.DEFAULT_CONFIG["deep_think_llm"] == "gpt-5.5"
@@ -29,6 +30,7 @@ def test_no_env_uses_built_in_defaults(monkeypatch):
 
 
 def test_string_overrides(monkeypatch):
+    """Verify that string-based environment variables properly override the default config."""
     dc = _reload_with_env(
         monkeypatch,
         TRADINGAGENTS_LLM_PROVIDER="google",
@@ -45,6 +47,7 @@ def test_string_overrides(monkeypatch):
 
 
 def test_int_coercion(monkeypatch):
+    """Verify that integer-based environment variables are correctly coerced and override defaults."""
     dc = _reload_with_env(
         monkeypatch,
         TRADINGAGENTS_MAX_DEBATE_ROUNDS="3",
@@ -64,6 +67,7 @@ def test_int_coercion(monkeypatch):
     ],
 )
 def test_bool_coercion(monkeypatch, raw, expected):
+    """Verify that various boolean string formats are correctly coerced."""
     dc = _reload_with_env(monkeypatch, TRADINGAGENTS_CHECKPOINT_ENABLED=raw)
     assert dc.DEFAULT_CONFIG["checkpoint_enabled"] is expected
 

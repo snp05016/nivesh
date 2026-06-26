@@ -1,3 +1,9 @@
+"""Google Gemini client implementation.
+
+This module provides the Google-specific implementation of the LLM client,
+handling Gemini's capabilities and configuration formats.
+"""
+
 from typing import Any, Optional
 
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -14,6 +20,16 @@ class NormalizedChatGoogleGenerativeAI(ChatGoogleGenerativeAI):
     """
 
     def invoke(self, input, config=None, **kwargs):
+        """Invoke the Google Gemini chat model and normalize the output.
+
+        Args:
+            input: The input messages or prompt to process.
+            config: Optional configuration dictionary.
+            **kwargs: Additional keyword arguments for the invocation.
+
+        Returns:
+            The normalized response from the LLM.
+        """
         return normalize_content(super().invoke(input, config, **kwargs))
 
 
@@ -21,10 +37,21 @@ class GoogleClient(BaseLLMClient):
     """Client for Google Gemini models."""
 
     def __init__(self, model: str, base_url: Optional[str] = None, **kwargs):
+        """Initialize the Google Gemini client.
+
+        Args:
+            model: The name of the model to use.
+            base_url: Optional base URL for the API endpoint.
+            **kwargs: Additional client-specific configuration.
+        """
         super().__init__(model, base_url, **kwargs)
 
     def get_llm(self) -> Any:
-        """Return configured ChatGoogleGenerativeAI instance."""
+        """Return configured ChatGoogleGenerativeAI instance.
+
+        Returns:
+            A NormalizedChatGoogleGenerativeAI instance configured with the provided settings.
+        """
         self.warn_if_unknown_model()
         llm_kwargs = {"model": self.model}
 
@@ -59,5 +86,9 @@ class GoogleClient(BaseLLMClient):
         return NormalizedChatGoogleGenerativeAI(**llm_kwargs)
 
     def validate_model(self) -> bool:
-        """Validate model for Google."""
+        """Validate model for Google.
+
+        Returns:
+            True if the model is a valid Google model, False otherwise.
+        """
         return validate_model("google", self.model)

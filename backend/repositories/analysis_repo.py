@@ -10,7 +10,19 @@ from models.db_models import AnalysisHistory, SignalEvent
 
 
 def save_analysis(session: Session, user_id: Optional[int], ticker: str, result: dict, raw_output: Optional[str] = None, scan_type: str = "standard") -> dict:
-    """Save analysis. Returns result dict enriched with signal_changed and previous_signal."""
+    """Save analysis to the database and track signal changes.
+
+    Args:
+        session (Session): The SQLAlchemy database session.
+        user_id (Optional[int]): ID of the user requesting the analysis, or None.
+        ticker (str): The stock ticker symbol.
+        result (dict): The parsed analysis results dictionary.
+        raw_output (Optional[str], optional): The raw text output from the model. Defaults to None.
+        scan_type (str, optional): The type of scan performed. Defaults to "standard".
+
+    Returns:
+        dict: The enriched result dictionary, including 'signal_changed' and 'previous_signal'.
+    """
     ticker = ticker.upper()
     tp = result.get("target_prices") or {}
     new_signal = result.get("signal", "UNKNOWN")
@@ -85,6 +97,17 @@ def save_analysis(session: Session, user_id: Optional[int], ticker: str, result:
 def get_recent_analyses(
     session: Session, user_id: Optional[int], ticker: str, limit: int = 3
 ) -> list[dict]:
+    """Retrieve recent analysis results for a specific ticker.
+
+    Args:
+        session (Session): The SQLAlchemy database session.
+        user_id (Optional[int]): ID of the user, or None to ignore user filtering.
+        ticker (str): The stock ticker symbol.
+        limit (int, optional): Maximum number of records to return. Defaults to 3.
+
+    Returns:
+        list[dict]: A list of parsed analysis result dictionaries, ordered oldest to newest.
+    """
     q = session.query(AnalysisHistory).filter(AnalysisHistory.ticker == ticker)
     if user_id is not None:
         q = q.filter(AnalysisHistory.user_id == user_id)
@@ -93,8 +116,17 @@ def get_recent_analyses(
 
 
 def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_type: str = "standard") -> Optional[dict]:
-    """Return the last analysis for ticker+scan_type regardless of date.
-    Includes _staleness_hours, _staleness_label, _staleness_score, and _staleness_urgency."""
+    """Return the last analysis for a ticker and scan type, enriched with staleness metrics.
+
+    Args:
+        session (Session): The SQLAlchemy database session.
+        ticker (str): The stock ticker symbol.
+        target_date (str): The target date string (currently ignored, fetches latest).
+        scan_type (str, optional): The type of scan to filter by. Defaults to "standard".
+
+    Returns:
+        Optional[dict]: The parsed analysis dictionary with staleness metrics, or None if not found.
+    """
     from services.staleness import compute_staleness as _cs
     row = (
         session.query(AnalysisHistory)
@@ -128,6 +160,17 @@ def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_
 
 
 def get_all_ticker_history(session: Session, ticker: str, user_id: Optional[int] = None, limit: int = 50) -> list[dict]:
+    """Retrieve all historical analysis results for a ticker.
+
+    Args:
+        session (Session): The SQLAlchemy database session.
+        ticker (str): The stock ticker symbol.
+        user_id (Optional[int], optional): ID of the user to filter by. Defaults to None.
+        limit (int, optional): Maximum number of records to return. Defaults to 50.
+
+    Returns:
+        list[dict]: A list of historical analysis dictionaries.
+    """
     q = session.query(AnalysisHistory).filter(AnalysisHistory.ticker == ticker.upper())
     if user_id is not None:
         q = q.filter(AnalysisHistory.user_id == user_id)

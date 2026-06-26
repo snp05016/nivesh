@@ -83,12 +83,18 @@ def compute_strategy_payoff(req: OptionsPayoffRequest):
     """
     Compute the P&L payoff curve and key metrics for a multi-leg options strategy.
 
-    Accepts up to 10 legs. Each leg specifies CALL/PUT, LONG/SHORT, strike, and premium.
-    Returns the full payoff vector (100 price points ±20% around spot) plus:
-    - Max profit, max loss (or "Unlimited" if uncapped)
-    - Breakeven points
-    - Net premium (credit/debit)
-    - Strategy classification (e.g. "Iron Condor", "Bull Call Spread")
+Accepts up to 10 legs. Each leg specifies CALL/PUT, LONG/SHORT, strike, and premium.
+Returns the full payoff vector (100 price points ±20% around spot) plus:
+- Max profit, max loss (or "Unlimited" if uncapped)
+- Breakeven points
+- Net premium (credit/debit)
+- Strategy classification (e.g. "Iron Condor", "Bull Call Spread")
+
+    Args:
+        req (OptionsPayoffRequest): The req.
+
+    Returns:
+        Any: The response.
     """
     if len(req.legs) > 10:
         raise HTTPException(status_code=400, detail="Maximum 10 legs supported.")

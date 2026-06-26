@@ -1,10 +1,21 @@
+"""Investment brainstorming service.
+
+This module provides an interface to an LLM to generate thematic investment strategies
+and stock ideas based on user-provided topics and risk tolerances.
+"""
 import json
 from services.llm_utils import _deepseek_chat
 from helpers import _extract_json_from_text
 
 def generate_brainstorming_ideas(topic: str, risk_tolerance: str) -> dict:
-    """
-    Generate 3-5 investment strategies related to the topic, and suggest Indian stock tickers.
+    """Generates 3-5 investment strategies related to the topic, suggesting Indian stock tickers.
+
+    Args:
+        topic (str): The investment theme or topic to brainstorm around.
+        risk_tolerance (str): The user's risk tolerance profile.
+
+    Returns:
+        dict: A dictionary containing a list of generated ideas with titles, descriptions, and tickers.
     """
     prompt = f"""You are a financial advisor for the Indian stock market.
 The user wants to brainstorm investment ideas based on the following topic: "{topic}".

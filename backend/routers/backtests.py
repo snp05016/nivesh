@@ -14,6 +14,12 @@ router = APIRouter()
 def backtest_alpha_validation(params: BacktestParams):
     """
     Run the Realistic Alpha Validation Engine over historical predictions.
+
+    Args:
+        params (BacktestParams): The params.
+
+    Returns:
+        Any: The response.
     """
     try:
         return run_alpha_validation(params)
@@ -24,7 +30,12 @@ def backtest_alpha_validation(params: BacktestParams):
 def backtest_strategy_sweep():
     """
     Sweep across parameters (confidence, holding period, position sizing, top_k)
-    to find the optimal robust strategy.
+to find the optimal robust strategy.
+
+    Args:
+
+    Returns:
+        Any: The response.
     """
     try:
         return run_strategy_sweep()
@@ -35,6 +46,12 @@ def backtest_strategy_sweep():
 def backtest_regime_breakdown(params: BacktestParams):
     """
     Slice backtest results by market regimes (bull vs bear vs choppy).
+
+    Args:
+        params (BacktestParams): The params.
+
+    Returns:
+        Any: The response.
     """
     try:
         return run_regime_breakdown(params)
@@ -45,7 +62,12 @@ def backtest_regime_breakdown(params: BacktestParams):
 def backtest_cost_sensitivity():
     """
     Check alpha degradation across 'zero_cost', 'optimistic', 'realistic_retail',
-    'institutional', and 'conservative' cost assumptions.
+'institutional', and 'conservative' cost assumptions.
+
+    Args:
+
+    Returns:
+        Any: The response.
     """
     results = {}
     presets: list[str] = ["zero_cost", "optimistic", "realistic_retail", "conservative", "institutional"]

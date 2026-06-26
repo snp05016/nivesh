@@ -1,3 +1,6 @@
+"""
+Test script for testing HTTP requests to the NSE India API using a custom session and headers.
+"""
 import requests
 s = requests.Session()
 s.headers.update({

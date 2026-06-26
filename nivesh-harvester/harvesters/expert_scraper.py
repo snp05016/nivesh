@@ -151,7 +151,14 @@ _TICKER_STOP_WORDS = frozenset(
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _clean_text(html_or_text: str) -> str:
-    """Strip HTML tags and collapse whitespace."""
+    """Strip HTML tags and collapse whitespace.
+
+    Args:
+        html_or_text (str): The HTML or plain text string.
+
+    Returns:
+        str: Cleaned text without HTML and collapsed whitespace.
+    """
     if not html_or_text:
         return ""
     soup = BeautifulSoup(html_or_text, "html.parser")
@@ -165,7 +172,15 @@ def _clean_text(html_or_text: str) -> str:
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _extract_article_links(listing_html: str, base_url: str) -> list[str]:
-    """Return absolute article hrefs from a listing page HTML."""
+    """Return absolute article hrefs from a listing page HTML.
+
+    Args:
+        listing_html (str): The HTML content of the listing page.
+        base_url (str): The base URL to resolve relative links.
+
+    Returns:
+        list[str]: A list of absolute URLs to individual articles.
+    """
     soup = BeautifulSoup(listing_html, "html.parser")
     from urllib.parse import urljoin, urlparse
 
@@ -210,7 +225,14 @@ def _extract_article_links(listing_html: str, base_url: str) -> list[str]:
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _extract_article_text(article_html: str) -> str:
-    """Extract main article body text from HTML. Limit 6000 chars."""
+    """Extract main article body text from HTML. Limit 6000 chars.
+
+    Args:
+        article_html (str): The HTML content of the article page.
+
+    Returns:
+        str: The extracted and cleaned body text.
+    """
     soup = BeautifulSoup(article_html, "html.parser")
 
     # Remove nav/footer/header/aside/script/style noise.
@@ -245,7 +267,14 @@ def _extract_article_text(article_html: str) -> str:
 
 
 def _extract_title(article_html: str) -> str:
-    """Extract page title from article HTML."""
+    """Extract page title from article HTML.
+
+    Args:
+        article_html (str): The HTML content of the article page.
+
+    Returns:
+        str: The extracted title string.
+    """
     soup = BeautifulSoup(article_html, "html.parser")
 
     # Prefer OG title, then h1, then <title>.
@@ -265,7 +294,14 @@ def _extract_title(article_html: str) -> str:
 
 
 def _extract_article_author(article_html: str) -> Optional[str]:
-    """Extract byline author name from article HTML. Returns None if not found."""
+    """Extract byline author name from article HTML. Returns None if not found.
+
+    Args:
+        article_html (str): The HTML content of the article page.
+
+    Returns:
+        Optional[str]: The extracted author name or None.
+    """
     soup = BeautifulSoup(article_html, "html.parser")
 
     # 1. JSON-LD structured data.
@@ -336,7 +372,14 @@ _EXPERT_QUOTE_RE = re.compile(
 
 
 def _extract_expert_quotes(text: str) -> list[str]:
-    """Return list of excerpt strings that contain an attributable expert quote."""
+    """Return list of excerpt strings that contain an attributable expert quote.
+
+    Args:
+        text (str): The source text to scan for quotes.
+
+    Returns:
+        list[str]: A list of extracted quote snippets.
+    """
     quotes: list[str] = []
     for match in _EXPERT_QUOTE_RE.finditer(text):
         start = max(0, match.start() - 50)
@@ -352,7 +395,14 @@ def _extract_expert_quotes(text: str) -> list[str]:
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _detect_tickers(text: str) -> list[str]:
-    """Heuristically extract NSE-style ticker symbols from free text."""
+    """Heuristically extract NSE-style ticker symbols from free text.
+
+    Args:
+        text (str): The text to search for tickers.
+
+    Returns:
+        list[str]: A list of unique ticker symbols found.
+    """
     found: list[str] = []
     for match in _TICKER_RE.finditer(text):
         sym = match.group(1).upper()
@@ -368,7 +418,14 @@ def _detect_tickers(text: str) -> list[str]:
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _fetch(url: str) -> Optional[requests.Response]:
-    """GET with browser headers and timeout. Returns None on any error."""
+    """GET with browser headers and timeout. Returns None on any error.
+
+    Args:
+        url (str): The URL to fetch.
+
+    Returns:
+        Optional[requests.Response]: The HTTP response object or None on failure.
+    """
     try:
         resp = requests.get(url, headers=_BROWSER_HEADERS, timeout=_TIMEOUT)
         if resp.status_code == 200:
@@ -395,7 +452,21 @@ def _make_card(
     published_at: Optional[str] = None,
     tickers: Optional[list[str]] = None,
 ) -> dict:
-    """Assemble a raw card dict with all required keys."""
+    """Assemble a raw card dict with all required keys.
+
+    Args:
+        source_type (str): Type of the source.
+        source_name (str): Name of the source.
+        source_url (str): URL of the article.
+        title (str): Title of the article.
+        raw_text (str): Extracted body text.
+        original_author (Optional[str], optional): Original author name. Defaults to None.
+        published_at (Optional[str], optional): Publication timestamp. Defaults to None.
+        tickers (Optional[list[str]], optional): List of associated tickers. Defaults to None.
+
+    Returns:
+        dict: A fully populated raw card dictionary.
+    """
     if tickers is None:
         tickers = _detect_tickers(raw_text)
     ext_id = make_external_id(source_url, raw_text)
@@ -420,7 +491,14 @@ def _make_card(
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _scrape_rating_feed(feed_cfg: dict) -> list[dict]:
-    """Parse one credit-rating RSS feed and return raw cards."""
+    """Parse one credit-rating RSS feed and return raw cards.
+
+    Args:
+        feed_cfg (dict): The configuration dictionary for the feed.
+
+    Returns:
+        list[dict]: A list of raw card dictionaries from the feed.
+    """
     url = feed_cfg["url"]
     source_type = feed_cfg["source_type"]
     source_name = feed_cfg["source_name"]
@@ -475,7 +553,11 @@ def _scrape_rating_feed(feed_cfg: dict) -> list[dict]:
 
 
 def _scrape_all_rating_agencies() -> list[dict]:
-    """Scrape all four credit-rating RSS feeds."""
+    """Scrape all four credit-rating RSS feeds.
+
+    Returns:
+        list[dict]: A combined list of raw card dictionaries from all feeds.
+    """
     cards: list[dict] = []
     for feed_cfg in _RATING_FEEDS:
         try:
@@ -491,7 +573,11 @@ def _scrape_all_rating_agencies() -> list[dict]:
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _scrape_cnbc_expert_views() -> list[dict]:
-    """Scrape CNBC-TV18 expert-view articles. Returns raw cards."""
+    """Scrape CNBC-TV18 expert-view articles. Returns raw cards.
+
+    Returns:
+        list[dict]: A list of raw card dictionaries.
+    """
     cards: list[dict] = []
     seen_urls: set[str] = set()
 
@@ -560,14 +646,25 @@ def _scrape_cnbc_expert_views() -> list[dict]:
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _is_wire_service_author(author: Optional[str]) -> bool:
-    """Return True if author matches a known wire-service byline to skip."""
+    """Return True if author matches a known wire-service byline to skip.
+
+    Args:
+        author (Optional[str]): The author name to check.
+
+    Returns:
+        bool: True if the author is a wire service, False otherwise.
+    """
     if not author:
         return True  # No named author → treat as wire/anonymous → skip.
     return author.strip().lower() in _WIRE_SERVICE_AUTHORS
 
 
 def _scrape_moneycontrol_expert_columns() -> list[dict]:
-    """Scrape Moneycontrol expert columns, skipping wire-service reposts."""
+    """Scrape Moneycontrol expert columns, skipping wire-service reposts.
+
+    Returns:
+        list[dict]: A list of raw card dictionaries.
+    """
     cards: list[dict] = []
     seen_urls: set[str] = set()
 
@@ -625,6 +722,9 @@ def _scrape_sebi_ria_registry() -> list[dict]:
     Emit ONE reference card about the SEBI Registered Investment Advisor
     registry. Even if the page fetch fails we still emit the metadata card —
     it describes source availability, not fabricated market data.
+
+    Returns:
+        list[dict]: A list containing the single reference card.
     """
     source_type = "SEBI_RIA_NOTE"
     source_name = "SEBI RIA Registry"
@@ -676,6 +776,9 @@ def _scrape_amfi_nav_data() -> list[dict]:
     """
     Emit ONE reference card summarising AMFI NAV data availability.
     Emitted even on fetch failure.
+
+    Returns:
+        list[dict]: A list containing the single reference card.
     """
     source_type = "AMFI_DATA"
     source_name = "AMFI Mutual Fund Data"
@@ -739,6 +842,9 @@ def scrape_all_expert_sources() -> list[dict]:
     """Run all five expert sources, return combined RAW card dicts.
 
     Filters out anything with credibility_score < 5. NEVER raises.
+
+    Returns:
+        list[dict]: A filtered list of all harvested raw card dictionaries.
     """
     all_cards: list[dict] = []
 

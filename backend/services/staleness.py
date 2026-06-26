@@ -41,6 +41,23 @@ def compute_staleness(
     earnings_window: bool = False,
     fii_outflow_crores: float = 0.0,
 ) -> dict:
+    """
+    Compute the staleness score of a stock's analysis to prioritize re-analysis.
+
+    Args:
+        last_analysis_date (Optional[datetime]): Timestamp of the last analysis.
+        price_change_7d_pct (float): Percentage change in price over the last 7 days.
+        signal (str): The current signal (e.g., 'HOLD', 'BULLISH', 'BEARISH'). Defaults to "HOLD".
+        is_ex_dividend (bool): Whether the stock recently went ex-dividend. Defaults to False.
+        governance_event_detected (bool): Whether a governance event was detected. Defaults to False.
+        pledge_spike_pct (float): Percentage spike in pledged promoter shares. Defaults to 0.0.
+        vix_spike (bool): Whether a volatility spike was detected. Defaults to False.
+        earnings_window (bool): Whether the stock is in an earnings window. Defaults to False.
+        fii_outflow_crores (float): Institutional outflow in Crores. Defaults to 0.0.
+
+    Returns:
+        dict: A dictionary containing the 'score' (0-100), 'urgency' category, and a 'reason' string.
+    """
     score = 0
     reasons = []
 

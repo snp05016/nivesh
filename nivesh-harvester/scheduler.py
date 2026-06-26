@@ -54,7 +54,11 @@ SOURCE_ROSTER = [
 
 
 def seed_source_health() -> None:
-    """Insert a SourceHealth row for each known source if not already present."""
+    """Insert a SourceHealth row for each known source if not already present.
+
+    Returns:
+        None
+    """
     try:
         with get_session() as s:
             existing = {r.source_name for r in s.query(SourceHealth.source_name).all()}
@@ -74,6 +78,12 @@ def reformat_pending(limit: int = 40) -> int:
 
     Updates the card in place with the DeepSeek output, or DELETES it if the
     reformatter rejects it (credibility < 5). Returns the number reformatted.
+
+    Args:
+        limit (int, optional): Maximum number of cards to process. Defaults to 40.
+
+    Returns:
+        int: The number of cards successfully reformatted.
     """
     done = 0
     try:
@@ -128,6 +138,14 @@ def reformat_pending(limit: int = 40) -> int:
 # ═════════════════════════════════════════════════════════════════════════════
 
 def run_sebi_job(limit: int = 30) -> dict:
+    """Execute the SEBI filings harvest job.
+
+    Args:
+        limit (int, optional): Maximum number of filings to fetch. Defaults to 30.
+
+    Returns:
+        dict: A dictionary containing counts of stored and reformatted cards.
+    """
     logger.info("[job:sebi] start")
     stored = harvest_sebi_filings(limit=limit)
     reformatted = reformat_pending(limit=max(stored, 10))
@@ -136,6 +154,14 @@ def run_sebi_job(limit: int = 30) -> dict:
 
 
 def run_expert_job(limit: int = 30) -> dict:
+    """Execute the expert sources harvest job.
+
+    Args:
+        limit (int, optional): Maximum number of items to process. Defaults to 30.
+
+    Returns:
+        dict: A dictionary containing counts of stored and reformatted cards.
+    """
     logger.info("[job:expert] start")
     stored = 0
     seen: dict[str, int] = {}
@@ -159,6 +185,14 @@ def run_expert_job(limit: int = 30) -> dict:
 
 
 def run_youtube_job(limit: int = 20) -> dict:
+    """Execute the YouTube finance channels harvest job.
+
+    Args:
+        limit (int, optional): Maximum number of videos to process. Defaults to 20.
+
+    Returns:
+        dict: A dictionary containing counts of stored and reformatted cards.
+    """
     logger.info("[job:youtube] start")
     stored = harvest_youtube_transcripts(limit=limit)
     reformatted = reformat_pending(limit=max(stored, 10))
@@ -167,7 +201,18 @@ def run_youtube_job(limit: int = 20) -> dict:
 
 
 def run_scrape(source: str, limit: int = 20) -> dict:
-    """Synchronous manual trigger used by POST /harvester/trigger/scrape."""
+    """Synchronous manual trigger used by POST /harvester/trigger/scrape.
+
+    Args:
+        source (str): The identifier of the source to scrape ('sebi', 'expert', 'youtube').
+        limit (int, optional): Maximum number of items to process. Defaults to 20.
+
+    Returns:
+        dict: Result dictionary from the respective job.
+
+    Raises:
+        ValueError: If an unknown source identifier is provided.
+    """
     source = (source or "").lower().strip()
     if source == "sebi":
         return run_sebi_job(limit=limit)
@@ -183,6 +228,11 @@ def run_scrape(source: str, limit: int = 20) -> dict:
 # ═════════════════════════════════════════════════════════════════════════════
 
 def start_scheduler() -> None:
+    """Initialize and start the background job scheduler.
+
+    Returns:
+        None
+    """
     global _scheduler
     if _scheduler is not None:
         return
@@ -215,7 +265,11 @@ def start_scheduler() -> None:
 
 
 def _initial_warmup() -> None:
-    """Best-effort first scrape so /feed isn't empty right after startup."""
+    """Best-effort first scrape so /feed isn't empty right after startup.
+
+    Returns:
+        None
+    """
     for fn in (run_expert_job, run_sebi_job):
         try:
             fn()
@@ -224,6 +278,11 @@ def _initial_warmup() -> None:
 
 
 def stop_scheduler() -> None:
+    """Stop the background job scheduler gracefully.
+
+    Returns:
+        None
+    """
     global _scheduler
     if _scheduler is not None:
         try:

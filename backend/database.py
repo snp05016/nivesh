@@ -1,4 +1,8 @@
-"""SQLite / PostgreSQL database setup, session management, and seed data."""
+"""SQLite / PostgreSQL database setup, session management, and seed data.
+
+Handles database engine initialization, SQLAlchemy session dependency generation,
+and basic CRUD operations that don't belong to a specific domain repository.
+"""
 
 from __future__ import annotations
 
@@ -57,6 +61,14 @@ SessionLocal = sessionmaker(bind=ENGINE, autoflush=False, autocommit=False)
 
 @contextmanager
 def get_session() -> Session:
+    """Provide a transactional scope around a series of operations.
+    
+    Yields:
+        Session: SQLAlchemy session object.
+    
+    Raises:
+        Exception: Re-raises any exception after rolling back the transaction.
+    """
     session = SessionLocal()
     try:
         yield session
@@ -98,9 +110,19 @@ _PYTHON_RESERVED_TICKERS = {
 
 def _validate_ticker_safe(ticker: str) -> str:
     """Ensure ticker string is safe for database operations.
+    
     Returns cleaned ticker. Raises ValueError for empty/invalid input.
     SQLAlchemy ORM parameterization handles keyword tickers safely —
     this is a defense-in-depth check for raw SQL usage.
+    
+    Args:
+        ticker (str): The stock ticker symbol to validate.
+        
+    Returns:
+        str: The validated and cleaned ticker symbol.
+        
+    Raises:
+        ValueError: If the ticker is empty, too long, or invalid.
     """
     ticker = ticker.strip().upper()
     if not ticker:
@@ -121,11 +143,28 @@ def _validate_ticker_safe(ticker: str) -> str:
 # ---------------------------------------------------------------------------
 
 def _hash_password(password: str) -> str:
+    """Hash a plaintext password using bcrypt.
+    
+    Args:
+        password (str): The plaintext password to hash.
+        
+    Returns:
+        str: The bcrypt hash string.
+    """
     salt = bcrypt.gensalt(rounds=12)
     return bcrypt.hashpw(password.encode(), salt).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
+    """Verify a plaintext password against a hash.
+    
+    Args:
+        plain (str): The plaintext password.
+        hashed (str): The expected hash (bcrypt or SHA-256).
+        
+    Returns:
+        bool: True if the password matches, False otherwise.
+    """
     try:
         if hashed.startswith("$2"):
             return bcrypt.checkpw(plain.encode(), hashed.encode())
@@ -175,6 +214,11 @@ DAD_HOLDINGS = [
 
 
 def init_db() -> None:
+    """Initialize the database schema and seed initial data.
+    
+    Creates all tables if they don't exist and seeds default users
+    and portfolio holdings if the database is empty.
+    """
     Base.metadata.create_all(ENGINE)
 
     with get_session() as session:
@@ -221,6 +265,16 @@ def init_db() -> None:
 # ---------------------------------------------------------------------------
 
 def get_user_by_credentials(session: Session, username: str, password: str) -> Optional[User]:
+    """Retrieve a user by verifying their credentials.
+    
+    Args:
+        session (Session): The database session.
+        username (str): The user's username.
+        password (str): The plaintext password to verify.
+        
+    Returns:
+        Optional[User]: The matching user if credentials are valid, None otherwise.
+    """
     user = session.query(User).filter_by(username=username.lower().strip()).first()
     if user and verify_password(password, user.password_hash):
         return user
@@ -229,7 +283,16 @@ def get_user_by_credentials(session: Session, username: str, password: str) -> O
 
 def get_last_analysis_any_type(session: Session, ticker: str) -> Optional[dict]:
     """Return the most recent analysis for a ticker across all scan types.
-    Priority: extreme > deep > standard. Returns analysis dict or None."""
+    
+    Priority: extreme > deep > standard.
+    
+    Args:
+        session (Session): The database session.
+        ticker (str): The stock ticker symbol.
+        
+    Returns:
+        Optional[dict]: The most recent analysis as a dictionary, or None.
+    """
     from services.staleness import compute_staleness as _cs
     for scan in ("extreme", "deep", "standard"):
         row = (
@@ -264,6 +327,17 @@ def get_last_analysis_any_type(session: Session, ticker: str) -> Optional[dict]:
 
 
 def create_user(session: Session, username: str, password: str, display_name: str) -> Optional[User]:
+    """Create a new user in the database.
+    
+    Args:
+        session (Session): The database session.
+        username (str): The username for the new account.
+        password (str): The plaintext password.
+        display_name (str): The display name for the user.
+        
+    Returns:
+        Optional[User]: The created User object, or None if creation failed.
+    """
     try:
         password_hash = _hash_password(password)
         user = User(username=username.lower(), password_hash=password_hash, display_name=display_name)
@@ -290,6 +364,14 @@ _admin_users: set[int] = set()
 
 
 def create_access_token(user_id: int) -> str:
+    """Create a JWT access token for authentication.
+    
+    Args:
+        user_id (int): The ID of the user.
+        
+    Returns:
+        str: The encoded JWT token.
+    """
     payload = {
         "sub": str(user_id),
         "iat": datetime.now(timezone.utc),
@@ -299,6 +381,14 @@ def create_access_token(user_id: int) -> str:
 
 
 def verify_access_token(token: str) -> Optional[int]:
+    """Verify a JWT access token and return the user ID.
+    
+    Args:
+        token (str): The JWT token to verify.
+        
+    Returns:
+        Optional[int]: The user ID if token is valid, None otherwise.
+    """
     try:
         payload = pyjwt.decode(token, _JWT_SECRET, algorithms=[_JWT_ALGORITHM])
         sub = payload.get("sub")
@@ -308,16 +398,30 @@ def verify_access_token(token: str) -> Optional[int]:
 
 
 def set_admin(user_id: int) -> None:
+    """Grant admin privileges to a user in the current process.
+    
+    Args:
+        user_id (int): The ID of the user to promote.
+    """
     with _admin_lock:
         _admin_users.add(user_id)
 
 
 def is_admin(user_id: int) -> bool:
+    """Check if a user has admin privileges.
+    
+    Args:
+        user_id (int): The user ID to check.
+        
+    Returns:
+        bool: True if the user is an admin, False otherwise.
+    """
     with _admin_lock:
         return user_id in _admin_users
 
 
 def promote_initial_admins() -> None:
+    """Promote the default seed users to admin status."""
     with get_session() as session:
         admins = session.query(User).filter(User.username.in_(["saumya", "nirav"])).all()
         for u in admins:

@@ -1,3 +1,9 @@
+"""Default configuration and environment variable overrides.
+
+This module defines the default configuration dictionary for the TradingAgents
+framework and provides mechanisms to override these defaults using environment variables.
+"""
+
 import os
 
 _TRADINGAGENTS_HOME = os.path.join(os.path.expanduser("~"), ".tradingagents")

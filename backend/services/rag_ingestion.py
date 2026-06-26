@@ -21,6 +21,11 @@ _model: SentenceTransformer | None = None
 
 
 def _get_embedding_model() -> SentenceTransformer:
+    """Retrieve the singleton SentenceTransformer model, initializing it if necessary.
+
+    Returns:
+        SentenceTransformer: The instantiated MiniLM embedding model.
+    """
     global _model
     if _model is None:
         _model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -29,11 +34,26 @@ def _get_embedding_model() -> SentenceTransformer:
 
 
 def _make_chunk_id(ticker: str, date_str: str, doc_type: str, chunk_idx: int) -> str:
+    """Generate a unique ID for a document chunk.
+
+    Args:
+        ticker (str): The stock ticker associated with the document.
+        date_str (str): The published date of the document.
+        doc_type (str): The type of the document (e.g., 'news_article').
+        chunk_idx (int): The sequential index of the chunk.
+
+    Returns:
+        str: A unique identifier for the chunk.
+    """
     return f"{ticker}_{date_str}_{doc_type}_chunk{chunk_idx}"
 
 
 def ingest_all() -> int:
-    """Ingest all existing NewsArticles and AdvisorInsights. Returns count of chunks upserted."""
+    """Ingest all existing NewsArticles and AdvisorInsights. Returns count of chunks upserted.
+    
+    Returns:
+        int: The total number of document chunks successfully upserted into the vector store.
+    """
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP,
         separators=["\n\n", "\n", ". ", " ", ""],
@@ -115,7 +135,11 @@ _last_ingested: str | None = None
 
 
 def ingest_new() -> int:
-    """Nightly CRON — re-ingest all (de-duplication handled by ChromaDB upsert)."""
+    """Nightly CRON — re-ingest all (de-duplication handled by ChromaDB upsert).
+    
+    Returns:
+        int: The total number of document chunks processed during the nightly ingestion.
+    """
     global _last_ingested
     logger.info("Starting nightly RAG ingestion")
     count = ingest_all()

@@ -1,3 +1,9 @@
+"""Utility functions and helpers for data processing and date manipulation.
+
+This module provides reusable functions for saving data, validating paths,
+manipulating dates, and class decorators used across dataflows.
+"""
+
 import os
 import re
 import json
@@ -42,16 +48,37 @@ def safe_ticker_component(value: str, *, max_len: int = 32) -> str:
 
 
 def save_output(data: pd.DataFrame, tag: str, save_path: SavePathType = None) -> None:
+    """Saves a pandas DataFrame to a CSV file.
+
+    Args:
+        data (pd.DataFrame): The DataFrame containing data to save.
+        tag (str): A tag or label for the data being saved, used for logging.
+        save_path (SavePathType, optional): The file path where the CSV will be saved.
+            If None, the data is not saved. Defaults to None.
+    """
     if save_path:
         data.to_csv(save_path, encoding="utf-8")
         print(f"{tag} saved to {save_path}")
 
 
 def get_current_date():
+    """Retrieves the current date in YYYY-MM-DD format.
+
+    Returns:
+        str: The current date formatted as a string ('YYYY-MM-DD').
+    """
     return date.today().strftime("%Y-%m-%d")
 
 
 def decorate_all_methods(decorator):
+    """Class decorator that applies a given decorator to all callable methods in a class.
+
+    Args:
+        decorator (callable): The decorator function to apply to each method.
+
+    Returns:
+        callable: A class decorator that modifies the methods of the class.
+    """
     def class_decorator(cls):
         for attr_name, attr_value in cls.__dict__.items():
             if callable(attr_value):
@@ -62,6 +89,16 @@ def decorate_all_methods(decorator):
 
 
 def get_next_weekday(date):
+    """Calculates the next weekday for a given date, skipping weekends.
+
+    Args:
+        date (datetime | str): The starting date, either as a datetime object or a
+            string in 'YYYY-MM-DD' format.
+
+    Returns:
+        datetime: The original date if it is a weekday, or the following Monday
+            if the original date falls on a weekend.
+    """
 
     if not isinstance(date, datetime):
         date = datetime.strptime(date, "%Y-%m-%d")

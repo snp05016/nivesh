@@ -14,7 +14,15 @@ from models.db_models import AnalysisPrediction
 _LOG = logging.getLogger(__name__)
 
 def update_prediction_outcomes(dry_run: bool = False) -> dict:
-    """Calculates actual returns for predictions where the horizon has passed."""
+    """Calculates actual returns for predictions where the horizon has passed.
+
+    Args:
+        dry_run (bool): If True, rolls back the transaction instead of committing.
+
+    Returns:
+        dict: A summary containing counts of eligible predictions, updates for 
+            different time horizons, missing data, and processed symbols.
+    """
     _LOG.info(f"Starting prediction outcome tracking (dry_run={dry_run})...")
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     

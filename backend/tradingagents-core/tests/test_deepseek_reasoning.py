@@ -34,15 +34,18 @@ from tradingagents.llm_clients.openai_client import (
 @pytest.mark.unit
 class TestInputToMessages:
     def test_list_input_returned_as_is(self):
+        """Verify that a list of messages is returned directly without modification."""
         msgs = [HumanMessage(content="hi")]
         assert _input_to_messages(msgs) is msgs
 
     def test_chat_prompt_value_unwrapped(self):
+        """Verify that ChatPromptValue instances are unwrapped into lists of messages."""
         msgs = [HumanMessage(content="hi")]
         prompt_value = ChatPromptValue(messages=msgs)
         assert _input_to_messages(prompt_value) == msgs
 
     def test_string_input_yields_empty_list(self):
+        """Verify that a bare string input yields an empty list."""
         # A bare string isn't a message-bearing input; the caller's normal
         # langchain conversion happens upstream of _get_request_payload.
         assert _input_to_messages("hello") == []
@@ -143,10 +146,12 @@ class TestStructuredOutputCapabilityDispatch:
         )
 
     def test_chat_sends_tool_choice(self):
+        """Verify that the standard chat model includes the tool_choice parameter."""
         bound = self._client("deepseek-chat").with_structured_output(self._Sample)
         assert _bound_kwargs(bound).get("tool_choice") is not None
 
     def test_reasoner_suppresses_tool_choice(self):
+        """Verify that the reasoner model suppresses the tool_choice parameter."""
         bound = self._client("deepseek-reasoner").with_structured_output(self._Sample)
         # tool_choice is either absent or explicitly None — both are valid
         # signals that langchain's bind_tools will skip the parameter.
@@ -154,11 +159,13 @@ class TestStructuredOutputCapabilityDispatch:
             "tool_choice" not in _bound_kwargs(bound)
 
     def test_v4_flash_suppresses_tool_choice(self):
+        """Verify that the v4-flash model suppresses the tool_choice parameter."""
         bound = self._client("deepseek-v4-flash").with_structured_output(self._Sample)
         assert _bound_kwargs(bound).get("tool_choice") is None or \
             "tool_choice" not in _bound_kwargs(bound)
 
     def test_v4_pro_suppresses_tool_choice(self):
+        """Verify that the v4-pro model suppresses the tool_choice parameter."""
         bound = self._client("deepseek-v4-pro").with_structured_output(self._Sample)
         assert _bound_kwargs(bound).get("tool_choice") is None or \
             "tool_choice" not in _bound_kwargs(bound)
@@ -208,6 +215,7 @@ class TestDeepSeekLiveStructuredOutput:
         confidence: float
 
     def test_v4_flash_returns_structured_output(self):
+        """Verify that real API calls correctly return the structured output."""
         client = DeepSeekChatOpenAI(
             model="deepseek-v4-flash",
             api_key=os.environ["DEEPSEEK_API_KEY"],

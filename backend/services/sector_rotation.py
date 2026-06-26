@@ -1,3 +1,9 @@
+"""
+services/sector_rotation.py — Sector rotation logic based on Relative Rotation Graphs (RRG).
+
+Computes momentum and relative strength for sectors and tracks institutional fund flows
+to determine sector positioning.
+"""
 import yfinance as yf
 from datetime import datetime, timedelta
 import math
@@ -52,6 +58,15 @@ RRG_MOMENTUM_PERIODS = 10
 
 
 def get_sector_rotation_data(period: str):
+    """
+    Fetch sector rotation data including momentum, returns, and institutional conviction.
+
+    Args:
+        period (str): The time period for analysis (e.g., '1m', '3m', '6m', '1y').
+
+    Returns:
+        dict: A dictionary containing the period and a list of sector performance metrics.
+    """
     yf_period = "3mo"
     if period.lower() == "1m": yf_period = "1mo"
     elif period.lower() == "3m": yf_period = "3mo"
@@ -133,6 +148,15 @@ def get_sector_rotation_data(period: str):
 
 
 def _resolve_sector(ticker: str) -> str:
+    """
+    Resolve the sector for a given ticker by fetching info from yfinance.
+
+    Args:
+        ticker (str): The stock ticker symbol.
+
+    Returns:
+        str: The identified sector name, or "Unknown" if not found.
+    """
     info = yf.Ticker(ticker).info
     sector = info.get("sector") or info.get("industry", "")
     if not sector:
@@ -145,6 +169,15 @@ def _resolve_sector(ticker: str) -> str:
 
 
 def _get_sector_etf(sector_name: str) -> str:
+    """
+    Get the benchmark ETF or index ticker for a given sector name.
+
+    Args:
+        sector_name (str): The sector name.
+
+    Returns:
+        str: The ETF or index ticker, defaulting to '^NSEI'.
+    """
     return SECTOR_NAME_TO_TICKER.get(sector_name, "^NSEI")
 
 
@@ -152,6 +185,16 @@ def _compute_rs_ratio_and_momentum(
     sector_prices: list[float],
     benchmark_prices: list[float],
 ) -> tuple[float, float]:
+    """
+    Compute Relative Strength (RS) Ratio and Momentum for RRG analysis.
+
+    Args:
+        sector_prices (list[float]): Historical prices for the sector.
+        benchmark_prices (list[float]): Historical prices for the benchmark.
+
+    Returns:
+        tuple[float, float]: A tuple containing RS Ratio and RS Momentum.
+    """
     if len(sector_prices) < RRG_RS_RATIO_PERIODS + 1 or len(benchmark_prices) < RRG_RS_RATIO_PERIODS + 1:
         return 100.0, 100.0
 
@@ -185,6 +228,16 @@ def _compute_rs_ratio_and_momentum(
 
 
 def _compute_rrg_quadrant(rs_ratio: float, rs_momentum: float) -> str:
+    """
+    Determine the RRG quadrant based on RS Ratio and RS Momentum.
+
+    Args:
+        rs_ratio (float): The Relative Strength Ratio.
+        rs_momentum (float): The Relative Strength Momentum.
+
+    Returns:
+        str: The RRG quadrant name ('Leading', 'Weakening', 'Improving', 'Lagging').
+    """
     if rs_ratio >= RRG_LEADING_THRESHOLD and rs_momentum >= RRG_LEADING_THRESHOLD:
         return "Leading"
     if rs_ratio >= RRG_IMPROVING_THRESHOLD and rs_momentum < RRG_IMPROVING_THRESHOLD:
@@ -195,6 +248,15 @@ def _compute_rrg_quadrant(rs_ratio: float, rs_momentum: float) -> str:
 
 
 def _compute_confidence_modifier(quadrant: str) -> float:
+    """
+    Get the confidence modifier associated with an RRG quadrant.
+
+    Args:
+        quadrant (str): The RRG quadrant.
+
+    Returns:
+        float: The confidence modifier for the quadrant.
+    """
     modifiers = {
         "Leading": RRG_CONFIDENCE_LEADING,
         "Improving": RRG_CONFIDENCE_IMPROVING,
@@ -205,6 +267,15 @@ def _compute_confidence_modifier(quadrant: str) -> float:
 
 
 def _compute_rrg_summary(quadrant: str) -> str:
+    """
+    Generate a human-readable summary for the current RRG quadrant.
+
+    Args:
+        quadrant (str): The RRG quadrant.
+
+    Returns:
+        str: A summary text explaining the current quadrant status.
+    """
     summaries = {
         "Leading": (
             f"Stock is in a Leading quadrant (+{RRG_CONFIDENCE_LEADING*100:.0f}% confidence boost). "
@@ -227,6 +298,17 @@ def _compute_rrg_summary(quadrant: str) -> str:
 
 
 def compute_rrg_quadrant(ticker: str, benchmark: str = "^NSEI") -> dict:
+    """
+    Compute full RRG quadrant statistics for a given ticker.
+
+    Args:
+        ticker (str): The stock ticker symbol.
+        benchmark (str): The benchmark index ticker. Defaults to '^NSEI'.
+
+    Returns:
+        dict: A dictionary containing RRG quadrant details, RS Ratio, RS Momentum,
+        confidence modifier, and summary text.
+    """
     try:
         sector = _resolve_sector(ticker)
         sector_etf = _get_sector_etf(sector)

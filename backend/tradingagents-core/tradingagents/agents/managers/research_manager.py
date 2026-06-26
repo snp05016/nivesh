@@ -14,9 +14,25 @@ from tradingagents.agents.utils.structured import (
 
 
 def create_research_manager(llm):
+    """Creates a research manager node for the investment debate graph.
+
+    Args:
+        llm: The language model instance to use for the agent.
+
+    Returns:
+        Callable[[dict], dict]: The node function representing the research manager.
+    """
     structured_llm = bind_structured(llm, ResearchPlan, "Research Manager")
 
     def research_manager_node(state) -> dict:
+        """Executes the research manager logic to synthesize a research plan.
+
+        Args:
+            state (dict): The current graph state.
+
+        Returns:
+            dict: The updated state containing the investment plan and updated history.
+        """
         instrument_context = get_instrument_context_from_state(state)
         history = state["investment_debate_state"].get("history", "")
 

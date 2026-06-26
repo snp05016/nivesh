@@ -1,3 +1,6 @@
+"""
+Test script to fetch and print basic ticker information using yfinance.
+"""
 import yfinance as yf
 from pprint import pprint
 

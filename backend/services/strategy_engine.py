@@ -1,3 +1,9 @@
+"""
+services/strategy_engine.py — Backtesting and execution engine for quantitative strategies.
+
+Provides functions to run historical backtests, calculate performance metrics like CAGR
+and Sharpe ratio, and evaluate predefined technical trading rules.
+"""
 import math
 from typing import Dict, Any, List
 import pandas as pd
@@ -10,6 +16,17 @@ from services.factor_engine import compute_indicators
 logger = logging.getLogger(__name__)
 
 def _calculate_cagr(start_value: float, end_value: float, days: int) -> float:
+    """
+    Calculate the Compound Annual Growth Rate (CAGR).
+
+    Args:
+        start_value (float): The initial investment value.
+        end_value (float): The final investment value.
+        days (int): The total number of invested days.
+
+    Returns:
+        float: The annualized CAGR percentage.
+    """
     if days <= 0 or start_value <= 0:
         return 0.0
     years = days / 252.0
@@ -17,6 +34,16 @@ def _calculate_cagr(start_value: float, end_value: float, days: int) -> float:
     return round(cagr, 2)
 
 def _calculate_sharpe(returns: List[float], risk_free_rate: float = 0.05) -> float:
+    """
+    Calculate the annualized Sharpe Ratio from a series of daily returns.
+
+    Args:
+        returns (List[float]): A list of daily percentage returns.
+        risk_free_rate (float): The annualized risk-free interest rate. Defaults to 0.05.
+
+    Returns:
+        float: The computed Sharpe ratio.
+    """
     if not returns or len(returns) < 2:
         return 0.0
     returns_series = pd.Series(returns)
@@ -28,6 +55,15 @@ def _calculate_sharpe(returns: List[float], risk_free_rate: float = 0.05) -> flo
     return round(sharpe, 2)
 
 def _calculate_max_drawdown(equity_curve: List[Dict[str, Any]]) -> float:
+    """
+    Calculate the maximum peak-to-trough drawdown from an equity curve.
+
+    Args:
+        equity_curve (List[Dict[str, Any]]): A list of dictionaries representing portfolio values over time.
+
+    Returns:
+        float: The maximum drawdown as a positive percentage.
+    """
     max_dd = 0.0
     peak = -1.0
     for point in equity_curve:
@@ -40,6 +76,18 @@ def _calculate_max_drawdown(equity_curve: List[Dict[str, Any]]) -> float:
     return round(max_dd * 100, 2)
 
 def run_backtest(ticker: str, strategy_id: str, years: int = 5) -> Dict[str, Any]:
+    """
+    Run a historical backtest for a specific trading strategy on a given ticker.
+
+    Args:
+        ticker (str): The stock ticker symbol.
+        strategy_id (str): The identifier for the strategy to test (e.g., 'rsi_oversold').
+        years (int): Number of years of historical data to backtest. Defaults to 5.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing backtest metrics like CAGR, Sharpe ratio,
+        max drawdown, win rate, individual trades, and the equity curve.
+    """
     # 1. Fetch historical data
     end_date = pd.Timestamp.now()
     start_date = end_date - timedelta(days=years * 365 + 300) # extra for warmup

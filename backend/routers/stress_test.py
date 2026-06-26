@@ -83,5 +83,13 @@ def get_stress_test_progress(job_id: str, user_id: int = Depends(require_auth)):
 
 @router.get("/api/v1/dashboard/stress-test-jobs")
 def list_stress_test_jobs(user_id: int = Depends(require_auth)):
-    """List stress test jobs belonging to the authenticated user."""
+    """
+    List stress test jobs belonging to the authenticated user.
+
+    Args:
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     return list_owned_stress_test_jobs(user_id)

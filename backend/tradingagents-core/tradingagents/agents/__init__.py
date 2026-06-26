@@ -1,3 +1,9 @@
+"""Initialization module for trading agents.
+
+Provides access to various agent factories and state definitions
+used across the trading agents core framework.
+"""
+
 from .utils.agent_utils import create_msg_delete
 from .utils.agent_states import AgentState, InvestDebateState, RiskDebateState
 

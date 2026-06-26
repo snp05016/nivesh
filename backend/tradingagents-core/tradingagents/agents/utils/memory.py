@@ -17,6 +17,11 @@ class TradingMemoryLog:
     _REFLECTION_RE = re.compile(r"REFLECTION:\n(.*?)$", re.DOTALL)
 
     def __init__(self, config: dict = None):
+        """Initializes the TradingMemoryLog.
+
+        Args:
+            config (dict, optional): Configuration dictionary.
+        """
         cfg = config or {}
         self._log_path = None
         path = cfg.get("memory_log_path")
@@ -34,7 +39,13 @@ class TradingMemoryLog:
         trade_date: str,
         final_trade_decision: str,
     ) -> None:
-        """Append pending entry at end of propagate(). No LLM call."""
+        """Append pending entry at end of propagate(). No LLM call.
+
+        Args:
+            ticker (str): The ticker symbol.
+            trade_date (str): The date of the trade.
+            final_trade_decision (str): The final decision string.
+        """
         if not self._log_path:
             return
         # Idempotency guard: fast raw-text scan instead of full parse
@@ -52,7 +63,11 @@ class TradingMemoryLog:
     # --- Read path (Phase A) ---
 
     def load_entries(self) -> List[dict]:
-        """Parse all entries from log. Returns list of dicts."""
+        """Parse all entries from log. Returns list of dicts.
+
+        Returns:
+            List[dict]: A list of parsed log entries.
+        """
         if not self._log_path or not self._log_path.exists():
             return []
         text = self._log_path.read_text(encoding="utf-8")
@@ -65,11 +80,24 @@ class TradingMemoryLog:
         return entries
 
     def get_pending_entries(self) -> List[dict]:
-        """Return entries with outcome:pending (for Phase B)."""
+        """Return entries with outcome:pending (for Phase B).
+
+        Returns:
+            List[dict]: A list of pending log entries.
+        """
         return [e for e in self.load_entries() if e.get("pending")]
 
     def get_past_context(self, ticker: str, n_same: int = 5, n_cross: int = 3) -> str:
-        """Return formatted past context string for agent prompt injection."""
+        """Return formatted past context string for agent prompt injection.
+
+        Args:
+            ticker (str): The target ticker symbol.
+            n_same (int, optional): Max number of past same-ticker entries. Defaults to 5.
+            n_cross (int, optional): Max number of past cross-ticker entries. Defaults to 3.
+
+        Returns:
+            str: The formatted context string.
+        """
         entries = [e for e in self.load_entries() if not e.get("pending")]
         if not entries:
             return ""
@@ -111,6 +139,14 @@ class TradingMemoryLog:
         Finds the first pending entry matching (trade_date, ticker), updates
         its tag with return figures, and appends a REFLECTION section.  Uses
         a temp-file + os.replace() so a crash mid-write never corrupts the log.
+
+        Args:
+            ticker (str): The ticker symbol.
+            trade_date (str): The date of the trade.
+            raw_return (float): The raw return percentage.
+            alpha_return (float): The alpha return percentage.
+            holding_days (int): The number of holding days.
+            reflection (str): The reflection content.
         """
         if not self._log_path or not self._log_path.exists():
             return

@@ -60,11 +60,24 @@ _API_SLEEP = 0.3
 # ═════════════════════════════════════════════════════════════════════════════
 
 def _api_key() -> str:
+    """Retrieve the YouTube API key from environment variables.
+
+    Returns:
+        str: The API key, or an empty string if not found.
+    """
     return os.getenv("YOUTUBE_API_KEY", "")
 
 
 def _yt_get(endpoint: str, params: dict[str, Any]) -> dict | None:
-    """GET a YouTube Data API v3 endpoint. Returns parsed JSON or None on error."""
+    """GET a YouTube Data API v3 endpoint. Returns parsed JSON or None on error.
+
+    Args:
+        endpoint (str): The API endpoint path.
+        params (dict[str, Any]): Query parameters for the request.
+
+    Returns:
+        dict | None: The parsed JSON response, or None if the request fails.
+    """
     params["key"] = _api_key()
     url = f"{_YT_API_BASE}/{endpoint}"
     try:
@@ -80,7 +93,14 @@ def _yt_get(endpoint: str, params: dict[str, Any]) -> dict | None:
 
 
 def _resolve_channel_id(search_query: str) -> str | None:
-    """Search for a channel by name and return its channel ID, or None."""
+    """Search for a channel by name and return its channel ID, or None.
+
+    Args:
+        search_query (str): The query string to search for the channel.
+
+    Returns:
+        str | None: The resolved channel ID, or None if not found.
+    """
     data = _yt_get("search", {
         "part": "snippet",
         "q": search_query,
@@ -98,7 +118,15 @@ def _resolve_channel_id(search_query: str) -> str | None:
 
 
 def _list_recent_videos(channel_id: str, max_results: int = 2) -> list[dict]:
-    """Return up to max_results recent video items for a channel."""
+    """Return up to max_results recent video items for a channel.
+
+    Args:
+        channel_id (str): The ID of the channel to query.
+        max_results (int, optional): Maximum number of videos to return. Defaults to 2.
+
+    Returns:
+        list[dict]: A list of video snippet dictionaries.
+    """
     data = _yt_get("search", {
         "part": "snippet",
         "channelId": channel_id,
@@ -114,7 +142,14 @@ def _list_recent_videos(channel_id: str, max_results: int = 2) -> list[dict]:
 
 
 def _fetch_transcript(video_id: str) -> str:
-    """Best-effort transcript fetch. Returns empty string on any failure."""
+    """Best-effort transcript fetch. Returns empty string on any failure.
+
+    Args:
+        video_id (str): The YouTube video ID.
+
+    Returns:
+        str: The concatenated transcript text, or an empty string if fetching fails.
+    """
     try:
         from youtube_transcript_api import YouTubeTranscriptApi  # type: ignore
         segs = YouTubeTranscriptApi.get_transcript(video_id, languages=["en", "hi"])
@@ -124,11 +159,26 @@ def _fetch_transcript(video_id: str) -> str:
 
 
 def _build_video_url(video_id: str) -> str:
+    """Construct a full YouTube watch URL from a video ID.
+
+    Args:
+        video_id (str): The YouTube video ID.
+
+    Returns:
+        str: The complete YouTube URL.
+    """
     return f"https://www.youtube.com/watch?v={video_id}"
 
 
 def _safe_published(snippet: dict) -> str | None:
-    """Extract publishedAt from snippet; return ISO string or None."""
+    """Extract publishedAt from snippet; return ISO string or None.
+
+    Args:
+        snippet (dict): The video snippet dictionary.
+
+    Returns:
+        str | None: The ISO publication date string, or None if missing.
+    """
     raw = (snippet or {}).get("publishedAt")
     return raw if raw else None
 
@@ -141,6 +191,12 @@ def harvest_youtube_transcripts(limit: int = 20) -> int:
     """Fetch latest videos from curated finance channels, store as YOUTUBE cards.
 
     Returns the number of NEW cards stored. NEVER raises.
+
+    Args:
+        limit (int, optional): Maximum number of total videos to harvest. Defaults to 20.
+
+    Returns:
+        int: The number of new cards successfully stored.
     """
     try:
         return _harvest(limit)
@@ -160,7 +216,14 @@ def harvest_youtube_transcripts(limit: int = 20) -> int:
 
 
 def _harvest(limit: int) -> int:
-    """Inner (non-defensive) implementation called by harvest_youtube_transcripts."""
+    """Inner (non-defensive) implementation called by harvest_youtube_transcripts.
+
+    Args:
+        limit (int): Maximum number of total videos to harvest.
+
+    Returns:
+        int: The number of new cards successfully stored.
+    """
     api_key = _api_key()
     if not api_key or len(api_key) < 10:
         logger.warning(
@@ -235,7 +298,17 @@ def _harvest_channel(
     credibility: int,
     max_videos: int,
 ) -> int:
-    """Resolve channel, fetch recent videos, store cards. Returns new card count."""
+    """Resolve channel, fetch recent videos, store cards. Returns new card count.
+
+    Args:
+        channel_name (str): The name of the channel.
+        search_query (str): The search query to resolve the channel ID.
+        credibility (int): The credibility score assigned to this channel.
+        max_videos (int): The maximum number of videos to fetch for this channel.
+
+    Returns:
+        int: The number of new cards stored for this channel.
+    """
     channel_id = _resolve_channel_id(search_query)
     if not channel_id:
         logger.debug("Could not resolve channel ID for '%s' — skipping", channel_name)

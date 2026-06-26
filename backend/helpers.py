@@ -65,6 +65,18 @@ def upsert_device_token(user_id: int, device_token: str, platform: str = "ios") 
     different user_id without re-verification. If the token already belongs
     to another user, the caller must prove ownership of the prior binding
     (i.e. re-authenticate as that user) or the upsert is rejected.
+    
+    Args:
+        user_id (int): The ID of the user.
+        device_token (str): The APNs or FCM device token.
+        platform (str): The OS platform (e.g., 'ios', 'android').
+        
+    Returns:
+        dict: Success message if registered.
+        
+    Raises:
+        ValueError: If token format is invalid.
+        PermissionError: If token belongs to another user.
     """
     import re
 
@@ -106,12 +118,31 @@ def upsert_device_token(user_id: int, device_token: str, platform: str = "ios") 
 # ---------------------------------------------------------------------------
 
 def get_current_user_id(authorization: str = Header(None)) -> Optional[int]:
+    """Extract user ID from the Authorization header.
+    
+    Args:
+        authorization (str): The Bearer token header.
+        
+    Returns:
+        Optional[int]: User ID if valid, None otherwise.
+    """
     if not authorization or not authorization.startswith("Bearer "):
         return None
     token = authorization.split(" ", 1)[1]
     return verify_access_token(token)
 
 def require_auth(authorization: str = Header(None)) -> int:
+    """Require authentication via JWT token.
+    
+    Args:
+        authorization (str): The Bearer token header.
+        
+    Returns:
+        int: The authenticated user ID.
+        
+    Raises:
+        HTTPException: If token is missing, invalid, or expired (401).
+    """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
     token = authorization.split(" ", 1)[1]
@@ -124,6 +155,17 @@ def require_auth(authorization: str = Header(None)) -> int:
     return user_id
 
 def require_admin(authorization: str = Header(None)) -> int:
+    """Require admin privileges.
+    
+    Args:
+        authorization (str): The Bearer token header.
+        
+    Returns:
+        int: The authenticated admin user ID.
+        
+    Raises:
+        HTTPException: If user is not an admin (403).
+    """
     user_id = require_auth(authorization)
     if not is_admin(user_id):
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -134,23 +176,23 @@ def require_admin(authorization: str = Header(None)) -> int:
 # ---------------------------------------------------------------------------
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(..., description="User's login username")
+    password: str = Field(..., description="Plaintext password")
 
 class RegisterRequest(BaseModel):
-    username: str
-    password: str
-    display_name: str
+    username: str = Field(..., description="Desired username for new account")
+    password: str = Field(..., description="Plaintext password for new account")
+    display_name: str = Field(..., description="Full display name of the user")
 
 class AnalyzeRequest(BaseModel):
-    ticker: str
-    exchange: str = "NSE"
-    user_id: Optional[int] = None
-    deep_scan: bool = False
-    scan_type: str = "standard"
-    language: Optional[str] = None
-    debate_rounds: Optional[int] = None
-    risk_tolerance: Optional[str] = None
+    ticker: str = Field(..., description="Stock ticker symbol to analyze")
+    exchange: str = Field("NSE", description="Exchange to fetch data from (NSE or BSE)")
+    user_id: Optional[int] = Field(None, description="ID of the user requesting analysis")
+    deep_scan: bool = Field(False, description="Whether to perform a deep fundamental scan")
+    scan_type: str = Field("standard", description="Type of scan (standard, deep, extreme)")
+    language: Optional[str] = Field(None, description="Preferred language for output")
+    debate_rounds: Optional[int] = Field(None, description="Number of rounds for AI debate")
+    risk_tolerance: Optional[str] = Field(None, description="User's risk tolerance profile")
 
     @field_validator("ticker")
     def validate_ticker(cls, v):
@@ -167,68 +209,68 @@ class AnalyzeRequest(BaseModel):
         return v
 
 class WatchlistAddRequest(BaseModel):
-    user_id: int
-    ticker: str
-    exchange: str = "NSE"
-    company_name: str
+    user_id: int = Field(..., description="ID of the user")
+    ticker: str = Field(..., description="Stock ticker symbol")
+    exchange: str = Field("NSE", description="Exchange (NSE or BSE)")
+    company_name: str = Field(..., description="Name of the company")
 
 class WatchlistRemoveRequest(BaseModel):
-    user_id: int
-    ticker: str
+    user_id: int = Field(..., description="ID of the user")
+    ticker: str = Field(..., description="Stock ticker symbol to remove")
 
 class PortfolioAddRequest(BaseModel):
-    user_id: int
-    ticker: str
-    exchange: str = "NSE"
-    company_name: str
-    shares: float
-    buy_price: float
-    group_name: str = "holdings"
+    user_id: int = Field(..., description="ID of the user")
+    ticker: str = Field(..., description="Stock ticker symbol")
+    exchange: str = Field("NSE", description="Exchange (NSE or BSE)")
+    company_name: str = Field(..., description="Name of the company")
+    shares: float = Field(..., description="Number of shares bought")
+    buy_price: float = Field(..., description="Average buy price per share")
+    group_name: str = Field("holdings", description="Portfolio group/bucket")
 
 class PortfolioRemoveRequest(BaseModel):
-    user_id: int
-    ticker: str
+    user_id: int = Field(..., description="ID of the user")
+    ticker: str = Field(..., description="Stock ticker symbol to remove")
 
 class PortfolioUpdateRequest(BaseModel):
-    user_id: int
-    ticker: str
-    shares: float
-    buy_price: float
+    user_id: int = Field(..., description="ID of the user")
+    ticker: str = Field(..., description="Stock ticker symbol")
+    shares: float = Field(..., description="Updated number of shares")
+    buy_price: float = Field(..., description="Updated average buy price")
 
 class PortfolioNoteRequest(BaseModel):
-    user_id: int
-    ticker: str
-    note: str
+    user_id: int = Field(..., description="ID of the user")
+    ticker: str = Field(..., description="Stock ticker symbol")
+    note: str = Field(..., description="User's custom note for the holding")
 
 class AlertAddRequest(BaseModel):
-    user_id: int
-    ticker: str
-    target_price: float
-    direction: str
-    company_name: str = ""
+    user_id: int = Field(..., description="ID of the user")
+    ticker: str = Field(..., description="Stock ticker symbol")
+    target_price: float = Field(..., description="Target price threshold")
+    direction: str = Field(..., description="Direction of alert (above or below)")
+    company_name: str = Field("", description="Name of the company")
 
 class AlertRemoveRequest(BaseModel):
-    user_id: int
-    alert_id: int
+    user_id: int = Field(..., description="ID of the user")
+    alert_id: int = Field(..., description="ID of the alert to remove")
 
 class BatchAnalyzeRequest(BaseModel):
-    tickers: list[str]
-    exchange: str = "NSE"
-    user_id: int | None = None
+    tickers: list[str] = Field(..., description="List of ticker symbols to analyze")
+    exchange: str = Field("NSE", description="Exchange to fetch data from")
+    user_id: int | None = Field(None, description="Optional user ID")
 
 class TradeJournalAddRequest(BaseModel):
-    user_id: int
-    ticker: str
-    action: str
-    price_at_time: float
-    reason_text: str
-    outcome_text: Optional[str] = None
-    company_name: Optional[str] = None
-    mood: Optional[str] = None
+    user_id: int = Field(..., description="ID of the user")
+    ticker: str = Field(..., description="Stock ticker symbol")
+    action: str = Field(..., description="Action taken (e.g., BUY, SELL)")
+    price_at_time: float = Field(..., description="Price at the time of the trade")
+    reason_text: str = Field(..., description="Reasoning for the trade")
+    outcome_text: Optional[str] = Field(None, description="Outcome or reflection on the trade")
+    company_name: Optional[str] = Field(None, description="Name of the company")
+    mood: Optional[str] = Field(None, description="Emotional state during the trade")
 
 class TradeJournalUpdateRequest(BaseModel):
-    outcome_text: str
-    mood: Optional[str] = None
+    outcome_text: str = Field(..., description="Updated outcome or reflection")
+    mood: Optional[str] = Field(None, description="Updated emotional state")
 
 # ---------------------------------------------------------------------------
 # Response Models
@@ -237,27 +279,27 @@ from pydantic import BaseModel as _BaseModel
 from typing import List as _List
 
 class EarningsSyncRatioResponse(_BaseModel):
-    declared_count: int
-    total_expected: int
-    sync_ratio_pct: float
-    fetched_at: str
-    source: str
+    declared_count: int = Field(..., description="Number of companies that declared earnings")
+    total_expected: int = Field(..., description="Total expected earnings declarations")
+    sync_ratio_pct: float = Field(..., description="Percentage of expected earnings declared")
+    fetched_at: str = Field(..., description="Timestamp of data fetch")
+    source: str = Field(..., description="Source of earnings data")
 
 class YoYAggregateResponse(_BaseModel):
-    revenue_yoy_pct: float
-    net_profit_yoy_pct: float
-    companies_reported: int
-    fetched_at: str
-    source: str
+    revenue_yoy_pct: float = Field(..., description="Year-over-year revenue growth percentage")
+    net_profit_yoy_pct: float = Field(..., description="Year-over-year net profit growth percentage")
+    companies_reported: int = Field(..., description="Number of companies that reported")
+    fetched_at: str = Field(..., description="Timestamp of data fetch")
+    source: str = Field(..., description="Source of data")
 
 class InstitutionalLeaderboardResponse(_BaseModel):
-    leaderboard: _List[dict]
-    fetched_at: str
+    leaderboard: _List[dict] = Field(..., description="List of institutional metrics")
+    fetched_at: str = Field(..., description="Timestamp of data fetch")
 
 class NetWorthSnapshotResponse(_BaseModel):
-    user_id: int
-    snapshots: _List[dict]
-    fetched_at: str
+    user_id: int = Field(..., description="ID of the user")
+    snapshots: _List[dict] = Field(..., description="Historical net worth snapshots")
+    fetched_at: str = Field(..., description="Timestamp of data fetch")
 
 # ---------------------------------------------------------------------------
 # Custom Exceptions
@@ -274,6 +316,15 @@ class DataHarvestingError(Exception):
 # ---------------------------------------------------------------------------
 
 def format_indian_currency(value, *, symbol="₹"):
+    """Format a numeric value into Indian currency format (Lakhs/Crores).
+    
+    Args:
+        value (float|int|None): The monetary value.
+        symbol (str): The currency symbol to prepend.
+        
+    Returns:
+        str: Formatted string representing the amount in Indian scale.
+    """
     if value is None:
         return f"{symbol}0"
     value = float(value)
@@ -291,6 +342,20 @@ def format_indian_currency(value, *, symbol="₹"):
 
 
 def _ban_western_scale(text, company_name=""):
+    """Detect and forbid Western numbering scales in output text.
+    
+    Ensures all monetary and numeric outputs use Indian scales (Lakhs/Crores).
+    
+    Args:
+        text (str): The text to check.
+        company_name (str): Company name to mask out from checks to avoid false positives.
+        
+    Returns:
+        str: The original text if safe.
+        
+    Raises:
+        ValueError: If words like million/billion/trillion are detected.
+    """
     import re
     check_text = text
     if company_name:

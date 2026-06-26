@@ -154,7 +154,14 @@ TICKER_COMPANY_MAP = {
 
 
 def get_company_name(ticker: str) -> str:
-    """Returns a human-readable company name for YouTube search quality."""
+    """Returns a human-readable company name for YouTube search quality.
+
+    Args:
+        ticker (str): The stock ticker symbol.
+
+    Returns:
+        str: The full company name.
+    """
     t = ticker.upper()
     if t in TICKER_COMPANY_MAP:
         return TICKER_COMPANY_MAP[t]
@@ -170,7 +177,14 @@ def get_company_name(ticker: str) -> str:
 
 
 def _parse_date(raw: str) -> datetime:
-    """Safely parse a date string from either API (ISO) or yt-dlp (YYYYMMDD) format."""
+    """Safely parses a date string from either API (ISO) or yt-dlp (YYYYMMDD) format.
+
+    Args:
+        raw (str): The raw date string.
+
+    Returns:
+        datetime: The parsed datetime object in UTC. Defaults to current UTC time if parsing fails.
+    """
     if not raw:
         return datetime.now(timezone.utc)
     try:
@@ -184,10 +198,16 @@ def _parse_date(raw: str) -> datetime:
 
 
 def _upsert_video(db, video_dict: dict) -> bool:
-    """
-    Insert a video row if video_id does not already exist.
+    """Inserts a video row if video_id does not already exist.
+
     If it exists, updates matched_ticker if currently null.
-    Returns True if a new row was inserted.
+
+    Args:
+        db: The SQLAlchemy database session.
+        video_dict (dict): A dictionary containing the video data to upsert.
+
+    Returns:
+        bool: True if a new row was inserted, False otherwise.
     """
     vid_id = video_dict.get("video_id", "")
     if not vid_id:
@@ -223,7 +243,15 @@ def _upsert_video(db, video_dict: dict) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _fetch_channel_via_api(channel: dict, max_videos: int = 10) -> list[dict]:
-    """Fetch latest videos from a channel using YouTube Data API v3."""
+    """Fetches the latest videos from a channel using the YouTube Data API v3.
+
+    Args:
+        channel (dict): The channel dictionary from the registry.
+        max_videos (int, optional): The maximum number of videos to fetch. Defaults to 10.
+
+    Returns:
+        list[dict]: A list of video dictionaries.
+    """
     if not YOUTUBE_API_AVAILABLE:
         return []
 
@@ -293,7 +321,15 @@ def _fetch_channel_via_api(channel: dict, max_videos: int = 10) -> list[dict]:
 
 
 def _fetch_channel_via_ytdlp(channel: dict, max_videos: int = 10) -> list[dict]:
-    """Fetch latest videos from a channel using yt-dlp (fallback)."""
+    """Fetches the latest videos from a channel using yt-dlp as a fallback.
+
+    Args:
+        channel (dict): The channel dictionary from the registry.
+        max_videos (int, optional): The maximum number of videos to fetch. Defaults to 10.
+
+    Returns:
+        list[dict]: A list of video dictionaries.
+    """
     opts = {
         "quiet": True,
         "extract_flat": True,
@@ -328,9 +364,13 @@ def _fetch_channel_via_ytdlp(channel: dict, max_videos: int = 10) -> list[dict]:
 
 
 async def harvest_youtube_metadata() -> dict:
-    """
-    Nightly channel sweep. Fetches latest videos from all SEBI-registered channels.
+    """Nightly channel sweep that fetches latest videos from all SEBI-registered channels.
+
     Uses API v3 if available, falls back to yt-dlp per channel.
+
+    Returns:
+        dict: Summary of the harvest containing 'channels_processed', 'total_channels',
+            and 'videos_added'.
     """
     total_added = 0
     channels_ok = 0
@@ -373,11 +413,19 @@ async def harvest_youtube_metadata() -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def search_videos_for_ticker(ticker: str, company_name: str, max_results: int = 3) -> list[dict]:
-    """
-    Searches YouTube for videos about a specific NSE ticker/company.
+    """Searches YouTube for videos about a specific NSE ticker/company.
+
     PATH A: YouTube Data API v3 (structured, stable, preferred)
     PATH B: yt-dlp keyword search (fallback when API unavailable or quota exceeded)
-    Returns [] on any failure. Never raises.
+
+    Args:
+        ticker (str): The stock ticker symbol.
+        company_name (str): The human-readable company name for search queries.
+        max_results (int, optional): The maximum number of results to fetch. Defaults to 3.
+
+    Returns:
+        list[dict]: A list of video dictionaries found during the search. Returns an empty
+            list on any failure. Never raises an exception.
     """
     query = f"{company_name} NSE stock analysis India"
 
@@ -458,12 +506,16 @@ def search_videos_for_ticker(ticker: str, company_name: str, max_results: int = 
 
 
 async def harvest_portfolio_videos() -> dict:
-    """
-    Runs after harvest_youtube_metadata().
+    """Runs after harvest_youtube_metadata to search for videos for portfolio holdings.
+
     For every unique ticker held across ALL user portfolios:
       - Searches YouTube for relevant analysis videos
       - Inserts new results tagged with matched_ticker
     Rate-limited: 1.2s sleep between tickers.
+
+    Returns:
+        dict: A summary containing 'tickers_processed', 'videos_added', and a 'by_ticker' breakdown.
+            May contain 'error' if an exception is caught.
     """
     total_added = 0
 

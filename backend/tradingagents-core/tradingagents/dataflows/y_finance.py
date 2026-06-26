@@ -1,3 +1,9 @@
+"""Yahoo Finance Data Retrieval Module.
+
+This module provides functions for fetching and formatting historical market data,
+technical indicators, fundamentals, and financial statements using the yfinance library.
+"""
+
 from typing import Annotated
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -11,6 +17,17 @@ def get_YFin_data_online(
     start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
     end_date: Annotated[str, "End date in yyyy-mm-dd format"],
 ):
+    """Fetches historical OHLCV data from Yahoo Finance within a specific date range.
+
+    Args:
+        symbol (str): The ticker symbol of the company.
+        start_date (str): The start date in 'YYYY-MM-DD' format.
+        end_date (str): The end date in 'YYYY-MM-DD' format.
+
+    Returns:
+        str: A formatted CSV string containing the historical data, prefixed with metadata headers.
+             Returns a "No data found" string if the resulting data is empty.
+    """
 
     datetime.strptime(start_date, "%Y-%m-%d")
     datetime.strptime(end_date, "%Y-%m-%d")
@@ -55,6 +72,21 @@ def get_stock_stats_indicators_window(
     ],
     look_back_days: Annotated[int, "how many days to look back"],
 ) -> str:
+    """Calculates and formats a specific technical indicator over a lookback window.
+
+    Args:
+        symbol (str): The ticker symbol of the company.
+        indicator (str): The technical indicator to calculate. Must be one of the supported indicators.
+        curr_date (str): The current reference date in 'YYYY-MM-DD' format.
+        look_back_days (int): The number of days to look back for calculation.
+
+    Returns:
+        str: A formatted string containing daily indicator values over the specified
+             window, along with a description of the requested indicator.
+
+    Raises:
+        ValueError: If the requested indicator is not supported.
+    """
 
     best_ind_params = {
         # Moving Averages
@@ -226,6 +258,16 @@ def get_stockstats_indicator(
         str, "The current trading date you are trading on, YYYY-mm-dd"
     ],
 ) -> str:
+    """Retrieves a single technical indicator value for a specific date.
+
+    Args:
+        symbol (str): The ticker symbol of the company.
+        indicator (str): The technical indicator to calculate.
+        curr_date (str): The reference date in 'YYYY-MM-DD' format.
+
+    Returns:
+        str: The calculated indicator value as a string, or an empty string if an error occurs.
+    """
 
     curr_date_dt = datetime.strptime(curr_date, "%Y-%m-%d")
     curr_date = curr_date_dt.strftime("%Y-%m-%d")
@@ -249,7 +291,16 @@ def get_fundamentals(
     ticker: Annotated[str, "ticker symbol of the company"],
     curr_date: Annotated[str, "current date (not used for yfinance)"] = None
 ):
-    """Get company fundamentals overview from yfinance."""
+    """Get company fundamentals overview from yfinance.
+
+    Args:
+        ticker (str): The ticker symbol of the company.
+        curr_date (str, optional): Unused parameter for API consistency. Defaults to None.
+
+    Returns:
+        str: A formatted string outlining key fundamental metrics. Returns an
+             error string if retrieval fails or no data is found.
+    """
     try:
         ticker_obj = yf.Ticker(ticker.upper())
         info = yf_retry(lambda: ticker_obj.info)
@@ -307,7 +358,16 @@ def get_balance_sheet(
     freq: Annotated[str, "frequency of data: 'annual' or 'quarterly'"] = "quarterly",
     curr_date: Annotated[str, "current date in YYYY-MM-DD format"] = None
 ):
-    """Get balance sheet data from yfinance."""
+    """Get balance sheet data from yfinance.
+
+    Args:
+        ticker (str): The ticker symbol of the company.
+        freq (str): Frequency of data, either 'annual' or 'quarterly'. Defaults to 'quarterly'.
+        curr_date (str, optional): The reference date in 'YYYY-MM-DD' format for filtering. Defaults to None.
+
+    Returns:
+        str: A formatted CSV string containing the balance sheet data, or an error/not found message.
+    """
     try:
         ticker_obj = yf.Ticker(ticker.upper())
 
@@ -339,7 +399,16 @@ def get_cashflow(
     freq: Annotated[str, "frequency of data: 'annual' or 'quarterly'"] = "quarterly",
     curr_date: Annotated[str, "current date in YYYY-MM-DD format"] = None
 ):
-    """Get cash flow data from yfinance."""
+    """Get cash flow data from yfinance.
+
+    Args:
+        ticker (str): The ticker symbol of the company.
+        freq (str): Frequency of data, either 'annual' or 'quarterly'. Defaults to 'quarterly'.
+        curr_date (str, optional): The reference date in 'YYYY-MM-DD' format for filtering. Defaults to None.
+
+    Returns:
+        str: A formatted CSV string containing the cash flow data, or an error/not found message.
+    """
     try:
         ticker_obj = yf.Ticker(ticker.upper())
 
@@ -371,7 +440,16 @@ def get_income_statement(
     freq: Annotated[str, "frequency of data: 'annual' or 'quarterly'"] = "quarterly",
     curr_date: Annotated[str, "current date in YYYY-MM-DD format"] = None
 ):
-    """Get income statement data from yfinance."""
+    """Get income statement data from yfinance.
+
+    Args:
+        ticker (str): The ticker symbol of the company.
+        freq (str): Frequency of data, either 'annual' or 'quarterly'. Defaults to 'quarterly'.
+        curr_date (str, optional): The reference date in 'YYYY-MM-DD' format for filtering. Defaults to None.
+
+    Returns:
+        str: A formatted CSV string containing the income statement data, or an error/not found message.
+    """
     try:
         ticker_obj = yf.Ticker(ticker.upper())
 
@@ -401,7 +479,14 @@ def get_income_statement(
 def get_insider_transactions(
     ticker: Annotated[str, "ticker symbol of the company"]
 ):
-    """Get insider transactions data from yfinance."""
+    """Get insider transactions data from yfinance.
+
+    Args:
+        ticker (str): The ticker symbol of the company.
+
+    Returns:
+        str: A formatted CSV string containing recent insider transactions, or an error/not found message.
+    """
     try:
         ticker_obj = yf.Ticker(ticker.upper())
         data = yf_retry(lambda: ticker_obj.insider_transactions)

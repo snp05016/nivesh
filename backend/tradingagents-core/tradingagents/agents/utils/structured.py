@@ -33,6 +33,14 @@ def bind_structured(llm: Any, schema: type[T], agent_name: str) -> Optional[Any]
 
     Logs a warning when the binding fails so the user understands the agent
     will use free-text generation for every call instead of one-shot fallback.
+
+    Args:
+        llm (Any): The language model to bind.
+        schema (type[T]): The Pydantic schema class.
+        agent_name (str): The name of the agent for logging.
+
+    Returns:
+        Optional[Any]: The LLM bound with structured output, or None if unsupported.
     """
     try:
         return llm.with_structured_output(schema)
@@ -58,6 +66,16 @@ def invoke_structured_or_freetext(
     invocations, a list of message dicts for chat models that take that
     shape). The same value is forwarded to the free-text path so the
     fallback sees the same input the structured call did.
+
+    Args:
+        structured_llm (Optional[Any]): The language model bound with structured output.
+        plain_llm (Any): The base language model for free-text fallback.
+        prompt (Any): The input prompt or messages.
+        render (Callable[[T], str]): Function to render the structured output to string.
+        agent_name (str): The name of the agent for logging.
+
+    Returns:
+        str: The rendered string from structured output, or raw string from fallback.
     """
     if structured_llm is not None:
         try:

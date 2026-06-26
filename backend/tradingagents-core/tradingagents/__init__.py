@@ -1,3 +1,7 @@
+"""TradingAgents core package initialization.
+
+Handles environment loading and warnings configuration.
+"""
 import warnings
 
 # Load .env files at package import so DEFAULT_CONFIG's env-var overlay

@@ -145,7 +145,11 @@ _DLQ_LOCK = threading.Lock()
 
 
 def enqueue_dlq(job: dict) -> None:
-    """Append a failed job record to the DLQ for later retry."""
+    """Append a failed job record to the DLQ for later retry.
+
+    Args:
+        job (dict): The job details to enqueue.
+    """
     try:
         _DLQ_PATH.parent.mkdir(parents=True, exist_ok=True)
         with _DLQ_LOCK:
@@ -325,6 +329,17 @@ def search_filings(query: str, ticker: str) -> str:
 
 
 def create_optimized_analyst_node(llm, persona: str, report_key: str, tools: list):
+    """Create an analyst node function for the state graph.
+
+    Args:
+        llm: The language model instance.
+        persona (str): The persona instructions for the analyst.
+        report_key (str): The state key to store the resulting report.
+        tools (list): List of tools the analyst can use.
+
+    Returns:
+        function: The node function that processes the state.
+    """
     def analyst_node(state):
         instrument_context = get_instrument_context_from_state(state)
         current_date = state["trade_date"]
@@ -1202,6 +1217,12 @@ def _normalize_response(result: dict, scan_type: str = "standard", quant_payload
 # ═════════════════════════════════════════════════════════════════════════════
 
 def _inject_piotroski(result: dict, ticker: str):
+    """Inject Piotroski F-score into the analysis result.
+
+    Args:
+        result (dict): The analysis result dictionary to mutate.
+        ticker (str): The stock ticker symbol.
+    """
     try:
         from services.piotroski import compute_piotroski
         pio = compute_piotroski(ticker.upper())
@@ -1676,6 +1697,22 @@ def analyze(
     debate_rounds: int | None = None,
     risk_tolerance: str | None = None,
 ) -> dict:
+    """Main entry point for stock analysis.
+
+    Args:
+        ticker (str): The stock ticker symbol.
+        exchange (str): The exchange (NSE or BSE).
+        user_id (int | None): The user ID requesting the analysis.
+        deep_scan (bool): Whether to run a deep scan.
+        scan_type (str): The type of scan to run (e.g., standard, extreme).
+        job_id (str | None): Optional job ID for tracking.
+        language (str | None): Optional language for the report.
+        debate_rounds (int | None): Number of debate rounds for the agents.
+        risk_tolerance (str | None): User's risk tolerance profile.
+
+    Returns:
+        dict: The complete normalized analysis result.
+    """
     exchange = exchange.upper()
     if exchange not in EXCHANGE_SUFFIX:
         raise ValueError(f"Unsupported exchange: {exchange}. Use NSE or BSE.")

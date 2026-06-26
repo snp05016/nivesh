@@ -47,7 +47,14 @@ COST_PRESETS = {
 }
 
 def _calculate_frictions_bps(cost: CostAssumptions) -> float:
-    """Calculates total two-way transaction costs in basis points."""
+    """Calculates total two-way transaction costs in basis points.
+
+    Args:
+        cost (CostAssumptions): The cost assumptions for the backtest, including brokerage, taxes, and slippage.
+
+    Returns:
+        float: The total transaction friction in basis points.
+    """
     # Entry costs
     entry_tax_bps = cost.stt_bps + cost.exchange_charges_bps + cost.sebi_charges_bps + cost.stamp_duty_bps
     entry_brokerage_total = cost.brokerage_bps * (1 + cost.gst_pct / 100.0)
@@ -63,6 +70,16 @@ def _calculate_frictions_bps(cost: CostAssumptions) -> float:
 
 # Phase 1 & 3: Backtest Engine and Portfolio Metrics
 def _compute_metrics(gross_returns: List[float], frictions_bps: float, holding_days: int) -> PortfolioMetrics:
+    """Computes portfolio performance metrics from gross returns and frictions.
+
+    Args:
+        gross_returns (List[float]): A list of gross daily portfolio returns.
+        frictions_bps (float): The transaction friction to subtract per trade in basis points.
+        holding_days (int): The average holding period in days, used to annualize metrics.
+
+    Returns:
+        PortfolioMetrics: The calculated performance metrics including CAGR, Sharpe, and Sortino.
+    """
     if not gross_returns:
         return PortfolioMetrics(
             gross_return=0.0, net_return=0.0, cagr=0.0, sharpe=0.0, sortino=0.0,
@@ -138,11 +155,28 @@ def _compute_metrics(gross_returns: List[float], frictions_bps: float, holding_d
     )
 
 def run_alpha_validation(params: BacktestParams) -> BacktestResult:
+    """Executes a realistic alpha validation backtest.
+
+    Args:
+        params (BacktestParams): The parameters defining the backtest strategy, horizon, and cost preset.
+
+    Returns:
+        BacktestResult: The results of the backtest including portfolio metrics and benchmarks.
+    """
     with get_session() as session:
         return _run_alpha_validation_internal(session, params)
 
 
 def _run_alpha_validation_internal(session, params: BacktestParams) -> BacktestResult:
+    """Internal implementation of the alpha validation backtest using a provided database session.
+
+    Args:
+        session: The SQLAlchemy database session.
+        params (BacktestParams): The parameters defining the backtest strategy.
+
+    Returns:
+        BacktestResult: The results of the backtest.
+    """
     cost_assumptions = COST_PRESETS.get(params.cost_preset, COST_PRESETS["realistic_retail"])
     frictions_bps = _calculate_frictions_bps(cost_assumptions)
     
@@ -219,6 +253,11 @@ def _run_alpha_validation_internal(session, params: BacktestParams) -> BacktestR
 
 # Phase 5: Threshold Sweep
 def run_strategy_sweep() -> StrategySweepResult:
+    """Runs a parameter sweep across multiple confidence thresholds and sizing strategies.
+
+    Returns:
+        StrategySweepResult: The results of the sweep, identifying the best configurations by CAGR and Sharpe.
+    """
     thresholds = [50.0, 55.0, 60.0, 65.0, 70.0, 75.0, 80.0]
     top_ks = [3, 5, 10, 20]
     horizons = ["7D", "20D", "30D", "60D", "90D"]
@@ -274,6 +313,14 @@ def run_strategy_sweep() -> StrategySweepResult:
 
 # Phase 4: Regime Breakdown
 def run_regime_breakdown(params: BacktestParams) -> RegimeBreakdownResult:
+    """Performs a regime-based performance breakdown for a given strategy.
+
+    Args:
+        params (BacktestParams): The parameters defining the strategy.
+
+    Returns:
+        RegimeBreakdownResult: The breakdown of strategy performance across different market regimes (e.g., BULL, BEAR).
+    """
     with get_session() as session:
         overall = _run_alpha_validation_internal(session, params)
         
@@ -292,6 +339,11 @@ def run_regime_breakdown(params: BacktestParams) -> RegimeBreakdownResult:
 
 # Phase 8: Report Generation
 def generate_reports():
+    """Generates markdown reports summarizing the alpha validation results.
+
+    Creates multiple detailed reports (e.g., strategy sweep, regime breakdown, failure cases)
+    in the `.alpha-validation` directory.
+    """
     reports_dir = os.path.join(os.path.dirname(os.path.dirname(os.getcwd())), ".alpha-validation")
     if "backend" in os.getcwd():
         reports_dir = os.path.join(os.path.dirname(os.getcwd()), ".alpha-validation")

@@ -44,6 +44,14 @@ from tradingagents.dataflows.stocktwits import fetch_stocktwits_messages
 
 
 def _seven_days_back(trade_date: str) -> str:
+    """Calculates the date 7 days prior to the given trade date.
+
+    Args:
+        trade_date (str): The reference date in YYYY-MM-DD format.
+
+    Returns:
+        str: The calculated date in YYYY-MM-DD format.
+    """
     return (datetime.strptime(trade_date, "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d")
 
 
@@ -54,10 +62,24 @@ def create_sentiment_analyst(llm):
     prompt as structured blocks, and produces a deterministic sentiment
     report via structured output (with a free-text fallback for providers
     that do not support it).
+
+    Args:
+        llm: The language model instance to use for the analyst.
+
+    Returns:
+        Callable: A function representing the sentiment analyst node in the graph.
     """
     structured_llm = bind_structured(llm, SentimentReport, "Sentiment Analyst")
 
     def sentiment_analyst_node(state):
+        """Executes the Sentiment Analyst's logic to generate a sentiment report.
+
+        Args:
+            state (dict): The current state of the agent graph.
+
+        Returns:
+            dict: The updated state containing the new messages and sentiment report.
+        """
         ticker = state["company_of_interest"]
         end_date = state["trade_date"]
         start_date = _seven_days_back(end_date)
@@ -127,7 +149,19 @@ def _build_system_message(
     stocktwits_block: str,
     reddit_block: str,
 ) -> str:
-    """Assemble the sentiment-analyst system message with structured data blocks."""
+    """Assemble the sentiment-analyst system message with structured data blocks.
+
+    Args:
+        ticker (str): The ticker symbol.
+        start_date (str): The start date of the analysis period.
+        end_date (str): The end date of the analysis period.
+        news_block (str): Pre-fetched news headlines.
+        stocktwits_block (str): Pre-fetched StockTwits messages.
+        reddit_block (str): Pre-fetched Indian market news and corporate announcements.
+
+    Returns:
+        str: The fully assembled system message.
+    """
     return f"""You are a financial market sentiment analyst. Your task is to produce a comprehensive sentiment report for {ticker} covering the period from {start_date} to {end_date}, drawing on three complementary data sources that have already been collected for you.
 
 ## Data sources (pre-fetched, in this prompt)
@@ -198,6 +232,12 @@ def create_social_media_analyst(llm):
 
     .. deprecated::
         Import :func:`create_sentiment_analyst` directly instead.
+
+    Args:
+        llm: The language model instance.
+
+    Returns:
+        Callable: A function representing the sentiment analyst node.
     """
     import warnings
     warnings.warn(

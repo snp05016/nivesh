@@ -58,6 +58,15 @@ def _clean_ticker(ticker: str) -> str:
 
 
 def _search_qs(ticker: str, limit: int) -> str:
+    """Builds the URL-encoded query string for a Reddit search.
+
+    Args:
+        ticker (str): The ticker symbol to search for.
+        limit (int): The maximum number of results to fetch.
+
+    Returns:
+        str: A URL-encoded query string.
+    """
     return urlencode({
         "q": _clean_ticker(ticker),
         "restrict_sr": "on",
@@ -133,6 +142,17 @@ def _fetch_subreddit(
     limit: int,
     timeout: float,
 ) -> list[dict]:
+    """Fetches recent posts matching a ticker from a specific subreddit using the JSON API.
+
+    Args:
+        ticker (str): The ticker symbol to search for.
+        sub (str): The subreddit name.
+        limit (int): The maximum number of results to fetch.
+        timeout (float): Request timeout in seconds.
+
+    Returns:
+        list[dict]: A list of dictionary objects representing the retrieved posts. Falls back to RSS if the API request fails.
+    """
     url = _API.format(sub=sub, qs=_search_qs(ticker, limit))
     req = Request(url, headers={"User-Agent": _UA, "Accept": "application/json"})
     try:

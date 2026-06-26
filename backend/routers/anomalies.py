@@ -8,5 +8,11 @@ router = APIRouter(prefix="/api/v1/market", tags=["anomalies"])
 def read_anomalies(limit: int = Query(10, description="Max anomalies to return")):
     """
     Get the latest market anomalies, sorted by severity.
+
+    Args:
+        limit (int): The limit.
+
+    Returns:
+        Any: The response.
     """
     return get_latest_anomalies(limit=limit)

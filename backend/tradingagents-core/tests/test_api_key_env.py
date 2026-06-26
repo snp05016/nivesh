@@ -48,18 +48,22 @@ def test_every_select_llm_provider_choice_has_an_entry():
     ],
 )
 def test_known_providers_resolve(provider, env_var):
+    """Verify that known providers correctly resolve to their respective environment variables."""
     assert get_api_key_env(provider) == env_var
 
 
 def test_ollama_has_no_key():
+    """Verify that the ollama provider correctly resolves to no environment variable."""
     assert get_api_key_env("ollama") is None
 
 
 def test_unknown_provider_returns_none():
+    """Verify that an unknown provider safely returns None."""
     assert get_api_key_env("not-a-real-provider") is None
 
 
 def test_case_insensitive_lookup():
+    """Verify that provider names are looked up case-insensitively."""
     assert get_api_key_env("OpenAI") == "OPENAI_API_KEY"
     assert get_api_key_env("QWEN-CN") == "DASHSCOPE_CN_API_KEY"
 
@@ -76,12 +80,14 @@ def cli_utils(monkeypatch):
 
 
 def test_ensure_api_key_returns_existing(monkeypatch, cli_utils):
+    """Verify that existing environment variables are returned directly without prompting."""
     monkeypatch.setenv("OPENAI_API_KEY", "sk-already-set")
     result = cli_utils.ensure_api_key("openai")
     assert result == "sk-already-set"
 
 
 def test_ensure_api_key_no_op_for_ollama(monkeypatch, cli_utils):
+    """Verify that ollama bypasses the key prompt and returns None."""
     # Even with no env var set, ollama should not prompt and should return None.
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     with patch.object(cli_utils, "questionary") as mock_q:
@@ -91,6 +97,7 @@ def test_ensure_api_key_no_op_for_ollama(monkeypatch, cli_utils):
 
 
 def test_ensure_api_key_unknown_provider_no_prompt(monkeypatch, cli_utils):
+    """Verify that unknown providers do not trigger a prompt and return None."""
     with patch.object(cli_utils, "questionary") as mock_q:
         result = cli_utils.ensure_api_key("totally-fake-provider")
     assert result is None

@@ -19,7 +19,15 @@ ML_ENGINE_TIMEOUT = 5.0  # seconds
 
 
 def _direction_label(direction: int) -> str:
-    """Map numeric direction to human-readable label."""
+    """
+    Map numeric direction to human-readable label.
+    
+    Args:
+        direction (int): Numeric representation of the trend direction.
+        
+    Returns:
+        str: "BULLISH" for 1, "BEARISH" for -1, and "NEUTRAL" otherwise.
+    """
     if direction == 1:
         return "BULLISH"
     elif direction == -1:
@@ -28,7 +36,16 @@ def _direction_label(direction: int) -> str:
 
 
 def _build_unavailable_response(symbol: str, warning: str) -> MLSignalResponse:
-    """Return a graceful unavailable response when the ML engine is unreachable."""
+    """
+    Return a graceful unavailable response when the ML engine is unreachable.
+    
+    Args:
+        symbol (str): The stock ticker symbol.
+        warning (str): The specific reason why the ML engine is unavailable.
+        
+    Returns:
+        MLSignalResponse: A populated response object indicating the service is unavailable.
+    """
     return MLSignalResponse(
         symbol=symbol.strip().upper(),
         direction=0,

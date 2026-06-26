@@ -86,7 +86,15 @@ class PredictionsPerformanceResponse(BaseModel):
     "sector, market regime, ML engine mode, and recommendation direction.",
 )
 def get_predictions_performance(user_id: int = Depends(require_auth)):
-    """Comprehensive performance analytics for all predictions in the system."""
+    """
+    Comprehensive performance analytics for all predictions in the system.
+
+    Args:
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     data = get_performance_metrics()
     return PredictionsPerformanceResponse(
         total_predictions=data["total_predictions"],
@@ -115,7 +123,15 @@ def get_predictions_performance(user_id: int = Depends(require_auth)):
     "recommendation direction.",
 )
 def get_predictions_calibration(user_id: int = Depends(require_auth)):
-    """Confidence calibration analytics for all predictions."""
+    """
+    Confidence calibration analytics for all predictions.
+
+    Args:
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     try:
         data = get_calibration_metrics()
 
@@ -174,7 +190,15 @@ def get_predictions_calibration(user_id: int = Depends(require_auth)):
     "predictive lift over final confidence, missing rate, and usefulness ranking.",
 )
 def get_predictions_pillar_attribution(user_id: int = Depends(require_auth)):
-    """Pillar-level attribution analytics showing which analysis pillars are most predictive."""
+    """
+    Pillar-level attribution analytics showing which analysis pillars are most predictive.
+
+    Args:
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     try:
         data = get_pillar_attribution()
         pillars_dict = data.get("pillars", {})
@@ -215,7 +239,15 @@ def get_predictions_pillar_attribution(user_id: int = Depends(require_auth)):
     "and the gap between stated confidence and realized accuracy.",
 )
 def get_predictions_model_versions(user_id: int = Depends(require_auth)):
-    """Model version comparison analytics across all prediction horizons."""
+    """
+    Model version comparison analytics across all prediction horizons.
+
+    Args:
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     try:
         data = get_model_version_analytics()
         versions = [
@@ -237,7 +269,15 @@ def get_predictions_model_versions(user_id: int = Depends(require_auth)):
     description="Returns data readiness counts to determine if enough matured predictions exist for reliable fusion weight calibration.",
 )
 def get_calibration_readiness_health(user_id: int = Depends(require_auth)):
-    """Check if the system has enough prediction outcomes to calibrate confidence fusion."""
+    """
+    Check if the system has enough prediction outcomes to calibrate confidence fusion.
+
+    Args:
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     try:
         data = get_calibration_health()
         return CalibrationHealthResponse(**data)
@@ -253,7 +293,15 @@ def get_calibration_readiness_health(user_id: int = Depends(require_auth)):
     description="Returns advisory confidence fusion weights based on historical pillar performance. Never mutates code automatically.",
 )
 def get_fusion_weight_recommendations_endpoint(user_id: int = Depends(require_auth)):
-    """Generates recommended weights for prediction confidence fusion based on historical performance."""
+    """
+    Generates recommended weights for prediction confidence fusion based on historical performance.
+
+    Args:
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     try:
         data = get_fusion_weight_recommendations()
         return FusionWeightRecommendationResponse(**data)

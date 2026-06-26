@@ -39,12 +39,17 @@ _DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "stockapp.db
 
 
 def _load_db_tickers(db_path: str) -> dict[str, str]:
-    """
-    Query the database for (ticker, company_name) pairs.
+    """Queries the database for (ticker, company_name) pairs.
 
     Pulls from `portfolio` (has company_name) and `analysis_history`
     (ticker only, no company_name). Returns {ticker: company_name}.
     company_name may be an empty string if only found in analysis_history.
+
+    Args:
+        db_path (str): The file path to the SQLite database.
+
+    Returns:
+        dict[str, str]: A dictionary mapping ticker symbols to their company names.
     """
     results: dict[str, str] = {}
     try:
@@ -82,10 +87,16 @@ def _build_alias_tables(
     db_tickers: dict[str, str],
     overrides: dict[str, list[str]],
 ) -> tuple[dict[str, list[str]], dict[str, str]]:
-    """
-    Build:
-      TICKER_ALIASES  — {ticker: [company_name, *manual_aliases]}
-      ALIAS_TO_TICKER — {alias_lower: ticker}
+    """Builds the alias tables for ticker matching.
+
+    Args:
+        db_tickers (dict[str, str]): Dictionary mapping tickers to company names.
+        overrides (dict[str, list[str]]): Dictionary mapping tickers to manual aliases.
+
+    Returns:
+        tuple[dict[str, list[str]], dict[str, str]]: A tuple containing:
+            - ticker_aliases: {ticker: [company_name, *manual_aliases]}
+            - alias_to_ticker: {alias_lower: ticker}
     """
     ticker_aliases: dict[str, list[str]] = {}
     alias_to_ticker: dict[str, str] = {}
@@ -142,17 +153,17 @@ del _seen, _ALL_ALIASES_DEDUPED
 # ---------------------------------------------------------------------------
 
 def extract_snippet(segments: list[dict], timestamp: float) -> str:
-    """
-    Return joined text from segments within ±90 seconds of timestamp.
+    """Returns joined text from segments within ±90 seconds of timestamp.
+    
     Fix 2.20: Expanded from ±60s to ±90s to prevent sentiment inversion
     caused by mid-sentence audio cuts in transcript parsing.
 
     Args:
-        segments: list of segment dicts with keys 'start', 'end', 'text'
-        timestamp: centre timestamp in seconds
+        segments (list[dict]): List of segment dicts with keys 'start', 'end', 'text'.
+        timestamp (float): Centre timestamp in seconds.
 
     Returns:
-        Single string of joined segment texts.
+        str: Single string of joined segment texts.
     """
     window_texts = [
         seg["text"]
@@ -172,9 +183,19 @@ def _estimate_timestamp(
     duration_seconds: float,
     segments: list[dict],
 ) -> float:
-    """
-    Estimate timestamp for a word at word_index by linear interpolation,
-    then snap to the nearest segment start.
+    """Estimates the timestamp for a word at word_index.
+
+    Uses linear interpolation based on the word index and total duration,
+    then snaps to the nearest segment start.
+
+    Args:
+        word_index (int): The index of the matched word in the full text.
+        total_words (int): The total number of words in the full text.
+        duration_seconds (float): The total duration of the audio in seconds.
+        segments (list[dict]): List of transcript segments.
+
+    Returns:
+        float: The estimated timestamp in seconds.
     """
     if total_words == 0 or duration_seconds <= 0:
         return 0.0
@@ -194,25 +215,22 @@ def _estimate_timestamp(
 # ---------------------------------------------------------------------------
 
 def find_tickers(transcript: dict) -> list[dict]:
-    """
-    Identify ticker mentions in a transcript using sliding-window fuzzy matching.
+    """Identifies ticker mentions in a transcript using sliding-window fuzzy matching.
 
     Args:
-        transcript: dict from transcript_engine with keys:
-                    - 'segments': list of {start, end, text}
-                    - 'full_text': str
-                    - 'duration_seconds': float
+        transcript (dict): Dictionary from transcript_engine with keys:
+            - 'segments' (list[dict]): List of {start, end, text}
+            - 'full_text' (str): Full transcript text
+            - 'duration_seconds' (float): Total duration
 
     Returns:
-        list of dicts:
-            {
-                "ticker": str,
-                "timestamp_start": float,
-                "match_score": int,
-                "snippet": str,
-            }
-        Sorted by timestamp_start ascending.
-        Deduplicated: same ticker within 30 s → only highest-score entry kept.
+        list[dict]: List of matches sorted by timestamp_start ascending.
+            Each dict contains:
+            - "ticker" (str): The matched ticker symbol.
+            - "timestamp_start" (float): The estimated timestamp.
+            - "match_score" (int): The rapidfuzz match score.
+            - "snippet" (str): The surrounding text snippet.
+            Deduplicated: same ticker within 30 s → only highest-score entry kept.
     """
     if not _ALL_ALIASES:
         logger.warning("ticker_matcher: alias list is empty; no matches possible")

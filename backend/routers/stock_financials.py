@@ -525,7 +525,19 @@ def get_stock_financials(
     periods: Optional[int] = Query(8, description="Number of periods to return", ge=1, le=20),
     user_id: int = Depends(require_auth),
 ):
-    """Return financial statements for a given ticker symbol."""
+    """
+    Return financial statements for a given ticker symbol.
+
+    Args:
+        symbol (str): The symbol.
+        period_type (str): The period_type.
+        consolidation (str): The consolidation.
+        periods (List/Dict): The periods.
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     try:
         symbol = symbol.strip().upper()
         rng = _seeded_random(symbol)
@@ -631,7 +643,16 @@ def _trend_label(bps_change: float) -> Optional[str]:
     "top 10 holders, promoter pledge details, and multi-quarter holding trends.",
 )
 def get_shareholding(symbol: str, user_id: int = Depends(require_auth)):
-    """Return shareholding pattern for a given ticker."""
+    """
+    Return shareholding pattern for a given ticker.
+
+    Args:
+        symbol (str): The symbol.
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     try:
         symbol = symbol.strip().upper()
         rng = _seeded_random(symbol)
@@ -850,7 +871,16 @@ _SECTOR_DIV_YIELD = {
     "(interim + final), bonus issues, stock splits, rights issues, and buybacks.",
 )
 def get_corporate_actions(symbol: str, user_id: int = Depends(require_auth)):
-    """Return corporate actions history for a given ticker."""
+    """
+    Return corporate actions history for a given ticker.
+
+    Args:
+        symbol (str): The symbol.
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     try:
         symbol = symbol.strip().upper()
         rng = _seeded_random(symbol)
@@ -1042,7 +1072,16 @@ _SECTOR_PEERS: Dict[str, List[str]] = {
     "peer comparison across key valuation multiples.",
 )
 def get_valuation(symbol: str, user_id: int = Depends(require_auth)):
-    """Return valuation overview for a given ticker."""
+    """
+    Return valuation overview for a given ticker.
+
+    Args:
+        symbol (str): The symbol.
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     try:
         symbol = symbol.strip().upper()
         rng = _seeded_random(symbol)
@@ -1199,7 +1238,16 @@ _FORENSIC_CONCERNS = [
     "Overall risk score is from 0 (safe) to 100 (extreme risk).",
 )
 def get_risk_signals(symbol: str, user_id: int = Depends(require_auth)):
-    """Return risk assessment signals for a given ticker."""
+    """
+    Return risk assessment signals for a given ticker.
+
+    Args:
+        symbol (str): The symbol.
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     try:
         symbol = symbol.strip().upper()
         rng = _seeded_random(symbol)
@@ -1349,7 +1397,16 @@ def get_risk_signals(symbol: str, user_id: int = Depends(require_auth)):
     "Proxies to the LightGBM-based ML engine and enriches with reliability metrics.",
 )
 def get_stock_ml_signal(symbol: str, user_id: int = Depends(require_auth)):
-    """Return ML prediction signal for a given ticker."""
+    """
+    Return ML prediction signal for a given ticker.
+
+    Args:
+        symbol (str): The symbol.
+        user_id (int): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     from services.ml_signal_service import get_ml_signal
 
     return get_ml_signal(symbol)

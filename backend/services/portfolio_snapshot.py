@@ -25,7 +25,14 @@ from config.settings import MORNING_BRIEF_TTL
 _MORNING_BRIEF_NS = "morning_brief"
 
 def get_current_price(ticker: str) -> float | None:
-    """Fetch latest price with NSE → BSE fallback."""
+    """Fetch latest price with NSE → BSE fallback.
+
+    Args:
+        ticker (str): The base ticker symbol.
+
+    Returns:
+        float | None: The latest closing price, or None if unavailable.
+    """
     for suffix in [".NS", ".BO"]:
         try:
             t = yf.Ticker(ticker + suffix)
@@ -37,7 +44,7 @@ def get_current_price(ticker: str) -> float | None:
     return None
 
 async def snapshot_all_users():
-    """Take valuation snapshot for all users."""
+    """Take valuation snapshot for all users and save to the database."""
     today_str = date.today().isoformat()
 
     # Fetch NIFTY close for benchmark outside the per-user loop
@@ -103,12 +110,13 @@ async def snapshot_all_users():
 
 
 async def pregen_morning_briefs_all_users() -> dict:
-    """
-    Pre-generate morning briefs for every user who has holdings.
+    """Pre-generate morning briefs for every user who has holdings.
+
     Called at 6:30 AM IST so the endpoint returns instantly when the user opens the app.
     Stores results in disk_cache under 'morning_brief' namespace keyed by user_id.
 
-    Returns {"generated": int, "skipped": int, "errors": int}.
+    Returns:
+        dict: Summary containing generated, skipped, and errors counts.
     """
     from services.disk_cache import set as cache_set
     from services.llm_utils import deepseek_chat as _deepseek_chat

@@ -109,12 +109,14 @@ def _structured_pm_llm(captured: dict, decision: PortfolioDecision | None = None
 class TestTradingMemoryLogCore:
 
     def test_store_creates_file(self, tmp_path):
+        """Verify store creates file."""
         log = make_log(tmp_path)
         assert not (tmp_path / "trading_memory.md").exists()
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
         assert (tmp_path / "trading_memory.md").exists()
 
     def test_store_appends_not_overwrites(self, tmp_path):
+        """Verify store appends not overwrites."""
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
         log.store_decision("AAPL", "2026-01-11", DECISION_OVERWEIGHT)
@@ -153,6 +155,7 @@ class TestTradingMemoryLogCore:
         assert entries[1]["reflection"] == "Second correct."
 
     def test_pending_tag_format(self, tmp_path):
+        """Verify pending tag format."""
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
         text = (tmp_path / "trading_memory.md").read_text(encoding="utf-8")
@@ -161,16 +164,19 @@ class TestTradingMemoryLogCore:
     # Rating parsing
 
     def test_rating_parsed_buy(self, tmp_path):
+        """Verify rating parsed buy."""
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
         assert log.load_entries()[0]["rating"] == "Buy"
 
     def test_rating_parsed_overweight(self, tmp_path):
+        """Verify rating parsed overweight."""
         log = make_log(tmp_path)
         log.store_decision("AAPL", "2026-01-11", DECISION_OVERWEIGHT)
         assert log.load_entries()[0]["rating"] == "Overweight"
 
     def test_rating_fallback_hold(self, tmp_path):
+        """Verify rating fallback hold."""
         log = make_log(tmp_path)
         log.store_decision("MSFT", "2026-01-12", DECISION_NO_RATING)
         assert log.load_entries()[0]["rating"] == "Hold"
@@ -200,10 +206,12 @@ class TestTradingMemoryLogCore:
     # load_entries
 
     def test_load_entries_empty_file(self, tmp_path):
+        """Verify load entries empty file."""
         log = make_log(tmp_path)
         assert log.load_entries() == []
 
     def test_load_entries_single(self, tmp_path):
+        """Verify load entries single."""
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
         entries = log.load_entries()
@@ -216,6 +224,7 @@ class TestTradingMemoryLogCore:
         assert e["raw"] is None
 
     def test_load_entries_multiple(self, tmp_path):
+        """Verify load entries multiple."""
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
         log.store_decision("AAPL", "2026-01-11", DECISION_OVERWEIGHT)
@@ -225,6 +234,7 @@ class TestTradingMemoryLogCore:
         assert [e["ticker"] for e in entries] == ["NVDA", "AAPL", "MSFT"]
 
     def test_decision_content_preserved(self, tmp_path):
+        """Verify decision content preserved."""
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
         assert log.load_entries()[0]["decision"] == DECISION_BUY.strip()
@@ -232,6 +242,7 @@ class TestTradingMemoryLogCore:
     # get_pending_entries
 
     def test_get_pending_returns_pending_only(self, tmp_path):
+        """Verify get pending returns pending only."""
         log = make_log(tmp_path)
         _seed_completed(tmp_path, "NVDA", "2026-01-05", "Buy NVDA.", "Correct.")
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
@@ -243,15 +254,18 @@ class TestTradingMemoryLogCore:
     # get_past_context
 
     def test_get_past_context_empty(self, tmp_path):
+        """Verify get past context empty."""
         log = make_log(tmp_path)
         assert log.get_past_context("NVDA") == ""
 
     def test_get_past_context_pending_excluded(self, tmp_path):
+        """Verify get past context pending excluded."""
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
         assert log.get_past_context("NVDA") == ""
 
     def test_get_past_context_same_ticker(self, tmp_path):
+        """Verify get past context same ticker."""
         log = make_log(tmp_path)
         _seed_completed(tmp_path, "NVDA", "2026-01-05", "Buy NVDA — AI capex thesis intact.", "Directionally correct.")
         ctx = log.get_past_context("NVDA")
@@ -259,6 +273,7 @@ class TestTradingMemoryLogCore:
         assert "Buy NVDA" in ctx
 
     def test_get_past_context_cross_ticker(self, tmp_path):
+        """Verify get past context cross ticker."""
         log = make_log(tmp_path)
         _seed_completed(tmp_path, "AAPL", "2026-01-05", "Buy AAPL — Services growth.", "Correct.")
         ctx = log.get_past_context("NVDA")
@@ -286,6 +301,7 @@ class TestTradingMemoryLogCore:
     # No-op when config is None
 
     def test_no_log_path_is_noop(self):
+        """Verify no log path is noop."""
         log = TradingMemoryLog(config=None)
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
         assert log.load_entries() == []
@@ -388,6 +404,7 @@ class TestDeferredReflection:
     # update_with_outcome
 
     def test_update_replaces_pending_tag(self, tmp_path):
+        """Verify update replaces pending tag."""
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
         log.update_with_outcome("NVDA", "2026-01-10", 0.042, 0.021, 5, "Momentum confirmed.")
@@ -398,6 +415,7 @@ class TestDeferredReflection:
         assert "5d" in text
 
     def test_update_appends_reflection(self, tmp_path):
+        """Verify update appends reflection."""
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
         log.update_with_outcome("NVDA", "2026-01-10", 0.042, 0.021, 5, "Momentum confirmed.")
@@ -437,6 +455,7 @@ class TestDeferredReflection:
         assert entries[0]["pending"] is False
 
     def test_update_noop_when_no_log_path(self):
+        """Verify update noop when no log path."""
         log = TradingMemoryLog(config=None)
         log.update_with_outcome("NVDA", "2026-01-10", 0.05, 0.02, 5, "Reflection")
 
@@ -460,6 +479,7 @@ class TestDeferredReflection:
     # Reflector.reflect_on_final_decision
 
     def test_reflect_on_final_decision_returns_llm_output(self):
+        """Verify reflect on final decision returns llm output."""
         mock_llm = MagicMock()
         mock_llm.invoke.return_value.content = "Directionally correct. Thesis confirmed."
         reflector = Reflector(mock_llm)
@@ -486,6 +506,7 @@ class TestDeferredReflection:
     # TradingAgentsGraph._fetch_returns
 
     def test_fetch_returns_valid_ticker(self):
+        """Verify fetch returns valid ticker."""
         stock_prices = [100.0, 102.0, 104.0, 103.0, 105.0, 106.0]
         spy_prices   = [400.0, 402.0, 404.0, 403.0, 405.0, 406.0]
         mock_graph = MagicMock(spec=TradingAgentsGraph)
@@ -674,12 +695,14 @@ class TestPortfolioManagerInjection:
     # past_context in initial state
 
     def test_past_context_in_initial_state(self):
+        """Verify past context in initial state."""
         propagator = Propagator()
         state = propagator.create_initial_state("NVDA", "2026-01-10", past_context="some context")
         assert "past_context" in state
         assert state["past_context"] == "some context"
 
     def test_past_context_defaults_to_empty(self):
+        """Verify past context defaults to empty."""
         propagator = Propagator()
         state = propagator.create_initial_state("NVDA", "2026-01-10")
         assert state["past_context"] == ""
@@ -687,6 +710,7 @@ class TestPortfolioManagerInjection:
     # PM prompt
 
     def test_pm_prompt_includes_past_context(self):
+        """Verify pm prompt includes past context."""
         captured = {}
         llm = _structured_pm_llm(captured)
         pm_node = create_portfolio_manager(llm)

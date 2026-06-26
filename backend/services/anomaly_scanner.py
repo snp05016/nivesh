@@ -1,3 +1,8 @@
+"""Market anomaly detection engine.
+
+This module scans daily market data to identify statistical, volume, and options anomalies
+for the configured NSE universe.
+"""
 import logging
 from datetime import datetime, date, timedelta, timezone
 import pandas as pd
@@ -14,6 +19,15 @@ from services.options_scraper import fetch_option_chain, compute_derivatives_met
 logger = logging.getLogger(__name__)
 
 def _determine_severity(anomaly_type: str, magnitude: float) -> str:
+    """Determines the severity level of an anomaly based on its type and magnitude.
+
+    Args:
+        anomaly_type (str): The type of the anomaly (e.g., 'VOLUME_SPIKE', 'GAP_UP').
+        magnitude (float): The numerical magnitude associated with the anomaly.
+
+    Returns:
+        str: The severity level, such as 'HIGH', 'MEDIUM', or 'LOW'.
+    """
     if anomaly_type == "VOLUME_SPIKE":
         if magnitude > 5: return "HIGH"
         if magnitude > 4: return "MEDIUM"
@@ -41,6 +55,16 @@ def _determine_severity(anomaly_type: str, magnitude: float) -> str:
     return "MEDIUM"
 
 def _detect_anomalies_for_ticker(ticker: str, company: str, bhavcopy_data: dict) -> List[dict]:
+    """Scans historical and options data for a specific ticker to detect anomalies.
+
+    Args:
+        ticker (str): The NSE ticker symbol.
+        company (str): The name of the company.
+        bhavcopy_data (dict): Daily delivery percentage data parsed from the NSE Bhavcopy.
+
+    Returns:
+        List[dict]: A list of detected anomaly dictionaries for the ticker.
+    """
     anomalies = []
     
     df = get_price_history(ticker, period_days=365)
@@ -208,6 +232,14 @@ def _detect_anomalies_for_ticker(ticker: str, company: str, bhavcopy_data: dict)
     return anomalies
 
 def run_anomaly_scan() -> List[dict]:
+    """Runs a comprehensive scan across the entire defined universe of NSE tickers.
+
+    Downloads necessary end-of-day data, evaluates each ticker for anomalies, 
+    persists findings to the database, and sorts results by severity.
+
+    Returns:
+        List[dict]: The complete list of sorted anomalies detected during the scan.
+    """
     bhav_res = download_bhavcopy()
     
     bhavcopy_data = {}
@@ -254,6 +286,16 @@ def run_anomaly_scan() -> List[dict]:
     return all_anomalies
 
 def get_latest_anomalies(limit: int = 10) -> List[dict]:
+    """Retrieves the most recent market anomalies from the database.
+
+    Fetches anomalies detected within the last 24 hours, heavily weighted by severity.
+
+    Args:
+        limit (int): The maximum number of anomalies to return. Defaults to 10.
+
+    Returns:
+        List[dict]: A list of recent, high-priority anomaly records.
+    """
     try:
         with get_session() as db:
             # We want recent anomalies, past 24 hours ideally

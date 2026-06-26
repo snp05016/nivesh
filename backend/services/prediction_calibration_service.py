@@ -41,7 +41,14 @@ PILLAR_COLUMNS = [
 # ---------------------------------------------------------------------------
 
 def _safe_float(val: Any) -> Optional[float]:
-    """Convert a SQLAlchemy result to float, returning None for None/NaN."""
+    """Convert a SQLAlchemy result to float, returning None for None/NaN.
+
+    Args:
+        val: The value to convert.
+
+    Returns:
+        Optional[float]: The float representation, or None if invalid.
+    """
     if val is None:
         return None
     try:
@@ -52,12 +59,26 @@ def _safe_float(val: Any) -> Optional[float]:
 
 
 def _safe_avg(expr):
-    """Wrap an aggregate so division by zero returns None."""
+    """Wrap an aggregate so division by zero returns None.
+
+    Args:
+        expr: The SQLAlchemy expression to average.
+
+    Returns:
+        SQLAlchemy expression: The wrapped average expression.
+    """
     return func.coalesce(func.avg(cast(expr, Float)), None)
 
 
 def _safe_hit_rate(hit_col):
-    """Compute hit rate as fraction of non-null hit_direction values that are TRUE."""
+    """Compute hit rate as fraction of non-null hit_direction values that are TRUE.
+
+    Args:
+        hit_col: The SQLAlchemy column representing hit direction.
+
+    Returns:
+        SQLAlchemy expression: The calculated hit rate or None.
+    """
     total = func.count(case((hit_col.isnot(None), 1)))
     hits = func.count(case((hit_col.is_(True), 1)))
     return func.coalesce(
@@ -73,6 +94,13 @@ def _point_biserial(pillar_values: List[float], hit_values: List[bool]) -> Optio
     r = (M1 - M0) / S * sqrt(n1 * n0 / n^2)
 
     Returns None if stddev is 0, counts are 0, or insufficient data.
+
+    Args:
+        pillar_values (List[float]): A list of continuous pillar values.
+        hit_values (List[bool]): A list of boolean hit outcomes.
+
+    Returns:
+        Optional[float]: The correlation coefficient [-1, 1], or None if invalid.
     """
     if len(pillar_values) != len(hit_values) or len(pillar_values) < 2:
         return None
@@ -109,7 +137,15 @@ def _point_biserial(pillar_values: List[float], hit_values: List[bool]) -> Optio
 
 
 def _bucket_equal_width(values: List[float], n_buckets: int = 5) -> List[Tuple[float, float]]:
-    """Return n equal-width bucket boundaries from min to max of values."""
+    """Return n equal-width bucket boundaries from min to max of values.
+
+    Args:
+        values (List[float]): The values to bucket.
+        n_buckets (int, optional): The number of buckets. Defaults to 5.
+
+    Returns:
+        List[Tuple[float, float]]: A list of (lower, upper) boundaries for each bucket.
+    """
     if not values:
         return []
     lo = min(values)
@@ -128,6 +164,9 @@ def get_calibration_metrics() -> Dict[str, Any]:
     """
     Compute confidence calibration metrics across buckets, horizons,
     and categorical groupings.
+
+    Returns:
+        Dict[str, Any]: A comprehensive set of calibration statistics.
     """
     with get_session() as session:
         total = session.query(func.count(AnalysisPrediction.id)).scalar() or 0
@@ -179,7 +218,14 @@ def get_calibration_metrics() -> Dict[str, Any]:
 
 
 def _build_calibration_buckets(session) -> List[Dict[str, Any]]:
-    """Compute per-bucket calibration stats."""
+    """Compute per-bucket calibration stats.
+
+    Args:
+        session: The SQLAlchemy database session.
+
+    Returns:
+        List[Dict[str, Any]]: A list of calibration statistics per bucket.
+    """
     results = []
     for lo, hi, label in CONFIDENCE_BUCKETS:
         base_filter = [
@@ -227,6 +273,14 @@ def _compute_calibration_errors(
 ) -> Tuple[Optional[float], Optional[float], Optional[float]]:
     """
     Compute weighted calibration error, ECE, and MCE from bucket stats.
+
+    Args:
+        buckets (List[Dict[str, Any]]): A list of bucket statistics.
+        total (int): The total number of predictions.
+
+    Returns:
+        Tuple[Optional[float], Optional[float], Optional[float]]: A tuple containing
+            the weighted calibration error, ECE, and MCE respectively.
     """
     if total == 0:
         return None, None, None
@@ -262,7 +316,14 @@ def _compute_calibration_errors(
 
 
 def _compute_hit_rate_by_horizon(session) -> Dict[str, Dict[str, Any]]:
-    """Compute matured count and hit rate for 7d, 30d, 90d horizons."""
+    """Compute matured count and hit rate for 7d, 30d, 90d horizons.
+
+    Args:
+        session: The SQLAlchemy database session.
+
+    Returns:
+        Dict[str, Dict[str, Any]]: A mapping of horizon prefixes to hit rate metrics.
+    """
     result = {}
     for prefix in ("7d", "30d", "90d"):
         hit_attr = f"hit_direction_{prefix}"
@@ -283,7 +344,15 @@ def _compute_hit_rate_by_horizon(session) -> Dict[str, Dict[str, Any]]:
 
 
 def _build_group_calibration(session, column) -> List[Dict[str, Any]]:
-    """Generic GROUP BY calibration for a categorical column."""
+    """Generic GROUP BY calibration for a categorical column.
+
+    Args:
+        session: The SQLAlchemy database session.
+        column: The categorical column to group by.
+
+    Returns:
+        List[Dict[str, Any]]: Calibration statistics grouped by the column.
+    """
     rows = (
         session.query(
             column,
@@ -319,7 +388,14 @@ def _build_group_calibration(session, column) -> List[Dict[str, Any]]:
 
 
 def _build_sector_calibration(session) -> List[Dict[str, Any]]:
-    """Sector calibration via JOIN with StockUniverse."""
+    """Sector calibration via JOIN with StockUniverse.
+
+    Args:
+        session: The SQLAlchemy database session.
+
+    Returns:
+        List[Dict[str, Any]]: Calibration statistics grouped by sector.
+    """
     rows = (
         session.query(
             StockUniverse.sector,
@@ -363,6 +439,9 @@ def get_pillar_attribution() -> Dict[str, Any]:
     """
     Analyse how each confidence pillar correlates with prediction accuracy.
     Uses point-biserial correlation, bucketed accuracy, and predictive lift.
+
+    Returns:
+        Dict[str, Any]: Attribution statistics detailing the usefulness of each pillar.
     """
     with get_session() as session:
         total = session.query(func.count(AnalysisPrediction.id)).scalar() or 0
@@ -485,7 +564,16 @@ def get_pillar_attribution() -> Dict[str, Any]:
 def _compute_bucketed_accuracy(
     pillar_vals: List[float], hit_vals: List[bool], n_buckets: int = 5
 ) -> List[Dict[str, Any]]:
-    """Group pillar values into equal-width buckets and compute hit rate per bucket."""
+    """Group pillar values into equal-width buckets and compute hit rate per bucket.
+
+    Args:
+        pillar_vals (List[float]): A list of continuous pillar values.
+        hit_vals (List[bool]): A list of boolean hit outcomes.
+        n_buckets (int, optional): The number of equal-width buckets. Defaults to 5.
+
+    Returns:
+        List[Dict[str, Any]]: Hit rate statistics broken down by bucket.
+    """
     if not pillar_vals:
         return []
 
@@ -524,6 +612,9 @@ def get_model_version_analytics() -> Dict[str, Any]:
     """
     Compute per-model-version performance analytics including hit rates,
     returns, Brier scores, and calibration error.
+
+    Returns:
+        Dict[str, Any]: Performance metrics grouped by model version.
     """
     with get_session() as session:
         total = session.query(func.count(AnalysisPrediction.id)).scalar() or 0
@@ -619,6 +710,9 @@ def get_calibration_health() -> Dict[str, Any]:
     """
     Returns counts and readiness flags to determine if there is enough data
     for reliable calibration.
+
+    Returns:
+        Dict[str, Any]: Health indicators and warnings regarding data sufficiency.
     """
     with get_session() as session:
         total = session.query(func.count(AnalysisPrediction.id)).scalar() or 0
@@ -655,6 +749,13 @@ def get_fusion_weight_recommendations(min_sample: int = 100) -> Dict[str, Any]:
     """
     Generate advisory weights for confidence fusion based on historical 
     point-biserial correlations from pillar attribution.
+
+    Args:
+        min_sample (int, optional): The minimum sample size required to use historical
+            correlations instead of base weights. Defaults to 100.
+
+    Returns:
+        Dict[str, Any]: Recommended weights, warnings, and confidence flags.
     """
     attr = get_pillar_attribution()
     total = attr.get("total_predictions", 0)

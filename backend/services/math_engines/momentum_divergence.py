@@ -13,7 +13,16 @@ from typing import Optional
 
 
 def _compute_rsi(prices: list[float], period: int = 14) -> list[Optional[float]]:
-    """Compute RSI series. Returns None for positions with insufficient data."""
+    """Compute the Relative Strength Index (RSI) series.
+    
+    Args:
+        prices (list[float]): Chronological list of closing prices.
+        period (int, optional): The RSI calculation period. Defaults to 14.
+        
+    Returns:
+        list[Optional[float]]: List of RSI values. Returns None for early positions 
+            with insufficient data.
+    """
     if len(prices) < period + 1:
         return [None] * len(prices)
 
@@ -49,7 +58,15 @@ def _compute_rsi(prices: list[float], period: int = 14) -> list[Optional[float]]
 
 
 def _ema(values: list[float], period: int) -> list[Optional[float]]:
-    """Exponential moving average. Returns None for early positions."""
+    """Calculate the Exponential Moving Average (EMA).
+    
+    Args:
+        values (list[float]): The series of values to average.
+        period (int): The EMA period length.
+        
+    Returns:
+        list[Optional[float]]: List of EMA values. Returns None for early positions.
+    """
     if len(values) < period:
         return [None] * len(values)
 
@@ -65,19 +82,18 @@ def _ema(values: list[float], period: int) -> list[Optional[float]]:
 
 
 def detect_rsi_divergence(prices: list[float], rsi_period: int = 14) -> dict:
-    """
-    Detect bullish/bearish RSI divergence.
+    """Detect bullish or bearish RSI divergence.
 
-    Bullish divergence: price makes lower low, RSI makes higher low.
-    Bearish divergence: price makes higher high, RSI makes lower high.
+    Bullish divergence occurs when price makes a lower low, but RSI makes a higher low.
+    Bearish divergence occurs when price makes a higher high, but RSI makes a lower high.
 
     Args:
-        prices: chronological list of closing prices.
-        rsi_period: RSI calculation period (default 14).
+        prices (list[float]): Chronological list of closing prices.
+        rsi_period (int, optional): RSI calculation period. Defaults to 14.
 
     Returns:
-        dict with 'bullish_divergence', 'bearish_divergence', 'latest_rsi',
-        'signal', 'description'
+        dict: A dictionary containing 'bullish_divergence', 'bearish_divergence', 
+            'latest_rsi', 'signal', 'description', 'rsi_overbought', and 'rsi_oversold'.
     """
     if len(prices) < rsi_period + 5:
         return {
@@ -106,7 +122,7 @@ def detect_rsi_divergence(prices: list[float], rsi_period: int = 14) -> dict:
     recent_prices = [prices[i] for i in recent_idx]
     recent_rsi = [x[1] for x in valid_rsi[-n:]]
 
-    # Identify price swing lows and highs
+    # Identify price swing lows and highs by checking adjacent points
     def find_local_extrema(series: list[float]) -> tuple[list[int], list[int]]:
         lows, highs = [], []
         for i in range(1, len(series) - 1):
@@ -122,13 +138,13 @@ def detect_rsi_divergence(prices: list[float], rsi_period: int = 14) -> dict:
     bullish_divergence = False
     bearish_divergence = False
 
-    # Bullish: price lower low but RSI higher low
+    # Bullish Divergence check: price lower low but RSI higher low
     if len(p_lows) >= 2 and len(r_lows) >= 2:
         pl1, pl2 = p_lows[-2], p_lows[-1]
         if recent_prices[pl2] < recent_prices[pl1] and recent_rsi[pl2] > recent_rsi[pl1]:
             bullish_divergence = True
 
-    # Bearish: price higher high but RSI lower high
+    # Bearish Divergence check: price higher high but RSI lower high
     if len(p_highs) >= 2 and len(r_highs) >= 2:
         ph1, ph2 = p_highs[-2], p_highs[-1]
         if recent_prices[ph2] > recent_prices[ph1] and recent_rsi[ph2] < recent_rsi[ph1]:
@@ -161,15 +177,14 @@ def detect_rsi_divergence(prices: list[float], rsi_period: int = 14) -> dict:
 
 
 def detect_macd_crossover(prices: list[float]) -> dict:
-    """
-    Detect MACD crossover signals (12/26/9 standard parameters).
+    """Detect MACD crossover signals using 12/26/9 standard parameters.
 
     Args:
-        prices: chronological list of closing prices.
+        prices (list[float]): Chronological list of closing prices.
 
     Returns:
-        dict with 'signal' (BULLISH/BEARISH/NEUTRAL), 'macd', 'signal_line',
-        'histogram', 'crossover' (bool), 'crossover_direction'
+        dict: A dictionary with 'signal' (BULLISH/BEARISH/NEUTRAL), 'macd', 
+            'signal_line', 'histogram', 'crossover' (bool), and 'crossover_direction'.
     """
     if len(prices) < 35:
         return {
@@ -252,19 +267,19 @@ def detect_macd_crossover(prices: list[float]) -> dict:
 def detect_bollinger_squeeze(
     prices: list[float], period: int = 20, std_dev: float = 2.0
 ) -> dict:
-    """
-    Detect Bollinger Band squeeze (low volatility → breakout incoming).
-
-    Squeeze is when bandwidth is at multi-period low.
+    """Detect Bollinger Band squeeze.
+    
+    A squeeze indicates low volatility and potentially an incoming breakout,
+    identified when the bandwidth is at a multi-period low.
 
     Args:
-        prices: chronological list of closing prices.
-        period: moving average period (default 20).
-        std_dev: standard deviation multiplier (default 2.0).
+        prices (list[float]): Chronological list of closing prices.
+        period (int, optional): Moving average period. Defaults to 20.
+        std_dev (float, optional): Standard deviation multiplier. Defaults to 2.0.
 
     Returns:
-        dict with 'squeeze' (bool), 'bandwidth', 'upper', 'lower', 'middle',
-        'signal', 'description'
+        dict: A dictionary with 'squeeze' (bool), 'bandwidth', 'upper', 'lower', 
+            'middle', 'signal', 'direction_hint', and 'description'.
     """
     if len(prices) < period + 10:
         return {
@@ -302,7 +317,7 @@ def detect_bollinger_squeeze(
 
     current_mean, current_upper, current_lower, current_bw = bandwidths[-1]
 
-    # Squeeze: current bandwidth is in bottom 20% of recent range
+    # Evaluate Squeeze: determine if current bandwidth is within the bottom 20% of the recent range
     lookback_bws = [b[3] for b in bandwidths[-20:]]
     bw_min = min(lookback_bws)
     bw_max = max(lookback_bws)
@@ -311,7 +326,7 @@ def detect_bollinger_squeeze(
     squeeze_threshold = bw_min + 0.2 * bw_range
     squeeze = current_bw <= squeeze_threshold
 
-    # Direction hint: is price above or below middle band?
+    # Direction hint based on whether the current price sits above or below the middle band
     current_price = prices[-1]
     direction_hint = "UPWARD" if current_price > current_mean else "DOWNWARD"
 

@@ -1,3 +1,6 @@
+"""
+Test script for verifying connectivity and responses from DeepSeek and Claude models.
+"""
 import os
 from services.orchestrator import _deepseek_chat, reformat_with_claude
 

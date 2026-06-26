@@ -1,8 +1,6 @@
 """
-Task 24 — EPS Drift Model (Post-Earnings Announcement Drift / PEAD).
-
-PEAD: stocks with positive earnings surprises tend to drift upward
-for weeks after the announcement, and vice versa.
+EPS Drift Model (Post-Earnings Announcement Drift / PEAD).
+Evaluates earnings surprises and estimate revision momentum to signal drift.
 """
 
 from __future__ import annotations
@@ -15,18 +13,18 @@ def compute_pead_signal(
     historical_surprise_pcts: list[float],
 ) -> dict:
     """
-    Post-Earnings Announcement Drift (PEAD) signal.
+    Calculates the Post-Earnings Announcement Drift (PEAD) signal.
 
     Args:
-        actual_eps: reported EPS.
-        consensus_eps: analyst consensus EPS estimate.
-        historical_surprise_pcts: list of past earnings surprise %
+        actual_eps: The reported EPS for the current period.
+        consensus_eps: The analyst consensus EPS estimate.
+        historical_surprise_pcts: A list of past earnings surprise percentages
             (positive = beat, negative = miss).
             Used to compute standardized unexpected earnings (SUE).
 
     Returns:
-        dict with 'surprise_pct', 'sue_score', 'drift_direction',
-        'expected_drift_magnitude', 'signal', 'description'
+        dict: A dictionary containing 'surprise_pct', 'sue_score', 'drift_direction',
+            'expected_drift_magnitude', 'signal', and 'description'.
     """
     if consensus_eps == 0:
         return {
@@ -108,16 +106,16 @@ def compute_revision_momentum(
     analyst_count: int = 10,
 ) -> dict:
     """
-    Earnings estimate revision momentum.
-    Tracks direction and velocity of analyst estimate changes.
+    Computes earnings estimate revision momentum.
+    Tracks the direction and velocity of analyst estimate changes over time.
 
     Args:
-        eps_estimates_history: chronological list of consensus EPS estimates
+        eps_estimates_history: Chronological list of consensus EPS estimates
             (most recent last).
-        analyst_count: number of analysts in consensus.
+        analyst_count: The number of analysts in the consensus.
 
     Returns:
-        dict with 'revision_direction', 'revision_velocity', 'signal'
+        dict: A dictionary containing 'revision_direction', 'revision_velocity', and 'signal'.
     """
     if len(eps_estimates_history) < 2:
         return {

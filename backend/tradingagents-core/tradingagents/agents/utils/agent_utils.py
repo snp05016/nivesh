@@ -1,3 +1,8 @@
+"""Utility functions for trading agents.
+
+Provides shared utilities for state management, data fetching, and context building.
+"""
+
 import functools
 import logging
 from typing import Any, Mapping, Optional
@@ -47,7 +52,14 @@ def get_language_instruction() -> str:
 
 
 def _clean_identity_value(value: Any) -> Optional[str]:
-    """Return a trimmed string, or None for empty / placeholder-ish values."""
+    """Return a trimmed string, or None for empty / placeholder-ish values.
+
+    Args:
+        value (Any): The raw value to clean.
+
+    Returns:
+        Optional[str]: The cleaned string or None.
+    """
     if not isinstance(value, str):
         return None
     cleaned = value.strip()
@@ -69,7 +81,14 @@ def resolve_instrument_identity(ticker: str) -> dict:
     Best-effort by design: if yfinance is unavailable, rate-limited, or doesn't
     recognise the ticker, we return ``{}`` and the caller falls back to
     ticker-only context rather than failing before analysis starts. Cached so
+    ticker-only context rather than failing before analysis starts. Cached so
     the lookup happens at most once per ticker per process.
+
+    Args:
+        ticker (str): The ticker symbol to resolve.
+
+    Returns:
+        dict: A dictionary containing resolved identity metadata.
     """
     try:
         info = yf.Ticker(ticker.upper()).info or {}
@@ -105,7 +124,17 @@ def build_instrument_context(
     When ``identity`` is provided (resolved deterministically via
     :func:`resolve_instrument_identity`), the company name and business
     classification are injected so agents anchor to the real company rather
+    :func:`resolve_instrument_identity`), the company name and business
+    classification are injected so agents anchor to the real company rather
     than pattern-matching the price chart to a wrong one (#814).
+
+    Args:
+        ticker (str): The ticker symbol.
+        asset_type (str, optional): The type of asset (e.g., 'stock', 'crypto'). Defaults to 'stock'.
+        identity (Optional[Mapping[str, str]], optional): Pre-resolved identity dictionary. Defaults to None.
+
+    Returns:
+        str: The built context string.
     """
     is_crypto = asset_type == "crypto"
     instrument_label = "asset" if is_crypto else "instrument"
@@ -153,6 +182,12 @@ def get_instrument_context_from_state(state: Mapping[str, Any]) -> str:
     Falls back to a ticker-only context — with no network lookup — when the
     state was constructed without it (bare programmatic states, tests), so a
     consumer is never forced to make a yfinance call mid-graph.
+
+    Args:
+        state (Mapping[str, Any]): The current graph state.
+
+    Returns:
+        str: The instrument context string.
     """
     context = state.get("instrument_context")
     if isinstance(context, str) and context.strip():
@@ -164,15 +199,28 @@ def get_instrument_context_from_state(state: Mapping[str, Any]) -> str:
 
 
 def create_msg_delete():
+    """Creates a node function to clear messages from the state.
+
+    Returns:
+        Callable[[dict], dict]: The node function to delete messages.
+    """
     def delete_messages(state):
         """Clear messages and add a context-anchored placeholder.
 
         The placeholder must not be a bare ``"Continue"``: some
         OpenAI-compatible providers interpret that literally as the user task
         and produce output about the word "continue" instead of analysing the
+        OpenAI-compatible providers interpret that literally as the user task
+        and produce output about the word "continue" instead of analysing the
         instrument (#888). Anchoring it to the resolved instrument context and
         date keeps the next analyst on-task even if the provider treats the
         placeholder as a standalone request.
+
+        Args:
+            state (dict): The current graph state containing messages.
+
+        Returns:
+            dict: The updated state with cleared messages and a placeholder.
         """
         messages = state["messages"]
         removal_operations = [RemoveMessage(id=m.id) for m in messages]

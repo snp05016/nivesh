@@ -1,3 +1,9 @@
+"""State definitions for the trading agents LangGraph.
+
+This module defines the TypedDict structures used to maintain state
+across different agent nodes during debate and analysis phases.
+"""
+
 from typing import Annotated, Optional
 from typing_extensions import TypedDict
 from langgraph.graph import MessagesState
@@ -5,6 +11,7 @@ from langgraph.graph import MessagesState
 
 # Researcher team state
 class InvestDebateState(TypedDict):
+    """State structure for the Bull vs Bear debate phase."""
     bull_history: Annotated[str, "Full history of Bull Analyst arguments"]
     bear_history: Annotated[str, "Full history of Bear Analyst arguments"]
     history: Annotated[str, "Full combined conversation history of the debate"]
@@ -16,6 +23,7 @@ class InvestDebateState(TypedDict):
 
 # Risk management team state
 class RiskDebateState(TypedDict):
+    """State structure for the Risk management discussion phase."""
     aggressive_history: Annotated[str, "Full history of Aggressive Analyst arguments"]
     conservative_history: Annotated[str, "Full history of Conservative Analyst arguments"]
     neutral_history: Annotated[str, "Full history of Neutral Analyst arguments"]
@@ -29,6 +37,7 @@ class RiskDebateState(TypedDict):
 
 
 class AgentState(MessagesState):
+    """Main state definition for the trading agent graph."""
     company_of_interest: Annotated[str, "Ticker symbol of the company under analysis"]
     asset_type: Annotated[str, "Type of asset (e.g., 'stock', 'crypto')"]
     instrument_context: Annotated[str, "Resolved ticker identity and metadata"]

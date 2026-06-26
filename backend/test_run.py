@@ -1,3 +1,6 @@
+"""
+Test script for executing an analysis via the orchestrator and printing the JSON result.
+"""
 import json
 from services.orchestrator import analyze
 

@@ -1,3 +1,6 @@
+"""
+Test script for invoking the /analyze endpoint with deep scan and mock options enabled.
+"""
 import requests
 
 url = "http://localhost:8000/analyze"

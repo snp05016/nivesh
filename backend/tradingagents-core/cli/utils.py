@@ -1,3 +1,8 @@
+"""Utility functions for the TradingAgents CLI.
+
+This module provides interactive prompts and helper functions for selecting
+assets, analysts, language, and LLM providers.
+"""
 import os
 from pathlib import Path
 from typing import List, Optional, Tuple, Dict
@@ -54,11 +59,26 @@ def get_ticker() -> str:
 
 
 def normalize_ticker_symbol(ticker: str) -> str:
-    """Normalize ticker input while preserving exchange suffixes."""
+    """Normalize ticker input while preserving exchange suffixes.
+    
+    Args:
+        ticker (str): The raw ticker symbol string.
+        
+    Returns:
+        str: The normalized, upper-cased ticker string.
+    """
     return ticker.strip().upper()
 
 
 def detect_asset_type(ticker: str) -> AssetType:
+    """Detect whether the given ticker is a stock or a cryptocurrency.
+    
+    Args:
+        ticker (str): The ticker symbol to check.
+        
+    Returns:
+        AssetType: The detected asset type (CRYPTO or STOCK).
+    """
     normalized_ticker = ticker.strip().upper()
     if normalized_ticker.endswith(CRYPTO_SUFFIXES):
         return AssetType.CRYPTO
@@ -68,6 +88,17 @@ def detect_asset_type(ticker: str) -> AssetType:
 def filter_analysts_for_asset_type(
     analysts: List[AnalystType], asset_type: AssetType
 ) -> List[AnalystType]:
+    """Filter the list of analysts based on the asset type.
+    
+    Crypto assets do not use fundamentals analysts.
+    
+    Args:
+        analysts (List[AnalystType]): The original list of analysts.
+        asset_type (AssetType): The type of asset being analyzed.
+        
+    Returns:
+        List[AnalystType]: A filtered list of analysts suitable for the asset.
+    """
     if asset_type != AssetType.CRYPTO:
         return analysts
     return [

@@ -1,3 +1,9 @@
+"""Aggressive debator agent module.
+
+Provides an aggressive analyst node for the risk management debate phase,
+advocating for high-reward, high-risk opportunities.
+"""
+
 from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
     get_language_instruction,
@@ -5,7 +11,23 @@ from tradingagents.agents.utils.agent_utils import (
 
 
 def create_aggressive_debator(llm):
+    """Creates an aggressive debator node for the risk debate graph.
+
+    Args:
+        llm: The language model instance to use for the agent.
+
+    Returns:
+        Callable[[dict], dict]: The node function representing the aggressive debator.
+    """
     def aggressive_node(state) -> dict:
+        """Executes the aggressive analyst logic based on current state.
+
+        Args:
+            state (dict): The current graph state.
+
+        Returns:
+            dict: The updated state containing the new risk debate history.
+        """
         risk_debate_state = state["risk_debate_state"]
         history = risk_debate_state.get("history", "")
         aggressive_history = risk_debate_state.get("aggressive_history", "")

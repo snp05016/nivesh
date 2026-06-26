@@ -16,6 +16,16 @@ sys.path.insert(0, str(Path(__file__).parent))
 # ---------------------------------------------------------------------------
 
 def _ok(name, result):
+    """
+    Logs a success message and prints a summary of the result.
+
+    Args:
+        name (str): The name of the test or operation.
+        result (Any): The result returned from the operation.
+
+    Returns:
+        Any: The original result.
+    """
     print(f"  [PASS] {name}")
     if isinstance(result, dict):
         keys = list(result.keys())[:6]
@@ -26,6 +36,13 @@ def _ok(name, result):
 
 
 def _fail(name, err):
+    """
+    Logs a failure message along with the error encountered.
+
+    Args:
+        name (str): The name of the test or operation.
+        err (Exception): The exception that caused the failure.
+    """
     print(f"  [FAIL] {name}: {err}")
 
 
@@ -34,6 +51,10 @@ def _fail(name, err):
 # ---------------------------------------------------------------------------
 
 def test_risk_analysis():
+    """
+    Tests the portfolio risk analysis endpoint by calling it directly with a test user ID.
+    Asserts that the expected keys (portfolio_beta, risk_score, etc.) are present in the result.
+    """
     print("\n=== /portfolio/risk-analysis ===")
     try:
         from main import portfolio_risk_analysis_endpoint
@@ -56,6 +77,10 @@ def test_risk_analysis():
 # ---------------------------------------------------------------------------
 
 def test_red_flags():
+    """
+    Tests the portfolio red flags endpoint by calling it directly with a test user ID.
+    Asserts that the flags and total_flags keys are present in the response.
+    """
     print("\n=== /portfolio/red-flags ===")
     try:
         from main import portfolio_red_flags_endpoint
@@ -75,6 +100,10 @@ def test_red_flags():
 # ---------------------------------------------------------------------------
 
 def test_macro_impact():
+    """
+    Tests the macro impact endpoint.
+    Asserts the presence of macro_readings and impacts keys in the returned payload.
+    """
     print("\n=== /macro-impact ===")
     try:
         from main import macro_impact_endpoint
@@ -94,6 +123,10 @@ def test_macro_impact():
 # ---------------------------------------------------------------------------
 
 def test_trade_journal_crud():
+    """
+    Tests the CRUD operations for the trade journal, specifically adding an entry and retrieving it.
+    Validates that adding an entry returns success, and fetching returns the expected list.
+    """
     print("\n=== /trade-journal CRUD ===")
     try:
         from main import trade_journal_add_endpoint, trade_journal_get_endpoint, TradeJournalAddRequest
@@ -118,6 +151,10 @@ def test_trade_journal_crud():
 
 
 def test_trade_journal_stats():
+    """
+    Tests the trade journal statistics endpoint.
+    Asserts that the total_entries key is returned correctly.
+    """
     print("\n=== /trade-journal/stats ===")
     try:
         from main import trade_journal_stats_endpoint
@@ -134,6 +171,10 @@ def test_trade_journal_stats():
 # ---------------------------------------------------------------------------
 
 def test_screener():
+    """
+    Tests the screener endpoint against a predefined list of screen presets.
+    Asserts that each preset returns a list of matching stocks.
+    """
     print("\n=== /screener ===")
     presets = ["quality_value", "promoter_conviction", "fii_accumulation", "turnaround", "52w_low_bullish"]
     try:
@@ -154,6 +195,10 @@ def test_screener():
 # ---------------------------------------------------------------------------
 
 def test_timeframe_conflicts():
+    """
+    Tests the portfolio timeframe conflicts endpoint.
+    Verifies that the returned payload includes the list of conflicts and the total count.
+    """
     print("\n=== /portfolio/timeframe-conflicts ===")
     try:
         from main import portfolio_timeframe_conflicts_endpoint
@@ -174,6 +219,10 @@ def test_timeframe_conflicts():
 # ---------------------------------------------------------------------------
 
 def test_watchlist_enriched():
+    """
+    Tests the enriched watchlist retrieval endpoint.
+    Ensures that the returned dictionary contains the watchlist list and processes items successfully.
+    """
     print("\n=== /watchlist (enriched) ===")
     try:
         from main import watchlist_get_endpoint
@@ -194,6 +243,10 @@ def test_watchlist_enriched():
 # ---------------------------------------------------------------------------
 
 def test_token_stats():
+    """
+    Tests the token usage statistics endpoint.
+    Asserts that total_calls and total_cost metrics are correctly provided.
+    """
     print("\n=== /token-stats ===")
     try:
         from main import token_stats_endpoint
@@ -210,6 +263,10 @@ def test_token_stats():
 # ---------------------------------------------------------------------------
 
 def test_db_schema():
+    """
+    Performs an integrity check on the SQLite database schema by verifying the existence
+    of expected tables and columns (e.g., trade_journal, analysis_history).
+    """
     print("\n=== DB Schema ===")
     try:
         import sqlite3

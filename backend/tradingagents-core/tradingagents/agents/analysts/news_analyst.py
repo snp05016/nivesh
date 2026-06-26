@@ -1,3 +1,5 @@
+"""Defines the News Analyst agent node for gathering and interpreting news and global events."""
+
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
@@ -9,7 +11,23 @@ from tradingagents.dataflows.config import get_config
 
 
 def create_news_analyst(llm):
+    """Creates the News Analyst node for the agent graph.
+
+    Args:
+        llm: The language model instance to use for the analyst.
+
+    Returns:
+        Callable: A function representing the news analyst node in the graph.
+    """
     def news_analyst_node(state):
+        """Executes the News Analyst's logic to generate a news report.
+
+        Args:
+            state (dict): The current state of the agent graph.
+
+        Returns:
+            dict: The updated state containing the new messages and news report.
+        """
         current_date = state["trade_date"]
         asset_type = state.get("asset_type", "stock")
         asset_label = "company" if asset_type == "stock" else "asset"

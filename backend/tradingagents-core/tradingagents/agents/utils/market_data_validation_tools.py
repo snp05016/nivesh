@@ -1,3 +1,8 @@
+"""Market data validation tools.
+
+Provides tools for verifying exact market data claims using a deterministic snapshot.
+"""
+
 from typing import Annotated
 
 from langchain_core.tools import tool
@@ -19,5 +24,13 @@ def get_verified_market_snapshot(
     indicators, and recent closes. Call this before making exact claims about
     price levels, Bollinger bands, RSI, MACD, moving averages, support /
     resistance, or historical comparisons, and treat it as the source of truth.
+
+    Args:
+        symbol (str): The ticker symbol of the company.
+        curr_date (str): The current trading date, YYYY-mm-dd.
+        look_back_days (int, optional): Number of recent trading rows to include. Defaults to 30.
+
+    Returns:
+        str: A formatted snapshot of the verified market data.
     """
     return build_verified_market_snapshot(symbol, curr_date, look_back_days)

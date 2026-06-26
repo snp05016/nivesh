@@ -22,12 +22,20 @@ _progress_active = False
 _progress_debate_round = 0
 
 def get_progress_events() -> list[dict]:
-    """Thread-safe read of accumulated progress events."""
+    """Thread-safe read of accumulated progress events.
+    
+    Returns:
+        list[dict]: A copy of the accumulated progress events.
+    """
     with _progress_lock:
         return list(_progress_events)
 
 def set_progress_total(t: int):
-    """Set total stage count based on scan_type config."""
+    """Set total stage count based on scan_type config.
+    
+    Args:
+        t (int): The total number of stages.
+    """
     global _progress_total
     with _progress_lock:
         _progress_total = t
@@ -42,7 +50,15 @@ def clear_progress_events():
         _progress_debate_round = 0
 
 def _emit_progress(agent_name: str, status: str, message: str, llm_model: str, debate_round: int = 0):
-    """Thread-safe append of a progress event with auto-incrementing stage."""
+    """Thread-safe append of a progress event with auto-incrementing stage.
+    
+    Args:
+        agent_name (str): The name of the agent.
+        status (str): The current status (e.g., 'thinking', 'complete', 'error').
+        message (str): The progress message.
+        llm_model (str): The name of the LLM model used.
+        debate_round (int, optional): The current debate round. Defaults to 0.
+    """
     global _progress_stage, _progress_debate_round
     with _progress_lock:
         if debate_round > 0:
@@ -65,7 +81,18 @@ def _emit_progress(agent_name: str, status: str, message: str, llm_model: str, d
 
 def wrap_node_with_progress(agent_name: str, llm_model: str, inner_fn, debate_round: int = 0):
     """Wrap a graph node function to emit progress before and after execution.
-    Stage numbers auto-increment via shared counter."""
+    
+    Stage numbers auto-increment via shared counter.
+    
+    Args:
+        agent_name (str): The name of the agent.
+        llm_model (str): The LLM model name.
+        inner_fn (callable): The original node function to wrap.
+        debate_round (int, optional): The current debate round. Defaults to 0.
+        
+    Returns:
+        callable: The wrapped node function.
+    """
     def wrapped(state):
         _emit_progress(agent_name, "thinking", f"Running {agent_name}...", llm_model, debate_round)
         try:
@@ -78,7 +105,14 @@ def wrap_node_with_progress(agent_name: str, llm_model: str, inner_fn, debate_ro
     return wrapped
 
 def _model_display(llm) -> str:
-    """Map LLM config string to display name."""
+    """Map LLM config string to display name.
+    
+    Args:
+        llm (Any): The LLM model object or string identifier.
+        
+    Returns:
+        str: A human-readable display name for the model.
+    """
     if llm is None:
         return "N/A"
     s = str(llm).lower()

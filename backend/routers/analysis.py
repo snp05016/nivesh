@@ -486,11 +486,18 @@ def _save_analysis_result(user_id: int | None, ticker: str, result: dict) -> Non
 
 @router.post("/analyze", status_code=202)
 async def analyze_endpoint(req: AnalyzeRequest):
-    """Start a background analysis job and return immediately (202).
+    """
+    Start a background analysis job and return immediately (202).
 
-    v2 engine: the run is fully decoupled from this HTTP connection — the app polls
-    GET /analyze/job/{job_id}. Backgrounding / navigating / closing the app no longer
-    kills the run. One running job per user (guarded by the DB job state).
+v2 engine: the run is fully decoupled from this HTTP connection — the app polls
+GET /analyze/job/{job_id}. Backgrounding / navigating / closing the app no longer
+kills the run. One running job per user (guarded by the DB job state).
+
+    Args:
+        req (AnalyzeRequest): The req.
+
+    Returns:
+        Any: The response.
     """
     import database
     from services.job_manager import spawn_job
@@ -560,8 +567,17 @@ async def analyze_endpoint(req: AnalyzeRequest):
 
 @router.get("/analyze/job/{job_id}")
 async def get_job_status(job_id: str, user_id: int | None = None):
-    """Poll a job: status, stage, progress_pct, checkpoints, and result when done.
-    When user_id is provided, verifies the job belongs to that user (IDOR guard)."""
+    """
+    Poll a job: status, stage, progress_pct, checkpoints, and result when done.
+When user_id is provided, verifies the job belongs to that user (IDOR guard).
+
+    Args:
+        job_id (str): The job_id.
+        user_id (Any): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     import database
     job = database.get_job(job_id)
     if not job:
@@ -573,8 +589,16 @@ async def get_job_status(job_id: str, user_id: int | None = None):
 
 @router.get("/analyze/active")
 async def get_active_job(user_id: int | None = None):
-    """The user's current running/queued job — drives the app's global running indicator.
-    Requires user_id parameter; returns NONE when user_id is null/absent (IDOR guard)."""
+    """
+    The user's current running/queued job — drives the app's global running indicator.
+Requires user_id parameter; returns NONE when user_id is null/absent (IDOR guard).
+
+    Args:
+        user_id (Any): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     import database
     if user_id is None:
         return {"status": "NONE"}
@@ -584,8 +608,17 @@ async def get_active_job(user_id: int | None = None):
 
 @router.post("/analyze/{job_id}/cancel")
 async def cancel_job_endpoint(job_id: str, user_id: int | None = None):
-    """Cancel a running job (terminates the worker subprocess to stop credit spend).
-    When user_id is provided, verifies the job belongs to that user before cancelling (IDOR guard)."""
+    """
+    Cancel a running job (terminates the worker subprocess to stop credit spend).
+When user_id is provided, verifies the job belongs to that user before cancelling (IDOR guard).
+
+    Args:
+        job_id (str): The job_id.
+        user_id (Any): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     import database
     from services.job_manager import cancel_job
     job = database.get_job(job_id)
@@ -602,8 +635,17 @@ async def cancel_job_endpoint(job_id: str, user_id: int | None = None):
 # ---------------------------------------------------------------------------
 @router.get("/analyze/cache-status/{ticker}")
 async def cache_status(ticker: str, user_id: int | None = None):
-    """Return all cached analysis entries for a ticker with staleness info.
-    Does NOT trigger any analysis — read-only cache introspection."""
+    """
+    Return all cached analysis entries for a ticker with staleness info.
+Does NOT trigger any analysis — read-only cache introspection.
+
+    Args:
+        ticker (str): The ticker.
+        user_id (Any): The user_id.
+
+    Returns:
+        Any: The response.
+    """
     import database
     from database import get_analysis_for_date, get_last_analysis_any_type, get_session
     with get_session() as s:
@@ -640,8 +682,18 @@ async def cache_status(ticker: str, user_id: int | None = None):
 # ---------------------------------------------------------------------------
 @router.post("/analyze/cache/{ticker}/invalidate")
 async def invalidate_cache(ticker: str, scan_type: str = "all", authorization: str = Header(None)):
-    """Admin endpoint to delete cached analyses for a ticker.
-    scan_type: 'all' (delete everything) or 'extreme'/'deep'/'standard'."""
+    """
+    Admin endpoint to delete cached analyses for a ticker.
+scan_type: 'all' (delete everything) or 'extreme'/'deep'/'standard'.
+
+    Args:
+        ticker (str): The ticker.
+        scan_type (str): The scan_type.
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
+    """
     require_admin(authorization)
     import database
     from database import get_session

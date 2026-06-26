@@ -275,7 +275,16 @@ def alerts_get_endpoint(user_id: int, authorization: str = Header(None)):
 
 @router.get("/alerts/check/{user_id}")
 def alerts_check_endpoint(user_id: int, authorization: str = Header(None)):
-    """iOS alert check alias — returns alerts with triggered status."""
+    """
+    iOS alert check alias — returns alerts with triggered status.
+
+    Args:
+        user_id (int): The user_id.
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
+    """
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
     if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")

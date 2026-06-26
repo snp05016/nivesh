@@ -1,3 +1,4 @@
+"""Handles fetching and displaying system announcements."""
 import getpass
 import requests
 from rich.console import Console

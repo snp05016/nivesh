@@ -20,11 +20,25 @@ CONFIDENCE_BUCKETS = [
 ]
 
 def _safe_avg(expr):
-    """Wrap an aggregate expr so division by zero returns None instead of an error."""
+    """Wrap an aggregate expr so division by zero returns None instead of an error.
+
+    Args:
+        expr: The SQLAlchemy expression to average.
+
+    Returns:
+        SQLAlchemy expression: The wrapped average expression.
+    """
     return func.coalesce(func.avg(cast(expr, Float)), None)
 
 def _safe_hit_rate(hit_col):
-    """Compute hit rate as fraction of non-null hit_direction values that are TRUE."""
+    """Compute hit rate as fraction of non-null hit_direction values that are TRUE.
+
+    Args:
+        hit_col: The SQLAlchemy column representing hit direction.
+
+    Returns:
+        SQLAlchemy expression: The calculated hit rate or None.
+    """
     total = func.count(case((hit_col.isnot(None), 1)))
     hits = func.count(case((hit_col.is_(True), 1)))
     return func.coalesce(
@@ -33,6 +47,15 @@ def _safe_hit_rate(hit_col):
     )
 
 def _build_bucket_queries(session) -> List[Dict[str, Any]]:
+    """Builds calibration buckets based on predefined confidence intervals.
+
+    Args:
+        session: The SQLAlchemy database session.
+
+    Returns:
+        List[Dict[str, Any]]: A list of dictionaries, each containing statistics
+            for a specific confidence bucket.
+    """
     rows = []
     for lo, hi, label in CONFIDENCE_BUCKETS:
         count_q = (
@@ -62,7 +85,16 @@ def _build_bucket_queries(session) -> List[Dict[str, Any]]:
 
 
 def _build_group_query(session, column, label_col=None) -> List[Dict[str, Any]]:
-    """Generic GROUP BY query for categorical dimensions."""
+    """Generic GROUP BY query for categorical dimensions.
+
+    Args:
+        session: The SQLAlchemy database session.
+        column: The SQLAlchemy column to group by.
+        label_col (optional): The column to use as the label. Defaults to column.
+
+    Returns:
+        List[Dict[str, Any]]: A list of grouped statistics.
+    """
     if label_col is None:
         label_col = column
 
@@ -92,7 +124,14 @@ def _build_group_query(session, column, label_col=None) -> List[Dict[str, Any]]:
 
 
 def _build_sector_query(session) -> List[Dict[str, Any]]:
-    """Sector breakdown via JOIN with StockUniverse."""
+    """Sector breakdown via JOIN with StockUniverse.
+
+    Args:
+        session: The SQLAlchemy database session.
+
+    Returns:
+        List[Dict[str, Any]]: A list of sector-level performance statistics.
+    """
     rows = (
         session.query(
             StockUniverse.sector,
@@ -120,7 +159,11 @@ def _build_sector_query(session) -> List[Dict[str, Any]]:
 
 
 def _available_horizons():
-    """Return horizons whose outcome columns actually exist on the model."""
+    """Return horizons whose outcome columns actually exist on the model.
+
+    Returns:
+        List[Tuple[int, str]]: A list of valid horizons as (days, prefix) tuples.
+    """
     horizons = []
     for days, prefix in [(7, "7d"), (30, "30d"), (90, "90d")]:
         hit = f"hit_direction_{prefix}"
@@ -130,7 +173,12 @@ def _available_horizons():
 
 
 def get_performance_metrics() -> Dict[str, Any]:
-    """Returns a comprehensive performance report for all predictions."""
+    """Returns a comprehensive performance report for all predictions.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing overall performance metrics,
+            horizon breakdowns, confidence buckets, and group statistics.
+    """
     with get_session() as session:
         total_predictions = session.query(func.count(AnalysisPrediction.id)).scalar() or 0
 

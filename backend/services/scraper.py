@@ -62,10 +62,26 @@ _CACHE = TTLLRUCache(maxsize=256, ttl=_TTL_SECONDS)  # 15-minute TTL, 256 max en
 
 
 def _cache_get(key: str) -> Any | None:
+    """
+    Retrieve an item from the cache.
+
+    Args:
+        key (str): The cache key.
+
+    Returns:
+        Any | None: The cached value if found and not expired, otherwise None.
+    """
     return _CACHE.get(key)
 
 
 def _cache_set(key: str, data: Any) -> None:
+    """
+    Store an item in the cache.
+
+    Args:
+        key (str): The cache key.
+        data (Any): The data to store.
+    """
     _CACHE.set(key, data)
 
 
@@ -77,6 +93,12 @@ _fc_client = None
 
 
 def _get_firecrawl():
+    """
+    Initialize and return the FirecrawlApp client lazily.
+
+    Returns:
+        FirecrawlApp | None: The initialized Firecrawl client, or None if the API key is missing or the package is not installed.
+    """
     global _fc_client
     if _fc_client is not None:
         return _fc_client
@@ -93,6 +115,16 @@ def _get_firecrawl():
 
 
 def _firecrawl_extract(url: str, schema: dict) -> dict | None:
+    """
+    Extract structured data from a URL using Firecrawl based on a JSON schema.
+
+    Args:
+        url (str): The URL to scrape.
+        schema (dict): The JSON schema definition for extraction.
+
+    Returns:
+        dict | None: The extracted data dictionary, or None on failure.
+    """
     fc = _get_firecrawl()
     if fc is None:
         return None
@@ -122,6 +154,16 @@ _HEADERS = {
 
 
 def _get_soup(url: str, timeout: int = 10) -> BeautifulSoup | None:
+    """
+    Fetch a URL and parse it into a BeautifulSoup object.
+
+    Args:
+        url (str): The URL to fetch.
+        timeout (int): The request timeout in seconds. Defaults to 10.
+
+    Returns:
+        BeautifulSoup | None: The parsed HTML soup, or None on failure.
+    """
     try:
         r = requests.get(url, headers=_HEADERS, timeout=timeout)
         r.raise_for_status()
@@ -132,6 +174,15 @@ def _get_soup(url: str, timeout: int = 10) -> BeautifulSoup | None:
 
 
 def _parse_float(s: str) -> float | None:
+    """
+    Parse a numeric string into a float by stripping symbols and commas.
+
+    Args:
+        s (str): The string to parse.
+
+    Returns:
+        float | None: The parsed float value, or None if parsing fails.
+    """
     try:
         return float(s.replace("%", "").replace(",", "").strip())
     except Exception:
@@ -179,6 +230,12 @@ _NIFTY_SAMPLE = [
 ]
 
 def _fetch_pulse_fallback() -> dict:
+    """
+    Fetch market pulse data (indices and breadth) using yfinance as a fallback.
+
+    Returns:
+        dict: The constructed market pulse data.
+    """
     import yfinance as yf
     import math
     indices = []
@@ -250,6 +307,13 @@ def _fetch_pulse_fallback() -> dict:
 
 
 def fetch_market_pulse() -> dict:
+    """
+    Fetch the overall market pulse including indices performance and market breadth.
+    Uses Firecrawl primarily and falls back to yfinance.
+
+    Returns:
+        dict: The market pulse data.
+    """
     cached = _cache_get("market_pulse")
     if cached:
         return cached
@@ -280,6 +344,16 @@ _MOMENTUM_TICKERS = [
 
 
 def _sparkline(closes: list[float], n: int = 20) -> list[float]:
+    """
+    Generate a downsampled sparkline series from a list of closing prices.
+
+    Args:
+        closes (list[float]): The historical closing prices.
+        n (int): The target number of data points. Defaults to 20.
+
+    Returns:
+        list[float]: The downsampled closing prices.
+    """
     if len(closes) <= n:
         return [round(p, 2) for p in closes]
     step = max(1, len(closes) // n)
@@ -288,6 +362,12 @@ def _sparkline(closes: list[float], n: int = 20) -> list[float]:
 
 
 def fetch_momentum() -> dict:
+    """
+    Fetch bullish and bearish moving average crossovers for top market tickers.
+
+    Returns:
+        dict: A dictionary containing lists of bullish and bearish momentum signals.
+    """
     cached = _cache_get("momentum")
     if cached:
         return cached
@@ -369,6 +449,12 @@ _MACRO_YF = [
 
 
 def fetch_macro_alternatives() -> dict:
+    """
+    Fetch macro indicators and alternative asset performances using yfinance.
+
+    Returns:
+        dict: A dictionary of macro indicators with their latest price and changes.
+    """
     cached = _cache_get("macro_alternatives")
     if cached:
         return cached
@@ -458,6 +544,12 @@ _MF_YF_TICKERS = {
 }
 
 def _fetch_mf_fallback() -> list[dict]:
+    """
+    Fetch mutual fund performance using yfinance as a fallback.
+
+    Returns:
+        list[dict]: A list of mutual fund performance metrics.
+    """
     import yfinance as yf
     funds = []
     
@@ -754,6 +846,12 @@ def fetch_yoy_aggregate_indicators() -> dict:
 
 
 def fetch_institutional_flow() -> dict:
+    """
+    Fetch institutional fund flows by scraping top mutual fund performance.
+
+    Returns:
+        dict: A dictionary containing top-performing mutual funds.
+    """
     cached = _cache_get("institutional_flow")
     if cached:
         return cached

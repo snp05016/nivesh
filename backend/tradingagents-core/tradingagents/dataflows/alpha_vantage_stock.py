@@ -1,3 +1,8 @@
+"""Alpha Vantage Stock Data Module.
+
+This module provides functions for fetching historical equity data such as daily OHLCV values.
+"""
+
 from datetime import datetime
 from .alpha_vantage_common import _make_api_request, _filter_csv_by_date_range
 

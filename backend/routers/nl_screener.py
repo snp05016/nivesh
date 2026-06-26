@@ -24,6 +24,12 @@ class NLScreenerResponse(BaseModel):
 def natural_language_screener(req: NLScreenerRequest):
     """
     Parse a natural language query into structured filters and run screener.
+
+    Args:
+        req (NLScreenerRequest): The req.
+
+    Returns:
+        Any: The response.
     """
     try:
         return process_nl_query(req.query)

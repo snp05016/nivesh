@@ -29,7 +29,13 @@ class QuantitativeEngine:
 
     async def run_full_pipeline(self) -> Dict[str, Any]:
         """Execute the full quant pipeline: fetch data, compute regime,
-        conformal targets, SHAP drivers, and calibrated confidence."""
+        conformal targets, SHAP drivers, and calibrated confidence.
+        
+        Returns:
+            Dict[str, Any]: A dictionary containing the detected market regime,
+                calibrated confidence metrics, conformal target bounds, quantitative
+                drivers, and tail risk flags.
+        """
         # Fetch data concurrently — return_exceptions so one failure doesn't abort all
         results = await asyncio.gather(
             self._fetch_market_volatility(),
@@ -76,7 +82,12 @@ class QuantitativeEngine:
     # ── Data Fetching (concurrent I/O) ──────────────────────────────────────
 
     async def _fetch_market_volatility(self) -> dict:
-        """Fetch price history and compute 30d annualized volatility + RSI."""
+        """Fetch price history and compute 30d annualized volatility + RSI.
+        
+        Returns:
+            dict: Market data including current price, daily and annualized volatility,
+                RSI, and a fallback flag.
+        """
         try:
             from services.nse_data_provider import get_price_history
 
@@ -112,7 +123,15 @@ class QuantitativeEngine:
 
     @staticmethod
     def _compute_rsi(closes: np.ndarray, period: int = 14) -> float:
-        """Compute Relative Strength Index (RSI) for the given period."""
+        """Compute Relative Strength Index (RSI) for the given period.
+        
+        Args:
+            closes (np.ndarray): Array of historical closing prices.
+            period (int, optional): The lookback period for RSI calculation. Defaults to 14.
+
+        Returns:
+            float: The calculated RSI value, ranging from 0.0 to 100.0.
+        """
         if len(closes) < period + 1:
             return 50.0
         deltas = np.diff(closes)
@@ -127,7 +146,11 @@ class QuantitativeEngine:
 
     @staticmethod
     def _fallback_market_data() -> dict:
-        """Return sensible fallback values when market data is unavailable."""
+        """Return sensible fallback values when market data is unavailable.
+        
+        Returns:
+            dict: Default market data values to prevent pipeline failure.
+        """
         return {
             "current_price": 0.0,
             "daily_volatility": _NIFTY_LONG_RUN_DAILY_VOL,
@@ -137,7 +160,12 @@ class QuantitativeEngine:
         }
 
     async def _fetch_fundamentals(self) -> dict:
-        """Fetch fundamental data: Piotroski F-Score, promoter pledging, PE, ROE."""
+        """Fetch fundamental data: Piotroski F-Score, promoter pledging, PE, ROE.
+        
+        Returns:
+            dict: Fundamental metrics including F-score, pledge percentage, PE ratio,
+                ROE, and a fallback flag.
+        """
         try:
             from services.nse_data_provider import get_fundamentals
             from services.piotroski import compute_piotroski
@@ -176,7 +204,11 @@ class QuantitativeEngine:
             }
 
     async def _fetch_macro_indicators(self) -> dict:
-        """Fetch macro indicators (Nifty 50 level) for regime context."""
+        """Fetch macro indicators (Nifty 50 level) for regime context.
+        
+        Returns:
+            dict: Macro data containing the Nifty 50 level and a fallback flag.
+        """
         try:
             import yfinance as yf
 
@@ -209,6 +241,12 @@ class QuantitativeEngine:
           < 14% annualized → Low Volatility / Accumulation
           14%-22%         → Transition / Macro-Driven
           > 22%           → High Volatility / Crisis
+
+        Args:
+            market_data (dict): Dictionary containing market volatility metrics.
+
+        Returns:
+            str: The detected market regime classification.
         """
         vol = market_data.get("annualized_volatility_30d", 0.15)
         if isinstance(vol, (int, float)) and not math.isnan(vol):
@@ -226,6 +264,12 @@ class QuantitativeEngine:
 
         Uses: projected_vol_3m = daily_vol * sqrt(63) * 1.645 (95% VaR z-score)
         Upper/lower bounds around a 1.5% expected drift.
+
+        Args:
+            market_data (dict): Dictionary containing current price and daily volatility.
+
+        Returns:
+            Dict[str, float]: Upper and lower price target bounds for a 3-month horizon.
         """
         current_price = market_data.get("current_price", 0.0)
         daily_vol = market_data.get("daily_volatility", 0.02)
@@ -252,8 +296,15 @@ class QuantitativeEngine:
     ) -> Tuple[Dict[str, float], Dict[str, bool]]:
         """Compute SHAP-style feature importance drivers and tail risk flags.
 
-        Returns a tuple of (shap_drivers, tail_risks).
         Drivers with |contribution| <= 0.05 are filtered out as noise.
+
+        Args:
+            fundamental_data (dict): Dictionary containing fundamental metrics.
+            market_data (dict): Dictionary containing technical market data (e.g., RSI).
+
+        Returns:
+            Tuple[Dict[str, float], Dict[str, bool]]: A tuple containing the SHAP-style
+                quantitative drivers and tail risk flags.
         """
         f_score = fundamental_data.get("piotroski_score", 5)
         if f_score is None or (isinstance(f_score, float) and math.isnan(f_score)):
@@ -307,6 +358,16 @@ class QuantitativeEngine:
         Base confidence from Venn-Abers isotonic calibration when available,
         otherwise defaults to 0.50. Adjusted by SHAP driver sum,
         multiplied by regime factor, then penalized for tail risks.
+
+        Args:
+            regime (str): The current market volatility regime.
+            shap_drivers (Dict[str, float]): Dictionary of quantitative drivers and their weights.
+            tail_risks (Dict[str, bool]): Dictionary of detected tail risk flags.
+            venn_abers_base (float, optional): Base confidence score if available.
+
+        Returns:
+            Tuple[float, Dict[str, float]]: The final calibrated confidence score and
+                a breakdown of the mathematical adjustments applied.
         """
         base_probability = venn_abers_base if venn_abers_base is not None else 0.50
         net_shap_adjustment = sum(shap_drivers.values())

@@ -72,6 +72,14 @@ _TICKER_RE = re.compile(r"\b[A-Z][A-Z0-9&]{1,19}\b")
 
 
 def _extract_tickers(text: str) -> list[str]:
+    """Extract up to 6 unique ticker-like symbols from the text.
+
+    Args:
+        text (str): The text to search for tickers.
+
+    Returns:
+        list[str]: A list of extracted ticker symbols.
+    """
     out: list[str] = []
     for tok in _TICKER_RE.findall(text or ""):
         if tok in _TICKER_STOPWORDS:
@@ -84,7 +92,11 @@ def _extract_tickers(text: str) -> list[str]:
 
 
 def _fetch_feed() -> list:
-    """Return RSS entries. Tries direct parse, then a browser-headed fetch."""
+    """Return RSS entries. Tries direct parse, then a browser-headed fetch.
+
+    Returns:
+        list: A list of RSS feed entries.
+    """
     try:
         parsed = feedparser.parse(NSE_RSS_URL, request_headers=_BROWSER_HEADERS)
         if getattr(parsed, "entries", None):
@@ -104,7 +116,14 @@ def _fetch_feed() -> list:
 
 
 def harvest_sebi_filings(limit: int = 30) -> int:
-    """Scrape NSE filings, store governance-relevant ones. Never raises."""
+    """Scrape NSE filings, store governance-relevant ones. Never raises.
+
+    Args:
+        limit (int, optional): Maximum number of filings to harvest. Defaults to 30.
+
+    Returns:
+        int: Number of new filings stored.
+    """
     new_count = 0
     try:
         entries = _fetch_feed()

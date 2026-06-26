@@ -1,3 +1,5 @@
+"""Defines the Fundamentals Analyst agent node for analyzing company financial statements."""
+
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
@@ -12,7 +14,23 @@ from tradingagents.dataflows.config import get_config
 
 
 def create_fundamentals_analyst(llm):
+    """Creates the Fundamentals Analyst node for the agent graph.
+
+    Args:
+        llm: The language model instance to use for the analyst.
+
+    Returns:
+        Callable: A function representing the fundamentals analyst node in the graph.
+    """
     def fundamentals_analyst_node(state):
+        """Executes the Fundamentals Analyst's logic to generate a fundamentals report.
+
+        Args:
+            state (dict): The current state of the agent graph.
+
+        Returns:
+            dict: The updated state containing the new messages and fundamentals report.
+        """
         current_date = state["trade_date"]
         instrument_context = get_instrument_context_from_state(state)
 

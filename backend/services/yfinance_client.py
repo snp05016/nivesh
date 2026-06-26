@@ -63,6 +63,14 @@ NSE_TICKERS = {t: f"{t}{EXCHANGE_SUFFIXES['NSE']}" for t in [
 # ---------------------------------------------------------------------------
 
 def _yf_fetch_info(sym: str) -> dict:
+    """Fetches ticker information from yfinance with exponential backoff retries.
+
+    Args:
+        sym (str): The ticker symbol to fetch.
+
+    Returns:
+        dict: The information dictionary returned by yfinance, or an empty dict if it fails.
+    """
     for attempt in range(3):
         try:
             info = yf.Ticker(sym).info
@@ -76,6 +84,17 @@ def _yf_fetch_info(sym: str) -> dict:
     return {}
 
 def _yf_price(ticker_sym: str) -> tuple[float | None, float | None]:
+    """Fetches the current and previous closing prices for a ticker.
+
+    Falls back to trying the .NS suffix if .BO returns no data.
+
+    Args:
+        ticker_sym (str): The ticker symbol to fetch prices for.
+
+    Returns:
+        tuple[float | None, float | None]: A tuple containing the current price and
+            the previous day's closing price. Returns (None, None) on failure.
+    """
     import pandas as pd
     def _fetch(sym: str):
         try:
@@ -111,6 +130,15 @@ _ticker_resolution_cache: dict[str, str] = {}
 _ticker_resolution_lock = threading.Lock()
 
 def _resolve_with_fallback(base_ticker: str, preferred_suffix: str) -> str:
+    """Resolves a ticker with a preferred exchange suffix, falling back to the other if needed.
+
+    Args:
+        base_ticker (str): The base ticker symbol without a suffix.
+        preferred_suffix (str): The preferred suffix (e.g., '.NS' or '.BO').
+
+    Returns:
+        str: The resolved ticker symbol with a valid suffix.
+    """
     cache_key = f"{base_ticker}{preferred_suffix}"
     with _ticker_resolution_lock:
         if cache_key in _ticker_resolution_cache:
@@ -145,6 +173,14 @@ def _resolve_with_fallback(base_ticker: str, preferred_suffix: str) -> str:
     return t1
 
 def _to_ns(ticker: str) -> str:
+    """Converts a ticker to its NSE equivalent with a .NS suffix if not already specified.
+
+    Args:
+        ticker (str): The input ticker symbol.
+
+    Returns:
+        str: The ticker symbol with the .NS suffix, using overrides if applicable.
+    """
     t = ticker.upper()
     if "." in t:
         return t
@@ -157,6 +193,17 @@ def _to_ns(ticker: str) -> str:
     return _resolve_with_fallback(base_t, ".NS")
 
 def _resolve_ticker(ticker: str, exchange: str) -> str:
+    """Resolves a raw ticker symbol to its full format for a specific exchange.
+
+    Applies manual ticker overrides and suffix fallbacks.
+
+    Args:
+        ticker (str): The raw ticker symbol.
+        exchange (str): The exchange to resolve for ("NSE" or "BSE").
+
+    Returns:
+        str: The resolved ticker symbol.
+    """
     suffix = EXCHANGE_SUFFIX[exchange]
     t = ticker.upper()
     if t.endswith(".NS") or t.endswith(".BO"):
@@ -175,6 +222,14 @@ def _resolve_ticker(ticker: str, exchange: str) -> str:
 # JSON extraction utility
 # ---------------------------------------------------------------------------
 def _extract_json_from_text(text: str) -> str:
+    """Extracts JSON content from a text block, handling markdown code blocks.
+
+    Args:
+        text (str): The text potentially containing a markdown JSON block.
+
+    Returns:
+        str: The extracted raw JSON string.
+    """
     if "```json" in text:
         return text.split("```json")[1].split("```")[0].strip()
     elif "```" in text:

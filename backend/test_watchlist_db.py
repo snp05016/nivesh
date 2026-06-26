@@ -1,8 +1,17 @@
+"""
+Test script for validating watchlist endpoint behavior by querying and mocking database interactions.
+"""
 import json
 from database import get_session, User, Portfolio
 from routers.user import watchlist_get_endpoint
 
 def test_watchlist():
+    """
+    Tests the watchlist retrieval logic by mocking a user token and calling the endpoint.
+    
+    Ensures that a user exists, adds a test watchlist item for 'ICICIBANK' if missing,
+    mocks the access token verification, and then retrieves the watchlist.
+    """
     with get_session() as session:
         user = session.query(User).first()
         if not user:

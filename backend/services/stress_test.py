@@ -38,6 +38,15 @@ FACTOR_CATEGORIES = {
 # ── Sector Classification ────────────────────────────────────────────
 
 def get_sector(company_name: str) -> str:
+    """
+    Map a company name to its primary sector.
+
+    Args:
+        company_name (str): The name of the company.
+
+    Returns:
+        str: The identified sector name, or "Other" if no match is found.
+    """
     if not company_name: return "Other"
     name = company_name.lower()
     if any(x in name for x in ["infosys","tcs","wipro","tech mahindra","hcl","ltim","coforge","persistent","mphasis"]): return "IT"

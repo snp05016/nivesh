@@ -84,14 +84,34 @@ async def ai_engine_dashboard(
     limit: int = 20,
     authorization: str = Header(None),
 ):
-    """Live AI engine monitor matching scripts/check_stock.sh modes."""
+    """
+    Live AI engine monitor matching scripts/check_stock.sh modes.
+
+    Args:
+        mode (str): The mode.
+        ticker (Any): The ticker.
+        limit (int): The limit.
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
+    """
     require_auth(authorization)
     return build_ai_engine_monitor(mode=mode, ticker=ticker, limit=limit)
 
 
 @router.get("/api/v1/dashboard/ai-engine/{job_id}")
 async def ai_engine_job_detail(job_id: str, authorization: str = Header(None)):
-    """Detailed monitor record for one AI engine job."""
+    """
+    Detailed monitor record for one AI engine job.
+
+    Args:
+        job_id (str): The job_id.
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
+    """
     require_auth(authorization)
     detail = get_ai_engine_job_detail(job_id)
     if detail is None:
@@ -101,7 +121,16 @@ async def ai_engine_job_detail(job_id: str, authorization: str = Header(None)):
 
 @router.get("/api/v1/dashboard/stream")
 async def dashboard_stream(request: Request, authorization: str = Header(None)):
-    """SSE endpoint for live dashboard updates and checkpoint progress."""
+    """
+    SSE endpoint for live dashboard updates and checkpoint progress.
+
+    Args:
+        request (Request): The request.
+        authorization (str): The authorization.
+
+    Returns:
+        Any: The response.
+    """
     require_auth(authorization)
     return StreamingResponse(
         event_generator(request),

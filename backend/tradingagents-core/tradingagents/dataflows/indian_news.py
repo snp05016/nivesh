@@ -50,6 +50,14 @@ ET_FEEDS = [
 
 
 def _clean_html(text: str) -> str:
+    """Removes HTML tags and unescapes HTML entities from a string.
+
+    Args:
+        text (str): The HTML text to clean.
+
+    Returns:
+        str: The cleaned, plain text string.
+    """
     if not text:
         return ""
     text = re.sub(r"<[^>]+>", " ", text)
@@ -80,6 +88,15 @@ def _item_text(item: ET.Element) -> tuple[str, str, str]:
 
 
 def _matches(text: str, keywords: list[str]) -> bool:
+    """Checks if any of the provided keywords are present in the text.
+
+    Args:
+        text (str): The text to search within.
+        keywords (list[str]): A list of keywords to look for.
+
+    Returns:
+        bool: True if any keyword is found in the text, False otherwise.
+    """
     t = text.lower()
     return any(kw in t for kw in keywords)
 
@@ -125,6 +142,15 @@ def _search_keywords(ticker: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 def fetch_moneycontrol_news(ticker: str, max_items: int = 8) -> str:
+    """Fetches and filters recent articles from Moneycontrol RSS feeds.
+
+    Args:
+        ticker (str): The ticker symbol or company name to search for.
+        max_items (int): The maximum number of articles to return.
+
+    Returns:
+        str: Formatted string containing matched articles.
+    """
     keywords = _search_keywords(ticker)
     matched: list[tuple[str, str, str]] = []
 
@@ -153,6 +179,15 @@ def fetch_moneycontrol_news(ticker: str, max_items: int = 8) -> str:
 # ---------------------------------------------------------------------------
 
 def fetch_et_news(ticker: str, max_items: int = 8) -> str:
+    """Fetches and filters recent articles from Economic Times RSS feeds.
+
+    Args:
+        ticker (str): The ticker symbol or company name to search for.
+        max_items (int): The maximum number of articles to return.
+
+    Returns:
+        str: Formatted string containing matched articles.
+    """
     keywords = _search_keywords(ticker)
     matched: list[tuple[str, str, str]] = []
 
@@ -204,6 +239,15 @@ def _nse_session() -> requests.Session:
 
 
 def fetch_nse_announcements(ticker: str, max_items: int = 10) -> str:
+    """Fetches corporate announcements for a ticker directly from the NSE API.
+
+    Args:
+        ticker (str): The ticker symbol to fetch announcements for.
+        max_items (int): The maximum number of announcements to return.
+
+    Returns:
+        str: Formatted string containing recent announcements.
+    """
     sym = ticker.split(".")[0].upper()
     try:
         session = _nse_session()

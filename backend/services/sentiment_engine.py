@@ -117,6 +117,15 @@ def score_articles_batch(articles: list) -> list:
 
 
 async def backfill_existing_articles():
+    """
+    Backfill sentiment scores for existing news articles in the database.
+
+    Iteratively fetches articles missing sentiment scores and processes them
+    in batches using the FinBERT model.
+
+    Returns:
+        int: The total number of articles updated.
+    """
     from database import NewsArticle
     from database import get_session
     updated = 0
@@ -150,6 +159,17 @@ async def backfill_existing_articles():
     return updated
 
 def get_sentiment_trend(ticker: str, days: int = 30):
+    """
+    Retrieve the historical sentiment trend for a specific ticker.
+
+    Args:
+        ticker (str): The stock ticker symbol.
+        days (int): The number of days to look back. Defaults to 30.
+
+    Returns:
+        list[dict]: A list of daily sentiment aggregations, each containing the date,
+        average sentiment score, article count, and a descriptive label.
+    """
     from database import get_session, NewsArticle
     from datetime import datetime, timedelta
     from sqlalchemy import and_, or_, func, cast, Date

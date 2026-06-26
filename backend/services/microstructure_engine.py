@@ -43,7 +43,16 @@ FETCH_TIMEOUT = 5
 
 
 def _standard_normal_pdf(x: float) -> float:
-    """Standard normal probability density function."""
+    """
+    Standard normal probability density function.
+    
+    Args:
+        x (float): The z-score input value.
+        
+    Returns:
+        float: The probability density at the given value.
+    """
+    # Calculate PDF using the standard normal distribution formula
     return math.exp(-x * x / 2.0) / math.sqrt(TWO_PI)
 
 
@@ -75,25 +84,49 @@ def _black_scholes_gamma(
 
 
 def _parse_expiry_date(expiry_str: str) -> Optional[date]:
-    """Parse NSE expiry date string to date object."""
+    """
+    Parse NSE expiry date string to date object.
+    
+    Args:
+        expiry_str (str): Expiry date as a string (e.g., '25-Jul-2024').
+        
+    Returns:
+        Optional[date]: A standard python date object, or None if parsing fails.
+    """
     try:
+        # Convert the string to a date object using the standard NSE format
         return datetime.strptime(expiry_str, "%d-%b-%Y").date()
     except (ValueError, TypeError):
+        # Gracefully handle malformed or invalid inputs
         return None
 
 
 def _find_nearest_expiry(expiry_dates: list[str]) -> Optional[str]:
-    """Find the nearest future expiry from a list of NSE date strings."""
+    """
+    Find the nearest future expiry from a list of NSE date strings.
+    
+    Args:
+        expiry_dates (list[str]): List of date strings from the option chain.
+        
+    Returns:
+        Optional[str]: The string representing the nearest future expiry, or None.
+    """
     today = date.today()
     nearest = None
     nearest_dt = None
+    
+    # Iterate through all available expiry strings to find the closest future date
     for expiry_str in expiry_dates:
         dt = _parse_expiry_date(expiry_str)
+        # Ignore past dates or unparseable formats
         if dt is None or dt < today:
             continue
+            
+        # Update nearest if this is the first valid date or closer than current nearest
         if nearest_dt is None or dt < nearest_dt:
             nearest = expiry_str
             nearest_dt = dt
+            
     return nearest
 
 

@@ -1,5 +1,7 @@
-# schemas/ — Pydantic request/response validation contracts
-# Extracted from main.py and helpers.py per monolith refactor Phase 1
+"""Pydantic request and response schemas for the Nivesh API.
+
+Extracted from main.py and helpers.py per monolith refactor Phase 1.
+"""
 
 from schemas.auth import LoginRequest, RegisterRequest
 from schemas.portfolio import (

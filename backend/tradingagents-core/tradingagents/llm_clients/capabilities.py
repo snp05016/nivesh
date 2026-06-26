@@ -118,7 +118,14 @@ _BY_PATTERN: list[tuple[re.Pattern[str], ModelCapabilities]] = [
 
 
 def get_capabilities(model_name: str) -> ModelCapabilities:
-    """Resolve capabilities by exact ID, then pattern, then default."""
+    """Resolve capabilities by exact ID, then pattern, then default.
+
+    Args:
+        model_name: The identifier of the model to resolve.
+
+    Returns:
+        A ModelCapabilities object representing the model's supported features.
+    """
     if model_name in _BY_ID:
         return _BY_ID[model_name]
     for pattern, caps in _BY_PATTERN:

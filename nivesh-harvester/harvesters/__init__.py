@@ -20,6 +20,14 @@ except Exception as exc:  # noqa: BLE001
     logger.error("sebi_filings import failed: %s", exc)
 
     def harvest_sebi_filings(limit: int = 30) -> int:  # type: ignore
+        """Fallback for harvest_sebi_filings when import fails.
+
+        Args:
+            limit (int, optional): Maximum number of filings to harvest. Defaults to 30.
+
+        Returns:
+            int: Always returns 0.
+        """
         logger.error("harvest_sebi_filings unavailable (import failed)")
         return 0
 
@@ -30,6 +38,11 @@ except Exception as exc:  # noqa: BLE001
     logger.error("expert_scraper import failed: %s", exc)
 
     def scrape_all_expert_sources() -> list:  # type: ignore
+        """Fallback for scrape_all_expert_sources when import fails.
+
+        Returns:
+            list: Always returns an empty list.
+        """
         logger.error("scrape_all_expert_sources unavailable (import failed)")
         return []
 
@@ -40,6 +53,14 @@ except Exception as exc:  # noqa: BLE001
     logger.error("youtube_harvester import failed: %s", exc)
 
     def harvest_youtube_transcripts(limit: int = 20) -> int:  # type: ignore
+        """Fallback for harvest_youtube_transcripts when import fails.
+
+        Args:
+            limit (int, optional): Maximum number of videos to harvest. Defaults to 20.
+
+        Returns:
+            int: Always returns 0.
+        """
         logger.error("harvest_youtube_transcripts unavailable (import failed)")
         return 0
 

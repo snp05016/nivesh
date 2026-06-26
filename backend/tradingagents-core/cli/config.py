@@ -1,3 +1,5 @@
+"""Configuration settings and constants for the CLI."""
+
 CLI_CONFIG = {
     # Announcements
     "announcements_url": "https://api.tauric.ai/v1/announcements",

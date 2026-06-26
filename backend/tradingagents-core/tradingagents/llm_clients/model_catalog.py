@@ -179,12 +179,24 @@ MODEL_OPTIONS: ProviderModeOptions = {
 
 
 def get_model_options(provider: str, mode: str) -> List[ModelOption]:
-    """Return shared model options for a provider and selection mode."""
+    """Return shared model options for a provider and selection mode.
+
+    Args:
+        provider: The name of the LLM provider.
+        mode: The selection mode (e.g., 'quick', 'deep').
+
+    Returns:
+        A list of tuples containing the model description and model ID.
+    """
     return MODEL_OPTIONS[provider.lower()][mode]
 
 
 def get_known_models() -> Dict[str, List[str]]:
-    """Build known model names from the shared CLI catalog."""
+    """Build known model names from the shared CLI catalog.
+
+    Returns:
+        A dictionary mapping provider names to a sorted list of their known model IDs.
+    """
     return {
         provider: sorted(
             {

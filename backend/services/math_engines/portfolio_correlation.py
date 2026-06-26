@@ -1,11 +1,19 @@
 """
-Portfolio Correlation Matrix — deterministic Pearson correlation and mean-variance optimization.
-Replaces qualitative AI diversification advice with reproducible math (Task 29).
+Portfolio Correlation Matrix and Optimization.
+
+Provides deterministic Pearson correlation and mean-variance optimization, replacing qualitative AI diversification advice with reproducible math (Task 29).
 """
 import numpy as np
 
 def compute_returns(prices: dict[str, list[float]]) -> dict[str, list[float]]:
-    """Convert price dict to daily returns."""
+    """Convert a dictionary of prices to daily percentage returns.
+    
+    Args:
+        prices: A dictionary mapping ticker symbols to lists of historical prices.
+        
+    Returns:
+        A dictionary mapping ticker symbols to lists of daily percentage returns.
+    """
     result = {}
     for ticker, p in prices.items():
         if len(p) < 2:
@@ -15,9 +23,17 @@ def compute_returns(prices: dict[str, list[float]]) -> dict[str, list[float]]:
     return result
 
 def compute_correlation_matrix(prices: dict[str, list[float]]) -> dict:
-    """
-    Compute Pearson correlation matrix for portfolio holdings.
-    Returns: matrix dict, diversification score, pairwise correlations.
+    """Compute Pearson correlation matrix for portfolio holdings.
+
+    Calculates the pairwise Pearson correlation coefficients between the daily returns 
+    of all valid tickers in the provided prices dictionary.
+
+    Args:
+        prices: A dictionary mapping ticker symbols to lists of historical prices.
+
+    Returns:
+        A dictionary containing the correlation 'matrix', a 'diversification_score', 
+        the 'average_abs_correlation', a list of 'pairs' correlations, and 'advice'.
     """
     returns = compute_returns(prices)
     tickers = [t for t, r in returns.items() if len(r) > 5]
@@ -59,9 +75,18 @@ def compute_correlation_matrix(prices: dict[str, list[float]]) -> dict:
 def optimize_portfolio_weights(
     prices: dict[str, list[float]], risk_aversion: float = 1.0
 ) -> dict:
-    """
-    Mean-variance optimization using scipy minimize.
-    Falls back to equal-weight if scipy unavailable.
+    """Calculate optimal portfolio weights using mean-variance optimization.
+
+    Uses scipy's SLSQP minimization to find the weights that maximize the Sharpe ratio 
+    (or a similar objective depending on risk aversion) for the portfolio.
+
+    Args:
+        prices: A dictionary mapping ticker symbols to lists of historical prices.
+        risk_aversion: A float representing the investor's risk aversion coefficient.
+
+    Returns:
+        A dictionary containing the optimal 'weights', 'expected_annual_return', 
+        'expected_annual_volatility', and 'sharpe_ratio'.
     """
     returns = compute_returns(prices)
     tickers = [t for t, r in returns.items() if len(r) > 5]
@@ -76,9 +101,11 @@ def optimize_portfolio_weights(
     try:
         from scipy.optimize import minimize
 
+        # Objective function for minimization: lambda * variance - expected_return
         def objective(w):
             return 0.5 * risk_aversion * w @ cov @ w - mean_ret @ w
 
+        # Constraints: weights sum to 1. Bounds: weights are between 0 and 1
         constraints = [{"type": "eq", "fun": lambda w: np.sum(w) - 1.0}]
         bounds = [(0.0, 1.0) for _ in range(n)]
         w0 = np.ones(n) / n
@@ -101,6 +128,14 @@ def optimize_portfolio_weights(
     }
 
 def _diversification_advice(score: float) -> str:
+    """Generate qualitative diversification advice based on the calculated score.
+
+    Args:
+        score: The diversification score derived from average absolute correlation.
+
+    Returns:
+        A qualitative advice string based on established score thresholds.
+    """
     if score >= 0.7:
         return "Well-diversified portfolio"
     elif score >= 0.4:

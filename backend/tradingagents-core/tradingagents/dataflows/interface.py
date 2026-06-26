@@ -1,3 +1,5 @@
+"""Provides the routing interface for vendor-specific data fetching implementations."""
+
 from typing import Annotated
 
 # Import from vendor-specific modules
@@ -110,7 +112,17 @@ VENDOR_METHODS = {
 }
 
 def get_category_for_method(method: str) -> str:
-    """Get the category that contains the specified method."""
+    """Get the category that contains the specified method.
+
+    Args:
+        method (str): The tool method name.
+
+    Returns:
+        str: The category containing the method.
+
+    Raises:
+        ValueError: If the method is not found in any category.
+    """
     for category, info in TOOLS_CATEGORIES.items():
         if method in info["tools"]:
             return category
@@ -119,6 +131,13 @@ def get_category_for_method(method: str) -> str:
 def get_vendor(category: str, method: str = None) -> str:
     """Get the configured vendor for a data category or specific tool method.
     Tool-level configuration takes precedence over category-level.
+
+    Args:
+        category (str): The tools category name.
+        method (str, optional): The specific tool method name. Defaults to None.
+
+    Returns:
+        str: The configured vendor name.
     """
     config = get_config()
 
@@ -132,7 +151,20 @@ def get_vendor(category: str, method: str = None) -> str:
     return config.get("data_vendors", {}).get(category, "default")
 
 def route_to_vendor(method: str, *args, **kwargs):
-    """Route method calls to appropriate vendor implementation with fallback support."""
+    """Route method calls to appropriate vendor implementation with fallback support.
+
+    Args:
+        method (str): The method name to route.
+        *args: Positional arguments to pass to the implementation.
+        **kwargs: Keyword arguments to pass to the implementation.
+
+    Returns:
+        Any: The result from the vendor implementation.
+
+    Raises:
+        ValueError: If the method is not supported.
+        RuntimeError: If no available vendor succeeds.
+    """
     category = get_category_for_method(method)
     vendor_config = get_vendor(category, method)
     primary_vendors = [v.strip() for v in vendor_config.split(',')]

@@ -21,6 +21,14 @@ _initialised = False
 
 
 def _get_conn() -> "psycopg2.extensions.connection":
+    """Retrieves or creates a singleton PostgreSQL connection for pgvector.
+
+    Returns:
+        psycopg2.extensions.connection: The active database connection.
+
+    Raises:
+        RuntimeError: If the RAG_DB_PASS environment variable is not set.
+    """
     global _conn
     if _conn is None or _conn.closed:
         db_name = os.getenv("RAG_DB_NAME", "nivesh")
@@ -39,7 +47,11 @@ def _get_conn() -> "psycopg2.extensions.connection":
 
 
 def init_store() -> bool:
-    """Initialise pgvector table. Returns True on success."""
+    """Initialises the pgvector table and indices.
+
+    Returns:
+        bool: True on successful initialization or if already initialized, False on failure.
+    """
     global _initialised
     if _initialised:
         return True
@@ -72,7 +84,16 @@ def init_store() -> bool:
 
 def upsert_documents(ids: list[str], documents: list[str],
                      metadatas: list[dict], embeddings: list[list[float]]) -> None:
-    """Upsert chunks into pgvector. All lists must be same length."""
+    """Upserts document chunks into the pgvector table.
+
+    All input lists must be the same length.
+
+    Args:
+        ids (list[str]): List of unique identifiers for the chunks.
+        documents (list[str]): List of document text strings.
+        metadatas (list[dict]): List of metadata dictionaries for each chunk.
+        embeddings (list[list[float]]): List of embedding vectors.
+    """
     if not ids:
         return
     conn = _get_conn()
@@ -108,7 +129,17 @@ def upsert_documents(ids: list[str], documents: list[str],
 
 def query_collection(query_embedding: list[float], ticker: str,
                      limit: int = 3) -> dict:
-    """Query pgvector with ticker filter and cosine similarity."""
+    """Queries pgvector with a ticker filter and cosine similarity.
+
+    Args:
+        query_embedding (list[float]): The embedding vector of the query.
+        ticker (str): The ticker symbol to filter by.
+        limit (int, optional): The maximum number of results to return. Defaults to 3.
+
+    Returns:
+        dict: A dictionary containing lists of 'documents', 'metadatas', and 'distances',
+            formatted to match the expected interface of ChromaDB.
+    """
     conn = _get_conn()
     with _store_lock, conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(f"""
@@ -136,7 +167,11 @@ def query_collection(query_embedding: list[float], ticker: str,
 
 
 def collection_count() -> int:
-    """Return number of documents in the table."""
+    """Returns the total number of documents in the pgvector table.
+
+    Returns:
+        int: The number of rows in the table, or 0 if an error occurs.
+    """
     try:
         conn = _get_conn()
         with _store_lock, conn.cursor() as cur:

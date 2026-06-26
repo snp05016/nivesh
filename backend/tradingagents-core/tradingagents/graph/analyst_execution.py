@@ -5,6 +5,15 @@ from typing import Dict, Iterable, List, Optional
 
 @dataclass(frozen=True)
 class AnalystNodeSpec:
+    """Specification for an analyst node in the graph.
+    
+    Attributes:
+        key (str): The unique identifier for the analyst.
+        agent_node (str): The node name for the agent in the graph.
+        clear_node (str): The node name for clearing messages.
+        tool_node (str): The node name for the tools used by the analyst.
+        report_key (str): The key under which the analyst's report is saved in the state.
+    """
     key: str
     agent_node: str
     clear_node: str
@@ -14,6 +23,12 @@ class AnalystNodeSpec:
 
 @dataclass(frozen=True)
 class AnalystExecutionPlan:
+    """Represents a plan for executing analyst nodes.
+    
+    Attributes:
+        specs (List[AnalystNodeSpec]): A list of analyst node specifications.
+        concurrency_limit (int): The maximum number of analysts to run concurrently.
+    """
     specs: List[AnalystNodeSpec]
     concurrency_limit: int
 
@@ -65,6 +80,18 @@ def build_analyst_execution_plan(
     selected_analysts: Iterable[str],
     concurrency_limit: int = 1,
 ) -> AnalystExecutionPlan:
+    """Build an execution plan for the selected analysts.
+    
+    Args:
+        selected_analysts (Iterable[str]): An iterable of analyst keys to include.
+        concurrency_limit (int, optional): Maximum number of concurrent analysts. Defaults to 1.
+        
+    Returns:
+        AnalystExecutionPlan: The built execution plan.
+        
+    Raises:
+        ValueError: If concurrency_limit is less than 1, if an unknown analyst key is provided, or if no analysts are selected.
+    """
     if concurrency_limit < 1:
         raise ValueError("analyst concurrency limit must be >= 1")
 
@@ -82,11 +109,26 @@ def build_analyst_execution_plan(
 
 
 def get_initial_analyst_node(plan: AnalystExecutionPlan) -> str:
+    """Get the node name of the first analyst in the execution plan.
+    
+    Args:
+        plan (AnalystExecutionPlan): The execution plan.
+        
+    Returns:
+        str: The name of the initial agent node.
+    """
     return plan.specs[0].agent_node
 
 
 class AnalystWallTimeTracker:
+    """Tracks the wall-clock execution time of each analyst node."""
+    
     def __init__(self, plan: AnalystExecutionPlan):
+        """Initialize the wall time tracker with an execution plan.
+        
+        Args:
+            plan (AnalystExecutionPlan): The analyst execution plan to track.
+        """
         self.plan = plan
         self._started_at: Dict[str, float] = {}
         self._wall_times: Dict[str, float] = {}
@@ -131,6 +173,16 @@ def sync_analyst_tracker_from_chunk(
     chunk: Dict[str, str],
     now: Optional[float] = None,
 ) -> None:
+    """Synchronize the analyst time tracker based on graph chunks.
+    
+    Updates the start and completion times of analysts based on the presence
+    of their reports in the chunk data.
+    
+    Args:
+        tracker (AnalystWallTimeTracker): The tracker to synchronize.
+        chunk (Dict[str, str]): The current chunk of state data.
+        now (Optional[float], optional): The current time. Defaults to monotonic time.
+    """
     current_time = monotonic() if now is None else now
     active_found = False
 

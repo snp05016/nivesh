@@ -12,6 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 def compute_piotroski(ticker: str) -> dict:
+    """Compute the Piotroski F-Score for a given stock ticker.
+
+    Args:
+        ticker (str): The stock ticker symbol.
+
+    Returns:
+        dict: A dictionary containing the computed f_score, grade, confidence,
+            and individual check results.
+    """
     checks = {}
     score = 0
     available = 0

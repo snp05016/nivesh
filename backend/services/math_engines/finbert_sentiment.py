@@ -1,8 +1,6 @@
 """
-Task 25 — Financial News Sentiment Scoring.
-
-Tries FinBERT (HuggingFace) first; falls back to a financial lexicon.
-Returns scores from -1.0 (bearish) to +1.0 (bullish).
+Financial News Sentiment Scoring engine.
+Tries FinBERT first; falls back to a financial lexicon to score text.
 """
 
 from __future__ import annotations
@@ -66,7 +64,15 @@ _NEGATION_WORDS = {
 
 
 def _lexicon_score(text: str) -> float:
-    """Score a single text using the financial lexicon."""
+    """
+    Score a single text snippet using the financial lexicon.
+
+    Args:
+        text: The text snippet to score.
+
+    Returns:
+        float: A sentiment score between -1.0 (bearish) and 1.0 (bullish).
+    """
     text_lower = text.lower()
 
     # Check for negation in a short window
@@ -96,8 +102,13 @@ def _lexicon_score(text: str) -> float:
 
 def _try_finbert(texts: list[str]) -> list[float] | None:
     """
-    Try to use FinBERT via HuggingFace transformers pipeline.
-    Returns None if unavailable.
+    Attempt to use FinBERT via the HuggingFace transformers pipeline.
+
+    Args:
+        texts: A list of text strings to analyze.
+
+    Returns:
+        list[float] | None: A list of sentiment scores if successful, or None if unavailable.
     """
     try:
         from transformers import pipeline  # type: ignore[import]
@@ -134,11 +145,11 @@ def analyze_news_sentiment(texts: list[str]) -> dict:
     Returns scores from -1.0 (bearish) to +1.0 (bullish).
 
     Args:
-        texts: list of news headlines or article snippets.
+        texts: List of news headlines or article snippets.
 
     Returns:
-        dict with 'scores' (per-text), 'aggregate_score', 'sentiment',
-        'method', 'bullish_count', 'bearish_count', 'neutral_count'
+        dict: A dictionary with 'scores', 'aggregate_score', 'sentiment',
+            'method', 'bullish_count', 'bearish_count', and 'neutral_count'.
     """
     if not texts:
         return {

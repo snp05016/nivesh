@@ -1,8 +1,6 @@
 """
-Task 21 — Euclidean / Cosine Historical Analogue Matching.
-
-Finds the N closest historical price patterns to the current window
-using Euclidean distance or Cosine similarity.
+Euclidean and Cosine historical analogue matching.
+Finds historical price patterns that most closely resemble the current window.
 """
 
 from __future__ import annotations
@@ -10,7 +8,15 @@ import math
 
 
 def _normalize_window(prices: list[float]) -> list[float]:
-    """Min-max normalize a price window to [0, 1]."""
+    """
+    Applies min-max normalization to scale a price window into the [0, 1] range.
+
+    Args:
+        prices: A sequence of historical or current prices.
+
+    Returns:
+        list[float]: The normalized sequence of prices.
+    """
     min_p = min(prices)
     max_p = max(prices)
     rng = max_p - min_p
@@ -20,7 +26,19 @@ def _normalize_window(prices: list[float]) -> list[float]:
 
 
 def _euclidean_distance(a: list[float], b: list[float]) -> float:
-    """Euclidean distance between two equal-length vectors."""
+    """
+    Computes the standard Euclidean distance between two equal-length vectors.
+
+    Args:
+        a: The first normalized vector.
+        b: The second normalized vector.
+
+    Returns:
+        float: The computed Euclidean distance.
+
+    Raises:
+        ValueError: If vectors differ in length.
+    """
     if len(a) != len(b):
         raise ValueError(f"Vectors must have same length: {len(a)} vs {len(b)}")
     return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)))
@@ -28,8 +46,17 @@ def _euclidean_distance(a: list[float], b: list[float]) -> float:
 
 def _cosine_distance(a: list[float], b: list[float]) -> float:
     """
-    Cosine distance (1 - cosine_similarity) between two vectors.
-    Returns 0.0 for identical direction, up to 2.0 for opposite.
+    Computes cosine distance (1 - cosine_similarity) between two vectors.
+
+    Args:
+        a: The first normalized vector.
+        b: The second normalized vector.
+
+    Returns:
+        float: 0.0 for identical direction, up to 2.0 for opposite direction.
+
+    Raises:
+        ValueError: If vectors differ in length.
     """
     if len(a) != len(b):
         raise ValueError(f"Vectors must have same length: {len(a)} vs {len(b)}")
@@ -54,16 +81,15 @@ def find_historical_analogues(
     Find N closest historical price patterns to the current window.
 
     Args:
-        current_window: normalized 90-day (or any length) price vector.
-        historical_windows: list of (date_str, prices) tuples.
-            Each prices list should be same length as current_window.
-        n_analogues: number of closest analogues to return.
-        method: 'euclidean' or 'cosine'.
+        current_window: Normalized 90-day (or any length) price vector.
+        historical_windows: List of (date_str, prices) tuples.
+            Each prices list should be the same length as current_window.
+        n_analogues: Number of closest analogues to return.
+        method: Similarity method, either 'euclidean' or 'cosine'.
 
     Returns:
-        list of dicts sorted by similarity, each with:
-            'rank', 'date', 'distance', 'similarity_pct',
-            'forward_return' (if available from next prices)
+        list[dict]: A list of dicts sorted by similarity, each containing 'rank',
+            'date', 'distance', 'similarity_pct', and 'forward_return' (if available).
     """
     if not historical_windows:
         return []
@@ -124,13 +150,13 @@ def compute_analogue_consensus(
     Given analogue dates and a lookup of forward returns, compute consensus.
 
     Args:
-        analogues: output of find_historical_analogues.
-        historical_forward_returns: dict of {date_str: forward_return_pct}.
-        horizon_label: label for the horizon (e.g. '30d').
+        analogues: Output produced by find_historical_analogues.
+        historical_forward_returns: Dictionary mapping date_str to forward_return_pct.
+        horizon_label: Label for the horizon (e.g. '30d').
 
     Returns:
-        dict with 'consensus_return', 'bullish_count', 'bearish_count',
-        'confidence', 'description'
+        dict: A dictionary with 'consensus_return', 'bullish_count', 'bearish_count',
+            'confidence', and 'description'.
     """
     returns_found = []
     for analogue in analogues:

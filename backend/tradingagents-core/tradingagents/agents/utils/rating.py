@@ -35,6 +35,13 @@ def parse_rating(text: str, default: str = "Hold") -> str:
     2. Fall back to the first 5-tier rating word found anywhere in the text.
 
     Returns a Title-cased rating string, or ``default`` if no rating word appears.
+
+    Args:
+        text (str): The prose text to parse.
+        default (str, optional): The default rating to return if none is found. Defaults to "Hold".
+
+    Returns:
+        str: The extracted rating string.
     """
     for line in text.splitlines():
         m = _RATING_LABEL_RE.search(line)

@@ -19,6 +19,15 @@ _ACTIVE_STATUSES = {"QUEUED", "RUNNING"}
 
 @dataclass(frozen=True)
 class StressTestLaunch:
+    """
+    Data payload representing a newly launched stress test job.
+
+    Attributes:
+        job_id (str): The unique identifier for the stress test job.
+        holdings (list[dict]): A list of portfolio holding dictionaries.
+        scenarios (list[str]): A list of scenario keys to run.
+        completed_response (dict | None): Optional pre-computed response if immediately finished.
+    """
     job_id: str
     holdings: list[dict]
     scenarios: list[str]
@@ -26,6 +35,15 @@ class StressTestLaunch:
 
 
 def _latest_message(job: dict) -> str:
+    """
+    Extract the latest checkpoint message from a job dictionary.
+
+    Args:
+        job (dict): The job data dictionary.
+
+    Returns:
+        str: The latest message, or a default initialization message.
+    """
     for checkpoint in reversed(job.get("checkpoints") or []):
         message = checkpoint.get("message")
         if message:
@@ -34,6 +52,15 @@ def _latest_message(job: dict) -> str:
 
 
 def _api_job(job: dict) -> dict:
+    """
+    Transform a database job record into an API-friendly response dictionary.
+
+    Args:
+        job (dict): The job data dictionary.
+
+    Returns:
+        dict: An API-formatted job summary with status, progress, and stage details.
+    """
     status = str(job.get("status") or "FAILED").upper()
     if status in _ACTIVE_STATUSES:
         return {
@@ -57,6 +84,16 @@ def _api_job(job: dict) -> dict:
 
 
 def get_owned_stress_test_job(job_id: str, user_id: int) -> dict | None:
+    """
+    Retrieve a stress test job if it is owned by the specified user.
+
+    Args:
+        job_id (str): The unique job identifier.
+        user_id (int): The ID of the requesting user.
+
+    Returns:
+        dict | None: The API-formatted job dictionary if found and authorized, otherwise None.
+    """
     job = job_repo.get_job(job_id)
     if not job or job.get("user_id") != user_id:
         return None
@@ -66,6 +103,15 @@ def get_owned_stress_test_job(job_id: str, user_id: int) -> dict | None:
 
 
 def list_owned_stress_test_jobs(user_id: int) -> dict:
+    """
+    List all stress test jobs owned by the specified user.
+
+    Args:
+        user_id (int): The ID of the requesting user.
+
+    Returns:
+        dict: A dictionary containing active counts, total counts, and the list of jobs.
+    """
     jobs = job_repo.list_jobs_for_user_and_type(
         user_id,
         STRESS_TEST_SCAN_TYPE,
@@ -91,6 +137,15 @@ def list_owned_stress_test_jobs(user_id: int) -> dict:
 
 
 def _ticker_count(job: dict) -> int:
+    """
+    Extract the number of tickers (holdings) queued in the job based on the init message.
+
+    Args:
+        job (dict): The job data dictionary.
+
+    Returns:
+        int: The number of tickers if successfully parsed, otherwise 0.
+    """
     for checkpoint in job.get("checkpoints") or []:
         if checkpoint.get("stage") == "init":
             message = str(checkpoint.get("message") or "")
@@ -105,6 +160,17 @@ def prepare_stress_test_job(
     portfolio_id: str,
     scenarios: list[str],
 ) -> StressTestLaunch:
+    """
+    Create and queue a new stress test job for a given portfolio.
+
+    Args:
+        user_id (int): The ID of the user requesting the stress test.
+        portfolio_id (str): The ID of the portfolio to test.
+        scenarios (list[str]): A list of stress test scenario identifiers.
+
+    Returns:
+        StressTestLaunch: An object containing the created job_id and payload.
+    """
     holdings = stress_test_repo.list_portfolio_holdings(user_id, portfolio_id)
     job = job_repo.create_job(
         user_id,
@@ -157,10 +223,24 @@ def prepare_stress_test_job(
 
 
 def record_stress_test_process(job_id: str, pid: int | None) -> None:
+    """
+    Update the job record with the process ID running the stress test.
+
+    Args:
+        job_id (str): The unique job identifier.
+        pid (int | None): The process ID handling the job, or None.
+    """
     job_repo.update_job(job_id, pid=pid)
 
 
 def mark_stress_test_start_failed(job_id: str, error: Exception) -> None:
+    """
+    Mark a stress test job as failed during the initial startup process.
+
+    Args:
+        job_id (str): The unique job identifier.
+        error (Exception): The exception that caused the startup failure.
+    """
     message = f"Failed to start stress-test worker: {error}"
     job_repo.update_job(job_id, status="FAILED", stage="failed", error=message)
     job_repo.append_checkpoint(
@@ -178,6 +258,14 @@ def run_stress_test_job(
     holdings_payload: list[dict],
     scenarios: list[str],
 ) -> None:
+    """
+    Execute a stress test job and update checkpoints with progress.
+
+    Args:
+        job_id (str): The unique job identifier.
+        holdings_payload (list[dict]): A list of holding dictionaries to test.
+        scenarios (list[str]): A list of stress test scenario keys.
+    """
     try:
         from dotenv import load_dotenv
         load_dotenv(override=True)

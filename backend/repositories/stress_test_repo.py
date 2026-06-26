@@ -4,6 +4,15 @@ from models.db_models import Portfolio
 
 
 def list_portfolio_holdings(user_id: int, group_name: str) -> list[dict]:
+    """Retrieve portfolio holdings for a specific user and group.
+
+    Args:
+        user_id (int): The ID of the user.
+        group_name (str): The portfolio group name (e.g., 'holdings' or 'watchlist').
+
+    Returns:
+        list[dict]: A list of dictionaries representing the portfolio holdings.
+    """
     from database import get_session
 
     with get_session() as session:

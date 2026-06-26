@@ -14,15 +14,28 @@ from database import SessionLocal, PKScreenerSignal, Portfolio
 logger = logging.getLogger(__name__)
 
 def get_all_tracked_tickers(db) -> list:
-    """Returns all tickers from all users' portfolios."""
+    """Returns all tickers from all users' portfolios.
+
+    Args:
+        db: The database session object.
+
+    Returns:
+        list: A list of unique ticker strings.
+    """
     portfolio_tickers = {h.ticker for h in db.query(Portfolio).all()}
     return list(portfolio_tickers)
 
 
 def normalize_technical_score(signals: dict) -> float:
-    """
-    Convert PKScreener signal fields into a normalized 0.0-1.0 score.
+    """Convert PKScreener signal fields into a normalized 0.0-1.0 score.
+
     0.0 = Strong Sell, 0.5 = Neutral, 1.0 = Strong Buy.
+
+    Args:
+        signals (dict): A dictionary containing PKScreener technical signals.
+
+    Returns:
+        float: The normalized technical score.
     """
     score = 0.5  # Start neutral
 
@@ -57,12 +70,27 @@ _SME_TICKER_PATTERNS = ["-SM", "-SME", "BSE_SME"]
 
 
 def _is_sme_ticker(ticker: str) -> bool:
-    """Check if ticker belongs to SME platform — these hang PKScreener."""
+    """Check if ticker belongs to SME platform — these hang PKScreener.
+
+    Args:
+        ticker (str): The ticker symbol to check.
+
+    Returns:
+        bool: True if it is an SME ticker, False otherwise.
+    """
     upper = ticker.upper().strip()
     return any(p in upper for p in _SME_TICKER_PATTERNS)
 
 
 def run_pkscreener_for_ticker(ticker: str) -> dict:
+    """Run the PKScreener subprocess for a specific ticker.
+
+    Args:
+        ticker (str): The ticker symbol.
+
+    Returns:
+        dict: A parsed dictionary of PKScreener signals, or None if it fails.
+    """
     # Fix 2.2: skip SME tickers — they cause silent 30s timeouts
     if _is_sme_ticker(ticker):
         logger.info(f"PKScreener: skipping SME ticker {ticker}")
@@ -92,7 +120,15 @@ def run_pkscreener_for_ticker(ticker: str) -> dict:
 
 
 def parse_pkscreener_output(ticker: str, output: str) -> dict:
-    """Parse PKScreener stdout into a structured dict."""
+    """Parse PKScreener stdout into a structured dict.
+
+    Args:
+        ticker (str): The ticker symbol.
+        output (str): The raw standard output from the PKScreener subprocess.
+
+    Returns:
+        dict: A structured dictionary of extracted technical signals.
+    """
     signals = {
         "ticker": ticker,
         "screen_result": output[:500],
@@ -154,6 +190,11 @@ def parse_pkscreener_output(ticker: str, output: str) -> dict:
 
 
 async def run_nightly_screen():
+    """Run the nightly PKScreener job for all tracked tickers.
+
+    Returns:
+        int: The number of tickers successfully processed.
+    """
     from database import get_session
     today = date.today().isoformat()
     processed = 0

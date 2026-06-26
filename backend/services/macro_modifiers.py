@@ -70,15 +70,21 @@ def _fetch_imd_status() -> Optional[str]:
             headers={"User-Agent": "Mozilla/5.0"},
             timeout=10,
         )
+        # Check if the HTTP request was successful
         if resp.status_code == 200:
             data = resp.json()
             status = data.get("monsoon_status", "").upper()
+            
+            # Validate the returned status against expected values
             if status in ("DEFICIENT", "NORMAL", "ABOVE_NORMAL", "EXCESS"):
                 return status
     except ImportError:
+        # Handle cases where the 'requests' library is not installed
         logger.warning("[monsoon] requests not available, using static lookup")
     except Exception as e:
+        # Catch network timeouts, connection errors, or JSON parsing issues
         logger.warning(f"[monsoon] IMD API failed: {e}")
+        
     return None
 
 
@@ -155,16 +161,34 @@ def get_monsoon_modifier(
 
 
 def get_cached_monsoon_modifier(ticker: str) -> Optional[dict]:
-    """Return cached monsoon modifier if still fresh (< 7 days)."""
+    """
+    Return cached monsoon modifier if still fresh (< 7 days).
+    
+    Args:
+        ticker (str): The stock ticker symbol.
+        
+    Returns:
+        Optional[dict]: The cached monsoon modifier dictionary, or None if expired/missing.
+    """
     with _monsoon_cache_lock:
+        # Check if the ticker exists in the cache
         entry = _monsoon_cache.get(ticker)
         if entry is None:
             return None
+            
+        # Unpack the cache entry
         result, cached_at = entry
+        
+        # Calculate the age of the cached entry
         age = datetime.now(timezone.utc) - cached_at
+        
+        # Return the cached result if it hasn't expired yet
         if age.days < MONSOON_CACHE_TTL_DAYS:
             return result
+            
+        # Remove expired entry from the cache
         del _monsoon_cache[ticker]
+        
     return None
 
 

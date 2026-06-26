@@ -13,6 +13,11 @@ _model: SentenceTransformer | None = None
 
 
 def _get_model() -> SentenceTransformer:
+    """Retrieve the singleton SentenceTransformer model for RAG embeddings.
+    
+    Returns:
+        SentenceTransformer: The instantiated SentenceTransformer model.
+    """
     global _model
     if _model is None:
         _model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -20,10 +25,18 @@ def _get_model() -> SentenceTransformer:
 
 
 def search_vector_db(query: str, ticker: str, limit: int = 3) -> str:
-    """
-    Embed a natural language query, pre-filter by ticker, return top-K chunks.
+    """Embed a natural language query, pre-filter by ticker, return top-K chunks.
 
     Returns formatted string for LLM consumption, or a fallback message.
+
+    Args:
+        query (str): The natural language query to search for.
+        ticker (str): The stock ticker to filter documents by.
+        limit (int, optional): The maximum number of document chunks to return. Defaults to 3.
+
+    Returns:
+        str: A concatenated string of relevant document chunks, or a fallback message
+            if no documents are found or an error occurs.
     """
     if not query or not ticker:
         return "No relevant documents found."

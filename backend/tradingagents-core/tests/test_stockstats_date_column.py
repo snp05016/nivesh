@@ -28,18 +28,22 @@ def _ohlcv(date_col: str) -> pd.DataFrame:
 @pytest.mark.unit
 class TestEnsureDateColumn:
     def test_renames_index_column(self):
+        """Verify that a column named 'index' is correctly renamed to 'Date'."""
         out = su._ensure_date_column(_ohlcv("index"))
         assert "Date" in out.columns and "index" not in out.columns
 
     def test_renames_datetime_and_date_variants(self):
+        """Verify that variants like 'Datetime' and 'date' are renamed to 'Date'."""
         assert "Date" in su._ensure_date_column(_ohlcv("Datetime")).columns
         assert "Date" in su._ensure_date_column(_ohlcv("date")).columns
 
     def test_leaves_existing_date_untouched(self):
+        """Verify that an existing 'Date' column is preserved and untouched."""
         df = _ohlcv("Date")
         assert su._ensure_date_column(df) is df  # no-op short-circuit
 
     def test_no_datelike_column_is_left_alone(self):
+        """Verify that a dataframe with no datelike column is left unchanged."""
         df = pd.DataFrame({"Close": [1, 2, 3]})
         out = su._ensure_date_column(df)
         assert "Date" not in out.columns  # nothing to rename; caller handles
@@ -56,6 +60,7 @@ class TestCleanDataframeAcrossVersions:
         assert len(cleaned) == 10
 
     def test_clean_handles_legacy_date_column(self):
+        """Verify that cleaning works correctly when a standard 'Date' column is present."""
         cleaned = su._clean_dataframe(_ohlcv("Date"))
         assert len(cleaned) == 10
 

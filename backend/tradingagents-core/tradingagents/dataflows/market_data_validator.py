@@ -46,6 +46,16 @@ def _verified_rows(symbol: str, curr_date: str) -> pd.DataFrame:
 
 
 def _fmt(value) -> str:
+    """Formats a value into a user-friendly string representation.
+
+    Args:
+        value: The value to format, which can be of various types (e.g., pandas Timestamp,
+               bool, int, float, None, or pd.NA).
+
+    Returns:
+        str: A string representation of the value, with floats rounded to two decimal places,
+             dates as 'YYYY-MM-DD', and missing values as 'N/A'.
+    """
     if value is None or pd.isna(value):
         return "N/A"
     if isinstance(value, pd.Timestamp):

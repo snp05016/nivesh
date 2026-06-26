@@ -12,6 +12,7 @@ from tradingagents.llm_clients import anthropic_client as mod
 
 
 def _capture_kwargs(monkeypatch):
+    """Helper to capture kwargs passed to NormalizedChatAnthropic."""
     captured: dict = {}
     monkeypatch.setattr(
         mod, "NormalizedChatAnthropic",
@@ -27,6 +28,7 @@ class TestEffortGate:
         ["claude-haiku-4-5", "claude-haiku-5-0", "claude-haiku-4-7-preview"],
     )
     def test_haiku_does_not_receive_effort(self, monkeypatch, model):
+        """Verify that Haiku models do not receive the effort parameter."""
         captured = _capture_kwargs(monkeypatch)
         mod.AnthropicClient(model=model, effort="medium", api_key="x").get_llm()
         assert "effort" not in captured["kwargs"]
@@ -39,6 +41,7 @@ class TestEffortGate:
         ],
     )
     def test_current_opus_and_sonnet_receive_effort(self, monkeypatch, model):
+        """Verify that current Opus and Sonnet models receive the effort parameter."""
         captured = _capture_kwargs(monkeypatch)
         mod.AnthropicClient(model=model, effort="high", api_key="x").get_llm()
         assert captured["kwargs"]["effort"] == "high"
@@ -54,6 +57,7 @@ class TestEffortGate:
         assert captured["kwargs"]["effort"] == "low"
 
     def test_mythos_preview_receives_effort(self, monkeypatch):
+        """Verify that the mythos-preview model receives the effort parameter."""
         captured = _capture_kwargs(monkeypatch)
         mod.AnthropicClient(
             model="claude-mythos-preview", effort="medium", api_key="x"

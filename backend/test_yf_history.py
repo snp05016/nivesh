@@ -1,8 +1,29 @@
+"""
+Test script to verify historical data fetching using yfinance with fallback mechanisms.
+"""
 import yfinance as yf
 import pandas as pd
 
 def _yf_price(ticker_sym: str):
+    """
+    Fetches the current and previous closing prices for a given ticker symbol using yfinance.
+
+    Args:
+        ticker_sym (str): The ticker symbol to query.
+
+    Returns:
+        tuple: A tuple containing (current_price, previous_price), or (None, None) if unavailable.
+    """
     def _fetch(sym: str):
+        """
+        Helper to fetch recent history for a symbol and extract closing prices.
+
+        Args:
+            sym (str): The specific symbol to fetch data for.
+
+        Returns:
+            tuple: A tuple of (current_price, previous_price).
+        """
         try:
             hist = yf.Ticker(sym).history(period="5d")
             if hist.empty:
