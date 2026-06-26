@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 """
 Canonical LLM utilities for the Nivesh backend.
@@ -8,8 +10,6 @@ analysis.py, portfolio.py, and advisor_harvester.py.
 Usage:
     from services.llm_utils import deepseek_chat, get_deepseek_client, DEEPSEEK_MODEL
 """
-
-from __future__ import annotations
 
 import os
 import re
