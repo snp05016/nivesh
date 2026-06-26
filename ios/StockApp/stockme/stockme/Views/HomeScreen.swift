@@ -1757,7 +1757,7 @@ struct CompactNewsCell: View {
                                     .resizable()
                                     .aspectRatio(contentMode: .fill)
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: UIScreen.main.bounds.height * 0.18)
+                                    .frame(height: UIScreen.main.bounds.height * 0.13)
                                     .clipped()
                             case .failure(_), .empty:
                                 newsFallbackImage
@@ -1819,7 +1819,7 @@ struct CompactNewsCell: View {
                     .padding(.horizontal, Theme.Spacing.medium)
                     .padding(.bottom, Theme.Spacing.medium)
                 }
-                .frame(height: UIScreen.main.bounds.height * 0.18)
+                .frame(height: UIScreen.main.bounds.height * 0.13)
                 .clipped()
                 .cornerRadius(Theme.CornerRadius.tight)
 
@@ -1864,7 +1864,7 @@ struct CompactNewsCell: View {
                     Text(stripEmoji(article.headline))
                         .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .footnote))
                         .foregroundStyle(Theme.inkPrimary)
-                        .lineLimit(4)
+                        .lineLimit(3)
                         .lineSpacing(2.5)
                         .fixedSize(horizontal: false, vertical: true)
 
@@ -1873,7 +1873,7 @@ struct CompactNewsCell: View {
                         Text(stripEmoji(summary))
                             .font(.caption)
                             .foregroundStyle(Theme.inkSecondary)
-                            .lineLimit(3)
+                            .lineLimit(2)
                             .lineSpacing(2)
                     }
 
@@ -1948,7 +1948,7 @@ struct CompactNewsCell: View {
                 )
             )
             .frame(maxWidth: .infinity)
-            .frame(height: UIScreen.main.bounds.height * 0.18)
+            .frame(height: UIScreen.main.bounds.height * 0.13)
             .overlay(
                 VStack(spacing: Theme.Spacing.tight) {
                     Image(systemName: "newspaper.fill")

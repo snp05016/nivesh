@@ -18,7 +18,7 @@ struct StockMLSignalCard: View {
             } else if let signal = signal {
                 MLSignalLoadedContent(signal: signal, onOpenQuantLab: onOpenQuantLab)
             } else {
-                MLSignalUnavailableContent()
+                MLSignalUnavailableContent(onOpenQuantLab: onOpenQuantLab)
             }
         }
         .padding(Theme.Spacing.card)
@@ -106,10 +106,7 @@ private struct MLSignalLoadedContent: View {
             }
 
             // Row 3: CTA
-            Button(action: { HapticManager.selection();  HapticManager.selection()
-                HapticManager.selection()
-                onOpenQuantLab()
-            }) {
+            Button(action: { HapticManager.selection(); onOpenQuantLab() }) {
                 HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: "flask")
                         .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
@@ -229,16 +226,42 @@ private struct MLSignalShimmerContent: View {
 // MARK: - Unavailable State
 
 private struct MLSignalUnavailableContent: View {
+    let onOpenQuantLab: () -> Void
+
     var body: some View {
-        HStack(spacing: Theme.Spacing.medium) {
-            Image(systemName: "waveform.path.ecg")
-                .font(Theme.officialStampFont(size: 12, relativeTo: .caption))
-                .foregroundStyle(Theme.inkTertiary)
-            Text("ML ENGINE UNAVAILABLE")
-                .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
-                .tracking(1.2)
-                .foregroundStyle(Theme.inkTertiary)
-            Spacer()
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            HStack(spacing: Theme.Spacing.medium) {
+                Image(systemName: "waveform.path.ecg")
+                    .font(Theme.officialStampFont(size: 12, relativeTo: .caption))
+                    .foregroundStyle(Theme.inkTertiary)
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                    Text("ML ENGINE")
+                        .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
+                        .tracking(1.2)
+                        .foregroundStyle(Theme.inkTertiary)
+                    Text("Signal unavailable — tap to explore Quant Lab")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.inkTertiary.opacity(0.7))
+                }
+                Spacer()
+            }
+            Button(action: { HapticManager.selection(); onOpenQuantLab() }) {
+                HStack(spacing: Theme.Spacing.small) {
+                    Image(systemName: "flask")
+                        .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
+                    Text("OPEN QUANT LAB")
+                        .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
+                        .tracking(1.2)
+                }
+                .foregroundStyle(Theme.securityGold)
+                .padding(.horizontal, Theme.Spacing.standard)
+                .padding(.vertical, Theme.Spacing.tight)
+                .background(Theme.securityGold.opacity(0.10))
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(Theme.securityGold.opacity(0.35), lineWidth: 0.5))
+            }
+            .buttonStyle(EKPressStyle())
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 }

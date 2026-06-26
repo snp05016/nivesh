@@ -709,8 +709,10 @@ def analyst_ratings_endpoint(ticker: str, exchange: str = "NSE"):
                 ratings.append({"firm": str(firm), "grade": str(grade), "period": period})
 
         # Consensus
-        buys = sum(1 for r in ratings if any(w in r["grade"].upper() for w in ["BUY", "OUTPERFORM", "OVERWEIGHT", "ACCUMULATE"]))
-        sells = sum(1 for r in ratings if any(w in r["grade"].upper() for w in ["SELL", "UNDERPERFORM", "UNDERWEIGHT", "REDUCE"]))
+        BUY_KEYWORDS = ["BUY", "OUTPERFORM", "OVERWEIGHT", "ACCUMULATE", "ADD", "STRONG BUY", "POSITIVE", "TOP PICK", "UPGRADE"]
+        SELL_KEYWORDS = ["SELL", "UNDERPERFORM", "UNDERWEIGHT", "REDUCE", "STRONG SELL", "NEGATIVE", "AVOID", "DOWNGRADE"]
+        buys = sum(1 for r in ratings if any(w in r["grade"].upper() for w in BUY_KEYWORDS))
+        sells = sum(1 for r in ratings if any(w in r["grade"].upper() for w in SELL_KEYWORDS))
         holds = len(ratings) - buys - sells
         if buys > sells and buys > holds: consensus = "BUY"
         elif sells > buys and sells > holds: consensus = "SELL"

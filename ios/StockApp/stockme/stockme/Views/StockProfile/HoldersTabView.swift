@@ -32,35 +32,49 @@ struct HoldersContentView: View {
                 .foregroundStyle(Theme.inkTertiary)
                 .padding(.top, Theme.Spacing.small)
 
-            HStack(spacing: Theme.Spacing.card) {
-                VStack(spacing: Theme.Spacing.xSmall) {
-                    Text("\(ratings.buy)")
-                        .font(Theme.serialNumberFont(size: 22, relativeTo: .title2))
-                        .foregroundStyle(Theme.bullGreen)
-                    Text("BUY").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
-                }
-                .frame(maxWidth: .infinity)
-                .explainableTerm("Signal")
+            let total = ratings.buy + ratings.hold + ratings.sell
+            if total > 0 {
+                HStack(spacing: Theme.Spacing.card) {
+                    VStack(spacing: Theme.Spacing.xSmall) {
+                        Text("\(ratings.buy)")
+                            .font(Theme.serialNumberFont(size: 22, relativeTo: .title2))
+                            .foregroundStyle(Theme.bullGreen)
+                        Text("BUY").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .explainableTerm("Signal")
 
-                VStack(spacing: Theme.Spacing.xSmall) {
-                    Text("\(ratings.hold)")
-                        .font(Theme.serialNumberFont(size: 22, relativeTo: .title2))
-                        .foregroundStyle(Theme.holdAmber)
-                    Text("HOLD").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
-                }
-                .frame(maxWidth: .infinity)
+                    VStack(spacing: Theme.Spacing.xSmall) {
+                        Text("\(ratings.hold)")
+                            .font(Theme.serialNumberFont(size: 22, relativeTo: .title2))
+                            .foregroundStyle(Theme.holdAmber)
+                        Text("HOLD").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
+                    }
+                    .frame(maxWidth: .infinity)
 
-                VStack(spacing: Theme.Spacing.xSmall) {
-                    Text("\(ratings.sell)")
-                        .font(Theme.serialNumberFont(size: 22, relativeTo: .title2))
-                        .foregroundStyle(Theme.bearRed)
-                    Text("SELL").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
+                    VStack(spacing: Theme.Spacing.xSmall) {
+                        Text("\(ratings.sell)")
+                            .font(Theme.serialNumberFont(size: 22, relativeTo: .title2))
+                            .foregroundStyle(Theme.bearRed)
+                        Text("SELL").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .explainableTerm("Signal")
                 }
-                .frame(maxWidth: .infinity)
-                .explainableTerm("Signal")
+                .padding(Theme.Spacing.card)
+                .banknoteCard()
+            } else {
+                HStack(spacing: Theme.Spacing.standard) {
+                    Image(systemName: "info.circle")
+                        .foregroundStyle(Theme.inkTertiary)
+                    Text("No analyst ratings available for this stock")
+                        .font(Theme.engravedSerif(size: 12, weight: .regular, relativeTo: .caption))
+                        .foregroundStyle(Theme.inkSecondary)
+                    Spacer()
+                }
+                .padding(Theme.Spacing.card)
+                .banknoteCard()
             }
-            .padding(Theme.Spacing.card)
-            .banknoteCard()
 
             if let consensus = ratings.consensus {
                 HStack {

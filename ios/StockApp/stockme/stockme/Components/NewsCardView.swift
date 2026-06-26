@@ -32,8 +32,7 @@ struct NewsCardView: View {
                 UIApplication.shared.open(url)
             }
         }) {
-            GeometryReader { geo in
-                VStack(alignment: .leading, spacing: Theme.Spacing.none) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.none) {
                     // Hero image (if available)
                     if let imageUrl = article.imageUrl, let url = URL(string: imageUrl) {
                         AsyncImage(url: url) { phase in
@@ -43,14 +42,14 @@ struct NewsCardView: View {
                                     .resizable()
                                     .aspectRatio(contentMode: .fill)
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: geo.size.width * 0.43)
+                                    .frame(height: UIScreen.main.bounds.width * 0.43)
                                     .clipped()
                             case .failure(_):
                                 EmptyView()
                             case .empty:
                                 Rectangle()
                                     .fill(Color.primary.opacity(0.04))
-                                    .frame(height: geo.size.width * 0.26)
+                                    .frame(height: UIScreen.main.bounds.width * 0.26)
                             @unknown default:
                                 EmptyView()
                             }
@@ -172,7 +171,6 @@ struct NewsCardView: View {
             .cornerRadius(Theme.CornerRadius.large)
         }
         .buttonStyle(EKPressStyle())
-        }
     }
 
     func relativeTime(_ isoString: String) -> String {

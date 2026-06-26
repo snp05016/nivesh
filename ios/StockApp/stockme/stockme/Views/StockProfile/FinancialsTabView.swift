@@ -4,25 +4,23 @@ struct FinancialsTabView: View {
     @ObservedObject var vm: StockProfileViewModel
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: Theme.sectionSpacing) {
-                if vm.financialsLoading {
-                    SPSkeletonBlock(rows: 8)
-                } else {
-                    if !vm.quarterlyFinancials.isEmpty {
-                        FinancialsTableView(quarters: vm.quarterlyFinancials)
-                    }
-                    if let piotroski = vm.piotroski {
-                        PiotroskiCardView(data: piotroski)
-                    }
-                    if vm.quarterlyFinancials.isEmpty && vm.piotroski == nil {
-                        SPEmptyStateView(message: "Financial data unavailable")
-                    }
+        LazyVStack(spacing: Theme.sectionSpacing) {
+            if vm.financialsLoading {
+                SPSkeletonBlock(rows: 8)
+            } else {
+                if !vm.quarterlyFinancials.isEmpty {
+                    FinancialsTableView(quarters: vm.quarterlyFinancials)
+                }
+                if let piotroski = vm.piotroski {
+                    PiotroskiCardView(data: piotroski)
+                }
+                if vm.quarterlyFinancials.isEmpty && vm.piotroski == nil {
+                    SPEmptyStateView(message: "Financial data unavailable")
                 }
             }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.vertical, Theme.Spacing.card)
         }
+        .padding(.horizontal, Theme.screenPadding)
+        .padding(.vertical, Theme.Spacing.card)
         .task { await vm.fetchFinancials() }
     }
 }

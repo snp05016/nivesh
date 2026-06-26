@@ -5,19 +5,17 @@ struct OverviewTabView: View {
     @ObservedObject var vm: StockProfileViewModel
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: Theme.sectionSpacing) {
-                if vm.overviewLoading {
-                    SPSkeletonBlock(rows: 6)
-                } else if let info = vm.quickInfo {
-                    OverviewContentView(ticker: ticker, info: info)
-                } else {
-                    SPEmptyStateView(message: "Overview unavailable")
-                }
+        LazyVStack(spacing: Theme.sectionSpacing) {
+            if vm.overviewLoading {
+                SPSkeletonBlock(rows: 6)
+            } else if let info = vm.quickInfo {
+                OverviewContentView(ticker: ticker, info: info)
+            } else {
+                SPEmptyStateView(message: "Overview unavailable")
             }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.vertical, Theme.Spacing.card)
         }
+        .padding(.horizontal, Theme.screenPadding)
+        .padding(.vertical, Theme.Spacing.card)
         .task { await vm.fetchOverview() }
     }
 }

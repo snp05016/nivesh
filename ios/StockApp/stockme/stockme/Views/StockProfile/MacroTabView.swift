@@ -62,6 +62,9 @@ struct MacroMoodGaugeView: View {
                     }
                 }()
 
+                let gaugeW = UIScreen.main.bounds.width * 0.60
+                let gaugeR = gaugeW / 2.0
+
                 ZStack {
                     ForEach(0..<5, id: \.self) { seg in
                         let segStart = Double(seg) / 5.0
@@ -77,24 +80,24 @@ struct MacroMoodGaugeView: View {
                         }()
                         Circle()
                             .trim(from: 0.25 + segStart * 0.5, to: 0.25 + segEnd * 0.5)
-                            .stroke(segColor, style: StrokeStyle(lineWidth: 14, lineCap: .butt))
-                            .frame(width: UIScreen.main.bounds.width * 0.40, height: UIScreen.main.bounds.width * 0.40)
+                            .stroke(segColor, style: StrokeStyle(lineWidth: 18, lineCap: .butt))
+                            .frame(width: gaugeW, height: gaugeW)
                             .rotationEffect(.degrees(180))
                     }
 
                     ForEach([0, 25, 50, 75, 100], id: \.self) { tick in
                         let tickAngle = Angle(degrees: -90 + (Double(tick) / 100.0 * 180))
                         Rectangle()
-                            .fill(Theme.inkTertiary.opacity(0.3))
-                            .frame(width: 2, height: 12)
-                            .offset(y: -78)
+                            .fill(Theme.inkTertiary.opacity(0.35))
+                            .frame(width: 2, height: 14)
+                            .offset(y: -(gaugeR - 2))
                             .rotationEffect(tickAngle)
                     }
 
                     let needleAngle = Angle(degrees: -90 + (score / 100.0 * 180))
                     Path { path in
                         path.move(to: CGPoint(x: 0, y: 8))
-                        path.addLine(to: CGPoint(x: 0, y: -70))
+                        path.addLine(to: CGPoint(x: 0, y: -(gaugeR * 0.80)))
                     }
                     .stroke(Theme.inkPrimary, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
                     .rotationEffect(needleAngle)
@@ -103,7 +106,8 @@ struct MacroMoodGaugeView: View {
                         .fill(Theme.inkPrimary)
                         .frame(width: 10, height: 10)
                 }
-                .frame(width: UIScreen.main.bounds.width * 0.40, height: UIScreen.main.bounds.height * 0.13)
+                .frame(width: gaugeW, height: gaugeR + 14)
+                .clipped()
 
                 VStack(spacing: Theme.Spacing.xSmall) {
                     Text("\(Int(score))")

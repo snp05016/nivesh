@@ -285,6 +285,7 @@ class StockProfileViewModel: ObservableObject {
             chartLoading = true
             financialsLoading = true
             overviewLoading = true
+            mlSignalLoading = true
             stockProfileError = nil
         }
         do {

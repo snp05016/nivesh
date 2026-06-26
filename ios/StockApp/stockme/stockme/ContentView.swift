@@ -276,8 +276,8 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .anomalies: return "exclamationmark.triangle.fill"
         case .sector_rotation: return "arrow.triangle.2.circlepath"
         case .stress_test: return "bolt.trianglebadge.exclamationmark"
-        case .earnings_surprise: return "sparkles.rectangle"
-        case .options_strategy: return "chart.line.flip.horizontal"
+        case .earnings_surprise: return "wand.and.stars"
+        case .options_strategy: return "arrow.up.arrow.down.circle.fill"
         }
     }
     var hindi: String {

@@ -13,6 +13,8 @@ struct YouTubeCardView: View {
                 UIApplication.shared.open(url)
             }
         }) {
+            let thumbW = UIScreen.main.bounds.width * 0.38
+            let thumbH = thumbW * 9.0 / 16.0
             HStack(alignment: .top, spacing: Theme.Spacing.standard) {
                 // Thumbnail
                 ZStack(alignment: .bottomTrailing) {
@@ -22,24 +24,19 @@ struct YouTubeCardView: View {
                             case .success(let image):
                                 image
                                     .resizable()
-                                    .aspectRatio(16/9, contentMode: .fill)
-                                    .frame(maxWidth: .infinity)
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: thumbW, height: thumbH)
                                     .clipped()
-                                    .cornerRadius(Theme.CornerRadius.medium)
                             default:
                                 Rectangle()
                                     .fill(Color.primary.opacity(0.08))
-                                    .aspectRatio(16/9, contentMode: .fill)
-                                    .frame(maxWidth: .infinity)
-                                    .cornerRadius(Theme.CornerRadius.medium)
+                                    .frame(width: thumbW, height: thumbH)
                             }
                         }
                     } else {
                         Rectangle()
                             .fill(Color.primary.opacity(0.08))
-                            .aspectRatio(16/9, contentMode: .fill)
-                            .frame(maxWidth: .infinity)
-                            .cornerRadius(Theme.CornerRadius.medium)
+                            .frame(width: thumbW, height: thumbH)
                     }
 
                     // Play button overlay
@@ -60,6 +57,8 @@ struct YouTubeCardView: View {
                             .padding(Theme.Spacing.small)
                     }
                 }
+                .frame(width: thumbW, height: thumbH)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
 
                 // Metadata
                 VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
