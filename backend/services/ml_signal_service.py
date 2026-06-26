@@ -6,6 +6,7 @@ and enriches responses with reliability metrics from the calibration service.
 """
 
 import logging
+import yfinance as yf
 from datetime import datetime, timezone
 
 import httpx
@@ -99,9 +100,36 @@ def get_ml_signal(symbol: str) -> MLSignalResponse:
     """
     symbol = symbol.strip().upper()
 
+    # Fetch recent OHLCV data for the ML engine
+    ohlcv_data = []
+    try:
+        ns_ticker = f"{symbol}.NS" if not symbol.endswith((".NS", ".BO")) else symbol
+        ticker_obj = yf.Ticker(ns_ticker)
+        hist = ticker_obj.history(period="3mo")
+        if not hist.empty:
+            hist.index = hist.index.tz_localize(None)
+            for dt, row in hist.tail(90).iterrows():
+                ohlcv_data.append({
+                    "date": dt.strftime("%Y-%m-%d") if hasattr(dt, "strftime") else str(dt),
+                    "open": float(row["Open"]),
+                    "high": float(row["High"]),
+                    "low": float(row["Low"]),
+                    "close": float(row["Close"]),
+                    "volume": float(row["Volume"]),
+                })
+    except Exception as e:
+        logger.warning("Failed to fetch OHLCV data for %s: %s", symbol, e)
+        return _build_unavailable_response(symbol, f"Could not fetch OHLCV data: {e}")
+
+    if len(ohlcv_data) < 5:
+        return _build_unavailable_response(symbol, f"Insufficient OHLCV data ({len(ohlcv_data)} rows, need 5+)")
+
     try:
         with httpx.Client(timeout=ML_ENGINE_TIMEOUT) as client:
-            resp = client.post(ML_ENGINE_URL, json={"symbol": symbol})
+            resp = client.post(
+                f"{ML_ENGINE_URL}/predict/single",
+                json={"ticker": symbol, "ohlcv_data": ohlcv_data},
+            )
             resp.raise_for_status()
             data = resp.json()
     except httpx.TimeoutException:
