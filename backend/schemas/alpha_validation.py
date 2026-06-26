@@ -22,7 +22,10 @@ class BacktestParams(BaseModel):
     @field_validator("horizon", mode="before")
     @classmethod
     def normalize_horizon(cls, v: str) -> str:
-        """Accept both '30d' and '30D' — normalize to uppercase."""
+        """Accept both '30d' and '30D' — normalize to uppercase. Reject invalid."""
+        VALID = {"7D", "7d", "20D", "20d", "30D", "30d", "60D", "60d", "90D", "90d"}
+        if isinstance(v, str) and v not in VALID:
+            raise ValueError(f"Invalid horizon '{v}'. Must be one of: {sorted(VALID)}")
         return v.upper() if isinstance(v, str) else v
     strategy_type: Literal[
         "equal_weight_bullish",
