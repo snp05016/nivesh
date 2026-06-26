@@ -329,23 +329,104 @@ All ORM models MUST live in models/db_models.py only.
 
 This workflow governs every agent and every change. Use GitHub Issues and pull requests as the durable record of intent, implementation, review, and completion.
 
-#### 6.4.0 Branch-First Mandate (ABSOLUTE)
+#### 6.4.0 Worktree Isolation Mandate (ABSOLUTE)
 
-> **The agent MUST NEVER perform work directly on `main`.** This rule has zero exceptions.
+> **The root repository directory is SHARED.** Multiple agents (Claude Code, OpenCode, Antigravity)
+> may run simultaneously. `git checkout` mutates the shared `.git/HEAD` and breaks every other
+> agent that is mid-edit. **Never run `git checkout` or `git switch` in the root repo directory.**
 
-1. At the start of EVERY prompt, run `git branch --show-current`.
-2. If the current branch is `main` (or any protected base branch), **immediately** create a new feature branch before touching any file:
-   ```bash
-   git checkout -b agy/<type>/<short-slug>
-   ```
-3. All file edits, commits, and pushes happen on that branch — never on `main`.
-4. **Do NOT open a Pull Request unless the user explicitly says so** (e.g. "open a PR", "create a PR", "please PR this"). Pushing a branch and opening a PR are two separate actions. Pushing is always fine; opening a PR requires explicit user approval.
-5. If the user's prompt does not name a branch, generate a descriptive slug from the task (e.g. `agy/docs/branch-workflow-rule`).
+##### Why worktrees
 
-**Refusal template if caught on main:**
+Each `git worktree add` creates a **separate directory** with its own HEAD, index, and working tree
+that is completely isolated from every other agent's directory. The branch can be committed and pushed
+independently without touching any other agent's state.
+
+##### Mandatory protocol — start of every task
+
+```bash
+# 1. Check current HEAD (informational only — do NOT switch it)
+git -C /Users/saumya/Desktop/nivesh branch --show-current
+
+# 2. Generate a unique worktree path from the task slug
+SLUG="agy/<type>/<short-slug>"
+WORKTREE_PATH="/Users/saumya/Desktop/nivesh-${SLUG//\//-}"
+
+# 3. Create a new worktree + branch in one atomic step
+git -C /Users/saumya/Desktop/nivesh worktree add "$WORKTREE_PATH" -b "$SLUG"
+
+# 4. All work (reads, edits, git commands) happens INSIDE the worktree
+cd "$WORKTREE_PATH"
 ```
-Stopping — currently on `main`. Switching to branch `agy/<type>/<slug>` before proceeding.
+
+Example for a backend fix task:
+```bash
+git -C /Users/saumya/Desktop/nivesh worktree add \
+  /Users/saumya/Desktop/nivesh-agy-fix-cache-race \
+  -b agy/fix/cache-race
+cd /Users/saumya/Desktop/nivesh-agy-fix-cache-race
 ```
+
+##### Inside the worktree
+
+- Edit files, run tests, and commit using standard git commands (`git add`, `git commit`, `git push`).
+- All git commands inside the worktree directory operate on that worktree's branch automatically.
+- **Never run `git checkout` or `git switch` inside a worktree** — it detaches HEAD or breaks the worktree link.
+- Run verification commands from inside the worktree path (e.g., `cd /path/to/worktree/backend && .venv/bin/pytest ...`).
+
+##### Mandatory protocol — end of every task
+
+After the branch is pushed:
+
+```bash
+# From OUTSIDE the worktree (use the main repo path)
+git -C /Users/saumya/Desktop/nivesh worktree remove "$WORKTREE_PATH" --force
+
+# Confirm removal
+git -C /Users/saumya/Desktop/nivesh worktree list
+
+# The remote branch persists on GitHub for review/merge
+# The local branch ref is auto-cleaned on next gc or can be pruned:
+git -C /Users/saumya/Desktop/nivesh branch -d "$SLUG" 2>/dev/null || true
+```
+
+##### Naming convention
+
+```
+Worktree path: /Users/saumya/Desktop/nivesh-agy-<type>-<short-slug>
+Branch name:   agy/<type>/<short-slug>
+```
+
+Examples:
+```
+/Users/saumya/Desktop/nivesh-agy-fix-cache-race      → branch: agy/fix/cache-race
+/Users/saumya/Desktop/nivesh-agy-feat-quantlab-tests → branch: agy/feat/quantlab-tests
+/Users/saumya/Desktop/nivesh-agy-docs-state-update   → branch: agy/docs/state-update
+```
+
+##### Stale worktree detection
+
+At the start of every task, list worktrees and prune stale ones from crashed sessions:
+```bash
+git -C /Users/saumya/Desktop/nivesh worktree list
+git -C /Users/saumya/Desktop/nivesh worktree prune
+```
+
+If a worktree for the same slug already exists (from a prior crash), remove it first:
+```bash
+git -C /Users/saumya/Desktop/nivesh worktree remove "$WORKTREE_PATH" --force 2>/dev/null || true
+```
+
+##### PR rule (unchanged)
+
+**Do NOT open a Pull Request unless the user explicitly says so.** Pushing the branch is the
+default terminal action. Trigger phrases required: "open a PR", "create a PR", "please PR this".
+
+**Refusal template if caught about to run `git checkout` in the main repo:**
+```
+Stopping — about to run `git checkout` in the shared root. Creating an isolated worktree instead:
+  git worktree add /Users/saumya/Desktop/nivesh-agy-<type>-<slug> -b agy/<type>/<slug>
+```
+
 
 #### 6.4.1 Start Safely
 
