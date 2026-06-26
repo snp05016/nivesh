@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Dict, Optional, Literal, Any
 
 
@@ -17,7 +17,13 @@ class CostAssumptions(BaseModel):
 
 class BacktestParams(BaseModel):
     """Parameters defining a backtest scenario."""
-    horizon: Literal["7D", "20D", "30D", "60D", "90D"] = Field("30D", description="Holding period horizon")
+    horizon: str = Field("30D", description="Holding period horizon (7D/7d, 20D/20d, 30D/30d, 60D/60d, 90D/90d)")
+
+    @field_validator("horizon", mode="before")
+    @classmethod
+    def normalize_horizon(cls, v: str) -> str:
+        """Accept both '30d' and '30D' — normalize to uppercase."""
+        return v.upper() if isinstance(v, str) else v
     strategy_type: Literal[
         "equal_weight_bullish",
         "confidence_weighted",
