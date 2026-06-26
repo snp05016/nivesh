@@ -4,11 +4,12 @@ struct YouTubeCardView: View {
     let video: YouTubeVideoItem
     var onTickerTap: ((String) -> Void)? = nil
 
+    @State private var showSummary = false
     private var goldAccent: Color { Theme.securityGold }
     private let dimText    = Theme.inkSecondary
 
     var body: some View {
-        Button(action: { HapticManager.selection();  HapticManager.selection()
+        Button(action: { HapticManager.selection()
             if let url = URL(string: video.videoUrl) {
                 UIApplication.shared.open(url)
             }
@@ -78,7 +79,7 @@ struct YouTubeCardView: View {
 
                     Spacer(minLength: 0)
 
-                    // Footer: views + tickers
+                    // Footer: views + tickers + summary
                     HStack(spacing: Theme.Spacing.tight) {
                         Image(systemName: "eye")
                             .font(.caption2)
@@ -100,6 +101,24 @@ struct YouTubeCardView: View {
                             }
                             .buttonStyle(EKPressStyle())
                         }
+
+                        Spacer(minLength: 0)
+
+                        // AI Summary button
+                        Button(action: { HapticManager.selection(); showSummary = true }) {
+                            HStack(spacing: Theme.Spacing.xSmall) {
+                                Image(systemName: "text.magnifyingglass")
+                                    .font(.caption2)
+                                Text("Summary")
+                                    .font(.caption2.weight(.semibold))
+                            }
+                            .foregroundStyle(Theme.securityGold)
+                            .padding(.horizontal, Theme.Spacing.small)
+                            .padding(.vertical, Theme.Spacing.xSmall)
+                            .background(Theme.securityGold.opacity(0.12))
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(EKPressStyle())
                     }
                 }
 
@@ -118,6 +137,11 @@ struct YouTubeCardView: View {
             .cornerRadius(Theme.CornerRadius.large)
         }
         .buttonStyle(EKPressStyle())
+        .sheet(isPresented: $showSummary) {
+            YouTubeSummarySheet(video: video, onTickerTap: onTickerTap)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
     }
 }
 
@@ -127,10 +151,11 @@ struct YouTubeCompactCard: View {
     let video: YouTubeVideoItem
     var onTickerTap: ((String) -> Void)? = nil
 
+    @State private var showSummary = false
     private var goldAccent: Color { Theme.securityGold }
 
     var body: some View {
-        Button(action: { HapticManager.selection();  HapticManager.selection()
+        Button(action: { HapticManager.selection()
             if let url = URL(string: video.videoUrl) {
                 UIApplication.shared.open(url)
             }
@@ -207,22 +232,30 @@ struct YouTubeCompactCard: View {
                         .foregroundStyle(.secondary)
                 }
 
-                // Ticker chips
-                if !video.tickersMentioned.isEmpty {
-                    HStack(spacing: Theme.Spacing.xSmall) {
-                        ForEach(video.tickersMentioned.prefix(2), id: \.self) { ticker in
-                            Button(action: { HapticManager.selection(); onTickerTap?(ticker) }) {
-                                Text(ticker)
-                                    .font(.caption2.weight(.semibold).monospaced())
-                                    .foregroundStyle(.primary.opacity(0.65))
-                                    .padding(.horizontal, Theme.Spacing.small)
-                                    .padding(.vertical, Theme.Spacing.xSmall)
-                                    .background(Color.primary.opacity(0.07))
-                                    .cornerRadius(Theme.CornerRadius.small)
-                            }
-                            .buttonStyle(EKPressStyle())
+                // Ticker chips + Summary button
+                HStack(spacing: Theme.Spacing.xSmall) {
+                    ForEach(video.tickersMentioned.prefix(2), id: \.self) { ticker in
+                        Button(action: { HapticManager.selection(); onTickerTap?(ticker) }) {
+                            Text(ticker)
+                                .font(.caption2.weight(.semibold).monospaced())
+                                .foregroundStyle(.primary.opacity(0.65))
+                                .padding(.horizontal, Theme.Spacing.small)
+                                .padding(.vertical, Theme.Spacing.xSmall)
+                                .background(Color.primary.opacity(0.07))
+                                .cornerRadius(Theme.CornerRadius.small)
                         }
+                        .buttonStyle(EKPressStyle())
                     }
+                    Spacer(minLength: 0)
+                    Button(action: { HapticManager.selection(); showSummary = true }) {
+                        Image(systemName: "text.magnifyingglass")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(Theme.securityGold)
+                            .padding(Theme.Spacing.small)
+                            .background(Theme.securityGold.opacity(0.12))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(EKPressStyle())
                 }
             }
             .padding(Theme.Spacing.medium)
@@ -238,5 +271,10 @@ struct YouTubeCompactCard: View {
             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
         }
         .buttonStyle(EKPressStyle())
+        .sheet(isPresented: $showSummary) {
+            YouTubeSummarySheet(video: video, onTickerTap: onTickerTap)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
     }
 }

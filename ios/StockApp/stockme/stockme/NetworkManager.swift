@@ -1410,4 +1410,32 @@ extension NetworkManager {
         }
         return try JSONDecoder().decode(BrainstormResponse.self, from: data)
     }
+
+    // MARK: - YouTube Summary
+
+    func fetchYouTubeSummary(videoId: String) async throws -> YouTubeVideoSummaryResponse {
+        // Try cached summary first
+        if let url = URL(string: "\(baseURL)/api/v1/youtube/summary/\(videoId)") {
+            var req = authRequest(url)
+            req.httpMethod = "GET"
+            let (data, resp) = try await dataWithRetry(for: req)
+            if let http = resp as? HTTPURLResponse, http.statusCode == 200 {
+                return try JSONDecoder().decode(YouTubeVideoSummaryResponse.self, from: data)
+            }
+        }
+        // Generate summary (cache miss or error)
+        guard let url = URL(string: "\(baseURL)/api/v1/youtube/summary") else {
+            throw NetworkError.invalidURL
+        }
+        var req = authRequest(url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body = ["url": "https://www.youtube.com/watch?v=\(videoId)", "force_refresh": false] as [String: Any]
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, resp) = try await dataWithRetry(for: req)
+        guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
+            throw NetworkError.invalidResponse
+        }
+        return try JSONDecoder().decode(YouTubeVideoSummaryResponse.self, from: data)
+    }
 }

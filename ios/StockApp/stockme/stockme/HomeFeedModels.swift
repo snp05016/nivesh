@@ -148,3 +148,70 @@ struct ValuationSummary: Codable {
         case dataPoints = "data_points"
     }
 }
+
+// MARK: - YouTube AI Summary Models
+
+struct YouTubeSummaryContent: Codable {
+    let tldr: String
+    let keyPoints: [String]
+    let financeInsights: [String]
+    let tickersMentioned: [String]
+    let risksOrRedFlags: [String]
+    let actionItems: [String]
+    let sentiment: String
+    let confidence: Double
+
+    enum CodingKeys: String, CodingKey {
+        case tldr
+        case keyPoints = "key_points"
+        case financeInsights = "finance_insights"
+        case tickersMentioned = "tickers_mentioned"
+        case risksOrRedFlags = "risks_or_red_flags"
+        case actionItems = "action_items"
+        case sentiment
+        case confidence
+    }
+}
+
+struct YouTubeSummaryTimestamp: Codable, Identifiable {
+    var id: String { "\(startSeconds)-\(label)" }
+    let startSeconds: Int
+    let label: String
+    let summary: String
+
+    enum CodingKeys: String, CodingKey {
+        case startSeconds = "start_seconds"
+        case label
+        case summary
+    }
+}
+
+struct YouTubeSummarySource: Codable {
+    let transcriptSource: String
+    let summaryProvider: String
+    let cached: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case transcriptSource = "transcript_source"
+        case summaryProvider = "summary_provider"
+        case cached
+    }
+}
+
+struct YouTubeVideoSummaryResponse: Codable {
+    let videoId: String
+    let url: String
+    let title: String
+    let channel: String
+    let durationSeconds: Int
+    let summary: YouTubeSummaryContent
+    let timestamps: [YouTubeSummaryTimestamp]
+    let source: YouTubeSummarySource
+
+    enum CodingKeys: String, CodingKey {
+        case videoId = "video_id"
+        case url, title, channel
+        case durationSeconds = "duration_seconds"
+        case summary, timestamps, source
+    }
+}
