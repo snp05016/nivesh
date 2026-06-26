@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional
 from collections import deque
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from fastapi import HTTPException, Header
 
 from database import (
