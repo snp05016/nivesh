@@ -135,10 +135,26 @@ struct stockmeApp: App {
             .animation(reduceAnimations ? .none : .spring(response: 0.45, dampingFraction: 0.8, blendDuration: 0), value: launchPhase)
             .onChange(of: launchAnimDone) { done in
                 if done {
+                    // Restore window UITraitCollection based on user's dark-mode preference
+                    // (launch sequence forced it to .dark; now hand back control).
+                    let style: UIUserInterfaceStyle = darkMode ? .dark : .unspecified
+                    UIApplication.shared.connectedScenes
+                        .compactMap { $0 as? UIWindowScene }
+                        .flatMap { $0.windows }
+                        .forEach { $0.overrideUserInterfaceStyle = style }
                     withAnimation(.spring(response: 0.45, dampingFraction: 0.8, blendDuration: 0)) {
                         launchPhase = .mainInterface
                     }
                 }
+            }
+            .onChange(of: darkMode) { _, newValue in
+                // Keep UITraitCollection in sync so Theme.* colors resolve correctly
+                // (they read UITraitCollection.current.userInterfaceStyle, not SwiftUI's scheme).
+                let style: UIUserInterfaceStyle = newValue ? .dark : .unspecified
+                UIApplication.shared.connectedScenes
+                    .compactMap { $0 as? UIWindowScene }
+                    .flatMap { $0.windows }
+                    .forEach { $0.overrideUserInterfaceStyle = style }
             }
             .task {
                 await performAsyncBoot()
