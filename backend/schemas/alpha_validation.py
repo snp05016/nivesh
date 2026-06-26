@@ -16,7 +16,7 @@ class CostAssumptions(BaseModel):
 
 
 class BacktestParams(BaseModel):
-    """Parameters defining a backtest scenario."""
+    """Parameters defining a backtest scenario. Accepts both backend and iOS naming conventions."""
     horizon: str = Field("30D", description="Holding period horizon (7D/7d, 20D/20d, 30D/30d, 60D/60d, 90D/90d)")
 
     @field_validator("horizon", mode="before")
@@ -27,23 +27,36 @@ class BacktestParams(BaseModel):
         if isinstance(v, str) and v not in VALID:
             raise ValueError(f"Invalid horizon '{v}'. Must be one of: {sorted(VALID)}")
         return v.upper() if isinstance(v, str) else v
-    strategy_type: Literal[
-        "equal_weight_bullish",
-        "confidence_weighted",
-        "top_k_confidence",
-        "sector_neutral_top_k",
-        "long_short",
-        "cash_filter"
-    ] = Field("confidence_weighted", description="Type of strategy to test")
+
+    strategy_type: str = Field("confidence_weighted", description="Type of strategy to test")
+
+    @field_validator("strategy_type", mode="before")
+    @classmethod
+    def normalize_strategy_type(cls, v: str) -> str:
+        """Accept iOS values like 'momentum' → normalize to 'confidence_weighted'."""
+        ios_map = {"momentum": "confidence_weighted"}
+        return ios_map.get(v.lower().strip() if isinstance(v, str) else "", v)
+
     top_k: int = Field(10, description="Top K stocks to hold")
     confidence_threshold: float = Field(50.0, description="Minimum confidence threshold")
-    position_sizing: Literal[
-        "equal_weight",
-        "confidence_weighted",
-        "confidence_squared",
-        "capped_confidence_weighted"
-    ] = Field("confidence_weighted", description="Position sizing method")
-    cost_preset: Literal["zero_cost", "optimistic", "realistic_retail", "conservative", "institutional"] = Field("realistic_retail", description="Cost assumption preset")
+
+    position_sizing: str = Field("confidence_weighted", description="Position sizing method")
+
+    @field_validator("position_sizing", mode="before")
+    @classmethod
+    def normalize_position_sizing(cls, v: str) -> str:
+        """Accept iOS 'equal' → normalize to 'equal_weight'."""
+        ios_map = {"equal": "equal_weight"}
+        return ios_map.get(v.lower().strip() if isinstance(v, str) else "", v)
+
+    cost_preset: str = Field("realistic_retail", description="Cost assumption preset")
+
+    @field_validator("cost_preset", mode="before")
+    @classmethod
+    def normalize_cost_preset(cls, v: str) -> str:
+        """Accept iOS 'medium' → normalize to 'realistic_retail'."""
+        ios_map = {"medium": "realistic_retail", "low": "optimistic", "high": "conservative"}
+        return ios_map.get(v.lower().strip() if isinstance(v, str) else "", v)
 
 
 class PortfolioMetrics(BaseModel):
