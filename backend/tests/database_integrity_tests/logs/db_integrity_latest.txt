@@ -1,0 +1,255 @@
+
+======================================================================
+MODULE : 01_schema_columns
+TIME   : 2026-06-25T00:59:35.629342
+======================================================================
+
+  [PASS] table_exists:users
+
+  [PASS] table_exists:portfolio
+
+  [PASS] table_exists:analysis_history
+
+  [PASS] table_exists:signal_events
+
+  [PASS] table_exists:analysis_jobs
+
+  [PASS] table_exists:price_targets
+
+  [PASS] table_exists:trade_journal
+
+  [PASS] table_exists:device_tokens
+
+  [PASS] table_exists:advisor_insights
+
+  [PASS] table_exists:news_articles
+
+  [PASS] table_exists:youtube_videos
+
+  [PASS] table_exists:portfolio_valuation_history
+
+  [PASS] table_exists:pkscreener_signals
+
+  [PASS] table_exists:macro_events
+
+  [PASS] table_exists:net_worth_ledger
+
+  [PASS] table_exists:market_error_logs
+
+  [PASS] table_exists:earnings_alerts
+
+  [PASS] table_exists:earnings_error_logs
+
+  [PASS] table_exists:block_deals
+
+  [PASS] table_exists:fii_dii_flow
+
+  [PASS] table_exists:notification_error_logs
+
+  [PASS] table_exists:advisor_biographies
+
+  [PASS] table_exists:text_advisory_insights
+
+  [PASS] table_exists:ideas_error_logs
+
+  [PASS] table_exists:market_anomalies
+
+  [PASS] table_exists:earnings_surprise_history
+
+  [PASS] column:users.id
+
+  [PASS] column:users.username
+
+  [PASS] column:users.password_hash
+
+  [PASS] column:users.display_name
+
+  [PASS] column:users.created_at
+
+  [PASS] column:portfolio.id
+
+  [PASS] column:portfolio.user_id
+
+  [PASS] column:portfolio.ticker
+
+  [PASS] column:portfolio.company_name
+
+  [PASS] column:portfolio.shares
+
+  [PASS] column:portfolio.buy_price
+
+  [PASS] column:portfolio.target_price
+
+  [PASS] column:portfolio.purchase_date
+
+  [PASS] column:portfolio.group_name
+
+  [PASS] column:portfolio.notes
+
+  [PASS] column:portfolio.created_at
+
+  [PASS] column:analysis_history.id
+
+  [PASS] column:analysis_history.user_id
+
+  [PASS] column:analysis_history.ticker
+
+  [PASS] column:analysis_history.analysis_date
+
+  [PASS] column:analysis_history.signal
+
+  [PASS] column:analysis_history.confidence_pct
+
+  [PASS] column:analysis_history.target_short
+
+  [PASS] column:analysis_history.target_medium
+
+  [PASS] column:analysis_history.target_long
+
+  [PASS] column:analysis_history.promoter_pledged_pct
+
+  [PASS] column:analysis_history.promoter_pledged_trend
+
+  [PASS] column:analysis_history.raw_output
+
+  [PASS] column:analysis_history.full_json
+
+  [PASS] column:analysis_history.scan_type
+
+  [PASS] column:analysis_history.outcome_delta_pct
+
+  [PASS] column:analysis_history.was_correct
+
+  [PASS] column:analysis_history.outcome_checked_at
+
+  [PASS] column:analysis_history.market_regime
+
+  [PASS] column:analysis_history.calibrated_confidence
+
+  [PASS] column:analysis_history.confidence_math_breakdown
+
+  [PASS] column:analysis_history.conformal_target_upper_3m
+
+  [PASS] column:analysis_history.conformal_target_lower_3m
+
+  [PASS] column:analysis_history.quantitative_drivers
+
+  [PASS] column:analysis_history.tail_risk_flags
+
+  [PASS] column:analysis_history.created_at
+
+  [PASS] column:trade_journal.id
+
+  [PASS] column:trade_journal.user_id
+
+  [PASS] column:trade_journal.ticker
+
+  [PASS] column:trade_journal.action
+
+  [PASS] column:trade_journal.price_at_time
+
+  [PASS] column:trade_journal.reason_text
+
+  [PASS] column:trade_journal.outcome_text
+
+  [PASS] column:trade_journal.company_name
+
+  [PASS] column:trade_journal.mood
+
+  [PASS] column:trade_journal.updated_at
+
+  [PASS] column:trade_journal.created_at
+
+  [PASS] column:analysis_jobs.job_id
+
+  [PASS] column:analysis_jobs.user_id
+
+  [PASS] column:analysis_jobs.ticker
+
+  [PASS] column:analysis_jobs.exchange
+
+  [PASS] column:analysis_jobs.scan_type
+
+  [PASS] column:analysis_jobs.status
+
+  [PASS] column:analysis_jobs.stage
+
+  [PASS] column:analysis_jobs.progress_pct
+
+  [PASS] column:analysis_jobs.checkpoints
+
+  [PASS] column:analysis_jobs.pid
+
+  [PASS] column:analysis_jobs.heartbeat_at
+
+  [PASS] column:analysis_jobs.tokens_used
+
+  [PASS] column:analysis_jobs.error
+
+  [PASS] column:analysis_jobs.result_json
+
+  [PASS] column:analysis_jobs.created_at
+
+  [PASS] column:analysis_jobs.started_at
+
+  [PASS] column:analysis_jobs.finished_at
+
+  [PASS] column:net_worth_ledger.id
+
+  [PASS] column:net_worth_ledger.user_id
+
+  [PASS] column:net_worth_ledger.snapshot_date
+
+  [PASS] column:net_worth_ledger.total_value_inr
+
+  [PASS] column:net_worth_ledger.daily_delta_inr
+
+  [PASS] column:net_worth_ledger.daily_delta_pct
+
+  [PASS] column:net_worth_ledger.peak_value_inr
+
+  [PASS] column:net_worth_ledger.top_gainer_ticker
+
+  [PASS] column:net_worth_ledger.top_gainer_pct
+
+  [PASS] column:net_worth_ledger.top_loser_ticker
+
+  [PASS] column:net_worth_ledger.top_loser_pct
+
+  [PASS] column:net_worth_ledger.portfolio_json
+
+  [PASS] column:net_worth_ledger.created_at
+
+  [PASS] column:portfolio_valuation_history.id
+
+  [PASS] column:portfolio_valuation_history.user_id
+
+  [PASS] column:portfolio_valuation_history.snapshot_date
+
+  [PASS] column:portfolio_valuation_history.total_value
+
+  [PASS] column:portfolio_valuation_history.total_invested
+
+  [PASS] column:portfolio_valuation_history.total_pnl
+
+  [PASS] column:portfolio_valuation_history.pnl_percent
+
+  [PASS] column:portfolio_valuation_history.nifty_close
+
+  [PASS] column:portfolio_valuation_history.created_at
+
+  [PASS] no_orphan_columns:users
+
+  [PASS] no_orphan_columns:portfolio
+
+  [PASS] no_orphan_columns:analysis_history
+
+  [PASS] no_orphan_columns:trade_journal
+
+  [PASS] no_orphan_columns:analysis_jobs
+
+  [PASS] no_orphan_columns:net_worth_ledger
+
+  [PASS] no_orphan_columns:portfolio_valuation_history
+
+  Summary: 124 PASSED / 0 FAILED
