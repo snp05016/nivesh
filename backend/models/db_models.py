@@ -817,3 +817,30 @@ class RiskSignal(Base):
     severity = Column(String(20), nullable=False) # HIGH / MEDIUM / LOW
     description = Column(Text, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class YouTubeVideoSummary(Base):
+    """Stores AI-generated summaries and transcript metadata for YouTube videos."""
+    __tablename__ = "youtube_video_summaries"
+
+    id                      = Column(Integer, primary_key=True, index=True)
+    video_id                = Column(String(20), unique=True, index=True, nullable=False)
+    url                     = Column(Text, nullable=False)
+    title                   = Column(Text, default="")
+    channel                 = Column(Text, default="")
+    duration_seconds        = Column(Integer, default=0)
+    transcript_hash         = Column(String(64), default="")
+    transcript_source       = Column(String(50), default="")
+    summary_provider        = Column(String(50), default="")
+    summary_json            = Column(Text, default="{}")
+    timestamps_json         = Column(Text, default="[]")
+    raw_transcript_preview  = Column(Text, default="")
+    estimated_input_tokens  = Column(Integer, default=0)
+    estimated_output_tokens = Column(Integer, default=0)
+    created_at              = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at              = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    last_accessed_at        = Column(DateTime, nullable=True)
