@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 RSS_FEEDS = [
     {
         "source": "moneycontrol",
-        "url": "https://www.moneycontrol.com/rss/latestnews.xml",
+        "url": "https://www.moneycontrol.com/rss/business.xml",
         "category": "market",
     },
     {
@@ -67,6 +67,43 @@ RED_FLAG_KEYWORDS = [
 def is_red_flag(text: str) -> bool:
     text_lower = text.lower()
     return any(kw in text_lower for kw in RED_FLAG_KEYWORDS)
+
+
+# ── Market Relevance Filter ──────────────────────────────────────────────────
+# Articles must contain at least one of these keywords to be stored.
+# Prevents non-financial content (politics, sports, entertainment) from
+# polluting the news feed even if it appears in a market-category RSS feed.
+MARKET_KEYWORDS = [
+    "stock", "share", "nifty", "sensex", "nse", "bse", "market",
+    "investor", "investment", "trading", "trade", "broker", "broking",
+    "mutual fund", "etf", "index", "indices", "dividend", "bonus",
+    "ipo", "listing", "stake", "acquisition", "merger", "takeover",
+    "buyback", "demerger", "rights issue", "bonus issue",
+    "revenue", "profit", "ebitda", "earnings", "net profit", "pat",
+    "quarterly result", "annual result", "q1", "q2", "q3", "q4",
+    "fy24", "fy25", "fy26", "financial year", "quarter",
+    "market cap", "market capitalisation", "valuation", "pe ratio",
+    "promoter", "holding", "pledged", "fii", "dii", "institutional",
+    "rbi", "sebi", "monetary policy", "repo rate", "interest rate",
+    "inflation", "gdp", "fiscal deficit", "budget",
+    "bull", "bear", "rally", "crash", "correction", "volatility",
+    "commodity", "crude oil", "gold price", "silver price",
+    "rupee", "forex", "currency", "dollar", "bond yield",
+    "sector", "banking", "pharma", "it sector", "auto sector",
+    "power sector", "metal", "fmcg", "telecom", "real estate",
+    "nifty 50", "bank nifty", "midcap", "smallcap",
+    "cagr", "roce", "roe", "debt", "leverage", "cash flow",
+    "cfo", "ceo", "md", "chairman", "board", "agm",
+    "credit rating", "upgrade", "downgrade", "outlook",
+    "brokerage", "target price", "nomura", "morgan stanley",
+    "jp morgan", "goldman", "clsa", "jefferies", "macquarie",
+    "motilal oswal", "hdfc sec", "icici direct", "kotak",
+]
+
+def is_market_relevant(text: str) -> bool:
+    """Return True if article text contains financial market keywords."""
+    text_lower = text.lower()
+    return any(kw in text_lower for kw in MARKET_KEYWORDS)
 
 def extract_tickers_from_text(text: str, db: Session) -> list[str]:
     """
@@ -147,6 +184,11 @@ async def harvest_news(lookback_hours: int = 26):
                         body, image_url = scrape_article_body(url)
 
                         full_text = f"{headline} {summary} {body}"
+
+                        # Skip non-market articles (politics, sports, entertainment, etc.)
+                        if not is_market_relevant(full_text):
+                            logger.debug(f"Skipped non-market article: {headline[:60]}")
+                            continue
 
                         article = NewsArticle(
                             source=feed_config["source"],
