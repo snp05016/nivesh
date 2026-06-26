@@ -4,6 +4,7 @@ import logging
 from services.strategy_engine import run_backtest
 
 router = APIRouter(prefix="/api/v1/analysis", tags=["Strategy Lab"])
+router_legacy = APIRouter(prefix="", tags=["Strategy Lab"])
 logger = logging.getLogger(__name__)
 
 class BacktestRequest(BaseModel):
@@ -22,3 +23,8 @@ def backtest_endpoint(req: BacktestRequest):
     except Exception as e:
         logger.error(f"Backtest error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router_legacy.post("/analysis/backtest")
+def backtest_legacy(req: BacktestRequest):
+    return backtest_endpoint(req)
