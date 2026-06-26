@@ -163,6 +163,8 @@ _piotroski_mock.compute_piotroski.return_value = {"score": 5, "interpretation": 
 sys.modules["services.piotroski"] = _piotroski_mock
 
 from main import app
+from database import init_db
+init_db()
 
 # Bypass in-memory rate limiter — tests share one IP (127.0.0.1) and would
 # exhaust the 30-req/60-s window within a single test class.

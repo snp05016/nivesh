@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Launch Sequence View (v2 — Unified Timeline)
 
@@ -14,7 +15,9 @@ struct LaunchSequenceView: View {
 
     var body: some View {
         ZStack {
-            Theme.inkPrimary.ignoresSafeArea()
+            // Fixed dark canvas — never follows system light/dark mode.
+            // Theme.inkPrimary is the *text* color (near-white in dark mode), not the background.
+            Color(red: 0.066, green: 0.094, blue: 0.153).ignoresSafeArea()
 
             ZStack {
                 // Guilloche canvas
@@ -28,7 +31,16 @@ struct LaunchSequenceView: View {
             .opacity(dissolveOpacity)
         }
         .preferredColorScheme(.dark)
-        .onAppear { runTimeline() }
+        .onAppear {
+            // Override UITraitCollection so Theme.* computed colors (which read
+            // UITraitCollection.current.userInterfaceStyle directly) resolve to
+            // their dark variants, regardless of the device's system appearance.
+            UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .flatMap { $0.windows }
+                .forEach { $0.overrideUserInterfaceStyle = .dark }
+            runTimeline()
+        }
     }
 
     // MARK: - Wordmark + subtitle + shimmer

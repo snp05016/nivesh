@@ -398,6 +398,7 @@ struct MarketsView: View {
     @State private var livePulse = false
     @State private var indices: [LiveMarketIndex] = []
     @State private var isLoadingIndices = false
+    @State private var showScreener = false
 
     var body: some View {
         NavigationStack {
@@ -418,6 +419,11 @@ struct MarketsView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .navigationDestination(for: MarketSection.self) { section in
                 sectionDestination(section)
+            }
+            .sheet(isPresented: $showScreener) {
+                SearchScreen()
+                    .environmentObject(authManager)
+                    .presentationDragIndicator(.visible)
             }
         }
         .task { await loadIndices() }
@@ -476,11 +482,19 @@ struct MarketsView: View {
                         .padding(.horizontal, Theme.screenPadding)
 
                         ForEach(category.sections, id: \.self) { section in
-                            NavigationLink(value: section) {
-                                sectionCardContent(section)
+                            if section == .screener {
+                                Button { HapticManager.selection(); showScreener = true } label: {
+                                    sectionCardContent(section)
+                                }
+                                .buttonStyle(EKPressStyle())
+                                .padding(.horizontal, Theme.screenPadding)
+                            } else {
+                                NavigationLink(value: section) {
+                                    sectionCardContent(section)
+                                }
+                                .buttonStyle(EKPressStyle())
+                                .padding(.horizontal, Theme.screenPadding)
                             }
-                            .buttonStyle(EKPressStyle())
-                            .padding(.horizontal, Theme.screenPadding)
                         }
                     }
                 }
