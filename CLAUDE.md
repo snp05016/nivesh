@@ -329,6 +329,24 @@ All ORM models MUST live in models/db_models.py only.
 
 This workflow governs every agent and every change. Use GitHub Issues and pull requests as the durable record of intent, implementation, review, and completion.
 
+#### 6.4.0 Branch-First Mandate (ABSOLUTE)
+
+> **The agent MUST NEVER perform work directly on `main`.** This rule has zero exceptions.
+
+1. At the start of EVERY prompt, run `git branch --show-current`.
+2. If the current branch is `main` (or any protected base branch), **immediately** create a new feature branch before touching any file:
+   ```bash
+   git checkout -b agy/<type>/<short-slug>
+   ```
+3. All file edits, commits, and pushes happen on that branch — never on `main`.
+4. **Do NOT open a Pull Request unless the user explicitly says so** (e.g. "open a PR", "create a PR", "please PR this"). Pushing a branch and opening a PR are two separate actions. Pushing is always fine; opening a PR requires explicit user approval.
+5. If the user's prompt does not name a branch, generate a descriptive slug from the task (e.g. `agy/docs/branch-workflow-rule`).
+
+**Refusal template if caught on main:**
+```
+Stopping — currently on `main`. Switching to branch `agy/<type>/<slug>` before proceeding.
+```
+
 #### 6.4.1 Start Safely
 
 Before changing files:
@@ -407,7 +425,9 @@ Before every commit:
 
 #### 6.4.5 Pull Requests
 
-Open a draft pull request after the first coherent branch checkpoint. Keep the pull request focused on one issue or one tightly related issue group.
+> **NEVER open a Pull Request unless the user explicitly requests it.** Pushing a branch is the default terminal action. Creating a PR requires a direct, unambiguous user instruction such as "open a PR", "create a PR", or "please PR this". Implied or assumed intent is NOT sufficient.
+
+When the user does request a PR: keep it focused on one issue or one tightly related issue group.
 
 The title MUST follow Conventional Commits. The body MUST contain:
 
