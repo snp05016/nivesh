@@ -19,15 +19,15 @@ struct YouTubeSummarySheet: View {
             Theme.canvasDeep.ignoresSafeArea()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.sectionSpacing) {
-                    sheetHeader
+                LazyVStack(alignment: .leading, spacing: Theme.sectionSpacing) {
+                    YTSSheetHeader(video: video, dismiss: _dismiss)
                     switch state {
                     case .idle, .loading:
-                        loadingView
+                        YTSLoadingView()
                     case .loaded(let summary):
-                        summaryBody(summary)
+                        YTSSummaryBody(summary: summary, video: video, onTickerTap: onTickerTap, dismiss: _dismiss)
                     case .failed(let msg):
-                        errorView(msg)
+                        YTSErrorView(message: msg, video: video)
                     }
                 }
                 .padding(.bottom, Theme.Spacing.xLarge)
@@ -36,9 +36,25 @@ struct YouTubeSummarySheet: View {
         .task { await load() }
     }
 
-    // MARK: Header
+    private func load() async {
+        state = .loading
+        do {
+            let resp = try await networkManager.fetchYouTubeSummary(videoId: video.videoId)
+            state = .loaded(resp)
+        } catch {
+            state = .failed(error.localizedDescription)
+        }
+    }
+}
 
-    private var sheetHeader: some View {
+
+// MARK: - Sheet Header (extracted per AGENTS.md §6.6)
+
+struct YTSSheetHeader: View {
+    let video: YouTubeVideoItem
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             HStack {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
@@ -65,10 +81,13 @@ struct YouTubeSummarySheet: View {
         .padding(.horizontal, Theme.screenPadding)
         .padding(.top, Theme.Spacing.large)
     }
+}
 
-    // MARK: Loading
 
-    private var loadingView: some View {
+// MARK: - Loading View (extracted per AGENTS.md §6.6)
+
+struct YTSLoadingView: View {
+    var body: some View {
         VStack(spacing: Theme.Spacing.large) {
             ProgressView()
                 .tint(Theme.securityGold)
@@ -86,10 +105,16 @@ struct YouTubeSummarySheet: View {
         .padding(.top, Theme.Spacing.xLarge)
         .padding(.horizontal, Theme.screenPadding)
     }
+}
 
-    // MARK: Error
 
-    private func errorView(_ message: String) -> some View {
+// MARK: - Error View (extracted per AGENTS.md §6.6)
+
+struct YTSErrorView: View {
+    let message: String
+    let video: YouTubeVideoItem
+
+    var body: some View {
         VStack(spacing: Theme.Spacing.medium) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.largeTitle)
@@ -113,41 +138,55 @@ struct YouTubeSummarySheet: View {
         .padding(.top, Theme.Spacing.xLarge)
         .padding(.horizontal, Theme.screenPadding)
     }
+}
 
-    // MARK: Summary Body
 
-    private func summaryBody(_ resp: YouTubeVideoSummaryResponse) -> some View {
+// MARK: - Summary Body (extracted per AGENTS.md §6.6)
+
+struct YTSSummaryBody: View {
+    let summary: YouTubeVideoSummaryResponse
+    let video: YouTubeVideoItem
+    var onTickerTap: ((String) -> Void)? = nil
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.large) {
-            sentimentBadge(resp.summary.sentiment, provider: resp.source.summaryProvider)
-            tldrCard(resp.summary.tldr)
-            if !resp.summary.tickersMentioned.isEmpty {
-                tickerRow(resp.summary.tickersMentioned)
+            YTSSentimentBadge(sentiment: summary.summary.sentiment, provider: summary.source.summaryProvider)
+            YTSTldrCard(text: summary.summary.tldr)
+            if !summary.summary.tickersMentioned.isEmpty {
+                YTSTickerRow(tickers: summary.summary.tickersMentioned, onTickerTap: onTickerTap, dismiss: _dismiss)
             }
-            if !resp.summary.keyPoints.isEmpty {
-                bulletSection(title: "KEY POINTS", icon: "list.bullet", items: resp.summary.keyPoints, color: Theme.securityGold)
+            if !summary.summary.keyPoints.isEmpty {
+                YTSBulletSection(title: "KEY POINTS", icon: "list.bullet", items: summary.summary.keyPoints, color: Theme.securityGold)
             }
-            if !resp.summary.financeInsights.isEmpty {
-                bulletSection(title: "FINANCE INSIGHTS", icon: "chart.line.uptrend.xyaxis", items: resp.summary.financeInsights, color: Theme.bullGreen)
+            if !summary.summary.financeInsights.isEmpty {
+                YTSBulletSection(title: "FINANCE INSIGHTS", icon: "chart.line.uptrend.xyaxis", items: summary.summary.financeInsights, color: Theme.bullGreen)
             }
-            if !resp.summary.risksOrRedFlags.isEmpty {
-                bulletSection(title: "RISKS & RED FLAGS", icon: "exclamationmark.triangle", items: resp.summary.risksOrRedFlags, color: Theme.bearRed)
+            if !summary.summary.risksOrRedFlags.isEmpty {
+                YTSBulletSection(title: "RISKS & RED FLAGS", icon: "exclamationmark.triangle", items: summary.summary.risksOrRedFlags, color: Theme.bearRed)
             }
-            if !resp.summary.actionItems.isEmpty {
-                bulletSection(title: "ACTION ITEMS", icon: "checkmark.circle", items: resp.summary.actionItems, color: Theme.holdAmber)
+            if !summary.summary.actionItems.isEmpty {
+                YTSBulletSection(title: "ACTION ITEMS", icon: "checkmark.circle", items: summary.summary.actionItems, color: Theme.holdAmber)
             }
-            if !resp.timestamps.isEmpty {
-                timestampSection(resp.timestamps)
+            if !summary.timestamps.isEmpty {
+                YTSTimestampSection(stamps: summary.timestamps)
             }
-            watchButton
+            YTSWatchButton(video: video)
         }
         .padding(.horizontal, Theme.screenPadding)
     }
+}
 
-    // MARK: Sentiment Badge
 
-    private func sentimentBadge(_ sentiment: String, provider: String) -> some View {
+// MARK: - Sentiment Badge (extracted per AGENTS.md §6.6)
+
+struct YTSSentimentBadge: View {
+    let sentiment: String
+    let provider: String
+
+    var body: some View {
+        let (label, color) = YTSSentimentBadge.sentimentStyle(sentiment)
         HStack(spacing: Theme.Spacing.medium) {
-            let (label, color) = sentimentStyle(sentiment)
             HStack(spacing: Theme.Spacing.small) {
                 Circle().fill(color).frame(width: 8, height: 8)
                 Text(label)
@@ -168,7 +207,7 @@ struct YouTubeSummarySheet: View {
         }
     }
 
-    private func sentimentStyle(_ s: String) -> (String, Color) {
+    static func sentimentStyle(_ s: String) -> (String, Color) {
         switch s.lowercased() {
         case "bullish":  return ("BULLISH", Theme.bullGreen)
         case "bearish":  return ("BEARISH", Theme.bearRed)
@@ -176,10 +215,15 @@ struct YouTubeSummarySheet: View {
         default:         return ("NEUTRAL", Theme.inkSecondary)
         }
     }
+}
 
-    // MARK: TLDR Card
 
-    private func tldrCard(_ text: String) -> some View {
+// MARK: - TLDR Card (extracted per AGENTS.md §6.6)
+
+struct YTSTldrCard: View {
+    let text: String
+
+    var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             Label("TLDR", systemImage: "text.quote")
                 .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
@@ -195,10 +239,17 @@ struct YouTubeSummarySheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .banknoteCard()
     }
+}
 
-    // MARK: Ticker Row
 
-    private func tickerRow(_ tickers: [String]) -> some View {
+// MARK: - Ticker Row (extracted per AGENTS.md §6.6)
+
+struct YTSTickerRow: View {
+    let tickers: [String]
+    var onTickerTap: ((String) -> Void)? = nil
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             Text("MENTIONED")
                 .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
@@ -226,10 +277,18 @@ struct YouTubeSummarySheet: View {
             }
         }
     }
+}
 
-    // MARK: Bullet Section
 
-    private func bulletSection(title: String, icon: String, items: [String], color: Color) -> some View {
+// MARK: - Bullet Section (extracted per AGENTS.md §6.6)
+
+struct YTSBulletSection: View {
+    let title: String
+    let icon: String
+    let items: [String]
+    let color: Color
+
+    var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             Label(title, systemImage: icon)
                 .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
@@ -255,10 +314,15 @@ struct YouTubeSummarySheet: View {
             .banknoteCard()
         }
     }
+}
 
-    // MARK: Timestamp Section
 
-    private func timestampSection(_ stamps: [YouTubeSummaryTimestamp]) -> some View {
+// MARK: - Timestamp Section (extracted per AGENTS.md §6.6)
+
+struct YTSTimestampSection: View {
+    let stamps: [YouTubeSummaryTimestamp]
+
+    var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             Text("CHAPTERS")
                 .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
@@ -267,7 +331,7 @@ struct YouTubeSummarySheet: View {
             VStack(spacing: 0) {
                 ForEach(stamps) { stamp in
                     HStack(alignment: .top, spacing: Theme.Spacing.card) {
-                        Text(formatSeconds(stamp.startSeconds))
+                        Text(YTSTimestampSection.formatSeconds(stamp.startSeconds))
                             .font(Theme.serialNumberFont(size: 11, relativeTo: .caption2))
                             .foregroundStyle(Theme.securityGold)
                             .frame(width: 40, alignment: .trailing)
@@ -295,14 +359,19 @@ struct YouTubeSummarySheet: View {
         }
     }
 
-    private func formatSeconds(_ s: Int) -> String {
+    static func formatSeconds(_ s: Int) -> String {
         let m = s / 60; let sec = s % 60
         return String(format: "%d:%02d", m, sec)
     }
+}
 
-    // MARK: Watch Button
 
-    private var watchButton: some View {
+// MARK: - Watch Button (extracted per AGENTS.md §6.6)
+
+struct YTSWatchButton: View {
+    let video: YouTubeVideoItem
+
+    var body: some View {
         Button(action: {
             HapticManager.selection()
             if let url = URL(string: video.videoUrl) { UIApplication.shared.open(url) }
@@ -325,17 +394,5 @@ struct YouTubeSummarySheet: View {
         }
         .buttonStyle(EKPressStyle())
         .padding(.top, Theme.Spacing.small)
-    }
-
-    // MARK: Load
-
-    private func load() async {
-        state = .loading
-        do {
-            let resp = try await networkManager.fetchYouTubeSummary(videoId: video.videoId)
-            state = .loaded(resp)
-        } catch {
-            state = .failed(error.localizedDescription)
-        }
     }
 }
