@@ -582,7 +582,7 @@ When user_id is provided, verifies the job belongs to that user (IDOR guard).
     import database
     job = database.get_job(job_id)
     if not job:
-        return JSONResponse(status_code=422, content={"error": "job not found"})
+        return _JSONResponse(status_code=422, content={"error": "job not found"})
     if user_id is not None and job.get("user_id") is not None and job["user_id"] != user_id:
         return _JSONResponse(status_code=403, content={"error": "job does not belong to this user"})
     return job
@@ -624,7 +624,7 @@ When user_id is provided, verifies the job belongs to that user before cancellin
     from services.job_manager import cancel_job
     job = database.get_job(job_id)
     if not job:
-        return JSONResponse(status_code=422, content={"error": "job not found"})
+        return _JSONResponse(status_code=422, content={"error": "job not found"})
     if user_id is not None and job.get("user_id") is not None and job["user_id"] != user_id:
         return _JSONResponse(status_code=403, content={"error": "job does not belong to this user"})
     cancel_job(job_id)
