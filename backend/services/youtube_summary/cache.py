@@ -36,7 +36,7 @@ class YouTubeSummaryCache:
                 if row is None:
                     return None
 
-                if row.transcript_hash != transcript_hash:
+                if str(row.transcript_hash) != transcript_hash:
                     logger.debug("Cache stale (hash mismatch) for %s", video_id)
                     return None
 
@@ -47,7 +47,7 @@ class YouTubeSummaryCache:
                     logger.debug("Cache expired (%d days) for %s", age_days, video_id)
                     return None
 
-                return json.loads(row.summary_json)
+                return json.loads(str(row.summary_json))
         except Exception as exc:
             logger.warning("YouTubeSummaryCache.get failed for %s: %s", video_id, exc)
             return None
@@ -84,9 +84,9 @@ class YouTubeSummaryCache:
                     )
                     session.add(row)
                 else:
-                    row.transcript_hash = transcript_hash
-                    row.summary_json = summary_json
-                    row.updated_at = now
+                    setattr(row, "transcript_hash", transcript_hash)
+                    setattr(row, "summary_json", summary_json)
+                    setattr(row, "updated_at", now)
                 session.commit()
                 logger.debug("Cached summary for video_id=%s", video_id)
         except Exception as exc:

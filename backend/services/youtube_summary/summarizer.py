@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 import threading
-from datetime import datetime, timezone
 from typing import Optional
 
 from services.youtube_summary.cache import YouTubeSummaryCache
@@ -233,7 +231,7 @@ class YouTubeSummaryService:
                 )
                 if row is None:
                     return None
-                summary_dict = _json.loads(row.summary_json)
+                summary_dict = _json.loads(str(row.summary_json))
         except Exception as exc:
             logger.warning("get_cached failed for %s: %s", video_id, exc)
             return None

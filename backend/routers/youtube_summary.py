@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import re
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 
 from helpers import require_auth
 from services.youtube_summary.schemas import YouTubeVideoSummaryResponse

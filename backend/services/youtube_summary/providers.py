@@ -164,7 +164,7 @@ class ExtractiveProvider(SummaryProvider):
         tickers = sorted({
             w.rstrip(".,!?;:")
             for w in words
-            if re.match(r"^[A-Z]{2,10}$", w.rstrip(".,!?;:"))
+            if _TICKER_RE.match(w.rstrip(".,!?;:"))
             and w.rstrip(".,!?;:") not in _COMMON_ENGLISH
         })[:10]
 
