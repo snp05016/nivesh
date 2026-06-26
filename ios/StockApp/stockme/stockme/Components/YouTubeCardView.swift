@@ -77,6 +77,15 @@ struct YouTubeCardView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .lineSpacing(2)
 
+                    // Description snippet
+                    if let desc = video.description, !desc.isEmpty {
+                        Text(desc)
+                            .font(Theme.engravedSerif(size: 10, relativeTo: .caption2))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
                     Spacer(minLength: 0)
 
                     // Footer: views + tickers + summary

@@ -6,7 +6,6 @@ struct YouTubeSummarySheet: View {
     let video: YouTubeVideoItem
     var onTickerTap: ((String) -> Void)? = nil
 
-    @EnvironmentObject var networkManager: NetworkManager
     @State private var state: LoadState = .idle
     @Environment(\.dismiss) private var dismiss
 
@@ -39,7 +38,7 @@ struct YouTubeSummarySheet: View {
     private func load() async {
         state = .loading
         do {
-            let resp = try await networkManager.fetchYouTubeSummary(videoId: video.videoId)
+            let resp = try await NetworkManager.shared.fetchYouTubeSummary(videoId: video.videoId)
             state = .loaded(resp)
         } catch {
             state = .failed(error.localizedDescription)

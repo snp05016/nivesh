@@ -65,6 +65,7 @@ struct YouTubeVideoItem: Codable, Identifiable {
     let viewCount: Int?
     let durationSeconds: Int?
     let tickersMentioned: [String]
+    let description: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -77,6 +78,7 @@ struct YouTubeVideoItem: Codable, Identifiable {
         case viewCount = "view_count"
         case durationSeconds = "duration_seconds"
         case tickersMentioned = "tickers_mentioned"
+        case description
     }
 
     var formattedViewCount: String {
