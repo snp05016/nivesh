@@ -276,6 +276,29 @@ def start_scheduler():
     _scheduler.add_job(run_nightly_screen,            "cron", hour=11, minute=15)  # 4:45 PM IST (11:15 UTC)
     _scheduler.add_job(_run_evaluate_analysis_outcomes,"cron", hour=20, minute=30)  # 2:00 AM IST (20:30 UTC)
 
+    # ── Notification TTL sweeper (daily, 3:00 AM IST) ───────────────────────
+    def _run_notification_cleanup():
+        from services.notifications_inbox import cleanup_old
+        deleted = cleanup_old()
+        logger.info(f"Notification cleanup: {deleted} old notifs deleted")
+
+    _scheduler.add_job(_run_notification_cleanup, "cron", hour=21, minute=30)  # 3:00 AM IST
+
+    # ── Backfill UserPreferences for existing users ─────────────────────────
+    def _run_backfill_preferences():
+        from database import get_session, User
+        from models.db_models import UserPreference
+        with get_session() as s:
+            existing = s.query(UserPreference.user_id).distinct().all()
+            existing_ids = {r[0] for r in existing}
+            users = s.query(User.id).filter(~User.id.in_(existing_ids)).all() if existing_ids else s.query(User.id).all()
+            for (uid,) in users:
+                s.add(UserPreference(user_id=uid))
+            s.commit()
+            logger.info(f"Backfilled preferences for {len(users)} users")
+
+    _scheduler.add_job(_run_backfill_preferences, "cron", hour=21, minute=35)  # 3:05 AM IST
+
     # ── NEW jobs ──────────────────────────────────────────────────────────────
     _scheduler.add_job(_run_cache_purge,          "cron", hour=3,  minute=0)              # 3:00 AM IST
     _scheduler.add_job(_run_bhavcopy_download,    "cron", hour=13, minute=30)             # 7:00 PM IST

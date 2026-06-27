@@ -498,6 +498,24 @@ async def _on_startup():
     # causes memory spikes during model load, cascading worker death with uvicorn
     # --workers > 1. The 3-5s cost on first sentiment request is acceptable.
 
+    # Backfill UserPreferences for existing users without one
+    def _backfill_preferences():
+        try:
+            from database import get_session, User
+            from models.db_models import UserPreference
+            with get_session() as s:
+                existing = s.query(UserPreference.user_id).distinct().all()
+                existing_ids = {r[0] for r in existing}
+                users = s.query(User.id).filter(~User.id.in_(existing_ids)).all() if existing_ids else s.query(User.id).all()
+                for (uid,) in users:
+                    s.add(UserPreference(user_id=uid))
+                s.commit()
+                if users:
+                    logging.info(f"Backfilled preferences for {len(users)} users")
+        except Exception as e:
+            logging.warning(f"Preference backfill skipped: {e}")
+    threading.Thread(target=_backfill_preferences, daemon=True).start()
+
     # Initial RAG vector ingestion at startup (always runs, regardless of scheduler)
     def _startup_ingest():
         try:
