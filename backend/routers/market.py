@@ -1723,7 +1723,7 @@ def market_dashboard_endpoint():
                 "momentum":      fm.result(timeout=25),
                 "macro":         fa.result(timeout=25),
                 "institutional": fi.result(timeout=25),
-                "fetched_at":    _dt.utcnow().isoformat(),
+                "fetched_at":    _dt.now(timezone.utc).isoformat(),
             }
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Dashboard fetch failed: {e}")
@@ -1746,7 +1746,7 @@ Errors are caught, logged to market_error_logs, and fallback values served.
     Returns:
         Any: The response.
     """
-    now_iso = _dt.utcnow().isoformat()
+    now_iso = _dt.now(timezone.utc).isoformat()
     pulse_raw: dict = {}
     momentum_raw: dict = {}
 
@@ -2054,7 +2054,7 @@ as a clean JSON stream for iOS console debugging. Requires admin auth.
                     for r in rows
                 ],
                 "count": len(rows),
-                "fetched_at": _dt.utcnow().isoformat(),
+                "fetched_at": _dt.now(timezone.utc).isoformat(),
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error log query failed: {e}")
@@ -2098,7 +2098,7 @@ Raises 503 on DataHarvestingError.
 
     return InstitutionalLeaderboardResponseLocal(
         top_funds=funds,
-        fetched_at=_dt.utcnow().isoformat(),
+        fetched_at=_dt.now(timezone.utc).isoformat(),
     )
 
 
@@ -2816,7 +2816,7 @@ Requires admin auth.
                     for r in rows
                 ],
                 "count": len(rows),
-                "fetched_at": _dt.utcnow().isoformat(),
+                "fetched_at": _dt.now(timezone.utc).isoformat(),
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Earnings error log query failed: {e}")
@@ -3123,7 +3123,7 @@ Response: { "errors": [...], "count": N }
                     for r in rows
                 ],
                 "count": len(rows),
-                "fetched_at": _dt.utcnow().isoformat(),
+                "fetched_at": _dt.now(timezone.utc).isoformat(),
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ideas error log query failed: {e}")
@@ -3215,7 +3215,7 @@ Response: {
             empty_result = {
                 "gainers": [], "losers": [],
                 "active_by_value": [], "active_by_volume": [],
-                "fetched_at": _dt.utcnow().isoformat(),
+                "fetched_at": _dt.now(timezone.utc).isoformat(),
             }
             _dc_set("market_pulse", cache_key, empty_result)
             return empty_result
@@ -3230,7 +3230,7 @@ Response: {
             "losers": losers,
             "active_by_value": active_by_value,
             "active_by_volume": active_by_volume,
-            "fetched_at": _dt.utcnow().isoformat(),
+            "fetched_at": _dt.now(timezone.utc).isoformat(),
         }
         # Cache for 15 minutes (market data refreshes frequently)
         _dc_set("market_pulse", cache_key, result)

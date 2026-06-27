@@ -248,7 +248,7 @@ def extract_auditor_info(ticker: str) -> dict:
             if yr_match:
                 appointment_year = int(yr_match.group(1))
                 from datetime import datetime as _dt
-                tenure_years = _dt.utcnow().year - appointment_year
+                tenure_years = _dt.now(timezone.utc).year - appointment_year
 
             is_big4 = _is_big4(auditor_name) if auditor_name else None
 

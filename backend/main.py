@@ -338,6 +338,8 @@ class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Content-Security-Policy"] = "default-src 'self'"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         # Fixes #109: Prevent CDN/browser caching of authenticated API responses
         if request.url.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-store, private"

@@ -8,7 +8,7 @@ import os
 import json
 import threading
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import deque
 
 _dash_lock = threading.Lock()
@@ -39,11 +39,11 @@ def _dash_update_harvest(key: str, status: str, result: dict | None = None) -> N
         if key in _harvest_status:
             _harvest_status[key]["status"] = status
             if status == "running":
-                _harvest_status[key]["last_run"] = datetime.now().isoformat()
+                _harvest_status[key]["last_run"] = datetime.now(timezone.utc).isoformat()
             if result is not None:
                 _harvest_status[key]["last_result"] = result
                 _dash_logs.appendleft({
-                    "ts": datetime.now().isoformat(),
+                    "ts": datetime.now(timezone.utc).isoformat(),
                     "key": key,
                     "status": status,
                     "result": result
@@ -56,7 +56,7 @@ def _dash_start_job(job_id: str, ticker: str, exchange: str, user_id) -> None:
             "ticker": ticker.upper(),
             "exchange": exchange,
             "user_id": user_id,
-            "start_ts": datetime.now().isoformat(),
+            "start_ts": datetime.now(timezone.utc).isoformat(),
             "stage": "AI agents initializing...",
         }
 
@@ -65,8 +65,8 @@ def _dash_end_job(job_id: str, result: dict | None = None, error: str | None = N
         job = _active_analyses.pop(job_id, None)
         if not job:
             return
-        duration = (datetime.now() - datetime.fromisoformat(job["start_ts"])).total_seconds()
-        entry = {**job, "end_ts": datetime.now().isoformat(), "duration_s": round(duration, 1)}
+        duration = (datetime.now(timezone.utc) - datetime.fromisoformat(job["start_ts"])).total_seconds()
+        entry = {**job, "end_ts": datetime.now(timezone.utc).isoformat(), "duration_s": round(duration, 1)}
         if result:
             entry["signal"] = result.get("signal")
             entry["confidence"] = result.get("confidence_pct")
@@ -86,7 +86,7 @@ def _dash_log_request(method: str, path: str, params: dict, status: int, duratio
     with _dash_lock:
         _request_log.appendleft({
             "id": str(uuid.uuid4())[:8],
-            "ts": datetime.now().isoformat(),
+            "ts": datetime.now(timezone.utc).isoformat(),
             "method": method,
             "path": path,
             "params": params,
@@ -105,7 +105,7 @@ def _log_token_usage(endpoint: str, usage) -> None:
     cw = getattr(usage, "cache_creation_input_tokens", 0)
     try:
         entry = {
-            "ts": datetime.now().isoformat(),
+            "ts": datetime.now(timezone.utc).isoformat(),
             "endpoint": endpoint,
             "input_tokens": inp,
             "output_tokens": out,
@@ -124,7 +124,7 @@ def _log_token_usage(endpoint: str, usage) -> None:
         _token_stats["total_cache_write"]+= cw
         _token_stats["total_calls"]      += 1
         _token_stats["recent"].appendleft({
-            "ts": datetime.now().isoformat(),
+            "ts": datetime.now(timezone.utc).isoformat(),
             "endpoint": endpoint,
             "input": inp,
             "output": out,
