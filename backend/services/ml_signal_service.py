@@ -6,6 +6,7 @@ and enriches responses with reliability metrics from the calibration service.
 """
 
 import os
+import asyncio
 import logging
 import yfinance as yf
 from datetime import datetime, timezone
@@ -92,7 +93,7 @@ def _fetch_reliability() -> MLReliability | None:
         return None
 
 
-def get_ml_signal(symbol: str) -> MLSignalResponse:
+async def get_ml_signal(symbol: str) -> MLSignalResponse:
     """
     Fetch ML prediction signal for a given stock symbol.
 
@@ -101,12 +102,16 @@ def get_ml_signal(symbol: str) -> MLSignalResponse:
     """
     symbol = symbol.strip().upper()
 
-    # Fetch recent OHLCV data for the ML engine
+    # Fetch recent OHLCV data for the ML engine (offload to thread pool)
     ohlcv_data = []
     try:
         ns_ticker = f"{symbol}.NS" if not symbol.endswith((".NS", ".BO")) else symbol
-        ticker_obj = yf.Ticker(ns_ticker)
-        hist = ticker_obj.history(period="3mo")
+
+        def _fetch_history():
+            ticker_obj = yf.Ticker(ns_ticker)
+            return ticker_obj.history(period="3mo")
+
+        hist = await asyncio.to_thread(_fetch_history)
         if not hist.empty:
             hist.index = hist.index.tz_localize(None)
             for dt, row in hist.tail(90).iterrows():
@@ -126,8 +131,8 @@ def get_ml_signal(symbol: str) -> MLSignalResponse:
         return _build_unavailable_response(symbol, f"Insufficient OHLCV data ({len(ohlcv_data)} rows, need 5+)")
 
     try:
-        with httpx.Client(timeout=ML_ENGINE_TIMEOUT) as client:
-            resp = client.post(
+        async with httpx.AsyncClient(timeout=ML_ENGINE_TIMEOUT) as client:
+            resp = await client.post(
                 f"{ML_ENGINE_URL}/predict/single",
                 json={"ticker": symbol, "ohlcv_data": ohlcv_data},
             )

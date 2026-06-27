@@ -72,6 +72,30 @@ struct MLSignalResponse: Codable {
         status = try container.decode(String.self, forKey: .status)
         warning = try container.decodeIfPresent(String.self, forKey: .warning)
     }
+
+    /// Convenience init for previews and tests
+    init(symbol: String, direction: Int, directionLabel: String,
+         confidence: Double?, confidencePct: Int?, modelVersion: String?,
+         modelStatus: String?, mlEngineMode: String, lightgbmLoaded: Bool,
+         predictionHorizon: String, generatedAt: String,
+         featureDrivers: [FeatureDriver] = [], reliability: MLReliability? = nil,
+         status: String = "ready", warning: String? = nil) {
+        self.symbol = symbol
+        self.direction = direction
+        self.directionLabel = directionLabel
+        self.confidence = confidence
+        self.confidencePct = confidencePct
+        self.modelVersion = modelVersion
+        self.modelStatus = modelStatus
+        self.mlEngineMode = mlEngineMode
+        self.lightgbmLoaded = lightgbmLoaded
+        self.predictionHorizon = predictionHorizon
+        self.generatedAt = generatedAt
+        self.featureDrivers = featureDrivers
+        self.reliability = reliability
+        self.status = status
+        self.warning = warning
+    }
 }
 
 // MARK: - Calibration

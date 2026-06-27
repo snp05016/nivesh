@@ -1407,7 +1407,7 @@ def get_risk_signals(symbol: str, user_id: int = Depends(require_auth)):
     description="Returns the ML engine prediction signal for a given ticker. "
     "Proxies to the LightGBM-based ML engine and enriches with reliability metrics.",
 )
-def get_stock_ml_signal(symbol: str, user_id: int = Depends(require_auth)):
+async def get_stock_ml_signal(symbol: str, user_id: int = Depends(require_auth)):
     """
     Return ML prediction signal for a given ticker.
 
@@ -1419,5 +1419,16 @@ def get_stock_ml_signal(symbol: str, user_id: int = Depends(require_auth)):
         Any: The response.
     """
     from services.ml_signal_service import get_ml_signal
+    from services.disk_cache import get as cache_get, set as cache_set
 
-    return get_ml_signal(symbol)
+    cache_key = f"ml_signal_{symbol.upper()}"
+    cached = cache_get("ml_signal", cache_key)
+    if cached and cached.get("status") == "ready":
+        return MLSignalResponse(**cached)
+
+    result = await get_ml_signal(symbol)
+
+    if result and result.status == "ready":
+        cache_set("ml_signal", cache_key, result.model_dump(), ttl=3600)
+
+    return result

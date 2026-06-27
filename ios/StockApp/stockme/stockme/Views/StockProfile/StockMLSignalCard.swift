@@ -291,7 +291,27 @@ private struct MLSignalErrorContent: View {
     ZStack {
         Theme.canvas.ignoresSafeArea()
         StockMLSignalCard(
-            signal: nil,
+            signal: MLSignalResponse(
+                symbol: "RELIANCE",
+                direction: 1,
+                directionLabel: "BULLISH",
+                confidence: 0.85,
+                confidencePct: 85,
+                modelVersion: "lightgbm_baseline_alpha158_v1",
+                modelStatus: "active",
+                mlEngineMode: "trained_lightgbm_baseline",
+                lightgbmLoaded: true,
+                predictionHorizon: "20d",
+                generatedAt: "2026-06-27T10:00:00Z",
+                featureDrivers: [
+                    FeatureDriver(feature: "RSI_14", contribution: 0.32, direction: "positive"),
+                    FeatureDriver(feature: "MACD_signal", contribution: 0.25, direction: "positive"),
+                    FeatureDriver(feature: "Volume_SMA", contribution: -0.12, direction: "negative"),
+                ],
+                reliability: MLReliability(hitRate30d: 0.65, brierScore30d: 0.22, calibrationError30d: 0.10),
+                status: "ready",
+                warning: nil
+            ),
             isLoading: false,
             error: nil,
             onOpenQuantLab: {}
