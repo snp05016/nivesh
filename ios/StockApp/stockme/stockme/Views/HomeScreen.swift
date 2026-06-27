@@ -1742,8 +1742,7 @@ struct CompactNewsCell: View {
     }
 
     var body: some View {
-        Button(action: { HapticManager.selection();  HapticManager.selection()
-            HapticManager.selection()
+        Button(action: { HapticManager.selection()
             showDetail = true
         }) {
             VStack(alignment: .leading, spacing: Theme.Spacing.none) {
@@ -2063,8 +2062,7 @@ struct NewsDetailSheet: View {
 
                             // Ticker chip
                             if let ticker = article.ticker, !ticker.isEmpty {
-                                Button(action: { HapticManager.selection();  HapticManager.selection()
-                                    HapticManager.selection()
+                                Button(action: { HapticManager.selection()
                                     dismiss()
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                                         onTickerTap?(ticker)
@@ -2102,8 +2100,7 @@ struct NewsDetailSheet: View {
                             }
 
                             // Read full article button
-                            Button(action: { HapticManager.selection();  HapticManager.selection()
-                                HapticManager.impact(.medium)
+                            Button(action: { HapticManager.selection()
                                 showSafari = true
                             }) {
                                 HStack {
