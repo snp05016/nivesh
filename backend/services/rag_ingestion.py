@@ -6,6 +6,7 @@ Run once at startup for initial load, then nightly via APScheduler.
 import gc
 import logging
 from datetime import datetime, timezone
+import os
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 
@@ -28,7 +29,7 @@ def _get_embedding_model() -> SentenceTransformer:
     """
     global _model
     if _model is None:
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
+        _model = SentenceTransformer("all-MiniLM-L6-v2", token=os.getenv("HF_TOKEN"))
         logger.info("MiniLM embedding model loaded")
     return _model
 

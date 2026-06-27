@@ -25,20 +25,9 @@ _JUGAAD_AVAILABLE = False
 
 def _probe_jugaad() -> bool:
     global _JUGAAD_AVAILABLE
-    try:
-        from jugaad_data.nse import stock_df
-        test_df = stock_df(
-            symbol="RELIANCE",
-            from_date=date.today() - timedelta(days=7),
-            to_date=date.today(),
-            series="EQ",
-        )
-        _JUGAAD_AVAILABLE = len(test_df) > 0
-        logger.info(f"[nse_data_provider] jugaad-data probe: {'OK' if _JUGAAD_AVAILABLE else 'FAILED (empty)'}")
-    except Exception as e:
-        _JUGAAD_AVAILABLE = False
-        logger.info(f"[nse_data_provider] jugaad-data unavailable ({e}). Using yfinance only.")
-    return _JUGAAD_AVAILABLE
+    _JUGAAD_AVAILABLE = False
+    logger.info("[nse_data_provider] jugaad-data is permanently disabled (fixes #449)")
+    return False
 
 
 _probe_jugaad()
@@ -103,7 +92,9 @@ def get_price_history(
             return None
 
     if df is not None and len(df) > 0:
-        cache_set("yfinance", cache_key, df.to_dict())
+        df_for_cache = df.copy()
+        df_for_cache.index = df_for_cache.index.astype(str)
+        cache_set("yfinance", cache_key, df_for_cache.to_dict())
 
     # Attach metadata for downstream stale-data awareness
     if df is not None:

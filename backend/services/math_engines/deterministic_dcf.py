@@ -8,6 +8,7 @@ No AI — fully reproducible given the same inputs.
 
 from __future__ import annotations
 import math
+import os
 from typing import Optional
 
 
@@ -24,7 +25,8 @@ def _fetch_indian_gsec_yield() -> float:
         import urllib.request
         import json
         # RBI / FRED via a simple endpoint (non-interactive, read-only)
-        url = "https://api.stlouisfed.org/fred/series/observations?series_id=INTGSTINM10N&api_key=DEMO&file_type=json&limit=1&sort_order=desc"
+        api_key = os.getenv("FRED_API_KEY", "DEMO")
+        url = f"https://api.stlouisfed.org/fred/series/observations?series_id=INTGSTINM10N&api_key={api_key}&file_type=json&limit=1&sort_order=desc"
         with urllib.request.urlopen(url, timeout=5) as resp:
             data = json.loads(resp.read())
             obs = data.get("observations", [])

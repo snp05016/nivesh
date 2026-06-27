@@ -115,8 +115,9 @@ def _log_token_usage(endpoint: str, usage) -> None:
         with _token_log_lock:
             with open(TOKEN_LOG_PATH, "a") as f:
                 f.write(json.dumps(entry) + "\n")
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to log token usage: {e}")
     with _dash_lock:
         _token_stats["total_input"]      += inp
         _token_stats["total_output"]     += out

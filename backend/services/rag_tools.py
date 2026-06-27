@@ -4,6 +4,7 @@ RAG Tools — Semantic search over the ChromaDB vector store.
 Used by the search_filings LangChain tool (defined in orchestrator.py).
 """
 import logging
+import os
 from sentence_transformers import SentenceTransformer
 from services.vector_store import query_collection
 
@@ -20,7 +21,7 @@ def _get_model() -> SentenceTransformer:
     """
     global _model
     if _model is None:
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
+        _model = SentenceTransformer("all-MiniLM-L6-v2", token=os.getenv("HF_TOKEN"))
     return _model
 
 
