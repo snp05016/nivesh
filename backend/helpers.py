@@ -367,6 +367,3 @@ def _ban_western_scale(text, company_name=""):
         )
     return text
 
-class DataHarvestingError(Exception):
-    """Raised when a market data scraping / harvest pipeline fails."""
-    pass
