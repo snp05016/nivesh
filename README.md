@@ -358,7 +358,7 @@
 | **Analytics** | Stress Test · Correlation Matrix · Sector Rotation · Market Anomalies · Earnings Surprise · Options Strategy |
 | **AI Tools** | NL Screener · Brainstorming · Copilot Chat · Strategy Lab · Crash Lab · Technical Momentum |
 | **Content** | News & Multimedia · Expert Network · Pre-IPO Marketplace · Advisory Matrix · Dalal Street Consensus |
-| **Education** | AI How It Works · Glossary · Tutorials · Onboarding · Feature Help · Term Definitions |
+| **Education** | AI How It Works · Fuzzy Search Glossary · Tutorials · Onboarding · Feature Help · Term Definitions |
 
 ### Design System
 
