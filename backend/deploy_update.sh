@@ -12,7 +12,7 @@ echo "📦 Checking git status..."
 cd ~/Desktop/nivesh/backend
 if [ -n "$(git status --porcelain)" ]; then
   echo "📦 Committing and pushing to git..."
-  git add -u
+  git add -A
   git commit -m "${1:-auto update $(date '+%Y-%m-%d %H:%M')}"
   git push
 else
