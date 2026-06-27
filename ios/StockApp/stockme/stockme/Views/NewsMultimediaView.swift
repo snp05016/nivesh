@@ -151,8 +151,7 @@ struct NewsMultimediaView: View {
                 }
 
                 if articles.count > 5 {
-                    Button(action: { HapticManager.selection();  HapticManager.selection()
-                        HapticManager.selection()
+                    Button(action: { HapticManager.selection()
                         showAllNews = true
                     }) {
                         HStack(spacing: Theme.Spacing.small) {
@@ -334,8 +333,7 @@ struct NewsCarouselCard: View {
     private let cardWidth: CGFloat = 280
 
     var body: some View {
-        Button(action: { HapticManager.selection();  HapticManager.selection()
-            HapticManager.selection()
+        Button(action: { HapticManager.selection()
             showDetail = true
         }) {
             VStack(alignment: .leading, spacing: Theme.Spacing.none) {
@@ -499,6 +497,8 @@ struct NewsCarouselCard: View {
         .sheet(isPresented: $showDetail) {
             NewsDetailSheet(article: article)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("News Article: \(article.headline). Published \(timeLabel). Source: \(article.source)")
     }
 }
 
@@ -545,17 +545,17 @@ struct VideoCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                    Text(video.title)
+                    Text\(video.title)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.inkPrimary)
                         .lineLimit(3)
                         .lineSpacing(2)
 
-                    Text(video.channelName)
+                    Text\(video.channelName)
                         .font(.caption2)
                         .foregroundStyle(Theme.inkSecondary)
 
-                    Text("\(video.formattedViewCount) views")
+                    Text("\\(video.formattedViewCount) views")
                         .font(.caption2)
                         .foregroundStyle(Theme.inkTertiary)
                 }
@@ -570,6 +570,8 @@ struct VideoCard: View {
                 SafariSheetView(url: url)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("YouTube Video: \(video.title) by \(video.channelName). \(video.formattedViewCount) views.")
     }
 
     private var videoFallbackThumb: some View {
@@ -607,8 +609,7 @@ struct EditorialRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.none) {
             // ── Always-visible header (tap to expand) ───────────────────
-            Button(action: { HapticManager.selection();  HapticManager.selection()
-                HapticManager.selection()
+            Button(action: { HapticManager.selection()
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
                     expanded.toggle()
                 }
@@ -676,8 +677,7 @@ struct EditorialRow: View {
                         .cornerRadius(Theme.CornerRadius.medium)
                     }
 
-                    Button(action: { HapticManager.selection();  HapticManager.selection()
-                        HapticManager.impact(.medium)
+                    Button(action: { HapticManager.selection()
                         showSafari = true
                     }) {
                         HStack {
@@ -744,8 +744,7 @@ struct NewsListRow: View {
     }
 
     var body: some View {
-        Button(action: { HapticManager.selection();  HapticManager.selection()
-            HapticManager.selection()
+        Button(action: { HapticManager.selection()
             showDetail = true
         }) {
             HStack(alignment: .top, spacing: Theme.Spacing.standard) {
@@ -851,6 +850,7 @@ struct NewsListRow: View {
         }
         .buttonStyle(EKPressStyle())
         .sheet(isPresented: $showDetail) {
+        .accessibilityElement(children: .combine)
             NewsDetailSheet(article: article)
         }
     }

@@ -929,35 +929,8 @@ async def get_home_feed(user_id: int, ticker: str = None, authorization: str = H
             ).limit(15).all()
 
         _fb_arts = []
-        if not articles:
-            try:
-                _check_tickers = [ticker.upper()] if ticker else ["^NSEI", "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS"]
-                for _t in _check_tickers[:4]:
-                    try:
-                        _news = yf.Ticker(_t).news or []
-                        for _n in _news[:4]:
-                            _pub_ts = _n.get("providerPublishTime", 0)
-                            _pub_iso = datetime.fromtimestamp(_pub_ts, tz=timezone.utc).isoformat() if _pub_ts else datetime.now(timezone.utc).isoformat()
-                            _fb_arts.append({
-                                "id": abs(hash(_n.get("link", "") + _t)) % 1_000_000,
-                                "source": _n.get("publisher", "Yahoo Finance"),
-                                "ticker": _t.replace(".NS", "").replace(".BO", "").replace("^", ""),
-                                "headline": _n.get("title", ""),
-                                "summary": _n.get("summary", ""),
-                                "image_url": None,
-                                "article_url": _n.get("link", ""),
-                                "published_at": _pub_iso,
-                                "is_red_flag": False,
-                                "sentiment": None,
-                                "sentiment_score": None,
-                                "sentiment_label": None,
-                            })
-                    except Exception as e:
-                        import logging
-                        logging.warning(f"Caught exception: {e}")
-                        continue
-            except Exception as _fe:
-                logging.info(f"[HOME-FEED] yfinance fallback error: {_fe}")
+        # yfinance fallback removed — cron harvester is the sole source of news.
+        # Returning empty articles array guarantees sub-100ms response times.
 
         holdings = session.query(Portfolio).filter(
             Portfolio.user_id == user_id,
