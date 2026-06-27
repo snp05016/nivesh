@@ -803,7 +803,6 @@ Return ONLY a JSON object (no markdown):
 
 mood must be exactly: "positive", "cautious", or "negative"
 """
-        import os
         import anthropic
         api_key = os.getenv("ANTHROPIC_API_KEY")
         HAIKU_MODEL = "claude-haiku-4-5-20251001"
@@ -1821,7 +1820,6 @@ Uses a thread-pool executor so the event loop is never blocked.
         raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         from portfolio_charts import generate_portfolio_charts
-        import os
         import asyncio
         import time as _time_module
         from concurrent.futures import ThreadPoolExecutor
@@ -2203,7 +2201,6 @@ def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)
         if flags:
             try:
                 # Red flags summary → DeepSeek V4 Flash (Tier 1 bulk task)
-                import os
                 if os.getenv("DEEPSEEK_API_KEY"):
                     flags_text = "\n".join(
                         f"- [{f['severity']}] {f['ticker']}: {f['detail']}" for f in flags
@@ -2289,7 +2286,6 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
 
         # Macro impact → DeepSeek V4 Flash (Tier 1 bulk task)
         impacts = []
-        import os
         if os.getenv("DEEPSEEK_API_KEY"):
             try:
                 raw_text = _deepseek_chat(
@@ -2651,7 +2647,6 @@ def trade_journal_stats_endpoint(user_id: int, auth_user_id: int = Depends(requi
         patterns = []
         try:
             all_reasons = " | ".join(e["reason_text"] for e in entries_data if e["reason_text"])
-            import os
             if all_reasons and os.getenv("DEEPSEEK_API_KEY"):
                 prompt = (
                     f'Find 2 patterns in these trade journal reasons: {all_reasons[:2000]}. '
@@ -2762,7 +2757,6 @@ def export_portfolio_pdf(user_id: int, authorization: str = Header(None)):
         # Step 4: One Sonnet call for review markdown
         markdown_text = "# Portfolio Review\n\nUnable to generate AI review.\n"
         try:
-            import os
             import anthropic
             SONNET_MODEL = "claude-sonnet-4-6"
             api_key = os.getenv("ANTHROPIC_API_KEY")
