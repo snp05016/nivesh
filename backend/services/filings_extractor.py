@@ -1,3 +1,4 @@
+from config.settings import get_user_agent
 """
 services/filings_extractor.py — Background extraction loop for corporate regulatory filings.
 
@@ -42,7 +43,7 @@ def _set_filings_cache(data: dict) -> None:
 
 _NSE_FILINGS_URL = "https://www.nseindia.com/api/corporates?index=equities"
 _NSE_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+    "User-Agent": get_user_agent(),
     "Accept": "application/json",
     "Referer": "https://www.niseindia.com/",
 }
@@ -85,7 +86,7 @@ def _scrape_moneycontrol_filings() -> list[dict]:
     try:
         resp = requests.get(
             "https://www.moneycontrol.com/stocks/marketinfo/mkt_announcement.php",
-            headers={"User-Agent": "Mozilla/5.0"},
+            headers={"User-Agent": get_user_agent(),},
             timeout=15,
         )
         resp.raise_for_status()

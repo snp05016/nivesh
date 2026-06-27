@@ -1,3 +1,4 @@
+from config.settings import get_user_agent
 """
 Nivesh NSE Data Provider
 -------------------------
@@ -292,7 +293,7 @@ def download_bhavcopy(target_date: date | None = None) -> dict:
                 f"{yyyy}/{mmm}/cm{dd}{mmm}{yyyy}bhav.csv.zip"
             )
             headers = {
-                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+                "User-Agent": get_user_agent(),
                 "Referer": "https://www.nseindia.com",
             }
             resp = requests.get(url, headers=headers, timeout=30)
@@ -338,7 +339,7 @@ def get_delivery_data(symbol: str, days: int = 10) -> dict:
     import requests
 
     headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+        "User-Agent": get_user_agent(),
         "Referer": "https://www.nseindia.com",
     }
 

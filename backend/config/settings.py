@@ -122,3 +122,18 @@ ANALYSIS_STRATEGY_CONFIG: dict = {
 # ---------------------------------------------------------------------------
 YF_RATE_LIMIT_TOKENS: float = float(os.getenv("YF_RATE_LIMIT_TOKENS", 30))
 YF_RATE_LIMIT_PER_SEC: float = float(os.getenv("YF_RATE_LIMIT_PER_SEC", 0.5))
+
+# ---------------------------------------------------------------------------
+# Task 40: Dynamic User-Agent generation (replaces hardcoded strings)
+# ---------------------------------------------------------------------------
+_ua_generator = None
+
+def get_user_agent() -> str:
+    global _ua_generator
+    try:
+        if _ua_generator is None:
+            from fake_useragent import UserAgent
+            _ua_generator = UserAgent(os='mac os x', browsers=['chrome', 'safari'])
+        return _ua_generator.random
+    except Exception:
+        return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"

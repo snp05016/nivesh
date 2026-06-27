@@ -10,8 +10,9 @@ def get_prompt(key: str) -> str:
         prompt_env = os.getenv(f"PROMPT_{key.upper()}")
         if prompt_env:
             return prompt_env
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.warning(f"Failed to fetch prompt '{key}' from environment: {e}")
 
     # Fallback to original prompts.py
     from prompts import INDIAN_MARKET_SYSTEM_PROMPT, NEWS_ANALYST_PERSONA, EXTREME_ADDENDUM

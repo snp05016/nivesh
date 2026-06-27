@@ -1,3 +1,4 @@
+from config.settings import get_user_agent
 """
 Nivesh Macro Modifiers
 ----------------------
@@ -67,7 +68,7 @@ def _fetch_imd_status() -> Optional[str]:
         # Current implementation falls back to static lookup per AGENTS.md §6
         resp = requests.get(
             "https://mausam.imd.gov.in/api/monsoon-status",
-            headers={"User-Agent": "Mozilla/5.0"},
+            headers={"User-Agent": get_user_agent(),},
             timeout=10,
         )
         # Check if the HTTP request was successful
@@ -288,7 +289,7 @@ def fetch_fii_dii_ytd() -> dict:
         resp = requests.get(
             "https://www.nseindia.com/api/fiidii",
             headers={
-                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+                "User-Agent": get_user_agent(),
                 "Referer": "https://www.nseindia.com",
             },
             timeout=15,

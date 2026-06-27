@@ -222,8 +222,9 @@ def _log_token_usage(endpoint: str, usage) -> None:
         with _token_log_lock:
             with open(TOKEN_LOG_PATH, "a") as f:
                 f.write(json.dumps(entry) + "\n")
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.warning(f"Failed to log token usage: {e}")
     with _dash_lock:
         _token_stats["total_input"]      += inp
         _token_stats["total_output"]     += out
@@ -265,7 +266,14 @@ async def _lifespan(app: FastAPI):
     await _on_shutdown()
 
 
-app = FastAPI(title="Indian Stock Market Analysis API", lifespan=_lifespan)
+_ENABLE_DOCS = os.getenv("ENABLE_API_DOCS", "true").lower() == "true"
+app = FastAPI(
+    title="Indian Stock Market Analysis API", 
+    lifespan=_lifespan,
+    docs_url="/docs" if _ENABLE_DOCS else None,
+    redoc_url="/redoc" if _ENABLE_DOCS else None,
+    openapi_url="/openapi.json" if _ENABLE_DOCS else None
+)
 
 # ---------------------------------------------------------------------------
 # CORS — env-configurable for production
@@ -513,6 +521,8 @@ async def _on_startup():
 
 async def _on_shutdown():
     stop_scheduler()
+    from services.job_manager import shutdown_all
+    shutdown_all()
     global _startup_thread
     if '_startup_thread' in globals() and _startup_thread and _startup_thread.is_alive():
         _startup_thread.join(timeout=2.0)

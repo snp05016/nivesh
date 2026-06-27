@@ -97,11 +97,21 @@ async def admin_harvest_news(bg_tasks: BackgroundTasks, authorization: str = Hea
 
 # ── Scheduler ──────────────────────────────────────────────────────────────────
 
+_scheduler_lock_file = None
+
 def start_scheduler():
     """Start APScheduler with all nightly cron jobs. Called from main.py startup."""
-    global _scheduler
+    global _scheduler, _scheduler_lock_file
     if _scheduler is not None and _scheduler.running:
         logging.getLogger(__name__).info("Scheduler already running, skipping re-init")
+        return
+        
+    try:
+        import fcntl
+        _scheduler_lock_file = open("/tmp/nivesh_scheduler.lock", "w")
+        fcntl.lockf(_scheduler_lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except IOError:
+        logging.getLogger(__name__).info("Another worker is running the scheduler. Skipping.")
         return
         
     _scheduler = AsyncIOScheduler(timezone="UTC")

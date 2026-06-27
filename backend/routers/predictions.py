@@ -176,7 +176,9 @@ def get_predictions_calibration(user_id: int = Depends(require_auth)):
             calibration_by_ml_engine_mode=[_to_group(g) for g in data.get("calibration_by_ml_engine_mode", [])],
             calibration_by_recommendation=[_to_group(g) for g in data.get("calibration_by_recommendation", [])],
         )
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         logger.exception("Failed to compute calibration metrics")
         raise HTTPException(status_code=500, detail="Internal error computing calibration metrics")
 
@@ -225,7 +227,9 @@ def get_predictions_pillar_attribution(user_id: int = Depends(require_auth)):
             pillars=pillar_list,
             total_predictions=data.get("total_predictions", 0),
         )
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         logger.exception("Failed to compute pillar attribution")
         raise HTTPException(status_code=500, detail="Internal error computing pillar attribution")
 
@@ -257,7 +261,9 @@ def get_predictions_model_versions(user_id: int = Depends(require_auth)):
             versions=versions,
             total_predictions=data.get("total_predictions", 0),
         )
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         logger.exception("Failed to compute model version analytics")
         raise HTTPException(status_code=500, detail="Internal error computing model version analytics")
 
@@ -281,7 +287,9 @@ def get_calibration_readiness_health(user_id: int = Depends(require_auth)):
     try:
         data = get_calibration_health()
         return CalibrationHealthResponse(**data)
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         logger.exception("Failed to compute calibration health")
         raise HTTPException(status_code=500, detail="Internal error computing calibration health")
 
@@ -305,6 +313,8 @@ def get_fusion_weight_recommendations_endpoint(user_id: int = Depends(require_au
     try:
         data = get_fusion_weight_recommendations()
         return FusionWeightRecommendationResponse(**data)
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         logger.exception("Failed to compute fusion weight recommendations")
         raise HTTPException(status_code=500, detail="Internal error computing fusion weight recommendations")

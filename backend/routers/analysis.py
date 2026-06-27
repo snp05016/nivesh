@@ -121,7 +121,9 @@ def batch_analysis(req: BatchAnalyzeRequest):
                 try:
                     data = json.loads(db_analysis.full_json)
                     results.append({"ticker": ticker, "status": "cached", "data": data})
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Caught exception: {e}")
                     results.append({"ticker": ticker, "status": "not_cached"})
             else:
                 results.append({"ticker": ticker, "status": "not_cached"})
@@ -211,14 +213,18 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                         time.sleep((1.5 * (2 ** attempt)) + (random.random() * 0.5))
             try:
                 return yf.Ticker(full_ticker).info or {}
-            except Exception:
+            except Exception as e:
+                import logging
+                logging.warning(f"Caught exception: {e}")
                 return {}
 
         def _fetch_history():
             try:
                 tk = yf.Ticker(full_ticker)
                 return tk.history(period="1y")
-            except Exception:
+            except Exception as e:
+                import logging
+                logging.warning(f"Caught exception: {e}")
                 import pandas as pd
                 return pd.DataFrame()
 
@@ -226,7 +232,9 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
             try:
                 tk = yf.Ticker(full_ticker)
                 return tk.news if hasattr(tk, "news") and tk.news else []
-            except Exception:
+            except Exception as e:
+                import logging
+                logging.warning(f"Caught exception: {e}")
                 return []
 
         with ThreadPoolExecutor(max_workers=3) as _pool:
@@ -268,7 +276,9 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                 try:
                     from datetime import datetime, timezone as _tz
                     pub = int(datetime.fromisoformat(pub.replace("Z", "+00:00")).timestamp())
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Caught exception: {e}")
                     pub = 0
 
             image_url = None
@@ -310,21 +320,27 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                     ern = _et.earnings_history
                     fin = _et.quarterly_financials
                     return h3y, ern, fin
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Caught exception: {e}")
                     return None, None, None
 
             def _fetch_divs():
                 try:
                     d = _et.dividends
                     return d if d is not None and not d.empty else None
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Caught exception: {e}")
                     return None
 
             def _fetch_actions():
                 try:
                     a = _et.actions
                     return a if a is not None and not a.empty else None
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Caught exception: {e}")
                     return None
 
             with ThreadPoolExecutor(max_workers=3) as _pool2:
@@ -366,8 +382,9 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                         corporate_actions.append({"date": dt.strftime("%d-%b-%Y"), "type": "split", "detail": f"Stock split {splits}:1"})
                     if divs_amt > 0:
                         corporate_actions.append({"date": dt.strftime("%d-%b-%Y"), "type": "dividend", "detail": f"Dividend ₹{round(divs_amt,2)}"})
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.warning(f"Swallowed exception: {e}")
 
         # Fetch latest AI governance analysis for this ticker
         governance_score = None
@@ -385,10 +402,12 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                         _fj = _json.loads(_raw) if isinstance(_raw, str) else _raw
                         governance_score = _fj.get("governance_score")
                         governance_red_flags = _fj.get("governance_red_flags") or []
-                    except Exception:
-                        pass
-        except Exception:
-            pass
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Swallowed exception: {e}")
+        except Exception as e:
+            import logging
+            logging.warning(f"Swallowed exception: {e}")
 
         asm_gsm_status = "CLEAN"
         try:
@@ -397,7 +416,9 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
             if t_base in lists.get("GSM", set()): asm_gsm_status = "GSM"
             elif t_base in lists.get("ASM", set()): asm_gsm_status = "ASM"
             elif not lists.get("ASM") and not lists.get("GSM"): asm_gsm_status = "UNKNOWN"
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             asm_gsm_status = "UNKNOWN"
 
         result = {
@@ -522,11 +543,13 @@ kills the run. One running job per user (guarded by the DB job state).
                 cached["exchange"] = req.exchange
                 try:
                     cached = _inject_live_data(cached, ticker)
-                except Exception:
-                    pass
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Swallowed exception: {e}")
                 return cached
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.warning(f"Swallowed exception: {e}")
 
     if req.user_id is not None:
         active = database.get_active_job_for_user_and_type(req.user_id, req.scan_type)
@@ -929,7 +952,9 @@ async def get_home_feed(user_id: int, ticker: str = None, authorization: str = H
                                 "sentiment_score": None,
                                 "sentiment_label": None,
                             })
-                    except Exception:
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Caught exception: {e}")
                         continue
             except Exception as _fe:
                 logging.info(f"[HOME-FEED] yfinance fallback error: {_fe}")
@@ -1079,7 +1104,9 @@ def screener_endpoint(preset: str):
                             "f_score": f_score,
                             "pe_ratio": round(pe, 1),
                         })
-                    except Exception:
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Caught exception: {e}")
                         continue
                 results = results[:12]
             except Exception as _se:
@@ -1126,7 +1153,9 @@ def screener_endpoint(preset: str):
                             "reason": f"Breakout: {is_breakout}, GoldenCross: {is_golden}, ProfitGr: {profit_growth}%",
                             "profit_growth_pct": round(float(profit_growth), 1),
                         })
-                    except Exception:
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Caught exception: {e}")
                         continue
                 results = results[:12]
             except Exception as _se:
@@ -1162,22 +1191,23 @@ def screener_endpoint(preset: str):
                                     loss = (-delta.where(delta < 0, 0.0)).rolling(14).mean()
                                     rs = gain / loss.replace(0, 1e-10)
                                     rsi_val = 100 - (100 / (1 + float(rs.iloc[-1])))
-                            except Exception:
+                            except Exception as e:
+                                import logging
+                                logging.warning(f"Caught exception: {e}")
                                 rsi_val = None
                             if rsi_val is None or rsi_val >= 30:
                                 continue
-                            # Check PCR from options or use yfinance options data
+                            # Check PCR from options using options_scraper (avoid yfinance rate limits)
                             pcr_val = None
                             try:
-                                opt = t.options
-                                if opt:
-                                    nearest = opt[0]
-                                    chain = t.option_chain(nearest)
-                                    total_puts = sum(p.volume or 0 for p in chain.puts)
-                                    total_calls = sum(c.volume or 0 for c in chain.calls)
-                                    if total_calls > 0:
-                                        pcr_val = round(total_puts / total_calls, 2)
-                            except Exception:
+                                from services.options_scraper import fetch_option_chain, compute_derivatives_metrics
+                                raw_chain = fetch_option_chain(r.ticker)
+                                if raw_chain:
+                                    metrics = compute_derivatives_metrics(raw_chain, float(hist["Close"].iloc[-1]))
+                                    pcr_val = metrics.get("pcr")
+                            except Exception as e:
+                                import logging
+                                logging.warning(f"Caught exception: {e}")
                                 pcr_val = None
                             if pcr_val is None or pcr_val <= 1.5:
                                 continue
@@ -1191,7 +1221,9 @@ def screener_endpoint(preset: str):
                                 "rsi": round(rsi_val, 1),
                                 "pcr": pcr_val,
                             })
-                        except Exception:
+                        except Exception as e:
+                            import logging
+                            logging.warning(f"Caught exception: {e}")
                             continue
                 results = results[:12]
             except Exception as _se:
@@ -1230,7 +1262,9 @@ def screener_endpoint(preset: str):
                             "confidence_pct": conf,
                             "reason": f"Signal: {signal}, Confidence: {conf}%, PE below sector avg",
                         })
-                    except Exception:
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Caught exception: {e}")
                         continue
                 results = results[:12]
             except Exception as _se:
@@ -1277,7 +1311,9 @@ def screener_endpoint(preset: str):
                                 "confidence_pct": r.confidence_pct or 0,
                                 "reason": f"Low pledging ({pledged:.1f}%), signal: {r.signal}",
                             })
-                        except Exception:
+                        except Exception as e:
+                            import logging
+                            logging.warning(f"Caught exception: {e}")
                             continue
                 results = results[:12]
             except Exception as _se:
@@ -1315,7 +1351,9 @@ def screener_endpoint(preset: str):
                                 "confidence_pct": rows[0].confidence_pct or 0,
                                 "reason": f"FII increased: {fii1:.1f}% → {fii0:.1f}%",
                             })
-                        except Exception:
+                        except Exception as e:
+                            import logging
+                            logging.warning(f"Caught exception: {e}")
                             continue
                 results = results[:12]
             except Exception as _se:
@@ -1348,7 +1386,9 @@ def screener_endpoint(preset: str):
                                 "confidence_pct": r.confidence_pct or 0,
                                 "reason": ts_story.strip()[:60],
                             })
-                        except Exception:
+                        except Exception as e:
+                            import logging
+                            logging.warning(f"Caught exception: {e}")
                             continue
                 results = results[:12]
             except Exception as _se:
@@ -1382,8 +1422,9 @@ def screener_endpoint(preset: str):
                         try:
                             fj_data = json.loads(fj)
                             company = fj_data.get("company_name") or company
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            import logging
+                            logging.warning(f"Swallowed exception: {e}")
                         results.append({
                             "ticker": ticker,
                             "company_name": company,
@@ -1391,7 +1432,9 @@ def screener_endpoint(preset: str):
                             "confidence_pct": conf or 0,
                             "reason": "Price near 52W low, signal bullish",
                         })
-                    except Exception:
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Caught exception: {e}")
                         continue
                 results = results[:12]
             except Exception as _se:
@@ -1455,8 +1498,9 @@ def daily_action_endpoint(user_id: int, authorization: str = Header(None)):
                             "signal_flipped": False,
                             "is_bearish": True,
                         })
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.warning(f"Swallowed exception: {e}")
 
         conflicts = []
         try:
@@ -1484,10 +1528,12 @@ def daily_action_endpoint(user_id: int, authorization: str = Header(None)):
                                     "short": round((st - cp) / cp * 100, 1),
                                     "long": round((lt - cp) / cp * 100, 1),
                                 })
-                    except Exception:
-                        pass
-        except Exception:
-            pass
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Swallowed exception: {e}")
+        except Exception as e:
+            import logging
+            logging.warning(f"Swallowed exception: {e}")
 
         triggered = []
         try:
@@ -1497,8 +1543,9 @@ def daily_action_endpoint(user_id: int, authorization: str = Header(None)):
                     user_id=user_id, triggered=True
                 ).all()
                 triggered = [{"ticker": a.ticker, "direction": a.direction, "price": a.target_price} for a in alerts]
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.warning(f"Swallowed exception: {e}")
 
         urgency = "low"
         if triggered or any(w.get("is_bearish") for w in warnings):
@@ -1620,7 +1667,9 @@ def token_stats_endpoint(authorization: str = Header(None)):
                         c2 = (inp2 * HAIKU_INPUT_RATE + out2 * HAIKU_OUTPUT_RATE) if "haiku" in model2 else (inp2 * SONNET_INPUT_RATE + out2 * SONNET_OUTPUT_RATE)
                         day_costs[day] += c2
                         day_calls[day] += 1
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Caught exception: {e}")
                     continue
 
         unique_days = len(day_costs) or 1

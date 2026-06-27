@@ -1,3 +1,4 @@
+from config.settings import get_user_agent
 """
 Nivesh Options Scraper
 -----------------------
@@ -18,10 +19,7 @@ from services.disk_cache import get as cache_get, set as cache_set
 logger = logging.getLogger(__name__)
 
 _NSE_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    ),
+    "User-Agent": get_user_agent(),
     "Accept": "*/*",
     "Accept-Language": "en-US,en;q=0.9",
     "Referer": "https://www.nseindia.com/option-chain",

@@ -926,10 +926,22 @@ def _normalize_response(result: dict, scan_type: str = "standard", quant_payload
     (additive — standard analyses are unaffected).
     """
     import math
+    from services.harvester_reformatter import strip_emoji
 
     # 0. Clean NaN/Inf values before any other processing
     result = _sanitize_nan_inf(result)
 
+    def _strip_emojis_recursive(obj):
+        if isinstance(obj, str):
+            return strip_emoji(obj)
+        elif isinstance(obj, list):
+            return [_strip_emojis_recursive(i) for i in obj]
+        elif isinstance(obj, dict):
+            return {k: _strip_emojis_recursive(v) for k, v in obj.items()}
+        return obj
+
+    # 0.1 Strip emojis from all text fields
+    result = _strip_emojis_recursive(result)
     # 1. Signal normalization
     if "signal" in result:
         normalized = result["signal"].strip().upper()

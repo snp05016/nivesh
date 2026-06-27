@@ -1,3 +1,4 @@
+
 """
 Nivesh Harvester — Expert & Credit-Rating sources scraper.
 
@@ -22,6 +23,7 @@ from __future__ import annotations
 
 import logging
 import os
+from config.settings import get_user_agent
 import re
 from typing import Optional
 
@@ -40,10 +42,7 @@ logger = logging.getLogger("harvester.expert")
 
 # ── Request config ──────────────────────────────────────────────────────────
 _BROWSER_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    ),
+    "User-Agent": get_user_agent(),
     "Accept": (
         "text/html,application/xhtml+xml,application/xml;q=0.9,"
         "image/avif,image/webp,*/*;q=0.8"
@@ -800,6 +799,16 @@ def scrape_all_expert_sources() -> list[dict]:
             all_cards.extend(cards)
         except Exception as exc:
             logger.warning("Source '%s' raised unexpectedly: %s", name, exc)
+            try:
+                from services.error_telemetry import log_diagnostic_error
+                log_diagnostic_error(
+                    subsystem="HARVESTER_EXPERT",
+                    classification="HARVEST_FAILURE",
+                    context={"source_name": name},
+                    exception={"type": type(exc).__name__, "message": str(exc)},
+                )
+            except Exception:
+                pass
 
     # Final credibility filter.
     filtered = [c for c in all_cards if c.get("credibility_score", 0) >= _MIN_CREDIBILITY]

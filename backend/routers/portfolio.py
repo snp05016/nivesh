@@ -1,3 +1,4 @@
+from config.settings import get_user_agent
 import logging
 """
 Portfolio-related endpoints extracted from main.py.
@@ -70,7 +71,9 @@ def _adjust_for_splits(ticker: str, buy_price: float, quantity: float, buy_date:
         if cumulative_ratio != 1.0:
             return buy_price / cumulative_ratio, quantity * cumulative_ratio, cumulative_ratio
         return buy_price, quantity, 1.0
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         return buy_price, quantity, 1.0
 
 def _adjust_for_bonus(ticker: str, buy_price: float, quantity: float, buy_date: str) -> tuple:
@@ -99,7 +102,9 @@ def _adjust_for_bonus(ticker: str, buy_price: float, quantity: float, buy_date: 
         if cumulative_ratio != 1.0:
             return buy_price / cumulative_ratio, quantity * cumulative_ratio, cumulative_ratio
         return buy_price, quantity, 1.0
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         return buy_price, quantity, 1.0
 
 def _apply_corporate_actions(ticker: str, buy_price: float, quantity: float, buy_date: str) -> tuple:
@@ -292,7 +297,9 @@ def portfolio_benchmark(user_id: int, authorization: str = Header(None)):
             nifty_end = float(hist["Close"].iloc[-1])
         else:
             nifty_start, nifty_end = 1.0, 1.0
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         nifty_start, nifty_end = 1.0, 1.0
         
     nifty_cagr_pct = (((nifty_end / nifty_start) ** (1 / years)) - 1) * 100 if nifty_start > 0 and years > 0 else 0.0
@@ -306,7 +313,9 @@ def portfolio_benchmark(user_id: int, authorization: str = Header(None)):
             ht = yf.Ticker(h.ticker)
             cp = getattr(ht.fast_info, "last_price", h.buy_price)
             if math.isnan(cp): cp = h.buy_price
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             cp = h.buy_price
         total_current += cp * h.shares
         
@@ -373,7 +382,9 @@ def portfolio_stress_test(user_id: int, authorization: str = Header(None)):
             t = yf.Ticker(h.ticker)
             cp = getattr(t.fast_info, "last_price", h.buy_price)
             if math.isnan(cp): cp = h.buy_price
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             cp = h.buy_price
             
         val = cp * h.shares
@@ -428,7 +439,7 @@ def _nse_session():
     import requests
     s = requests.Session()
     s.headers.update({
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        "User-Agent": get_user_agent(),
         "Accept": "application/json, text/plain, */*",
         "Referer": "https://www.nseindia.com/",
     })
@@ -720,7 +731,9 @@ def morning_summary_endpoint(user_id: int, authorization: str = Header(None)):
             ns = _to_ns(h.ticker)
             try:
                 current_price, prev_close = _yf_price(ns)
-            except Exception:
+            except Exception as e:
+                import logging
+                logging.warning(f"Caught exception: {e}")
                 current_price, prev_close = None, None
 
             day_pct = None
@@ -762,8 +775,9 @@ def morning_summary_endpoint(user_id: int, authorization: str = Header(None)):
                     chg = idx["change_pct"]
                     chg_str = (f"+{chg:.2f}%" if chg >= 0 else f"{chg:.2f}%")
                     indices_lines.append(f"{idx['name']}: {idx['value']:.2f} ({chg_str})")
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.warning(f"Swallowed exception: {e}")
 
         portfolio_text = "\n".join(holding_lines) if holding_lines else "No holdings found."
         movers_text = "\n".join(significant_movers_lines) if significant_movers_lines else "None today"
@@ -1429,8 +1443,9 @@ def portfolio_advisor_consensus(user_id: int, days: int = 7):
                 for ah in ah_rows:
                     if ah.ticker not in seen:
                         seen.add(ah.ticker)
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.warning(f"Swallowed exception: {e}")
 
         # ── total_videos_processed ──────────────────────────────────────────
         total_videos_processed = len({r.video_id for r in rows})
@@ -1689,7 +1704,9 @@ async def get_valuation_history(user_id: int, days: int = 90, authorization: str
                             if not hist.empty:
                                 closes = hist["Close"].dropna()
                                 all_closes[t] = {d.strftime("%Y-%m-%d"): float(c) for d, c in closes.items()}
-                        except Exception:
+                        except Exception as e:
+                            import logging
+                            logging.warning(f"Caught exception: {e}")
                             continue
 
                     if all_closes:
@@ -1832,7 +1849,9 @@ Uses a thread-pool executor so the event loop is never blocked.
                 try:
                     with open(meta_path) as f:
                         cached_meta = _json.loads(f.read())
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Caught exception: {e}")
                     cached_meta = {}
             cached_charts = []
             for fname in sorted(existing):
@@ -1863,7 +1882,9 @@ Uses a thread-pool executor so the event loop is never blocked.
         try:
             with open(meta_path, "w") as mf:
                 _json.dump(meta_dict, mf)
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             pass  # metadata write is best-effort
         return {
             "charts": [
@@ -1941,12 +1962,14 @@ def portfolio_risk_analysis_endpoint(user_id: int, authorization: str = Header(N
                             dstr = idx.strftime("%Y-%m-%d") if hasattr(idx, "strftime") else str(idx)[:10]
                             if not math.isnan(float(val)):
                                 daily[dstr] = float(val)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            import logging
+                            logging.warning(f"Swallowed exception: {e}")
                     if daily:
                         _return_series[ticker] = daily
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.warning(f"Swallowed exception: {e}")
 
             stock_details.append({
                 "ticker": ticker,
@@ -2084,8 +2107,9 @@ def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)
                         data = json.loads(row.full_json)
                         data["_pledged_pct_db"] = row.promoter_pledged_pct
                         latest_analyses[ticker] = data
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Swallowed exception: {e}")
 
             # FII trend: last 4 analyses per ticker (most recent first)
             fii_histories: dict[str, list[float]] = {}
@@ -2100,8 +2124,9 @@ def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)
                         fii = d.get("fundamentals_snapshot", {}).get("fii_holding_pct")
                         if fii is not None:
                             fiis.append(float(fii))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Swallowed exception: {e}")
                 fii_histories[ticker] = fiis
 
             cutoff = datetime.now(timezone.utc) - timedelta(days=30)
@@ -2114,7 +2139,9 @@ def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)
 
         try:
             asm_gsm = _get_asm_gsm_lists()
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             asm_gsm = {"ASM": set(), "GSM": set()}
 
         flags = []
@@ -2239,7 +2266,9 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
                 info = yf.Ticker(sym).info
                 val = info.get("regularMarketPrice") or info.get("currentPrice")
                 macro[key] = round(float(val), 2) if val and not math.isnan(float(val)) else None
-            except Exception:
+            except Exception as e:
+                import logging
+                logging.warning(f"Caught exception: {e}")
                 macro[key] = None
         macro["rbi_repo_rate_pct"] = 6.50
 
@@ -2320,7 +2349,9 @@ def portfolio_timeframe_conflicts_endpoint(user_id: int, authorization: str = He
                     continue
                 try:
                     data = json.loads(row.full_json)
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Caught exception: {e}")
                     continue
 
                 current_price = data.get("current_price_inr")
@@ -2402,12 +2433,14 @@ def trade_journal_add_endpoint(req: TradeJournalAddRequest, authorization: str =
             # Set optional new columns gracefully (only if col exists in DB after migration)
             try:
                 entry.company_name = req.company_name
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.warning(f"Swallowed exception: {e}")
             try:
                 entry.mood = req.mood
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.warning(f"Swallowed exception: {e}")
             session.add(entry)
             session.commit()
             session.refresh(entry)
@@ -2449,16 +2482,22 @@ def trade_journal_get_endpoint(user_id: int, authorization: str = Header(None)):
                 # Gracefully include new columns if they exist post-migration
                 try:
                     row["company_name"] = getattr(e, "company_name", None)
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Caught exception: {e}")
                     row["company_name"] = None
                 try:
                     row["mood"] = getattr(e, "mood", None)
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Caught exception: {e}")
                     row["mood"] = None
                 try:
                     upd = getattr(e, "updated_at", None)
                     row["updated_at"] = upd.strftime("%Y-%m-%d %H:%M") if upd else None
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Caught exception: {e}")
                     row["updated_at"] = None
                 result.append(row)
         return {"user_id": user_id, "entries": result, "total": len(result)}
@@ -2487,12 +2526,14 @@ def trade_journal_update_endpoint(entry_id: int, req: TradeJournalUpdateRequest,
             entry.outcome_text = req.outcome_text.strip()
             try:
                 entry.mood = req.mood
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.warning(f"Swallowed exception: {e}")
             try:
                 entry.updated_at = datetime.now(timezone.utc)
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.warning(f"Swallowed exception: {e}")
             session.commit()
             session.refresh(entry)
             result = {
@@ -2509,8 +2550,9 @@ def trade_journal_update_endpoint(entry_id: int, req: TradeJournalUpdateRequest,
                 result["mood"] = getattr(entry, "mood", None)
                 upd = getattr(entry, "updated_at", None)
                 result["updated_at"] = upd.strftime("%Y-%m-%d %H:%M") if upd else None
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.warning(f"Swallowed exception: {e}")
         return result
     except HTTPException:
         raise
@@ -2691,8 +2733,9 @@ def export_portfolio_pdf(user_id: int, authorization: str = Header(None)):
                         pledged = (d.get("fundamentals_snapshot") or {}).get("promoter_pledged_pct") or row.promoter_pledged_pct
                         if pledged and pledged > 30:
                             red_flag_list.append(f"{ticker}: High pledging {pledged:.1f}%")
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Swallowed exception: {e}")
                 if ticker in bf_map:
                     red_flag_list.append(f"{ticker}: Bearish signal flip in last 30 days")
 
@@ -2906,7 +2949,9 @@ async def portfolio_attribution_endpoint(
                 info_dict = t.info
             
             sector = info_dict.get("sector", "Unknown")
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             current_price = h.buy_price
             sector = "Unknown"
         

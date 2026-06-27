@@ -150,8 +150,9 @@ def _sector_for_symbol(symbol: str) -> str:
         for entry in _NSE_DIR_INDEX:
             if entry["_t"] == s.lower():
                 return entry["sector"]
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.warning(f"Swallowed exception: {e}")
     return "Diversified"
 
 
@@ -568,7 +569,9 @@ def get_stock_financials(
             line_items=line_items,
             available_periods=available_periods,
         )
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         logger.exception("Failed to build financials for %s", symbol)
         raise HTTPException(status_code=500, detail="Internal error building financial statements")
 
@@ -836,7 +839,9 @@ def get_shareholding(symbol: str, user_id: int = Depends(require_auth)):
             promoter_pledge_qoq_change=pledge_qoq,
             holding_trend=trend,
         )
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         logger.exception("Failed to build shareholding for %s", symbol)
         raise HTTPException(status_code=500, detail="Internal error building shareholding pattern")
 
@@ -1015,7 +1020,9 @@ def get_corporate_actions(symbol: str, user_id: int = Depends(require_auth)):
             dividend_yield_ttm=div_yield_ttm,
             dividend_payout_ratio=payout_ratio,
         )
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         logger.exception("Failed to build corporate actions for %s", symbol)
         raise HTTPException(status_code=500, detail="Internal error building corporate actions")
 
@@ -1181,7 +1188,9 @@ def get_valuation(symbol: str, user_id: int = Depends(require_auth)):
             pe_band_data=pe_band,
             peer_comparison=peer_table,
         )
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         logger.exception("Failed to build valuation for %s", symbol)
         raise HTTPException(status_code=500, detail="Internal error building valuation")
 
@@ -1380,7 +1389,9 @@ def get_risk_signals(symbol: str, user_id: int = Depends(require_auth)):
             fii_trend=fii_trend,
             debt_concern=debt_concern,
         )
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         logger.exception("Failed to build risk signals for %s", symbol)
         raise HTTPException(status_code=500, detail="Internal error building risk signals")
 

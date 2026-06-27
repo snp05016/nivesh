@@ -5,6 +5,7 @@ Proxies prediction requests to the ML engine at http://localhost:8001
 and enriches responses with reliability metrics from the calibration service.
 """
 
+import os
 import logging
 import yfinance as yf
 from datetime import datetime, timezone
@@ -15,7 +16,7 @@ from schemas.ml_signal import FeatureDriver, MLReliability, MLSignalResponse
 
 logger = logging.getLogger(__name__)
 
-ML_ENGINE_URL = "http://localhost:8001"
+ML_ENGINE_URL = os.getenv("ML_ENGINE_URL", "http://localhost:8001")
 ML_ENGINE_TIMEOUT = 5.0  # seconds
 
 

@@ -31,8 +31,9 @@ async def event_generator(request: Request):
                 for event in events[sent_progress_count:]:
                     yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
                 sent_progress_count = len(events)
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.warning(f"Swallowed exception: {e}")
 
         # Also send dashboard snapshot every 2s (for general monitoring)
         current_state = get_dashboard_snapshot()

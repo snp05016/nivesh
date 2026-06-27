@@ -112,6 +112,7 @@ def _try_finbert(texts: list[str]) -> list[float] | None:
         list[float] | None: A list of sentiment scores if successful, or None if unavailable.
     """
     try:
+        import os
         from transformers import pipeline  # type: ignore[import]
 
         # Use ProsusAI/finbert — a popular FinBERT checkpoint
@@ -121,6 +122,7 @@ def _try_finbert(texts: list[str]) -> list[float] | None:
             tokenizer="ProsusAI/finbert",
             truncation=True,
             max_length=512,
+            token=os.getenv("HF_TOKEN")
         )
         results = sentiment_pipe(texts)
         scores = []

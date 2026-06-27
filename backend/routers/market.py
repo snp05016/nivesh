@@ -98,8 +98,9 @@ def dividend_history_endpoint(ticker: str, exchange: str = "NSE"):
         try:
             fast = t.fast_info
             current_price = getattr(fast, "last_price", None)
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.warning(f"Swallowed exception: {e}")
 
         history = []
         if divs is not None and not divs.empty:
@@ -134,7 +135,9 @@ def dividend_history_endpoint(ticker: str, exchange: str = "NSE"):
                     if str(div_date).strip() and str(div_date) != "NaT":
                         try:
                             next_ex_date = div_date.strftime("%Y-%m-%d")
-                        except Exception:
+                        except Exception as e:
+                            import logging
+                            logging.warning(f"Caught exception: {e}")
                             next_ex_date = str(div_date)
                         
         return {
@@ -313,11 +316,13 @@ def quarterly_financials_endpoint(ticker: str, exchange: str = "NSE"):
                                     "fii": fii or 0,
                                     "dii": dii or 0,
                                 })
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            import logging
+                            logging.warning(f"Swallowed exception: {e}")
             promoter_history = list(reversed(promoter_history[:4]))
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.warning(f"Swallowed exception: {e}")
 
         payload = {"quarters": result, "promoter_history": promoter_history}
         _dcache_set("market", cache_key, payload, ttl=3600)
@@ -349,7 +354,9 @@ def macro_strip_endpoint():
                 result["usd_inr"] = round(float(usd_inr), 2)
             else:
                 result["usd_inr"] = None
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             result["usd_inr"] = None
 
         # Crude oil (WTI)
@@ -361,7 +368,9 @@ def macro_strip_endpoint():
                 result["crude_oil_usd"] = round(float(crude), 2)
             else:
                 result["crude_oil_usd"] = None
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             result["crude_oil_usd"] = None
 
         # Brent crude (India imports Brent-priced oil, more relevant than WTI)
@@ -373,7 +382,9 @@ def macro_strip_endpoint():
                 result["brent_oil_usd"] = round(float(brent), 2)
             else:
                 result["brent_oil_usd"] = None
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             result["brent_oil_usd"] = None
 
         # India VIX — fear gauge for Indian retail markets
@@ -389,7 +400,9 @@ def macro_strip_endpoint():
             else:
                 result["india_vix"] = INDIA_VIX_HISTORICAL_AVG
                 result["india_vix_source"] = "historical_avg_fallback"
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             result["india_vix"] = INDIA_VIX_HISTORICAL_AVG
             result["india_vix_source"] = "historical_avg_fallback"
 
@@ -617,10 +630,12 @@ AI-generated analysis if a cached analysis exists.
                         if macro_impact:
                             result["ai_summary"] = macro_impact
                             result["ai_sentiment"] = sentiment
-                    except Exception:
-                        pass
-        except Exception:
-            pass
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Swallowed exception: {e}")
+        except Exception as e:
+            import logging
+            logging.warning(f"Swallowed exception: {e}")
 
         if not result.get("ai_summary"):
             impact_lines = []
@@ -683,10 +698,12 @@ def earnings_calendar_endpoint():
                                 "earnings_date": ed.strftime("%d-%b-%Y"),
                                 "days_away": days_away,
                             })
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Swallowed exception: {e}")
+            except Exception as e:
+                import logging
+                logging.warning(f"Swallowed exception: {e}")
 
         results.sort(key=lambda x: x["days_away"])
         payload = {"events": results}
@@ -836,7 +853,9 @@ def sector_weekly_endpoint():
                 "change_abs": round(current - prev_day, 2),
                 "week_change_pct": week_chg,
             })
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             continue
     return {"sectors": results}
 
@@ -1125,7 +1144,9 @@ def sector_performance_endpoint():
                 "change_abs": change_abs,
                 "change_pct": change_pct,
             })
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             continue
 
     result = {
@@ -1268,7 +1289,9 @@ def _yf_fetch_info(full_ticker: str) -> dict:
     try:
         t = yf.Ticker(full_ticker)
         return t.info or {}
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         return {}
 
 @router.get("/api/v1/stock-profile")
@@ -1389,8 +1412,9 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
                 # so FII + DII = institutional_total, not 135%+ (#256/#306).
                 if not fund_fii and _institutional_total_pct is not None:
                     fii_holding_pct = max(0.0, round(_institutional_total_pct - fund_dii, 2))
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.warning(f"Swallowed exception: {e}")
 
     # ── 2. Price history — full error capture ──────────────────────────────
     price_history_data: dict = {"prices": [], "source": None, "error": None}
@@ -1502,13 +1526,15 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
                                 "fii": fii_v or 0,
                                 "dii": dii_v or 0,
                             })
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Swallowed exception: {e}")
             quarterly_data["promoter_history"] = list(
                 reversed(quarterly_data["promoter_history"][:4])
             )
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.warning(f"Swallowed exception: {e}")
 
     # ── 4. Sanitise & assemble ─────────────────────────────────────────────
     def _clean_num(v):
@@ -1919,7 +1945,9 @@ def _build_cap_index_grid() -> list[dict]:
             ns = _to_ns(ticker)
             info = yf.Ticker(ns).info
             return (ticker, info if info and info.get("regularMarketPrice") else None)
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             return (ticker, None)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
@@ -1929,8 +1957,9 @@ def _build_cap_index_grid() -> list[dict]:
                 ticker, info = fut.result()
                 if info:
                     ticker_data[ticker] = info
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.warning(f"Swallowed exception: {e}")
 
     results: list[dict] = []
     for bracket in brackets:
@@ -1969,7 +1998,9 @@ def _build_cap_index_grid() -> list[dict]:
                     pe_ratios.append(float(pe))
                 if rev_growth is not None and not math.isnan(rev_growth):
                     rev_yoy_list.append(rev_growth)
-            except Exception:
+            except Exception as e:
+                import logging
+                logging.warning(f"Caught exception: {e}")
                 continue
 
         count = len(tickers)
@@ -2113,14 +2144,18 @@ def _safe_float(v, default: float = 0.0) -> float:
     try:
         f = float(v)
         return default if (math.isnan(f) or math.isinf(f)) else f
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         return default
 
 def _earnings_result_from_row(r, now_iso: str) -> dict:
     """Build an EarningsResult dict from an AnalysisHistory row."""
     try:
         fj = json.loads(r.full_json or "{}")
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning(f"Caught exception: {e}")
         fj = {}
     fs = fj.get("fundamentals_snapshot", {})
     revenue = _safe_float(fs.get("revenue_crores") or fs.get("revenue"))
@@ -2169,7 +2204,9 @@ async def earnings_progress_endpoint():
                         rev_vals.append(rev_g)
                     if prof_g is not None and -200 < prof_g < 500:
                         prof_vals.append(prof_g)
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Caught exception: {e}")
                     continue
         return {
             "reported": reported,
@@ -2272,8 +2309,9 @@ def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple
                     lp = info.get("regularMarketPrice") or info.get("currentPrice")
                     if lp and not math.isnan(float(lp)):
                         ltp = round(float(lp), 2)
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.warning(f"Swallowed exception: {e}")
 
             # EPS from quarterly data
             eps = None
@@ -2294,8 +2332,9 @@ def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple
                         pev = float(eps_row[prev_col])
                         if not (math.isnan(pev) or math.isinf(pev)):
                             eps_prev = round(pev, 2)
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.warning(f"Swallowed exception: {e}")
 
             item = {
                 "ticker": ticker,
@@ -2335,7 +2374,9 @@ def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple
                     results.append(item)
                 if err:
                     errors.append(err)
-            except Exception:
+            except Exception as e:
+                import logging
+                logging.warning(f"Caught exception: {e}")
                 errors.append(f"{ticker}: timed out or executor error (yfinance slow)")
 
     diagnostic = ""
@@ -2555,11 +2596,14 @@ def _scan_upcoming_earnings(target_date: str) -> list[dict]:
                                     "reported_at": None,
                                 })
                                 break
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            import logging
+                            logging.warning(f"Swallowed exception: {e}")
             if len(results) >= 10:
                 break
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             continue
     return results
 
@@ -2585,8 +2629,9 @@ async def earnings_estimates_endpoint(ticker: str):
                     revenue_actual = fs.get("revenue_crores")
                     net_profit_actual = fs.get("net_profit_crores")
                     eps_actual = fs.get("eps")
-                except Exception:
-                    pass
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Swallowed exception: {e}")
         return {
             "ticker": ticker,
             "company_name": info.get("longName") or info.get("shortName") or ticker,
@@ -2638,7 +2683,9 @@ async def post_result_movers_endpoint():
                         "change_percent": change_pct,
                         "volume": vol,
                     })
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Caught exception: {e}")
                     continue
         movers.sort(key=lambda x: abs(x["change_percent"]), reverse=True)
         return {"movers": movers, "fetched_at": now_iso}
@@ -3208,7 +3255,9 @@ Response: {
                     "volume": int(vol_today),
                     "value": round(value, 0),
                 })
-            except Exception:
+            except Exception as e:
+                import logging
+                logging.warning(f"Caught exception: {e}")
                 continue
 
         if not movers:
@@ -3298,7 +3347,9 @@ def run_screener(preset: str = "52w_breakout"):
                                 "pct_from_high": round(pct_from_high, 2),
                                 "volume_ratio": round(volume_ratio, 2)
                             })
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Caught exception: {e}")
                     continue
             return {"preset": preset, "results": results}
         else:

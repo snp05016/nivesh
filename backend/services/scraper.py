@@ -1,3 +1,4 @@
+from config.settings import get_user_agent
 """
 services/scraper.py — Static market data scraper with Firecrawl + BeautifulSoup fallback.
 
@@ -144,11 +145,7 @@ def _firecrawl_extract(url: str, schema: dict) -> dict | None:
 # ---------------------------------------------------------------------------
 
 _HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
+    "User-Agent": get_user_agent(),
     "Accept-Language": "en-IN,en;q=0.9",
 }
 
@@ -620,7 +617,7 @@ def _fetch_sync_ratio_fallback() -> dict:
     try:
         resp = requests.get(
             "https://www.moneycontrol.com/stocks/marketinfo/mkt_earning.php",
-            headers={"User-Agent": "Mozilla/5.0"},
+            headers={"User-Agent": get_user_agent(),},
             timeout=15,
         )
         resp.raise_for_status()

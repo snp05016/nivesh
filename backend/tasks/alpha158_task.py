@@ -137,12 +137,14 @@ def _build_task(app_: Any):  # noqa: ANN001 — typed at call site
                     "vwap":   None,  # ml-engine derives VWAP as (H+L+C)/3 when None
                 })
 
+            import os
             # ── 4. POST to ml-engine /predict/single ────────────────────────
             ml_response: dict[str, Any] | None = None
             try:
+                ml_engine_url = os.getenv("ML_ENGINE_URL", "http://localhost:8001")
                 with httpx.Client(timeout=30.0) as client:
                     resp = client.post(
-                        "http://localhost:8001/predict/single",
+                        f"{ml_engine_url}/predict/single",
                         json={
                             "ticker":     ticker,
                             "ohlcv_data": ohlcv_rows,

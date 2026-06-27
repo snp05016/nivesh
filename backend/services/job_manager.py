@@ -54,3 +54,17 @@ def reap_finished() -> None:
     with _registry_lock:
         for jid in [j for j, p in _job_registry.items() if not p.is_alive()]:
             _job_registry.pop(jid, None)
+
+def shutdown_all() -> None:
+    """Terminate all running jobs during server shutdown to prevent semaphore leaks."""
+    with _registry_lock:
+        jobs = list(_job_registry.values())
+        _job_registry.clear()
+        
+    for p in jobs:
+        if p.is_alive():
+            p.terminate()
+            p.join(timeout=2)
+            if p.is_alive():
+                p.kill()
+                p.join(timeout=1)

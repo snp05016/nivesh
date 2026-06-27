@@ -1,3 +1,4 @@
+from config.settings import get_user_agent
 import logging
 """
 NSE session bootstrap, ASM/GSM surveillance list fetching, and market indices

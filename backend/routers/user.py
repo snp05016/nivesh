@@ -141,7 +141,9 @@ def watchlist_get_endpoint(user_id: int, authorization: str = Header(None)):
 
         try:
             asm_gsm_data = _get_asm_gsm_lists()
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             asm_gsm_data = {"ASM": set(), "GSM": set()}
 
         result = []
@@ -162,8 +164,9 @@ def watchlist_get_endpoint(user_id: int, authorization: str = Header(None)):
                     if sig_row:
                         last_signal = sig_row.signal
                         last_signal_date = sig_row.analysis_date
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.warning(f"Swallowed exception: {e}")
 
             asm_gsm_status = "UNKNOWN"
             try:
@@ -174,7 +177,9 @@ def watchlist_get_endpoint(user_id: int, authorization: str = Header(None)):
                     asm_gsm_status = "ASM"
                 elif asm_gsm_data.get("ASM") or asm_gsm_data.get("GSM"):
                     asm_gsm_status = "CLEAN"
-            except Exception:
+            except Exception as e:
+                import logging
+                logging.warning(f"Caught exception: {e}")
                 asm_gsm_status = "UNKNOWN"
 
             result.append({
@@ -262,7 +267,9 @@ def notifications_morning_summary_push(req: MorningSummaryPushRequest):
         try:
             from routers.analysis import morning_summary_endpoint
             summary_data = morning_summary_endpoint(req.user_id)
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.warning(f"Caught exception: {e}")
             summary_data = {"summary": "Check your portfolio today.", "mood": "cautious", "priority_items": []}
 
         mood = summary_data.get("mood", "cautious")
@@ -395,7 +402,9 @@ def get_error_telemetry(token: int = Depends(require_admin)):
                     "message": payload.get("exception", {}).get("message", "Unknown"),
                     "stack_summary": payload.get("exception", {}).get("cleaned_traceback", [])
                 })
-            except Exception:
+            except Exception as e:
+                import logging
+                logging.warning(f"Caught exception: {e}")
                 # fallback for plain string errors
                 results.append({
                     "error_type": log.component,

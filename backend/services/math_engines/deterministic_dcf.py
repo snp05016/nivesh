@@ -13,7 +13,7 @@ from typing import Optional
 
 
 # Default Indian 10-year G-Sec yield (fallback if not fetched)
-_DEFAULT_RISK_FREE_RATE = 0.068  # 6.8% as of 2025 baseline
+_DEFAULT_RISK_FREE_RATE = float(os.getenv("DEFAULT_RISK_FREE_RATE", "0.068"))
 
 
 def _fetch_indian_gsec_yield() -> float:
@@ -25,7 +25,9 @@ def _fetch_indian_gsec_yield() -> float:
         import urllib.request
         import json
         # RBI / FRED via a simple endpoint (non-interactive, read-only)
-        api_key = os.getenv("FRED_API_KEY", "DEMO")
+        api_key = os.getenv("FRED_API_KEY")
+        if not api_key:
+            return _DEFAULT_RISK_FREE_RATE
         url = f"https://api.stlouisfed.org/fred/series/observations?series_id=INTGSTINM10N&api_key={api_key}&file_type=json&limit=1&sort_order=desc"
         with urllib.request.urlopen(url, timeout=5) as resp:
             data = json.loads(resp.read())
