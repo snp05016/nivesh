@@ -1,0 +1,29 @@
+name: iOS CI
+
+on:
+  push:
+    paths:
+      - 'ios/**'
+    branches: [ "main" ]
+  pull_request:
+    paths:
+      - 'ios/**'
+    branches: [ "main" ]
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+
+    - name: Build iOS App
+      run: |
+        cd ios/StockApp || exit 0
+        set -o pipefail
+        xcodebuild -scheme StockApp -destination 'platform=iOS Simulator,name=iPhone 15' build | xcpretty

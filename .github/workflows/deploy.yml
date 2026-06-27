@@ -1,0 +1,24 @@
+name: Production Deployment
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: 192.168.1.122
+          username: admin
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /var/www/nivesh
+            git pull origin main
+            cd backend
+            ../venv/bin/pip install -r requirements.txt
+            ../venv/bin/alembic upgrade head
+            sudo systemctl restart nivesh-backend
