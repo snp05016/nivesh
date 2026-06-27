@@ -545,17 +545,17 @@ struct VideoCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                    Text\(video.title)
+                    Text(video.title)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.inkPrimary)
                         .lineLimit(3)
                         .lineSpacing(2)
 
-                    Text\(video.channelName)
+                    Text(video.channelName)
                         .font(.caption2)
                         .foregroundStyle(Theme.inkSecondary)
 
-                    Text("\\(video.formattedViewCount) views")
+                    Text("\(video.formattedViewCount) views")
                         .font(.caption2)
                         .foregroundStyle(Theme.inkTertiary)
                 }
@@ -850,7 +850,6 @@ struct NewsListRow: View {
         }
         .buttonStyle(EKPressStyle())
         .sheet(isPresented: $showDetail) {
-        .accessibilityElement(children: .combine)
             NewsDetailSheet(article: article)
         }
     }
