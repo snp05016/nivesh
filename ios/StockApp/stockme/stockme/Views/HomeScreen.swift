@@ -798,6 +798,17 @@ struct HomeScreen: View {
                     .buttonStyle(EKPressStyle())
                 }
             }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NavigationLink(destination: NotificationInboxView()) {
+                    Image(systemName: "bell")
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(Theme.inkPrimary)
+                }
+                .buttonStyle(EKPressStyle())
+                .simultaneousGesture(TapGesture().onEnded {
+                    HapticManager.selection()
+                })
+            }
         }
 
         .sheet(isPresented: $showingEditLayout) {
