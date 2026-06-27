@@ -662,13 +662,100 @@ final class FinanceTerms {
             + "where professional capital expects better risk-adjusted returns.",
             .ownership, ["FII", "DII", "Institutional Ownership"])
 
+        
+        // ── Foundational Market Terms (Added for Layman Users) ────────
+        add("SEBI",
+            "Securities and Exchange Board of India — the regulatory body that oversees the Indian stock market and protects investors.",
+            "If a company commits fraud or insider trading, SEBI is the authority that investigates and issues penalties.",
+            .marketMechanics)
+
+        add("Demat Account",
+            "Dematerialised account — a digital account used to hold your shares and securities electronically instead of physical paper certificates.",
+            "When you buy Reliance shares, the actual digital shares are credited to your Demat Account via depositories like NSDL or CDSL.",
+            .marketMechanics)
+
+        add("Trading Account",
+            "An account with a stockbroker used to place buy and sell orders in the stock market.",
+            "You use your Trading Account to place the order, and the shares are then stored in your Demat Account.",
+            .marketMechanics)
+
+        add("IPO",
+            "Initial Public Offering — when a private company sells its shares to the public for the first time to raise capital.",
+            "When a startup goes public via an IPO, retail investors can apply for shares before it lists on the exchange.",
+            .marketMechanics)
+
+        add("SIP",
+            "Systematic Investment Plan — a method of investing a fixed amount regularly (e.g., monthly) into a mutual fund or stock.",
+            "A ₹5,000 monthly SIP in a Nifty 50 index fund automates your investing and averages out market volatility over time.",
+            .portfolio)
+
+        add("Lumpsum",
+            "A single, bulk investment made at one time rather than spreading it out over multiple smaller investments like an SIP.",
+            "If you receive a ₹1L bonus and invest it all today, that is a lumpsum investment. It carries timing risk.",
+            .portfolio)
+
+        add("Mutual Fund",
+            "A pool of money collected from many investors, managed by professionals to buy a diversified portfolio of stocks or bonds.",
+            "Instead of picking 30 stocks yourself, you can buy an Equity Mutual Fund where a fund manager does the research.",
+            .portfolio)
+
+        add("LTCG",
+            "Long Term Capital Gains — the profit made from selling an asset after holding it for longer than a specified period (typically 1 year for Indian equities).",
+            "LTCG on Indian stocks is currently taxed at a lower rate than short-term gains, encouraging long-term investing.",
+            .portfolio)
+
+        add("STCG",
+            "Short Term Capital Gains — the profit made from selling an asset held for a short period (typically less than 1 year).",
+            "If you buy a stock and sell it for a profit 3 months later, that profit is STCG and taxed at a higher rate.",
+            .portfolio)
+
+        add("NIFTY 50",
+            "The benchmark index of the National Stock Exchange (NSE) representing the top 50 largest and most liquid Indian companies.",
+            "When people say 'the market is up today', they usually mean the NIFTY 50 index went up.",
+            .macro)
+
+        add("SENSEX",
+            "The benchmark index of the Bombay Stock Exchange (BSE) representing 30 large, well-established companies.",
+            "SENSEX was India's first major stock index. Like NIFTY, it serves as a barometer of the Indian economy.",
+            .macro)
+
+        add("NSE",
+            "National Stock Exchange — the largest stock exchange in India by trading volume.",
+            "Most retail traders prefer NSE due to its high liquidity and volume.",
+            .marketMechanics)
+
+        add("BSE",
+            "Bombay Stock Exchange — Asia's oldest stock exchange, located in Mumbai.",
+            "Many older or smaller companies are only listed on the BSE, though the top companies are listed on both NSE and BSE.",
+            .marketMechanics)
+
         self.dict = d
+
     }
 
-    /// Look up a term case-insensitively. Returns nil if not found.
+    private func normalize(_ string: String) -> String {
+        return string.lowercased()
+            .components(separatedBy: .punctuationCharacters)
+            .joined()
+            .components(separatedBy: .whitespaces)
+            .joined()
+    }
+
+    /// Look up a term using fuzzy matching (ignoring punctuation and spacing). Returns nil if not found.
     func lookup(_ term: String) -> FinanceTerm? {
-        let key = term.lowercased().trimmingCharacters(in: .whitespaces)
-        return dict[key]
+        let searchKey = normalize(term)
+        
+        // 1. Exact normalized match
+        if let exact = dict.values.first(where: { normalize($0.term) == searchKey }) {
+            return exact
+        }
+        
+        // 2. Contains match (useful for acronyms)
+        if let partial = dict.values.first(where: { normalize($0.term).contains(searchKey) || searchKey.contains(normalize($0.term)) }) {
+            return partial
+        }
+        
+        return nil
     }
 
     func termsByCategory(_ category: TermCategory) -> [FinanceTerm] {
