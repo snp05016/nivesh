@@ -1438,4 +1438,22 @@ extension NetworkManager {
         }
         return try JSONDecoder().decode(YouTubeVideoSummaryResponse.self, from: data)
     }
+
+    // MARK: - Notifications Inbox
+
+    func fetchNotifications(limit: Int = 50) async throws -> [NotificationDTO] {
+        let endpoint = "/api/v1/notifications?limit=\(limit)"
+        return try await _fetchDecode([NotificationDTO].self, endpoint: endpoint)
+    }
+
+    func markNotificationRead(id: Int) async throws {
+        let endpoint = "/api/v1/notifications/\(id)/read"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else { throw NetworkError.invalidURL }
+        var req = authRequest(url)
+        req.httpMethod = "PUT"
+        let (_, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+    }
 }

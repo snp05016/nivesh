@@ -844,3 +844,37 @@ class YouTubeVideoSummary(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
     last_accessed_at        = Column(DateTime, nullable=True)
+
+
+class UserPreference(Base):
+    """User theme and notification preferences."""
+    __tablename__ = "user_preferences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    theme = Column(String(50), default="banknote_standard")
+    alerts_enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    user = relationship("User", backref="preferences")
+
+
+class InAppNotification(Base):
+    """In-app notification inbox for AI alerts, earnings, system messages."""
+    __tablename__ = "in_app_notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    type = Column(String(50), nullable=False)
+    title = Column(String(200), nullable=False)
+    body = Column(Text, nullable=False)
+    is_read = Column(Boolean, default=False)
+    action_url = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", backref="notifications")

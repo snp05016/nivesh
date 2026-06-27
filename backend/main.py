@@ -410,7 +410,7 @@ async def _global_exception_handler(_req: _FRequest, exc: Exception):
 # ---------------------------------------------------------------------------
 # Import and register routers
 # ---------------------------------------------------------------------------
-from routers import auth, portfolio, market, analysis, alerts, user, dashboard, notifications, brainstorming, strategy, copilot, anomalies, correlation, nl_screener, stress_test, sector_rotation, earnings_surprise, options_strategy, predictions, fundamentals, backtests, stock_financials
+from routers import auth, portfolio, market, analysis, alerts, user, dashboard, notifications, brainstorming, strategy, copilot, anomalies, correlation, nl_screener, stress_test, sector_rotation, earnings_surprise, options_strategy, predictions, fundamentals, backtests, stock_financials, preferences, notifications_inbox
 from routers import harvester as harvester_router
 from routers.health import router as health_router  # Task 56
 from routers import youtube_summary as youtube_summary_router
@@ -441,6 +441,8 @@ app.include_router(fundamentals.router)
 app.include_router(fundamentals.router_v1)
 app.include_router(backtests.router, prefix="/api/v1/backtests")
 app.include_router(stock_financials.router)
+app.include_router(preferences.router)
+app.include_router(notifications_inbox.router)
 app.include_router(youtube_summary_router.router)
 # ---------------------------------------------------------------------------
 # Static files — serve generated portfolio charts
