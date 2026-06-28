@@ -11,7 +11,7 @@ This skill inspects an app’s UI, finds weak or improvable interface elements, 
 
 The skill should use the project’s `docs/` directory as a primary source of truth.
 
-This skill is allowed to make UI implementation changes, but it must do so carefully, incrementally, and consistently with the existing app.
+This skill does NOT make UI implementation changes. It ONLY produces a comprehensive report of what should be changed. DO NOT implement fixes.
 
 ---
 
@@ -34,8 +34,7 @@ The skill should:
 * Improve spacing, typography, alignment, affordance, and feedback
 * Preserve the app’s existing brand and design language
 * Avoid random redesigns
-* Make focused, high-quality UI changes
-* Return a clear summary of what changed and why
+* Return a clear, prioritized summary of what should be changed and why
 
 ---
 
@@ -564,7 +563,7 @@ Only implement changes that survive skeptic review.
 
 ---
 
-# Five-Pass UI Improvement Method
+# Four-Pass UI Review Method
 
 The skill must follow this process.
 
@@ -650,7 +649,7 @@ For each improvement, propose:
 - Skeptic verdict:
 ```
 
-Do not implement vague redesigns.
+6. Return a concise UI/UX polish report outlining the recommended improvements.
 
 Prefer precise, layered improvements:
 
@@ -669,65 +668,9 @@ Prefer precise, layered improvements:
 
 ---
 
-## Pass 4: Implementation
+## Pass 4: Final Report
 
-Implement approved UI changes carefully.
-
-Rules:
-
-1. Make small, focused edits.
-2. Preserve existing architecture.
-3. Reuse existing components and design tokens.
-4. Do not invent a new design system.
-5. Do not rewrite screens from scratch unless absolutely necessary.
-6. Do not change backend behavior unless the user explicitly asks.
-7. Do not remove functionality.
-8. Do not hide important data just to make the UI cleaner.
-9. Do not introduce hardcoded magic spacing/colors if tokens exist.
-10. Do not add heavy dependencies without explicit approval.
-11. Prefer accessible native components.
-12. Keep performance in mind.
-13. Use docs/ as the design/product source of truth.
-14. Keep code readable and maintainable.
-
-When improving visuals, prioritize:
-
-* Consistent spacing
-* Clean grouping
-* Better hierarchy
-* Better contrast
-* Better skeleton/error/empty states
-* Better tap targets
-* More consistent cards and buttons
-* Clearer microcopy
-* Better visual rhythm
-* Platform-native polish
-
----
-
-## Pass 5: Verification and Report
-
-After implementation:
-
-Run relevant checks when available:
-
-```bash
-git diff --stat
-git diff
-npm test
-npm run lint
-npm run typecheck
-npm run build
-pytest
-swift test
-xcodebuild build
-```
-
-Only run commands that make sense for the project.
-
-If a command is expensive, unavailable, or fails due to unrelated existing issues, report that clearly.
-
-Return a concise final report.
+Return a concise final report of all identified issues and recommended changes using the exact format below. Do NOT write code to fix the issues.
 
 ---
 
@@ -752,9 +695,9 @@ List docs/ files and design-system files used.
 |---|---|---|
 | ... | ... | ... |
 
-## Changes Made
+## Recommended Changes
 
-| Area | Change | Principle Used | Why It Improves UX |
+| Area | Recommended Change | Principle Used | Why It Improves UX |
 |---|---|---|---|
 | ... | ... | ... | ... |
 
@@ -789,19 +732,13 @@ Explain how the changes improve:
 
 - ...
 
-## Before vs After
+## Expected Impact
 
-Describe before/after behavior.
+Describe expected before/after behavior once implemented.
 
-Do not claim visual improvements without evidence from code changes.
+## Files To Change
 
-## Files Changed
-
-List modified files.
-
-## Verification
-
-List checks run and results.
+List files that will need to be modified.
 
 ## Remaining UI Opportunities
 
@@ -818,7 +755,7 @@ Give one direct next action.
 
 The skill should also look for UI systems that would improve future development speed and quality across the app.
 
-Recommend or implement only when appropriate:
+Recommend only when appropriate:
 
 ## Design System
 
@@ -904,7 +841,22 @@ For each 10x improvement, include:
 11. Do not break platform conventions.
 12. Do not change backend logic unless explicitly asked.
 13. Do not claim a UX win unless the change maps to a principle.
-14. Do not ship changes without checking the diff.
+14. Do not write implementation code; only write the report.
 15. Do not ignore loading, empty, error, and partial-data states.
 16. If screenshots or previews are unavailable, say so.
 17. If docs/ are missing or weak, state that and infer cautiously from existing UI patterns.
+
+---
+
+# Final Behavior
+
+When `/ui-ux-polish` is invoked:
+
+1. Explore the UI directory.
+2. Read `docs/`.
+3. Identify the app’s design system and UI conventions.
+4. Audit screens/components using UI/UX psychology principles.
+5. Use the multi-agent council to reject bad redesigns.
+6. Return a concise UI/UX polish report outlining the recommended improvements.
+
+The result should make the app feel more polished, understandable, trustworthy, accessible, and production-grade without destroying the existing design language.
