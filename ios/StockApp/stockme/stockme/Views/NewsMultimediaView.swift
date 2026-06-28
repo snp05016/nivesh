@@ -6,8 +6,9 @@ struct NewsMultimediaView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var articles: [NewsArticleItem] = []
     @State private var videos: [YouTubeVideoItem] = []
-    @State private var expertTab: Int = 0  // 0=Fundamental, 1=F&O, 2=Commodity
+    @State private var expertTab: Int = 0
     @State private var isLoading = false
+    @State private var loadError: String?
 
     let expertTabs = ["Fundamental Calls", "F&O Calls & Analysis", "Commodity Calls"]
 
@@ -15,22 +16,45 @@ struct NewsMultimediaView: View {
         ZStack {
             Theme.canvas.ignoresSafeArea()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.sectionSpacing) {
-                    pageHeader
-                        .padding(.top, Theme.Spacing.standard)
-                    // 8.1 Horizontal Curated News Carousel
-                    newsCarousel
-                    // 8.2 Embedded Podcast Network
-                    podcastSection
-                    // 8.3 Behind-the-News Editorial
-                    editorialSection
-                    // 8.4 Expert Execution Panel (promoted above news feed)
-                    expertPanel
-                    // 8.5 Recent News — truncated with drill-down
-                    allNewsSection
+            if let error = loadError, articles.isEmpty, videos.isEmpty {
+                VStack(spacing: Theme.Spacing.standard) {
+                    Image(systemName: "wifi.slash")
+                        .font(.system(size: 40))
+                        .foregroundStyle(Theme.inkTertiary)
+                    Text("Could not load news")
+                        .font(Theme.engravedSerif(size: 16, weight: .semibold, relativeTo: .headline))
+                        .foregroundStyle(Theme.inkPrimary)
+                    Text(error)
+                        .font(Theme.engravedSerif(size: 13, relativeTo: .body))
+                        .foregroundStyle(Theme.inkSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, Theme.Spacing.xLarge)
+                    Button(action: { HapticManager.selection(); Task { await loadFeed() } }) {
+                        Text("RETRY")
+                            .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
+                            .tracking(1.5)
+                            .foregroundStyle(Theme.canvas)
+                            .padding(.horizontal, Theme.Spacing.large)
+                            .padding(.vertical, Theme.Spacing.standard)
+                            .background(Theme.securityGold)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(EKPressStyle())
                 }
-                .padding(.bottom, Theme.Spacing.xLarge)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Theme.sectionSpacing) {
+                        pageHeader
+                            .padding(.top, Theme.Spacing.standard)
+                        newsCarousel
+                        podcastSection
+                        editorialSection
+                        expertPanel
+                        allNewsSection
+                    }
+                    .padding(.bottom, Theme.Spacing.xLarge)
+                }
             }
         }
         .task { await loadFeed() }
@@ -274,23 +298,14 @@ struct NewsMultimediaView: View {
 
     private func loadFeed() async {
         isLoading = true
-        let userId = authManager.currentUser?.userId ?? 0
-        guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/home-feed?user_id=\(userId)") else {
-            isLoading = false
-            return
-        }
-        var req = URLRequest(url: url)
-        req.httpMethod = "GET"
-        req.timeoutInterval = 20
-        if let token = authManager.currentUser?.token {
-            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
-        if let (data, resp) = try? await URLSession.shared.data(for: req),
-           let http = resp as? HTTPURLResponse, http.statusCode == 200,
-           let feed = try? JSONDecoder().decode(HomeFeedResponse.self, from: data) {
+        loadError = nil
+        do {
+            let userId = authManager.currentUser?.userId ?? 0
+            let feed = try await NetworkManager.shared.fetchHomeFeed(userId: userId)
             articles = feed.news
             videos = feed.youtubeVideos
+        } catch {
+            loadError = error.localizedDescription
         }
         isLoading = false
     }

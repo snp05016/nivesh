@@ -978,6 +978,13 @@ class NetworkManager: ObservableObject {
         catch { throw NetworkError.decodingError(error.localizedDescription) }
     }
 
+    // MARK: - Home Feed
+
+    func fetchHomeFeed(userId: Int) async throws -> HomeFeedResponse {
+        let endpoint = "/api/v1/home-feed?user_id=\(userId)"
+        return try await _fetchDecode(HomeFeedResponse.self, endpoint: endpoint)
+    }
+
     func fetchDailyAction(userId: Int) async -> DailyActionResponse? {
         guard let url = URL(string: "\(baseURL)/daily-action/\(userId)") else { return nil }
         var req = authRequest(url)
