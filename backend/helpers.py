@@ -226,6 +226,9 @@ class PortfolioAddRequest(BaseModel):
     shares: float = Field(..., description="Number of shares bought")
     buy_price: float = Field(..., description="Average buy price per share")
     group_name: str = Field("holdings", description="Portfolio group/bucket")
+    target_price: Optional[float] = Field(None, description="Target price for the holding")
+    purchase_date: Optional[str] = Field(None, description="Date of purchase")
+    is_virtual: bool = Field(False, description="True if this is a paper/virtual trade")
 
 class PortfolioRemoveRequest(BaseModel):
     user_id: int = Field(..., description="ID of the user")

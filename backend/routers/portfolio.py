@@ -255,7 +255,7 @@ def portfolio_signal_warnings(user_id: int, authorization: str = Header(None)):
 # 1. GET /portfolio/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/{user_id}")
-async def portfolio_endpoint(user_id: int, authorization: str = Header(None)):
+async def portfolio_endpoint(user_id: int, authorization: str = Header(None), is_virtual: bool = False):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
     if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -268,6 +268,7 @@ async def portfolio_endpoint(user_id: int, authorization: str = Header(None)):
             holdings = session.query(Portfolio).filter(
                 Portfolio.user_id == user_id,
                 Portfolio.group_name != "watchlist",
+                Portfolio.is_virtual == is_virtual,
             ).all()
             if not holdings:
                 return {"user": user.display_name, "holdings": [], "total_invested": 0, "total_current": 0, "total_pnl": 0}
@@ -680,6 +681,7 @@ def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header
                 group_name="holdings",
                 target_price=req.target_price,
                 purchase_date=req.purchase_date,
+                is_virtual=req.is_virtual,
             )
             session.add(new_holding)
             session.commit()

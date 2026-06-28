@@ -55,6 +55,7 @@ class Portfolio(Base):
     purchase_date = Column(String, nullable=True)
     group_name    = Column(String(50), default="watchlist")
     notes         = Column(Text, default="")
+    is_virtual    = Column(Boolean, default=False, nullable=False, server_default="0")
     created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="portfolio")
@@ -188,12 +189,49 @@ class TradeJournal(Base):
     company_name   = Column(String(200), nullable=True)   # added — run migrate_trade_journal.py
     mood           = Column(String(30), nullable=True)    # added — run migrate_trade_journal.py
     updated_at     = Column(DateTime, nullable=True)      # added — run migrate_trade_journal.py
+    is_virtual     = Column(Boolean, default=False, nullable=False, server_default="0")
     created_at     = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="trade_journal")
 
     __table_args__ = (
         Index("ix_trade_journal_user_id", "user_id"),
+    )
+
+
+class DividendLedger(Base):
+    """Tracks dividend income per ticker for tax-loss harvesting and income reporting."""
+    __tablename__ = "dividend_ledger"
+
+    id           = Column(Integer, primary_key=True, autoincrement=True)
+    user_id      = Column(Integer, ForeignKey("users.id"), nullable=False)
+    portfolio_id = Column(Integer, ForeignKey("portfolios.id"), nullable=True)
+    ticker       = Column(String(30), nullable=False)
+    amount       = Column(Float, nullable=False)
+    ex_date      = Column(String(20), nullable=True)
+    payment_date = Column(String(20), nullable=True)
+    created_at   = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_dividend_ledger_user_ticker", "user_id", "ticker"),
+    )
+
+
+class TaxReport(Base):
+    """Annual tax-loss harvesting snapshot per user, per financial year."""
+    __tablename__ = "tax_reports"
+
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    user_id    = Column(Integer, ForeignKey("users.id"), nullable=False)
+    fy_year    = Column(String(20), nullable=False)
+    stcg       = Column(Float, default=0.0)
+    ltcg       = Column(Float, default=0.0)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
+                         onupdate=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "fy_year", name="uq_tax_report_user_fy"),
     )
 
 

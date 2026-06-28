@@ -1,6 +1,6 @@
 from helpers import (
     get_session, verify_access_token, EXCHANGE_SUFFIX, _resolve_ticker,
-    _to_ns, _yf_price, _yf_fetch_info, _dcache_get, _dcache_set,
+    _to_ns, _yf_price, _dcache_get, _dcache_set,
     _quick_info_cache, _QUICK_INFO_TTL, DataHarvestingError,
     EarningsSyncRatioResponse, YoYAggregateResponse, require_auth,
     InstitutionalLeaderboardResponse, NetWorthSnapshotResponse,
@@ -9,6 +9,11 @@ from helpers import (
     EarningsErrorLog, log_earnings_error,
     AdvisorBiography, TextAdvisoryInsight, IdeasErrorLog, log_ideas_error,
     _check_rate_limit, _get_indices_data, _get_asm_gsm_lists, _nse_session
+)
+
+from services.market_service import (
+    _get_quarterly_fin, _yf_fetch_info, _fmt_inr_crores,
+    _safe_float, _earnings_result_from_row, _scan_upcoming_earnings,
 )
 
 import json
@@ -237,33 +242,6 @@ def fii_dii_flow_endpoint(
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
-
-def _get_quarterly_fin(full_ticker: str):
-    """Fetch quarterly financials with retry, falling back to .BO if .NS returns empty."""
-    import time
-    import random
-
-    def _fetch(sym: str):
-        _t = None
-        _fin = None
-        for attempt in range(3):
-            try:
-                _t = yf.Ticker(sym)
-                _fin = _t.quarterly_financials
-                if _fin is not None and not _fin.empty:
-                    return _t, _fin
-            except Exception as e:
-                logging.info(f"[YF] Quarterly fin attempt {attempt+1} failed for {sym}: {e}")
-                if attempt < 2:
-                    time.sleep((1.5 * (2 ** attempt)) + (random.random() * 0.5))
-        return _t, _fin
-
-    t, fin = _fetch(full_ticker)
-    if (fin is None or fin.empty) and full_ticker.endswith(".NS"):
-        alt = full_ticker[:-3] + ".BO"
-        logging.info(f"[QF FALLBACK] No data for {full_ticker}, trying {alt}")
-        t, fin = _fetch(alt)
-    return t, fin
 
 
 @router.get("/quarterly-financials")
@@ -1273,27 +1251,6 @@ def stock_history_endpoint(ticker: str, exchange: str = "NSE", period: str = "1y
 # Stock Profile — unified endpoint for iOS StockProfileView
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def _yf_fetch_info(full_ticker: str) -> dict:
-    """Fetch yfinance Ticker.info with 3 retries. Returns empty dict on failure."""
-    import time as _time
-    import random as _random
-    for attempt in range(3):
-        try:
-            t = yf.Ticker(full_ticker)
-            info = t.info
-            if info and (info.get("currentPrice") or info.get("regularMarketPrice")):
-                return info
-        except Exception as e:
-            if attempt < 2:
-                _time.sleep((1.5 * (2 ** attempt)) + (_random.random() * 0.5))
-    try:
-        t = yf.Ticker(full_ticker)
-        return t.info or {}
-    except Exception as e:
-        import logging
-        logging.warning(f"Caught exception: {e}")
-        return {}
-
 @router.get("/api/v1/stock-profile")
 def stock_profile_endpoint(ticker: str, exchange: str = "NSE"):
     """
@@ -2031,23 +1988,6 @@ def _build_cap_index_grid() -> list[dict]:
     return results
 
 
-def _fmt_inr_crores(value: float) -> str:
-    """Format a raw INR float into Indian Crores string. E.g. 1.25e11 → '₹12,500.00 Cr'"""
-    import math
-    if not value or math.isnan(value) or math.isinf(value):
-        return "₹0"
-    cr = value / 1e7  # 1 Crore = 10^7
-    if cr >= 10000:
-        return f"₹{cr:,.0f} Cr"
-    elif cr >= 100:
-        return f"₹{cr:,.1f} Cr"
-    elif cr >= 1:
-        return f"₹{cr:,.2f} Cr"
-    else:
-        lakhs = value / 1e5
-        return f"₹{lakhs:,.2f} L"
-
-
 # ── /api/v1/admin/error-logs ──────────────────────────────────────────────────
 
 @router.get("/api/v1/admin/error-logs")
@@ -2137,50 +2077,6 @@ Raises 503 on DataHarvestingError.
 # Earnings Intelligence Endpoints  (/api/v1/earnings/*)
 # iOS EarningsDashboardView tabs: Progress | Calendar | Feed | Screeners | Variance | Post-Result
 # ─────────────────────────────────────────────────────────────────────────────
-
-def _safe_float(v, default: float = 0.0) -> float:
-    """Return float, replacing NaN/Inf with default."""
-    import math
-    try:
-        f = float(v)
-        return default if (math.isnan(f) or math.isinf(f)) else f
-    except Exception as e:
-        import logging
-        logging.warning(f"Caught exception: {e}")
-        return default
-
-def _earnings_result_from_row(r, now_iso: str) -> dict:
-    """Build an EarningsResult dict from an AnalysisHistory row."""
-    try:
-        fj = json.loads(r.full_json or "{}")
-    except Exception as e:
-        import logging
-        logging.warning(f"Caught exception: {e}")
-        fj = {}
-    fs = fj.get("fundamentals_snapshot", {})
-    revenue = _safe_float(fs.get("revenue_crores") or fs.get("revenue"))
-    net_profit = _safe_float(fs.get("net_profit_crores") or fs.get("net_profit"))
-    eps_val = fs.get("eps")
-    return {
-        "ticker": r.ticker,
-        "company_name": fj.get("company_name") or r.ticker,
-        "quarter": fj.get("quarter") or "Q4FY26",
-        "result_date": r.analysis_date or now_iso[:10],
-        "market_cap": "large_cap",
-        "revenue": revenue,
-        "revenue_prev": round(revenue * 0.85, 2),
-        "net_profit": net_profit,
-        "net_profit_prev": round(net_profit * 0.80, 2),
-        "gross_profit": None,
-        "gross_profit_prev": None,
-        "eps": _safe_float(eps_val) if eps_val is not None else None,
-        "eps_prev": None,
-        "ltp": 0.0,
-        "change_percent": 0.0,
-        "is_consolidated": True,
-        "reported_at": r.created_at.isoformat() if r.created_at else None,
-    }
-
 
 @router.get("/api/v1/earnings/progress")
 async def earnings_progress_endpoint():
@@ -2557,55 +2453,6 @@ Each result includes:
         log_earnings_error("earnings_calendar", str(e))
         return {"date": target_date, "results": [], "count": 0,
                 "error": str(e), "fetched_at": now_iso}
-
-
-def _scan_upcoming_earnings(target_date: str) -> list[dict]:
-    """Scan yfinance for tickers with earnings on or near target_date. Returns up to 10."""
-    import yfinance as yf
-    scan_tickers = ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "SBIN",
-                    "BAJFINANCE", "LT", "AXISBANK", "WIPRO", "SUNPHARMA", "TITAN",
-                    "MARUTI", "KOTAKBANK", "ITC", "HINDUNILVR", "BHARTIARTL"]
-    results = []
-    for ticker in scan_tickers:
-        try:
-            ns = _to_ns(ticker)
-            t = yf.Ticker(ns)
-            cal = t.calendar
-            if isinstance(cal, dict) and "Earnings Date" in cal:
-                dates = cal["Earnings Date"]
-                if isinstance(dates, list):
-                    for d in dates:
-                        try:
-                            ed = d.date() if hasattr(d, "date") else d
-                            if abs((ed - datetime.strptime(target_date, "%Y-%m-%d").date()).days) <= 3:
-                                info = t.info
-                                results.append({
-                                    "ticker": ticker,
-                                    "company_name": info.get("longName") or ticker,
-                                    "quarter": "Upcoming",
-                                    "result_date": ed.strftime("%Y-%m-%d"),
-                                    "market_cap": "large_cap",
-                                    "revenue": 0, "revenue_prev": 0,
-                                    "net_profit": 0, "net_profit_prev": 0,
-                                    "eps": info.get("trailingEps"), "eps_prev": None,
-                                    "ltp": info.get("regularMarketPrice") or 0,
-                                    "change_percent": 0,
-                                    "is_consolidated": True,
-                                    "sparkline": [],
-                                    "price_change_7d_pct": None,
-                                    "reported_at": None,
-                                })
-                                break
-                        except Exception as e:
-                            import logging
-                            logging.warning(f"Swallowed exception: {e}")
-            if len(results) >= 10:
-                break
-        except Exception as e:
-            import logging
-            logging.warning(f"Caught exception: {e}")
-            continue
-    return results
 
 
 @router.get("/api/v1/earnings/estimates")
