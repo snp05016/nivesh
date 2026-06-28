@@ -205,7 +205,7 @@ class DividendLedger(Base):
 
     id           = Column(Integer, primary_key=True, autoincrement=True)
     user_id      = Column(Integer, ForeignKey("users.id"), nullable=False)
-    portfolio_id = Column(Integer, ForeignKey("portfolios.id"), nullable=True)
+    portfolio_id = Column(Integer, nullable=True)  # FK to portfolios removed until table exists
     ticker       = Column(String(30), nullable=False)
     amount       = Column(Float, nullable=False)
     ex_date      = Column(String(20), nullable=True)
