@@ -67,8 +67,8 @@ google-api-python-client>=2.140.0
 faster-whisper>=1.0.3
 rapidfuzz>=3.6.1
 
-# Ensemble Signal Layer
-pkscreener; python_version < '3.13'
+# Ensemble Signal Layer (pkscreener is a CLI tool, installed separately via pip)
+# pkscreener; python_version < '3.13'
 transformers>=4.40.0
 torch>=2.2.0
 matplotlib>=3.7.0
