@@ -334,7 +334,11 @@ This workflow governs every agent and every change. Use GitHub Issues and pull r
 > **The root repository directory is SHARED.** Multiple agents (Claude Code, OpenCode, Antigravity)
 > may run simultaneously. `git checkout` mutates the shared `.git/HEAD` and breaks every other
 > agent that is mid-edit. **Never run `git checkout` or `git switch` in the root repo directory.**
-> **Never create new branches.** You must use detached worktrees and merge directly into `main` after user approval.
+> **Never create new branches unless the user explicitly requests it** (e.g., "make a new branch",
+> "create a branch", "work on a branch"). In that case, create the branch and follow all existing
+> workflow rules in this document.
+> 
+> **Default for all work: use detached worktrees and merge directly into `main` after user approval.**
 
 ##### Mandatory protocol — start of every task
 
