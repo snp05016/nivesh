@@ -19,6 +19,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    if 'youtube_video_summaries' in inspector.get_table_names():
+        return
+
     """Create youtube_video_summaries table."""
     op.create_table(
         "youtube_video_summaries",

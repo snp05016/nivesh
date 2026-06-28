@@ -19,6 +19,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing = inspector.get_table_names()
+    if 'user_preferences' in existing and 'in_app_notifications' in existing:
+        return
+
     op.create_table(
         "user_preferences",
         sa.Column("id", sa.Integer(), primary_key=True, index=True),
