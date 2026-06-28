@@ -7,30 +7,13 @@ AGENTS.md §5.1: Indian numbering system (Lakhs/Crores) for all currency output.
 
 from typing import List, Tuple, Dict, Optional
 import math
+from helpers import format_indian_currency
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 NUM_PRICE_POINTS = 100           # resolution of payoff curve
 PRICE_RANGE_PCT = 0.20           # ±20% around spot
-
-
-def _format_indian(value: float) -> str:
-    """Format a numeric INR value using the Indian numbering system (Lakhs/Crores)."""
-    negative = value < 0
-    abs_val = abs(value)
-
-    LAKH = 1_00_000
-    CRORE = 1_00_00_000
-
-    if abs_val >= CRORE:
-        formatted = f"₹{abs_val / CRORE:,.2f} Crores"
-    elif abs_val >= LAKH:
-        formatted = f"₹{abs_val / LAKH:,.2f} Lakhs"
-    else:
-        formatted = f"₹{abs_val:,.0f}"
-
-    return f"-{formatted}" if negative else formatted
 
 
 # ---------------------------------------------------------------------------

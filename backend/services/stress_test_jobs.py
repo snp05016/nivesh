@@ -272,6 +272,13 @@ def run_stress_test_job(
     except Exception:
         pass
 
+    # Dispose parent's connection pool — child process must not share parent DB file descriptors
+    try:
+        from database import ENGINE
+        ENGINE.dispose()
+    except Exception:
+        pass
+
     from services.stress_test import run_stress_test
 
     holdings = [SimpleNamespace(**payload) for payload in holdings_payload]

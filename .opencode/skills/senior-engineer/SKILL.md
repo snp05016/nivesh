@@ -1,6 +1,8 @@
 ---
 name: senior-engineer
-description: Production-grade senior engineer for Nivesh repo. Handles features, bugs, issues, refactors, tests, deploy, and investigation. Routes to correct workflow based on task type. Uses subskills (/nivesh-deploy, /gh-issue-fixer, /superpowers) when appropriate.
+description: "ONLY activates when user explicitly says /senior-engineer. Handles features, bugs, issues, refactors, tests, deploy, and investigation for Nivesh repo."
+trigger: manual
+keyword: /senior-engineer
 ---
 
 # Senior Engineer — Nivesh
