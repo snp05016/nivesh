@@ -54,7 +54,7 @@ cd "${REPO_DIR}"
 set +o errexit
 ${OPENCODE_BIN} run --dangerously-skip-permissions "# GitHub Issue Scanner (Research-Grade Multi-Agent Council)
 
-Your task is to perform a **research-grade audit** of the entire codebase using the **`gh-issue-scanner`** skill.
+Your task is to perform a **research-grade audit** of the entire codebase using the **\`gh-issue-scanner\`** skill.
 
 The objective is **not** to maximize the number of GitHub issues. The objective is to maximize the **accuracy and usefulness** of the issues created.
 
@@ -249,7 +249,7 @@ Quality is vastly more important than quantity.
 
 # GitHub Issue Creation
 
-For every accepted issue, use the **GitHub CLI (`gh`)** to create a GitHub issue.
+For every accepted issue, use the **GitHub CLI (\`gh\`)** to create a GitHub issue.
 
 Do **not** generate markdown files.
 
