@@ -461,7 +461,7 @@ Score the repository from **0–10** based on:
 * documentation
 
 Then provide a concise explanation of the score and identify the highest-impact engineering investments for improving it.
-" >> "${LOGFILE}" 2>&1
+" < /dev/null >> "${LOGFILE}" 2>&1
 SCANNER_EXIT=$?
 set -o errexit
 
