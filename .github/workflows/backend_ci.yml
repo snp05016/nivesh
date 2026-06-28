@@ -41,6 +41,5 @@ jobs:
     - name: Check Alembic migrations
       working-directory: backend
       run: |
-        # In a real CI, we might need a test DB, but sqlite is used by default
-        alembic upgrade head || echo "Alembic upgrade failed"
-        alembic check || echo "Alembic check failed"
+        alembic upgrade head
+        alembic check
