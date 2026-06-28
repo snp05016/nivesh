@@ -87,3 +87,10 @@ build/
 # Temp files
 .fuse_hidden*
 scratch_*.py
+
+# Images
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.svg
