@@ -30,7 +30,7 @@ from helpers import (
     _check_rate_limit, _get_analyze_semaphore, _acquire_analysis_slot, _release_analysis_slot,
     _dash_start_job, _dash_end_job, _dash_update_harvest,
     _extract_json_from_text, _log_token_usage,
-    require_auth,
+    require_auth, format_indian_currency,
 )
 
 import importlib.util as _importlib_util
@@ -53,67 +53,27 @@ from services.piotroski import compute_piotroski
 from services.llm_utils import contains_devanagari
 
 
-def _adjust_for_splits(ticker: str, buy_price: float, quantity: float, buy_date: str) -> tuple:
-    """Fix 2.44: Adjust historical buy_price and quantity for corporate splits.
-    Uses yfinance split history. Returns (adjusted_buy_price, adjusted_quantity, split_ratio)."""
-    import yfinance as yf
-    from datetime import datetime as _dt
-    try:
-        t = yf.Ticker(f"{ticker}.NS" if not ticker.endswith((".NS", ".BO")) else ticker)
-        splits = t.splits
-        if splits is None or len(splits) == 0:
-            return buy_price, quantity, 1.0
-        buy_dt = _dt.strptime(buy_date[:10], "%Y-%m-%d")
-        cumulative_ratio = 1.0
-        for split_date, ratio in splits.items():
-            if split_date > buy_dt:
-                cumulative_ratio *= ratio
-        if cumulative_ratio != 1.0:
-            return buy_price / cumulative_ratio, quantity * cumulative_ratio, cumulative_ratio
-        return buy_price, quantity, 1.0
-    except Exception as e:
-        import logging
-        logging.warning(f"Caught exception: {e}")
-        return buy_price, quantity, 1.0
-
-def _adjust_for_bonus(ticker: str, buy_price: float, quantity: float, buy_date: str) -> tuple:
-    """Adjust historical buy_price and quantity for corporate bonus issues.
-    Uses yfinance actions DataFrame (Dividends & Stock Splits)."""
-    import yfinance as yf
-    import pandas as pd
-    try:
-        t = yf.Ticker(f"{ticker}.NS" if not ticker.endswith((".NS", ".BO")) else ticker)
-        actions = t.actions
-        if actions is None or actions.empty or "Stock Splits" not in actions.columns:
-            return buy_price, quantity, 1.0
-        
-        buy_dt = pd.to_datetime(buy_date[:10]).tz_localize(None)
-        cumulative_ratio = 1.0
-        
-        for action_date, row in actions.iterrows():
-            dt = action_date
-            if hasattr(dt, "tz_localize") and dt.tzinfo is not None:
-                dt = dt.tz_localize(None)
-            if dt > buy_dt:
-                split = float(row.get("Stock Splits", 0.0))
-                if split > 0:
-                    cumulative_ratio *= split
-        
-        if cumulative_ratio != 1.0:
-            return buy_price / cumulative_ratio, quantity * cumulative_ratio, cumulative_ratio
-        return buy_price, quantity, 1.0
-    except Exception as e:
-        import logging
-        logging.warning(f"Caught exception: {e}")
-        return buy_price, quantity, 1.0
-
-def _apply_corporate_actions(ticker: str, buy_price: float, quantity: float, buy_date: str) -> tuple:
-    """Adjustment pipeline that applies both splits and bonus issues."""
-    bp1, q1, _ = _adjust_for_splits(ticker, buy_price, quantity, buy_date)
-    bp2, q2, _ = _adjust_for_bonus(ticker, bp1, q1, buy_date)
-    return bp2, q2, (quantity / q2) if q2 > 0 else 1.0
+# _adjust_for_splits, _adjust_for_bonus, _apply_corporate_actions
+# imported from services.portfolio_service
 
 from services.llm_utils import deepseek_chat as _deepseek_chat
+from services.portfolio_service import (
+    _adjust_for_splits,
+    _adjust_for_bonus,
+    _apply_corporate_actions,
+    _get_indices_data,
+    _nse_session,
+    _get_asm_gsm_lists,
+    _risk_label,
+    compute_sip,
+    get_stress_sector,
+    compute_stress_test_results,
+    compute_pearson_correlation,
+    compute_trade_journal_stats,
+    compute_holding_pnl,
+    STRESS_TEST_SCENARIOS,
+    _INDICES_TICKERS,
+)
 
 
 from pydantic import BaseModel as _BaseModel
@@ -132,83 +92,7 @@ class NetWorthSnapshotResponse(_BaseModel):
     top_loser_pct: _Optional[float]
 
 
-_INDICES_TICKERS = [
-    ("^NSEI",      "Nifty 50"),
-    ("^BSESN",     "Sensex"),
-    ("^NSEBANK",   "Nifty Bank"),
-    ("^CNXIT",     "Nifty IT"),
-    ("^NSEMDCP50",  "Nifty Midcap 100"),
-    ("USDINR=X",   "USD/INR"),
-]
-
-_indices_cache: dict = {"data": None, "ts": 0}
-
-# Fixes #131: use centralized config instead of hardcoded value
-from config.settings import INDICES_CACHE_TTL as _INDICES_CACHE_TTL
-
-
-def _get_indices_data() -> dict:
-    """Fetch and cache market indices data via Redis (shared across all workers)."""
-    # ── Redis-backed: check cache first ──
-    cached = _dcache_get("indices", "all")
-    if cached is not None:
-        return cached
-
-    now = time.time()
-    result = []
-    for ticker, name in _INDICES_TICKERS:
-        try:
-            current = None
-            prev_close = None
-            for attempt in range(3):
-                try:
-                    t = yf.Ticker(ticker)
-                    info = t.fast_info
-                    current = getattr(info, "last_price", None)
-                    prev_close = getattr(info, "previous_close", None)
-
-                    if current is None or prev_close is None or math.isnan(current):
-                        # Fallback 1: Standard info
-                        full_info = t.info
-                        current = full_info.get("currentPrice") or full_info.get("regularMarketPrice")
-                        prev_close = full_info.get("previousClose") or full_info.get("regularMarketPreviousClose")
-
-                    if current is None or math.isnan(current):
-                        # Fallback 2: History (Reliable for indices)
-                        hist = t.history(period="5d")
-                        if not hist.empty and len(hist) >= 2:
-                            current = float(hist["Close"].iloc[-1])
-                            prev_close = float(hist["Close"].iloc[-2])
-
-                    if current is not None and not math.isnan(current):
-                        break
-                except Exception as e:
-                    logging.info(f"[YF] Indices attempt {attempt+1} failed for {ticker}: {e}")
-                    if attempt < 2:
-                        time.sleep((1.0 * (2 ** attempt)) + (random.random() * 0.2))
-
-            if current is None or math.isnan(current):
-                continue
-
-            change_abs = round(current - (prev_close or 0), 4)
-            change_pct = round((change_abs / prev_close) * 100, 4) if prev_close else 0.0
-            result.append({
-                "name": name,
-                "ticker": ticker,
-                "value": round(float(current), 4),
-                "change_pct": change_pct,
-                "change_abs": change_abs,
-            })
-        except Exception as e:
-            logging.info(f"[indices] Skipping {ticker}: {e}")
-            continue
-
-    payload = {
-        "indices": result,
-        "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
-    }
-    _dcache_set("indices", "all", payload, ttl=_INDICES_CACHE_TTL)
-    return payload
+# _INDICES_TICKERS, _get_indices_data imported from services.portfolio_service
 
 
 router = APIRouter(tags=["Portfolio"])
@@ -222,40 +106,13 @@ class SIPCalculatorRequest(_BaseModel):
 
 @router.post("/portfolio/sip-calculator")
 def sip_calculator(req: SIPCalculatorRequest):
-    monthly_rate = req.expected_return_pct / 100.0 / 12.0
-    months = req.years * 12
-    
-    total_invested = 0.0
-    current_corpus = 0.0
-    current_sip = req.monthly_amount
-    
-    yearly_projections = []
-    
-    for month in range(1, months + 1):
-        total_invested += current_sip
-        current_corpus = (current_corpus + current_sip) * (1 + monthly_rate)
-        
-        if month % 12 == 0:
-            year = month // 12
-            yearly_projections.append({
-                "year": year,
-                "invested_lakhs": round(total_invested / 100000.0, 2),
-                "corpus_lakhs": round(current_corpus / 100000.0, 2),
-                "gain_lakhs": round((current_corpus - total_invested) / 100000.0, 2)
-            })
-            current_sip = current_sip * (1 + req.step_up_pct / 100.0)
-            
-    summary = {
-        "total_invested_lakhs": round(total_invested / 100000.0, 2),
-        "total_corpus_lakhs": round(current_corpus / 100000.0, 2),
-        "total_gain_lakhs": round((current_corpus - total_invested) / 100000.0, 2)
-    }
-    
-    return {
-        "inputs": req.dict(),
-        "summary": summary,
-        "yearly_projections": yearly_projections
-    }
+    result = compute_sip(
+        monthly_amount=req.monthly_amount,
+        expected_return_pct=req.expected_return_pct,
+        years=req.years,
+        step_up_pct=req.step_up_pct,
+    )
+    return {"inputs": req.dict(), **result}
 
 # ── Item 44: Portfolio vs Nifty CAGR ──────────────────────────────────
 @router.get("/portfolio/benchmark")
@@ -341,89 +198,26 @@ def portfolio_stress_test(user_id: int, authorization: str = Header(None)):
         
     if not holdings:
         return []
-        
-    def get_sector(company_name: str) -> str:
-        if not company_name: return 'Other'
-        name = company_name.lower()
-        if any(x in name for x in ['infosys', 'tcs', 'wipro', 'tech', 'software', 'hcl']): return 'IT'
-        if any(x in name for x in ['bank', 'hdfc', 'icici', 'kotak', 'sbi']): return 'Banking'
-        if any(x in name for x in ['fmcg', 'itc', 'nestle', 'brit', 'hindustan unilever', 'hul']): return 'FMCG'
-        if any(x in name for x in ['auto', 'tata motors', 'maruti', 'mahindra', 'bajaj auto']): return 'Auto'
-        if any(x in name for x in ['pharma', 'sun', 'cipla', 'dr reddy', 'lupin']): return 'Pharma'
-        if any(x in name for x in ['oil', 'gas', 'ongc', 'reliance', 'bpcl']): return 'Oil/Gas'
-        if any(x in name for x in ['air', 'aviation', 'indigo']): return 'Aviation'
-        if any(x in name for x in ['paint', 'asian', 'berger']): return 'Paints'
-        if any(x in name for x in ['tyre', 'mrf', 'apolo']): return 'Tyres'
-        return 'Other'
 
-    scenarios = [
-        {
-            "name": "Nifty -20% Correction",
-            "desc": "Market crash scenario",
-            "logic": lambda sector: -20.0 * {"IT": 1.2, "Banking": 1.4, "FMCG": 0.6, "Auto": 1.1, "Pharma": 0.7}.get(sector, 1.0)
-        },
-        {
-            "name": "INR Depreciates 10% vs USD",
-            "desc": "Weak rupee scenario",
-            "logic": lambda sector: +5.0 if sector in ["IT", "Pharma"] else (-8.0 if sector == "Oil/Gas" else -1.0)
-        },
-        {
-            "name": "Crude Oil Spikes to $120/bbl",
-            "desc": "Energy shock scenario",
-            "logic": lambda sector: -15.0 if sector in ["Aviation", "Paints", "Tyres"] else (+8.0 if sector == "Oil/Gas" else -2.0)
-        }
-    ]
-    
-    total_portfolio_value = 0.0
     holding_data = []
-    
     for h in holdings:
         try:
             t = yf.Ticker(h.ticker)
             cp = getattr(t.fast_info, "last_price", h.buy_price)
-            if math.isnan(cp): cp = h.buy_price
+            if math.isnan(cp):
+                cp = h.buy_price
         except Exception as e:
-            import logging
             logging.warning(f"Caught exception: {e}")
             cp = h.buy_price
-            
+
         val = cp * h.shares
-        total_portfolio_value += val
         holding_data.append({
             "ticker": h.ticker,
-            "sector": get_sector(h.company_name),
-            "value": val
+            "sector": get_stress_sector(h.company_name),
+            "value": val,
         })
 
-    results = []
-    for scen in scenarios:
-        total_impact_inr = 0.0
-        most_exposed = None
-        max_impact_pct = 0.0
-        
-        for hd in holding_data:
-            impact_pct = scen["logic"](hd["sector"])
-            impact_inr = hd["value"] * (impact_pct / 100.0)
-            total_impact_inr += impact_inr
-            
-            if abs(impact_pct) > abs(max_impact_pct):
-                max_impact_pct = impact_pct
-                most_exposed = hd["ticker"]
-                
-        portfolio_impact_pct = (total_impact_inr / total_portfolio_value * 100) if total_portfolio_value > 0 else 0
-        
-        results.append({
-            "scenario_name": scen["name"],
-            "scenario_description": scen["desc"],
-            "estimated_portfolio_impact_pct": round(portfolio_impact_pct, 2),
-            "estimated_pnl_impact_inr": round(total_impact_inr, 2),
-            "most_exposed_holding": {
-                "ticker": most_exposed,
-                "estimated_impact_pct": round(max_impact_pct, 2)
-            }
-        })
-        
-    return results
+    return compute_stress_test_results(holding_data)
 
 # ---------------------------------------------------------------------------
 # Local caches & helpers needed by endpoints
@@ -431,71 +225,7 @@ def portfolio_stress_test(user_id: int, authorization: str = Header(None)):
 from config.settings import MORNING_BRIEF_TTL as _MORNING_CACHE_TTL
 _MACRO_IMPACT_TTL = 7200  # 2 hours
 
-from config.settings import ASM_GSM_CACHE_TTL as _ASM_GSM_CACHE_TTL  # Fixes #131: use config
-
-
-def _nse_session():
-    """Bootstrap a session with NSE cookies."""
-    import requests
-    s = requests.Session()
-    s.headers.update({
-        "User-Agent": get_user_agent(),
-        "Accept": "application/json, text/plain, */*",
-        "Referer": "https://www.nseindia.com/",
-    })
-    try:
-        s.get("https://www.nseindia.com", timeout=8)
-    except Exception: pass
-    return s
-
-
-def _get_asm_gsm_lists():
-    """Fetch and cache ASM/GSM lists from NSE (Redis-backed, shared across workers)."""
-    # Check Redis cache first
-    cached = _dcache_get("asm_gsm", "lists")
-    if cached is not None:
-        return cached
-
-    logging.info("[NSE] Refreshing ASM/GSM lists...")
-    data = {"ASM": set(), "GSM": set()}
-    try:
-        session = _nse_session()
-        # ASM Long Term
-        resp = session.get("https://www.nseindia.com/api/surveillance-asm-list?index=longTerm", timeout=10)
-        if resp.status_code == 200:
-            for item in resp.json().get("data", []):
-                sym = item.get("symbol")
-                if sym: data["ASM"].add(sym.upper())
-
-        # ASM Short Term
-        resp = session.get("https://www.nseindia.com/api/surveillance-asm-list?index=shortTerm", timeout=10)
-        if resp.status_code == 200:
-            for item in resp.json().get("data", []):
-                sym = item.get("symbol")
-                if sym: data["ASM"].add(sym.upper())
-
-        # GSM
-        resp = session.get("https://www.nseindia.com/api/surveillance-gsm-list", timeout=10)
-        if resp.status_code == 200:
-            for item in resp.json().get("data", []):
-                sym = item.get("symbol")
-                if sym: data["GSM"].add(sym.upper())
-
-        # Convert sets to sorted lists for JSON serialization
-        redis_data = {"ASM": sorted(data["ASM"]), "GSM": sorted(data["GSM"])}
-        _dcache_set("asm_gsm", "lists", redis_data, ttl=_ASM_GSM_CACHE_TTL)
-        return data  # keep returning sets for in-memory callers
-    except Exception as e:
-        logging.info(f"[NSE] ASM/GSM fetch failed: {e}")
-        return data
-
-
-def _risk_label(score: int | None) -> str:
-    if score is None: return "Unknown"
-    if score <= 3: return "Low"
-    if score <= 6: return "Moderate"
-    if score <= 8: return "High"
-    return "Very High"
+# _nse_session, _get_asm_gsm_lists, _risk_label imported from services.portfolio_service
 
 
 # ---------------------------------------------------------------------------
@@ -957,13 +687,7 @@ def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header
 
         ns = _to_ns(ticker)
         current_price, prev_close = _yf_price(ns)
-        invested = req.shares * req.buy_price
-        current_value = req.shares * current_price if current_price else 0.0
-        pnl = current_value - invested if current_value > 0 else 0.0
-        pnl_pct = (pnl / invested * 100) if invested > 0 and current_value > 0 else 0.0
-        day_change_pct = 0.0
-        if current_price and prev_close and prev_close > 0:
-            day_change_pct = round((current_price - prev_close) / prev_close * 100, 2)
+        pnl_data = compute_holding_pnl(req.shares, req.buy_price, current_price, prev_close)
 
         return {
             "success": True,
@@ -973,11 +697,7 @@ def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header
             "shares": req.shares,
             "buy_price": req.buy_price,
             "current_price": current_price or 0.0,
-            "day_change_pct": day_change_pct,
-            "invested_inr": round(invested, 2),
-            "current_value_inr": round(current_value, 2),
-            "pnl_inr": round(pnl, 2),
-            "pnl_pct": round(pnl_pct, 2),
+            **pnl_data,
         }
     except HTTPException:
         raise
@@ -1044,13 +764,7 @@ def portfolio_update_endpoint(req: PortfolioUpdateRequest, authorization: str = 
 
         ns = _to_ns(ticker)
         current_price, prev_close = _yf_price(ns)
-        invested = req.shares * req.buy_price
-        current_value = req.shares * current_price if current_price else 0.0
-        pnl = current_value - invested if current_value > 0 else 0.0
-        pnl_pct = (pnl / invested * 100) if invested > 0 and current_value > 0 else 0.0
-        day_change_pct = 0.0
-        if current_price and prev_close and prev_close > 0:
-            day_change_pct = round((current_price - prev_close) / prev_close * 100, 2)
+        pnl_data = compute_holding_pnl(req.shares, req.buy_price, current_price, prev_close)
 
         return {
             "success": True,
@@ -1060,11 +774,7 @@ def portfolio_update_endpoint(req: PortfolioUpdateRequest, authorization: str = 
             "shares": req.shares,
             "buy_price": req.buy_price,
             "current_price": current_price or 0.0,
-            "day_change_pct": day_change_pct,
-            "invested_inr": round(invested, 2),
-            "current_value_inr": round(current_value, 2),
-            "pnl_inr": round(pnl, 2),
-            "pnl_pct": round(pnl_pct, 2),
+            **pnl_data,
         }
     except HTTPException:
         raise
@@ -2013,46 +1723,10 @@ def portfolio_risk_analysis_endpoint(user_id: int, authorization: str = Header(N
         for s in stock_details:
             s["portfolio_weight_pct"] = round(s["current_value"] / total_value * 100, 1) if total_value > 0 else 0
 
-        # ------------------------------------------------------------------
-        # Pearson correlation: find highest correlated pair (manual, no sklearn)
-        # ------------------------------------------------------------------
+        # Pearson correlation: find highest correlated pair
         highest_corr_pair = None
         try:
-            ticker_list = list(_return_series.keys())
-            if len(ticker_list) >= 2:
-                max_corr = -999.0
-                best_pair = None
-                for i in range(len(ticker_list)):
-                    for j in range(i + 1, len(ticker_list)):
-                        ta = ticker_list[i]
-                        tb = ticker_list[j]
-                        ra_map = _return_series[ta]
-                        rb_map = _return_series[tb]
-                        # Align by common dates
-                        common = [d for d in ra_map if d in rb_map]
-                        n = len(common)
-                        if n < 10:
-                            continue
-                        ra = [ra_map[d] for d in common]
-                        rb = [rb_map[d] for d in common]
-                        mean_a = sum(ra) / n
-                        mean_b = sum(rb) / n
-                        cov = sum((ra[k] - mean_a) * (rb[k] - mean_b) for k in range(n))
-                        var_a = sum((ra[k] - mean_a) ** 2 for k in range(n))
-                        var_b = sum((rb[k] - mean_b) ** 2 for k in range(n))
-                        denom = (var_a * var_b) ** 0.5
-                        if denom == 0:
-                            continue
-                        corr = cov / denom
-                        if not math.isnan(corr) and corr > max_corr:
-                            max_corr = corr
-                            best_pair = (ta, tb)
-                if best_pair:
-                    highest_corr_pair = {
-                        "ticker_a": best_pair[0],
-                        "ticker_b": best_pair[1],
-                        "correlation": round(max_corr, 4),
-                    }
+            highest_corr_pair = compute_pearson_correlation(_return_series)
         except Exception as _corr_err:
             logging.info(f"[RISK] Correlation calc failed: {_corr_err}")
 
@@ -2611,37 +2285,8 @@ def trade_journal_stats_endpoint(user_id: int, auth_user_id: int = Depends(requi
                     "outcome_text": (e.outcome_text or "").lower(),
                 })
 
-        total_entries = len(entries_data)
-
-        # most_journalled_ticker
-        ticker_counts: dict[str, int] = {}
-        for e in entries_data:
-            ticker_counts[e["ticker"]] = ticker_counts.get(e["ticker"], 0) + 1
-        most_journalled_ticker = max(ticker_counts, key=lambda k: ticker_counts[k]) if ticker_counts else None
-
-        # win_loss_ratio
-        wins = sum(1 for e in entries_data if "profit" in e["outcome_text"])
-        losses = sum(1 for e in entries_data if "loss" in e["outcome_text"])
-        ratio = round(wins / losses, 2) if losses > 0 else None
-        win_loss_ratio = {"wins": wins, "losses": losses, "ratio": ratio}
-
-        # top_keywords from reason_text
-        STOPWORDS = {"the", "a", "an", "is", "in", "of", "and", "to", "i", "my", "this", "for", "it", "at"}
-        word_freq: dict[str, int] = {}
-        for e in entries_data:
-            for w in e["reason_text"].lower().split():
-                cleaned = "".join(c for c in w if c.isalpha())
-                if cleaned and cleaned not in STOPWORDS and len(cleaned) > 2:
-                    word_freq[cleaned] = word_freq.get(cleaned, 0) + 1
-        top_keywords = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:10]
-        top_keywords = [{"word": w, "count": c} for w, c in top_keywords]
-
-        # action_breakdown
-        action_breakdown = {"BUY": 0, "SELL": 0, "HOLD": 0, "WATCH": 0}
-        for e in entries_data:
-            act = e["action"].upper()
-            if act in action_breakdown:
-                action_breakdown[act] += 1
+        stats = compute_trade_journal_stats(entries_data)
+        total_entries = stats["total_entries"]
 
         # Trade journal pattern detection → DeepSeek V4 Flash (Tier 1 bulk task)
         patterns = []
@@ -2667,11 +2312,7 @@ def trade_journal_stats_endpoint(user_id: int, auth_user_id: int = Depends(requi
 
         return {
             "user_id": user_id,
-            "total_entries": total_entries,
-            "most_journalled_ticker": most_journalled_ticker,
-            "win_loss_ratio": win_loss_ratio,
-            "top_keywords": top_keywords,
-            "action_breakdown": action_breakdown,
+            **stats,
             "patterns": patterns,
         }
     except HTTPException:
@@ -2846,14 +2487,7 @@ def export_portfolio_pdf(user_id: int, authorization: str = Header(None)):
 # ---------------------------------------------------------------------------
 # 24. GET /api/v1/market/net-worth-ledger/{user_id}
 # ---------------------------------------------------------------------------
-def format_indian_currency(value: float) -> str:
-    """Format a number in Indian Lakhs/Crores style."""
-    if value >= 1e7:
-        return f"₹{value / 1e7:.2f} Cr"
-    elif value >= 1e5:
-        return f"₹{value / 1e5:.2f} L"
-    else:
-        return f"₹{value:,.2f}"
+# format_indian_currency is imported from helpers (canonical location)
 
 
 @router.get("/api/v1/market/net-worth-ledger/{user_id}", response_model=NetWorthSnapshotResponse)
