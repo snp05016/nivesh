@@ -44,11 +44,9 @@ _INDEXES = [
 
 def upgrade():
     # Drop old youtube_videos index if it exists under the old name
-    with op.batch_alter_table("youtube_videos") as batch_op:
-        try:
-            batch_op.drop_index("ix_yt_matched_ticker")
-        except Exception:
-            pass  # already gone
+    # Use raw SQL with IF EXISTS — batch_alter_table flushes all ops at __exit__
+    # and fails even when individual drop_index is caught
+    op.execute("DROP INDEX IF EXISTS ix_yt_matched_ticker")
 
     for name, table, cols, unique in _INDEXES:
         op.create_index(name, table, cols, unique=unique, if_not_exists=True)
