@@ -593,7 +593,6 @@ struct StressTestScreen: View {
                             ForEach(vm.scenarios, id: \.0) { id, name, icon in
                                 let isSelected = vm.selectedScenarios.contains(id)
                                 Button {
-    HapticManager.selection()
                                     vm.toggleScenario(id)
                                 } label: {
                                     HStack(spacing: Theme.Spacing.small) {
@@ -630,9 +629,8 @@ struct StressTestScreen: View {
                                 .lineLimit(2)
                         }
                         Button {
-    HapticManager.selection()
-                            vm.cancel()
                             HapticManager.selection()
+                            vm.cancel()
                         } label: {
                             HStack(spacing: Theme.Spacing.standard) {
                                 Image(systemName: "xmark.circle")
@@ -692,7 +690,24 @@ struct StressTestScreen: View {
                 }
 
                 // RESULTS
-                if !vm.results.isEmpty {
+                if vm.results.isEmpty && vm.activeCheckpoint == "done" {
+                    VStack(spacing: Theme.Spacing.large) {
+                        Image(systemName: "chart.bar.xaxis")
+                            .font(Theme.engravedSerif(size: 40, weight: .regular, relativeTo: .largeTitle))
+                            .foregroundStyle(Theme.inkTertiary.opacity(0.4))
+                        Text("NO HOLDINGS TO STRESS TEST")
+                            .font(Theme.officialStampFont(size: 11, relativeTo: .caption))
+                            .tracking(1.2)
+                            .foregroundStyle(Theme.inkTertiary)
+                        Text("Add assets to your portfolio first, then run a simulation.")
+                            .font(Theme.engravedSerif(size: 12, weight: .regular, relativeTo: .caption))
+                            .foregroundStyle(Theme.inkTertiary.opacity(0.7))
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(Theme.Spacing.large)
+                    .padding(.horizontal, Theme.screenPadding)
+                } else if !vm.results.isEmpty {
                     ForEach(vm.results) { result in
                         StressScenarioSection(result: result)
 
@@ -706,6 +721,7 @@ struct StressTestScreen: View {
             }
         }
         .background(Theme.canvas.edgesIgnoringSafeArea(.all))
+        .onDisappear { vm.cancel() }
         .navigationTitle("Stress Test")
         .navigationBarTitleDisplayMode(.inline)
         .animation(.easeInOut(duration: 0.4), value: vm.isLoading)

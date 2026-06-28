@@ -39,7 +39,7 @@ struct OptionsStrategyScreen: View {
     @State private var errorMessage: String? = nil
     @State private var showHelp = false
 
-    private var parsedSpot: Double { Double(spotPrice) ?? 1000.0 }
+    private var parsedSpot: Double { Double(spotPrice) ?? 0 }
 
     var body: some View {
         ZStack {
@@ -81,7 +81,7 @@ struct OptionsStrategyScreen: View {
                     .lineLimit(1)
             }
             Spacer()
-            Button(action: { HapticManager.selection();  HapticManager.selection(); showHelp = true }) {
+            Button(action: { HapticManager.selection(); showHelp = true }) {
                 Image(systemName: "questionmark.circle.fill")
                     .font(.title3)
                     .foregroundStyle(Theme.securityGold)
@@ -162,8 +162,7 @@ struct OptionsStrategyScreen: View {
 
                     Spacer()
 
-                    Button(action: { HapticManager.selection();  HapticManager.selection()
-                        HapticManager.selection()
+                    Button(action: { HapticManager.selection()
                         withAnimation { legs.remove(at: idx); computeLocal() }
                     }) {
                         Image(systemName: "trash")
@@ -210,8 +209,7 @@ struct OptionsStrategyScreen: View {
     private func typePicker(idx: Int) -> some View {
         HStack(spacing: 1) {
             ForEach(["CALL", "PUT"], id: \.self) { t in
-                Button(action: { HapticManager.selection();  HapticManager.selection()
-                    HapticManager.selection()
+                Button(action: { HapticManager.selection()
                     legs[idx].type = t; computeLocal()
                 }) {
                     Text(t)
@@ -233,8 +231,7 @@ struct OptionsStrategyScreen: View {
         HStack(spacing: 1) {
             ForEach(["BUY", "SELL"], id: \.self) { p in
                 let mapped = p == "BUY" ? "LONG" : "SHORT"
-                Button(action: { HapticManager.selection();  HapticManager.selection()
-                    HapticManager.selection()
+                Button(action: { HapticManager.selection()
                     legs[idx].position = mapped; computeLocal()
                 }) {
                     Text(p)
@@ -255,7 +252,7 @@ struct OptionsStrategyScreen: View {
     }
 
     private var addLegButton: some View {
-        Button(action: { HapticManager.selection();  HapticManager.selection()
+        Button(action: { HapticManager.selection()
             HapticManager.soft()
             withAnimation { legs.append(OptionLegVM()); computeLocal() }
         }) {
@@ -277,6 +274,8 @@ struct OptionsStrategyScreen: View {
             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
         }
         .buttonStyle(EKPressStyle())
+        .disabled(legs.count >= 10)
+        .opacity(legs.count >= 10 ? 0.4 : 1.0)
     }
 
     // MARK: - Metrics
@@ -640,6 +639,7 @@ struct OptionsStrategyScreen: View {
     // MARK: - Local Computation (offline fallback)
 
     private func computeLocal() {
+        response = nil   // clear stale server state so local edits take effect immediately
         guard !legs.isEmpty, parsedSpot > 0 else {
             localPayoff = []
             localMetrics = nil

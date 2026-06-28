@@ -203,8 +203,8 @@ def compute_options_payoff(
     max_loss = max_loss_val if not unlimited_loss else "Unlimited"
 
     # If max_profit/max_loss is a float and close to zero, handle
-    max_profit_formatted = "Unlimited" if isinstance(max_profit, str) else _format_indian(float(max_profit))
-    max_loss_formatted = "Unlimited" if isinstance(max_loss, str) else _format_indian(float(max_loss))
+    max_profit_formatted = "Unlimited" if isinstance(max_profit, str) else format_indian_currency(float(max_profit))
+    max_loss_formatted = "Unlimited" if isinstance(max_loss, str) else format_indian_currency(float(max_loss))
 
     # Find breakeven points
     breakevens = _find_breakevens(payoff_vector)
@@ -224,7 +224,7 @@ def compute_options_payoff(
         "max_loss_formatted": max_loss_formatted,
         "breakevens": breakevens,
         "net_premium": net_premium,
-        "net_premium_formatted": _format_indian(net_premium),
+        "net_premium_formatted": format_indian_currency(net_premium),
         "num_legs": num_legs,
         "strategy_type": strategy_type,
     }
