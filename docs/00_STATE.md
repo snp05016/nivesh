@@ -24,6 +24,9 @@
   * **ML Engine & News UI:** Resolved synchronous blocking issues in News & YouTube features; implemented asynchronous `yfinance` pipelines.
   * **Finance Dictionary:** Expanded `FinanceTerms.swift` with crucial layman terms (e.g. SEBI, IPO, Demat) and implemented punctuation-ignoring fuzzy search.
   * **GitHub Bug Squashing:** Systematically triaged and resolved multiple deployment and infrastructure bugs (Dockerignore, systemd worker drift, missing `__init__.py` files, and duplicate error classes).
+  * **Database Infrastructure:** Patched multiple Alembic migration scripts to use SQLAlchemy's `Inspector` conditionally checking for table existence (`alpha158_features`, `alpha158_features_normalized`, `stock_universe`, `covariance_matrices`), preventing `OperationalError: table already exists` during CD pipeline runs.
+  * **Feature Audits (Council Review):** Executed rigorous multi-agent `/feature-audit` routines for "Stress Test", "Options Strategy", and "YouTube & News Harvester". Generated complete architecture, UX, testing, and performance findings.
+  * **App Expansion Scout:** Successfully initiated deep-dive codebase exploration using the `/app-expansion-scout` skill to construct a 10x product roadmap.
 
 ## Next Steps
 * Verified the 8 QuantLab API endpoints on the server backend (`/ml-signal`, `/calibration`, `/pillar-attribution`, `/model-versions`, `/alpha-validation`, `/strategy-sweep`, `/regime-breakdown`, `/cost-sensitivity`) using TDD. All are operational.
