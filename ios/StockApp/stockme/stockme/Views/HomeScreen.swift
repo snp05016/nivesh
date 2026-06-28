@@ -756,60 +756,61 @@ struct HomeScreen: View {
                     }
                 }
             }
-        }
-        .crashGuard("HomeScreen")
-
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                if viewModel.morningBriefData != nil {
-                    let todayStr: String = {
-                        let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
-                        return df.string(from: Date())
-                    }()
-                    let isDismissedToday = morningBriefShownDate == todayStr
-                    Button {
-    HapticManager.selection()
-                        HapticManager.selection()
-                        if isDismissedToday {
-                            morningBriefShownDate = ""
-                        }
-                    } label: {
-                        ZStack(alignment: .topTrailing) {
-                            Image(systemName: "newspaper")
-                                .font(.title3.weight(.medium))
-                                .foregroundStyle(isDismissedToday ? Theme.inkTertiary : Theme.securityGold)
-                                .frame(width: 28, height: 28)
-
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if viewModel.morningBriefData != nil {
+                        let todayStr: String = {
+                            let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
+                            return df.string(from: Date())
+                        }()
+                        let isDismissedToday = morningBriefShownDate == todayStr
+                        Button {
+                            HapticManager.selection()
                             if isDismissedToday {
-                                let moodColor: Color = {
-                                    switch viewModel.morningBriefData?.mood {
-                                    case "positive": return Theme.bullGreen
-                                    case "negative": return Theme.bearRed
-                                    default: return Theme.holdAmber
-                                    }
-                                }()
-                                Circle()
-                                    .fill(moodColor)
-                                    .frame(width: 7, height: 7)
-                                    .offset(x: 4, y: -4)
+                                morningBriefShownDate = ""
+                            }
+                        } label: {
+                            ZStack(alignment: .topTrailing) {
+                                Image(systemName: "newspaper")
+                                    .font(.title3.weight(.medium))
+                                    .foregroundStyle(isDismissedToday ? Theme.inkTertiary : Theme.securityGold)
+                                    .frame(width: 28, height: 28)
+
+                                if isDismissedToday {
+                                    let moodColor: Color = {
+                                        switch viewModel.morningBriefData?.mood {
+                                        case "positive": return Theme.bullGreen
+                                        case "negative": return Theme.bearRed
+                                        default: return Theme.holdAmber
+                                        }
+                                    }()
+                                    Circle()
+                                        .fill(moodColor)
+                                        .frame(width: 7, height: 7)
+                                        .offset(x: 4, y: -4)
+                                }
                             }
                         }
+                        .buttonStyle(EKPressStyle())
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: NotificationInboxView()) {
+                        Image(systemName: "bell")
+                            .font(.title3.weight(.medium))
+                            .foregroundStyle(Theme.inkPrimary)
                     }
                     .buttonStyle(EKPressStyle())
+                    .simultaneousGesture(TapGesture().onEnded {
+                        HapticManager.selection()
+                    })
                 }
             }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                NavigationLink(destination: NotificationInboxView()) {
-                    Image(systemName: "bell")
-                        .font(.title3.weight(.medium))
-                        .foregroundStyle(Theme.inkPrimary)
-                }
-                .buttonStyle(EKPressStyle())
-                .simultaneousGesture(TapGesture().onEnded {
-                    HapticManager.selection()
-                })
-            }
+            .toolbarBackground(Theme.canvasDeep, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .navigationBarTitleDisplayMode(.inline)
         }
+        .crashGuard("HomeScreen")
 
         .sheet(isPresented: $showingEditLayout) {
             HomeLayoutEditorSheet(activeOrder: activeSectionOrder) { newOrder in

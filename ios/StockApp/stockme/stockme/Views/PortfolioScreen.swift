@@ -544,6 +544,16 @@ struct PortfolioScreen: View {
                 ShareSheet(items: [url])
             }
         }
+        .sheet(isPresented: $showBriefSheet) {
+            PortfolioBriefSheet(
+                portfolioValue: viewModel.totalValue,
+                pnl: viewModel.totalValue - viewModel.investedValue,
+                holdings: viewModel.holdings
+            )
+        }
+        .sheet(isPresented: $showTransactionSheet) {
+            QuickTransactionSheet()
+        }
     }
 
     private var exportDialogButtons: [BanknoteDialogButton] {
