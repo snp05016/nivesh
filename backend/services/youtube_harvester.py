@@ -217,6 +217,13 @@ def _upsert_video(db, video_dict: dict) -> bool:
     if existing:
         if not existing.matched_ticker and video_dict.get("matched_ticker"):
             existing.matched_ticker = video_dict["matched_ticker"]
+        # Backfill empty title / thumbnail from fresh harvest data
+        new_title = (video_dict.get("title") or "").strip()
+        if not existing.title and new_title:
+            existing.title = new_title[:500]
+        new_thumb = (video_dict.get("thumbnail_url") or "").strip()
+        if not existing.thumbnail_url and new_thumb:
+            existing.thumbnail_url = new_thumb
         return False
 
     row = YouTubeVideo(

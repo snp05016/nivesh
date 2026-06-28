@@ -127,6 +127,25 @@ def extract_tickers_from_text(text: str, db: Session) -> list[str]:
         logger.warning(f"Ticker extraction failed: {e}")
         return []
 
+def _extract_image_from_entry(entry) -> str | None:
+    """Try to pull an image URL from feedparser entry media fields before scraping."""
+    # media:content (e.g. Moneycontrol, ET)
+    for mc in entry.get("media_content", []):
+        url = mc.get("url", "")
+        if url and any(url.lower().endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".webp")):
+            return url
+    # media:thumbnail
+    for mt in entry.get("media_thumbnail", []):
+        url = mt.get("url", "")
+        if url:
+            return url
+    # enclosures (podcast-style feeds sometimes use these for images)
+    for enc in entry.get("enclosures", []):
+        if "image" in enc.get("type", ""):
+            return enc.get("href") or enc.get("url")
+    return None
+
+
 def scrape_article_body(url: str) -> tuple[str, str | None]:
     """
     Returns (body_text, image_url) for a given article URL.
@@ -180,8 +199,13 @@ async def harvest_news(lookback_hours: int = 26):
                         headline = entry.get("title", "").strip()
                         summary = entry.get("summary", "").strip()[:500]
 
-                        # Scrape full body + image
-                        body, image_url = scrape_article_body(url)
+                        # Try feed-level image first (fast, no HTTP request)
+                        image_url = _extract_image_from_entry(entry)
+
+                        # Scrape full body + image (newspaper3k fills image if feed had none)
+                        body, scraped_image = scrape_article_body(url)
+                        if not image_url:
+                            image_url = scraped_image
 
                         full_text = f"{headline} {summary} {body}"
 

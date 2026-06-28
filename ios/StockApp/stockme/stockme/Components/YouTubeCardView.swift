@@ -69,8 +69,8 @@ struct YouTubeCardView: View {
                         .tracking(1.2)
                         .foregroundStyle(goldAccent)
 
-                    // Title
-                    Text(video.title)
+                    // Title (fallback to channel name if empty or missing)
+                    Text(video.title.isEmpty ? video.channelName : video.title)
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.primary.opacity(0.88))
                         .lineLimit(2)
