@@ -12,7 +12,6 @@ REPO_DIR="/home/saumyapatel/Desktop/nivesh"
 OPENCODE_BIN="/home/saumyapatel/.opencode/bin/opencode"
 LOCKFILE="/tmp/nivesh-scanner.lock"
 LOGDIR="${REPO_DIR}/logs"
-RUNNER_FILE="${REPO_DIR}/opencoderunner.txt"
 
 # Bail early if run outside the repo (safety check)
 if [ ! -d "${REPO_DIR}" ]; then
@@ -25,10 +24,6 @@ if [ ! -x "${OPENCODE_BIN}" ]; then
     exit 1
 fi
 
-if [ ! -f "${RUNNER_FILE}" ]; then
-    echo "FATAL: Runner file ${RUNNER_FILE} not found." >&2
-    exit 1
-fi
 
 mkdir -p "${LOGDIR}"
 
@@ -57,7 +52,7 @@ cd "${REPO_DIR}"
 
 # Execute the scanner. Ignore its exit code so we always log completion.
 set +o errexit
-${OPENCODE_BIN} --yolo  run "# GitHub Issue Scanner (Research-Grade Multi-Agent Council)
+${OPENCODE_BIN} run --dangerously-skip-permissions "# GitHub Issue Scanner (Research-Grade Multi-Agent Council)
 
 Your task is to perform a **research-grade audit** of the entire codebase using the **`gh-issue-scanner`** skill.
 
