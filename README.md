@@ -495,7 +495,88 @@ curl https://api.nivesh.qzz.io/health  # DB-backed
 
 ---
 
-## ✦ Project Stats
+## ✦ Rules for AI Agents
+
+> These rules apply to all AI coding assistants (Claude Code, OpenCode, Antigravity, Gemini CLI) working on this repository. **AGENTS.md is source of truth** — these are the condensed, non-negotiable rules discovered through 100+ hours of agent-driven development.
+
+### Git & Worktree Protocol
+| Rule | Detail |
+|------|--------|
+| **Use detached worktrees** | Default for all work. Never `git checkout` in the shared repo root. |
+| **Branches only when asked** | Only create a branch if the user explicitly says "create a branch" or "work on a branch." |
+| **Never push directly** | Commit in worktree → ask user for merge permission → merge into main → push. |
+| **One commit per logical change** | Conventional Commits: `type(scope): description`. Stage explicit paths only. Never `git add .` or `git add -A`. |
+| **Delete worktrees after merge** | `git worktree remove --force` after merging. `git worktree prune` to clean stale ones. |
+
+### Build & Test Constraints
+| Rule | Detail |
+|------|--------|
+| **Never `xcodebuild` locally** | AGENTS.md §6.2. Xcode build crashes agent sessions. iOS CI handles building. |
+| **Backend tests remote only** | AGENTS.md §6.5. Run pytest on `saumyapatel@192.168.1.122`. Local pytest forbidden. |
+| **Never stage secrets/DBs** | No `.env`, `*.db`, logs, tokens, binaries in commits. |
+| **Use `gh` CLI for issues** | All GitHub issue workflows through `gh issue list/view/create/close`. |
+
+### Alembic Migrations
+| Rule | Detail |
+|------|--------|
+| **Every migration must be idempotent** | Check if table/column exists before creating. Fresh DB CI runs `alembic upgrade head` from scratch. |
+| **Pattern**: | `if 'table_name' in inspector.get_table_names(): return` |
+| **Never `ALTER TABLE` directly** | All schema changes through Alembic. `render_as_batch=True` for SQLite. |
+| **CI fails on migration error** | `backend_ci.yml` runs `alembic upgrade head && alembic check` — no `\|\| echo`. |
+
+### Server & Deployment
+| Config | Value |
+|--------|-------|
+| **Server** | `192.168.1.122` |
+| **User** | `saumyapatel` |
+| **Path** | `/home/saumyapatel/Desktop/nivesh` |
+| **Port** | `8000` (uvicorn --reload) |
+| **Venv** | `/home/saumyapatel/Desktop/nivesh/venv` |
+| **API** | `https://api.nivesh.qzz.io` |
+| **Admin token** | `ADMIN_TOKEN=admin` in server `.env` |
+| **Deploy skill** | `/nivesh-deploy` — full pipeline: sync → kill → restart → health → tests |
+
+### Banknote Aesthetic (iOS)
+| Rule | Detail |
+|------|--------|
+| **No raw colors** | Every color must be `Theme.*` token. No `.blue`, `.red`, `.white`, `.primary`. |
+| **No system fonts** | No `.font(.system(size:...))`. Use `Theme.engravedSerif`, `Theme.serialNumberFont`, `Theme.officialStampFont`. |
+| **No hardcoded spacing/padding** | Use `Theme.Spacing.*` tokens and `Theme.screenPadding`. 8pt grid. |
+| **No GeometryReader in ScrollView** | Use `UIScreen.main.bounds.width * proportion`. |
+| **No nested NavigationStacks** | One NavigationStack per view tree. Child views pushed via parent's stack. |
+| **Every button** | `.buttonStyle(EKPressStyle())` + `HapticManager.selection()`. |
+| **Every card** | `.banknoteCard()` modifier. |
+| **Every section separator** | `GuillocheDivider()`. Never plain `Divider()`. |
+| **No inline `func -> some View` > 5 lines** | Extract to separate `View` struct. Prevents `chkstk_darwin` stack overflow. |
+
+### Backend Architecture
+| Rule | Detail |
+|------|--------|
+| **Controller-Service-Repository** | Routers = HTTP + validation + process spawn. Services = business logic. DB = `get_session()` only. |
+| **Business logic in routers FORBIDDEN** | No yfinance, no LLM, no `session.query()` in router files. |
+| **All ORM models in `models/db_models.py`** | Never define `class Foo(Base)` in a service file. |
+| **No `datetime.utcnow()`** | Use `datetime.now(timezone.utc)`. Python 3.14 deprecation. |
+| **No `default=dict` in JSON columns** | Use `default="{}"` (string). SQLite constant defaults. |
+| **Indian numbering only** | Lakhs/Crores. Never Million/Billion. `_ban_western_scale()` guard. |
+| **`PYTHONPATH=backend` for pytest** | Tests import from `backend/` root. `conftest.py` handles mock setup. |
+
+### CI/CD (GitHub Actions)
+| Workflow | Trigger | What it does |
+|----------|---------|-------------|
+| **backend_ci.yml** | Push to main | `pip install` → `ruff check` → `pytest` (560 tests) → `alembic upgrade head && alembic check` |
+| **ios_ci.yml** | Push to `ios/**` | `xcodebuild -project stockme.xcodeproj -scheme stockme` |
+| **deploy.yml** | `workflow_dispatch` (manual) | SSH to server → pull → pip install → alembic → restart uvicorn |
+
+### Tools & Commands
+| Task | Command |
+|------|---------|
+| Full deploy | `/nivesh-deploy` (skill) or `ssh saumyapatel@192.168.1.122 "sudo fuser -k 8000/tcp; ...; nohup uvicorn ..."` |
+| Run tests on server | `ssh saumyapatel@192.168.1.122 "cd ~/Desktop/nivesh/backend && ~/Desktop/nivesh/venv/bin/python3 -m pytest tests/ -q"` |
+| Health check | `curl https://api.nivesh.qzz.io/ping` |
+| Check git status | `git -C /Users/saumya/Desktop/nivesh status --short --branch` |
+| Create issue | `gh issue create --title "..." --body "..." --label "..."` |
+| List worktrees | `git -C /Users/saumya/Desktop/nivesh worktree list` |
+| Prune worktrees | `git -C /Users/saumya/Desktop/nivesh worktree prune` |
 
 ```
 📁 Backend:    378 Python files  │  21 routers  │  20 services
