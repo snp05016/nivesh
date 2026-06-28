@@ -794,17 +794,6 @@ struct HomeScreen: View {
                         .buttonStyle(EKPressStyle())
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: NotificationInboxView()) {
-                        Image(systemName: "bell")
-                            .font(.title3.weight(.medium))
-                            .foregroundStyle(Theme.inkPrimary)
-                    }
-                    .buttonStyle(EKPressStyle())
-                    .simultaneousGesture(TapGesture().onEnded {
-                        HapticManager.selection()
-                    })
-                }
             }
             .toolbarBackground(Theme.canvasDeep, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)

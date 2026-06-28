@@ -272,6 +272,7 @@ struct PortfolioScreen: View {
                                 TabNoteButton(title: "Holdings", isSelected: selectedTab == 0) { selectedTab = 0 }
                                 TabNoteButton(title: "Watchlist", isSelected: selectedTab == 1) { selectedTab = 1 }
                                 TabNoteButton(title: "Journal", isSelected: selectedTab == 2) { selectedTab = 2 }
+                                TabNoteButton(title: "Inbox", isSelected: selectedTab == 3) { selectedTab = 3 }
                             }
                             .banknoteCard()
                             .padding(.horizontal, Theme.screenPadding)
@@ -363,6 +364,9 @@ struct PortfolioScreen: View {
                                     TradeJournalScreen(userId: user.userId)
                                         .padding(.horizontal, Theme.screenPadding)
                                 }
+                            } else if selectedTab == 3 {
+                                NotificationInboxView()
+                                    .padding(.horizontal, Theme.screenPadding)
                             }
 
                             Spacer(minLength: 100)
@@ -404,27 +408,15 @@ struct PortfolioScreen: View {
                     .animation(.spring(response: 0.4), value: showAddedBanner)
                 }
 
-                // FAB — Holdings "+" sits bottom-right, just left of the AI
-                // chatbot FAB. Watchlist "+" is a mirror image of that chatbot
-                // FAB on the opposite (left) edge, on the same vertical plane.
-                if selectedTab == 0 {
+                // FAB — always on the left, same horizontal position for all tabs
+                if selectedTab == 0 || selectedTab == 1 {
                     VStack {
                         Spacer()
                         HStack {
-                            Spacer()
                             addPortfolioButton
-                                .padding(.trailing, Theme.Spacing.xLarge + Theme.Spacing.large + Theme.Spacing.standard)
-                        }
-                        .padding(.horizontal, Theme.screenPadding)
-                        .padding(.bottom, Theme.Spacing.standard)
-                    }
-                } else if selectedTab == 1 {
-                    VStack {
-                        Spacer()
-                        HStack {
-                            addWatchlistButton
                             Spacer()
                         }
+                        .padding(.leading, Theme.screenPadding + Theme.Spacing.standard)
                         .padding(.bottom, Theme.Spacing.standard)
                     }
                 }
@@ -604,8 +596,7 @@ struct PortfolioScreen: View {
 
     private var addPortfolioButton: some View {
         Button {
-    HapticManager.selection()
-            HapticManager.impact(.medium)
+            HapticManager.selection()
             if selectedTab == 0 {
                 showAddHoldingSheet = true
             } else {
@@ -630,27 +621,6 @@ struct PortfolioScreen: View {
     }
 
     // Watchlist "+" — built from scratch to be an exact mirror image of the AI
-    // chatbot FAB (CopilotFloatingButtonModifier): same icon-padded circle, same
-    // edge inset, anchored to the opposite (left) edge on the same vertical plane.
-    private var addWatchlistButton: some View {
-        Button {
-    HapticManager.selection()
-            HapticManager.impact(.medium)
-            addSheetSearchText = ""
-            showAddWatchlistSheet = true
-        } label: {
-            Image(systemName: "plus")
-                .font(Theme.engravedSerif(size: 20, weight: .bold, relativeTo: .title3))
-                .foregroundColor(Theme.canvas)
-                .padding(Theme.Spacing.card)
-                .background(Theme.securityGold)
-                .clipShape(Circle())
-                .shadow(color: Theme.securityGold.opacity(0.4), radius: Theme.Spacing.medium, x: 0, y: Theme.Spacing.small)
-        }
-        .buttonStyle(EKPressStyle())
-        .padding(.leading, Theme.screenPadding + Theme.Spacing.standard)
-    }
-
     @ViewBuilder
     private var watchlistTabContent: some View {
         if viewModel.watchlistLoading {
@@ -992,10 +962,7 @@ private struct TabNoteButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: { HapticManager.selection();  HapticManager.selection()
-            HapticManager.selection()
-            action()
-        }) {
+        Button(action: { HapticManager.selection(); action() }) {
             Text(title.uppercased())
                 .font(Theme.officialStampFont(size: 9))
                 .foregroundStyle(isSelected ? Theme.inkPrimary : Theme.inkTertiary)
