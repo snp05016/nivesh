@@ -196,12 +196,12 @@ def auth_headers(test_client):
     email = f"ledger_test_{tag}@example.com"
     pw = "Test1234!"
 
-    r = test_client.post("/auth/register", json={
+    r = test_client.post("/register", json={
         "email": email, "password": pw, "display_name": f"LedgerTest {tag}"
     })
     assert r.status_code in (200, 201, 400)  # 400 if already exists
 
-    r = test_client.post("/auth/login", json={"email": email, "password": pw})
+    r = test_client.post("/login", json={"email": email, "password": pw})
     if r.status_code != 200:
         pytest.skip("Auth endpoint unavailable in this test environment")
 
@@ -224,7 +224,7 @@ class TestTransactionsEndpoint:
     def test_transactions_endpoint_returns_list(self, test_client, auth_headers):
         """Authenticated request returns a JSON list (possibly empty)."""
         # Get user_id from /auth/me or similar
-        me = test_client.get("/auth/me", headers=auth_headers)
+        me = test_client.get("/me", headers=auth_headers)
         if me.status_code != 200:
             pytest.skip("No /auth/me endpoint available")
         user_id = me.json().get("user_id") or me.json().get("id")
@@ -239,7 +239,7 @@ class TestTransactionsEndpoint:
 
     def test_no_western_scale_in_responses(self, test_client, auth_headers):
         """Portfolio responses must not contain Million/Billion/Trillion."""
-        me = test_client.get("/auth/me", headers=auth_headers)
+        me = test_client.get("/me", headers=auth_headers)
         if me.status_code != 200:
             pytest.skip("No /auth/me endpoint")
         user_id = me.json().get("user_id") or me.json().get("id")
