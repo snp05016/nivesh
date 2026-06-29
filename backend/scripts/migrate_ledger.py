@@ -1,0 +1,93 @@
+"""
+Phase 2 backfill: convert legacy Portfolio snapshots to Transaction ledger entries.
+
+Idempotent: safe to run multiple times. Skips users that already have
+a 'Legacy Holdings' PortfolioGroup with transactions.
+
+Run from backend/ directory:
+    ../venv/bin/python -m scripts.migrate_ledger
+"""
+
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from datetime import datetime, timezone
+from database import get_session
+from models.db_models import Portfolio, PortfolioGroup, Transaction
+
+
+def main() -> None:
+    total_transactions = 0
+
+    with get_session() as session:
+        user_ids = [row[0] for row in session.query(Portfolio.user_id).distinct().all()]
+
+    print(f"Found {len(user_ids)} user(s) to backfill.")
+
+    for uid in user_ids:
+        with get_session() as session:
+            # Idempotency check: skip if group + transactions already exist
+            existing_group = (
+                session.query(PortfolioGroup)
+                .filter_by(user_id=uid, name="Legacy Holdings")
+                .first()
+            )
+            if existing_group:
+                existing_tx_count = (
+                    session.query(Transaction)
+                    .filter_by(user_id=uid, group_id=existing_group.id)
+                    .count()
+                )
+                if existing_tx_count > 0:
+                    print(f"User {uid}: already backfilled ({existing_tx_count} transactions). Skipping.")
+                    continue
+
+            # Create group
+            group = existing_group or PortfolioGroup(
+                user_id=uid,
+                name="Legacy Holdings",
+                is_default=True,
+            )
+            if not existing_group:
+                session.add(group)
+                session.flush()  # get group.id
+
+            # Fetch holdings (not watchlist, positive shares)
+            holdings = (
+                session.query(Portfolio)
+                .filter(
+                    Portfolio.user_id == uid,
+                    Portfolio.group_name != "watchlist",
+                    Portfolio.shares > 0,
+                )
+                .all()
+            )
+
+            inserted = 0
+            for h in holdings:
+                tx_date = h.created_at if h.created_at else datetime.now(timezone.utc)
+                tx = Transaction(
+                    user_id=uid,
+                    group_id=group.id,
+                    ticker=h.ticker,
+                    transaction_type="BUY",
+                    quantity=h.shares,
+                    price=h.buy_price,
+                    fees=0.0,
+                    date=tx_date,
+                    notes="Legacy migration backfill",
+                )
+                session.add(tx)
+                h.group_id = group.id
+                inserted += 1
+
+            session.commit()
+            total_transactions += inserted
+            print(f"User {uid}: group_id={group.id}, inserted {inserted} transactions.")
+
+    print(f"\nDone. Total transactions inserted: {total_transactions}")
+
+
+if __name__ == "__main__":
+    main()
