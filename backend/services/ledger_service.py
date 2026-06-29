@@ -15,7 +15,7 @@ Rules (AGENTS.md §3.1):
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, cast
 
 from sqlalchemy.orm import Session
 
@@ -74,13 +74,16 @@ def record_transaction(
     Returns:
         The newly created Transaction ORM object (flushed, not yet committed).
     """
+    resolved_group_id: int
     if group_id is None:
         group = get_or_create_default_group(session, user_id)
-        group_id = group.id
+        resolved_group_id = cast(int, group.id)
+    else:
+        resolved_group_id = group_id
 
     tx = Transaction(
         user_id=user_id,
-        group_id=group_id,
+        group_id=resolved_group_id,
         ticker=ticker,
         transaction_type=transaction_type.upper(),
         quantity=quantity,
@@ -95,7 +98,7 @@ def record_transaction(
     _recalculate_portfolio_snapshot(
         session=session,
         user_id=user_id,
-        group_id=group_id,
+        group_id=resolved_group_id,
         ticker=ticker,
         company_name=company_name,
         target_price=target_price,
@@ -141,9 +144,9 @@ def _recalculate_portfolio_snapshot(
 
     for tx in transactions:
         t = tx.transaction_type.upper()
-        qty = float(tx.quantity or 0)
-        prc = float(tx.price or 0)
-        fee = float(tx.fees or 0)
+        qty = cast(float, tx.quantity) if tx.quantity is not None else 0.0
+        prc = cast(float, tx.price) if tx.price is not None else 0.0
+        fee = cast(float, tx.fees) if tx.fees is not None else 0.0
 
         if t == "BUY":
             total_cost += qty * prc + fee
@@ -176,12 +179,12 @@ def _recalculate_portfolio_snapshot(
         return
 
     if existing is not None:
-        existing.shares = round(total_shares, 2)
-        existing.buy_price = round(wac, 2)
+        existing.shares = round(total_shares, 2)  # type: ignore[assignment]
+        existing.buy_price = round(wac, 2)  # type: ignore[assignment]
         if group_id is not None:
-            existing.group_id = group_id
+            existing.group_id = group_id  # type: ignore[assignment]
         if target_price is not None:
-            existing.target_price = target_price
+            existing.target_price = target_price  # type: ignore[assignment]
     else:
         new_row = Portfolio(
             user_id=user_id,
@@ -216,7 +219,7 @@ def get_transactions_for_ticker(user_id: int, ticker: str) -> list[dict]:
                 "quantity": t.quantity,
                 "price": t.price,
                 "fees": t.fees,
-                "date": t.date.isoformat() if t.date else None,
+                "date": t.date.isoformat() if t.date is not None else None,
                 "notes": t.notes,
             }
             for t in rows
