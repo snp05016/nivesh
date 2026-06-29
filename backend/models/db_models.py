@@ -57,6 +57,7 @@ class Portfolio(Base):
     notes         = Column(Text, default="")
     is_virtual    = Column(Boolean, default=False, nullable=False, server_default="0")
     created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    group_id      = Column(Integer, ForeignKey("portfolio_groups.id"), nullable=True)
 
     user = relationship("User", back_populates="portfolio")
 
@@ -64,9 +65,49 @@ class Portfolio(Base):
         Index("ix_portfolio_user_id", "user_id"),
         Index("ix_portfolio_user_ticker", "user_id", "ticker"),
         Index("ix_portfolio_group", "user_id", "group_name"),
+        Index("ix_portfolio_group_id", "group_id"),
         UniqueConstraint("user_id", "ticker", "group_name", name="uq_portfolio_user_ticker_group"),
         CheckConstraint("group_name = 'watchlist' OR shares > 0", name="ck_portfolio_shares_positive"),
         CheckConstraint("group_name = 'watchlist' OR buy_price > 0", name="ck_portfolio_buy_price_positive"),
+    )
+
+
+class PortfolioGroup(Base):
+    """Named groupings of portfolio positions (e.g. 'Core Holdings', 'Speculative')."""
+    __tablename__ = "portfolio_groups"
+
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    user_id    = Column(Integer, ForeignKey("users.id"), nullable=False)
+    name       = Column(String(200), default="Core Holdings")
+    is_default = Column(Boolean, default=True, server_default="1")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_portfolio_groups_user_id", "user_id"),
+    )
+
+
+class Transaction(Base):
+    """Immutable ledger of all portfolio transactions (BUY, SELL, SPLIT, BONUS, DIVIDEND)."""
+    __tablename__ = "portfolio_transactions"
+
+    id               = Column(Integer, primary_key=True, autoincrement=True)
+    user_id          = Column(Integer, ForeignKey("users.id"), nullable=False)
+    group_id         = Column(Integer, ForeignKey("portfolio_groups.id"), nullable=True)
+    ticker           = Column(String(30), nullable=False)
+    transaction_type = Column(String(20), nullable=False)  # BUY, SELL, SPLIT, BONUS, DIVIDEND
+    quantity         = Column(Float, nullable=False)
+    price            = Column(Float, nullable=False)
+    fees             = Column(Float, default=0.0, server_default="0.0")
+    date             = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    notes            = Column(String(500), nullable=True)
+    created_at       = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_portfolio_transactions_user_id", "user_id"),
+        Index("ix_portfolio_transactions_ticker", "ticker"),
+        Index("ix_portfolio_transactions_group_id", "group_id"),
+        Index("ix_portfolio_transactions_date", "date"),
     )
 
 
