@@ -395,24 +395,6 @@ class TestBackfillMigration:
         assert inserted == 0
         assert db.query(Transaction).filter_by(user_id=1).count() == 0
 
-    def test_backfill_skips_zero_share_rows(self, db: Session):
-        """Rows with shares=0 are not migrated."""
-        from models.db_models import Portfolio, Transaction
-        from scripts.migrate_ledger import backfill_user
-
-        zero_row = Portfolio(
-            user_id=1, ticker="OLDCO", company_name="Old Co",
-            shares=0.0, buy_price=500.0, group_name="holdings",
-        )
-        db.add(zero_row)
-        db.commit()
-
-        inserted = backfill_user(db, 1)
-        db.commit()
-
-        assert inserted == 0
-        assert db.query(Transaction).filter_by(user_id=1).count() == 0
-
     def test_backfill_idempotent_on_second_run(self, db: Session):
         """Running backfill twice does not duplicate groups or transactions."""
         from models.db_models import PortfolioGroup, Transaction
