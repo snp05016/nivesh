@@ -66,7 +66,7 @@ def main() -> None:
 
             inserted = 0
             for h in holdings:
-                tx_date = h.created_at if h.created_at else datetime.now(timezone.utc)
+                tx_date = h.created_at if h.created_at is not None else datetime.now(timezone.utc)
                 tx = Transaction(
                     user_id=uid,
                     group_id=group.id,
