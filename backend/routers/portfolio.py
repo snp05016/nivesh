@@ -17,6 +17,7 @@ from fastapi.responses import StreamingResponse
 import yfinance as yf
 
 from services.disk_cache import invalidate as _cache_invalidate
+from services.ledger_service import record_transaction, get_or_create_default_group
 
 from helpers import (
     get_session, verify_access_token, EXCHANGE_SUFFIX, _resolve_ticker,
@@ -666,24 +667,20 @@ def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header
     ticker = req.ticker.upper().strip()
     try:
         with get_session() as session:
-            existing = session.query(Portfolio).filter_by(
-                user_id=req.user_id, ticker=ticker, group_name="holdings"
-            ).first()
-            if existing:
-                raise HTTPException(status_code=409, detail="Holding already exists. Use /portfolio/update to modify.")
-
-            new_holding = Portfolio(
+            record_transaction(
+                session=session,
                 user_id=req.user_id,
                 ticker=ticker,
+                transaction_type="BUY",
+                quantity=req.shares,
+                price=req.buy_price,
+                fees=0.0,
+                notes=req.notes if hasattr(req, "notes") else None,
                 company_name=req.company_name,
-                shares=req.shares,
-                buy_price=req.buy_price,
-                group_name="holdings",
                 target_price=req.target_price,
                 purchase_date=req.purchase_date,
-                is_virtual=req.is_virtual,
+                is_virtual=getattr(req, "is_virtual", False),
             )
-            session.add(new_holding)
             session.commit()
             _cache_invalidate("morning_brief", str(req.user_id))
 
@@ -778,6 +775,24 @@ def portfolio_update_endpoint(req: PortfolioUpdateRequest, authorization: str = 
             "current_price": current_price or 0.0,
             **pnl_data,
         }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+# ---------------------------------------------------------------------------
+# 9. GET /portfolio/transactions/{ticker}
+# ---------------------------------------------------------------------------
+@router.get("/portfolio/transactions/{ticker}")
+def portfolio_transactions_endpoint(ticker: str, user_id: int, authorization: str = Header(None)):
+    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
+    if token_user != user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    ticker = ticker.upper().strip()
+    try:
+        from services.ledger_service import get_transactions_for_ticker
+        return get_transactions_for_ticker(user_id=user_id, ticker=ticker)
     except HTTPException:
         raise
     except Exception as e:
