@@ -513,10 +513,7 @@ struct StockProfileView: View {
                         // 1: Fundamentals
                         ScrollView {
                             LazyVStack(spacing: Theme.sectionSpacing) {
-                                FundamentalsTabView(
-                                    financials: MockFundamentals.mockFinancials,
-                                    shareholding: MockFundamentals.mockShareholding
-                                )
+                                FundamentalsTabView(vm: vm)
                             }
                             .padding(.bottom, Theme.sectionSpacing)
                         }

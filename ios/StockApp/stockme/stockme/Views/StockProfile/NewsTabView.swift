@@ -4,28 +4,26 @@ struct NewsTabView: View {
     @ObservedObject var vm: StockProfileViewModel
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: Theme.Spacing.card) {
-                Text("LATEST NEWS")
-                    .font(Theme.officialStampFont(size: 9))
-                    .tracking(1.5)
-                    .foregroundStyle(Theme.inkTertiary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, Theme.Spacing.small)
+        LazyVStack(spacing: Theme.Spacing.card) {
+            Text("LATEST NEWS")
+                .font(Theme.officialStampFont(size: 9))
+                .tracking(1.5)
+                .foregroundStyle(Theme.inkTertiary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, Theme.Spacing.small)
 
-                if vm.overviewLoading {
-                    SPSkeletonBlock(rows: 5)
-                } else if let news = vm.quickInfo?.recentNews, !news.isEmpty {
-                    ForEach(news) { article in
-                        SPNewsCardView(article: article)
-                    }
-                } else {
-                    SPEmptyStateView(message: "No recent news for this stock")
+            if vm.overviewLoading {
+                SPSkeletonBlock(rows: 5)
+            } else if let news = vm.quickInfo?.recentNews, !news.isEmpty {
+                ForEach(news) { article in
+                    SPNewsCardView(article: article)
                 }
+            } else {
+                SPEmptyStateView(message: "No recent news for this stock")
             }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.vertical, Theme.Spacing.card)
         }
+        .padding(.horizontal, Theme.screenPadding)
+        .padding(.vertical, Theme.Spacing.card)
         .task { await vm.fetchOverview() }
     }
 }

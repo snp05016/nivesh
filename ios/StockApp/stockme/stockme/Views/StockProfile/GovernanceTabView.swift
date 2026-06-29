@@ -9,28 +9,26 @@ struct GovernanceTabView: View {
     @State private var governanceCards: [HarvestedCard] = []
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: Theme.Spacing.card) {
-                if vm.overviewLoading {
-                    SPSkeletonBlock(rows: 4)
-                    SPSkeletonBlock(rows: 4)
-                } else if let info = vm.quickInfo {
-                    GovernanceSurveillanceBannerView(info: info)
-                    GovernanceScoreCardView(info: info)
-                    GovernancePromoterSectionView(info: info, promoterHistory: vm.promoterHistory)
-                    GovernanceInstitutionalSectionView(info: info)
-                    GovernanceLeadershipSectionView(officers: info.officers ?? [])
-                    GovernanceDebtGaugeView(info: info)
-                } else {
-                    SPEmptyStateView(message: "Governance data unavailable")
-                }
-
-                GuillocheDivider()
-                HarvesterGovernanceSectionView(ticker: ticker, cards: governanceCards)
+        LazyVStack(spacing: Theme.Spacing.card) {
+            if vm.overviewLoading {
+                SPSkeletonBlock(rows: 4)
+                SPSkeletonBlock(rows: 4)
+            } else if let info = vm.quickInfo {
+                GovernanceSurveillanceBannerView(info: info)
+                GovernanceScoreCardView(info: info)
+                GovernancePromoterSectionView(info: info, promoterHistory: vm.promoterHistory)
+                GovernanceInstitutionalSectionView(info: info)
+                GovernanceLeadershipSectionView(officers: info.officers ?? [])
+                GovernanceDebtGaugeView(info: info)
+            } else {
+                SPEmptyStateView(message: "Governance data unavailable")
             }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.vertical, Theme.Spacing.card)
+
+            GuillocheDivider()
+            HarvesterGovernanceSectionView(ticker: ticker, cards: governanceCards)
         }
+        .padding(.horizontal, Theme.screenPadding)
+        .padding(.vertical, Theme.Spacing.card)
         .task { await vm.fetchOverview() }
         .task { await vm.fetchFinancials() }
         .task { governanceCards = (try? await NetworkManager.shared.fetchGovernanceCards(ticker: ticker)) ?? [] }

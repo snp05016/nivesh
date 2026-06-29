@@ -4,19 +4,17 @@ struct HoldersTabView: View {
     @ObservedObject var vm: StockProfileViewModel
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: Theme.Spacing.card) {
-                if vm.holdersLoading {
-                    SPSkeletonBlock(rows: 5)
-                } else if let ratings = vm.analystRatings {
-                    HoldersContentView(ratings: ratings)
-                } else {
-                    SPEmptyStateView(message: "Holder data unavailable")
-                }
+        LazyVStack(spacing: Theme.Spacing.card) {
+            if vm.holdersLoading {
+                SPSkeletonBlock(rows: 5)
+            } else if let ratings = vm.analystRatings {
+                HoldersContentView(ratings: ratings)
+            } else {
+                SPEmptyStateView(message: "Holder data unavailable")
             }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.vertical, Theme.Spacing.card)
         }
+        .padding(.horizontal, Theme.screenPadding)
+        .padding(.vertical, Theme.Spacing.card)
         .task { await vm.fetchHolders() }
     }
 }
