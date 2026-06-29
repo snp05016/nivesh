@@ -113,7 +113,7 @@ def sip_calculator(req: SIPCalculatorRequest):
         years=req.years,
         step_up_pct=req.step_up_pct,
     )
-    return {"inputs": req.dict(), **result}
+    return {"inputs": req.model_dump(), **result}
 
 # ── Item 44: Portfolio vs Nifty CAGR ──────────────────────────────────
 @router.get("/portfolio/benchmark")

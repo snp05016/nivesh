@@ -44,7 +44,7 @@ we'll await the service call which handles the processing.
         # Pass everything to the service, keeping the router clean.
         result = process_copilot_request(
             user_message=req.user_message,
-            conversation_history=[msg.dict() for msg in req.conversation_history],
+            conversation_history=[msg.model_dump() for msg in req.conversation_history],
             current_context=req.current_context,
             user_id=user_id
         )
