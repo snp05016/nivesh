@@ -48,6 +48,8 @@ class PortfolioAddRequest(BaseModel):
     group_name: str = "holdings"
     target_price: Optional[float] = None
     purchase_date: Optional[str] = None
+    notes: Optional[str] = None
+    transaction_type: str = "BUY"
 
 
 class PortfolioRemoveRequest(BaseModel):

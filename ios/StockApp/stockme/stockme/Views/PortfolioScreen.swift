@@ -99,8 +99,8 @@ class PortfolioViewModel: ObservableObject {
         }
     }
 
-    func addHolding(userId: Int, ticker: String, companyName: String, shares: Double, buyPrice: Double, purchaseDate: Date, notes: String, targetPrice: Double) async throws {
-        try await NetworkManager.shared.addHolding(userId: userId, ticker: ticker, companyName: companyName, shares: shares, buyPrice: buyPrice, purchaseDate: purchaseDate, notes: notes, targetPrice: targetPrice)
+    func addHolding(userId: Int, ticker: String, companyName: String, shares: Double, buyPrice: Double, purchaseDate: Date, notes: String, targetPrice: Double, transactionType: String = "BUY") async throws {
+        try await NetworkManager.shared.addHolding(userId: userId, ticker: ticker, companyName: companyName, shares: shares, buyPrice: buyPrice, purchaseDate: purchaseDate, notes: notes, targetPrice: targetPrice, transactionType: transactionType)
         await fetchData(userId: userId)
     }
 
@@ -1346,7 +1346,7 @@ private struct AddHoldingSheet: View {
     let viewModel: PortfolioViewModel
     let authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var searchText = ""
     @State private var selectedEntry: StockEntry? = nil
     @State private var sharesText = ""
@@ -1356,6 +1356,7 @@ private struct AddHoldingSheet: View {
     @State private var targetPriceText = ""
     @State private var errorText: String? = nil
     @State private var isAdding = false
+    @State private var transactionType = "BUY"
     
     private var searchResults: [StockEntry] {
         if searchText.trimmingCharacters(in: .whitespaces).isEmpty { return [] }
@@ -1442,8 +1443,21 @@ private struct AddHoldingSheet: View {
                         }
                     }
                     
-                    // Shares & Buy Price inputs
+                    // Trade type + inputs
                     VStack(spacing: Theme.Spacing.card) {
+                        // BUY / SELL selector
+                        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
+                            Text("TRANSACTION TYPE")
+                                .font(Theme.officialStampFont(size: 9))
+                                .foregroundStyle(Theme.inkSecondary)
+                            Picker("", selection: $transactionType) {
+                                Text("BUY").tag("BUY")
+                                Text("SELL").tag("SELL")
+                            }
+                            .pickerStyle(.segmented)
+                            .tint(transactionType == "BUY" ? Theme.bullGreen : Theme.bearRed)
+                        }
+
                         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                             Text("NUMBER OF SHARES")
                                 .font(Theme.officialStampFont(size: 9))
@@ -1456,9 +1470,9 @@ private struct AddHoldingSheet: View {
                                 .background(Theme.inkPrimary.opacity(0.05))
                                 .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                         }
-                        
+
                         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                            Text("BUY PRICE (₹)")
+                            Text(transactionType == "BUY" ? "BUY PRICE (₹)" : "SELL PRICE (₹)")
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.inkSecondary)
                             TextField("e.g. 1530.00", text: $buyPriceText)
@@ -1542,7 +1556,8 @@ private struct AddHoldingSheet: View {
                                         buyPrice: buyPrice,
                                         purchaseDate: purchaseDate,
                                         notes: notes,
-                                        targetPrice: Double(targetPriceText) ?? 0.0
+                                        targetPrice: Double(targetPriceText) ?? 0.0,
+                                        transactionType: transactionType
                                     )
                                     dismiss()
                                 } catch {
@@ -1555,7 +1570,7 @@ private struct AddHoldingSheet: View {
                                 if isAdding {
                                     ProgressView().tint(.white)
                                 }
-                                Text(isAdding ? "ADDING…" : "ADD TO PORTFOLIO")
+                                Text(isAdding ? "RECORDING…" : "RECORD \(transactionType)")
                                     .font(Theme.officialStampFont(size: 11))
                             }
                             .frame(maxWidth: .infinity)
@@ -1572,7 +1587,7 @@ private struct AddHoldingSheet: View {
                     Spacer()
                 }
             }
-            .navigationTitle("Add Holding")
+            .navigationTitle("Record Trade")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
@@ -2473,3 +2488,111 @@ struct ShareSheet: UIViewControllerRepresentable {
             }
             func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
         }
+
+// MARK: - Transaction History Timeline
+
+struct TransactionTimelineView: View {
+    let userId: Int
+    let ticker: String
+    @State private var items: [NetworkManager.TransactionItem] = []
+    @State private var isLoading = false
+
+    private static let isoParser: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static let fallbackParser: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return f
+    }()
+
+    private static let display: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "dd MMM yyyy"
+        return f
+    }()
+
+    private func formatted(_ raw: String?) -> String {
+        guard let raw else { return "—" }
+        if let d = Self.isoParser.date(from: raw) { return Self.display.string(from: d) }
+        if let d = Self.fallbackParser.date(from: raw) { return Self.display.string(from: d) }
+        return String(raw.prefix(10))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.none) {
+            Text("TRADE HISTORY")
+                .font(Theme.officialStampFont(size: 9))
+                .foregroundStyle(Theme.inkSecondary)
+                .padding(.horizontal, Theme.screenPadding)
+                .padding(.bottom, Theme.Spacing.standard)
+
+            if isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(Theme.Spacing.large)
+            } else if items.isEmpty {
+                Text("No transactions recorded yet.")
+                    .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .body))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(Theme.Spacing.large)
+            } else {
+                VStack(spacing: Theme.Spacing.none) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { idx, item in
+                        let isBuy = item.transactionType.uppercased() == "BUY"
+                        HStack(spacing: Theme.Spacing.standard) {
+                            // Type badge
+                            Text(item.transactionType.uppercased())
+                                .font(Theme.officialStampFont(size: 8))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, Theme.Spacing.small)
+                                .padding(.vertical, Theme.Spacing.xSmall)
+                                .background(isBuy ? Theme.bullGreen : Theme.bearRed)
+                                .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
+                                .frame(width: 36)
+
+                            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                                Text(formatted(item.date))
+                                    .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
+                                    .foregroundStyle(Theme.inkSecondary)
+                                Text("\(Int(item.quantity)) shares")
+                                    .font(Theme.engravedSerif(size: 13, weight: .semibold, relativeTo: .body))
+                                    .foregroundStyle(Theme.inkPrimary)
+                            }
+
+                            Spacer()
+
+                            VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
+                                Text(IndianFormatter.price(item.price))
+                                    .font(Theme.serialNumberFont(size: 13, relativeTo: .body))
+                                    .foregroundStyle(isBuy ? Theme.bullGreen : Theme.bearRed)
+                                if let fees = item.fees, fees > 0 {
+                                    Text("Fee: \(IndianFormatter.price(fees))")
+                                        .font(Theme.serialNumberFont(size: 10, relativeTo: .caption))
+                                        .foregroundStyle(Theme.inkTertiary)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, Theme.screenPadding)
+                        .padding(.vertical, Theme.Spacing.standard)
+
+                        if idx < items.count - 1 {
+                            GuillocheDivider().padding(.horizontal, Theme.screenPadding)
+                        }
+                    }
+                }
+                .banknoteCard()
+                .padding(.horizontal, Theme.screenPadding)
+            }
+        }
+        .task {
+            isLoading = true
+            items = (try? await NetworkManager.shared.fetchTransactions(userId: userId, ticker: ticker)) ?? []
+            isLoading = false
+        }
+    }
+}

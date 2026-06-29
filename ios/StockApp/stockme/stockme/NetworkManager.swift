@@ -407,6 +407,34 @@ class NetworkManager: ObservableObject {
 
     // MARK: - Portfolio
 
+    struct TransactionItem: Codable, Identifiable {
+        let id: Int
+        let ticker: String
+        let transactionType: String
+        let quantity: Double
+        let price: Double
+        let fees: Double?
+        let date: String?
+        let notes: String?
+
+        enum CodingKeys: String, CodingKey {
+            case id, ticker, quantity, price, fees, date, notes
+            case transactionType = "transaction_type"
+        }
+    }
+
+    func fetchTransactions(userId: Int, ticker: String) async throws -> [TransactionItem] {
+        guard let url = URL(string: "\(baseURL)/portfolio/transactions/\(ticker)?user_id=\(userId)") else {
+            throw NetworkError.invalidURL
+        }
+        let req = authRequest(url)
+        let (data, response) = try await dataWithRetry(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        return (try? JSONDecoder().decode([TransactionItem].self, from: data)) ?? []
+    }
+
     private struct PortfolioResponse: Decodable {
         let holdings: [HoldingDTO]
     }
@@ -458,24 +486,22 @@ class NetworkManager: ObservableObject {
     }
 
     
-    func addHolding(userId: Int, ticker: String, companyName: String, shares: Double, buyPrice: Double, purchaseDate: Date, notes: String, targetPrice: Double) async throws {
+    func addHolding(userId: Int, ticker: String, companyName: String, shares: Double, buyPrice: Double, purchaseDate: Date, notes: String, targetPrice: Double, transactionType: String = "BUY") async throws {
         struct Req: Encodable {
             let user_id: Int; let ticker: String; let company_name: String; let shares: Double; let buy_price: Double
-            let purchase_date: String; let notes: String; let target_price: Double
+            let purchase_date: String; let notes: String; let target_price: Double; let transaction_type: String
         }
         guard let url = URL(string: "\(baseURL)/portfolio") else { throw NetworkError.invalidURL }
         var request = authRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
         let formatter = DateFormatter()
         formatter.dateFormat = "dd-MMM-yyyy"
-        
         let body = Req(
             user_id: userId, ticker: ticker, company_name: companyName, shares: shares, buy_price: buyPrice,
-            purchase_date: formatter.string(from: purchaseDate), notes: notes, target_price: targetPrice
+            purchase_date: formatter.string(from: purchaseDate), notes: notes, target_price: targetPrice,
+            transaction_type: transactionType.uppercased()
         )
-        
         request.httpBody = try JSONEncoder().encode(body)
         let (_, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
