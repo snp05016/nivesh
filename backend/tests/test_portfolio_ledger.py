@@ -196,12 +196,13 @@ def auth_headers(test_client):
     email = f"ledger_test_{tag}@example.com"
     pw = "Test1234!"
 
+    username = f"ledger_{tag}"
     r = test_client.post("/register", json={
-        "email": email, "password": pw, "display_name": f"LedgerTest {tag}"
+        "username": username, "password": pw, "display_name": f"LedgerTest {tag}"
     })
     assert r.status_code in (200, 201, 400)  # 400 if already exists
 
-    r = test_client.post("/login", json={"email": email, "password": pw})
+    r = test_client.post("/login", json={"username": username, "password": pw})
     if r.status_code != 200:
         pytest.skip("Auth endpoint unavailable in this test environment")
 
