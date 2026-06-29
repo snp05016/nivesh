@@ -81,6 +81,17 @@ def record_transaction(
     else:
         resolved_group_id = group_id
 
+    tx_type_upper = transaction_type.upper()
+    if tx_type_upper == "SELL":
+        existing_holding = session.query(Portfolio).filter_by(
+            user_id=user_id, ticker=ticker, group_name="holdings"
+        ).first()
+        held = float(existing_holding.shares) if existing_holding is not None else 0.0  # type: ignore[arg-type]
+        if quantity > held:
+            raise ValueError(
+                f"Cannot SELL {quantity} of {ticker}: only {round(held, 4)} shares held."
+            )
+
     tx = Transaction(
         user_id=user_id,
         group_id=resolved_group_id,

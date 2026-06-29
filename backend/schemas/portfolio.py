@@ -1,7 +1,9 @@
 """Portfolio, trading, and analysis Pydantic request schemas."""
 
 from typing import Optional
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
+
+_ALLOWED_TX_TYPES = {"BUY", "SELL", "SPLIT", "BONUS", "DIVIDEND"}
 
 
 class AnalyzeRequest(BaseModel):
@@ -43,13 +45,21 @@ class PortfolioAddRequest(BaseModel):
     ticker: str
     exchange: str = "NSE"
     company_name: str
-    shares: float
-    buy_price: float
+    shares: float = Field(gt=0, description="Number of shares (must be > 0)")
+    buy_price: float = Field(gt=0, description="Price per share (must be > 0)")
     group_name: str = "holdings"
     target_price: Optional[float] = None
     purchase_date: Optional[str] = None
     notes: Optional[str] = None
     transaction_type: str = "BUY"
+
+    @field_validator("transaction_type")
+    @classmethod
+    def validate_transaction_type(cls, v: str) -> str:
+        upper = v.upper()
+        if upper not in _ALLOWED_TX_TYPES:
+            raise ValueError(f"transaction_type must be one of {sorted(_ALLOWED_TX_TYPES)}")
+        return upper
 
 
 class PortfolioRemoveRequest(BaseModel):

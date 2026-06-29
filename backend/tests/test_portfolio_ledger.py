@@ -133,15 +133,14 @@ class TestWACEngine:
         h = _holding(db_session, 1, "INFY")
         assert h is None, "Portfolio row should be deleted when shares reach zero"
 
-    def test_oversell_clamps_to_zero_and_deletes(self, db_session):
-        """Selling more than held clamps to zero and deletes the row."""
+    def test_oversell_raises_value_error(self, db_session):
+        """Selling more than held raises ValueError (short-selling forbidden)."""
         g = _make_group(db_session)
         _buy(db_session, 1, g.id, "TCS", 5, 3000.0)
-        _sell(db_session, 1, g.id, "TCS", 10, 3500.0)  # sell 10, only 5 held
         db_session.commit()
 
-        h = _holding(db_session, 1, "TCS")
-        assert h is None
+        with pytest.raises(ValueError, match="only"):
+            _sell(db_session, 1, g.id, "TCS", 10, 3500.0)  # sell 10, only 5 held
 
     def test_transactions_stored_immutably(self, db_session):
         """All transaction records persist regardless of share state."""
