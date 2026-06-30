@@ -2677,3 +2677,74 @@ def get_signal_accuracy():
     except Exception as e:
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail="Internal server error")
+
+from database import PortfolioTransaction
+
+class MultiAssetTransactionRequest(_BaseModel):
+    user_id: int
+    asset_type: str
+    symbol: str
+    transaction_type: str
+    quantity: float
+    price: float
+    fees: float = 0.0
+    notes: _Optional[str] = None
+
+@router.post("/portfolio/multi-asset/transaction")
+def multi_asset_transaction_entry(req: MultiAssetTransactionRequest, authorization: str = Header(None)):
+    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
+    if token_user != req.user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    try:
+        with get_session() as session:
+            tx = PortfolioTransaction(
+                user_id=req.user_id,
+                asset_type=req.asset_type.upper(),
+                symbol=req.symbol.upper(),
+                transaction_type=req.transaction_type.upper(),
+                quantity=req.quantity,
+                price=req.price,
+                fees=req.fees,
+                notes=req.notes
+            )
+            session.add(tx)
+            session.commit()
+            return {"success": True, "transaction_id": tx.id}
+    except Exception as e:
+        import logging
+        logging.error(f"Error saving multi-asset transaction: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/portfolio/multi-asset/transactions/{user_id}")
+def multi_asset_transactions_history(user_id: int, asset_type: _Optional[str] = None, authorization: str = Header(None)):
+    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
+    if token_user != user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    try:
+        with get_session() as session:
+            query = session.query(PortfolioTransaction).filter(PortfolioTransaction.user_id == user_id)
+            if asset_type:
+                query = query.filter(PortfolioTransaction.asset_type == asset_type.upper())
+            
+            transactions = query.order_by(PortfolioTransaction.date.desc()).all()
+            
+            return [
+                {
+                    "id": tx.id,
+                    "asset_type": tx.asset_type,
+                    "symbol": tx.symbol,
+                    "transaction_type": tx.transaction_type,
+                    "quantity": tx.quantity,
+                    "price": tx.price,
+                    "fees": tx.fees,
+                    "date": tx.date.isoformat() if tx.date else None,
+                    "notes": tx.notes
+                }
+                for tx in transactions
+            ]
+    except Exception as e:
+        import logging
+        logging.error(f"Error fetching multi-asset transactions: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")

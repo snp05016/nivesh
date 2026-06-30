@@ -250,7 +250,7 @@ struct PreIPOMarketplaceView: View {
             }
         }
         .padding(.horizontal, Theme.Spacing.standard)
-        .padding(.vertical, 9)
+        .padding(.vertical, Theme.Spacing.medium)
         .background(Theme.canvasDeep)
     }
 

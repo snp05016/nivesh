@@ -86,7 +86,7 @@ struct LaunchSequenceView: View {
                 .font(Font.custom("Georgia", size: 16, relativeTo: .subheadline).italic())
                 .foregroundStyle(Theme.inkSecondary)
                 .opacity(hindiOpacity)
-                .padding(.top, 8)
+                .padding(.top, Theme.Spacing.medium)
 
             // "RESERVE BANK OF INTELLIGENCE"
             Text("RESERVE BANK OF INTELLIGENCE")

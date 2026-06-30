@@ -295,7 +295,7 @@ struct AgentEventRow: View {
                             .font(Theme.microLabel(size: 7))
                             .foregroundStyle(Theme.securityGold.opacity(0.7))
                             .padding(.horizontal, Theme.Spacing.small)
-                            .padding(.vertical, 1)
+                            .padding(.vertical, Theme.Spacing.xSmall)
                             .background(Theme.securityGold.opacity(0.1))
                             .clipShape(Capsule())
                     }

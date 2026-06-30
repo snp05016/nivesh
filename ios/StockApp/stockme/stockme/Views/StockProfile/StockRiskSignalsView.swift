@@ -735,7 +735,7 @@ struct RiskGovernanceSectionView: View {
                                 Circle()
                                     .fill(Theme.bearRed)
                                     .frame(width: 5, height: 5)
-                                    .padding(.top, 4)
+                                    .padding(.top, Theme.Spacing.small)
                                 Text(flag)
                                     .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
                                     .foregroundStyle(Theme.inkPrimary)

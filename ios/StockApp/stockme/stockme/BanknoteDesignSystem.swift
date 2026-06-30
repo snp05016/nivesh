@@ -78,8 +78,8 @@ struct BanknoteSignalBadge: View {
             .font(Theme.officialStampFont(size: 9))
             .tracking(2)
             .foregroundStyle(tintColor)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.horizontal, Theme.Spacing.medium)
+            .padding(.vertical, Theme.Spacing.small)
             .background(tintColor.opacity(0.07))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.small)

@@ -32,7 +32,7 @@ struct BanknoteDialogButton: Identifiable {
     }
 
     /// Convenience cancel button.
-    static func cancel(_ title: String = "Cancel", action: @escaping () -> Void = {}) -> BanknoteDialogButton {
+    static func cancel(_ title: String = "Cancel", action: @escaping () -> Void = { HapticManager.selection(); }) -> BanknoteDialogButton {
         BanknoteDialogButton(title, role: .cancel, action: action)
     }
 }
@@ -89,8 +89,8 @@ private struct BanknoteDialogCard: View {
         }
     }
 
-    private func dialogButton(_ button: BanknoteDialogButton) -> some View {
-        Button {
+    private func dialogButton(_ button: BanknoteDialogButton) -> some View { HapticManager.selection(); 
+        Button { HapticManager.selection(); 
     HapticManager.selection()
             HapticManager.selection()
             onClose()

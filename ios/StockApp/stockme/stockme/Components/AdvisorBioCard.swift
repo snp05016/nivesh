@@ -53,7 +53,7 @@ struct AdvisorBioCard: View {
                 .lineSpacing(3)
 
             // Expand button
-            Button(isExpanded ? "Show Less" : "Read More") {
+            Button(isExpanded ? "Show Less" : "Read More") { HapticManager.selection(); 
                 HapticManager.selection()
                 withAnimation { isExpanded.toggle() }
             }

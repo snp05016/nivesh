@@ -266,7 +266,7 @@ struct StrategyLabScreen: View {
                         Image(systemName: "flask")
                             .font(Theme.engravedSerif(size: 32))
                             .foregroundStyle(Theme.inkTertiary)
-                            .padding(.bottom, 8)
+                            .padding(.bottom, Theme.Spacing.medium)
                         Text("Select a strategy to begin")
                             .font(Theme.engravedSerif(size: 16))
                             .foregroundStyle(Theme.inkSecondary)

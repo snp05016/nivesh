@@ -145,7 +145,7 @@ struct AnalysisCoreSections: View {
                     .foregroundStyle(Theme.inkTertiary)
                     .explainableTerm("Mathematically Calibrated Confidence")
                 if analysis.confidenceMathBreakdown != nil {
-                    QuantInspectorInfoButton {
+                    QuantInspectorInfoButton { HapticManager.selection(); 
     HapticManager.selection()
                         showQuantInspector = true
                     }
@@ -178,7 +178,7 @@ struct AnalysisCoreSections: View {
                 .tracking(1.5)
                 .foregroundStyle(Theme.inkTertiary)
                 
-            Button {
+            Button { HapticManager.selection(); 
     HapticManager.selection()
                 HapticManager.selection()
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -198,7 +198,7 @@ struct AnalysisCoreSections: View {
                         Text(showFullSummary ? "Read less" : "Read full summary")
                             .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
                             .foregroundStyle(Theme.securityGold)
-                            .padding(.top, 4)
+                            .padding(.top, Theme.Spacing.small)
                     }
                 }
             }
@@ -609,7 +609,7 @@ private struct QuantInspectorInfoButton: View {
     }
 
     var body: some View {
-        Button {
+        Button { HapticManager.selection(); 
     HapticManager.selection()
             HapticManager.selection()
             action()

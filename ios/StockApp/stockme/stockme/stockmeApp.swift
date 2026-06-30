@@ -284,7 +284,7 @@ struct stockmeApp: App {
             Text("Authenticate to continue")
                 .font(.subheadline)
                 .foregroundStyle(Theme.inkSecondary)
-            Button {
+            Button { HapticManager.selection(); 
     HapticManager.selection()
                 HapticManager.selection()
                 authenticateWithBiometrics()

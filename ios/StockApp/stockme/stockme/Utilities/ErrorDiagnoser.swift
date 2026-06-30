@@ -162,7 +162,7 @@ struct ErrorDiagnoserView: View {
                         diagnosticExpander
 
                         if let retry = retryAction {
-                            Button {
+                            Button { HapticManager.selection(); 
     HapticManager.selection()
                                 HapticManager.selection()
                                 isRetrying = true
@@ -228,7 +228,7 @@ struct ErrorDiagnoserView: View {
 
     private var diagnosticExpander: some View {
         VStack(spacing: Theme.Spacing.none) {
-            Button {
+            Button { HapticManager.selection(); 
     HapticManager.selection()
                 HapticManager.selection()
                 withAnimation(.easeInOut(duration: 0.2)) { showDiagnostics.toggle() }
@@ -251,7 +251,7 @@ struct ErrorDiagnoserView: View {
                     if let c = context.failingContract { diagRow("Contract", c) }
                     diagRow("Source", (context.swiftFile as NSString).lastPathComponent)
                     diagRow("Class", context.classification)
-                    Button {
+                    Button { HapticManager.selection(); 
     HapticManager.selection()
                         HapticManager.selection()
                         #if os(iOS)

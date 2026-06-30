@@ -268,7 +268,7 @@ struct AnalysisScreen: View {
             .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
+                    Button { HapticManager.selection(); 
     HapticManager.selection()
                         dismiss()
                     } label: {
@@ -303,7 +303,7 @@ struct AnalysisScreen: View {
                             .foregroundStyle(Theme.inkPrimary)
                         ChangeBadge(value: info.changePercent ?? 0)
                     }
-                    Button {
+                    Button { HapticManager.selection(); 
     HapticManager.selection()
                         shareAsImage()
                     } label: {
@@ -699,7 +699,7 @@ struct NewsItemCard: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button {
+        Button { HapticManager.selection(); 
     HapticManager.selection()
             HapticManager.impact(.light)
             onTap()
@@ -828,7 +828,7 @@ private struct AnalysisNoteSection: View {
                         Rectangle()
                             .fill(color.opacity(0.5))
                             .frame(width: 2, height: 14)
-                            .padding(.top, 4)
+                            .padding(.top, Theme.Spacing.small)
                         Text(item)
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(Theme.inkSecondary)
@@ -1178,7 +1178,7 @@ struct NewsReaderView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { dismiss() } label: {
+                    Button { HapticManager.selection();  dismiss() } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(Theme.inkTertiary)
                             .font(Theme.engravedSerif(size: 24))

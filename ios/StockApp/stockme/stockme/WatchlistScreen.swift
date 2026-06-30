@@ -46,7 +46,7 @@ struct WatchlistScreen: View {
                             .padding(.top, Theme.Spacing.xLarge)
                     } else {
                         ForEach(filteredItems) { item in
-                            Button {
+                            Button { HapticManager.selection(); 
     HapticManager.selection()
                                 HapticManager.selection()
                                 stockTapTicker = item.ticker
@@ -59,7 +59,7 @@ struct WatchlistScreen: View {
                             }
                             .buttonStyle(EKPressStyle())
                             .contextMenu {
-                                Button(role: .destructive) {
+                                Button(role: .destructive) { HapticManager.selection(); 
                                     remove(item)
                                 } label: {
                                     Label("Remove from Watchlist", systemImage: "trash")
@@ -140,7 +140,7 @@ struct WatchlistScreen: View {
             .autocorrectionDisabled()
             .textInputAutocapitalization(.characters)
             if !searchText.isEmpty {
-                Button {
+                Button { HapticManager.selection(); 
     HapticManager.selection()
                     HapticManager.selection()
                     searchText = ""

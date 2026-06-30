@@ -132,7 +132,7 @@ struct LoginScreen: View {
                         }
 
                         // Primary Action Button
-                        Button(action: attemptAction) {
+                        Button(action: attemptAction) { HapticManager.selection(); 
                             HStack {
                                 if authManager.isLoggingIn {
                                     ProgressView().tint(Theme.inkPrimary)
@@ -168,7 +168,7 @@ struct LoginScreen: View {
                                 
                                 HStack(spacing: Theme.Spacing.medium) {
                                     ForEach(["saumya", "nirav", "ankur"], id: \.self) { name in
-                                        Button {
+                                        Button { HapticManager.selection(); 
     HapticManager.selection()
                                             username = name
                                             password = "123"

@@ -26,14 +26,14 @@ struct CompareScreen: View {
                     VStack(spacing: Theme.Spacing.screen) {
                         // Picker row
                         HStack(spacing: Theme.Spacing.small) {
-                            StockPickerButton(label: "Stock A", selected: selectedA, searchText: $searchTextA) { entry in
+                            StockPickerButton(label: "Stock A", selected: selectedA, searchText: $searchTextA) { HapticManager.selection();  entry in
                                 selectedA = entry
                                 searchTextA = ""
                             }
                             Image(systemName: "arrow.left.arrow.right")
                                 .foregroundStyle(Theme.securityGold)
                                 .font(.caption.weight(.bold))
-                            StockPickerButton(label: "Stock B", selected: selectedB, searchText: $searchTextB) { entry in
+                            StockPickerButton(label: "Stock B", selected: selectedB, searchText: $searchTextB) { HapticManager.selection();  entry in
                                 selectedB = entry
                                 searchTextB = ""
                             }
@@ -41,7 +41,7 @@ struct CompareScreen: View {
                                 Image(systemName: "arrow.left.arrow.right")
                                     .foregroundStyle(Theme.securityGold)
                                     .font(.caption.weight(.bold))
-                                StockPickerButton(label: "Stock C", selected: selectedC, searchText: $searchTextC) { entry in
+                                StockPickerButton(label: "Stock C", selected: selectedC, searchText: $searchTextC) { HapticManager.selection();  entry in
                                     selectedC = entry
                                     searchTextC = ""
                                 }
@@ -79,7 +79,7 @@ struct CompareScreen: View {
             .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button { dismiss() } label: {
+                    Button { HapticManager.selection();  dismiss() } label: {
                         Image(systemName: "chevron.left")
                             .foregroundStyle(Theme.inkPrimary).padding(Theme.Spacing.medium)
                             .background(Theme.canvasDeep).clipShape(Circle())
@@ -238,7 +238,7 @@ private struct StockPickerButton: View {
     }
 
     var body: some View {
-        Button { showPicker = true } label: {
+        Button { HapticManager.selection();  showPicker = true } label: {
             VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 Text(label).font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
                 Text(selected?.ticker ?? "Tap to select")
@@ -269,7 +269,7 @@ private struct StockPickerButton: View {
                         .padding()
 
                         List(results) { entry in
-                            Button {
+                            Button { HapticManager.selection(); 
     HapticManager.selection()
                                 onSelect(entry)
                                 showPicker = false
@@ -278,7 +278,7 @@ private struct StockPickerButton: View {
                                     Text(entry.ticker).font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkPrimary)
                                     Text(entry.companyName).font(.caption).foregroundStyle(Theme.inkSecondary)
                                 }
-                                .padding(.vertical, 4)
+                                .padding(.vertical, Theme.Spacing.small)
                             }
                             .listRowBackground(Theme.canvas)
                         }

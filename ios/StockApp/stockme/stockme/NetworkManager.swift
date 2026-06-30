@@ -451,6 +451,18 @@ class NetworkManager: ObservableObject {
         let target_price: Double?
     }
 
+    func fetchMutualFunds() async throws -> [MutualFundDTO] {
+        guard let url = URL(string: "\(baseURL)/api/mutual-funds/") else {
+            throw NetworkError.invalidURL
+        }
+        let req = authRequest(url)
+        let (data, response) = try await dataWithRetry(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        return (try? JSONDecoder().decode([MutualFundDTO].self, from: data)) ?? []
+    }
+
     func getPortfolio(userId: Int) async throws -> [PortfolioHolding] {
         guard let url = URL(string: "\(baseURL)/portfolio/\(userId)") else { throw NetworkError.invalidURL }
         let req = authRequest(url)
@@ -488,8 +500,8 @@ class NetworkManager: ObservableObject {
     
     func addHolding(userId: Int, ticker: String, companyName: String, shares: Double, buyPrice: Double, purchaseDate: Date, notes: String, targetPrice: Double, transactionType: String = "BUY") async throws {
         struct Req: Encodable {
-            let user_id: Int; let ticker: String; let company_name: String; let shares: Double; let buy_price: Double
-            let purchase_date: String; let notes: String; let target_price: Double; let transaction_type: String
+            let user_id: Int; let ticker: String; let exchange: String; let company_name: String; let shares: Double; let buy_price: Double
+            let group_name: String; let purchase_date: String; let notes: String; let target_price: Double; let transaction_type: String
         }
         guard let url = URL(string: "\(baseURL)/portfolio") else { throw NetworkError.invalidURL }
         var request = authRequest(url)
@@ -498,8 +510,8 @@ class NetworkManager: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "dd-MMM-yyyy"
         let body = Req(
-            user_id: userId, ticker: ticker, company_name: companyName, shares: shares, buy_price: buyPrice,
-            purchase_date: formatter.string(from: purchaseDate), notes: notes, target_price: targetPrice,
+            user_id: userId, ticker: ticker, exchange: "NSE", company_name: companyName, shares: shares, buy_price: buyPrice,
+            group_name: "holdings", purchase_date: formatter.string(from: purchaseDate), notes: notes, target_price: targetPrice,
             transaction_type: transactionType.uppercased()
         )
         request.httpBody = try JSONEncoder().encode(body)
@@ -826,6 +838,9 @@ class NetworkManager: ObservableObject {
                 return nil
             }
             do {
+                if let array = try? JSONDecoder().decode([OHLCVPoint].self, from: data) {
+                    return StockHistoryResponse(ticker: ticker, exchange: exchange, period: period, prices: array)
+                }
                 return try JSONDecoder().decode(StockHistoryResponse.self, from: data)
             } catch {
                 let body = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
@@ -957,8 +972,8 @@ class NetworkManager: ObservableObject {
     func searchStocks(q: String) async -> [StockEntry] {
         guard !q.isEmpty,
               let encoded = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let url = URL(string: "\(baseURL)/search?q=\(encoded)&limit=25") else { return [] }
-        var request = URLRequest(url: url)
+              let url = URL(string: "\(baseURL)/api/v1/search?query=\(encoded)") else { return [] }
+        var request = authRequest(url)
         request.timeoutInterval = 5
         guard let (data, resp) = try? await session.data(for: request),
               let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
@@ -970,6 +985,35 @@ class NetworkManager: ObservableObject {
         }
         guard let results = try? JSONDecoder().decode([SearchResult].self, from: data) else { return [] }
         return results.map { StockEntry(ticker: $0.ticker, companyName: $0.company_name, exchange: $0.exchange, sector: $0.sector) }
+    }
+
+    // MARK: - Dashboard Pulse
+    
+    struct IndexSnapshot: Decodable {
+        let name: String
+        let value: Double?
+        let change_pct: Double?
+        let change_abs: Double?
+    }
+    struct MomentumSignal: Decodable {
+        let ticker: String
+        let signal: String
+    }
+    
+    struct DashboardPulseResponse: Decodable {
+        let indices: [IndexSnapshot]
+        let momentum_signals: [MomentumSignal]
+        let fetched_at: String
+    }
+    
+    func fetchDashboardPulse() async throws -> DashboardPulseResponse {
+        guard let url = URL(string: "\(baseURL)/api/v1/market/dashboard-pulse") else { throw NetworkError.invalidURL }
+        let req = authRequest(url)
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        return try JSONDecoder().decode(DashboardPulseResponse.self, from: data)
     }
 
     // MARK: - Risk Analysis

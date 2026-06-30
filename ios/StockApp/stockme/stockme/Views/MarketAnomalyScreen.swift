@@ -56,7 +56,7 @@ struct MarketAnomalyScreen: View {
     @State private var showHelp = false
     
     var body: some View {
-        NavigationStack {
+        Group {
             ZStack {
                 Theme.canvasDeep.ignoresSafeArea()
                 
@@ -128,7 +128,7 @@ struct MarketAnomalyScreen: View {
                     await vm.fetchAnomalies()
                 }
             }
-            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { HelpTypedButton(showHelp: $showHelp) } }
+            .toolbar { HapticManager.selection();  ToolbarItem(placement: .navigationBarTrailing) { HelpTypedButton(showHelp: $showHelp) } }
         }
         .helpSheet(isPresented: $showHelp, title: FeatureHelp.anomalies.title, subtitle: FeatureHelp.anomalies.subtitle, sections: FeatureHelp.anomalies.sections)
     }

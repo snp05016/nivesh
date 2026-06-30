@@ -10,16 +10,16 @@ import SwiftUI
 // Usage on any pushed screen:
 //   @Environment(\.dismiss) private var dismiss
 //   ...
-//   .banknoteBackButton { dismiss() }
+//   .banknoteBackButton { HapticManager.selection();  dismiss() }
 //
 // Or, when navigating via a NavigationPath binding:
-//   .banknoteBackButton { path.removeLast() }
+//   .banknoteBackButton { HapticManager.selection();  path.removeLast() }
 
 struct BanknoteBackButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button {
+        Button { HapticManager.selection(); 
     HapticManager.selection()
             HapticManager.selection()
             action()
@@ -43,7 +43,7 @@ struct BanknoteBackButton: View {
 extension View {
     /// Hides the native back button and installs the app-owned `BanknoteBackButton`
     /// in the navigation bar's leading slot, for device-consistent appearance.
-    func banknoteBackButton(_ action: @escaping () -> Void) -> some View {
+    func banknoteBackButton(_ action: @escaping () -> Void) -> some View { HapticManager.selection(); 
         self
             .navigationBarBackButtonHidden(true)
             .toolbar {

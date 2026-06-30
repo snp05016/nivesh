@@ -216,7 +216,7 @@ struct ExpertNetworkView: View {
         .task { await loadHarvestedCards() }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
+                Button { HapticManager.selection(); 
     HapticManager.selection()
                     HapticManager.selection()
                     showSourcesSheet = true
@@ -777,7 +777,7 @@ struct MarketIntelligenceCard: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Theme.Spacing.small) {
                         ForEach(tickers, id: \.self) { ticker in
-                            Button {
+                            Button { HapticManager.selection(); 
     HapticManager.selection()
                                 onTickerTap(ticker)
                             } label: {

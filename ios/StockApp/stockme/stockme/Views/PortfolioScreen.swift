@@ -193,7 +193,7 @@ struct PortfolioScreen: View {
                         }
                         Spacer()
                         HStack(spacing: Theme.Spacing.standard) {
-                            Button { showExportOptions = true } label: {
+                            Button { HapticManager.selection();  showExportOptions = true } label: {
                                 Image(systemName: "square.and.arrow.up")
                                     .foregroundStyle(Theme.inkSecondary)
                                     .padding(Theme.Spacing.medium)
@@ -269,10 +269,10 @@ struct PortfolioScreen: View {
                             }
 
                             HStack(spacing: Theme.Spacing.none) {
-                                TabNoteButton(title: "Holdings", isSelected: selectedTab == 0) { selectedTab = 0 }
-                                TabNoteButton(title: "Watchlist", isSelected: selectedTab == 1) { selectedTab = 1 }
-                                TabNoteButton(title: "Journal", isSelected: selectedTab == 2) { selectedTab = 2 }
-                                TabNoteButton(title: "Inbox", isSelected: selectedTab == 3) { selectedTab = 3 }
+                                TabNoteButton(title: "Holdings", isSelected: selectedTab == 0) { HapticManager.selection();  selectedTab = 0 }
+                                TabNoteButton(title: "Watchlist", isSelected: selectedTab == 1) { HapticManager.selection();  selectedTab = 1 }
+                                TabNoteButton(title: "Journal", isSelected: selectedTab == 2) { HapticManager.selection();  selectedTab = 2 }
+                                TabNoteButton(title: "Inbox", isSelected: selectedTab == 3) { HapticManager.selection();  selectedTab = 3 }
                             }
                             .banknoteCard()
                             .padding(.horizontal, Theme.screenPadding)
@@ -289,16 +289,16 @@ struct PortfolioScreen: View {
                                         }
                                         .ekPress()
                                         .contextMenu {
-                                            Button("Edit Holding") {
+                                            Button("Edit Holding") { HapticManager.selection(); 
                                                 editingHolding = holding
                                                 showEditHoldingSheet = true
                                             }
-                                            Button("Add Note") {
+                                            Button("Add Note") { HapticManager.selection(); 
                                                 noteEditingHolding = holding
                                                 noteEditorText = holding.notes ?? ""
                                                 showNoteEditor = true
                                             }
-                                            Button("Remove from Portfolio", role: .destructive) {
+                                            Button("Remove from Portfolio", role: .destructive) { HapticManager.selection(); 
                                                 deletingTicker = holding.stock.ticker
                                                 showDeleteAlert = true
                                             }
@@ -315,7 +315,7 @@ struct PortfolioScreen: View {
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: Theme.Spacing.medium) {
                                         ForEach(tagsManager.allUniqueTags, id: \.self) { tag in
-                                            Button {
+                                            Button { HapticManager.selection(); 
     HapticManager.selection()
                                                 HapticManager.selection()
                                                 activeWatchlistTag = activeWatchlistTag == tag ? nil : tag
@@ -337,7 +337,7 @@ struct PortfolioScreen: View {
                                         ForEach(viewModel.watchlistItems.filter { item in
                                             activeWatchlistTag == nil || (tagsManager.tags[item.ticker]?.contains(activeWatchlistTag!) ?? false)
                                         }) { item in
-                                            Button {
+                                            Button { HapticManager.selection(); 
     HapticManager.selection()
                                                 HapticManager.selection()
                                                 stockTapTicker = item.ticker
@@ -544,7 +544,13 @@ struct PortfolioScreen: View {
             )
         }
         .sheet(isPresented: $showTransactionSheet) {
-            QuickTransactionSheet()
+            if let user = authManager.currentUser {
+                ManualTransactionEntrySheet(userId: user.userId) {
+                    Task {
+                        await viewModel.fetchData(userId: user.userId)
+                    }
+                }
+            }
         }
     }
 
@@ -595,7 +601,7 @@ struct PortfolioScreen: View {
     }
 
     private var addPortfolioButton: some View {
-        Button {
+        Button { HapticManager.selection(); 
             HapticManager.selection()
             if selectedTab == 0 {
                 showAddHoldingSheet = true
@@ -638,7 +644,7 @@ struct PortfolioScreen: View {
                     .foregroundStyle(Theme.inkSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, Theme.Spacing.xLarge)
-                Button {
+                Button { HapticManager.selection(); 
     HapticManager.selection()
                     addSheetSearchText = ""
                     showAddWatchlistSheet = true
@@ -663,7 +669,7 @@ struct PortfolioScreen: View {
                     ScrollView(.horizontal) {
                         HStack(spacing: Theme.Spacing.medium) {
                             ForEach(allTags, id: \.self) { tag in
-                                Button {
+                                Button { HapticManager.selection(); 
     HapticManager.selection()
                                     HapticManager.selection()
                                     activeWatchlistTag = activeWatchlistTag == tag ? nil : tag
@@ -697,7 +703,7 @@ struct PortfolioScreen: View {
                 }
 
                 ForEach(filteredWatchlist) { item in
-                    Button {
+                    Button { HapticManager.selection(); 
     HapticManager.selection()
                         HapticManager.selection()
                         stockTapTicker = item.ticker
@@ -742,7 +748,7 @@ private struct TaggingSheet: View {
                         TextField("New Tag (e.g. Tech)", text: $newTag)
                             .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
                             .foregroundStyle(Theme.inkPrimary)
-                        Button("Add") {
+                        Button("Add") { HapticManager.selection(); 
                             tagsManager.addTag(newTag, to: ticker)
                             newTag = ""
                         }
@@ -908,7 +914,7 @@ private struct RedFlagsSection: View {
 
                 if isExpanded {
                     ForEach(rf.flags) { flag in
-                        Button {
+                        Button { HapticManager.selection(); 
     HapticManager.selection()
                             HapticManager.selection()
                             onTickerTap(flag.ticker)
@@ -1304,13 +1310,13 @@ private struct WatchlistRowView: View {
         }
         .banknoteCard()
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive, action: onRemove) {
+            Button(role: .destructive, action: onRemove) { HapticManager.selection(); 
                 Label("Remove", systemImage: "trash")
             }
             .tint(Theme.bearRed)
         }
         .swipeActions(edge: .leading) {
-            Button(action: onTag) {
+            Button(action: onTag) { HapticManager.selection(); 
                 Label("Tag", systemImage: "tag")
             }
             .tint(Theme.securityGold)
@@ -1389,7 +1395,7 @@ private struct AddHoldingSheet: View {
                                         .foregroundStyle(Theme.inkSecondary)
                                         .lineLimit(1)
                                     Spacer()
-                                    Button {
+                                    Button { HapticManager.selection(); 
     HapticManager.selection()
                                         selectedEntry = nil
                                         searchText = ""
@@ -1415,7 +1421,7 @@ private struct AddHoldingSheet: View {
                         
                         if selectedEntry == nil && !searchResults.isEmpty {
                             List(searchResults) { entry in
-                                Button {
+                                Button { HapticManager.selection(); 
     HapticManager.selection()
                                     selectedEntry = entry
                                     searchText = entry.ticker
@@ -1527,7 +1533,7 @@ private struct AddHoldingSheet: View {
                                 .multilineTextAlignment(.center)
                         }
                         
-                        Button {
+                        Button { HapticManager.selection(); 
     HapticManager.selection()
                             guard let entry = selectedEntry, let user = authManager.currentUser else { return }
                             // Fix 3.7+3.8: Validate quantity > 0 and buyPrice > 0
@@ -1592,7 +1598,7 @@ private struct AddHoldingSheet: View {
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("Done") {
+                    Button("Done") { HapticManager.selection(); 
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
                     .font(.subheadline.weight(.bold))
@@ -1686,7 +1692,7 @@ private struct EditHoldingSheet: View {
                                     .multilineTextAlignment(.center)
                             }
                             
-                            Button {
+                            Button { HapticManager.selection(); 
     HapticManager.selection()
                                 guard let user = authManager.currentUser else { return }
                                 isSaving = true
@@ -1731,7 +1737,7 @@ private struct EditHoldingSheet: View {
                 .toolbar {
                     ToolbarItemGroup(placement: .keyboard) {
                         Spacer()
-                        Button("Done") {
+                        Button("Done") { HapticManager.selection(); 
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         }
                         .font(.subheadline.weight(.bold))
@@ -1799,7 +1805,7 @@ private struct NoteEditorSheet: View {
                             Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Save") {
+                            Button("Save") { HapticManager.selection(); 
                                 onSave(String(noteText.prefix(280)))
                                 dismiss()
                             }
@@ -1846,7 +1852,7 @@ private struct NoteEditorSheet: View {
                             .padding(.bottom, Theme.Spacing.medium)
                             
                             List(results) { entry in
-                                Button {
+                                Button { HapticManager.selection(); 
     HapticManager.selection()
                                     onAdd(entry)
                                 } label: {

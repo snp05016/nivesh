@@ -32,7 +32,7 @@ struct AnalysisFullView: View {
     private var extremeModeSwitcherView: some View {
         HStack(spacing: Theme.Spacing.small) {
             ForEach(Array(["AI REPORT", "FULL PROFILE"].enumerated()), id: \.offset) { idx, label in
-                Button {
+                Button { HapticManager.selection(); 
     HapticManager.selection()
                     HapticManager.selection()
                     extremeViewMode = idx
@@ -119,7 +119,7 @@ struct AnalysisFullView: View {
                     )),
                     id: \.0
                 ) { period, label in
-                    Button {
+                    Button { HapticManager.selection(); 
     HapticManager.selection()
                         HapticManager.selection()
                         heroPeriod = period

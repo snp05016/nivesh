@@ -29,8 +29,8 @@ struct AdvisoryMatrixCard: View {
                     .font(Theme.officialStampFont(size: 7))
                     .tracking(0.5)
                     .foregroundStyle(Theme.securityGold)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, Theme.Spacing.medium)
+                    .padding(.vertical, Theme.Spacing.small)
                     .background(Theme.securityGold.opacity(0.10))
                     .overlay(
                         RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
@@ -42,7 +42,7 @@ struct AdvisoryMatrixCard: View {
             .padding(.trailing, Theme.Spacing.card)
 
             GuillocheDivider()
-                .padding(.horizontal, 4)
+                .padding(.horizontal, Theme.Spacing.small)
 
             if insights.isEmpty {
                 emptyState
@@ -79,7 +79,7 @@ struct AdvisoryMatrixCard: View {
                 }
             }
         }
-        .padding(.bottom, 8)
+        .padding(.bottom, Theme.Spacing.medium)
     }
 
     // MARK: - Stance Chip Color
@@ -184,7 +184,7 @@ private struct AdvisorInsightRowView: View {
     // MARK: - Watch Button
 
     private var watchButton: some View {
-        Button {
+        Button { HapticManager.selection(); 
     HapticManager.selection()
             if let url = URL(string: insight.videoUrl) {
                 UIApplication.shared.open(url)
@@ -196,7 +196,7 @@ private struct AdvisorInsightRowView: View {
             }
             .foregroundStyle(Theme.securityGold)
             .padding(.horizontal, Theme.Spacing.standard)
-            .padding(.vertical, 5)
+            .padding(.vertical, Theme.Spacing.tight)
             .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.securityGold.opacity(0.6), lineWidth: 0.8))
         }
         .buttonStyle(EKPressStyle())

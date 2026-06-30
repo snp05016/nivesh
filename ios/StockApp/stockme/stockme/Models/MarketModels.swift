@@ -142,6 +142,24 @@ struct InstitutionalFlowResponse: Codable {
     }
 }
 
+// MARK: - Mutual Fund
+struct MutualFundDTO: Codable, Identifiable {
+    let id: Int
+    let fundName: String
+    let amc: String
+    let category: String
+    let nav: Double?
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case fundName = "fund_name"
+        case amc
+        case category
+        case nav
+    }
+}
+
+
 // MARK: - Combined Market Dashboard
 
 struct MarketDashboardResponse: Codable {

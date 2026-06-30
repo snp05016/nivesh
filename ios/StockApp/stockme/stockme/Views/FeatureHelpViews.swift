@@ -231,7 +231,7 @@ enum FeatureHelp {
 // MARK: - View Modifier Extension
 
 extension View {
-    func withHelpButton(showHelp: Binding<Bool>) -> some View {
+    func withHelpButton(showHelp: Binding<Bool>) -> some View { HapticManager.selection(); 
         self.modifier(HelpToolbarButton(showHelp: showHelp))
     }
     

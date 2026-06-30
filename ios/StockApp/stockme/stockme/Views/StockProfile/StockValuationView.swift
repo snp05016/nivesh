@@ -457,7 +457,7 @@ struct PeerComparisonTableView: View {
                             .frame(width: nameColW, alignment: .leading)
 
                         ForEach(Array(columns.enumerated()), id: \.offset) { idx, col in
-                            Button {
+                            Button { HapticManager.selection(); 
     HapticManager.selection()
                                 HapticManager.selection()
                                 if sortColumn == idx {

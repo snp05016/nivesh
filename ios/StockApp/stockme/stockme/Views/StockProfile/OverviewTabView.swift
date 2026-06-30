@@ -47,7 +47,7 @@ struct OverviewContentView: View {
             .padding(Theme.Spacing.card)
             .banknoteCard()
 
-            GuillocheDivider().padding(.horizontal, 0)
+            GuillocheDivider().padding(.horizontal, Theme.Spacing.xSmall)
 
             // Key metrics grid
             let metrics: [(String, String, String, String)] = [

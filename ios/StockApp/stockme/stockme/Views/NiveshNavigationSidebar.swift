@@ -174,7 +174,7 @@ private struct DrawerContent: View {
                     .tracking(1.5)
             }
             Spacer()
-            Button {
+            Button { HapticManager.selection(); 
     HapticManager.selection()
                 withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) { isOpen = false }
             } label: {

@@ -407,7 +407,7 @@ struct StressDiagnosticCard: View {
                     .foregroundColor(Theme.bearRed)
                     .multilineTextAlignment(.leading)
                 Spacer()
-                Button {
+                Button { HapticManager.selection(); 
     HapticManager.selection()
                     withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
                 } label: {
@@ -592,7 +592,7 @@ struct StressTestScreen: View {
                         HStack(spacing: Theme.Spacing.standard) {
                             ForEach(vm.scenarios, id: \.0) { id, name, icon in
                                 let isSelected = vm.selectedScenarios.contains(id)
-                                Button {
+                                Button { HapticManager.selection(); 
                                     vm.toggleScenario(id)
                                 } label: {
                                     HStack(spacing: Theme.Spacing.small) {
@@ -628,7 +628,7 @@ struct StressTestScreen: View {
                                 .multilineTextAlignment(.center)
                                 .lineLimit(2)
                         }
-                        Button {
+                        Button { HapticManager.selection(); 
                             HapticManager.selection()
                             vm.cancel()
                         } label: {
@@ -652,7 +652,7 @@ struct StressTestScreen: View {
                     }
                     .padding(.horizontal, Theme.screenPadding)
                 } else {
-                    Button {
+                    Button { HapticManager.selection(); 
     HapticManager.selection()
                         vm.runTest(userId: authManager.currentUser?.userId ?? 0, token: authManager.currentUser?.token ?? "")
                         HapticManager.impact(.medium)
