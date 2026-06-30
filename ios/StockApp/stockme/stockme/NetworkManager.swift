@@ -451,6 +451,18 @@ class NetworkManager: ObservableObject {
         let target_price: Double?
     }
 
+    func fetchMutualFunds() async throws -> [MutualFundDTO] {
+        guard let url = URL(string: "\(baseURL)/api/mutual-funds/") else {
+            throw NetworkError.invalidURL
+        }
+        let req = authRequest(url)
+        let (data, response) = try await dataWithRetry(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        return (try? JSONDecoder().decode([MutualFundDTO].self, from: data)) ?? []
+    }
+
     func getPortfolio(userId: Int) async throws -> [PortfolioHolding] {
         guard let url = URL(string: "\(baseURL)/portfolio/\(userId)") else { throw NetworkError.invalidURL }
         let req = authRequest(url)

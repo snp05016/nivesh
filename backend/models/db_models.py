@@ -968,3 +968,41 @@ class Watchlist(Base):
     added_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", backref="watchlist_items")
+
+
+class MutualFund(Base):
+    """Stores mutual fund details."""
+    __tablename__ = "mutual_funds"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    fund_name = Column(String(200), nullable=False, index=True)
+    amc = Column(String(100), nullable=False)
+    category = Column(String(50), nullable=False)
+    nav = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class IPOListing(Base):
+    """Stores upcoming and recent IPO details."""
+    __tablename__ = "ipo_listings"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    company_name = Column(String(200), nullable=False, index=True)
+    symbol = Column(String(30), nullable=True, index=True)
+    open_date = Column(String(20), nullable=True)
+    close_date = Column(String(20), nullable=True)
+    listing_date = Column(String(20), nullable=True)
+    issue_price_min = Column(Float, nullable=True)
+    issue_price_max = Column(Float, nullable=True)
+    subscription_status = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
