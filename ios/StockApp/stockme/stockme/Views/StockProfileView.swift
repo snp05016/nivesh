@@ -474,100 +474,142 @@ struct StockProfileView: View {
 
                     GuillocheDivider()
 
-                    // Tab content (5 consolidated tabs)
-                    TabView(selection: $activeTab) {
-                        // 0: Overview = Overview + Chart + Financials
-                        ScrollView {
-                            LazyVStack(spacing: Theme.sectionSpacing) {
-                                OverviewTabView(
-                                    ticker: ticker,
-                                    isLoading: vm.overviewLoading,
-                                    quickInfo: vm.quickInfo,
-                                    fetchOverview: { await vm.fetchOverview() }
-                                )
-                                if let hist = vm.history, !hist.prices.isEmpty {
+                    // Tab content (12 tabs)
+                    ZStack {
+                        switch activeTab {
+                        case 0:
+                            // 0: Overview
+                            ScrollView {
+                                LazyVStack(spacing: Theme.sectionSpacing) {
+                                    OverviewTabView(
+                                        ticker: ticker,
+                                        isLoading: vm.overviewLoading,
+                                        quickInfo: vm.quickInfo,
+                                        fetchOverview: { await vm.fetchOverview() }
+                                    )
+                                    if let hist = vm.history, !hist.prices.isEmpty {
+                                        GuillocheDivider()
+                                            .padding(.horizontal, Theme.screenPadding)
+                                        InteractivePriceChartView(
+                                            history: hist.prices,
+                                            niftyHistory: vm.niftyHistory,
+                                            ticker: ticker
+                                        )
+                                        .padding(.horizontal, Theme.screenPadding)
+                                    }
                                     GuillocheDivider()
                                         .padding(.horizontal, Theme.screenPadding)
-                                    InteractivePriceChartView(
-                                        history: hist.prices,
-                                        niftyHistory: vm.niftyHistory,
-                                        ticker: ticker
+                                    StockMLSignalCard(
+                                        signal: vm.mlSignal,
+                                        isLoading: vm.mlSignalLoading,
+                                        error: nil,
+                                        onOpenQuantLab: {
+                                            HapticManager.selection()
+                                            showQuantLab = true
+                                        }
                                     )
                                     .padding(.horizontal, Theme.screenPadding)
                                 }
-                                GuillocheDivider()
-                                    .padding(.horizontal, Theme.screenPadding)
-                                StockMLSignalCard(
-                                    signal: vm.mlSignal,
-                                    isLoading: vm.mlSignalLoading,
-                                    error: nil,
-                                    onOpenQuantLab: {
-                                        HapticManager.selection()
-                                        showQuantLab = true
-                                    }
-                                )
-                                .padding(.horizontal, Theme.screenPadding)
-                                GuillocheDivider()
-                                    .padding(.horizontal, Theme.screenPadding)
+                                .padding(.bottom, Theme.sectionSpacing)
+                            }
+                            .transition(.opacity)
+
+                        case 1:
+                            // 1: Chart
+                            ChartTabView(ticker: ticker, vm: vm)
+                                .transition(.opacity)
+
+                        case 2:
+                            // 2: Forecast
+                            ForecastTabView(ticker: ticker)
+                                .transition(.opacity)
+
+                        case 3:
+                            // 3: MC Insights
+                            MCInsightsTabView(ticker: ticker)
+                                .transition(.opacity)
+
+                        case 4:
+                            // 4: Financials
+                            ScrollView {
                                 FinancialsTabView(
                                     isLoading: vm.financialsLoading,
                                     quarterlyFinancials: vm.quarterlyFinancials,
                                     piotroski: vm.piotroski,
                                     fetchFinancials: { await vm.fetchFinancials() }
                                 )
+                                .padding(.bottom, Theme.sectionSpacing)
                             }
-                            .padding(.bottom, Theme.sectionSpacing)
-                        }
-                        .tag(0)
+                            .transition(.opacity)
 
-                        // 1: Fundamentals
-                        ScrollView {
-                            LazyVStack(spacing: Theme.sectionSpacing) {
-                                FundamentalsTabView(vm: vm)
+                        case 5:
+                            // 5: Peers
+                            PeerComparisonView(ticker: ticker)
+                                .transition(.opacity)
+
+                        case 6:
+                            // 6: Fundamentals
+                            ScrollView {
+                                LazyVStack(spacing: Theme.sectionSpacing) {
+                                    FundamentalsTabView(vm: vm)
+                                }
+                                .padding(.bottom, Theme.sectionSpacing)
                             }
-                            .padding(.bottom, Theme.sectionSpacing)
-                        }
-                        .tag(1)
+                            .transition(.opacity)
 
-                        // 2: News & Events = News + Updates
-                        ScrollView {
-                            LazyVStack(spacing: Theme.sectionSpacing) {
-                                NewsTabView(
-                                    isLoading: vm.overviewLoading,
-                                    news: vm.quickInfo?.recentNews,
-                                    fetchOverview: { await vm.fetchOverview() }
-                                )
-                                GuillocheDivider()
-                                    .padding(.horizontal, Theme.screenPadding)
-                                UpdatesTabView()
+                        case 7:
+                            // 7: News & Events
+                            ScrollView {
+                                LazyVStack(spacing: Theme.sectionSpacing) {
+                                    NewsTabView(
+                                        isLoading: vm.overviewLoading,
+                                        news: vm.quickInfo?.recentNews,
+                                        fetchOverview: { await vm.fetchOverview() }
+                                    )
+                                    GuillocheDivider()
+                                        .padding(.horizontal, Theme.screenPadding)
+                                    UpdatesTabView()
+                                }
+                                .padding(.bottom, Theme.sectionSpacing)
                             }
-                            .padding(.bottom, Theme.sectionSpacing)
-                        }
-                        .tag(2)
+                            .transition(.opacity)
 
-                        // 3: Ownership = Holders + Governance
-                        ScrollView {
-                            LazyVStack(spacing: Theme.sectionSpacing) {
-                                HoldersTabView(
-                                    isLoading: vm.holdersLoading,
-                                    analystRatings: vm.analystRatings,
-                                    fetchHolders: { await vm.fetchHolders() }
-                                )
-                                GuillocheDivider()
-                                    .padding(.horizontal, Theme.screenPadding)
-                                GovernanceTabView(ticker: ticker, vm: vm)
+                        case 8:
+                            // 8: Ownership
+                            ScrollView {
+                                LazyVStack(spacing: Theme.sectionSpacing) {
+                                    HoldersTabView(
+                                        isLoading: vm.holdersLoading,
+                                        analystRatings: vm.analystRatings,
+                                        fetchHolders: { await vm.fetchHolders() }
+                                    )
+                                    GuillocheDivider()
+                                        .padding(.horizontal, Theme.screenPadding)
+                                    GovernanceTabView(ticker: ticker, vm: vm)
+                                }
+                                .padding(.bottom, Theme.sectionSpacing)
                             }
-                            .padding(.bottom, Theme.sectionSpacing)
+                            .transition(.opacity)
+
+                        case 9:
+                            // 9: Macro
+                            MacroTabView(ticker: ticker, exchange: exchange, vm: vm)
+                                .transition(.opacity)
+
+                        case 10:
+                            // 10: Corporate
+                            CorporateTabView(ticker: ticker)
+                                .transition(.opacity)
+
+                        case 11:
+                            // 11: Quant Lab
+                            QuantLabView(symbol: ticker)
+                                .transition(.opacity)
+                                
+                        default:
+                            EmptyView()
                         }
-                        .tag(3)
-
-                        // 4: Macro Analysis
-                        MacroTabView(ticker: ticker, exchange: exchange, vm: vm).tag(4)
-
-                        // 5: Quant Lab
-                        QuantLabView(symbol: ticker).tag(5)
                     }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
                     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: activeTab)
                     .frame(maxHeight: .infinity)
                 }
@@ -593,11 +635,17 @@ struct StockProfileView: View {
     private var tabItems: [(label: String, icon: String)] {
         [
             ("Overview", "doc.text"),
+            ("Chart", "chart.xyaxis.line"),
+            ("Forecast", "chart.line.uptrend.xyaxis"),
+            ("MC Insights", "lightbulb"),
+            ("Financials", "dollarsign.circle"),
+            ("Peers", "person.2"),
             ("Fundamentals", "chart.bar.doc.horizontal"),
             ("News & Events", "newspaper"),
             ("Ownership", "person.3"),
             ("Macro", "globe.asia.australia"),
-            ("Quant Lab", "flask"),
+            ("Corporate", "briefcase"),
+            ("Quant Lab", "flask")
         ]
     }
 }

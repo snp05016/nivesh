@@ -826,6 +826,9 @@ class NetworkManager: ObservableObject {
                 return nil
             }
             do {
+                if let array = try? JSONDecoder().decode([OHLCVPoint].self, from: data) {
+                    return StockHistoryResponse(ticker: ticker, exchange: exchange, period: period, prices: array)
+                }
                 return try JSONDecoder().decode(StockHistoryResponse.self, from: data)
             } catch {
                 let body = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
