@@ -74,6 +74,7 @@ struct CorrelationMatrixScreen: View {
         ScrollView {
             VStack(spacing: Theme.Spacing.xLarge) {
                 HelpInlineButton(showHelp: $showHelp)
+                                .buttonStyle(EKPressStyle())
                     .padding(.horizontal, Theme.screenPadding)
                 
                 if isLoading {

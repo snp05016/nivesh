@@ -245,6 +245,7 @@ struct PreIPOMarketplaceView: View {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(Theme.inkTertiary)
                 }
+                .buttonStyle(EKPressStyle())
                 .accessibilityLabel("Clear search")
             }
         }
@@ -326,6 +327,7 @@ struct PreIPOMarketplaceView: View {
                         .font(Theme.officialStampFont(size: 13))
                         .foregroundStyle(isBookmarked ? Theme.securityGold : Theme.inkTertiary)
                 }
+                .buttonStyle(EKPressStyle())
                 .accessibilityLabel("Toggle bookmark")
 
                 // 6.4 Chevron Expand Control
@@ -334,6 +336,7 @@ struct PreIPOMarketplaceView: View {
                         .font(Theme.officialStampFont(size: 11))
                         .foregroundStyle(Theme.inkTertiary)
                 }
+                .buttonStyle(EKPressStyle())
                 .accessibilityLabel("Toggle expand")
             }
             .padding(Theme.Spacing.card)

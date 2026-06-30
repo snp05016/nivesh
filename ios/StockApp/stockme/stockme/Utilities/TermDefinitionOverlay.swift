@@ -37,6 +37,7 @@ struct TermTooltipModifier: ViewModifier {
                         .zIndex(999)
                 }
             }
+            .buttonStyle(EKPressStyle())
     }
 }
 
@@ -82,6 +83,7 @@ struct TermTooltipCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .buttonStyle(EKPressStyle())
             .padding(Theme.Spacing.card)
             .banknoteCard()
             .frame(maxWidth: min(UIScreen.main.bounds.width * 0.85, 500))
