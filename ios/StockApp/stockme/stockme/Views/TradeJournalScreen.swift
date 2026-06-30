@@ -128,7 +128,7 @@ struct TradeJournalScreen: View {
                                     .background(newAction == action ? actionColor(action) : Theme.canvasDeep)
                                     .cornerRadius(Theme.CornerRadius.small)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(EKPressStyle())
                         }
                     }
                 }
@@ -177,7 +177,7 @@ struct TradeJournalScreen: View {
                                     .background(newMood == mood.lowercased() ? Theme.securityGold : Theme.canvasDeep)
                                     .cornerRadius(Theme.CornerRadius.small)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(EKPressStyle())
                         }
                     }
                 }
@@ -198,7 +198,7 @@ struct TradeJournalScreen: View {
                     .background(Theme.securityGold)
                     .cornerRadius(Theme.CornerRadius.tight)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(EKPressStyle())
                 .disabled(isSubmitting || newTicker.isEmpty || newReason.isEmpty)
                 .padding(.top, Theme.Spacing.medium)
             }

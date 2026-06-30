@@ -59,7 +59,7 @@ struct OnboardingScreen: View {
                 .padding(.bottom, Theme.Spacing.xLarge)
 
                 // CTA (The Official Access Button)
-                Button(action: onContinue) {
+                Button(action: { HapticManager.selection(); onContinue() }) {
                     Text("ENTER REGISTRY")
                         .font(Theme.labelStyle)
                         .foregroundStyle(Theme.canvas)
@@ -68,6 +68,7 @@ struct OnboardingScreen: View {
                         .background(Theme.inkPrimary)
                         .banknoteCard()
                 }
+                .buttonStyle(EKPressStyle())
                 .padding(.horizontal, Theme.Spacing.large)
                 .padding(.bottom, Theme.Spacing.xLarge * 1.5)
                 .staggerAppear(delay: 0.8)

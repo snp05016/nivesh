@@ -54,10 +54,12 @@ struct AdvisorBioCard: View {
 
             // Expand button
             Button(isExpanded ? "Show Less" : "Read More") {
+                HapticManager.selection()
                 withAnimation { isExpanded.toggle() }
             }
             .font(.caption2.weight(.medium))
             .foregroundStyle(Theme.securityGold)
+            .buttonStyle(EKPressStyle())
         }
         .padding(Theme.Spacing.standard)
         .background(Theme.canvasDeep)

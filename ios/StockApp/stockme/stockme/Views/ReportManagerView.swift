@@ -54,6 +54,7 @@ struct ReportManagerView: View {
 
                     Section {
                         Button(role: .destructive) {
+                            HapticManager.selection()
                             confirmDeleteAll = true
                         } label: {
                             HStack {

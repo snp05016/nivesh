@@ -94,6 +94,7 @@ struct BanknoteErrorCanvas: View {
                                     .stroke(Theme.securityGold.opacity(0.3), lineWidth: 1)
                             )
                         }
+                        .buttonStyle(EKPressStyle())
                         .disabled(isRetrying)
                     }
                 }
@@ -211,6 +212,7 @@ struct MarketSectionErrorRow: View {
                 )
                 .cornerRadius(Theme.CornerRadius.small)
         }
+        .buttonStyle(EKPressStyle())
     }
 }
 
@@ -250,6 +252,7 @@ struct DiagnosticErrorDrawer: View {
                 .padding(.vertical, Theme.Spacing.standard)
                 .background(Theme.securityGold.opacity(0.04))
             }
+            .buttonStyle(EKPressStyle())
 
             // ── Expanded diagnostic details ────────────────────────────
             if isExpanded {
@@ -315,6 +318,7 @@ struct DiagnosticErrorDrawer: View {
                                 .stroke(Theme.securityGold.opacity(0.2), lineWidth: 1)
                         )
                     }
+                    .buttonStyle(EKPressStyle())
                 }
                 .padding(Theme.Spacing.standard)
                 .background(Theme.canvasDeep)
