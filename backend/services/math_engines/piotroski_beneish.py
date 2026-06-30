@@ -1,4 +1,3 @@
-import logging
 """
 Task 16 — Piotroski F-score and Beneish M-score engines.
 
@@ -7,6 +6,7 @@ Beneish M-score: detects earnings manipulation. Score < -2.22 means likely NOT m
 """
 
 from __future__ import annotations
+import logging
 
 
 def compute_piotroski_fscore(fundamentals: dict) -> dict:

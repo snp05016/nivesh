@@ -1,4 +1,3 @@
-import logging
 """
 Task 22 — Deterministic DCF Valuation with Indian G-Sec Rate.
 
@@ -7,6 +6,7 @@ No AI — fully reproducible given the same inputs.
 """
 
 from __future__ import annotations
+import logging
 import math
 import os
 from typing import Optional

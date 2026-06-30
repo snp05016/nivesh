@@ -1,4 +1,3 @@
-import logging
 """
 Task 23 — Volume Anomaly Detection via Isolation Forest.
 
@@ -7,6 +6,7 @@ Falls back to a statistical Z-score method if sklearn is unavailable.
 """
 
 from __future__ import annotations
+import logging
 import math
 from typing import Optional
 
