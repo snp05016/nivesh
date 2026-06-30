@@ -1,12 +1,10 @@
 from helpers import get_session, get_user_by_credentials, User, create_access_token
 from database import create_user as _create_user
-from fastapi import HTTPException
-
 def login_user(username, password):
     with get_session() as session:
         user = get_user_by_credentials(session, username, password)
         if not user:
-            raise HTTPException(status_code=401, detail="Invalid username or password")
+            raise PermissionError("Invalid username or password")
         token = create_access_token(user.id)
         return {
             "user_id": user.id,
@@ -20,10 +18,10 @@ def register_user(username, password, display_name):
     with get_session() as session:
         existing = session.query(User).filter_by(username=username.lower()).first()
         if existing:
-            raise HTTPException(status_code=400, detail="Username already exists")
+            raise ValueError("Username already exists")
         
         user = _create_user(session, username, password, display_name)
         if not user:
-            raise HTTPException(status_code=500, detail="Failed to create user")
+            raise RuntimeError("Failed to create user")
         
         return {"user_id": user.id, "username": user.username, "display_name": user.display_name}
