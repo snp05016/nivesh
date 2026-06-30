@@ -47,7 +47,7 @@ struct ValuationCalendarView: View {
                                             .font(Theme.serialNumberFont(size: 9))
                                             .foregroundStyle(vm.selectedPeriod == period ? goldAccent : dimText)
                                             .padding(.horizontal, Theme.Spacing.tight)
-                                            .padding(.vertical, 3)
+                                            .padding(.vertical, Theme.Spacing.xSmall)
                                             .background(vm.selectedPeriod == period ? goldAccent.opacity(0.12) : Color.clear)
                                             .cornerRadius(Theme.CornerRadius.small)
                                     }
@@ -176,7 +176,7 @@ struct ValuationCalendarView: View {
 
                         // Calendar Heat Grid
                         CalendarHeatGrid(snapshots: vm.snapshots, selectedMonth: $selectedMonth)
-                            .padding(.bottom, 4)
+                            .padding(.bottom, Theme.Spacing.small)
                     } else if vm.isLoading {
                         ProgressView()
                             .frame(maxWidth: .infinity, minHeight: 200)

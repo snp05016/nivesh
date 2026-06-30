@@ -415,7 +415,7 @@ struct TutorialPageView: View {
                 .font(.body)
                 .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
+                .padding(.horizontal, Theme.Spacing.xLarge)
         }
     }
 }

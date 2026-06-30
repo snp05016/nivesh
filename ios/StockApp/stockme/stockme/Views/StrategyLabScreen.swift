@@ -210,7 +210,7 @@ struct StrategyLabScreen: View {
                                 .font(Theme.roundedSecondary(size: 14, weight: .bold))
                                 .foregroundStyle(Theme.inkPrimary)
                                 .padding(.horizontal, Theme.Spacing.large)
-                                .padding(.vertical, 8)
+                                .padding(.vertical, Theme.Spacing.xLarge)
                                 .background(Theme.surfaceElevated)
                                 .clipShape(Capsule())
                                 .overlay(Capsule().stroke(Theme.borderSage, lineWidth: 1))
@@ -271,7 +271,7 @@ struct StrategyLabScreen: View {
                             .font(Theme.engravedSerif(size: 16))
                             .foregroundStyle(Theme.inkSecondary)
                     }
-                    .padding(.top, 50)
+                    .padding(.top, Theme.Spacing.xLarge)
                 }
             }
             .padding(.vertical, Theme.Spacing.screen)

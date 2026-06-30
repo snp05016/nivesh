@@ -76,13 +76,13 @@ struct TradeJournalScreen: View {
                 if isLoading {
                     ProgressView()
                         .tint(Theme.securityGold)
-                        .padding(.top, 40)
+                        .padding(.top, Theme.Spacing.xLarge)
                 } else if entries.isEmpty {
                     Text("No journal entries yet.\nTap 'Add Entry' to record your first trade decision.")
                         .font(.subheadline).fontDesign(.serif).italic()
                         .foregroundStyle(Theme.inkSecondary)
                         .multilineTextAlignment(.center)
-                        .padding(.top, 40)
+                        .padding(.top, Theme.Spacing.xLarge)
                 } else {
                     ForEach(entries) { entry in
                         JournalEntryCard(entry: entry)
