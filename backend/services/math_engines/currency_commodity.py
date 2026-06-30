@@ -143,7 +143,7 @@ def _fetch_trend(symbol: str, lookback_days: int) -> float | None:
         if start <= 0:
             return None
         return round(((end - start) / start) * 100, 2)
-    except Exception:
+    except Exception as _e:
         return None
 
 

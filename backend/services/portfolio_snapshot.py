@@ -39,7 +39,7 @@ def get_current_price(ticker: str) -> float | None:
             hist = t.history(period="2d")
             if not hist.empty:
                 return float(hist["Close"].iloc[-1])
-        except Exception:
+        except Exception as _e:
             continue
     return None
 
@@ -52,7 +52,7 @@ async def snapshot_all_users():
         nifty = yf.Ticker("^NSEI")
         nifty_hist = nifty.history(period="2d")
         nifty_close = float(nifty_hist["Close"].iloc[-1]) if not nifty_hist.empty else None
-    except Exception:
+    except Exception as _e:
         nifty_close = None
 
     with get_session() as db:
@@ -178,7 +178,7 @@ async def pregen_morning_briefs_all_users() -> dict:
                         prev_close = current_price
                     else:
                         current_price = prev_close = None
-                except Exception:
+                except Exception as _e:
                     current_price = prev_close = None
 
                 day_pct = None
@@ -242,7 +242,7 @@ async def pregen_morning_briefs_all_users() -> dict:
                 end = clean.rfind("}") + 1
                 if start != -1 and end > start:
                     brief = json.loads(clean[start:end])
-            except Exception:
+            except Exception as _e:
                 pass
 
             if not brief:

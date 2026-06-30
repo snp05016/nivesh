@@ -51,7 +51,7 @@ FPDF2_AVAILABLE = _importlib_util.find_spec("fpdf2") is not None
 if FPDF2_AVAILABLE:
     try:
         from fpdf import FPDF
-    except Exception:
+    except Exception as _e:
         FPDF2_AVAILABLE = False
 
 from database import init_db, get_session, save_analysis, get_recent_analyses, get_user_by_credentials, Portfolio, User, AnalysisHistory, SignalEvent, get_analysis_for_date, get_all_ticker_history, PriceTarget, TradeJournal, DeviceToken, AdvisorInsight, NewsArticle, YouTubeVideo, PortfolioValuationHistory, PKScreenerSignal, MacroEvent, NetWorthLedger, create_access_token, verify_access_token, is_admin, promote_initial_admins
@@ -900,7 +900,7 @@ def health_endpoint():
             from sqlalchemy import text as _text
             session.execute(_text("SELECT 1"))
         return {"status": "ok"}
-    except Exception:
+    except Exception as _e:
         raise HTTPException(status_code=503, detail="Service unavailable")
 
 
@@ -2174,7 +2174,7 @@ def dashboard_data(authorization: str = Header(None)):
             # fallback: try dict access
             try:
                 raw_items = list(dict(scr._CACHE).items())
-            except Exception:
+            except Exception as _e:
                 raw_items = {}
         if raw_items:
             for k, v in raw_items:
@@ -2187,9 +2187,9 @@ def dashboard_data(authorization: str = Header(None)):
                     else:
                         ts = 0
                     scraper_cache[str(k)] = {"age_s": round(time.time() - float(ts))}
-                except Exception:
+                except Exception as _e:
                     continue
-    except Exception:
+    except Exception as _e:
         scraper_cache = {}
 
     cache_stats = {
@@ -2248,9 +2248,9 @@ def dashboard_data(authorization: str = Header(None)):
                             claude_stats["input_tokens"] += inp
                             claude_stats["output_tokens"] += out
                             claude_stats["cost_usd"] += cost
-                    except Exception:
+                    except Exception as _e:
                         continue
-    except Exception:
+    except Exception as _e:
         pass
 
     # Per-feature error extraction from request log
@@ -2386,7 +2386,7 @@ def dashboard_user_data(user_id: int, authorization: str = Header(None)):
                 parsed_json = {}
                 try:
                     parsed_json = json.loads(a.full_json) if a.full_json else {}
-                except Exception:
+                except Exception as _e:
                     pass
                 analysis_rows.append({
                     "id": a.id,

@@ -17,7 +17,7 @@ def fetch_historical_returns(tickers: list[str], period: str = "2y") -> dict[str
                 returns_dict[t] = rets.values
             else:
                 returns_dict[t] = np.array([])
-        except Exception:
+        except Exception as _e:
             returns_dict[t] = np.array([])
     return returns_dict
 

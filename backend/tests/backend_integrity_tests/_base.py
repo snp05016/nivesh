@@ -1,3 +1,4 @@
+from __future__ import annotations
 import logging
 """
 backend_integrity_tests/_base.py
@@ -5,7 +6,6 @@ backend_integrity_tests/_base.py
 Shared test harness for backend integrity tests.
 Provides structured logging with file:line details for LLM debugging.
 """
-from __future__ import annotations
 
 import sys
 import os

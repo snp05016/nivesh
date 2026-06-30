@@ -177,5 +177,5 @@ def collection_count() -> int:
         with _store_lock, conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) FROM {TABLE_NAME}")
             return cur.fetchone()[0]
-    except Exception:
+    except Exception as _e:
         return 0

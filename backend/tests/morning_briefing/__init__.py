@@ -18,5 +18,5 @@ def _json_body(response):
     """Safely extract JSON from a TestClient response."""
     try:
         return response.json()
-    except Exception:
+    except Exception as _e:
         return {"_raw": response.text}

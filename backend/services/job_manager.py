@@ -36,7 +36,7 @@ def cancel_job(job_id: str) -> bool:
     try:
         database.append_checkpoint(job_id, stage="cancelled", agent="Engine",
                                    message="Cancelled by user", state="error", pct=0)
-    except Exception:
+    except Exception as _e:
         pass
     with _registry_lock:
         p = _job_registry.pop(job_id, None)

@@ -33,7 +33,7 @@ def _nse_session():
     try:
         from fake_useragent import UserAgent as _UA
         _user_agent = _UA().random
-    except Exception:
+    except Exception as _e:
         _user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
     s = requests.Session()
     s.headers.update({

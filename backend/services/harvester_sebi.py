@@ -163,6 +163,6 @@ def harvest_sebi_filings(limit: int = 30) -> int:
         try:
             with h_get_session() as s:
                 record_source_health(s, SOURCE_NAME, success=False, error=str(exc))
-        except Exception:
+        except Exception as _e:
             pass
         return 0

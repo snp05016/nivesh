@@ -130,7 +130,7 @@ def _get_sector(ticker: str) -> str:
         sector = info.get("sector") or info.get("industry") or "Other"
         _sector_cache[t] = sector
         return sector
-    except Exception:
+    except Exception as _e:
         _sector_cache[t] = "Other"
         return "Other"
 
@@ -203,7 +203,7 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
                 if isinstance(ref_date, str):
                     ref_date = datetime.strptime(ref_date[:10], "%Y-%m-%d")
                 hold_days = (datetime.now(timezone.utc) - ref_date).days
-            except Exception:
+            except Exception as _e:
                 pass
 
         enriched.append({
@@ -595,7 +595,7 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
                     div_by_sector[sec] = div_by_sector.get(sec, 0.0) + float(dy)
                     div_counts[sec] = div_counts.get(sec, 0) + 1
                     div_yield_available = True
-            except Exception:
+            except Exception as _e:
                 pass
 
         if div_yield_available and div_by_sector:

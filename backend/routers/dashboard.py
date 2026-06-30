@@ -33,7 +33,8 @@ async def event_generator(request: Request):
                 sent_progress_count = len(events)
             except Exception as e:
                 import logging
-                logging.warning(f"Swallowed exception: {e}")
+                logging.error(f"Error occurred: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Internal server error")
 
         # Also send dashboard snapshot every 2s (for general monitoring)
         current_state = get_dashboard_snapshot()

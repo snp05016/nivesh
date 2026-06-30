@@ -486,7 +486,7 @@ def log_market_error(component: str, error_message: str, context_ticker: str | N
             )
             session.add(entry)
             session.commit()
-    except Exception:
+    except Exception as _e:
         pass  # telemetry must never cause a cascading failure
 
 
@@ -530,7 +530,7 @@ def log_earnings_error(module: str, error_trace: str, failed_ticker: str | None 
             )
             session.add(entry)
             session.commit()
-    except Exception:
+    except Exception as _e:
         pass  # telemetry must never cascade
 
 
@@ -586,7 +586,7 @@ def log_notification_error(failure_point: str, error_trace: str, target_device: 
             )
             session.add(entry)
             session.commit()
-    except Exception:
+    except Exception as _e:
         pass  # telemetry must never cascade
 
 
@@ -641,7 +641,7 @@ def log_ideas_error(module: str, error_trace: str, context_ticker: str | None = 
             )
             session.add(entry)
             session.commit()
-    except Exception:
+    except Exception as _e:
         pass  # telemetry must never cause a cascading failure
 
 

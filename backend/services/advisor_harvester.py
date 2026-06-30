@@ -691,13 +691,13 @@ async def harvest_all_advisors(lookback_hours: int = 24) -> None:
             try:
                 count = await harvest_single_advisor(advisor, lookback_hours)
                 total_inserted += count
-            except Exception:
+            except Exception as _e:
                 logger.error(
                     "Unhandled error harvesting advisor %s:\n%s",
                     advisor.get("name"),
                     traceback.format_exc(),
                 )
-    except Exception:
+    except Exception as _e:
         logger.error(
             "Fatal error in harvest_all_advisors:\n%s", traceback.format_exc()
         )

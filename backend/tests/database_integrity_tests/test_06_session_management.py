@@ -31,7 +31,7 @@ def run():
         session = SessionFactory()
         try:
             yield session
-        except Exception:
+        except Exception as _e:
             session.rollback()
             raise
         finally:

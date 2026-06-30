@@ -171,7 +171,7 @@ def run():
             p = tmp_db + ext
             if os.path.exists(p):
                 os.unlink(p)
-    except Exception:
+    except Exception as _e:
         pass
     return 0 if failed == 0 else 1
 

@@ -180,7 +180,7 @@ def get_adjusted_macro_betas(ticker: str, sector: str = "Other") -> dict[str, fl
                 prior_var=prior_var
             )
             
-    except Exception:
+    except Exception as _e:
         market_beta = 1.0
 
     return {

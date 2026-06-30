@@ -72,7 +72,7 @@ def get_feedback_block(ticker: str, db_session=None) -> str:
                 hist = yf.download(f"{ticker}.BO", period="2d", auto_adjust=True, progress=False)
             if hist is not None and len(hist) > 0:
                 current_price = round(float(hist["Close"].iloc[-1]), 2)
-        except Exception:
+        except Exception as _e:
             pass
 
         outcome_line = ""
@@ -97,9 +97,9 @@ def get_feedback_block(ticker: str, db_session=None) -> str:
                         (prev_signal in ("SELL", "BEARISH") and delta_pct < 0)
                     )
                     db_session.commit()
-                except Exception:
+                except Exception as _e:
                     db_session.rollback()
-            except Exception:
+            except Exception as _e:
                 pass
 
         days_ago = (datetime.now(timezone.utc) - prev_date).days if prev_date else "?"

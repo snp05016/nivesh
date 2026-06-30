@@ -89,7 +89,7 @@ class HarvestedCard(Base):
             try:
                 val = json.loads(raw)
                 return val if isinstance(val, list) else []
-            except Exception:
+            except Exception as _e:
                 return []
 
         return {
@@ -150,7 +150,7 @@ def get_session():
     try:
         yield session
         session.commit()
-    except Exception:
+    except Exception as _e:
         session.rollback()
         raise
     finally:
@@ -204,7 +204,7 @@ def upsert_card(session, card: dict) -> bool:
             return val
         try:
             return json.dumps(val, ensure_ascii=False)
-        except Exception:
+        except Exception as _e:
             return None
 
     published = card.get("published_at")
@@ -273,7 +273,7 @@ def _parse_dt(raw: str) -> datetime | None:
     # ISO first
     try:
         return datetime.fromisoformat(raw.replace("Z", "+00:00")).replace(tzinfo=None)
-    except Exception:
+    except Exception as _e:
         pass
     for fmt in (
         "%a, %d %b %Y %H:%M:%S %z",
@@ -287,6 +287,6 @@ def _parse_dt(raw: str) -> datetime | None:
     ):
         try:
             return datetime.strptime(raw, fmt).replace(tzinfo=None)
-        except Exception:
+        except Exception as _e:
             continue
     return None

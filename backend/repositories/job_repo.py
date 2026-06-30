@@ -90,7 +90,7 @@ def get_job(job_id: str) -> Optional[dict]:
         if j.status == "SUCCEEDED" and j.result_json:
             try:
                 d["result"] = json.loads(j.result_json)
-            except Exception:
+            except Exception as _e:
                 d["result"] = None
         return d
 

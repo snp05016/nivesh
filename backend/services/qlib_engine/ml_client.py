@@ -86,5 +86,5 @@ def predict_cross_section_sync(ticker: str, ohlcv_data: list) -> dict | None:
         )
         loop.close()
         return result
-    except Exception:
+    except Exception as _e:
         return None

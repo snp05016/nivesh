@@ -182,7 +182,7 @@ def _parse_float(s: str) -> float | None:
     """
     try:
         return float(s.replace("%", "").replace(",", "").strip())
-    except Exception:
+    except Exception as _e:
         return None
 
 
@@ -282,7 +282,7 @@ def _fetch_pulse_fallback() -> dict:
                 if chg > 0: advances += 1
                 elif chg < 0: declines += 1
                 else: unchanged += 1
-            except Exception:
+            except Exception as _e:
                 continue
     except Exception as e:
         logger.warning(f"Failed to fetch advance/decline from yf: {e}")
@@ -571,7 +571,7 @@ def _fetch_mf_fallback() -> list[dict]:
                         "one_year_return_pct": ret_pct,
                         "aum_cr": None
                     })
-            except Exception:
+            except Exception as _e:
                 continue
     except Exception as e:
         logger.warning(f"MF Fallback failed: {e}")
@@ -674,7 +674,7 @@ def _fetch_sync_ratio_fallback() -> dict:
                 # If the stock has recent price action (last 2 trading days), count it
                 if not df.empty and len(df.dropna()) >= 2:
                     declared += 1
-            except Exception:
+            except Exception as _e:
                 continue
 
         # Extrapolate: if 30/30 sample stocks have data, assume broad market is active
@@ -798,7 +798,7 @@ def _fetch_yoy_fallback() -> dict:
                     total_profit_growth += ((cur_p - prev_p) / abs(prev_p)) * 100
 
             count += 1
-        except Exception:
+        except Exception as _e:
             continue
 
     avg_rev = round(total_rev_growth / count, 1) if count > 0 else 0.0

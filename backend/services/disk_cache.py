@@ -18,7 +18,7 @@ def set(namespace: str, key: str, value: Any, ttl: Optional[int] = None) -> None
 def invalidate(namespace: str, key: str) -> None:
     try:
         _run_async_in_thread(cache.invalidate(namespace, key))
-    except Exception:
+    except Exception as _e:
         if namespace in cache._fallback_cache and key in cache._fallback_cache[namespace]:
             del cache._fallback_cache[namespace][key]
 

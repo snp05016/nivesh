@@ -84,7 +84,7 @@ def run():
     finally:
         try:
             s.close()
-        except Exception:
+        except Exception as _e:
             pass
 
     # ---- TimeoutError: socket timeout
@@ -101,7 +101,7 @@ def run():
     finally:
         try:
             s.close()
-        except Exception:
+        except Exception as _e:
             pass
 
     # ---- OSError: disk operations

@@ -309,7 +309,7 @@ def _extract_article_author(article_html: str) -> Optional[str]:
                     name = (author[0] or {}).get("name", "").strip()
                     if name:
                         return name
-        except Exception:
+        except Exception as _e:
             pass
 
     # 2. Common meta / schema attributes.
@@ -807,7 +807,7 @@ def scrape_all_expert_sources() -> list[dict]:
                     context={"source_name": name},
                     exception={"type": type(exc).__name__, "message": str(exc)},
                 )
-            except Exception:
+            except Exception as _e:
                 pass
 
     # Final credibility filter.

@@ -49,7 +49,7 @@ def get_price_history(
             df = pd.DataFrame(cached)
             df.index = pd.to_datetime(df.index)
             return df
-        except Exception:
+        except Exception as _e:
             pass
 
     df = None

@@ -68,7 +68,7 @@ def _yf_fetch_info(full_ticker: str) -> dict:
             info = t.info
             if info and (info.get("currentPrice") or info.get("regularMarketPrice")):
                 return info
-        except Exception:
+        except Exception as _e:
             if attempt < 2:
                 time.sleep((1.5 * (2 ** attempt)) + (random.random() * 0.5))
     try:
@@ -104,7 +104,7 @@ def _safe_float(v, default: float = 0.0) -> float:
     try:
         f = float(v)
         return default if (math.isnan(f) or math.isinf(f)) else f
-    except Exception:
+    except Exception as _e:
         return default
 
 
@@ -116,7 +116,7 @@ def _earnings_result_from_row(r, now_iso: str) -> dict:
     """Build an EarningsResult dict from an AnalysisHistory row."""
     try:
         fj = json.loads(r.full_json or "{}")
-    except Exception:
+    except Exception as _e:
         fj = {}
     fs = fj.get("fundamentals_snapshot", {})
     revenue = _safe_float(fs.get("revenue_crores") or fs.get("revenue"))
@@ -181,10 +181,10 @@ def _scan_upcoming_earnings(target_date: str) -> list[dict]:
                                     "reported_at": None,
                                 })
                                 break
-                        except Exception:
+                        except Exception as _e:
                             continue
             if len(results) >= 10:
                 break
-        except Exception:
+        except Exception as _e:
             continue
     return results

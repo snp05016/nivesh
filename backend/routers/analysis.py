@@ -384,7 +384,8 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                         corporate_actions.append({"date": dt.strftime("%d-%b-%Y"), "type": "dividend", "detail": f"Dividend ₹{round(divs_amt,2)}"})
         except Exception as e:
             import logging
-            logging.warning(f"Swallowed exception: {e}")
+            logging.error(f"Error occurred: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Internal server error")
 
         # Fetch latest AI governance analysis for this ticker
         governance_score = None
@@ -404,10 +405,12 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                         governance_red_flags = _fj.get("governance_red_flags") or []
                     except Exception as e:
                         import logging
-                        logging.warning(f"Swallowed exception: {e}")
+                        logging.error(f"Error occurred: {e}", exc_info=True)
+                        raise HTTPException(status_code=500, detail="Internal server error")
         except Exception as e:
             import logging
-            logging.warning(f"Swallowed exception: {e}")
+            logging.error(f"Error occurred: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Internal server error")
 
         asm_gsm_status = "CLEAN"
         try:
@@ -545,11 +548,13 @@ kills the run. One running job per user (guarded by the DB job state).
                     cached = _inject_live_data(cached, ticker)
                 except Exception as e:
                     import logging
-                    logging.warning(f"Swallowed exception: {e}")
+                    logging.error(f"Error occurred: {e}", exc_info=True)
+                    raise HTTPException(status_code=500, detail="Internal server error")
                 return cached
     except Exception as e:
         import logging
-        logging.warning(f"Swallowed exception: {e}")
+        logging.error(f"Error occurred: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     if req.user_id is not None:
         active = database.get_active_job_for_user_and_type(req.user_id, req.scan_type)
@@ -1397,7 +1402,8 @@ def screener_endpoint(preset: str):
                             company = fj_data.get("company_name") or company
                         except Exception as e:
                             import logging
-                            logging.warning(f"Swallowed exception: {e}")
+                            logging.error(f"Error occurred: {e}", exc_info=True)
+                            raise HTTPException(status_code=500, detail="Internal server error")
                         results.append({
                             "ticker": ticker,
                             "company_name": company,
@@ -1473,7 +1479,8 @@ def daily_action_endpoint(user_id: int, authorization: str = Header(None)):
                         })
         except Exception as e:
             import logging
-            logging.warning(f"Swallowed exception: {e}")
+            logging.error(f"Error occurred: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Internal server error")
 
         conflicts = []
         try:
@@ -1503,10 +1510,12 @@ def daily_action_endpoint(user_id: int, authorization: str = Header(None)):
                                 })
                     except Exception as e:
                         import logging
-                        logging.warning(f"Swallowed exception: {e}")
+                        logging.error(f"Error occurred: {e}", exc_info=True)
+                        raise HTTPException(status_code=500, detail="Internal server error")
         except Exception as e:
             import logging
-            logging.warning(f"Swallowed exception: {e}")
+            logging.error(f"Error occurred: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Internal server error")
 
         triggered = []
         try:
@@ -1518,7 +1527,8 @@ def daily_action_endpoint(user_id: int, authorization: str = Header(None)):
                 triggered = [{"ticker": a.ticker, "direction": a.direction, "price": a.target_price} for a in alerts]
         except Exception as e:
             import logging
-            logging.warning(f"Swallowed exception: {e}")
+            logging.error(f"Error occurred: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Internal server error")
 
         urgency = "low"
         if triggered or any(w.get("is_bearish") for w in warnings):

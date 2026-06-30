@@ -105,7 +105,8 @@ def dividend_history_endpoint(ticker: str, exchange: str = "NSE"):
             current_price = getattr(fast, "last_price", None)
         except Exception as e:
             import logging
-            logging.warning(f"Swallowed exception: {e}")
+            logging.error(f"Error occurred: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Internal server error")
 
         history = []
         if divs is not None and not divs.empty:
@@ -296,11 +297,13 @@ def quarterly_financials_endpoint(ticker: str, exchange: str = "NSE"):
                                 })
                         except Exception as e:
                             import logging
-                            logging.warning(f"Swallowed exception: {e}")
+                            logging.error(f"Error occurred: {e}", exc_info=True)
+                            raise HTTPException(status_code=500, detail="Internal server error")
             promoter_history = list(reversed(promoter_history[:4]))
         except Exception as e:
             import logging
-            logging.warning(f"Swallowed exception: {e}")
+            logging.error(f"Error occurred: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Internal server error")
 
         payload = {"quarters": result, "promoter_history": promoter_history}
         _dcache_set("market", cache_key, payload, ttl=3600)
@@ -610,10 +613,12 @@ AI-generated analysis if a cached analysis exists.
                             result["ai_sentiment"] = sentiment
                     except Exception as e:
                         import logging
-                        logging.warning(f"Swallowed exception: {e}")
+                        logging.error(f"Error occurred: {e}", exc_info=True)
+                        raise HTTPException(status_code=500, detail="Internal server error")
         except Exception as e:
             import logging
-            logging.warning(f"Swallowed exception: {e}")
+            logging.error(f"Error occurred: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Internal server error")
 
         if not result.get("ai_summary"):
             impact_lines = []
@@ -678,10 +683,12 @@ def earnings_calendar_endpoint():
                             })
                     except Exception as e:
                         import logging
-                        logging.warning(f"Swallowed exception: {e}")
+                        logging.error(f"Error occurred: {e}", exc_info=True)
+                        raise HTTPException(status_code=500, detail="Internal server error")
             except Exception as e:
                 import logging
-                logging.warning(f"Swallowed exception: {e}")
+                logging.error(f"Error occurred: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Internal server error")
 
         results.sort(key=lambda x: x["days_away"])
         payload = {"events": results}
@@ -1371,7 +1378,8 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
                     fii_holding_pct = max(0.0, round(_institutional_total_pct - fund_dii, 2))
     except Exception as e:
         import logging
-        logging.warning(f"Swallowed exception: {e}")
+        logging.error(f"Error occurred: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     # ── 2. Price history — full error capture ──────────────────────────────
     price_history_data: dict = {"prices": [], "source": None, "error": None}
@@ -1485,13 +1493,15 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
                             })
                     except Exception as e:
                         import logging
-                        logging.warning(f"Swallowed exception: {e}")
+                        logging.error(f"Error occurred: {e}", exc_info=True)
+                        raise HTTPException(status_code=500, detail="Internal server error")
             quarterly_data["promoter_history"] = list(
                 reversed(quarterly_data["promoter_history"][:4])
             )
     except Exception as e:
         import logging
-        logging.warning(f"Swallowed exception: {e}")
+        logging.error(f"Error occurred: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     # ── 4. Sanitise & assemble ─────────────────────────────────────────────
     def _clean_num(v):
@@ -1916,7 +1926,8 @@ def _build_cap_index_grid() -> list[dict]:
                     ticker_data[ticker] = info
             except Exception as e:
                 import logging
-                logging.warning(f"Swallowed exception: {e}")
+                logging.error(f"Error occurred: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Internal server error")
 
     results: list[dict] = []
     for bracket in brackets:
@@ -2207,7 +2218,8 @@ def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple
                         ltp = round(float(lp), 2)
             except Exception as e:
                 import logging
-                logging.warning(f"Swallowed exception: {e}")
+                logging.error(f"Error occurred: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Internal server error")
 
             # EPS from quarterly data
             eps = None
@@ -2230,7 +2242,8 @@ def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple
                             eps_prev = round(pev, 2)
             except Exception as e:
                 import logging
-                logging.warning(f"Swallowed exception: {e}")
+                logging.error(f"Error occurred: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Internal server error")
 
             item = {
                 "ticker": ticker,
@@ -2478,7 +2491,8 @@ async def earnings_estimates_endpoint(ticker: str):
                     eps_actual = fs.get("eps")
                 except Exception as e:
                     import logging
-                    logging.warning(f"Swallowed exception: {e}")
+                    logging.error(f"Error occurred: {e}", exc_info=True)
+                    raise HTTPException(status_code=500, detail="Internal server error")
         return {
             "ticker": ticker,
             "company_name": info.get("longName") or info.get("shortName") or ticker,

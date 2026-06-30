@@ -235,7 +235,7 @@ def start_scheduler():
                         if age > 8 * 3600:
                             path.unlink(missing_ok=True)
                             warmed += 1
-                    except Exception:
+                    except Exception as _e:
                         pass
             _dash_update_harvest("premarket_warm", "idle", {"evicted_entries": warmed})
             logging.info(f"[premarket_warm] Evicted {warmed} stale yfinance cache entries")
@@ -369,7 +369,7 @@ def _seed_harvester_sources():
         with h_get_session() as s:
             for name in SOURCE_ROSTER:
                 record_source_health(s, name, success=True, items=0)
-    except Exception:
+    except Exception as _e:
         pass
 
 

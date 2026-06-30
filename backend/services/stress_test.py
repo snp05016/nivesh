@@ -86,7 +86,7 @@ def _call_with_timeout(fn, *args, default=None, timeout=30):
         status, value = result_queue.get_nowait()
         if status == "ok":
             return value
-    except Exception:
+    except Exception as _e:
         pass
     return default
 
@@ -153,7 +153,7 @@ def enrich_holdings(holdings, progress_callback=None) -> List[Dict[str, Any]]:
             try:
                 price_info = _yf_price(ticker)
                 price = float(price_info[0]) if price_info and price_info[0] and price_info[0] > 0 else float(h.buy_price)
-            except Exception:
+            except Exception as _e:
                 price = float(h.buy_price)
             
             value = float(h.shares) * price
@@ -190,7 +190,7 @@ def enrich_holdings(holdings, progress_callback=None) -> List[Dict[str, Any]]:
             idx = futures[f]
             try:
                 results[idx] = f.result(timeout=45)
-            except Exception:
+            except Exception as _e:
                 h = holdings[idx]
                 results[idx] = _build_fallback(h)
                 with lock:

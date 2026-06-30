@@ -98,7 +98,7 @@ def upsert_device_token(user_id: int, device_token: str, platform: str = "ios") 
             try:
                 session.add(DeviceToken(user_id=user_id, device_token=device_token, platform=platform))
                 session.commit()
-            except Exception:
+            except Exception as _e:
                 session.rollback()
                 duplicate = session.query(DeviceToken).filter_by(device_token=device_token).first()
                 if duplicate:

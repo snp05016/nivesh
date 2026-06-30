@@ -72,7 +72,7 @@ def get_session() -> Session:
     session = SessionLocal()
     try:
         yield session
-    except Exception:
+    except Exception as _e:
         session.rollback()
         raise
     finally:
@@ -175,7 +175,7 @@ def verify_password(plain: str, hashed: str) -> bool:
         # plain SHA-256 (legacy, no salt)
         actual = hashlib.sha256(plain.encode()).hexdigest()
         return secrets.compare_digest(actual, hashed)
-    except Exception:
+    except Exception as _e:
         return False
 
 
@@ -344,7 +344,7 @@ def create_user(session: Session, username: str, password: str, display_name: st
         session.add(user)
         session.commit()
         return user
-    except Exception:
+    except Exception as _e:
         session.rollback()
         return None
 
@@ -393,7 +393,7 @@ def verify_access_token(token: str) -> Optional[int]:
         payload = pyjwt.decode(token, _JWT_SECRET, algorithms=[_JWT_ALGORITHM])
         sub = payload.get("sub")
         return int(sub) if sub is not None else None
-    except Exception:
+    except Exception as _e:
         return None
 
 

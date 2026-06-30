@@ -50,7 +50,7 @@ def _fetch_sector(ticker: str) -> str:
     try:
         info = yf.Ticker(format_ticker_for_yf(ticker)).info
         sector = info.get("sector", "Unknown") or "Unknown"
-    except Exception:
+    except Exception as _e:
         sector = "Unknown"
     _set_cached_sector(ticker, sector)
     return sector
@@ -85,7 +85,7 @@ def _extract_close(
                     prices[name] = data[close_candidate]
                 elif yf_t in data.columns:
                     prices[name] = data[yf_t]
-        except Exception:
+        except Exception as _e:
             logger.warning("Could not extract Close price for %s (%s)", name, yf_t)
     return prices
 
@@ -110,7 +110,7 @@ def _extract_proxy_close(data: pd.DataFrame) -> pd.DataFrame:
                     prices[proxy_name] = data[close_candidate]
                 elif proxy_ticker in data.columns:
                     prices[proxy_name] = data[proxy_ticker]
-        except Exception:
+        except Exception as _e:
             logger.warning("Could not extract Close price for proxy %s (%s)", proxy_name, proxy_ticker)
     return prices
 
