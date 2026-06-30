@@ -470,9 +470,9 @@ async def _on_startup():
     # Wire up structured JSON logging (fixes #83)
     from core.logging_config import configure_logging
     configure_logging()
-    start_scheduler()
     # Init DB and seed on startup (fixes #87 — moved from module level)
     init_db()
+    start_scheduler()
     # v2 engine crash recovery: any analysis job left RUNNING/QUEUED by a previous
     # process (deploy/crash) has a dead worker → mark it FAILED so the app shows an
     # honest error and the user can re-run.
