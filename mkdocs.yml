@@ -1,0 +1,67 @@
+site_name: Nivesh Documentation
+site_description: Documentation for the Nivesh iOS App and FastAPI Backend
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [backend]
+
+nav:
+  - Home: codebase/README.md
+  - Architecture:
+    - Overview: codebase/ARCHITECTURE_MAP.md
+    - Data Flow: codebase/DATA_FLOW_MAP.md
+    - Services: codebase/SERVICE_MAP.md
+    - Database: codebase/DATABASE_MAP.md
+    - API Contracts: codebase/API_CONTRACT_MAP.md
+    - Harvester Architecture: codebase/HARVESTER_ARCHITECTURE.md
+  - Deployment & Testing:
+    - Deployment Map: codebase/DEPLOYMENT_MAP.md
+    - Testing Map: codebase/TESTING_MAP.md
+    - Router Migration Runbook: codebase/ROUTER_MIGRATION_RUNBOOK.md
+    - LLM Credit Risk Guide: codebase/LLM_CREDIT_RISK.md
+  - Status & Coverage:
+    - Documentation Coverage: codebase/DOCUMENTATION_COVERAGE_REPORT.md
+  - Backend API Reference:
+    - Models: backend_api/models.md
+    - Services: backend_api/services.md
+    - Routers: backend_api/routers.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
