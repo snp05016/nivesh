@@ -31,11 +31,27 @@ def _f(v) -> float:  # type: ignore[misc]
 # ---------------------------------------------------------------------------
 
 @pytest.fixture()
-def db_session():
+def db_session(monkeypatch):
     """Ephemeral in-memory SQLite session for each test."""
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
+    
+    # Mock get_session so services use this in-memory session
+    from contextlib import contextmanager
+    @contextmanager
+    def mock_get_session():
+        session = Session()
+        try:
+            yield session
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+            
+    monkeypatch.setattr("database.get_session", mock_get_session)
+    
     session = Session()
     yield session
     session.close()
@@ -49,9 +65,8 @@ def _make_group(session, user_id: int = 1) -> PortfolioGroup:
     return g
 
 
-def _buy(session, user_id, group_id, ticker, qty, price):
+def _buy(user_id, group_id, ticker, qty, price):
     record_transaction(
-        session=session,
         user_id=user_id,
         ticker=ticker,
         transaction_type="BUY",
@@ -62,9 +77,8 @@ def _buy(session, user_id, group_id, ticker, qty, price):
     )
 
 
-def _sell(session, user_id, group_id, ticker, qty, price):
+def _sell(user_id, group_id, ticker, qty, price):
     record_transaction(
-        session=session,
         user_id=user_id,
         ticker=ticker,
         transaction_type="SELL",
@@ -86,67 +100,54 @@ def _holding(session, user_id, ticker) -> Portfolio | None:
 # ---------------------------------------------------------------------------
 
 class TestWACEngine:
-    def test_single_buy_creates_holding(self, db_session):
+    def test_ledger_single_buy(self, db_session):
         g = _make_group(db_session)
-        _buy(db_session, 1, g.id, "RELIANCE", 10, 100.0)
+        _buy(user_id=1, group_id=g.id, ticker="TCS.NS", qty=10, price=3500.0)
         db_session.commit()
 
-        h = _holding(db_session, 1, "RELIANCE")
+        h = _holding(db_session, 1, "TCS.NS")
         assert h is not None
         assert round(_f(h.shares), 2) == 10.0
-        assert round(_f(h.buy_price), 2) == 100.0
+        assert round(_f(h.buy_price), 2) == 3500.0
 
-    def test_two_buys_weighted_average(self, db_session):
-        """BUY 10 @ 100 + BUY 10 @ 200 → 20 shares @ 150 WAC."""
+    def test_ledger_multiple_buys_wac(self, db_session):
+        """BUY 10 @ 2000 + BUY 5 @ 2600 → 15 shares @ 2200 WAC."""
         g = _make_group(db_session)
-        _buy(db_session, 1, g.id, "RELIANCE", 10, 100.0)
-        _buy(db_session, 1, g.id, "RELIANCE", 10, 200.0)
+        _buy(user_id=1, group_id=g.id, ticker="RELIANCE.NS", qty=10, price=2000.0)
+        _buy(user_id=1, group_id=g.id, ticker="RELIANCE.NS", qty=5, price=2600.0)
         db_session.commit()
 
-        h = _holding(db_session, 1, "RELIANCE")
+        h = _holding(db_session, 1, "RELIANCE.NS")
         assert h is not None
-        assert round(float(h.shares), 2) == 20.0
-        # total cost = 10*100 + 10*200 = 3000 → WAC = 3000/20 = 150
-        assert round(float(h.buy_price), 2) == 150.0
+        assert round(float(h.shares), 2) == 15.0
+        # total cost = 20000 + 13000 = 33000 → WAC = 33000/15 = 2200
+        assert round(float(h.buy_price), 2) == 2200.0
 
-    def test_sell_reduces_shares_and_cost_basis(self, db_session):
-        """After WAC avg at 150, SELL 10 @ 250 → 10 shares remaining @ 150."""
+    def test_ledger_partial_sell_maintains_wac(self, db_session):
+        """After WAC avg, SELL reduces qty but not WAC."""
         g = _make_group(db_session)
-        _buy(db_session, 1, g.id, "RELIANCE", 10, 100.0)
-        _buy(db_session, 1, g.id, "RELIANCE", 10, 200.0)
-        _sell(db_session, 1, g.id, "RELIANCE", 10, 250.0)
+        _buy(user_id=1, group_id=g.id, ticker="ITC.NS", qty=100, price=200.0)
+        _sell(user_id=1, group_id=g.id, ticker="ITC.NS", qty=40, price=250.0)
         db_session.commit()
 
-        h = _holding(db_session, 1, "RELIANCE")
+        h = _holding(db_session, 1, "ITC.NS")
         assert h is not None
-        assert round(h.shares, 2) == 10.0
-        # WAC stays at 150 — selling at gain doesn't change cost basis
-        assert round(h.buy_price, 2) == 150.0
+        assert round(h.shares, 2) == 60.0
+        assert round(h.buy_price, 2) == 200.0
 
-    def test_full_sell_deletes_holding(self, db_session):
-        """Selling all shares removes the Portfolio row entirely."""
-        g = _make_group(db_session)
-        _buy(db_session, 1, g.id, "INFY", 10, 1500.0)
-        _sell(db_session, 1, g.id, "INFY", 10, 1800.0)
-        db_session.commit()
-
-        h = _holding(db_session, 1, "INFY")
-        assert h is None, "Portfolio row should be deleted when shares reach zero"
-
-    def test_oversell_raises_value_error(self, db_session):
+    def test_ledger_oversell_raises_error(self, db_session):
         """Selling more than held raises ValueError (short-selling forbidden)."""
         g = _make_group(db_session)
-        _buy(db_session, 1, g.id, "TCS", 5, 3000.0)
-        db_session.commit()
-
-        with pytest.raises(ValueError, match="only"):
-            _sell(db_session, 1, g.id, "TCS", 10, 3500.0)  # sell 10, only 5 held
+        _buy(user_id=1, group_id=g.id, ticker="HDFCBANK.NS", qty=10, price=1500.0)
+        
+        with pytest.raises(ValueError, match="only 10.0 shares held"):
+            _sell(user_id=1, group_id=g.id, ticker="HDFCBANK.NS", qty=15, price=1600.0)
 
     def test_transactions_stored_immutably(self, db_session):
         """All transaction records persist regardless of share state."""
         g = _make_group(db_session)
-        _buy(db_session, 1, g.id, "HDFC", 10, 1600.0)
-        _sell(db_session, 1, g.id, "HDFC", 10, 1900.0)
+        _buy(1, g.id, "HDFC", 10, 1600.0)
+        _sell(1, g.id, "HDFC", 10, 1900.0)
         db_session.commit()
 
         txns = session_query_all(db_session, "HDFC", 1)
@@ -157,15 +158,16 @@ class TestWACEngine:
     def test_multiple_tickers_isolated(self, db_session):
         """Transactions for different tickers don't interfere."""
         g = _make_group(db_session)
-        _buy(db_session, 1, g.id, "RELIANCE", 5, 2500.0)
-        _buy(db_session, 1, g.id, "WIPRO", 20, 450.0)
-        _sell(db_session, 1, g.id, "RELIANCE", 5, 2700.0)
+        _buy(1, g.id, "RELIANCE", 5, 2500.0)
+        _buy(1, g.id, "TCS", 5, 3000.0)
+        _sell(1, g.id, "RELIANCE", 5, 2600.0)
         db_session.commit()
 
-        assert _holding(db_session, 1, "RELIANCE") is None
-        wipro = _holding(db_session, 1, "WIPRO")
-        assert wipro is not None
-        assert round(wipro.shares, 2) == 20.0
+        h_rel = _holding(db_session, 1, "RELIANCE")
+        h_tcs = _holding(db_session, 1, "TCS")
+        assert h_rel is None
+        assert h_tcs is not None
+        assert round(h_tcs.shares, 2) == 5.0
 
 
 def session_query_all(session, ticker: str, user_id: int) -> list[Transaction]:

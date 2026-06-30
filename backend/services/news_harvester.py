@@ -105,7 +105,7 @@ def is_market_relevant(text: str) -> bool:
     text_lower = text.lower()
     return any(kw in text_lower for kw in MARKET_KEYWORDS)
 
-def extract_tickers_from_text(text: str, db: Session) -> list[str]:
+def extract_tickers_from_text(text: str) -> list[str]:
     """
     Use the existing ticker_matcher to find mentioned tickers.
     Fix 2.8: Enforces exchange-aware suffix filtering — blocks US equities
@@ -230,7 +230,7 @@ async def harvest_news(lookback_hours: int = 26):
                         db.flush() # Send to DB to get ID/check constraints, but don't commit yet
 
                         # Ticker matching
-                        tickers = extract_tickers_from_text(full_text, db)
+                        tickers = extract_tickers_from_text(full_text)
                         if tickers:
                             article.ticker = tickers[0]
 

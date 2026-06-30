@@ -13,17 +13,16 @@ from database import SessionLocal, PKScreenerSignal, Portfolio
 
 logger = logging.getLogger(__name__)
 
-def get_all_tracked_tickers(db) -> list:
+def get_all_tracked_tickers() -> list:
     """Returns all tickers from all users' portfolios.
-
-    Args:
-        db: The database session object.
 
     Returns:
         list: A list of unique ticker strings.
     """
-    portfolio_tickers = {h.ticker for h in db.query(Portfolio).all()}
-    return list(portfolio_tickers)
+    from database import get_session
+    with get_session() as db:
+        portfolio_tickers = {h.ticker for h in db.query(Portfolio).all()}
+        return list(portfolio_tickers)
 
 
 def normalize_technical_score(signals: dict) -> float:
@@ -200,8 +199,8 @@ async def run_nightly_screen():
     processed = 0
     errors = 0
 
+    tickers = get_all_tracked_tickers()
     with get_session() as db:
-        tickers = get_all_tracked_tickers(db)
         logger.info(f"PKScreener: screening {len(tickers)} tickers for {today}")
 
         for ticker in tickers:
