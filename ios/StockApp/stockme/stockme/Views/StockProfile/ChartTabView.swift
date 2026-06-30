@@ -235,7 +235,13 @@ struct SMASectionView: View {
                 }
             }
             .chartYAxis {
-                AxisMarks { _ in AxisValueLabel() }
+                AxisMarks { value in
+                    AxisValueLabel {
+                        if let v = value.as(Double.self) {
+                            Text(IndianFormatter.priceCompact(v)).font(Theme.microLabel(size: 8)).foregroundStyle(Theme.inkTertiary)
+                        }
+                    }
+                }
             }
             .frame(height: UIScreen.main.bounds.height * 0.25)
         }

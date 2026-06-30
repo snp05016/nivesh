@@ -33,7 +33,7 @@ struct NotificationInboxView: View {
             } else if notifications.isEmpty {
                 VStack(spacing: Theme.Spacing.standard) {
                     Image(systemName: "bell")
-                        .font(.system(size: 40))
+                        .font(Theme.engravedSerif(size: 40, relativeTo: .largeTitle))
                         .foregroundStyle(Theme.inkTertiary.opacity(0.5))
                     Text("NO NOTIFICATIONS")
                         .font(Theme.officialStampFont(size: 11, relativeTo: .body))

@@ -83,7 +83,7 @@ struct YouTubeVideoItem: Codable, Identifiable {
 
     var formattedViewCount: String {
         let v = viewCount ?? 0
-        if v >= 1_00_000 { return String(format: "%.1fL", Double(v) / 1_00_000.0) }
+        if v >= 1_00_000 { return IndianFormatter.lakhsCroresNoSymbol(Double(v)) }
         if v >= 1000 { return String(format: "%.1fK", Double(v) / 1000.0) }
         return v > 0 ? "\(v)" : ""
     }
