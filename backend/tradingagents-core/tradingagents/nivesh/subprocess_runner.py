@@ -48,6 +48,7 @@ from __future__ import annotations
 
 import logging
 import multiprocessing
+import threading
 import time
 from typing import Any
 
@@ -58,6 +59,7 @@ logger = logging.getLogger(__name__)
 # NOTE: single-process guarantee only. See module docstring for multi-worker.
 # ---------------------------------------------------------------------------
 _running_analyses: set[int] = set()
+_running_lock = threading.Lock()
 
 
 class AnalysisAlreadyRunningError(RuntimeError):
@@ -154,13 +156,13 @@ def run_analysis_isolated(
     RuntimeError
         If the subprocess itself raises an unhandled exception.
     """
-    if user_id is not None and user_id in _running_analyses:
-        raise AnalysisAlreadyRunningError(
-            f"Analysis already running for user_id={user_id}. Please wait."
-        )
-
     if user_id is not None:
-        _running_analyses.add(user_id)
+        with _running_lock:
+            if user_id in _running_analyses:
+                raise AnalysisAlreadyRunningError(
+                    f"Analysis already running for user_id={user_id}. Please wait."
+                )
+            _running_analyses.add(user_id)
 
     queue: multiprocessing.Queue = multiprocessing.Queue()
     process = multiprocessing.Process(
@@ -209,7 +211,8 @@ def run_analysis_isolated(
 
     finally:
         if user_id is not None:
-            _running_analyses.discard(user_id)
+            with _running_lock:
+                _running_analyses.discard(user_id)
         # Ensure the process is cleaned up
         if process.is_alive():
             process.terminate()
@@ -218,9 +221,11 @@ def run_analysis_isolated(
 
 def is_analysis_running(user_id: int) -> bool:
     """Return True if ``user_id`` has an active analysis subprocess."""
-    return user_id in _running_analyses
+    with _running_lock:
+        return user_id in _running_analyses
 
 
 def get_running_user_ids() -> frozenset[int]:
     """Return a snapshot of user IDs currently running an analysis."""
-    return frozenset(_running_analyses)
+    with _running_lock:
+        return frozenset(_running_analyses)
