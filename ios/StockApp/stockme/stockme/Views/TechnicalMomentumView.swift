@@ -505,7 +505,7 @@ struct MomentumIndicatorCard: View {
                         .tracking(1)
                         .foregroundStyle(signalColor)
                         .padding(.horizontal, Theme.Spacing.tight)
-                        .padding(.vertical, 3)
+                        .padding(.vertical, Theme.Spacing.xSmall)
                         .background(signalColor.opacity(0.10))
                         .cornerRadius(Theme.CornerRadius.small)
                 }
