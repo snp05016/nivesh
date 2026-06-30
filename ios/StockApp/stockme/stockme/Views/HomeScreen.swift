@@ -764,7 +764,7 @@ struct HomeScreen: View {
                             return df.string(from: Date())
                         }()
                         let isDismissedToday = morningBriefShownDate == todayStr
-                        Button {
+                        Button { HapticManager.selection(); 
                             HapticManager.selection()
                             if isDismissedToday {
                                 morningBriefShownDate = ""
@@ -1784,7 +1784,7 @@ struct CompactNewsCell: View {
                             .tracking(1.0)
                             .foregroundStyle(Theme.securityGold)
                             .padding(.horizontal, Theme.Spacing.tight)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, Theme.Spacing.xSmall)
                             .background(Theme.inkPrimary.opacity(0.55))
                             .cornerRadius(Theme.CornerRadius.small)
 
@@ -1793,7 +1793,7 @@ struct CompactNewsCell: View {
                                 .font(.caption2.monospaced())
                                 .foregroundStyle(.white.opacity(0.9))
                                 .padding(.horizontal, Theme.Spacing.tight)
-                                .padding(.vertical, 2)
+                                .padding(.vertical, Theme.Spacing.xSmall)
                                 .background(Theme.inkPrimary.opacity(0.45))
                                 .cornerRadius(Theme.CornerRadius.small)
                         }
@@ -1811,7 +1811,7 @@ struct CompactNewsCell: View {
                             }
                             .foregroundStyle(badge.color)
                             .padding(.horizontal, Theme.Spacing.tight)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, Theme.Spacing.xSmall)
                             .background(badge.color.opacity(0.18))
                             .cornerRadius(Theme.CornerRadius.small)
                         }
@@ -1914,7 +1914,7 @@ struct CompactNewsCell: View {
         // Item 20: Long-press context menu — Save to Reading List
         .contextMenu {
             if let url = URL(string: article.articleUrl) {
-                Button {
+                Button { HapticManager.selection(); 
     HapticManager.selection()
                     try? SSReadingList.default()?.addItem(
                         with: url,
@@ -1927,7 +1927,7 @@ struct CompactNewsCell: View {
                 }
             }
             if let url = URL(string: article.articleUrl) {
-                Button {
+                Button { HapticManager.selection(); 
     HapticManager.selection()
                     UIPasteboard.general.string = url.absoluteString
                     HapticManager.selection()
@@ -2323,7 +2323,7 @@ extension HomeScreen {
                                     .foregroundStyle(Theme.inkPrimary)
                             }
                             Spacer()
-                            Button {
+                            Button { HapticManager.selection(); 
     HapticManager.selection()
                                 HapticManager.selection()
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
@@ -2340,7 +2340,7 @@ extension HomeScreen {
                                     .overlay(Circle().stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
                             }
                             .buttonStyle(EKPressStyle())
-                            Button {
+                            Button { HapticManager.selection(); 
     HapticManager.selection()
                                 HapticManager.selection()
                                 showGlossary = true
@@ -2383,7 +2383,7 @@ extension HomeScreen {
                                     .focused($searchFocused)
                                     .autocapitalization(.allCharacters)
                                 if !searchText.isEmpty {
-                                    Button {
+                                    Button { HapticManager.selection(); 
     HapticManager.selection()
                                         HapticManager.selection()
                                         searchText = ""
@@ -2394,7 +2394,7 @@ extension HomeScreen {
                                     }
                                     .buttonStyle(.plain)
                                 }
-                                Button {
+                                Button { HapticManager.selection(); 
     HapticManager.selection()
                                     HapticManager.selection()
                                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
@@ -2420,7 +2420,7 @@ extension HomeScreen {
                             if !searchResults.isEmpty {
                                 VStack(spacing: Theme.Spacing.none) {
                                     ForEach(searchResults.prefix(8)) { entry in
-                                        Button {
+                                        Button { HapticManager.selection(); 
     HapticManager.selection()
                                             HapticManager.selection()
                                             stockTapTicker = entry.ticker
@@ -2660,7 +2660,7 @@ extension HomeScreen {
                             }
 
                             HStack(spacing: Theme.Spacing.standard) {
-                                Button {
+                                Button { HapticManager.selection(); 
     HapticManager.selection()
                                     HapticManager.selection()
                                     let df = DateFormatter()
@@ -2680,7 +2680,7 @@ extension HomeScreen {
                                 }
                                 .buttonStyle(EKPressStyle())
 
-                                Button {
+                                Button { HapticManager.selection(); 
     HapticManager.selection()
                                     HapticManager.selection()
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -2799,7 +2799,7 @@ extension HomeScreen {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: Theme.Spacing.medium) {
                                     // "All" chip
-                                    Button {
+                                    Button { HapticManager.selection(); 
     HapticManager.selection()
                                         HapticManager.selection()
                                         selectedChannel = nil
@@ -2817,7 +2817,7 @@ extension HomeScreen {
                                     .buttonStyle(EKPressStyle())
 
                                     ForEach(channelNames, id: \.self) { channel in
-                                        Button {
+                                        Button { HapticManager.selection(); 
     HapticManager.selection()
                                             HapticManager.selection()
                                             selectedChannel = channel
@@ -3001,7 +3001,7 @@ struct HomeLayoutEditorSheet: View {
                         .foregroundStyle(Theme.inkSecondary)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
+                    Button("Save") { HapticManager.selection(); 
                         onSave(currentOrder)
                         dismiss()
                     }

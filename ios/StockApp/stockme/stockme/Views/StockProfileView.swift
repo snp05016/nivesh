@@ -255,7 +255,7 @@ struct InteractivePriceChartView: View {
             HStack(spacing: Theme.Spacing.none) {
                 // Period selector
                 ForEach(Array(zip(periods, periodLabels)), id: \.0) { period, label in
-                    Button(label) {
+                    Button(label) { HapticManager.selection(); 
                         HapticManager.selection()
                         selectedPeriod = period
                     }
@@ -272,7 +272,7 @@ struct InteractivePriceChartView: View {
                 Spacer()
 
                 // Candlestick toggle
-                Button {
+                Button { HapticManager.selection(); 
     HapticManager.selection()
                     HapticManager.selection()
                     showCandlestick.toggle()
@@ -285,7 +285,7 @@ struct InteractivePriceChartView: View {
                 .buttonStyle(EKPressStyle())
 
                 // Nifty benchmark toggle
-                Button {
+                Button { HapticManager.selection(); 
     HapticManager.selection()
                     HapticManager.selection()
                     showNifty.toggle()
@@ -345,7 +345,7 @@ struct StockProfileView: View {
                         // Period selector below hero chart
                         HStack(spacing: Theme.Spacing.tight) {
                             ForEach(Array(zip(["1mo","3mo","6mo","1y","2y","5y","max"], ["1M","3M","6M","1Y","2Y","5Y","ALL"])), id: \.0) { period, label in
-                                Button {
+                                Button { HapticManager.selection(); 
     HapticManager.selection()
                                     HapticManager.selection()
                                     chartPeriod = period
@@ -414,7 +414,7 @@ struct StockProfileView: View {
                                 .foregroundStyle(Theme.inkSecondary)
                                 .textSelection(.enabled)
                                 .fixedSize(horizontal: false, vertical: true)
-                            Button {
+                            Button { HapticManager.selection(); 
     HapticManager.selection()
                                 UIPasteboard.general.string = error
                                 HapticManager.success()
@@ -446,7 +446,7 @@ struct StockProfileView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: Theme.Spacing.none) {
                             ForEach(Array(tabItems.enumerated()), id: \.offset) { idx, item in
-                                Button {
+                                Button { HapticManager.selection(); 
     HapticManager.selection()
                                     HapticManager.selection()
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {

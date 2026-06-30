@@ -22,7 +22,7 @@ struct PortfolioDashboardView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
+                    Button(action: { HapticManager.selection(); 
                         HapticManager.selection()
                         // Handle adding transaction action
                     }) {

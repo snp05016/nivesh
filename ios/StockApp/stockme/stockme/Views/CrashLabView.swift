@@ -46,7 +46,7 @@ struct CrashLabView: View {
         .toolbar {
             if !crashes.isEmpty {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Clear All") {
+                    Button("Clear All") { HapticManager.selection(); 
                         CrashLog.shared.clearAll()
                         crashes = []
                     }
@@ -100,7 +100,7 @@ private struct CrashCardView: View {
                 .font(Theme.engravedSerif(size: 11, weight: .semibold))
                 .foregroundStyle(Theme.inkPrimary)
 
-            Button {
+            Button { HapticManager.selection(); 
     HapticManager.selection()
                 HapticManager.selection()
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { expanded.toggle() }
@@ -126,7 +126,7 @@ private struct CrashCardView: View {
             }
 
             HStack(spacing: Theme.Spacing.standard) {
-                Button {
+                Button { HapticManager.selection(); 
     HapticManager.selection()
                     HapticManager.selection()
                     let json = (try? JSONEncoder().encode(report)).flatMap { String(data: $0, encoding: .utf8) } ?? ""
@@ -141,7 +141,7 @@ private struct CrashCardView: View {
                 }
                 .buttonStyle(EKPressStyle())
 
-                Button(role: .destructive) {
+                Button(role: .destructive) { HapticManager.selection(); 
                     CrashLog.shared.delete(id: report.id)
                 } label: {
                     Text("DELETE").font(Theme.officialStampFont(size: 8, relativeTo: .caption2))

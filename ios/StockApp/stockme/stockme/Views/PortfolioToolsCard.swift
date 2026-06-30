@@ -163,7 +163,7 @@ private struct ToolButtonRow: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button(action: action) { HapticManager.selection(); 
             HStack(spacing: Theme.Spacing.standard) {
                 Image(systemName: icon)
                     .font(Theme.engravedSerif(size: 18, weight: .medium))
@@ -241,7 +241,7 @@ private struct SIPCalculatorSheet: View {
                         }
                         .banknoteCard()
 
-                        Button {
+                        Button { HapticManager.selection(); 
     HapticManager.selection()
                             HapticManager.impact(.medium)
                             calculate()

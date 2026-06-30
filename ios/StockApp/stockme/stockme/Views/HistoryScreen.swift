@@ -44,7 +44,7 @@ struct HistoryScreen: View {
                                     }
                                     .ekPress()
                                     .contextMenu {
-                                        Button(role: .destructive) {
+                                        Button(role: .destructive) { HapticManager.selection(); 
                                             withAnimation {
                                                 reportManager.deleteReport(ticker: report.ticker)
                                             }

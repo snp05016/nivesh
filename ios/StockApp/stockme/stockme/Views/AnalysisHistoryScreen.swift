@@ -43,7 +43,7 @@ struct AnalysisHistoryTimelineView: View {
                                 Text(s.signal == .bullish ? "BUY" : (s.signal == .bearish ? "SELL" : "HOLD"))
                                     .font(Theme.officialStampFont(size: 8))
                                     .foregroundStyle(Theme.inkPrimary)
-                                    .padding(.horizontal, 4)
+                                    .padding(.horizontal, Theme.Spacing.small)
                                     .background(s.signal == .bullish ? Theme.bullGreen.opacity(0.8) : Theme.bearRed.opacity(0.8))
                                     .clipShape(Capsule())
                                 

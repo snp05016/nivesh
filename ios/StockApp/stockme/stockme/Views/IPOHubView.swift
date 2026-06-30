@@ -50,7 +50,7 @@ struct IPOTabSelector: View {
     var body: some View {
         HStack(spacing: 0) {
             ForEach(IPOHubView.IPOTab.allCases, id: \.self) { tab in
-                Button(action: {
+                Button(action: { HapticManager.selection(); 
                     HapticManager.selection()
                     selectedTab = tab
                 }) {

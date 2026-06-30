@@ -51,7 +51,7 @@ struct ManualTransactionEntrySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
+                    Button("Cancel") { HapticManager.selection(); 
                         HapticManager.selection()
                         dismiss()
                     }
@@ -110,7 +110,7 @@ struct TypeSelectorSection: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.standard) {
             ForEach(ManualTransactionEntrySheet.TransactionType.allCases, id: \.self) { type in
-                Button(action: {
+                Button(action: { HapticManager.selection(); 
                     HapticManager.selection()
                     selectedType = type
                 }) {
@@ -175,7 +175,7 @@ struct SubmitButtonSection: View {
     var isSubmitting: Bool = false
     
     var body: some View {
-        Button(action: action) {
+        Button(action: action) { HapticManager.selection(); 
             Text(isSubmitting ? "Logging..." : "Confirm Transaction")
                 .font(.headline)
                 .fontDesign(.serif)

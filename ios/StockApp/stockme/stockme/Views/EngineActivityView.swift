@@ -70,7 +70,7 @@ struct EngineActivityView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { dismiss() } label: {
+                    Button { HapticManager.selection();  dismiss() } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(Theme.inkTertiary)
                     }
@@ -113,18 +113,15 @@ struct EngineActivityView: View {
 
     private var progressSection: some View {
         VStack(spacing: Theme.Spacing.tight) {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Theme.inkTertiary.opacity(0.15))
-                        .frame(height: 6)
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Theme.securityGold)
-                        .frame(width: geo.size.width * min(engineManager.progressPct / 100.0, 1.0), height: 6)
-                        .animation(.linear(duration: 0.3), value: engineManager.progressPct)
-                }
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Theme.inkTertiary.opacity(0.15))
+                    .frame(width: UIScreen.main.bounds.width - 2 * Theme.screenPadding, height: 6)
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Theme.securityGold)
+                    .frame(width: (UIScreen.main.bounds.width - 2 * Theme.screenPadding) * min(engineManager.progressPct / 100.0, 1.0), height: 6)
+                    .animation(.linear(duration: 0.3), value: engineManager.progressPct)
             }
-            .frame(height: 6)
             HStack {
                 if let stage = engineManager.stage {
                     Text(stage)
@@ -168,7 +165,7 @@ struct EngineActivityView: View {
     // MARK: - Cancel
 
     private var cancelButton: some View {
-        Button {
+        Button { HapticManager.selection(); 
     HapticManager.selection()
             HapticManager.warning()
             engineManager.cancelActiveJob()

@@ -71,7 +71,7 @@ struct TermDefinitionSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
+                    Button { HapticManager.selection(); 
     HapticManager.selection()
                         HapticManager.selection()
                         dismiss()

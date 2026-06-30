@@ -70,7 +70,7 @@ struct GlossaryBrowserView: View {
                             .foregroundStyle(Theme.inkTertiary)
                         HStack(spacing: Theme.Spacing.small) {
                             ForEach(suggestedTerms, id: \.self) { term in
-                                Button {
+                                Button { HapticManager.selection(); 
     HapticManager.selection()
                                     HapticManager.selection()
                                     searchText = term
@@ -158,7 +158,7 @@ private struct TermRow: View {
     @State private var showSheet = false
 
     var body: some View {
-        Button {
+        Button { HapticManager.selection(); 
     HapticManager.selection()
             HapticManager.selection()
             onTap()
@@ -205,7 +205,7 @@ private struct ChipView: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button(action: action) { HapticManager.selection(); 
             Text(label)
                 .font(Theme.labelStyle)
                 .foregroundStyle(isSelected ? Theme.canvas : Theme.inkPrimary)

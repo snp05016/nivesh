@@ -77,7 +77,7 @@ struct MutualFundCategorySelector: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Theme.Spacing.standard) {
                 ForEach(categories, id: \.self) { category in
-                    Button(action: {
+                    Button(action: { HapticManager.selection(); 
                         HapticManager.selection()
                         selectedCategory = category
                     }) {

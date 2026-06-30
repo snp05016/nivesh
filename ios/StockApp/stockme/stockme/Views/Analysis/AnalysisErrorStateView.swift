@@ -62,7 +62,7 @@ struct AnalysisErrorStateView: View {
                             Text(code)
                                 .font(Theme.officialStampFont(size: 8))
                                 .foregroundStyle(Theme.inkTertiary)
-                                .padding(.horizontal, 8).padding(.vertical, 4)
+                                .padding(.horizontal, Theme.Spacing.medium).padding(.vertical, Theme.Spacing.small)
                                 .background(Theme.inkTertiary.opacity(0.1))
                                 .clipShape(Capsule())
                         }
@@ -250,7 +250,7 @@ struct AnalysisErrorStateView: View {
                 .banknoteCard()
 
                 VStack(spacing: Theme.Spacing.standard) {
-                    Button(action: onRetry) {
+                    Button(action: onRetry) { HapticManager.selection(); 
                         HStack(spacing: Theme.Spacing.medium) {
                             Image(systemName: "arrow.clockwise")
                             Text("RETRY ANALYSIS")
@@ -262,7 +262,7 @@ struct AnalysisErrorStateView: View {
                         .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.inkPrimary, lineWidth: 1))
                     }
                 }
-                .padding(.top, 8)
+                .padding(.top, Theme.Spacing.medium)
 
                 Spacer(minLength: 80)
             }

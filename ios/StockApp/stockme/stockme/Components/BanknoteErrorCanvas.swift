@@ -48,7 +48,7 @@ struct BanknoteErrorCanvas: View {
                                 .font(.caption2.weight(.bold).monospaced())
                                 .tracking(2)
                                 .foregroundStyle(.secondary)
-                                .padding(.horizontal, 8)
+                                .padding(.horizontal, Theme.Spacing.medium)
                                 .background(Theme.canvasDeep)
                         )
 
@@ -67,7 +67,7 @@ struct BanknoteErrorCanvas: View {
 
                     // Retry button (if provided)
                     if let retryAction = retryAction {
-                        Button {
+                        Button { HapticManager.selection(); 
     HapticManager.selection()
                             isRetrying = true
                             Task {
@@ -229,7 +229,7 @@ struct DiagnosticErrorDrawer: View {
     var body: some View {
         VStack(spacing: Theme.Spacing.none) {
             // ── Tappable header row ────────────────────────────────────
-            Button {
+            Button { HapticManager.selection(); 
     HapticManager.selection()
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isExpanded.toggle()
@@ -297,7 +297,7 @@ struct DiagnosticErrorDrawer: View {
                     }
 
                     // ── Copy to Clipboard button ───────────────────────
-                    Button {
+                    Button { HapticManager.selection(); 
     HapticManager.selection()
                         copyPayloadToClipboard()
                     } label: {

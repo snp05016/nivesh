@@ -203,13 +203,13 @@ struct StockRow: View {
                 .stroke(Theme.borderSubtle, lineWidth: 0.5)
         )
         .contextMenu {
-            Button {
+            Button { HapticManager.selection(); 
     HapticManager.selection()
                 HapticManager.selection()
             } label: {
                 Label("Analyse \(stock.ticker)", systemImage: "chart.line.uptrend.xyaxis")
             }
-            Button {
+            Button { HapticManager.selection(); 
     HapticManager.selection()
                 HapticManager.light()
                 UIPasteboard.general.string = stock.ticker

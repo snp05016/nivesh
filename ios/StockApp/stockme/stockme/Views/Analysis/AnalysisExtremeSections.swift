@@ -34,7 +34,7 @@ private struct ExtremeTabBar: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.small) {
             ForEach(Array(tabs.enumerated()), id: \.offset) { idx, label in
-                Button {
+                Button { HapticManager.selection(); 
     HapticManager.selection()
                     HapticManager.selection()
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -194,6 +194,9 @@ private struct FactorScoreGridView: View {
             ("Momentum", scores.momentum), ("Growth", scores.growth),
             ("Low Vol", scores.lowVolatility)
         ]
+        
+        let barWidth = UIScreen.main.bounds.width - (2 * Theme.screenPadding) - 65 - 30 - (2 * Theme.Spacing.standard)
+        
         VStack(spacing: Theme.Spacing.standard) {
             ForEach(items, id: \.0) { label, score in
                 HStack(spacing: Theme.Spacing.standard) {
@@ -201,19 +204,17 @@ private struct FactorScoreGridView: View {
                         .font(.caption).foregroundStyle(Theme.inkSecondary)
                         .frame(width: 65, alignment: .leading)
 
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Theme.inkTertiary.opacity(0.12))
+                        if let s = score {
                             RoundedRectangle(cornerRadius: 2)
-                                .fill(Theme.inkTertiary.opacity(0.12))
-                            if let s = score {
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(Theme.securityGold)
-                                    .frame(width: geo.size.width * CGFloat(max(0, s)) / 100.0)
-                                    .animation(.easeOut(duration: 0.5), value: s)
-                            }
+                                .fill(Theme.securityGold)
+                                .frame(width: barWidth * CGFloat(max(0, s)) / 100.0)
+                                .animation(.easeOut(duration: 0.5), value: s)
                         }
                     }
-                    .frame(height: 8)
+                    .frame(width: barWidth, height: 8)
 
                     Text(score.map { "\($0)" } ?? "-")
                         .font(Theme.serialNumberFont(size: 12))
@@ -342,7 +343,7 @@ private struct FinancialTrendRowView: View {
                             Text(yr.suffix(2))
                                 .font(Theme.microLabel(size: 8))
                                 .foregroundStyle(Theme.inkTertiary)
-                                .padding(.top, 4)
+                                .padding(.top, Theme.Spacing.small)
                         }
                     }
                 }

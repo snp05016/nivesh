@@ -53,7 +53,7 @@ struct DisclaimerScreen: View {
                 Spacer()
 
                 VStack(spacing: Theme.Spacing.card) {
-                    Button(action: onAccept) {
+                    Button(action: onAccept) { HapticManager.selection(); 
                         Text("I ACKNOWLEDGE & CONTINUE")
                             .font(Theme.labelStyle)
                             .foregroundStyle(Theme.canvas)
@@ -88,7 +88,7 @@ private struct DisclaimerBulletin: View {
                 .font(.subheadline)
                 .foregroundStyle(Theme.inkSecondary.opacity(0.4))
                 .frame(width: 20)
-                .padding(.top, 2)
+                .padding(.top, Theme.Spacing.xSmall)
             Text(text.uppercased())
                 .font(.caption2.weight(.bold))
                 .foregroundStyle(Theme.inkSecondary)

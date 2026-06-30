@@ -234,7 +234,7 @@ struct EarningsDashboardView: View {
                             .font(.caption.weight(selectedTab == idx ? .bold : .regular))
                             .foregroundStyle(selectedTab == idx ? Theme.securityGold : Theme.inkTertiary)
                             .padding(.horizontal, Theme.Spacing.standard)
-                            .padding(.vertical, 7)
+                            .padding(.vertical, Theme.Spacing.medium)
                             .background(
                                 selectedTab == idx
                                     ? Theme.securityGold.opacity(0.10)
@@ -448,7 +448,7 @@ struct EarningsProgressView: View {
                                     .font(.caption.weight(vm.selectedMarketCap == cap ? .bold : .regular))
                                     .foregroundStyle(vm.selectedMarketCap == cap ? Theme.securityGold : Theme.inkSecondary)
                                     .padding(.horizontal, Theme.Spacing.medium)
-                                    .padding(.vertical, 5)
+                                    .padding(.vertical, Theme.Spacing.tight)
                                     .background(vm.selectedMarketCap == cap ? Theme.securityGold.opacity(0.10) : Theme.canvasDeep)
                                     .cornerRadius(Theme.CornerRadius.tight)
                                     .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.borderSage, lineWidth: 0.5))
@@ -476,7 +476,7 @@ struct EarningsProgressView: View {
                 Text("PROFIT").tableHeaderStyle().frame(maxWidth: .infinity, alignment: .trailing)
                 Text("PE").tableHeaderStyle().frame(width: colW * 0.10, alignment: .trailing)
             }
-            .padding(.horizontal, 8).padding(.vertical, 6)
+            .padding(.horizontal, Theme.Spacing.medium).padding(.vertical, Theme.Spacing.tight)
             .background(Theme.canvasDeep)
 
             Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
@@ -500,7 +500,7 @@ struct EarningsProgressView: View {
                         .font(.caption2.monospaced()).foregroundStyle(Theme.inkTertiary)
                         .frame(width: colW * 0.10, alignment: .trailing)
                 }
-                .padding(.horizontal, 8).padding(.vertical, 7)
+                .padding(.horizontal, Theme.Spacing.medium).padding(.vertical, Theme.Spacing.medium)
                 Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
             }
         }
@@ -528,8 +528,8 @@ struct EarningsProgressView: View {
                 Text("GROSS PROFIT").tableHeaderStyle().frame(minWidth: colW * 0.22, alignment: .trailing)
                 Text("NET PROFIT").tableHeaderStyle().frame(minWidth: colW * 0.22, alignment: .trailing)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            .padding(.horizontal, Theme.Spacing.medium)
+            .padding(.vertical, Theme.Spacing.tight)
             .background(Theme.canvasDeep)
 
             Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
@@ -591,8 +591,8 @@ struct EarningsProgressView: View {
             }
             .frame(minWidth: tableWidth * 0.22, alignment: .trailing)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 8)
+        .padding(.horizontal, Theme.Spacing.medium)
+        .padding(.vertical, Theme.Spacing.medium)
     }
 
     private var tableRowPlaceholder: some View {
@@ -604,7 +604,7 @@ struct EarningsProgressView: View {
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.20, height: 12)
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.20, height: 12)
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, Theme.Spacing.medium)
         .padding(.vertical, Theme.Spacing.medium)
         .shimmerPlaceholder(isLoading: true)
     }
@@ -764,8 +764,8 @@ struct EarningsCalendarView: View {
                 Text("\(count)")
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(sel ? Theme.securityGold : Theme.inkTertiary)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, Theme.Spacing.tight)
+                    .padding(.vertical, Theme.Spacing.xSmall)
                     .background(sel ? Theme.securityGold.opacity(0.15) : Theme.inkTertiary.opacity(0.08))
                     .cornerRadius(Theme.CornerRadius.small)
             } else {
@@ -832,8 +832,8 @@ struct EarningsCalendarView: View {
                     Text(r.isConsolidated ? "Consol" : "Standalone")
                         .font(.caption2)
                         .foregroundStyle(Theme.inkTertiary)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
+                        .padding(.horizontal, Theme.Spacing.tight)
+                        .padding(.vertical, Theme.Spacing.xSmall)
                         .background(Theme.inkTertiary.opacity(0.08))
                         .cornerRadius(Theme.CornerRadius.small)
                     // 7-day price change badge
@@ -852,7 +852,7 @@ struct EarningsCalendarView: View {
                 if !r.sparkline.isEmpty {
                     MiniSparkline(data: r.sparkline, color: (r.priceChange7dPct ?? 0) >= 0 ? Theme.bullGreen : Theme.bearRed)
                         .frame(height: UIScreen.main.bounds.height * 0.024)
-                        .padding(.top, 2)
+                        .padding(.top, Theme.Spacing.xSmall)
                 }
             }
             Spacer()
@@ -879,7 +879,7 @@ struct EarningsCalendarView: View {
                     .frame(width: colW * 0.17)
                     .foregroundStyle(alertSetFor == r.ticker ? Theme.securityGold : Theme.inkSecondary)
                     .padding(.horizontal, Theme.Spacing.medium)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, Theme.Spacing.tight)
                     .background(alertSetFor == r.ticker ? Theme.securityGold.opacity(0.10) : Theme.canvasDeep)
                     .cornerRadius(Theme.CornerRadius.tight)
                     .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.borderSage, lineWidth: 0.5))
@@ -897,7 +897,7 @@ struct EarningsCalendarView: View {
                     .frame(width: colW * 0.17)
                     .foregroundStyle(Theme.inkSecondary)
                     .padding(.horizontal, Theme.Spacing.medium)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, Theme.Spacing.tight)
                     .background(Theme.canvasDeep)
                     .cornerRadius(Theme.CornerRadius.tight)
                     .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.borderSage, lineWidth: 0.5))
@@ -971,7 +971,7 @@ struct EarningsFeedView: View {
                         .font(.caption2.weight(.medium).monospaced())
                         .foregroundStyle(Theme.inkTertiary.opacity(0.6))
                 }
-                .padding(.vertical, 3)
+                .padding(.vertical, Theme.Spacing.small)
             }
         }
         .background(Theme.canvasDeep)
@@ -1010,8 +1010,8 @@ struct EarningsResultCard: View {
                             .font(.caption2.weight(.bold).monospaced())
                             .tracking(1)
                             .foregroundStyle(Theme.inkTertiary)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
+                            .padding(.horizontal, Theme.Spacing.tight)
+                            .padding(.vertical, Theme.Spacing.xSmall)
                             .background(Theme.inkTertiary.opacity(0.08))
                             .cornerRadius(Theme.CornerRadius.small)
                     }
@@ -1045,7 +1045,7 @@ struct EarningsResultCard: View {
                             .foregroundStyle(chg7d >= 0 ? Theme.bullGreen : Theme.bearRed)
                     }
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, Theme.Spacing.small)
             }
 
             GuillocheDivider()
@@ -1177,7 +1177,7 @@ struct ScreenerView: View {
     @State private var isLoading = false
 
     var body: some View {
-        NavigationStack {
+        Group {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.card) {
                     // Header
@@ -1439,8 +1439,8 @@ struct ScreenerView: View {
                         Text(matchCount)
                             .font(.caption.weight(.bold).monospaced())
                             .foregroundStyle(Theme.securityGold)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
+                            .padding(.horizontal, Theme.Spacing.medium)
+                            .padding(.vertical, Theme.Spacing.small)
                             .background(Theme.securityGold.opacity(0.10))
                             .cornerRadius(Theme.CornerRadius.medium)
                             .overlay(
@@ -1505,8 +1505,8 @@ struct ScreenerView: View {
                     Text("\(filteredResults.count) matches")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(Theme.securityGold)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, Theme.Spacing.medium)
+                        .padding(.vertical, Theme.Spacing.small)
                         .background(Theme.securityGold.opacity(0.10))
                         .cornerRadius(Theme.CornerRadius.tight)
                 }
@@ -1521,7 +1521,7 @@ struct ScreenerView: View {
                             Text("PROFIT GR%").tableHeaderStyle().frame(minWidth: colW * 0.18, alignment: .trailing)
                         }
                         .padding(.horizontal, Theme.Spacing.medium)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, Theme.Spacing.tight)
                         .background(Theme.canvasDeep)
                         .cornerRadius(Theme.CornerRadius.small)
 
@@ -1560,14 +1560,14 @@ struct ScreenerView: View {
                                     .frame(minWidth: colW * 0.18, alignment: .trailing)
                             }
                             .padding(.horizontal, Theme.Spacing.medium)
-                            .padding(.vertical, 8)
+                            .padding(.vertical, Theme.Spacing.medium)
 
                             if idx < min(filteredResults.count, 15) - 1 {
                                 Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
                             }
                         }
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, Theme.Spacing.small)
             .background(Theme.canvasDeep)
             .cornerRadius(Theme.CornerRadius.medium)
             .overlay(
@@ -1602,8 +1602,8 @@ struct ScreenerView: View {
                     Text("\(screenerBackendResults.count) matches")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(Theme.securityGold)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, Theme.Spacing.medium)
+                        .padding(.vertical, Theme.Spacing.small)
                         .background(Theme.securityGold.opacity(0.10))
                         .cornerRadius(Theme.CornerRadius.tight)
                 }

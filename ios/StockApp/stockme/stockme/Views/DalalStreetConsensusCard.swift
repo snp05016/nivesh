@@ -133,8 +133,8 @@ struct DalalStreetConsensusCard: View {
                     .font(Theme.officialStampFont(size: 9))
                     .tracking(1)
                     .foregroundStyle(Theme.securityGold)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, Theme.Spacing.medium)
+                    .padding(.vertical, Theme.Spacing.small)
                     .background(Theme.securityGold.opacity(0.10))
                     .overlay(
                         RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
@@ -146,7 +146,7 @@ struct DalalStreetConsensusCard: View {
             .padding(.trailing, Theme.Spacing.card)
 
             GuillocheDivider()
-                .padding(.horizontal, 4)
+                .padding(.horizontal, Theme.Spacing.small)
 
             // Sector heat section
             if !response.sectorSignals.isEmpty {
@@ -155,7 +155,7 @@ struct DalalStreetConsensusCard: View {
                     .tracking(1.5)
                     .foregroundStyle(Theme.inkTertiary)
                     .padding(.horizontal, Theme.Spacing.card)
-                    .padding(.bottom, 6)
+                    .padding(.bottom, Theme.Spacing.tight)
 
                 VStack(spacing: Theme.Spacing.medium) {
                     ForEach(Array(response.sectorSignals.prefix(3))) { signal in
@@ -166,7 +166,7 @@ struct DalalStreetConsensusCard: View {
                 .padding(.bottom, Theme.Spacing.standard)
 
                 GuillocheDivider()
-                    .padding(.horizontal, 4)
+                    .padding(.horizontal, Theme.Spacing.small)
             }
 
             // Most discussed section
@@ -176,7 +176,7 @@ struct DalalStreetConsensusCard: View {
                     .tracking(1.5)
                     .foregroundStyle(Theme.inkTertiary)
                     .padding(.horizontal, Theme.Spacing.card)
-                    .padding(.bottom, 6)
+                    .padding(.bottom, Theme.Spacing.tight)
 
                 VStack(spacing: Theme.Spacing.none) {
                     ForEach(Array(response.trendingTickers.prefix(3))) { ticker in
@@ -253,7 +253,7 @@ private struct TrendingTickerRow: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
+        Button(action: onTap) { HapticManager.selection(); 
             HStack(spacing: Theme.Spacing.medium) {
                 // Ticker label
                 Text(stripEmoji(ticker.ticker))

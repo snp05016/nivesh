@@ -38,7 +38,7 @@ struct AlertsScreen: View {
     var triggeredAlerts: [PriceAlert] { viewModel.alerts.filter { $0.triggered } }
 
     var body: some View {
-        NavigationStack {
+        Group {
             ZStack {
                 DenominationBackground(denomination: .fifty)
 
@@ -166,7 +166,7 @@ struct AlertsScreen: View {
                     Spacer()
                     HStack {
                         Spacer()
-                        Button { showAddAlert = true } label: {
+                        Button { HapticManager.selection();  showAddAlert = true } label: {
                             ZStack {
                                 Circle().fill(Theme.securityGold).frame(width: 56, height: 56)
                                     .shadow(color: Theme.securityGold.opacity(0.3), radius: 10, x: 0, y: 5)
@@ -253,7 +253,7 @@ private struct AlertRow: View {
                 }
 
                 // Delete button (visible on card, since swipe actions don't work in horizontal scroll)
-                Button(action: onDelete) {
+                Button(action: onDelete) { HapticManager.selection(); 
                     Image(systemName: "trash.circle.fill")
                         .font(.title2)
                         .foregroundStyle(Theme.bearRed.opacity(0.7))
@@ -333,7 +333,7 @@ struct AddAlertSheet: View {
                                 if !searchResults.isEmpty {
                                     VStack(spacing: Theme.Spacing.none) {
                                         ForEach(searchResults.prefix(5)) { entry in
-                                            Button {
+                                            Button { HapticManager.selection(); 
     HapticManager.selection()
                                                 selectedTicker = entry.ticker
                                                 selectedCompany = entry.companyName
@@ -374,7 +374,7 @@ struct AddAlertSheet: View {
                                     }
                                 }
                                 Spacer()
-                                Button { selectedTicker = ""; selectedCompany = ""; currentPrice = nil } label: {
+                                Button { HapticManager.selection();  selectedTicker = ""; selectedCompany = ""; currentPrice = nil } label: {
                                     Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.inkTertiary)
                                 }
                             }
@@ -388,14 +388,14 @@ struct AddAlertSheet: View {
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.inkSecondary)
                             HStack(spacing: Theme.Spacing.none) {
-                                Button { direction = "above" } label: {
+                                Button { HapticManager.selection();  direction = "above" } label: {
                                     HStack { Image(systemName: "arrow.up"); Text("Above Target") }
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, Theme.Spacing.standard)
                                         .background(direction == "above" ? Theme.bullGreen.opacity(0.1) : Color.clear)
                                         .foregroundStyle(direction == "above" ? Theme.bullGreen : Theme.inkTertiary)
                                 }
-                                Button { direction = "below" } label: {
+                                Button { HapticManager.selection();  direction = "below" } label: {
                                     HStack { Image(systemName: "arrow.down"); Text("Below Target") }
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, Theme.Spacing.standard)
@@ -448,7 +448,7 @@ struct AddAlertSheet: View {
                             Text(errorText).font(.caption).foregroundStyle(Theme.bearRed)
                         }
 
-                        Button {
+                        Button { HapticManager.selection(); 
     HapticManager.selection()
                             guard let price = calculatedTargetPrice, canAdd else { return }
                             isAdding = true

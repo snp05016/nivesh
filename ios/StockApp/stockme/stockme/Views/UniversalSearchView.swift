@@ -14,7 +14,7 @@ struct UniversalSearchView: View {
                 .tint(Theme.inkPrimary)
             
             if !viewModel.searchQuery.isEmpty {
-                Button(action: {
+                Button(action: { HapticManager.selection(); 
                     viewModel.searchQuery = ""
                     HapticManager.selection()
                 }) {

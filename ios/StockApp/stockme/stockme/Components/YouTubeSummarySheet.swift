@@ -125,7 +125,7 @@ struct YTSErrorView: View {
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
-            Button("Open on YouTube") {
+            Button("Open on YouTube") { HapticManager.selection(); 
                 HapticManager.selection()
                 if let url = URL(string: video.videoUrl) { UIApplication.shared.open(url) }
             }
@@ -299,7 +299,7 @@ struct YTSBulletSection: View {
                         Circle()
                             .fill(color)
                             .frame(width: 4, height: 4)
-                            .padding(.top, 6)
+                            .padding(.top, Theme.Spacing.tight)
                         Text(item)
                             .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
                             .foregroundStyle(Theme.inkSecondary)
@@ -371,7 +371,7 @@ struct YTSWatchButton: View {
     let video: YouTubeVideoItem
 
     var body: some View {
-        Button(action: {
+        Button(action: { HapticManager.selection(); 
             HapticManager.selection()
             if let url = URL(string: video.videoUrl) { UIApplication.shared.open(url) }
         }) {
