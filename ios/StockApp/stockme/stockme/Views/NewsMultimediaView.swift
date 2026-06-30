@@ -19,7 +19,7 @@ struct NewsMultimediaView: View {
             if let error = loadError, articles.isEmpty, videos.isEmpty {
                 VStack(spacing: Theme.Spacing.standard) {
                     Image(systemName: "wifi.slash")
-                        .font(.system(size: 40))
+                        .font(Theme.engravedSerif(size: 40, relativeTo: .largeTitle))
                         .foregroundStyle(Theme.inkTertiary)
                     Text("Could not load news")
                         .font(Theme.engravedSerif(size: 16, weight: .semibold, relativeTo: .headline))
