@@ -25,15 +25,15 @@
 
 ## Phase 2: F&O Analytics & Derivatives Engine
 ### Quant/Math Agent
-- [ ] Build `black_scholes.py` for Options pricing.
-- [ ] Build `greeks_calculator.py` (Delta, Gamma, Theta, Vega).
-- [ ] Build `max_pain_calculator.py` and `implied_volatility_engine.py`.
+- [x] Build `black_scholes.py` for Options pricing.
+- [x] Build `greeks_calculator.py` (Delta, Gamma, Theta, Vega).
+- [x] Build `max_pain_calculator.py` and `implied_volatility_engine.py`.
 ### Data Ingestion Agent
-- [ ] Build `nse_option_chain_harvester.py` (Polling NSE endpoints for live OI and volume).
+- [x] Build `nse_option_chain_harvester.py` (Polling NSE endpoints for live OI and volume).
 ### Document AI Agent
-- [ ] Build summarization pipeline for daily FII/DII sectoral derivative activity reports.
+- [x] Build summarization pipeline for daily FII/DII sectoral derivative activity reports.
 ### Data Verification Agent
-- [ ] Write boundary value tests for Black-Scholes (e.g., deep ITM vs deep OTM options).
+- [x] Write boundary value tests for Black-Scholes (e.g., deep ITM vs deep OTM options).
 
 ## Phase 3: Portfolio Analytics & Wealth Math
 ### Quant/Math Agent
