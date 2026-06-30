@@ -344,7 +344,7 @@ struct SearchScreen: View {
                             }
                             .scrollIndicators(.hidden)
                         }
-                        .padding(.bottom, 4)
+                        .padding(.bottom, Theme.Spacing.small)
                     }
 
                     // Results section
@@ -431,7 +431,7 @@ struct SearchScreen: View {
                                             }
                                             .buttonStyle(EKPressStyle())
                                         }
-                                        .padding(.top, 60)
+                                        .padding(.top, Theme.sectionSpacing)
                                     } else {
                                         ForEach(searchResults) { entry in
                                             Button {
@@ -456,7 +456,7 @@ struct SearchScreen: View {
                                             Text("Showing top 20 results. Type more to narrow down.")
                                                 .font(Theme.serialNumberFont(size: 10))
                                                 .foregroundStyle(Theme.inkTertiary)
-                                                .padding(.top, 4)
+                                                .padding(.top, Theme.Spacing.small)
                                         }
                                     }
                                 }

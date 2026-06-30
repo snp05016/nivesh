@@ -55,7 +55,7 @@ struct HistoryScreen: View {
                                 }
                             }
                             .padding(.horizontal, Theme.screenPadding)
-                            .padding(.bottom, 100)
+                            .padding(.bottom, Theme.sectionSpacing)
                         }
                     }
                 }

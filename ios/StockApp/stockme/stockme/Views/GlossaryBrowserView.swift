@@ -180,7 +180,7 @@ private struct TermRow: View {
                     .font(Theme.microLabel(size: 8))
                     .foregroundStyle(Theme.inkTertiary)
                     .padding(.horizontal, Theme.Spacing.small)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, Theme.Spacing.xSmall)
                     .background(Theme.inkTertiary.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
                 Image(systemName: "chevron.right")

@@ -207,7 +207,7 @@ struct OptionsStrategyScreen: View {
     }
 
     private func typePicker(idx: Int) -> some View {
-        HStack(spacing: 1) {
+        HStack(spacing: Theme.Spacing.xSmall) {
             ForEach(["CALL", "PUT"], id: \.self) { t in
                 Button(action: { HapticManager.selection()
                     legs[idx].type = t; computeLocal()
@@ -228,7 +228,7 @@ struct OptionsStrategyScreen: View {
     }
 
     private func positionPicker(idx: Int) -> some View {
-        HStack(spacing: 1) {
+        HStack(spacing: Theme.Spacing.xSmall) {
             ForEach(["BUY", "SELL"], id: \.self) { p in
                 let mapped = p == "BUY" ? "LONG" : "SHORT"
                 Button(action: { HapticManager.selection()

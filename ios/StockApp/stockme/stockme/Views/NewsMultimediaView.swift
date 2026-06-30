@@ -269,7 +269,7 @@ struct NewsMultimediaView: View {
                 .frame(width: 130, height: 10)
         }
         .padding(Theme.Spacing.standard)
-        .frame(width: 260, height: 140)
+        .frame(maxWidth: .infinity, height: 140)
         .banknoteCard()
         .shimmerPlaceholder(isLoading: true)
     }
@@ -412,7 +412,7 @@ struct NewsCarouselCard: View {
                                 .font(.caption2.monospaced())
                                 .foregroundStyle(.white.opacity(0.9))
                                 .padding(.horizontal, Theme.Spacing.tight)
-                                .padding(.vertical, 2)
+                                .padding(.vertical, Theme.Spacing.xSmall)
                                 .background(Theme.inkPrimary.opacity(0.5))
                                 .cornerRadius(Theme.CornerRadius.small)
                         }
@@ -429,7 +429,7 @@ struct NewsCarouselCard: View {
                             }
                             .foregroundStyle(badge.color)
                             .padding(.horizontal, Theme.Spacing.tight)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, Theme.Spacing.xSmall)
                             .background(badge.color.opacity(0.2))
                             .cornerRadius(Theme.CornerRadius.small)
                         }
@@ -638,7 +638,7 @@ struct EditorialRow: View {
                                 .tracking(1.2)
                                 .foregroundStyle(Theme.securityGold)
                                 .padding(.horizontal, Theme.Spacing.tight)
-                                .padding(.vertical, 2)
+                                .padding(.vertical, Theme.Spacing.xSmall)
                                 .background(Theme.securityGold.opacity(0.10))
                                 .cornerRadius(Theme.CornerRadius.small)
 
@@ -812,7 +812,7 @@ struct NewsListRow: View {
                             }
                             .foregroundStyle(badge.color)
                             .padding(.horizontal, Theme.Spacing.tight)
-                            .padding(.vertical, 1)
+                            .padding(.vertical, Theme.Spacing.xSmall)
                             .background(badge.color.opacity(0.12))
                             .cornerRadius(Theme.CornerRadius.small)
                         } else if let sentiment = article.sentiment, !sentiment.isEmpty {

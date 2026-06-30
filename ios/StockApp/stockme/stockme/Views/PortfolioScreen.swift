@@ -1179,7 +1179,7 @@ private struct PortfolioHeroNote: View {
                         .font(Theme.hindiFont(size: 11))
                         .foregroundStyle(Theme.inkSecondary)
                 }
-                .padding(.bottom, 8)
+                .padding(.bottom, Theme.Spacing.medium)
 
                 GuillocheDivider()
 
@@ -1196,7 +1196,7 @@ private struct PortfolioHeroNote: View {
                         .font(.caption2.weight(.medium))
                         .tracking(2)
                         .foregroundStyle(Theme.inkTertiary)
-                        .padding(.bottom, 2)
+                        .padding(.bottom, Theme.Spacing.xSmall)
 
                     PortfolioValueDisplay(target: value, fontSize: 30)
 
@@ -1210,7 +1210,7 @@ private struct PortfolioHeroNote: View {
                     .font(Theme.serialNumberFont(size: 13))
                     .foregroundStyle(totalPnL >= 0 ? Theme.bullGreen : Theme.bearRed)
                 }
-                .padding(.top, 4)
+                .padding(.top, Theme.Spacing.small)
 
                 GuillocheDivider()
 
@@ -1434,7 +1434,7 @@ private struct AddHoldingSheet: View {
                                         Image(systemName: "checkmark.circle")
                                             .foregroundStyle(Theme.securityGold)
                                     }
-                                    .padding(.vertical, 4)
+                                    .padding(.vertical, Theme.Spacing.small)
                                 }
                                 .listRowBackground(Theme.canvas)
                             }
@@ -1843,7 +1843,7 @@ private struct NoteEditorSheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                             .padding(.horizontal, Theme.screenPadding)
                             .padding(.top, Theme.Spacing.card)
-                            .padding(.bottom, 8)
+                            .padding(.bottom, Theme.Spacing.medium)
                             
                             List(results) { entry in
                                 Button {
@@ -1871,7 +1871,7 @@ private struct NoteEditorSheet: View {
                                         Image(systemName: "plus.circle")
                                             .foregroundStyle(Theme.securityGold)
                                     }
-                                    .padding(.vertical, 6)
+                                    .padding(.vertical, Theme.Spacing.tight)
                                 }
                                 .listRowBackground(Theme.canvas)
                             }

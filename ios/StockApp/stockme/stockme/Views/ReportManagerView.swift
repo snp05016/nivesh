@@ -32,7 +32,7 @@ struct ReportManagerView: View {
                                     .font(Theme.microLabel(size: 8))
                                     .foregroundStyle(report.signal.color)
                                     .padding(.horizontal, Theme.Spacing.tight)
-                                    .padding(.vertical, 2)
+                                    .padding(.vertical, Theme.Spacing.xSmall)
                                     .background(report.signal.color.opacity(0.12))
                                     .clipShape(Capsule())
                             }

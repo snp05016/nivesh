@@ -110,7 +110,7 @@ struct GovernanceScoreCardView: View {
                             )
                             .frame(width: UIScreen.main.bounds.width * 0.18, height: UIScreen.main.bounds.width * 0.18)
                             .rotationEffect(.degrees(-90))
-                        VStack(spacing: 0) {
+                        VStack(spacing: Theme.Spacing.xSmall) {
                             Text("\(score)")
                                 .font(Theme.serialNumberFont(size: 18, relativeTo: .title3))
                                 .foregroundStyle(Theme.inkPrimary)
@@ -465,7 +465,7 @@ struct GovernanceCompactCardView: View {
                     .font(Theme.serialNumberFont(size: 8))
                     .foregroundStyle(credibilityColor(for: card.credibilityScore))
                     .padding(.horizontal, Theme.Spacing.tight)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, Theme.Spacing.xSmall)
                     .background(credibilityColor(for: card.credibilityScore).opacity(0.10))
                     .cornerRadius(Theme.CornerRadius.small)
             }
