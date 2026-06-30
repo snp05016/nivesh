@@ -208,3 +208,267 @@
 - Do not document `POST /api/v1/nl-screener`; current natural-language screener is `POST /api/v1/screener/natural-language`.
 - Do not document `GET /api/v1/sector-rotation`; current route is `GET /api/v1/market/sector-rotation`.
 - `StrategyLabScreen.swift` contains a hardcoded `http://127.0.0.1:8000/api/v1/analysis/backtest` call; this differs from the shared `NetworkManager.baseURL` pattern.
+
+## Swift-to-Backend Contract Table (Top 10 Schemas)
+
+This table defines the precise JSON structures expected by the iOS Swift app (via `Decodable` structs) for the 10 most critical API responses.
+
+### 1. Portfolio Response (`GET /portfolio/{user_id}`)
+*Maps to: `PortfolioResponse` and `HoldingDTO` (NetworkManager.swift)*
+```json
+{
+  "holdings": [
+    {
+      "ticker": "RELIANCE.NS",
+      "company_name": "Reliance Industries",
+      "shares": 10.5,
+      "buy_price": 2500.0,
+      "current_price": 2800.0,
+      "day_change_pct": 1.2,
+      "notes": "Long term",
+      "purchase_date": "2023-05-20",
+      "target_price": 3000.0
+    }
+  ]
+}
+```
+
+### 2. Analysis Job Polling (`GET /analyze/job/{job_id}`)
+*Maps to: `JobStatus` (AnalysisModels.swift)*
+```json
+{
+  "job_id": "job_123",
+  "user_id": 1,
+  "ticker": "RELIANCE.NS",
+  "scan_type": "standard",
+  "status": "SUCCEEDED",
+  "stage": "COMPLETED",
+  "progress_pct": 100,
+  "checkpoints": [
+    {
+      "ts": "2026-06-30T10:00:00Z",
+      "stage": "quant",
+      "agent": "quant_agent",
+      "message": "Quant analysis done",
+      "state": "ok"
+    }
+  ],
+  "tokens_used": 1500,
+  "error": null,
+  "result": { ... StockAnalysis object (see Schema #3) ... }
+}
+```
+
+### 3. Analysis Result / Core Pipeline Output (`StockAnalysis`)
+*Maps to: `StockAnalysis` (AnalysisModels.swift)*
+```json
+{
+  "ticker": "RELIANCE.NS",
+  "company_name": "Reliance Industries",
+  "exchange": "NSE",
+  "analysis_date": "2026-06-30",
+  "signal": "BULLISH",
+  "confidence_pct": 85,
+  "current_price_inr": 2800.0,
+  "target_prices": {
+    "short_term_3m": 2900.0,
+    "medium_term_12m": 3100.0,
+    "long_term_36m": 4000.0
+  },
+  "upside_downside_pct": {
+    "short_term": 3.5,
+    "medium_term": 10.7,
+    "long_term": 42.8
+  },
+  "bull_case": ["Strong retail growth"],
+  "bear_case": ["High capex"],
+  "key_risks": ["Regulatory changes"],
+  "key_factors": {
+    "management_quality": "Excellent",
+    "geopolitical_context": "Stable",
+    "promoter_fii_dii_activity": "FII buying",
+    "turnaround_story": "N/A",
+    "fundamentals_summary": "Solid",
+    "global_macro_impact": "Neutral",
+    "news_sentiment": "Positive",
+    "indian_market_sentiment": "Bullish"
+  },
+  "fundamentals_snapshot": {
+    "pe_ratio": 25.4,
+    "debt_to_equity": 0.4,
+    "promoter_holding_pct": 50.5,
+    "fii_holding_pct": 20.1,
+    "dii_holding_pct": 15.0,
+    "revenue_ttm_crores": 850000,
+    "ebitda_margin_pct": 18.5,
+    "pat_ttm_crores": 70000,
+    "roe_pct": 9.5,
+    "roce_pct": 10.2,
+    "market_cap_crores": 1900000
+  },
+  "what_to_watch": ["Upcoming Q3 results"],
+  "disclaimer": "Not financial advice"
+}
+```
+
+### 4. Quick Info (`GET /quick-info`)
+*Maps to: `QuickInfo` (AnalysisModels.swift)*
+```json
+{
+  "ticker": "RELIANCE.NS",
+  "current_price": 2800.0,
+  "day_change_abs": 25.0,
+  "day_change_pct": 0.9,
+  "signal": "BULLISH",
+  "sector": "Energy",
+  "industry": "Oil & Gas",
+  "description": "Reliance Industries Limited is...",
+  "officers": ["Mukesh Ambani"],
+  "website": "https://www.ril.com",
+  "pe_ratio": 25.4,
+  "debt_to_equity": 0.4,
+  "promoter_holding_pct": 50.5,
+  "fii_holding_pct": 20.1,
+  "dii_holding_pct": 15.0,
+  "ebitda_margin_pct": 18.5,
+  "roe_pct": 9.5,
+  "roce_pct": 10.2,
+  "volume": 5000000,
+  "avg_volume": 6000000
+}
+```
+
+### 5. Market Dashboard / Pulse (`GET /api/v1/market/dashboard`)
+*Maps to: `MarketDashboardResponse` and `MarketPulseResponse` (MarketModels.swift)*
+```json
+{
+  "pulse": {
+    "indices": [
+      {
+        "name": "NIFTY 50",
+        "value": "24,000",
+        "change_pts": "150.0",
+        "change_pct": "0.6%",
+        "direction": "up"
+      }
+    ],
+    "advances": 35,
+    "declines": 15,
+    "unchanged": 0,
+    "breadth_ratio": 2.3,
+    "fetched_at": "2026-06-30T10:00:00Z"
+  },
+  "momentum": {
+    "bullish": [],
+    "bearish": [],
+    "fetched_at": "2026-06-30T10:00:00Z"
+  },
+  "macro": null,
+  "institutional": null,
+  "fetched_at": "2026-06-30T10:00:00Z"
+}
+```
+
+### 6. Home Feed (`GET /api/v1/home-feed`)
+*Maps to: `HomeFeedResponse` (HomeFeedModels.swift)*
+```json
+{
+  "news": [
+    {
+      "id": 1,
+      "source": "Moneycontrol",
+      "ticker": "RELIANCE.NS",
+      "headline": "Reliance Q1 results preview",
+      "summary": "Expect strong retail growth...",
+      "image_url": "https://example.com/ril.jpg",
+      "article_url": "https://example.com/news",
+      "published_at": "2026-06-30T08:00:00Z",
+      "is_red_flag": false,
+      "sentiment": "POSITIVE"
+    }
+  ],
+  "red_flag_alerts": [],
+  "youtube_videos": [],
+  "generated_at": "2026-06-30T10:00:00Z"
+}
+```
+
+### 7. Natural Language Screener (`POST /api/v1/screener/natural-language`)
+*Maps to: `NLScreenerResponse` (NLScreenerScreen.swift)*
+```json
+{
+  "parsed_filters": {
+    "sector": "IT",
+    "pe_ratio": "< 20"
+  },
+  "results": [
+    {
+      "ticker": "TCS.NS",
+      "company": "Tata Consultancy Services",
+      "score": 0.95,
+      "reason": "Meets criteria",
+      "sector": "IT"
+    }
+  ]
+}
+```
+
+### 8. Auth/Login Payload (`POST /login` or `POST /register`)
+*Maps to: `LoggedInUser` (Common.swift)*
+```json
+{
+  "user_id": 1,
+  "username": "investor1",
+  "display_name": "Pro Investor",
+  "access_token": "eyJhbGciOiJIUz..."
+}
+```
+
+### 9. Stock Search (`GET /search`)
+*Maps to: `SearchResult` (NetworkManager.swift)*
+```json
+[
+  {
+    "ticker": "RELIANCE.NS",
+    "company_name": "Reliance Industries",
+    "sector": "Energy",
+    "exchange": "NSE"
+  }
+]
+```
+
+### 10. Stock Profile (`GET /api/v1/stock-profile`)
+*Maps to: `StockProfileResponse` (AnalysisModels.swift)*
+```json
+{
+  "ticker": "RELIANCE.NS",
+  "exchange": "NSE",
+  "company_name": "Reliance Industries",
+  "current_price": 2500.0,
+  "day_change_pct": 1.5,
+  "pe_ratio": 25.0,
+  "sector": "Energy",
+  "promoter_holding_pct": 50.5,
+  "fii_holding_pct": 20.0,
+  "dii_holding_pct": 15.0,
+  "roe_pct": 12.0,
+  "roce_pct": 13.0,
+  "ebitda_margin_pct": 18.0,
+  "debt_to_equity": 0.5,
+  "week_52_high": 2600.0,
+  "week_52_low": 2000.0,
+  "market_cap_crores": 1700000.0,
+  "description": "Reliance is ...",
+  "price_history": {
+    "prices": [],
+    "source": "yfinance",
+    "error": null
+  },
+  "quarterly_financials": {
+    "quarters": [],
+    "promoter_history": [],
+    "error": null
+  },
+  "errors": null
+}
+```

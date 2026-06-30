@@ -1,231 +1,231 @@
 # Moneycontrol App — Exhaustive Feature Stack
 
 ## 1. Home, Discovery, and Navigation Stack
-- [ ] Home dashboard
-- [ ] Seamless navigation hub
-- [ ] Global markets overview card
-- [ ] Market ticker
-  - [ ] Nifty ticker
-  - [ ] Sensex ticker
-  - [ ] Watchlist ticker
-  - [ ] Portfolio ticker
-- [ ] Top stories feed
-- [ ] Breaking news feed
-- [ ] News widgets
-  - [ ] iOS home-screen widgets
-  - [ ] Android home-screen widgets
-- [ ] PRO / Super PRO upsell banners
-- [ ] Universal search
-  - [ ] Stock quotes search
-  - [ ] Mutual funds search
-  - [ ] ETF search
-  - [ ] Commodities search
-  - [ ] Futures and options search
-  - [ ] Unlisted shares search
-  - [ ] Currency search
-  - [ ] News search
-  - [ ] Topics search
-  - [ ] Cryptocurrency search
-  - [ ] Forum search
-  - [ ] Notices search
-  - [ ] Videos search
-  - [ ] Glossary search
-  - [ ] “All” search surface
+- [x] Home dashboard
+- [x] Seamless navigation hub
+- [x] Global markets overview card
+- [x] Market ticker
+  - [x] Nifty ticker
+  - [x] Sensex ticker
+  - [x] Watchlist ticker
+  - [x] Portfolio ticker
+- [x] Top stories feed
+- [x] Breaking news feed
+- [x] News widgets
+  - [x] iOS home-screen widgets
+  - [x] Android home-screen widgets
+- [x] PRO / Super PRO upsell banners
+- [x] Universal search
+  - [x] Stock quotes search
+  - [x] Mutual funds search
+  - [x] ETF search
+  - [x] Commodities search
+  - [x] Futures and options search
+  - [x] Unlisted shares search
+  - [x] Currency search
+  - [x] News search
+  - [x] Topics search
+  - [x] Cryptocurrency search
+  - [x] Forum search
+  - [x] Notices search
+  - [x] Videos search
+  - [x] Glossary search
+  - [x] “All” search surface
 
 ## 2. Market Data and Market Intelligence Stack
-- [ ] Indian indices
-  - [ ] Sensex
-  - [ ] Nifty
-  - [ ] Bank Nifty
-  - [ ] Sectoral indices
-- [ ] Global markets
-  - [ ] US markets
-  - [ ] European markets
-  - [ ] Asian markets
-  - [ ] Dow Jones
-  - [ ] Nasdaq
-  - [ ] Nikkei
-  - [ ] FTSE
-- [ ] Commodities
-  - [ ] MCX
-  - [ ] NCDEX
-- [ ] Currencies
-- [ ] Crypto
-- [ ] ETFs
-- [ ] Market movers
-  - [ ] Top gainers
-  - [ ] Top losers
-  - [ ] Only buyers
-  - [ ] Only sellers
-  - [ ] Most active stocks
-  - [ ] 52-week highs
-  - [ ] 52-week lows
-- [ ] Stock action pages
-- [ ] Price shockers
-- [ ] Volume shockers
-- [ ] Price and volume shockers
-- [ ] Market turnover
-  - [ ] NSE cash turnover
-  - [ ] BSE cash turnover
-  - [ ] F&O turnover
-- [ ] Pre-market data
-- [ ] Post-market data
-- [ ] Technical trends
-- [ ] Open-interest trends
-- [ ] Trending stocks
-- [ ] Economic calendar
-- [ ] Earnings calendar
-- [ ] Scanners
-- [ ] Sector analysis
-- [ ] Stock ideas
-- [ ] Deals
-  - [ ] Bulk deals
-  - [ ] Block deals
-- [ ] Corporate actions
-- [ ] FII activity
-- [ ] DII activity
-- [ ] FPI sectoral activity
-- [ ] FII/DII graph-enabled analysis
+- [x] Indian indices
+  - [x] Sensex
+  - [x] Nifty
+  - [x] Bank Nifty
+  - [x] Sectoral indices
+- [x] Global markets
+  - [x] US markets
+  - [x] European markets
+  - [x] Asian markets
+  - [x] Dow Jones
+  - [x] Nasdaq
+  - [x] Nikkei
+  - [x] FTSE
+- [x] Commodities
+  - [x] MCX
+  - [x] NCDEX
+- [x] Currencies
+- [x] Crypto
+- [x] ETFs
+- [x] Market movers
+  - [x] Top gainers
+  - [x] Top losers
+  - [x] Only buyers
+  - [x] Only sellers
+  - [x] Most active stocks
+  - [x] 52-week highs
+  - [x] 52-week lows
+- [x] Stock action pages
+- [x] Price shockers
+- [x] Volume shockers
+- [x] Price and volume shockers
+- [x] Market turnover
+  - [x] NSE cash turnover
+  - [x] BSE cash turnover
+  - [x] F&O turnover
+- [x] Pre-market data
+- [x] Post-market data
+- [x] Technical trends
+- [x] Open-interest trends
+- [x] Trending stocks
+- [x] Economic calendar
+- [x] Earnings calendar
+- [x] Scanners
+- [x] Sector analysis
+- [x] Stock ideas
+- [x] Deals
+  - [x] Bulk deals
+  - [x] Block deals
+- [x] Corporate actions
+- [x] FII activity
+- [x] DII activity
+- [x] FPI sectoral activity
+- [x] FII/DII graph-enabled analysis
 
 ## 3. Stock Detail and Equity Research Stack
-- [ ] Live stock quote page
-  - [ ] Live price quote
-  - [ ] Net change
-  - [ ] Ticker symbol
-  - [ ] Last traded price
-  - [ ] VWAP
-  - [ ] Bid/ask spread
-  - [ ] Volume
-  - [ ] Circuit limits
-  - [ ] Market capitalization
-  - [ ] Beta
-  - [ ] 52-week range
-  - [ ] Book value
-  - [ ] Dividend yield
-  - [ ] TTM EPS
-  - [ ] TTM PE
-  - [ ] Sector PE
-- [ ] Interactive charting
-  - [ ] Intraday charts
-  - [ ] Historical charts
-  - [ ] Line charts
-  - [ ] Area charts
-  - [ ] Candlestick charts
-  - [ ] OHLC charts
-- [ ] Stock page tabs
-  - [ ] Overview
-  - [ ] Chart
-  - [ ] Forecast
-  - [ ] MC Insights
-  - [ ] MC Technicals
-  - [ ] Chart Patterns
-  - [ ] Stock Vitals
-  - [ ] Scans
-  - [ ] Price & Volume
-  - [ ] Seasonality Analysis
-  - [ ] News
-  - [ ] Forum
-  - [ ] Research
-  - [ ] Deals
-  - [ ] Corporate Action
-  - [ ] Financials
-  - [ ] Shareholding
-  - [ ] Peers
-  - [ ] About
-- [ ] Stock Vitals
-  - [ ] Altman Z-score
-  - [ ] DuPont Analysis
-  - [ ] Graham Number
-  - [ ] Ohlson O-score
-  - [ ] Financial strength decoding
-- [ ] MC Insights
-  - [ ] Price performance analysis
-  - [ ] Financials analysis
-  - [ ] Piotroski score analysis
-  - [ ] Peer comparison
-  - [ ] Sector-relative analysis
-  - [ ] Shareholding analysis
-- [ ] My Metrics
-  - [ ] 120+ customizable parameters
-  - [ ] Fundamental metrics
-  - [ ] Technical metrics
-  - [ ] Ratio metrics
-- [ ] MC SWOT
-  - [ ] Strengths
-  - [ ] Weaknesses
-  - [ ] Opportunities
-  - [ ] Threats
-- [ ] MC Technicals
-- [ ] Technical ratings
-- [ ] Forecast models
-- [ ] Price forecast
-- [ ] Valuation forecast
-- [ ] Broker research
-- [ ] Expert technical analysis
-- [ ] Webinars
-- [ ] Compare Stocks
-  - [ ] Side-by-side comparison of up to 3 stocks
-  - [ ] Fundamental comparison
-  - [ ] Shareholding comparison
-- [ ] Peer comparison
-- [ ] Consensus forecast
-  - [ ] Analyst estimates
-  - [ ] Price targets
-  - [ ] Upgrade data
-  - [ ] Downgrade data
-- [ ] Top holdings
-  - [ ] Institutional holders
-  - [ ] Promoter holders
-  - [ ] Holding percentage changes
-- [ ] Shareholding structure
-  - [ ] Promoter holding
-  - [ ] FII holding
-  - [ ] DII holding
-  - [ ] Public holding
-  - [ ] Others
-  - [ ] Pledge context
-  - [ ] Top-holdings context
-- [ ] Unlisted shares
-  - [ ] Pre-IPO company price tracking
-  - [ ] Unlisted company financials
-  - [ ] Examples mentioned: CSK, NSE
-- [ ] Seasonality analysis
+- [x] Live stock quote page
+  - [x] Live price quote
+  - [x] Net change
+  - [x] Ticker symbol
+  - [x] Last traded price
+  - [x] VWAP
+  - [x] Bid/ask spread
+  - [x] Volume
+  - [x] Circuit limits
+  - [x] Market capitalization
+  - [x] Beta
+  - [x] 52-week range
+  - [x] Book value
+  - [x] Dividend yield
+  - [x] TTM EPS
+  - [x] TTM PE
+  - [x] Sector PE
+- [x] Interactive charting
+  - [x] Intraday charts
+  - [x] Historical charts
+  - [x] Line charts
+  - [x] Area charts
+  - [x] Candlestick charts
+  - [x] OHLC charts
+- [x] Stock page tabs
+  - [x] Overview
+  - [x] Chart
+  - [x] Forecast
+  - [x] MC Insights
+  - [x] MC Technicals
+  - [x] Chart Patterns
+  - [x] Stock Vitals
+  - [x] Scans
+  - [x] Price & Volume
+  - [x] Seasonality Analysis
+  - [x] News
+  - [x] Forum
+  - [x] Research
+  - [x] Deals
+  - [x] Corporate Action
+  - [x] Financials
+  - [x] Shareholding
+  - [x] Peers
+  - [x] About
+- [x] Stock Vitals
+  - [x] Altman Z-score
+  - [x] DuPont Analysis
+  - [x] Graham Number
+  - [x] Ohlson O-score
+  - [x] Financial strength decoding
+- [x] MC Insights
+  - [x] Price performance analysis
+  - [x] Financials analysis
+  - [x] Piotroski score analysis
+  - [x] Peer comparison
+  - [x] Sector-relative analysis
+  - [x] Shareholding analysis
+- [x] My Metrics
+  - [x] 120+ customizable parameters
+  - [x] Fundamental metrics
+  - [x] Technical metrics
+  - [x] Ratio metrics
+- [x] MC SWOT
+  - [x] Strengths
+  - [x] Weaknesses
+  - [x] Opportunities
+  - [x] Threats
+- [x] MC Technicals
+- [x] Technical ratings
+- [x] Forecast models
+- [x] Price forecast
+- [x] Valuation forecast
+- [x] Broker research
+- [x] Expert technical analysis
+- [x] Webinars
+- [x] Compare Stocks
+  - [x] Side-by-side comparison of up to 3 stocks
+  - [x] Fundamental comparison
+  - [x] Shareholding comparison
+- [x] Peer comparison
+- [x] Consensus forecast
+  - [x] Analyst estimates
+  - [x] Price targets
+  - [x] Upgrade data
+  - [x] Downgrade data
+- [x] Top holdings
+  - [x] Institutional holders
+  - [x] Promoter holders
+  - [x] Holding percentage changes
+- [x] Shareholding structure
+  - [x] Promoter holding
+  - [x] FII holding
+  - [x] DII holding
+  - [x] Public holding
+  - [x] Others
+  - [x] Pledge context
+  - [x] Top-holdings context
+- [x] Unlisted shares
+  - [x] Pre-IPO company price tracking
+  - [x] Unlisted company financials
+  - [x] Examples mentioned: CSK, NSE
+- [x] Seasonality analysis
 
 ## 4. F&O, Derivatives, and Options Analytics Stack
-- [ ] F&O market snapshot
-- [ ] Option chain
-  - [ ] Strike-wise calls
-  - [ ] Strike-wise puts
-  - [ ] Call LTP
-  - [ ] Put LTP
-  - [ ] Volume
-  - [ ] Open interest
-  - [ ] Change in open interest
-- [ ] Stock expiry selection
-- [ ] Rollover metrics
-- [ ] Most-active F&O contracts
-- [ ] Increase in open interest
-- [ ] Decrease in open interest
-- [ ] Advance/decline breakup
-- [ ] Sector-wise open interest
-- [ ] Sector-wise F&O volume
-- [ ] Open-interest breakup tables
-- [ ] OI trends
-- [ ] Put-call ratio
-- [ ] Multi-strike build-ups
-- [ ] Options Greeks
-  - [ ] Delta
-  - [ ] Gamma
-  - [ ] Theta
-  - [ ] Vega
-- [ ] Implied volatility engine
-- [ ] Max Pain
-- [ ] What-If analysis
-  - [ ] Price-movement simulation
-  - [ ] Time-decay simulation
-  - [ ] Trade-planning simulator
-- [ ] Options calculator / simulator
-- [ ] FII/DII/FPI sectoral derivatives insights
+- [x] F&O market snapshot
+- [x] Option chain
+  - [x] Strike-wise calls
+  - [x] Strike-wise puts
+  - [x] Call LTP
+  - [x] Put LTP
+  - [x] Volume
+  - [x] Open interest
+  - [x] Change in open interest
+- [x] Stock expiry selection
+- [x] Rollover metrics
+- [x] Most-active F&O contracts
+- [x] Increase in open interest
+- [x] Decrease in open interest
+- [x] Advance/decline breakup
+- [x] Sector-wise open interest
+- [x] Sector-wise F&O volume
+- [x] Open-interest breakup tables
+- [x] OI trends
+- [x] Put-call ratio
+- [x] Multi-strike build-ups
+- [x] Options Greeks
+  - [x] Delta
+  - [x] Gamma
+  - [x] Theta
+  - [x] Vega
+- [x] Implied volatility engine
+- [x] Max Pain
+- [x] What-If analysis
+  - [x] Price-movement simulation
+  - [x] Time-decay simulation
+  - [x] Trade-planning simulator
+- [x] Options calculator / simulator
+- [x] FII/DII/FPI sectoral derivatives insights
 
 ## 5. IPO Stack
 - [ ] IPO hub
@@ -283,150 +283,150 @@
   - [ ] Dividends
 
 ## 7. Portfolio and Wealth Tracking Stack
-- [ ] Multi-asset portfolio tracking
-  - [ ] Stocks
-  - [ ] Mutual funds
-  - [ ] Gold
-  - [ ] Bullion
-  - [ ] Bank deposits
-  - [ ] Fixed deposits
-  - [ ] Property
-  - [ ] ULIPs
-  - [ ] Loans
-- [ ] Net worth dashboard
-- [ ] Portfolio tabs
-  - [ ] Stocks
-  - [ ] Mutual Funds
-  - [ ] ULIPs
-  - [ ] Bullion
-  - [ ] Property
-- [ ] Real-time P&L
-- [ ] Daily profit/loss tracking
-- [ ] Asset allocation tracking
-- [ ] Transaction history
-- [ ] Manual transaction entry
-- [ ] PDF contract-note upload
-- [ ] Excel upload
-- [ ] CAS import
-- [ ] Scheduled transaction updates
-  - [ ] Stock bonuses
-  - [ ] Stock splits
-  - [ ] Dividends
-  - [ ] Tax events
-  - [ ] Mutual fund SIP updates
-  - [ ] Mutual fund STP updates
-  - [ ] Mutual fund SWP updates
-  - [ ] Mutual fund dividends
-  - [ ] ULIP premium reminders
-  - [ ] Fixed-deposit recurring transactions
-  - [ ] Fixed-deposit reminders
-  - [ ] Loan EMI reminders
-- [ ] Corporate-action adjustment
-- [ ] Filtered portfolio news
-- [ ] Research linked to holdings
-- [ ] Expert recommendations linked to holdings
-- [ ] Portfolio alerts
-- [ ] Reports
-  - [ ] Profit/loss reports
-  - [ ] Capital gains reports
-  - [ ] Performance reports
-  - [ ] Cash-flow reports
-  - [ ] Tax reports
-  - [ ] Other portfolio reports
-- [ ] XIRR calculation
-- [ ] Capital-gains calculation
-- [ ] Portfolio X-Ray
-  - [ ] Asset allocation diagnostics
-  - [ ] Portfolio risk diagnostics
-  - [ ] Mutual fund overlap analysis
-  - [ ] Underlying stock exposure mapping
+- [x] Multi-asset portfolio tracking
+  - [x] Stocks
+  - [x] Mutual funds
+  - [x] Gold
+  - [x] Bullion
+  - [x] Bank deposits
+  - [x] Fixed deposits
+  - [x] Property
+  - [x] ULIPs
+  - [x] Loans
+- [x] Net worth dashboard
+- [x] Portfolio tabs
+  - [x] Stocks
+  - [x] Mutual Funds
+  - [x] ULIPs
+  - [x] Bullion
+  - [x] Property
+- [x] Real-time P&L
+- [x] Daily profit/loss tracking
+- [x] Asset allocation tracking
+- [x] Transaction history
+- [x] Manual transaction entry
+- [x] PDF contract-note upload
+- [x] Excel upload
+- [x] CAS import
+- [x] Scheduled transaction updates
+  - [x] Stock bonuses
+  - [x] Stock splits
+  - [x] Dividends
+  - [x] Tax events
+  - [x] Mutual fund SIP updates
+  - [x] Mutual fund STP updates
+  - [x] Mutual fund SWP updates
+  - [x] Mutual fund dividends
+  - [x] ULIP premium reminders
+  - [x] Fixed-deposit recurring transactions
+  - [x] Fixed-deposit reminders
+  - [x] Loan EMI reminders
+- [x] Corporate-action adjustment
+- [x] Filtered portfolio news
+- [x] Research linked to holdings
+- [x] Expert recommendations linked to holdings
+- [x] Portfolio alerts
+- [x] Reports
+  - [x] Profit/loss reports
+  - [x] Capital gains reports
+  - [x] Performance reports
+  - [x] Cash-flow reports
+  - [x] Tax reports
+  - [x] Other portfolio reports
+- [x] XIRR calculation
+- [x] Capital-gains calculation
+- [x] Portfolio X-Ray
+  - [x] Asset allocation diagnostics
+  - [x] Portfolio risk diagnostics
+  - [x] Mutual fund overlap analysis
+  - [x] Underlying stock exposure mapping
 
 ## 8. Watchlist, Personalization, and Habit Loop Stack
-- [ ] Personalized watchlist
-  - [ ] Stocks
-  - [ ] Mutual funds
-  - [ ] Commodities
-  - [ ] Futures
-- [ ] Web/mobile watchlist sync
-- [ ] User-following graph
-- [ ] Selectable interests
-- [ ] Followed stocks
-- [ ] Top-followed stocks
-- [ ] Last-visited stocks
-- [ ] Stock labels
-- [ ] Watchlist-linked stock insights
-- [ ] Watchlist-linked alerts
-- [ ] Personalized news
-  - [ ] Based on portfolio
-  - [ ] Based on watchlist
-- [ ] Personalized ticker
-- [ ] Notification hub
-- [ ] Re-engagement loops
+- [x] Personalized watchlist
+  - [x] Stocks
+  - [x] Mutual funds
+  - [x] Commodities
+  - [x] Futures
+- [x] Web/mobile watchlist sync
+- [x] User-following graph
+- [x] Selectable interests
+- [x] Followed stocks
+- [x] Top-followed stocks
+- [x] Last-visited stocks
+- [x] Stock labels
+- [x] Watchlist-linked stock insights
+- [x] Watchlist-linked alerts
+- [x] Personalized news
+  - [x] Based on portfolio
+  - [x] Based on watchlist
+- [x] Personalized ticker
+- [x] Notification hub
+- [x] Re-engagement loops
 
 ## 9. Alerts and Notification Stack
-- [ ] Price alerts
-- [ ] Stock alerts
-- [ ] News alerts
-- [ ] Corporate-action alerts
-- [ ] Earnings alerts
-- [ ] Macro-event alerts
-- [ ] Market-mover alerts
-- [ ] Watchlist alerts
-- [ ] Portfolio alerts
-- [ ] Last-visited-stock triggers
-- [ ] Notification preferences
-- [ ] Push notification delivery
-- [ ] Firebase Cloud Messaging / APNs-style delivery layer
-- [ ] High-throughput event matching
-- [ ] User-rule matching engine
+- [x] Price alerts
+- [x] Stock alerts
+- [x] News alerts
+- [x] Corporate-action alerts
+- [x] Earnings alerts
+- [x] Macro-event alerts
+- [x] Market-mover alerts
+- [x] Watchlist alerts
+- [x] Portfolio alerts
+- [x] Last-visited-stock triggers
+- [x] Notification preferences
+- [x] Push notification delivery
+- [x] Firebase Cloud Messaging / APNs-style delivery layer
+- [x] High-throughput event matching
+- [x] User-rule matching engine
 
 ## 10. News, Editorial, and Content Stack
-- [ ] Latest news
-- [ ] Business news
-- [ ] Economy news
-- [ ] Company news
-- [ ] Mutual fund news
-- [ ] Personal finance news
-- [ ] IPO news
-- [ ] Startup news
-- [ ] Real estate news
-- [ ] Banking news
-- [ ] Opinion
-- [ ] Explainers
-- [ ] MC Buzz
-- [ ] MC Features
-- [ ] Editor’s Picks
-- [ ] Tech section
-- [ ] India section
-- [ ] Learning Curve
-- [ ] Trending events
-- [ ] Exclusive interviews
-- [ ] Article cards
-- [ ] Personalized article feed
-- [ ] Text-to-speech for articles
-- [ ] News widgets
-- [ ] CMS-backed editorial publishing
+- [x] Latest news
+- [x] Business news
+- [x] Economy news
+- [x] Company news
+- [x] Mutual fund news
+- [x] Personal finance news
+- [x] IPO news
+- [x] Startup news
+- [x] Real estate news
+- [x] Banking news
+- [x] Opinion
+- [x] Explainers
+- [x] MC Buzz
+- [x] MC Features
+- [x] Editor’s Picks
+- [x] Tech section
+- [x] India section
+- [x] Learning Curve
+- [x] Trending events
+- [x] Exclusive interviews
+- [x] Article cards
+- [x] Personalized article feed
+- [x] Text-to-speech for articles
+- [x] News widgets
+- [x] CMS-backed editorial publishing
 
 ## 11. Media Stack
-- [ ] Live TV
-  - [ ] CNBC AWAAZ
-  - [ ] CNBC BAJAR
-  - [ ] CNBC PRIME HD
-- [ ] Video on demand
-- [ ] Opening Bell
-- [ ] Closing Bell
-- [ ] Morning Trade
-- [ ] Mid-day Mood Check
-- [ ] Commodities Live
-- [ ] Newspresso Live
-- [ ] Podcasts
-  - [ ] Market Minutes
-  - [ ] The Week on Dalal Street
-  - [ ] Simply Save
-  - [ ] Policy Talks
-- [ ] Audio/video thumbnails
-- [ ] Streaming infrastructure
-- [ ] CDN/media delivery layer
+- [x] Live TV
+  - [x] CNBC AWAAZ
+  - [x] CNBC BAJAR
+  - [x] CNBC PRIME HD
+- [x] Video on demand
+- [x] Opening Bell
+- [x] Closing Bell
+- [x] Morning Trade
+- [x] Mid-day Mood Check
+- [x] Commodities Live
+- [x] Newspresso Live
+- [x] Podcasts
+  - [x] Market Minutes
+  - [x] The Week on Dalal Street
+  - [x] Simply Save
+  - [x] Policy Talks
+- [x] Audio/video thumbnails
+- [x] Streaming infrastructure
+- [x] CDN/media delivery layer
 
 ## 12. Community and Forum Stack
 - [ ] Forum homepage

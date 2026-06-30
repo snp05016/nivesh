@@ -2323,8 +2323,53 @@ extension HomeScreen {
                                     .foregroundStyle(Theme.inkPrimary)
                             }
                             Spacer()
+<<<<<<< Updated upstream
                             Button { HapticManager.selection(); 
     HapticManager.selection()
+=======
+                            
+                            if viewModel.morningBriefData != nil {
+                                let todayStr: String = {
+                                    let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
+                                    return df.string(from: Date())
+                                }()
+                                let isDismissedToday = morningBriefShownDate == todayStr
+                                Button {
+                                    HapticManager.selection()
+                                    if isDismissedToday {
+                                        morningBriefShownDate = ""
+                                    }
+                                } label: {
+                                    ZStack(alignment: .topTrailing) {
+                                        Image(systemName: "newspaper")
+                                            .font(.title3.weight(.medium))
+                                            .foregroundStyle(isDismissedToday ? Theme.inkTertiary : Theme.securityGold)
+                                            .frame(width: 40, height: 40)
+                                            .background(Theme.securityGold.opacity(isDismissedToday ? 0.05 : 0.12))
+                                            .clipShape(Circle())
+                                            .overlay(Circle().stroke(Theme.securityGold.opacity(isDismissedToday ? 0.1 : 0.3), lineWidth: 0.5))
+
+                                        if isDismissedToday {
+                                            let moodColor: Color = {
+                                                switch viewModel.morningBriefData?.mood {
+                                                case "positive": return Theme.bullGreen
+                                                case "negative": return Theme.bearRed
+                                                default: return Theme.holdAmber
+                                                }
+                                            }()
+                                            Circle()
+                                                .fill(moodColor)
+                                                .frame(width: 10, height: 10)
+                                                .overlay(Circle().stroke(Theme.canvasDeep, lineWidth: 2))
+                                                .offset(x: 2, y: -2)
+                                        }
+                                    }
+                                }
+                                .buttonStyle(EKPressStyle())
+                            }
+                            
+                            Button {
+>>>>>>> Stashed changes
                                 HapticManager.selection()
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                     showSearch.toggle()

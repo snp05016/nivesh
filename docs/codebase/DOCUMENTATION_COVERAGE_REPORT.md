@@ -30,7 +30,7 @@
 ## Unclear Architecture Areas
 
 - Controller-service-repository drift: multiple routers contain DB queries and business logic despite the intended rule.
-- Scheduler ownership: startup scheduler, optional `ENABLE_SCHEDULER` jobs, Celery tasks, and `nivesh-harvester` scheduler coexist.
+- Scheduler ownership: startup scheduler, Celery tasks, and `nivesh-harvester` scheduler coexist (single-scheduler pattern now in place).
 - API versioning: active endpoints are split across unprefixed legacy paths and `/api/v1` paths.
 - Deployment target details such as process manager status and production DB engine must be verified on the remote server before operational changes.
 - Current worktree has pre-existing modified/untracked files outside this documentation task; those were preserved.

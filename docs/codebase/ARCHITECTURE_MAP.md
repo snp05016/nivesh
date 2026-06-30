@@ -138,7 +138,7 @@ flowchart LR
 | Field | Details |
 |---|---|
 | Purpose | Runs recurring harvest, snapshots, RAG ingestion, outcome backfill, Alpha158 materialization, and alert polling. |
-| Responsibilities | Start APScheduler on app startup, optional main scheduler with ENABLE_SCHEDULER, Celery task definitions, stale job sweep, alert poller. |
+| Responsibilities | Start APScheduler on app startup via harvest worker, Celery task definitions, stale job sweep, alert poller. |
 | Dependencies | APScheduler, Celery, services.nightly_jobs/nightly_pipeline/celery_tasks/outcome_tracker/tasks.alpha158_task, database. |
 | Inputs | Startup event, cron schedules, Celery worker invocation, env flags. |
 | Outputs | Updated DB tables, logs, jobs, materialized features, push alerts. |
@@ -184,11 +184,10 @@ flowchart LR
 - Intended rule: routers handle HTTP validation/process spawning, services hold business logic, repositories hold DB access. Current source still contains direct `session.query(...)` and business logic in several routers, especially `analysis.py`, `portfolio.py`, `market.py`, and dashboard code.
 - API naming is mixed: `/analyze`, `/portfolio/{user_id}`, `/market-indices`, `/search`, `/api/v1/market/*`, `/api/v1/portfolio/*`, and `/harvester/*` coexist.
 - `database.init_db()` still calls `Base.metadata.create_all()` for table creation/seed support; AGENTS.md requires Alembic for schema changes.
-- Background schedulers exist in multiple places (`main.py`, `harvest_worker.py`, `nightly_jobs.py`, `celery_tasks.py`, `nivesh-harvester/`), so operational ownership must be verified before changing schedules.
+- Background schedulers exist in multiple places (`harvest_worker.py`, `nightly_jobs.py`, `celery_tasks.py`, `nivesh-harvester/`), so operational ownership must be verified before changing schedules.
 
 ## Undocumented Components Identified During This Pass
 
-- `backend/services/harvester_db.py` defines a separate harvester persistence model outside the centralized ORM file. This is current source truth but conflicts with the broad architectural rule that ORM models live only in `models/db_models.py`; document and handle carefully before changing.
-- `ENABLE_SCHEDULER=true` startup path in `backend/main.py` imports names from `services.harvest_worker` that were not present in the inspected file. This gated path may be stale.
+- `backend/services/harvester_db.py` defines a separate harvester persistence model outside the centralized ORM file. This is a deliberate architectural isolation boundary to protect `stockapp.db` from content harvesting bloat, not an ORM duplication rule violation.
 - Admin routes under `/api/v1/admin/*` are callable through normal backend routing and some iOS admin tooling paths; production exposure policy is not clearly documented.
 - `market.py` owns more than market data: earnings, options chain, ideas, admin telemetry, legacy screeners, and top movers live in the same router.
