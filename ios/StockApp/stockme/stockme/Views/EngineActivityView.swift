@@ -84,7 +84,7 @@ struct EngineActivityView: View {
     private var headerSection: some View {
         VStack(spacing: Theme.Spacing.tight) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text(engineManager.ticker ?? "ANALYSIS")
                         .font(Theme.engravedSerif(size: 22, weight: .bold))
                         .foregroundStyle(Theme.inkPrimary)
@@ -227,9 +227,9 @@ struct CheckpointRow: View {
             Image(systemName: stateIcon)
                 .font(.caption)
                 .foregroundStyle(stateColor)
-                .padding(.top, 2)
+                .padding(.top, Theme.Spacing.xSmall)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                 Text(event.message)
                     .font(.caption)
                     .foregroundStyle(Theme.inkPrimary)

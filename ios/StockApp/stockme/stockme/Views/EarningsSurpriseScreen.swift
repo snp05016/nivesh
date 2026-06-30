@@ -268,7 +268,7 @@ struct EarningsSurpriseScreen: View {
                         .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                         .foregroundColor(Theme.securityGold)
                         .padding(.horizontal, Theme.Spacing.tight)
-                        .padding(.vertical, 2)
+                        .padding(.vertical, Theme.Spacing.xSmall)
                         .background(Theme.securityGold.opacity(0.1))
                         .cornerRadius(Theme.CornerRadius.small)
                 }
@@ -317,7 +317,7 @@ struct SurpriseCard: View {
         VStack(spacing: Theme.Spacing.none) {
             // Top row
             HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                     Text(surprise.ticker)
                         .font(Theme.serialNumberFont(size: 17, relativeTo: .headline))
                         .foregroundColor(Theme.inkPrimary)
@@ -338,7 +338,7 @@ struct SurpriseCard: View {
                 Spacer()
                 epsColumn(label: "ACTUAL", value: surprise.actual_eps, color: Theme.inkPrimary)
                 Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
+                VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                     Text("SURPRISE")
                         .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                         .foregroundColor(Theme.inkTertiary)
@@ -385,7 +385,7 @@ struct SurpriseCard: View {
     }
     
     private func epsColumn(label: String, value: Double?, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
             Text(label)
                 .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                 .foregroundColor(Theme.inkTertiary)

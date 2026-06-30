@@ -1862,8 +1862,8 @@ struct VarianceCard: View {
                 .font(.caption2.weight(.bold).monospaced())
                 .tracking(1)
                 .foregroundStyle(color)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, Theme.Spacing.medium)
+                .padding(.vertical, Theme.Spacing.small)
                 .background(color.opacity(0.10))
                 .cornerRadius(Theme.CornerRadius.small)
                 .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(color.opacity(0.3), lineWidth: 0.5))
@@ -1912,7 +1912,7 @@ struct PostResultMonitorView: View {
                     Text("CHG %").tableHeaderStyle().frame(minWidth: headerW * 0.16, alignment: .trailing)
                 }
                 .padding(.horizontal, Theme.Spacing.card)
-                .padding(.vertical, 8)
+                .padding(.vertical, Theme.Spacing.medium)
                 .background(Theme.canvasDeep)
 
                 if vm.isLoading && vm.postResultMovers.isEmpty {
@@ -2014,8 +2014,8 @@ struct PostResultMonitorView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.17, height: 12)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.15, height: 12).padding(.leading, 8)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.15, height: 12).padding(.leading, 8)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.15, height: 12).padding(.leading, Theme.Spacing.medium)
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.15, height: 12).padding(.leading, Theme.Spacing.medium)
         }
         .padding(.horizontal, Theme.Spacing.card)
         .padding(.vertical, Theme.Spacing.standard)

@@ -305,7 +305,7 @@ struct ExpertNetworkView: View {
                             Text("Loading sources…")
                                 .font(Theme.officialStampFont(size: 12))
                                 .foregroundStyle(Theme.inkTertiary)
-                                .padding(.top, 40)
+                                .padding(.top, Theme.sectionSpacing)
                         }
                     }
                     .padding(.vertical, Theme.Spacing.card)
@@ -347,7 +347,7 @@ struct ExpertNetworkView: View {
     private var advisoryWireSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             SectionHeader(title: "ADVISORY WIRE", hindiTitle: "सलाह तार")
-                .padding(.top, 8)
+                .padding(.top, Theme.Spacing.medium)
 
             if vm.insights.isEmpty {
                 emptyAdvisoryWire
@@ -370,7 +370,7 @@ struct ExpertNetworkView: View {
                 .foregroundStyle(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
+        .padding(.vertical, Theme.sectionSpacing)
     }
 
     // MARK: Verified Minds Section
@@ -378,7 +378,7 @@ struct ExpertNetworkView: View {
     private var verifiedMindsSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             SectionHeader(title: "VERIFIED MINDS", hindiTitle: "प्रमाणित विशेषज्ञ")
-                .padding(.top, 8)
+                .padding(.top, Theme.Spacing.medium)
 
             if vm.advisors.isEmpty {
                 emptyVerifiedMinds
@@ -401,7 +401,7 @@ struct ExpertNetworkView: View {
                 .foregroundStyle(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
+        .padding(.vertical, Theme.sectionSpacing)
     }
 
     // MARK: Loading Shimmer
@@ -462,7 +462,7 @@ struct InsightCard: View {
                     .font(Theme.serialNumberFont(size: 8))
                     .tracking(0.5)
                     .foregroundStyle(sentimentColor(for: insight.extractedSentiment))
-                    .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, 3)
+                    .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.small)
                     .background(sentimentColor(for: insight.extractedSentiment).opacity(0.08))
                     .cornerRadius(Theme.CornerRadius.small)
             }
@@ -480,7 +480,7 @@ struct InsightCard: View {
                     Text(ticker)
                         .font(Theme.serialNumberFont(size: 9))
                         .foregroundStyle(Theme.securityGold)
-                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .padding(.horizontal, Theme.Spacing.medium).padding(.vertical, Theme.Spacing.small)
                         .background(Theme.securityGold.opacity(0.10))
                         .cornerRadius(Theme.CornerRadius.small)
                     Spacer()
@@ -531,7 +531,7 @@ struct ExpertProfileCard: View {
                                 .foregroundStyle(Theme.bullGreen)
                         }
                         .padding(.horizontal, Theme.Spacing.tight)
-                        .padding(.vertical, 3)
+                        .padding(.vertical, Theme.Spacing.small)
                         .background(Theme.bullGreen.opacity(0.08))
                         .cornerRadius(Theme.CornerRadius.small)
                     }
@@ -566,7 +566,7 @@ struct ExpertProfileCard: View {
                         .font(Theme.officialStampFont(size: 8))
                         .foregroundStyle(Theme.inkSecondary)
                         .padding(.horizontal, Theme.Spacing.tight)
-                        .padding(.vertical, 3)
+                        .padding(.vertical, Theme.Spacing.small)
                         .background(Theme.borderSage)
                         .cornerRadius(Theme.CornerRadius.small)
                 }
@@ -625,7 +625,7 @@ struct ExpertPostCard: View {
                     Text(ticker)
                         .font(Theme.serialNumberFont(size: 9))
                         .foregroundStyle(Theme.securityGold)
-                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .padding(.horizontal, Theme.Spacing.medium).padding(.vertical, Theme.Spacing.small)
                         .background(Theme.securityGold.opacity(0.10))
                         .cornerRadius(Theme.CornerRadius.small)
                 }
@@ -723,7 +723,7 @@ struct MarketIntelligenceCard: View {
                     .tracking(0.5)
                     .foregroundStyle(credibilityColor(for: card.credibilityScore))
                     .padding(.horizontal, Theme.Spacing.tight)
-                    .padding(.vertical, 3)
+                    .padding(.vertical, Theme.Spacing.small)
                     .background(credibilityColor(for: card.credibilityScore).opacity(0.1))
                     .cornerRadius(Theme.CornerRadius.small)
                 Spacer()
@@ -784,8 +784,8 @@ struct MarketIntelligenceCard: View {
                                 Text(ticker)
                                     .font(Theme.serialNumberFont(size: 9))
                                     .foregroundStyle(Theme.securityGold)
-                                    .padding(.horizontal, 7)
-                                    .padding(.vertical, 3)
+                                    .padding(.horizontal, Theme.Spacing.medium)
+                                    .padding(.vertical, Theme.Spacing.small)
                                     .background(Theme.securityGold.opacity(0.10))
                                     .cornerRadius(Theme.CornerRadius.small)
                             }

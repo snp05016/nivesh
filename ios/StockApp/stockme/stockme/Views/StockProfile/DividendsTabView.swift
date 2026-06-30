@@ -135,7 +135,7 @@ struct DividendHistoryListView: View {
                 .tracking(1.5)
                 .foregroundStyle(Theme.inkTertiary)
 
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Spacing.xSmall) {
                 ForEach(Array(entries.enumerated()), id: \.element.id) { idx, entry in
                     DividendRowView(entry: entry)
                     if idx < entries.count - 1 {
