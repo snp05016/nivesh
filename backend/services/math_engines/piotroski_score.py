@@ -1,3 +1,9 @@
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
+
+class PiotroskiScoreResponse(BaseModel):
+    score: int
+
 def calculate_piotroski_score(
     net_income_current: float,
     operating_cash_flow_current: float,
@@ -13,7 +19,7 @@ def calculate_piotroski_score(
     gross_margin_previous: float,
     asset_turnover_current: float,
     asset_turnover_previous: float
-) -> int:
+) -> PiotroskiScoreResponse:
     """
     Calculates the Piotroski F-Score (0-9) to determine the financial strength of a company.
     
@@ -48,4 +54,4 @@ def calculate_piotroski_score(
     if asset_turnover_current > asset_turnover_previous:
         score += 1
         
-    return score
+    return PiotroskiScoreResponse(score=score)

@@ -1,8 +1,25 @@
 import requests
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
+
+class OptionData(BaseModel):
+    oi: int
+    volume: int
+    ltp: float
+
+class StrikeData(BaseModel):
+    CE: Optional[OptionData] = None
+    PE: Optional[OptionData] = None
+
+class CleanOIVolumeResponse(BaseModel):
+    symbol: str = ""
+    timestamp: str = ""
+    underlying_value: float = 0.0
+    expiries: List[str] = []
+    strikes: Dict[float, Dict[str, StrikeData]] = {}
 
 class NSEOptionChainHarvester:
     """
@@ -51,46 +68,46 @@ class NSEOptionChainHarvester:
                 logger.error(f"Retry failed for {symbol}: {retry_e}")
                 return None
 
-    def get_clean_oi_volume_data(self, symbol: str = "NIFTY") -> Dict[str, Any]:
+    def get_clean_oi_volume_data(self, symbol: str = "NIFTY") -> CleanOIVolumeResponse:
         """
         Fetch and extract clean Open Interest (OI) and Volume data.
         Returns a structured dictionary with call and put data per strike price and expiry.
         """
         raw_data = self.fetch_option_chain(symbol)
         if not raw_data or 'records' not in raw_data:
-            return {}
+            return CleanOIVolumeResponse()
 
-        clean_data = {
-            "symbol": symbol,
-            "timestamp": raw_data['records'].get('timestamp', ''),
-            "underlying_value": raw_data['records'].get('underlyingValue', 0),
-            "expiries": raw_data['records'].get('expiryDates', []),
-            "strikes": {}
-        }
+        strikes = {}
 
         for item in raw_data['records'].get('data', []):
             strike = item.get('strikePrice')
             expiry = item.get('expiryDate')
             
-            if strike not in clean_data["strikes"]:
-                clean_data["strikes"][strike] = {}
+            if strike not in strikes:
+                strikes[strike] = {}
                 
-            clean_data["strikes"][strike][expiry] = {
-                "CE": {
-                    "oi": item.get('CE', {}).get('openInterest', 0),
-                    "volume": item.get('CE', {}).get('totalTradedVolume', 0),
-                    "ltp": item.get('CE', {}).get('lastPrice', 0),
-                } if 'CE' in item else None,
-                "PE": {
-                    "oi": item.get('PE', {}).get('openInterest', 0),
-                    "volume": item.get('PE', {}).get('totalTradedVolume', 0),
-                    "ltp": item.get('PE', {}).get('lastPrice', 0),
-                } if 'PE' in item else None
-            }
+            strikes[strike][expiry] = StrikeData(
+                CE=OptionData(
+                    oi=item.get('CE', {}).get('openInterest', 0),
+                    volume=item.get('CE', {}).get('totalTradedVolume', 0),
+                    ltp=item.get('CE', {}).get('lastPrice', 0),
+                ) if 'CE' in item else None,
+                PE=OptionData(
+                    oi=item.get('PE', {}).get('openInterest', 0),
+                    volume=item.get('PE', {}).get('totalTradedVolume', 0),
+                    ltp=item.get('PE', {}).get('lastPrice', 0),
+                ) if 'PE' in item else None
+            )
 
-        return clean_data
+        return CleanOIVolumeResponse(
+            symbol=symbol,
+            timestamp=raw_data['records'].get('timestamp', ''),
+            underlying_value=raw_data['records'].get('underlyingValue', 0),
+            expiries=raw_data['records'].get('expiryDates', []),
+            strikes=strikes
+        )
 
-def get_live_oi_volume(symbol: str = "NIFTY") -> Dict[str, Any]:
+def get_live_oi_volume(symbol: str = "NIFTY") -> CleanOIVolumeResponse:
     """
     Convenience function to fetch live OI and volume data for a given symbol.
     """

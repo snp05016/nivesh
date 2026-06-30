@@ -3,7 +3,19 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel
+
+class MacroBetasResponse(BaseModel):
+    market: float
+    midcap: float
+    smallcap: float
+    oil: float
+    rates: float
+    fx: float
+    inflation: float
+    fii_flow: float
+    dii_flow: float
 
 def compute_ewma_beta(
     stock_returns: np.ndarray,
@@ -121,7 +133,7 @@ SECTOR_PRIOR_BETAS = {
     "Other": 1.0
 }
 
-def get_adjusted_macro_betas(ticker: str, sector: str = "Other") -> dict[str, float]:
+def get_adjusted_macro_betas(ticker: str, sector: str = "Other") -> MacroBetasResponse:
     """
     Fetch 1-year historical daily returns for the ticker and benchmark (^NSEI) using yfinance.
     Compute empirical beta and its standard error, then shrink towards a sector mean.
@@ -183,14 +195,14 @@ def get_adjusted_macro_betas(ticker: str, sector: str = "Other") -> dict[str, fl
     except Exception as _e:
         market_beta = 1.0
 
-    return {
-        "market": float(market_beta),
-        "midcap": 1.2 if float(market_beta) > 1.0 else 0.8,
-        "smallcap": 1.3 if float(market_beta) > 1.0 else 0.7,
-        "oil": 0.2,
-        "rates": -0.3,
-        "fx": 0.1,
-        "inflation": -0.2,
-        "fii_flow": 0.5,
-        "dii_flow": -0.2,
-    }
+    return MacroBetasResponse(
+        market=float(market_beta),
+        midcap=1.2 if float(market_beta) > 1.0 else 0.8,
+        smallcap=1.3 if float(market_beta) > 1.0 else 0.7,
+        oil=0.2,
+        rates=-0.3,
+        fx=0.1,
+        inflation=-0.2,
+        fii_flow=0.5,
+        dii_flow=-0.2,
+    )

@@ -5,6 +5,26 @@ Portfolio Correlation Matrix and Optimization.
 Provides deterministic Pearson correlation and mean-variance optimization, replacing qualitative AI diversification advice with reproducible math (Task 29).
 """
 import numpy as np
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
+
+class CorrelationPair(BaseModel):
+    ticker1: str
+    ticker2: str
+    correlation: float
+
+class CorrelationMatrixResponse(BaseModel):
+    matrix: Dict[str, Dict[str, float]]
+    diversification_score: float
+    pairs: List[CorrelationPair]
+    average_abs_correlation: Optional[float] = None
+    advice: Optional[str] = None
+
+class OptimizationResponse(BaseModel):
+    weights: Dict[str, float]
+    expected_annual_return: float
+    expected_annual_volatility: float
+    sharpe_ratio: Optional[float] = None
 
 def compute_returns(prices: dict[str, list[float]]) -> dict[str, list[float]]:
     """Convert a dictionary of prices to daily percentage returns.
@@ -23,7 +43,7 @@ def compute_returns(prices: dict[str, list[float]]) -> dict[str, list[float]]:
         result[ticker] = [(p[i] - p[i - 1]) / p[i - 1] for i in range(1, len(p))]
     return result
 
-def compute_correlation_matrix(prices: dict[str, list[float]]) -> dict:
+def compute_correlation_matrix(prices: dict[str, list[float]]) -> CorrelationMatrixResponse:
     """Compute Pearson correlation matrix for portfolio holdings.
 
     Calculates the pairwise Pearson correlation coefficients between the daily returns 
@@ -39,7 +59,7 @@ def compute_correlation_matrix(prices: dict[str, list[float]]) -> dict:
     returns = compute_returns(prices)
     tickers = [t for t, r in returns.items() if len(r) > 5]
     if len(tickers) < 2:
-        return {"matrix": {}, "diversification_score": 1.0, "pairs": []}
+        return CorrelationMatrixResponse(matrix={}, diversification_score=1.0, pairs=[])
 
     n = len(tickers)
     matrix = {}
@@ -60,22 +80,22 @@ def compute_correlation_matrix(prices: dict[str, list[float]]) -> dict:
             matrix.setdefault(t2, {})[t1] = corr
             corr_sum += abs(corr)
             pair_count += 1
-            pairs.append({"ticker1": t1, "ticker2": t2, "correlation": round(corr, 4)})
+            pairs.append(CorrelationPair(ticker1=t1, ticker2=t2, correlation=round(corr, 4)))
 
     avg_corr = corr_sum / pair_count if pair_count else 0
     diversification = round(1.0 - avg_corr, 4)
 
-    return {
-        "matrix": matrix,
-        "diversification_score": diversification,
-        "average_abs_correlation": round(avg_corr, 4),
-        "pairs": pairs,
-        "advice": _diversification_advice(diversification),
-    }
+    return CorrelationMatrixResponse(
+        matrix=matrix,
+        diversification_score=diversification,
+        average_abs_correlation=round(avg_corr, 4),
+        pairs=pairs,
+        advice=_diversification_advice(diversification),
+    )
 
 def optimize_portfolio_weights(
     prices: dict[str, list[float]], risk_aversion: float = 1.0
-) -> dict:
+) -> OptimizationResponse:
     """Calculate optimal portfolio weights using mean-variance optimization.
 
     Uses scipy's SLSQP minimization to find the weights that maximize the Sharpe ratio 
@@ -93,7 +113,7 @@ def optimize_portfolio_weights(
     tickers = [t for t, r in returns.items() if len(r) > 5]
     n = len(tickers)
     if n == 0:
-        return {"weights": {}, "expected_return": 0.0, "expected_volatility": 0.0}
+        return OptimizationResponse(weights={}, expected_annual_return=0.0, expected_annual_volatility=0.0)
 
     mean_ret = np.array([np.mean(returns[t][-63:]) * 252 for t in tickers])  # annualized
     data = np.array([returns[t][-63:] for t in tickers])
@@ -121,12 +141,12 @@ def optimize_portfolio_weights(
     port_return = float(mean_ret @ np.array([weights[t] for t in tickers]))
     port_vol = float(np.sqrt(np.array([weights[t] for t in tickers]) @ cov @ np.array([weights[t] for t in tickers])))
 
-    return {
-        "weights": weights,
-        "expected_annual_return": round(port_return, 4),
-        "expected_annual_volatility": round(port_vol, 4),
-        "sharpe_ratio": round(port_return / port_vol, 4) if port_vol > 0 else 0.0,
-    }
+    return OptimizationResponse(
+        weights=weights,
+        expected_annual_return=round(port_return, 4),
+        expected_annual_volatility=round(port_vol, 4),
+        sharpe_ratio=round(port_return / port_vol, 4) if port_vol > 0 else 0.0,
+    )
 
 def _diversification_advice(score: float) -> str:
     """Generate qualitative diversification advice based on the calculated score.

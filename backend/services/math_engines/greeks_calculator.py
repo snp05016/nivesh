@@ -1,4 +1,12 @@
 import math
+from pydantic import BaseModel
+
+class GreeksResponse(BaseModel):
+    delta: float
+    gamma: float
+    theta: float
+    vega: float
+    rho: float
 
 def norm_cdf(x):
     return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
@@ -13,7 +21,7 @@ def calculate_d1_d2(S, K, T, r, sigma):
     d2 = d1 - sigma * math.sqrt(T)
     return d1, d2
 
-def calculate_greeks(S, K, T, r, sigma, option_type="call"):
+def calculate_greeks(S, K, T, r, sigma, option_type="call") -> GreeksResponse:
     """
     Calculate Greeks (Delta, Gamma, Theta, Vega, Rho) for an option.
     
@@ -29,7 +37,7 @@ def calculate_greeks(S, K, T, r, sigma, option_type="call"):
         dict: Dictionary containing Delta, Gamma, Theta, Vega, and Rho
     """
     if T <= 0 or sigma <= 0:
-        return {"delta": 0.0, "gamma": 0.0, "theta": 0.0, "vega": 0.0, "rho": 0.0}
+        return GreeksResponse(delta=0.0, gamma=0.0, theta=0.0, vega=0.0, rho=0.0)
 
     d1, d2 = calculate_d1_d2(S, K, T, r, sigma)
     
@@ -50,10 +58,10 @@ def calculate_greeks(S, K, T, r, sigma, option_type="call"):
     else:
         raise ValueError("option_type must be 'call' or 'put'")
         
-    return {
-        "delta": delta,
-        "gamma": gamma,
-        "theta": theta,
-        "vega": vega,
-        "rho": rho
-    }
+    return GreeksResponse(
+        delta=delta,
+        gamma=gamma,
+        theta=theta,
+        vega=vega,
+        rho=rho
+    )

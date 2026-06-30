@@ -1,17 +1,17 @@
 """Uniform inference engine protocol for all math engines."""
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any
-
+from typing import Any, Dict, Union
+from pydantic import BaseModel
 
 class InferenceEngine(ABC):
     """Every math engine implements this interface.
     
-    Interface: compute(ticker, data, session) → dict
+    Interface: compute(ticker, data, session) → Any
     - ticker: str — the stock symbol
     - data: dict — engine-specific input data (prices, fundamentals, etc.)
     - session: SQLAlchemy Session | None — optional DB access
-    Returns: dict with at minimum {"status": "ok"|"error", "output": ...}
+    Returns: BaseModel or dict with at minimum {"status": "ok"|"error", "output": ...}
     """
     
     @classmethod
@@ -27,7 +27,7 @@ class InferenceEngine(ABC):
         ...
     
     @abstractmethod
-    def compute(self, ticker: str, data: dict, session: Any = None) -> dict:
+    def compute(self, ticker: str, data: dict, session: Any = None) -> Any:
         """Execute the engine computation."""
         ...
 
@@ -49,7 +49,7 @@ class EngineRegistry:
         return [e for e in cls._engines if tag in e.tags()]
     
     @classmethod
-    def run_all(cls, tag: str, ticker: str, data: dict, session: Any = None) -> list[dict]:
+    def run_all(cls, tag: str, ticker: str, data: dict, session: Any = None) -> list[Any]:
         """Run all engines matching a tag and return their results."""
         results = []
         for engine_cls in cls.get_engines(tag):

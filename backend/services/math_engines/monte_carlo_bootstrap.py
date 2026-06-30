@@ -13,9 +13,28 @@ No ML models — pure resampling of empirical data.
 """
 from __future__ import annotations
 import logging
-from typing import Any
+from typing import Any, List, Dict, Optional
+from pydantic import BaseModel
 
 from services.math_engines.protocol import InferenceEngine
+
+class BootstrapOutput(BaseModel):
+    monte_carlo_cvar_99: Optional[float] = None
+    sample_size: Optional[int] = None
+    reason: Optional[str] = None
+    expected_return: Optional[float] = None
+    median_return: Optional[float] = None
+    return_std: Optional[float] = None
+    prob_positive: Optional[float] = None
+    confidence_interval_95: Optional[List[float]] = None
+    n_analogues: Optional[int] = None
+    n_bootstrap: Optional[int] = None
+    method: Optional[str] = None
+
+class BootstrapResponse(BaseModel):
+    status: str
+    output: Optional[BootstrapOutput] = None
+    error: Optional[str] = None
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +52,7 @@ class MonteCarloBootstrapEngine(InferenceEngine):
     def tags(cls) -> set[str]:
         return {"risk_metric", "quantitative"}
 
-    def compute(self, ticker: str, data: dict, session: Any = None) -> dict:
+    def compute(self, ticker: str, data: dict, session: Any = None) -> BootstrapResponse:
         """Bootstrap the forward-return distribution from historical analogues.
 
         data keys:
@@ -43,14 +62,14 @@ class MonteCarloBootstrapEngine(InferenceEngine):
         analogue_returns = data.get("analogue_returns", [])
 
         if not analogue_returns or len(analogue_returns) < 5:
-            return {
-                "status": "insufficient_data",
-                "output": {
-                    "monte_carlo_cvar_99": None,
-                    "sample_size": len(analogue_returns),
-                    "reason": "Need >= 5 analogue returns for bootstrap.",
-                },
-            }
+            return BootstrapResponse(
+                status="insufficient_data",
+                output=BootstrapOutput(
+                    monte_carlo_cvar_99=None,
+                    sample_size=len(analogue_returns),
+                    reason="Need >= 5 analogue returns for bootstrap.",
+                ),
+            )
 
         try:
             import numpy as np
@@ -82,21 +101,21 @@ class MonteCarloBootstrapEngine(InferenceEngine):
             ci_lower = float(np.percentile(boot_means, 2.5))
             ci_upper = float(np.percentile(boot_means, 97.5))
 
-            return {
-                "status": "ok",
-                "output": {
-                    "monte_carlo_cvar_99": round(cvar_99, 4),
-                    "expected_return": round(mean_return, 4),
-                    "median_return": round(median_return, 4),
-                    "return_std": round(std_return, 4),
-                    "prob_positive": round(prob_positive, 4),
-                    "confidence_interval_95": [round(ci_lower, 4), round(ci_upper, 4)],
-                    "n_analogues": len(analogue_returns),
-                    "n_bootstrap": n_boot,
-                    "method": "bootstrap_resampling",
-                },
-            }
+            return BootstrapResponse(
+                status="ok",
+                output=BootstrapOutput(
+                    monte_carlo_cvar_99=round(cvar_99, 4),
+                    expected_return=round(mean_return, 4),
+                    median_return=round(median_return, 4),
+                    return_std=round(std_return, 4),
+                    prob_positive=round(prob_positive, 4),
+                    confidence_interval_95=[round(ci_lower, 4), round(ci_upper, 4)],
+                    n_analogues=len(analogue_returns),
+                    n_bootstrap=n_boot,
+                    method="bootstrap_resampling",
+                ),
+            )
 
         except Exception as e:
             logger.warning("[monte_carlo_bootstrap] error: %s", e)
-            return {"status": "error", "error": str(e)}
+            return BootstrapResponse(status="error", error=str(e))

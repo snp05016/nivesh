@@ -13,7 +13,21 @@ Cold-start guard: MIN_SAMPLES.
 """
 from __future__ import annotations
 import logging
-from typing import Any
+from typing import Any, Optional, List, Dict
+from pydantic import BaseModel
+
+class ICOutput(BaseModel):
+    rank_ic: Optional[float] = None
+    p_value: Optional[float] = None
+    sample_size: int
+    min_required: Optional[int] = None
+    significant: Optional[bool] = None
+    interpretation: Optional[str] = None
+
+class InformationCoefficientResponse(BaseModel):
+    status: str
+    output: Optional[ICOutput] = None
+    error: Optional[str] = None
 
 from services.math_engines.protocol import InferenceEngine
 
@@ -32,9 +46,9 @@ class InformationCoefficientEngine(InferenceEngine):
     def tags(cls) -> set[str]:
         return {"risk_metric", "calibration"}
 
-    def compute(self, ticker: str, data: dict, session: Any = None) -> dict:
+    def compute(self, ticker: str, data: dict, session: Any = None) -> InformationCoefficientResponse:
         if session is None:
-            return {"status": "error", "error": "DB session required"}
+            return InformationCoefficientResponse(status="error", error="DB session required")
 
         try:
             from database import AnalysisHistory
@@ -58,35 +72,35 @@ class InformationCoefficientEngine(InferenceEngine):
             rows = query.all()
 
             if len(rows) < MIN_SAMPLES:
-                return {
-                    "status": "insufficient_data",
-                    "output": {
-                        "rank_ic": None,
-                        "p_value": None,
-                        "sample_size": len(rows),
-                        "min_required": MIN_SAMPLES,
-                    },
-                }
+                return InformationCoefficientResponse(
+                    status="insufficient_data",
+                    output=ICOutput(
+                        rank_ic=None,
+                        p_value=None,
+                        sample_size=len(rows),
+                        min_required=MIN_SAMPLES,
+                    ),
+                )
 
             factor = np.array([float(r[0]) for r in rows], dtype=np.float64)
             outcome = np.array([float(r[1]) for r in rows], dtype=np.float64)
 
             corr, p_value = spearmanr(factor, outcome)
 
-            return {
-                "status": "ok",
-                "output": {
-                    "rank_ic": round(float(corr), 6),
-                    "p_value": round(float(p_value), 6),
-                    "sample_size": len(rows),
-                    "significant": float(p_value) < 0.05,
-                    "interpretation": _interpret_ic(float(corr), float(p_value)),
-                },
-            }
+            return InformationCoefficientResponse(
+                status="ok",
+                output=ICOutput(
+                    rank_ic=round(float(corr), 6),
+                    p_value=round(float(p_value), 6),
+                    sample_size=len(rows),
+                    significant=float(p_value) < 0.05,
+                    interpretation=_interpret_ic(float(corr), float(p_value)),
+                ),
+            )
 
         except Exception as e:
             logger.warning("[information_coefficient] error: %s", e)
-            return {"status": "error", "error": str(e)}
+            return InformationCoefficientResponse(status="error", error=str(e))
 
 
 def _interpret_ic(ic: float, p_value: float) -> str:

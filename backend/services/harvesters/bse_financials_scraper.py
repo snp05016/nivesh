@@ -1,10 +1,22 @@
 import logging
 import requests
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-def fetch_raw_balance_sheet(scrip_code: str, year: Optional[str] = None) -> Dict[str, Any]:
+class BalanceSheetResponse(BaseModel):
+    scrip_code: str
+    year: str
+    statement_type: str
+    raw_data: Dict[str, Any]
+
+class FinancialResultsResponse(BaseModel):
+    scrip_code: str
+    period: str
+    results: Dict[str, Any]
+
+def fetch_raw_balance_sheet(scrip_code: str, year: Optional[str] = None) -> BalanceSheetResponse:
     """
     Fetches the raw balance sheet for a given BSE scrip code.
     
@@ -13,7 +25,7 @@ def fetch_raw_balance_sheet(scrip_code: str, year: Optional[str] = None) -> Dict
         year (str, optional): The financial year to fetch data for. If None, fetches the latest.
         
     Returns:
-        Dict[str, Any]: A dictionary containing raw balance sheet data.
+        BalanceSheetResponse: A BalanceSheetResponse containing raw balance sheet data.
     """
     logger.info(f"Fetching raw balance sheet for scrip_code: {scrip_code}, year: {year}")
     
@@ -34,9 +46,9 @@ def fetch_raw_balance_sheet(scrip_code: str, year: Optional[str] = None) -> Dict
         "raw_data": {}  # Populated with actual parsed values
     }
     
-    return raw_data
+    return BalanceSheetResponse(**raw_data)
 
-def fetch_financial_results(scrip_code: str, period: str = "Annual") -> Dict[str, Any]:
+def fetch_financial_results(scrip_code: str, period: str = "Annual") -> FinancialResultsResponse:
     """
     Fetches other financial results (e.g., P&L, Cash Flow) for the given scrip code.
     
@@ -45,7 +57,7 @@ def fetch_financial_results(scrip_code: str, period: str = "Annual") -> Dict[str
         period (str): "Annual" or "Quarterly".
         
     Returns:
-        Dict[str, Any]: A dictionary containing the financial results.
+        FinancialResultsResponse: A FinancialResultsResponse containing the financial results.
     """
     logger.info(f"Fetching {period} financial results for scrip_code: {scrip_code}")
     
@@ -55,4 +67,4 @@ def fetch_financial_results(scrip_code: str, period: str = "Annual") -> Dict[str
         "results": {}
     }
     
-    return raw_data
+    return FinancialResultsResponse(**raw_data)

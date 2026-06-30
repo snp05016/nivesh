@@ -1,4 +1,9 @@
 import math
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel
+
+class ImpliedVolatilityResponse(BaseModel):
+    implied_volatility: Optional[float]
 
 def norm_cdf(x):
     return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
@@ -27,7 +32,7 @@ def vega(S, K, T, r, sigma):
     d1 = (math.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * math.sqrt(T))
     return S * norm_pdf(d1) * math.sqrt(T)
 
-def calculate_implied_volatility(market_price, S, K, T, r, option_type="call", max_iter=100, tol=1e-5):
+def calculate_implied_volatility(market_price, S, K, T, r, option_type="call", max_iter=100, tol=1e-5) -> ImpliedVolatilityResponse:
     """
     Calculate Implied Volatility using Newton-Raphson method.
     
@@ -42,7 +47,7 @@ def calculate_implied_volatility(market_price, S, K, T, r, option_type="call", m
         tol (float): Tolerance for convergence
         
     Returns:
-        float: Implied volatility, or None if it fails to converge
+        ImpliedVolatilityResponse: Implied volatility, or None if it fails to converge
     """
     # Check bounds
     if option_type == "call":
@@ -53,7 +58,7 @@ def calculate_implied_volatility(market_price, S, K, T, r, option_type="call", m
         raise ValueError("option_type must be 'call' or 'put'")
         
     if market_price < intrinsic_value:
-        return None # Arbitrage violation, IV is undefined
+        return ImpliedVolatilityResponse(implied_volatility=None) # Arbitrage violation, IV is undefined
         
     # Initial guess
     sigma = math.sqrt(2 * math.pi / T) * (market_price / S) if S > 0 and T > 0 else 0.5
@@ -65,7 +70,7 @@ def calculate_implied_volatility(market_price, S, K, T, r, option_type="call", m
         diff = price - market_price
         
         if abs(diff) < tol:
-            return sigma
+            return ImpliedVolatilityResponse(implied_volatility=sigma)
             
         v = vega(S, K, T, r, sigma)
         if v == 0.0:
@@ -76,4 +81,4 @@ def calculate_implied_volatility(market_price, S, K, T, r, option_type="call", m
         if sigma <= 0:
             sigma = 1e-4 # prevent negative IV
             
-    return sigma
+    return ImpliedVolatilityResponse(implied_volatility=sigma)

@@ -9,7 +9,15 @@ Evaluates governance risk based on:
 - Auditor tenure (excessive tenure can signal complacency)
 """
 import os
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel
+
+class AuditorRiskScoreResponse(BaseModel):
+    risk_score: int
+    risk_level: str
+    is_big4_auditor: bool
+    factors: List[str]
+    explanation: str
 
 BIG4_AUDITORS = {
     "Deloitte", "Deloitte Haskins & Sells", "Deloitte Touche Tohmatsu",
@@ -46,7 +54,7 @@ def compute_auditor_risk_score(
     years_with_current: int = 0,
     has_qualified_opinion: bool = False,
     promoter_pledging_pct: float = 0.0,
-) -> dict:
+) -> AuditorRiskScoreResponse:
     """
     Deterministic auditor risk matrix (0-100 scale).
 
@@ -135,13 +143,13 @@ def compute_auditor_risk_score(
     else:
         level = "CRITICAL"
 
-    return {
-        "risk_score": risk_score,
-        "risk_level": level,
-        "is_big4_auditor": is_big4,
-        "factors": factors,
-        "explanation": "; ".join(factors) if factors else "No red flags detected",
-    }
+    return AuditorRiskScoreResponse(
+        risk_score=risk_score,
+        risk_level=level,
+        is_big4_auditor=is_big4,
+        factors=factors,
+        explanation="; ".join(factors) if factors else "No red flags detected",
+    )
 
 
 if __name__ == "__main__":

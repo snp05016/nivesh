@@ -14,7 +14,13 @@ Two modes:
 from __future__ import annotations
 import logging
 import math
-from typing import Any
+from typing import Any, List, Dict, Optional
+from pydantic import BaseModel
+
+class ConformalResponse(BaseModel):
+    status: str
+    error: Optional[str] = None
+    output: Optional[Dict[str, Any]] = None
 
 from services.math_engines.protocol import InferenceEngine
 
@@ -33,13 +39,13 @@ class ConformalPredictionEngine(InferenceEngine):
     def tags(cls) -> set[str]:
         return {"confidence_modifier", "risk_metric", "quantitative"}
 
-    def compute(self, ticker: str, data: dict, session: Any = None) -> dict:
+    def compute(self, ticker: str, data: dict, session: Any = None) -> ConformalResponse:
         prices = data.get("prices", [])
         alpha = data.get("alpha", 0.1)
         horizon = data.get("horizon_days", 63)
 
         if len(prices) < 60:
-            return {"status": "error", "error": f"Need >= 60 days of prices, got {len(prices)}"}
+            return ConformalResponse(status="error", error=f"Need >= 60 days of prices, got {len(prices)}")
 
         current = prices[-1]
 
@@ -54,7 +60,7 @@ class ConformalPredictionEngine(InferenceEngine):
 
     def _empirical_conformal(
         self, ticker: str, current_price: float, alpha: float, session: Any
-    ) -> dict | None:
+    ) -> Optional[ConformalResponse]:
         """True conformal using historical nonconformity scores."""
         try:
             from database import AnalysisHistory
@@ -105,9 +111,9 @@ class ConformalPredictionEngine(InferenceEngine):
             upper = round(current_price * (1 + conformal_width_pct / 100), 2)
             lower = round(current_price * (1 - conformal_width_pct / 100), 2)
 
-            return {
-                "status": "ok",
-                "output": {
+            return ConformalResponse(
+                status="ok",
+                output={
                     "current_price": current_price,
                     "upper_bound": upper,
                     "lower_bound": lower,
@@ -117,7 +123,7 @@ class ConformalPredictionEngine(InferenceEngine):
                     "calibration_sample_size": len(scores),
                     "median_nonconformity": round(float(np.median(scores_arr)), 2),
                 },
-            }
+            )
 
         except Exception as e:
             logger.warning("[conformal] empirical failed, falling back: %s", e)
@@ -125,7 +131,7 @@ class ConformalPredictionEngine(InferenceEngine):
 
     def _gaussian_fallback(
         self, prices: list, alpha: float, horizon: int, current: float
-    ) -> dict:
+    ) -> ConformalResponse:
         """Original Gaussian parametric fallback."""
         try:
             returns = [math.log(prices[i] / prices[i - 1]) for i in range(1, len(prices))]
@@ -139,9 +145,9 @@ class ConformalPredictionEngine(InferenceEngine):
             upper = current * math.exp(drift + z_score * projected_vol)
             lower = current * math.exp(drift - z_score * projected_vol)
 
-            return {
-                "status": "ok",
-                "output": {
+            return ConformalResponse(
+                status="ok",
+                output={
                     "current_price": current,
                     f"upper_{horizon}d": round(upper, 2),
                     f"lower_{horizon}d": round(lower, 2),
@@ -150,6 +156,6 @@ class ConformalPredictionEngine(InferenceEngine):
                     "confidence_level": f"{(1 - alpha) * 100:.0f}%",
                     "method": "gaussian_fallback",
                 },
-            }
+            )
         except Exception as e:
-            return {"status": "error", "error": str(e)}
+            return ConformalResponse(status="error", error=str(e))

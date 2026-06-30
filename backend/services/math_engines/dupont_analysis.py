@@ -1,9 +1,18 @@
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
+
+class DupontAnalysisResponse(BaseModel):
+    profit_margin: float
+    asset_turnover: float
+    equity_multiplier: float
+    roe: float
+
 def calculate_dupont_analysis(
     net_income: float,
     sales: float,
     total_assets: float,
     total_equity: float
-) -> dict:
+) -> DupontAnalysisResponse:
     """
     Performs DuPont Analysis to break down Return on Equity (ROE).
     ROE = Profit Margin * Total Asset Turnover * Equity Multiplier
@@ -17,9 +26,9 @@ def calculate_dupont_analysis(
     
     roe = profit_margin * asset_turnover * equity_multiplier
     
-    return {
-        "profit_margin": profit_margin,
-        "asset_turnover": asset_turnover,
-        "equity_multiplier": equity_multiplier,
-        "roe": roe
-    }
+    return DupontAnalysisResponse(
+        profit_margin=profit_margin,
+        asset_turnover=asset_turnover,
+        equity_multiplier=equity_multiplier,
+        roe=roe
+    )

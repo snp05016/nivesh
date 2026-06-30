@@ -1,4 +1,10 @@
-def calculate_max_pain(options_chain):
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
+
+class MaxPainResponse(BaseModel):
+    max_pain_strike: float
+
+def calculate_max_pain(options_chain: List[Dict[str, Any]]) -> MaxPainResponse:
     """
     Calculate max pain strike given an options chain.
     
@@ -10,7 +16,7 @@ def calculate_max_pain(options_chain):
         float: Max pain strike price
     """
     if not options_chain:
-        return 0.0
+        return MaxPainResponse(max_pain_strike=0.0)
 
     strikes = sorted(list(set([opt['strike'] for opt in options_chain])))
     
@@ -37,4 +43,4 @@ def calculate_max_pain(options_chain):
             min_pain = total_pain
             max_pain_strike = test_strike
             
-    return max_pain_strike
+    return MaxPainResponse(max_pain_strike=max_pain_strike)

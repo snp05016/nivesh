@@ -1,9 +1,25 @@
 """Dynamic Time Warping pattern matching engine."""
 from __future__ import annotations
 import math
-from typing import Any
+from typing import Any, List, Dict, Optional
+from pydantic import BaseModel
 from services.math_engines.protocol import InferenceEngine
 
+class PatternMatch(BaseModel):
+    pattern: str
+    distance: float
+    direction: str
+
+class DTWOutput(BaseModel):
+    detected_pattern: str
+    confidence: str
+    direction: str
+    top_matches: List[PatternMatch]
+
+class DTWResponse(BaseModel):
+    status: str
+    error: Optional[str] = None
+    output: Optional[DTWOutput] = None
 
 class DTWPatternEngine(InferenceEngine):
     
@@ -44,10 +60,10 @@ class DTWPatternEngine(InferenceEngine):
                 dtw[i][j] = cost + min(dtw[i-1][j], dtw[i][j-1], dtw[i-1][j-1])
         return dtw[n][m]
     
-    def compute(self, ticker: str, data: dict, session: Any = None) -> dict:
+    def compute(self, ticker: str, data: dict, session: Any = None) -> DTWResponse:
         prices = data.get("prices", [])
         if len(prices) < 15:
-            return {"status": "error", "error": f"Need >= 15 price points, got {len(prices)}"}
+            return DTWResponse(status="error", error=f"Need >= 15 price points, got {len(prices)}")
         
         try:
             recent = prices[-15:]
@@ -63,14 +79,14 @@ class DTWPatternEngine(InferenceEngine):
             matches.sort(key=lambda m: m["distance"])
             best = matches[0]
             
-            return {
-                "status": "ok",
-                "output": {
-                    "detected_pattern": best["pattern"] if best["distance"] < 2.0 else "no_clear_pattern",
-                    "confidence": "high" if best["distance"] < 1.0 else "medium" if best["distance"] < 2.0 else "low",
-                    "direction": best["direction"],
-                    "top_matches": matches[:3],
-                }
-            }
+            return DTWResponse(
+                status="ok",
+                output=DTWOutput(
+                    detected_pattern=best["pattern"] if best["distance"] < 2.0 else "no_clear_pattern",
+                    confidence="high" if best["distance"] < 1.0 else "medium" if best["distance"] < 2.0 else "low",
+                    direction=best["direction"],
+                    top_matches=[PatternMatch(**m) for m in matches[:3]]
+                )
+            )
         except Exception as e:
-            return {"status": "error", "error": str(e)}
+            return DTWResponse(status="error", error=str(e))

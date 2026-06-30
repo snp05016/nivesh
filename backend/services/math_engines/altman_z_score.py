@@ -1,3 +1,12 @@
+from typing import Any, Dict, List, Optional
+from pydantic import BaseModel
+
+class AltmanZScoreResponse(BaseModel):
+    z_score: float
+
+class AltmanZScoreInterpretationResponse(BaseModel):
+    interpretation: str
+
 def calculate_altman_z_score(
     working_capital: float,
     retained_earnings: float,
@@ -26,9 +35,9 @@ def calculate_altman_z_score(
     d = market_value_equity / total_liabilities
     e = sales / total_assets
     
-    return 1.2 * a + 1.4 * b + 3.3 * c + 0.6 * d + 1.0 * e
+    return AltmanZScoreResponse(z_score=1.2 * a + 1.4 * b + 3.3 * c + 0.6 * d + 1.0 * e)
 
-def interpret_altman_z_score(z_score: float) -> str:
+def interpret_altman_z_score(z_score: float) -> AltmanZScoreInterpretationResponse:
     """
     Interprets the Altman Z-Score.
     > 2.99: Safe Zone
@@ -36,8 +45,8 @@ def interpret_altman_z_score(z_score: float) -> str:
     < 1.81: Distress Zone
     """
     if z_score > 2.99:
-        return "Safe"
+        return AltmanZScoreInterpretationResponse(interpretation="Safe")
     elif z_score >= 1.81:
-        return "Grey"
+        return AltmanZScoreInterpretationResponse(interpretation="Grey")
     else:
-        return "Distress"
+        return AltmanZScoreInterpretationResponse(interpretation="Distress")

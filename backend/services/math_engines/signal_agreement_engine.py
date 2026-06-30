@@ -6,7 +6,13 @@ Delegates to services.math_engines.signal_agreement.compute_signal_agreement()
 and exposes its output through the EngineRegistry protocol.
 """
 from __future__ import annotations
-from typing import Any
+from typing import Any, Dict, List, Optional
+from pydantic import BaseModel
+
+class SignalAgreementResponse(BaseModel):
+    status: str
+    output: Optional[Any] = None
+    error: Optional[str] = None
 
 from services.math_engines.protocol import InferenceEngine
 
@@ -21,7 +27,7 @@ class SignalAgreementEngine(InferenceEngine):
     def tags(cls) -> set[str]:
         return {"confidence_modifier", "quantitative"}
 
-    def compute(self, ticker: str, data: dict, session: Any = None) -> dict:
+    def compute(self, ticker: str, data: dict, session: Any = None) -> SignalAgreementResponse:
         """Run 4-vector signal agreement.
 
         data keys:
@@ -41,6 +47,6 @@ class SignalAgreementEngine(InferenceEngine):
                 macro_signal=float(data.get("macro_signal", 0.0)),
                 weights=data.get("weights"),
             )
-            return {"status": "ok", "output": result}
+            return SignalAgreementResponse(status="ok", output=result)
         except Exception as e:
-            return {"status": "error", "error": str(e)}
+            return SignalAgreementResponse(status="error", error=str(e))

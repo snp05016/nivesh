@@ -5,13 +5,28 @@ Provides functions for detecting and analyzing seasonal patterns in financial ti
 
 import pandas as pd
 import numpy as np
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
+from pydantic import BaseModel
+
+class MonthlySeasonalityResponse(BaseModel):
+    month: int
+    avg_return: float
+    median_return: float
+    win_rate: float
+    count: int
+
+class DayOfWeekSeasonalityResponse(BaseModel):
+    day_of_week: int
+    day_name: str
+    avg_return: float
+    win_rate: float
+    count: int
 
 def calculate_monthly_returns_seasonality(
     df: pd.DataFrame, 
     date_col: str, 
     price_col: str
-) -> pd.DataFrame:
+) -> List[MonthlySeasonalityResponse]:
     """
     Calculates the average return for each month across all years to detect monthly seasonality.
     
@@ -47,13 +62,14 @@ def calculate_monthly_returns_seasonality(
         count=('monthly_return', 'count')
     ).reset_index()
     
-    return seasonality_stats
+    records = seasonality_stats.to_dict(orient='records')
+    return [MonthlySeasonalityResponse(**row) for row in records]
 
 def detect_day_of_week_seasonality(
     df: pd.DataFrame, 
     date_col: str, 
     price_col: str
-) -> pd.DataFrame:
+) -> List[DayOfWeekSeasonalityResponse]:
     """
     Calculates average returns by day of the week to detect day-of-week seasonality.
     
@@ -83,4 +99,5 @@ def detect_day_of_week_seasonality(
         count=('return', 'count')
     ).reset_index()
     
-    return dow_stats
+    records = dow_stats.to_dict(orient='records')
+    return [DayOfWeekSeasonalityResponse(**row) for row in records]

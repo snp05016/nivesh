@@ -2,11 +2,16 @@
 Webhook listeners for real-time corporate announcements from BSE and NSE.
 """
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-def handle_bse_corporate_announcement(payload: Dict[str, Any]) -> Dict[str, Any]:
+class WebhookResponse(BaseModel):
+    status: str
+    message: str
+
+def handle_bse_corporate_announcement(payload: Dict[str, Any]) -> WebhookResponse:
     """
     Listener function to handle BSE corporate announcement webhooks.
     
@@ -14,7 +19,7 @@ def handle_bse_corporate_announcement(payload: Dict[str, Any]) -> Dict[str, Any]
         payload (Dict[str, Any]): The webhook payload from BSE.
         
     Returns:
-        Dict[str, Any]: A response indicating the status of the processing.
+        WebhookResponse: A response indicating the status of the processing.
     """
     logger.info("Received BSE corporate announcement webhook payload.")
     try:
@@ -26,13 +31,13 @@ def handle_bse_corporate_announcement(payload: Dict[str, Any]) -> Dict[str, Any]
         
         # Add actual ingestion logic here
         
-        return {"status": "success", "message": "BSE announcement processed successfully"}
+        return WebhookResponse(status="success", message="BSE announcement processed successfully")
     except Exception as e:
         logger.error(f"Error processing BSE webhook: {e}")
-        return {"status": "error", "message": str(e)}
+        return WebhookResponse(status="error", message=str(e))
 
 
-def handle_nse_corporate_announcement(payload: Dict[str, Any]) -> Dict[str, Any]:
+def handle_nse_corporate_announcement(payload: Dict[str, Any]) -> WebhookResponse:
     """
     Listener function to handle NSE corporate announcement webhooks.
     
@@ -40,7 +45,7 @@ def handle_nse_corporate_announcement(payload: Dict[str, Any]) -> Dict[str, Any]
         payload (Dict[str, Any]): The webhook payload from NSE.
         
     Returns:
-        Dict[str, Any]: A response indicating the status of the processing.
+        WebhookResponse: A response indicating the status of the processing.
     """
     logger.info("Received NSE corporate announcement webhook payload.")
     try:
@@ -52,7 +57,7 @@ def handle_nse_corporate_announcement(payload: Dict[str, Any]) -> Dict[str, Any]
         
         # Add actual ingestion logic here
         
-        return {"status": "success", "message": "NSE announcement processed successfully"}
+        return WebhookResponse(status="success", message="NSE announcement processed successfully")
     except Exception as e:
         logger.error(f"Error processing NSE webhook: {e}")
-        return {"status": "error", "message": str(e)}
+        return WebhookResponse(status="error", message=str(e))

@@ -1,6 +1,14 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
+from pydantic import BaseModel
 
-def calculate_asset_allocation(portfolio_holdings: List[Dict[str, Any]]) -> Dict[str, float]:
+class AssetAllocationResponse(BaseModel):
+    allocation: Dict[str, float]
+
+class PortfolioRiskMetricsResponse(BaseModel):
+    average_return: Optional[float] = None
+    volatility: Optional[float] = None
+
+def calculate_asset_allocation(portfolio_holdings: List[Dict[str, Any]]) -> AssetAllocationResponse:
     """
     Calculate asset allocation percentages from a list of portfolio holdings.
     
@@ -14,7 +22,7 @@ def calculate_asset_allocation(portfolio_holdings: List[Dict[str, Any]]) -> Dict
     total_value = sum(h.get('value', 0.0) for h in portfolio_holdings)
     
     if total_value <= 0:
-        return allocation
+        return AssetAllocationResponse(allocation=allocation)
         
     for holding in portfolio_holdings:
         ac = holding.get('asset_class', 'Unknown')
@@ -23,9 +31,9 @@ def calculate_asset_allocation(portfolio_holdings: List[Dict[str, Any]]) -> Dict
     for ac in allocation:
         allocation[ac] = round((allocation[ac] / total_value) * 100.0, 2)
         
-    return allocation
+    return AssetAllocationResponse(allocation=allocation)
 
-def calculate_portfolio_risk_metrics(portfolio_returns: List[float]) -> Dict[str, float]:
+def calculate_portfolio_risk_metrics(portfolio_returns: List[float]) -> PortfolioRiskMetricsResponse:
     """
     Calculate basic risk metrics for a portfolio given historical returns.
     
@@ -38,12 +46,12 @@ def calculate_portfolio_risk_metrics(portfolio_returns: List[float]) -> Dict[str
     import statistics
     
     if not portfolio_returns:
-        return {}
+        return PortfolioRiskMetricsResponse()
         
     avg_return = statistics.mean(portfolio_returns)
     volatility = statistics.stdev(portfolio_returns) if len(portfolio_returns) > 1 else 0.0
     
-    return {
-        "average_return": round(avg_return, 4),
-        "volatility": round(volatility, 4)
-    }
+    return PortfolioRiskMetricsResponse(
+        average_return=round(avg_return, 4),
+        volatility=round(volatility, 4)
+    )

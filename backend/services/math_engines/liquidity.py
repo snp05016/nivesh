@@ -1,7 +1,29 @@
 """Liquidity risk engine — Almgren-Chriss Square-Root Law (§7.2)."""
 from __future__ import annotations
 import numpy as np
-from typing import Any
+from typing import Any, List, Dict, Optional
+from pydantic import BaseModel
+
+class SquareRootImpactResponse(BaseModel):
+    impact_pct: float
+    mkt_impact_pct: float
+    spread_pct: float
+    participation_rate: float
+    effective_volume: int
+
+class HoldingLiquidityLoss(BaseModel):
+    ticker: str
+    value: float
+    impact_pct: float
+    loss_inr: float
+    participation_rate: float
+
+class PortfolioLiquidityLossResponse(BaseModel):
+    total_liquidity_loss_inr: float
+    total_liquidity_loss_pct: float
+    total_portfolio_value: float
+    holdings: List[HoldingLiquidityLoss]
+    volume_suppression: float
 
 def square_root_impact(
     shares_held: float,
@@ -10,7 +32,7 @@ def square_root_impact(
     base_spread_bps: float = 0.001,
     gamma: float = 0.2,
     volume_suppression: float = 1.0,
-) -> dict[str, float]:
+) -> SquareRootImpactResponse:
     """Almgren-Chriss square-root law for liquidation impact.
     
     ΔP = base_spread + γ * σ * sqrt(Q / V)
@@ -34,19 +56,19 @@ def square_root_impact(
     impact = gamma * daily_volatility * np.sqrt(participation_rate)
     total_impact_pct = base_spread_bps + float(impact)
     
-    return {
-        "impact_pct": round(total_impact_pct * 100, 4),
-        "mkt_impact_pct": round(float(impact) * 100, 4),
-        "spread_pct": round(base_spread_bps * 100, 4),
-        "participation_rate": round(float(participation_rate), 6),
-        "effective_volume": int(effective_volume),
-    }
+    return SquareRootImpactResponse(
+        impact_pct=round(total_impact_pct * 100, 4),
+        mkt_impact_pct=round(float(impact) * 100, 4),
+        spread_pct=round(base_spread_bps * 100, 4),
+        participation_rate=round(float(participation_rate), 6),
+        effective_volume=int(effective_volume),
+    )
 
 def portfolio_liquidity_loss(
     holdings: list[dict[str, Any]],
     volume_suppression: float = 0.4,
     gamma: float = 0.2,
-) -> dict[str, Any]:
+) -> PortfolioLiquidityLossResponse:
     """Aggregate liquidity penalty across portfolio.
     
     Each holding dict must have: shares, price, avg_daily_volume, volatility, spread_bps
@@ -77,24 +99,24 @@ def portfolio_liquidity_loss(
             volume_suppression=volume_suppression,
         )
         
-        loss_inr = value * (result["impact_pct"] / 100)
+        loss_inr = value * (result.impact_pct / 100)
         total_loss_inr += loss_inr
         
-        per_holding.append({
-            "ticker": h.get("ticker", ""),
-            "value": round(value, 2),
-            "impact_pct": result["impact_pct"],
-            "loss_inr": round(loss_inr, 2),
-            "participation_rate": result["participation_rate"],
-        })
+        per_holding.append(HoldingLiquidityLoss(
+            ticker=h.get("ticker", ""),
+            value=round(value, 2),
+            impact_pct=result.impact_pct,
+            loss_inr=round(loss_inr, 2),
+            participation_rate=result.participation_rate,
+        ))
     
-    return {
-        "total_liquidity_loss_inr": round(total_loss_inr, 2),
-        "total_liquidity_loss_pct": round((total_loss_inr / total_value * 100), 4) if total_value > 0 else 0.0,
-        "total_portfolio_value": round(total_value, 2),
-        "holdings": per_holding,
-        "volume_suppression": volume_suppression,
-    }
+    return PortfolioLiquidityLossResponse(
+        total_liquidity_loss_inr=round(total_loss_inr, 2),
+        total_liquidity_loss_pct=round((total_loss_inr / total_value * 100), 4) if total_value > 0 else 0.0,
+        total_portfolio_value=round(total_value, 2),
+        holdings=per_holding,
+        volume_suppression=volume_suppression,
+    )
 
 def liquidity_score(total_impact_pct: float) -> float:
     """Map total liquidity impact % to a 0-100 score.

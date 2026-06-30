@@ -1,9 +1,22 @@
 """Minskyan financial instability risk engine."""
 from __future__ import annotations
 import math
-from typing import Any
+from typing import Any, List, Dict, Optional
 from services.math_engines.protocol import InferenceEngine
+from pydantic import BaseModel
 
+class MinskyRiskOutput(BaseModel):
+    minsky_score: float
+    minsky_stage: str
+    risk_level: str
+    fii_flow_average: float
+    dii_flow_average: float
+    flow_imbalance: float
+
+class MinskyRiskResponse(BaseModel):
+    status: str
+    error: Optional[str] = None
+    output: Optional[MinskyRiskOutput] = None
 
 class MinskyRiskEngine(InferenceEngine):
     
@@ -15,12 +28,12 @@ class MinskyRiskEngine(InferenceEngine):
     def tags(cls) -> set[str]:
         return {"confidence_modifier", "risk_metric"}
     
-    def compute(self, ticker: str, data: dict, session: Any = None) -> dict:
+    def compute(self, ticker: str, data: dict, session: Any = None) -> MinskyRiskResponse:
         fii_flows = data.get("fii_flows", [])
         dii_flows = data.get("dii_flows", [])
         
         if not fii_flows or not dii_flows:
-            return {"status": "error", "error": "No FII/DII flow data provided"}
+            return MinskyRiskResponse(status="error", error="No FII/DII flow data provided")
         
         try:
             fii_ma = sum(fii_flows) / len(fii_flows) if fii_flows else 0
@@ -42,16 +55,16 @@ class MinskyRiskEngine(InferenceEngine):
                 stage = "Ponzi (crisis-prone)"
                 risk = "high"
             
-            return {
-                "status": "ok",
-                "output": {
-                    "minsky_score": round(minsky_score, 4),
-                    "minsky_stage": stage,
-                    "risk_level": risk,
-                    "fii_flow_average": round(fii_ma, 4),
-                    "dii_flow_average": round(dii_ma, 4),
-                    "flow_imbalance": round(flow_imbalance, 4),
-                }
-            }
+            return MinskyRiskResponse(
+                status="ok",
+                output=MinskyRiskOutput(
+                    minsky_score=round(minsky_score, 4),
+                    minsky_stage=stage,
+                    risk_level=risk,
+                    fii_flow_average=round(fii_ma, 4),
+                    dii_flow_average=round(dii_ma, 4),
+                    flow_imbalance=round(flow_imbalance, 4),
+                )
+            )
         except Exception as e:
-            return {"status": "error", "error": str(e)}
+            return MinskyRiskResponse(status="error", error=str(e))

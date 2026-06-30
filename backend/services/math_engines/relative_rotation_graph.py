@@ -8,8 +8,25 @@ Quadrants: Leading, Weakening, Lagging, Improving.
 
 from __future__ import annotations
 import math
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel
 
+class SectorRRGResponse(BaseModel):
+    rs_ratio: float
+    rs_momentum: float
+    quadrant: str
+    trend: str
+    rs_ratio_history: List[float]
+    rs_momentum_history: Optional[List[float]] = None
+    error: Optional[str] = None
+
+class RRGResponse(BaseModel):
+    sectors: Dict[str, SectorRRGResponse]
+    ranked_sectors: List[str]
+    leading_sectors: List[str]
+    lagging_sectors: List[str]
+    improving_sectors: List[str]
+    weakening_sectors: List[str]
 
 def _normalize_series(series: list[float], window: int = 10) -> list[float]:
     """
@@ -114,7 +131,7 @@ def compute_rrg_vectors(
     benchmark_returns: list[float],
     rs_period: int = 10,
     momentum_period: int = 14,
-) -> dict:
+) -> RRGResponse:
     """
     Compute JdK RS-Ratio and RS-Momentum for each sector vs benchmark.
 
@@ -133,18 +150,18 @@ def compute_rrg_vectors(
             'rs_ratio_history': list[float],  # last 10 values for tail drawing
         }
     """
-    results: dict[str, dict] = {}
+    results: dict[str, SectorRRGResponse] = {}
 
     for sector, returns in sector_returns.items():
         if len(returns) < 2:
-            results[sector] = {
-                "rs_ratio": 100.0,
-                "rs_momentum": 100.0,
-                "quadrant": "LAGGING",
-                "trend": "INSUFFICIENT_DATA",
-                "rs_ratio_history": [],
-                "error": "Insufficient data",
-            }
+            results[sector] = SectorRRGResponse(
+                rs_ratio=100.0,
+                rs_momentum=100.0,
+                quadrant="LAGGING",
+                trend="INSUFFICIENT_DATA",
+                rs_ratio_history=[],
+                error="Insufficient data",
+            )
             continue
 
         # Align lengths
@@ -184,30 +201,30 @@ def compute_rrg_vectors(
         else:
             trend = "STABLE"
 
-        results[sector] = {
-            "rs_ratio": round(current_ratio, 2),
-            "rs_momentum": round(current_momentum, 2),
-            "quadrant": quadrant,
-            "trend": trend,
-            "rs_ratio_history": [round(x, 2) for x in history_ratio],
-            "rs_momentum_history": [round(x, 2) for x in history_momentum],
-        }
+        results[sector] = SectorRRGResponse(
+            rs_ratio=round(current_ratio, 2),
+            rs_momentum=round(current_momentum, 2),
+            quadrant=quadrant,
+            trend=trend,
+            rs_ratio_history=[round(x, 2) for x in history_ratio],
+            rs_momentum_history=[round(x, 2) for x in history_momentum],
+        )
 
     # Summary: rank sectors by quadrant priority
     quadrant_order = {"LEADING": 1, "IMPROVING": 2, "WEAKENING": 3, "LAGGING": 4}
     ranked = sorted(
         results.items(),
-        key=lambda x: (quadrant_order.get(x[1].get("quadrant", "LAGGING"), 4), -x[1].get("rs_ratio", 0))
+        key=lambda x: (quadrant_order.get(x[1].quadrant, 4), -x[1].rs_ratio)
     )
 
-    return {
-        "sectors": results,
-        "ranked_sectors": [s for s, _ in ranked],
-        "leading_sectors": [s for s, v in results.items() if v.get("quadrant") == "LEADING"],
-        "lagging_sectors": [s for s, v in results.items() if v.get("quadrant") == "LAGGING"],
-        "improving_sectors": [s for s, v in results.items() if v.get("quadrant") == "IMPROVING"],
-        "weakening_sectors": [s for s, v in results.items() if v.get("quadrant") == "WEAKENING"],
-    }
+    return RRGResponse(
+        sectors=results,
+        ranked_sectors=[s for s, _ in ranked],
+        leading_sectors=[s for s, v in results.items() if v.quadrant == "LEADING"],
+        lagging_sectors=[s for s, v in results.items() if v.quadrant == "LAGGING"],
+        improving_sectors=[s for s, v in results.items() if v.quadrant == "IMPROVING"],
+        weakening_sectors=[s for s, v in results.items() if v.quadrant == "WEAKENING"],
+    )
 
 
 if __name__ == "__main__":
@@ -225,9 +242,9 @@ if __name__ == "__main__":
 
     rrg = compute_rrg_vectors(sectors, benchmark)
     logging.info("RRG Results:")
-    for s, v in rrg["sectors"].items():
-        logging.info(f"  {s}: RS-Ratio={v['rs_ratio']:.1f}, RS-Mom={v['rs_momentum']:.1f}, Quadrant={v['quadrant']}")
-    logging.info(f"Leading: {rrg['leading_sectors']}")
-    logging.info(f"Lagging: {rrg['lagging_sectors']}")
-    assert set(rrg["sectors"].keys()) == set(sectors.keys())
+    for s, v in rrg.sectors.items():
+        logging.info(f"  {s}: RS-Ratio={v.rs_ratio:.1f}, RS-Mom={v.rs_momentum:.1f}, Quadrant={v.quadrant}")
+    logging.info(f"Leading: {rrg.leading_sectors}")
+    logging.info(f"Lagging: {rrg.lagging_sectors}")
+    assert set(rrg.sectors.keys()) == set(sectors.keys())
     logging.info("All relative_rotation_graph tests passed.")

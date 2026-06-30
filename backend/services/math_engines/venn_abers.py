@@ -17,7 +17,22 @@ falling back to the raw uncalibrated confidence.
 """
 from __future__ import annotations
 import logging
-from typing import Any
+from typing import Any, List, Dict, Optional
+from pydantic import BaseModel
+
+class VennAbersOutput(BaseModel):
+    raw_confidence: float
+    calibrated_confidence: float
+    confidence_interval: List[float]
+    sample_size: int
+    method: str
+    min_required: Optional[int] = None
+    calibration_shift: Optional[float] = None
+
+class VennAbersResponse(BaseModel):
+    status: str
+    error: Optional[str] = None
+    output: Optional[VennAbersOutput] = None
 
 from services.math_engines.protocol import InferenceEngine
 
@@ -36,7 +51,7 @@ class VennAbersEngine(InferenceEngine):
     def tags(cls) -> set[str]:
         return {"confidence_modifier", "calibration"}
 
-    def compute(self, ticker: str, data: dict, session: Any = None) -> dict:
+    def compute(self, ticker: str, data: dict, session: Any = None) -> VennAbersResponse:
         """Calibrate a raw confidence value using historical labeled outcomes.
 
         data keys:
@@ -45,10 +60,10 @@ class VennAbersEngine(InferenceEngine):
         """
         raw_conf = data.get("raw_confidence")
         if raw_conf is None:
-            return {"status": "error", "error": "raw_confidence required in data"}
+            return VennAbersResponse(status="error", error="raw_confidence required in data")
 
         if session is None:
-            return {"status": "error", "error": "DB session required"}
+            return VennAbersResponse(status="error", error="DB session required")
 
         try:
             from database import AnalysisHistory
@@ -72,16 +87,17 @@ class VennAbersEngine(InferenceEngine):
             rows = query.all()
 
             if len(rows) < MIN_SAMPLES:
-                return {
-                    "status": "insufficient_data",
-                    "output": {
-                        "calibrated_confidence": float(raw_conf),
-                        "confidence_interval": [float(raw_conf), float(raw_conf)],
-                        "sample_size": len(rows),
-                        "min_required": MIN_SAMPLES,
-                        "method": "passthrough",
-                    },
-                }
+                return VennAbersResponse(
+                    status="insufficient_data",
+                    output=VennAbersOutput(
+                        calibrated_confidence=float(raw_conf),
+                        confidence_interval=[float(raw_conf), float(raw_conf)],
+                        sample_size=len(rows),
+                        min_required=MIN_SAMPLES,
+                        method="passthrough",
+                        raw_confidence=float(raw_conf)
+                    ),
+                )
 
             X = np.array([float(r[0]) for r in rows], dtype=np.float64)
             y = np.array([1.0 if r[1] else 0.0 for r in rows], dtype=np.float64)
@@ -106,18 +122,18 @@ class VennAbersEngine(InferenceEngine):
             iso_hi.fit(X_hi, y_hi)
             p_hi = float(iso_hi.predict([float(raw_conf)])[0])
 
-            return {
-                "status": "ok",
-                "output": {
-                    "raw_confidence": round(float(raw_conf), 4),
-                    "calibrated_confidence": round(calibrated, 4),
-                    "confidence_interval": [round(min(p_lo, p_hi), 4), round(max(p_lo, p_hi), 4)],
-                    "sample_size": len(rows),
-                    "method": "venn_abers_isotonic",
-                    "calibration_shift": round(calibrated - float(raw_conf), 4),
-                },
-            }
+            return VennAbersResponse(
+                status="ok",
+                output=VennAbersOutput(
+                    raw_confidence=round(float(raw_conf), 4),
+                    calibrated_confidence=round(calibrated, 4),
+                    confidence_interval=[round(min(p_lo, p_hi), 4), round(max(p_lo, p_hi), 4)],
+                    sample_size=len(rows),
+                    method="venn_abers_isotonic",
+                    calibration_shift=round(calibrated - float(raw_conf), 4),
+                ),
+            )
 
         except Exception as e:
             logger.warning("[venn_abers] error: %s", e)
-            return {"status": "error", "error": str(e)}
+            return VennAbersResponse(status="error", error=str(e))

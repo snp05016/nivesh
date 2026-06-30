@@ -13,9 +13,30 @@ Cold-start guard: returns insufficient_data when sample < MIN_SAMPLES.
 """
 from __future__ import annotations
 import logging
-from typing import Any
+from typing import Any, List, Dict, Optional
+from pydantic import BaseModel
 
 from services.math_engines.protocol import InferenceEngine
+
+class ReliabilityBin(BaseModel):
+    bin: str
+    count: int
+    avg_predicted: float
+    avg_actual: float
+    gap: float
+
+class CalibrationOutput(BaseModel):
+    sample_size: int
+    min_required: Optional[int] = None
+    brier_score: Optional[float] = None
+    ece: Optional[float] = None
+    interpretation: Optional[str] = None
+    reliability_bins: Optional[List[ReliabilityBin]] = None
+
+class CalibrationResponse(BaseModel):
+    status: str
+    error: Optional[str] = None
+    output: Optional[CalibrationOutput] = None
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +53,7 @@ class CalibrationMetricsEngine(InferenceEngine):
     def tags(cls) -> set[str]:
         return {"risk_metric", "calibration"}
 
-    def compute(self, ticker: str, data: dict, session: Any = None) -> dict:
+    def compute(self, ticker: str, data: dict, session: Any = None) -> CalibrationResponse:
         """Compute Brier Score and ECE from resolved AnalysisHistory.
 
         data keys:
@@ -40,7 +61,7 @@ class CalibrationMetricsEngine(InferenceEngine):
           - ticker_only (bool, default False): filter to this ticker only
         """
         if session is None:
-            return {"status": "error", "error": "DB session required"}
+            return CalibrationResponse(status="error", error="DB session required")
 
         try:
             from database import AnalysisHistory
@@ -64,15 +85,15 @@ class CalibrationMetricsEngine(InferenceEngine):
             rows = query.all()
 
             if len(rows) < MIN_SAMPLES:
-                return {
-                    "status": "insufficient_data",
-                    "output": {
-                        "sample_size": len(rows),
-                        "min_required": MIN_SAMPLES,
-                        "brier_score": None,
-                        "ece": None,
-                    },
-                }
+                return CalibrationResponse(
+                    status="insufficient_data",
+                    output=CalibrationOutput(
+                        sample_size=len(rows),
+                        min_required=MIN_SAMPLES,
+                        brier_score=None,
+                        ece=None,
+                    ),
+                )
 
             predicted = np.array([float(r[0]) for r in rows], dtype=np.float64)
             actual = np.array([1.0 if r[1] else 0.0 for r in rows], dtype=np.float64)
@@ -104,20 +125,20 @@ class CalibrationMetricsEngine(InferenceEngine):
                     "gap": round(gap, 4),
                 })
 
-            return {
-                "status": "ok",
-                "output": {
-                    "brier_score": round(brier, 6),
-                    "ece": round(ece, 6),
-                    "sample_size": len(rows),
-                    "interpretation": _interpret(brier, ece),
-                    "reliability_bins": bin_details,
-                },
-            }
+            return CalibrationResponse(
+                status="ok",
+                output=CalibrationOutput(
+                    brier_score=round(brier, 6),
+                    ece=round(ece, 6),
+                    sample_size=len(rows),
+                    interpretation=_interpret(brier, ece),
+                    reliability_bins=[ReliabilityBin(**b) for b in bin_details],
+                ),
+            )
 
         except Exception as e:
             logger.warning("[calibration_metrics] error: %s", e)
-            return {"status": "error", "error": str(e)}
+            return CalibrationResponse(status="error", error=str(e))
 
 
 def _interpret(brier: float, ece: float) -> str:

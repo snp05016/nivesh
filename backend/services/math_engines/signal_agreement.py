@@ -8,6 +8,26 @@ vector cosine agreement to produce a confidence-weighted composite.
 
 from __future__ import annotations
 import math
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
+
+class SignalBreakdown(BaseModel):
+    raw_signal: float
+    weight: float
+    weighted_contribution: float
+    label: str
+
+class SignalAgreementResponse(BaseModel):
+    composite_signal: float
+    weighted_signal: float
+    confidence_multiplier: float
+    agreement_score: float
+    pairwise_agreement: float
+    direction: str
+    signal_breakdown: Dict[str, SignalBreakdown]
+    conflicts: List[str]
+    high_confidence: bool
+    description: str
 
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
@@ -45,7 +65,7 @@ def compute_signal_agreement(
     sentiment_signal: float,
     macro_signal: float,
     weights: dict[str, float] | None = None,
-) -> dict:
+) -> SignalAgreementResponse:
     """
     Vector agreement multiplier across four signal dimensions.
 
@@ -126,12 +146,12 @@ def compute_signal_agreement(
 
     # Per-signal breakdown
     signal_breakdown = {
-        name: {
-            "raw_signal": round(val, 4),
-            "weight": round(wt, 3),
-            "weighted_contribution": round(val * wt, 4),
-            "label": "BULLISH" if val > 0.1 else ("BEARISH" if val < -0.1 else "NEUTRAL"),
-        }
+        name: SignalBreakdown(
+            raw_signal=round(val, 4),
+            weight=round(wt, 3),
+            weighted_contribution=round(val * wt, 4),
+            label="BULLISH" if val > 0.1 else ("BEARISH" if val < -0.1 else "NEUTRAL"),
+        )
         for name, val, wt in zip(signal_names, signal_values, signal_weights)
     }
 
@@ -142,22 +162,22 @@ def compute_signal_agreement(
             if j > i and s1 * s2 < 0 and abs(s1) > 0.2 and abs(s2) > 0.2:
                 conflicts.append(f"{n1} vs {n2}")
 
-    return {
-        "composite_signal": round(composite, 4),
-        "weighted_signal": round(weighted_signal, 4),
-        "confidence_multiplier": round(confidence_multiplier, 4),
-        "agreement_score": round(agreement_score, 4),
-        "pairwise_agreement": round(pairwise_agreement, 4),
-        "direction": direction,
-        "signal_breakdown": signal_breakdown,
-        "conflicts": conflicts,
-        "high_confidence": agreement_score > 0.75,
-        "description": (
+    return SignalAgreementResponse(
+        composite_signal=round(composite, 4),
+        weighted_signal=round(weighted_signal, 4),
+        confidence_multiplier=round(confidence_multiplier, 4),
+        agreement_score=round(agreement_score, 4),
+        pairwise_agreement=round(pairwise_agreement, 4),
+        direction=direction,
+        signal_breakdown=signal_breakdown,
+        conflicts=conflicts,
+        high_confidence=agreement_score > 0.75,
+        description=(
             f"Signals {direction} with {agreement_score:.0%} agreement "
             f"and {confidence_multiplier:.2f}x confidence multiplier."
             + (f" Conflicts: {', '.join(conflicts)}." if conflicts else "")
         ),
-    }
+    )
 
 
 if __name__ == "__main__":
@@ -168,11 +188,11 @@ if __name__ == "__main__":
         sentiment_signal=0.5,
         macro_signal=0.4,
     )
-    logging.info(f"All bullish: composite={result['composite_signal']:.3f}, "
-          f"agreement={result['agreement_score']:.2%}, "
-          f"direction={result['direction']}")
-    assert result["direction"] in {"BULLISH", "MILD_BULLISH"}
-    assert result["confidence_multiplier"] > 0.7
+    logging.info(f"All bullish: composite={result.composite_signal:.3f}, "
+          f"agreement={result.agreement_score:.2%}, "
+          f"direction={result.direction}")
+    assert result.direction in {"BULLISH", "MILD_BULLISH"}
+    assert result.confidence_multiplier > 0.7
 
     # Conflicting signals
     result2 = compute_signal_agreement(
@@ -181,15 +201,15 @@ if __name__ == "__main__":
         sentiment_signal=0.3,
         macro_signal=-0.5,
     )
-    logging.info(f"Mixed signals: composite={result2['composite_signal']:.3f}, "
-          f"agreement={result2['agreement_score']:.2%}, "
-          f"conflicts={result2['conflicts']}")
-    assert result2["confidence_multiplier"] < 0.8
-    assert len(result2["conflicts"]) > 0
+    logging.info(f"Mixed signals: composite={result2.composite_signal:.3f}, "
+          f"agreement={result2.agreement_score:.2%}, "
+          f"conflicts={result2.conflicts}")
+    assert result2.confidence_multiplier < 0.8
+    assert len(result2.conflicts) > 0
 
     # All bearish
     result3 = compute_signal_agreement(-0.7, -0.8, -0.6, -0.5)
-    logging.info(f"All bearish: direction={result3['direction']}, high_conf={result3['high_confidence']}")
-    assert result3["direction"] in {"BEARISH", "MILD_BEARISH"}
+    logging.info(f"All bearish: direction={result3.direction}, high_conf={result3.high_confidence}")
+    assert result3.direction in {"BEARISH", "MILD_BEARISH"}
 
     logging.info("All signal_agreement tests passed.")

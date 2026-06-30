@@ -3,7 +3,11 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel
+
+class ShockPropagationResponse(BaseModel):
+    propagated_shocks: Dict[str, float]
 
 def fetch_historical_returns(tickers: list[str], period: str = "2y") -> dict[str, np.ndarray]:
     """Fetch daily returns for a list of tickers via yfinance."""
@@ -109,7 +113,7 @@ def conditional_shock_propagation(
     factor_cov: np.ndarray,
     factor_names: list[str],
     factor_means: Optional[dict[str, float]] = None,
-) -> dict[str, float]:
+) -> ShockPropagationResponse:
     """MSCI/BlackRock conditional expectation propagation (§2).
     
     Given shocks to core factors f1, compute expected moves in
@@ -135,7 +139,7 @@ def conditional_shock_propagation(
     unshocked_indices = [factor_names.index(f) for f in unshocked_factors if f in factor_names]
     
     if not shocked_indices or not unshocked_indices:
-        return {f: 0.0 for f in unshocked_factors}
+        return ShockPropagationResponse(propagated_shocks={f: 0.0 for f in unshocked_factors})
     
     sigma_11 = factor_cov[np.ix_(shocked_indices, shocked_indices)]
     sigma_21 = factor_cov[np.ix_(unshocked_indices, shocked_indices)]
@@ -157,4 +161,4 @@ def conditional_shock_propagation(
     result = {}
     for i, idx in enumerate(unshocked_indices):
         result[factor_names[idx]] = float(propagated[i])
-    return result
+    return ShockPropagationResponse(propagated_shocks=result)

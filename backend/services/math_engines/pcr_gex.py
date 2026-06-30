@@ -8,6 +8,31 @@ GEX: Net dealer gamma exposure — tells how market makers will hedge and
 """
 
 from __future__ import annotations
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
+
+class PCRSignalResponse(BaseModel):
+    pcr: float
+    volume_pcr: Optional[float]
+    sentiment: str
+    description: str
+    total_put_oi: int
+    total_call_oi: int
+    total_put_volume: int
+    total_call_volume: int
+    contrarian_signal: bool
+
+class StrikeGex(BaseModel):
+    strike: float
+    gex: float
+
+class GEXSignalResponse(BaseModel):
+    gex: float
+    regime: str
+    description: str
+    key_strikes: List[StrikeGex]
+    gamma_flip_point: Optional[float]
+    spot_price: float
 
 
 def compute_pcr(option_chain: dict) -> float:
@@ -34,7 +59,7 @@ def compute_pcr(option_chain: dict) -> float:
     return round(total_put_oi / total_call_oi, 4)
 
 
-def compute_pcr_with_signal(option_chain: dict) -> dict:
+def compute_pcr_with_signal(option_chain: dict) -> PCRSignalResponse:
     """
     PCR with market sentiment interpretation.
 
@@ -72,17 +97,17 @@ def compute_pcr_with_signal(option_chain: dict) -> dict:
         sentiment = "EXTREMELY_BULLISH"
         description = "Very high call OI — excessive optimism, potential contrarian sell"
 
-    return {
-        "pcr": round(pcr_oi, 4),
-        "volume_pcr": round(pcr_vol, 4) if pcr_vol != float("inf") else None,
-        "sentiment": sentiment,
-        "description": description,
-        "total_put_oi": total_put_oi,
-        "total_call_oi": total_call_oi,
-        "total_put_volume": total_put_vol,
-        "total_call_volume": total_call_vol,
-        "contrarian_signal": sentiment in {"EXTREMELY_BEARISH", "EXTREMELY_BULLISH"},
-    }
+    return PCRSignalResponse(
+        pcr=round(pcr_oi, 4),
+        volume_pcr=round(pcr_vol, 4) if pcr_vol != float("inf") else None,
+        sentiment=sentiment,
+        description=description,
+        total_put_oi=total_put_oi,
+        total_call_oi=total_call_oi,
+        total_put_volume=total_put_vol,
+        total_call_volume=total_call_vol,
+        contrarian_signal=sentiment in {"EXTREMELY_BEARISH", "EXTREMELY_BULLISH"},
+    )
 
 
 def compute_gex(option_chain: dict, spot_price: float) -> float:
@@ -120,7 +145,7 @@ def compute_gex(option_chain: dict, spot_price: float) -> float:
     return round(gex_calls - gex_puts, 2)
 
 
-def compute_gex_with_signal(option_chain: dict, spot_price: float) -> dict:
+def compute_gex_with_signal(option_chain: dict, spot_price: float) -> GEXSignalResponse:
     """
     GEX with directional interpretation.
 
@@ -152,7 +177,7 @@ def compute_gex_with_signal(option_chain: dict, spot_price: float) -> dict:
     # Find strikes with highest absolute GEX (gamma walls/flip points)
     sorted_strikes = sorted(gex_by_strike.items(), key=lambda x: abs(x[1]), reverse=True)
     key_strikes = [
-        {"strike": s, "gex": round(g, 2)} for s, g in sorted_strikes[:5]
+        StrikeGex(strike=s, gex=round(g, 2)) for s, g in sorted_strikes[:5]
     ]
 
     if net_gex > 0:
@@ -170,14 +195,14 @@ def compute_gex_with_signal(option_chain: dict, spot_price: float) -> dict:
             flip_point = (sorted_all[i][0] + sorted_all[i + 1][0]) / 2
             break
 
-    return {
-        "gex": round(net_gex, 2),
-        "regime": regime,
-        "description": description,
-        "key_strikes": key_strikes,
-        "gamma_flip_point": round(flip_point, 2) if flip_point else None,
-        "spot_price": spot_price,
-    }
+    return GEXSignalResponse(
+        gex=round(net_gex, 2),
+        regime=regime,
+        description=description,
+        key_strikes=key_strikes,
+        gamma_flip_point=round(flip_point, 2) if flip_point else None,
+        spot_price=spot_price,
+    )
 
 
 if __name__ == "__main__":
@@ -199,11 +224,11 @@ if __name__ == "__main__":
     assert pcr > 0
 
     pcr_sig = compute_pcr_with_signal(sample_chain)
-    logging.info(f"PCR signal: {pcr_sig['sentiment']} — {pcr_sig['description']}")
+    logging.info(f"PCR signal: {pcr_sig.sentiment} — {pcr_sig.description}")
 
     gex = compute_gex(sample_chain, spot_price=19950.0)
     logging.info(f"GEX: {gex}")
 
     gex_sig = compute_gex_with_signal(sample_chain, spot_price=19950.0)
-    logging.info(f"GEX regime: {gex_sig['regime']} — {gex_sig['description']}")
+    logging.info(f"GEX regime: {gex_sig.regime} — {gex_sig.description}")
     logging.info("All pcr_gex tests passed.")

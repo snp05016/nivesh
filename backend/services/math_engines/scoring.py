@@ -1,7 +1,16 @@
 """Risk scoring layer for stress test outputs (§12)."""
 from __future__ import annotations
 import numpy as np
-from typing import Any
+from typing import Any, Dict, List, Optional
+from pydantic import BaseModel
+
+class RiskScoresResponse(BaseModel):
+    risk_score: float
+    stress_score: float
+    macro_fragility: float
+    liquidity_score: float
+    tail_risk_score: float
+
 
 def sigmoid(x: float, midpoint: float = 50.0, steepness: float = 0.1) -> float:
     """Sigmoid mapping to 0-100 scale."""
@@ -58,7 +67,7 @@ def compute_all_scores(
     liquidity_score_raw: float = 50.0,
     skewness: float = 0.0,
     kurtosis: float = 0.0,
-) -> dict[str, float]:
+) -> RiskScoresResponse:
     """Compute all 6 risk scores for a stress test scenario."""
     # Cornish-Fisher Expansion for tail risk (Worst Case Loss)
     z_c = 2.326
@@ -73,12 +82,12 @@ def compute_all_scores(
     # Calculate the Cornish-Fisher CVaR
     cf_cvar_99_pct = Z_CF * sigma if sigma > 0 else cvar_99_pct
     
-    return {
-        "risk_score": compute_risk_score(portfolio_vol_annualized),
-        "stress_score": compute_stress_score(cf_cvar_99_pct),
-        "macro_fragility": compute_macro_fragility_score(macro_betas),
-        "liquidity_score": round(max(0.0, min(100.0, liquidity_score_raw)), 1),
-        "tail_risk_score": compute_tail_risk_score(
+    return RiskScoresResponse(
+        risk_score=compute_risk_score(portfolio_vol_annualized),
+        stress_score=compute_stress_score(cf_cvar_99_pct),
+        macro_fragility=compute_macro_fragility_score(macro_betas),
+        liquidity_score=round(max(0.0, min(100.0, liquidity_score_raw)), 1),
+        tail_risk_score=compute_tail_risk_score(
             abs(parametric_var_95_pct), abs(cf_cvar_99_pct)
         ),
-    }
+    )

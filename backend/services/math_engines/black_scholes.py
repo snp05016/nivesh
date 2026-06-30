@@ -1,4 +1,9 @@
 import math
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
+
+class BlackScholesResponse(BaseModel):
+    price: float
 
 def norm_cdf(x):
     """Cumulative distribution function for standard normal distribution."""
@@ -26,19 +31,19 @@ def black_scholes_price(S, K, T, r, sigma, option_type="call"):
         option_type (str): "call" or "put"
         
     Returns:
-        float: Option price
+        BlackScholesResponse: Option price
     """
     if T <= 0:
         if option_type == "call":
-            return max(0.0, S - K)
+            return BlackScholesResponse(price=max(0.0, S - K))
         else:
-            return max(0.0, K - S)
+            return BlackScholesResponse(price=max(0.0, K - S))
             
     if sigma <= 0:
         if option_type == "call":
-            return max(0.0, S - K * math.exp(-r * T))
+            return BlackScholesResponse(price=max(0.0, S - K * math.exp(-r * T)))
         else:
-            return max(0.0, K * math.exp(-r * T) - S)
+            return BlackScholesResponse(price=max(0.0, K * math.exp(-r * T) - S))
 
     d1, d2 = calculate_d1_d2(S, K, T, r, sigma)
     
@@ -49,4 +54,4 @@ def black_scholes_price(S, K, T, r, sigma, option_type="call"):
     else:
         raise ValueError("option_type must be 'call' or 'put'")
         
-    return price
+    return BlackScholesResponse(price=price)

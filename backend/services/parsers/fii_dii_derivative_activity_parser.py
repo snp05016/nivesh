@@ -4,9 +4,28 @@ Parser for daily FII/DII sectoral derivative activity reports.
 
 import pandas as pd
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
+
+class SectoralActivityResponse(BaseModel):
+    buy_value: float
+    sell_value: float
+
+class AggregatedActivityResponse(BaseModel):
+    total_fii_buy: float = 0.0
+    total_fii_sell: float = 0.0
+    total_dii_buy: float = 0.0
+    total_dii_sell: float = 0.0
+    sectoral_breakdown: Optional[Dict[str, SectoralActivityResponse]] = None
+
+class FiiDiiPipelineResponse(BaseModel):
+    status: str
+    raw_data_shape: Optional[tuple] = None
+    aggregated_data: Optional[AggregatedActivityResponse] = None
+    report_summary: Optional[str] = None
+    message: Optional[str] = None
 
 def parse_fii_dii_report(file_path: str) -> pd.DataFrame:
     """
@@ -33,7 +52,7 @@ def parse_fii_dii_report(file_path: str) -> pd.DataFrame:
         logger.error(f"Error parsing FII/DII report: {e}")
         raise
 
-def aggregate_sectoral_activity(df: pd.DataFrame) -> Dict[str, Any]:
+def aggregate_sectoral_activity(df: pd.DataFrame) -> AggregatedActivityResponse:
     """
     Aggregates FII/DII derivative activity by sector and instrument type.
     
@@ -41,42 +60,43 @@ def aggregate_sectoral_activity(df: pd.DataFrame) -> Dict[str, Any]:
         df (pd.DataFrame): Cleaned FII/DII activity dataframe.
         
     Returns:
-        Dict[str, Any]: Aggregated data metrics.
+        AggregatedActivityResponse: Aggregated data metrics.
     """
     if df.empty:
-        return {}
+        return AggregatedActivityResponse()
 
-    summary = {
-        'total_fii_buy': df[df.get('client_type', '') == 'FII'].get('buy_value', pd.Series(dtype=float)).sum(),
-        'total_fii_sell': df[df.get('client_type', '') == 'FII'].get('sell_value', pd.Series(dtype=float)).sum(),
-        'total_dii_buy': df[df.get('client_type', '') == 'DII'].get('buy_value', pd.Series(dtype=float)).sum(),
-        'total_dii_sell': df[df.get('client_type', '') == 'DII'].get('sell_value', pd.Series(dtype=float)).sum(),
+    summary_args = {
+        'total_fii_buy': float(df[df.get('client_type', '') == 'FII'].get('buy_value', pd.Series(dtype=float)).sum()),
+        'total_fii_sell': float(df[df.get('client_type', '') == 'FII'].get('sell_value', pd.Series(dtype=float)).sum()),
+        'total_dii_buy': float(df[df.get('client_type', '') == 'DII'].get('buy_value', pd.Series(dtype=float)).sum()),
+        'total_dii_sell': float(df[df.get('client_type', '') == 'DII'].get('sell_value', pd.Series(dtype=float)).sum()),
     }
     
     if 'sector' in df.columns:
         sector_group = df.groupby('sector')
-        summary['sectoral_breakdown'] = sector_group.agg({
+        sectoral_dict = sector_group.agg({
             'buy_value': 'sum', 
             'sell_value': 'sum'
         }).to_dict(orient='index')
+        summary_args['sectoral_breakdown'] = {k: SectoralActivityResponse(**v) for k, v in sectoral_dict.items()}
         
-    return summary
+    return AggregatedActivityResponse(**summary_args)
 
-def generate_daily_summary(aggregated_data: Dict[str, Any]) -> str:
+def generate_daily_summary(aggregated_data: AggregatedActivityResponse) -> str:
     """
     Generates a human-readable summary report from aggregated data.
     
     Args:
-        aggregated_data (Dict[str, Any]): The aggregated FII/DII data.
+        aggregated_data (AggregatedActivityResponse): The aggregated FII/DII data.
         
     Returns:
         str: Textual summary report.
     """
-    if not aggregated_data:
+    if not aggregated_data or (aggregated_data.total_fii_buy == 0.0 and aggregated_data.total_dii_buy == 0.0 and not aggregated_data.sectoral_breakdown):
         return "No data available for daily summary."
         
-    fii_net = aggregated_data.get('total_fii_buy', 0) - aggregated_data.get('total_fii_sell', 0)
-    dii_net = aggregated_data.get('total_dii_buy', 0) - aggregated_data.get('total_dii_sell', 0)
+    fii_net = aggregated_data.total_fii_buy - aggregated_data.total_fii_sell
+    dii_net = aggregated_data.total_dii_buy - aggregated_data.total_dii_sell
     
     report_lines = [
         "📊 FII/DII Daily Derivative Activity Summary",
@@ -86,17 +106,17 @@ def generate_daily_summary(aggregated_data: Dict[str, Any]) -> str:
         ""
     ]
     
-    sectoral = aggregated_data.get('sectoral_breakdown', {})
+    sectoral = aggregated_data.sectoral_breakdown or {}
     if sectoral:
         report_lines.append("Sectoral Highlights:")
         report_lines.append("-" * 20)
         for sector, values in sectoral.items():
-            net = values.get('buy_value', 0) - values.get('sell_value', 0)
+            net = values.buy_value - values.sell_value
             report_lines.append(f" - {sector.title()}: {'Positive' if net > 0 else 'Negative'} (Net: ₹ {net:,.2f})")
             
     return "\n".join(report_lines)
 
-def fii_dii_summarization_pipeline(file_path: str) -> Dict[str, Any]:
+def fii_dii_summarization_pipeline(file_path: str) -> FiiDiiPipelineResponse:
     """
     End-to-end pipeline to parse, aggregate, and summarize FII/DII daily sectoral derivative reports.
     
@@ -104,7 +124,7 @@ def fii_dii_summarization_pipeline(file_path: str) -> Dict[str, Any]:
         file_path (str): Path to the input report file.
         
     Returns:
-        Dict[str, Any]: A dictionary containing the raw df, aggregated dict, and text report.
+        FiiDiiPipelineResponse: A structured object containing the raw df info, aggregated dict, and text report.
     """
     logger.info("Starting FII/DII summarization pipeline...")
     
@@ -115,15 +135,15 @@ def fii_dii_summarization_pipeline(file_path: str) -> Dict[str, Any]:
         
         logger.info("Pipeline executed successfully.")
         
-        return {
-            'status': 'success',
-            'raw_data_shape': df.shape,
-            'aggregated_data': aggregated_data,
-            'report_summary': report_text
-        }
+        return FiiDiiPipelineResponse(
+            status='success',
+            raw_data_shape=df.shape,
+            aggregated_data=aggregated_data,
+            report_summary=report_text
+        )
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")
-        return {
-            'status': 'error',
-            'message': str(e)
-        }
+        return FiiDiiPipelineResponse(
+            status='error',
+            message=str(e)
+        )

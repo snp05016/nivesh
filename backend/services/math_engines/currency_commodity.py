@@ -12,7 +12,24 @@ Sector mapping is hardcoded (same approach as monsoon modifier).
 """
 from __future__ import annotations
 import logging
-from typing import Any
+from typing import Any, Dict, List, Optional
+from pydantic import BaseModel
+
+class ComponentDetail(BaseModel):
+    trend_pct: float
+    sector_sensitivity: float
+    modifier: float
+
+class CurrencyCommodityOutput(BaseModel):
+    modifier: float
+    sector: Optional[str] = None
+    components: Optional[Dict[str, ComponentDetail]] = None
+    description: Optional[str] = None
+    reason: Optional[str] = None
+
+class CurrencyCommodityResponse(BaseModel):
+    status: str
+    output: CurrencyCommodityOutput
 
 from services.math_engines.protocol import InferenceEngine
 
@@ -59,7 +76,7 @@ class CurrencyCommodityEngine(InferenceEngine):
     def tags(cls) -> set[str]:
         return {"confidence_modifier", "macro"}
 
-    def compute(self, ticker: str, data: dict, session: Any = None) -> dict:
+    def compute(self, ticker: str, data: dict, session: Any = None) -> CurrencyCommodityResponse:
         """Compute currency/commodity spillover confidence modifier.
 
         data keys:
@@ -68,13 +85,13 @@ class CurrencyCommodityEngine(InferenceEngine):
         """
         sector = (data.get("sector") or "").upper().strip()
         if not sector:
-            return {
-                "status": "ok",
-                "output": {
-                    "modifier": 0.0,
-                    "reason": "No sector provided, no spillover adjustment.",
-                },
-            }
+            return CurrencyCommodityResponse(
+                status="ok",
+                output=CurrencyCommodityOutput(
+                    modifier=0.0,
+                    reason="No sector provided, no spillover adjustment.",
+                ),
+            )
 
         lookback = data.get("lookback_days", 30)
 
@@ -96,37 +113,37 @@ class CurrencyCommodityEngine(InferenceEngine):
 
             components = {}
             if usdinr_trend is not None:
-                components["usdinr"] = {
-                    "trend_pct": round(usdinr_trend, 2),
-                    "sector_sensitivity": usdinr_sens,
-                    "modifier": round(usdinr_mod, 4),
-                }
+                components["usdinr"] = ComponentDetail(
+                    trend_pct=round(usdinr_trend, 2),
+                    sector_sensitivity=usdinr_sens,
+                    modifier=round(usdinr_mod, 4),
+                )
             if crude_trend is not None:
-                components["crude_oil"] = {
-                    "trend_pct": round(crude_trend, 2),
-                    "sector_sensitivity": crude_sens,
-                    "modifier": round(crude_mod, 4),
-                }
+                components["crude_oil"] = ComponentDetail(
+                    trend_pct=round(crude_trend, 2),
+                    sector_sensitivity=crude_sens,
+                    modifier=round(crude_mod, 4),
+                )
 
-            return {
-                "status": "ok",
-                "output": {
-                    "modifier": total_modifier,
-                    "sector": sector,
-                    "components": components,
-                    "description": _describe(sector, total_modifier, usdinr_trend, crude_trend),
-                },
-            }
+            return CurrencyCommodityResponse(
+                status="ok",
+                output=CurrencyCommodityOutput(
+                    modifier=total_modifier,
+                    sector=sector,
+                    components=components,
+                    description=_describe(sector, total_modifier, usdinr_trend, crude_trend),
+                ),
+            )
 
         except Exception as e:
             logger.warning("[currency_commodity] error: %s", e)
-            return {
-                "status": "ok",
-                "output": {
-                    "modifier": 0.0,
-                    "reason": f"Could not fetch macro data: {e}",
-                },
-            }
+            return CurrencyCommodityResponse(
+                status="ok",
+                output=CurrencyCommodityOutput(
+                    modifier=0.0,
+                    reason=f"Could not fetch macro data: {e}",
+                ),
+            )
 
 
 def _fetch_trend(symbol: str, lookback_days: int) -> float | None:

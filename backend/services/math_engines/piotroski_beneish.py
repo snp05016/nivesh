@@ -7,9 +7,37 @@ Beneish M-score: detects earnings manipulation. Score < -2.22 means likely NOT m
 
 from __future__ import annotations
 import logging
+from pydantic import BaseModel
+from typing import Any, Dict, List, Optional
+
+class PiotroskiFScoreResponse(BaseModel):
+    score: int
+    max_score: int
+    signals: Dict[str, bool]
+    rating: str
+    roa: float
+    gross_margin: float
+
+class BeneishVariables(BaseModel):
+    DSRI: float
+    GMI: float
+    AQI: float
+    SGI: float
+    DEPI: float
+    SGAI: float
+    Accruals: float
+    LEVI: float
+
+class BeneishMScoreResponse(BaseModel):
+    m_score: float
+    manipulator: bool
+    threshold: float
+    interpretation: str
+    variables: BeneishVariables
 
 
-def compute_piotroski_fscore(fundamentals: dict) -> dict:
+
+def compute_piotroski_fscore(fundamentals: dict) -> PiotroskiFScoreResponse:
     """
     Compute Piotroski F-score (0–9) from financial fundamentals.
 
@@ -100,17 +128,17 @@ def compute_piotroski_fscore(fundamentals: dict) -> dict:
     else:
         rating = "WEAK"
 
-    return {
-        "score": score,
-        "max_score": 9,
-        "signals": signals,
-        "rating": rating,
-        "roa": round(roa, 4),
-        "gross_margin": round(gross_margin, 4),
-    }
+    return PiotroskiFScoreResponse(
+        score=score,
+        max_score=9,
+        signals=signals,
+        rating=rating,
+        roa=round(roa, 4),
+        gross_margin=round(gross_margin, 4),
+    )
 
 
-def compute_beneish_mscore(financials: dict) -> dict:
+def compute_beneish_mscore(financials: dict) -> BeneishMScoreResponse:
     """
     Compute Beneish M-score from financial data.
     M-score < -2.22 → likely NOT manipulating.
@@ -217,22 +245,22 @@ def compute_beneish_mscore(financials: dict) -> dict:
     else:
         interpretation = "LOW manipulation risk (likely not manipulating)"
 
-    return {
-        "m_score": round(m_score, 4),
-        "manipulator": manipulator,
-        "threshold": -2.22,
-        "interpretation": interpretation,
-        "variables": {
-            "DSRI": round(dsri, 4),
-            "GMI": round(gmi, 4),
-            "AQI": round(aqi, 4),
-            "SGI": round(sgi, 4),
-            "DEPI": round(depi, 4),
-            "SGAI": round(sgai, 4),
-            "Accruals": round(accruals, 4),
-            "LEVI": round(levi, 4),
-        },
-    }
+    return BeneishMScoreResponse(
+        m_score=round(m_score, 4),
+        manipulator=manipulator,
+        threshold=-2.22,
+        interpretation=interpretation,
+        variables=BeneishVariables(
+            DSRI=round(dsri, 4),
+            GMI=round(gmi, 4),
+            AQI=round(aqi, 4),
+            SGI=round(sgi, 4),
+            DEPI=round(depi, 4),
+            SGAI=round(sgai, 4),
+            Accruals=round(accruals, 4),
+            LEVI=round(levi, 4),
+        ),
+    )
 
 
 if __name__ == "__main__":
@@ -256,8 +284,8 @@ if __name__ == "__main__":
         "prev_revenue": 35_00_00_000,
     }
     f_result = compute_piotroski_fscore(sample_fundamentals)
-    logging.info(f"Piotroski F-score: {f_result['score']}/9 — {f_result['rating']}")
-    assert 0 <= f_result["score"] <= 9
+    logging.info(f"Piotroski F-score: {f_result.score}/9 — {f_result.rating}")
+    assert 0 <= f_result.score <= 9
 
     sample_financials = {
         "revenue": 40_00_00_000,
@@ -282,5 +310,5 @@ if __name__ == "__main__":
         "securities": 1_00_00_000,
     }
     m_result = compute_beneish_mscore(sample_financials)
-    logging.info(f"Beneish M-score: {m_result['m_score']} — {m_result['interpretation']}")
+    logging.info(f"Beneish M-score: {m_result.m_score} — {m_result.interpretation}")
     logging.info("All piotroski_beneish tests passed.")

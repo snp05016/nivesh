@@ -8,7 +8,27 @@ Falls back to a statistical Z-score method if sklearn is unavailable.
 from __future__ import annotations
 import logging
 import math
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel
+
+class AnomalyDetail(BaseModel):
+    index: int
+    price: float
+    volume: int
+    return_pct: float
+    anomaly_score: float
+    type: str
+
+class VolumeAnomalyResponse(BaseModel):
+    anomaly_indices: List[int]
+    anomaly_scores: List[float]
+    anomaly_mask: List[bool]
+    method: str
+    num_anomalies: int
+    description: str
+    anomaly_details: Optional[List[AnomalyDetail]] = None
+    contamination: Optional[float] = None
+    total_periods: Optional[int] = None
 
 
 def _zscore_anomalies(
@@ -44,7 +64,7 @@ def detect_volume_anomalies(
     prices: list[float],
     volumes: list[float],
     contamination: float = 0.05,
-) -> dict:
+) -> VolumeAnomalyResponse:
     """
     Detect unusual price/volume combinations using IsolationForest.
 
@@ -62,14 +82,14 @@ def detect_volume_anomalies(
     if len(prices) != len(volumes):
         raise ValueError("prices and volumes must have same length")
     if len(prices) < 10:
-        return {
-            "anomaly_indices": [],
-            "anomaly_scores": [],
-            "anomaly_mask": [False] * len(prices),
-            "method": "insufficient_data",
-            "num_anomalies": 0,
-            "description": "Need at least 10 data points",
-        }
+        return VolumeAnomalyResponse(
+            anomaly_indices=[],
+            anomaly_scores=[],
+            anomaly_mask=[False] * len(prices),
+            method="insufficient_data",
+            num_anomalies=0,
+            description="Need at least 10 data points",
+        )
 
     n = len(prices)
     returns = [0.0] + [(prices[i] - prices[i - 1]) / prices[i - 1] if prices[i - 1] else 0.0 for i in range(1, n)]
@@ -106,30 +126,30 @@ def detect_volume_anomalies(
     # Enrich with context
     anomaly_details = []
     for idx in anomaly_indices:
-        detail = {
-            "index": idx,
-            "price": round(prices[idx], 2),
-            "volume": int(volumes[idx]),
-            "return_pct": round(returns[idx] * 100, 2),
-            "anomaly_score": round(anomaly_scores[idx], 4),
-            "type": _classify_anomaly(returns[idx], volumes[idx], volumes),
-        }
+        detail = AnomalyDetail(
+            index=idx,
+            price=round(prices[idx], 2),
+            volume=int(volumes[idx]),
+            return_pct=round(returns[idx] * 100, 2),
+            anomaly_score=round(anomaly_scores[idx], 4),
+            type=_classify_anomaly(returns[idx], volumes[idx], volumes),
+        )
         anomaly_details.append(detail)
 
-    return {
-        "anomaly_indices": anomaly_indices,
-        "anomaly_scores": [round(s, 4) for s in anomaly_scores],
-        "anomaly_mask": anomaly_mask,
-        "anomaly_details": anomaly_details,
-        "method": method,
-        "num_anomalies": num_anomalies,
-        "contamination": contamination,
-        "total_periods": n,
-        "description": (
+    return VolumeAnomalyResponse(
+        anomaly_indices=anomaly_indices,
+        anomaly_scores=[round(s, 4) for s in anomaly_scores],
+        anomaly_mask=anomaly_mask,
+        anomaly_details=anomaly_details,
+        method=method,
+        num_anomalies=num_anomalies,
+        contamination=contamination,
+        total_periods=n,
+        description=(
             f"Detected {num_anomalies} volume/price anomalies out of {n} periods "
             f"using {method}"
         ),
-    }
+    )
 
 
 def _classify_anomaly(price_return: float, volume: float, all_volumes: list[float]) -> str:

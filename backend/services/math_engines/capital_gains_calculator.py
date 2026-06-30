@@ -1,5 +1,10 @@
 import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
+
+class CapitalGainsResponse(BaseModel):
+    STCG: float
+    LTCG: float
 
 class Transaction:
     def __init__(self, date: datetime.date, txn_type: str, units: float, price: float):
@@ -8,7 +13,7 @@ class Transaction:
         self.units = float(units)
         self.price = float(price)
 
-def calculate_capital_gains(transactions: List[Transaction], long_term_days: int = 365) -> Dict[str, float]:
+def calculate_capital_gains(transactions: List[Transaction], long_term_days: int = 365) -> CapitalGainsResponse:
     """
     Calculate STCG and LTCG using the FIFO (First-In-First-Out) method.
     
@@ -59,7 +64,7 @@ def calculate_capital_gains(transactions: List[Transaction], long_term_days: int
             if units_to_sell > 1e-6:
                 raise ValueError(f"Invalid transaction sequence: Attempted to sell {txn.units} but only enough buys for the difference. Unsold remainder: {units_to_sell}")
                 
-    return {
-        "STCG": round(stcg, 4),
-        "LTCG": round(ltcg, 4)
-    }
+    return CapitalGainsResponse(
+        STCG=round(stcg, 4),
+        LTCG=round(ltcg, 4)
+    )

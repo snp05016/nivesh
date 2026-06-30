@@ -6,6 +6,24 @@ Tries FinBERT first; falls back to a financial lexicon to score text.
 from __future__ import annotations
 import logging
 import re
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
+
+class TextSentiment(BaseModel):
+    text: str
+    score: float
+    label: str
+
+class NewsSentimentResponse(BaseModel):
+    scores: List[float]
+    per_text: List[TextSentiment]
+    aggregate_score: float
+    sentiment: str
+    method: str
+    bullish_count: int
+    bearish_count: int
+    neutral_count: int
+    total_texts: int
 
 
 # ── Financial lexicon ─────────────────────────────────────────────────────────
@@ -140,7 +158,7 @@ def _try_finbert(texts: list[str]) -> list[float] | None:
         return None
 
 
-def analyze_news_sentiment(texts: list[str]) -> dict:
+def analyze_news_sentiment(texts: list[str]) -> NewsSentimentResponse:
     """
     Analyze financial news sentiment for a list of texts.
 
@@ -155,15 +173,17 @@ def analyze_news_sentiment(texts: list[str]) -> dict:
             'method', 'bullish_count', 'bearish_count', and 'neutral_count'.
     """
     if not texts:
-        return {
-            "scores": [],
-            "aggregate_score": 0.0,
-            "sentiment": "NEUTRAL",
-            "method": "none",
-            "bullish_count": 0,
-            "bearish_count": 0,
-            "neutral_count": 0,
-        }
+        return NewsSentimentResponse(
+            scores=[],
+            per_text=[],
+            aggregate_score=0.0,
+            sentiment="NEUTRAL",
+            method="none",
+            bullish_count=0,
+            bearish_count=0,
+            neutral_count=0,
+            total_texts=0,
+        )
 
     # Try FinBERT first
     finbert_scores = _try_finbert(texts)
@@ -193,25 +213,25 @@ def analyze_news_sentiment(texts: list[str]) -> dict:
         sentiment = "NEUTRAL"
 
     per_text = [
-        {
-            "text": t[:120] + "..." if len(t) > 120 else t,
-            "score": round(s, 4),
-            "label": "BULLISH" if s > 0.1 else ("BEARISH" if s < -0.1 else "NEUTRAL"),
-        }
+        TextSentiment(
+            text=t[:120] + "..." if len(t) > 120 else t,
+            score=round(s, 4),
+            label="BULLISH" if s > 0.1 else ("BEARISH" if s < -0.1 else "NEUTRAL"),
+        )
         for t, s in zip(texts, scores)
     ]
 
-    return {
-        "scores": [round(s, 4) for s in scores],
-        "per_text": per_text,
-        "aggregate_score": aggregate,
-        "sentiment": sentiment,
-        "method": method,
-        "bullish_count": bullish,
-        "bearish_count": bearish,
-        "neutral_count": neutral,
-        "total_texts": len(texts),
-    }
+    return NewsSentimentResponse(
+        scores=[round(s, 4) for s in scores],
+        per_text=per_text,
+        aggregate_score=aggregate,
+        sentiment=sentiment,
+        method=method,
+        bullish_count=bullish,
+        bearish_count=bearish,
+        neutral_count=neutral,
+        total_texts=len(texts),
+    )
 
 
 if __name__ == "__main__":
@@ -226,13 +246,13 @@ if __name__ == "__main__":
     ]
 
     result = analyze_news_sentiment(sample_texts)
-    logging.info(f"Method: {result['method']}")
-    logging.info(f"Aggregate score: {result['aggregate_score']:.3f} — {result['sentiment']}")
-    logging.info(f"Bullish: {result['bullish_count']}, Bearish: {result['bearish_count']}, Neutral: {result['neutral_count']}")
-    for pt in result["per_text"]:
-        logging.info(f"  [{pt['label']:12}] {pt['score']:+.3f}  {pt['text'][:60]}...")
+    logging.info(f"Method: {result.method}")
+    logging.info(f"Aggregate score: {result.aggregate_score:.3f} — {result.sentiment}")
+    logging.info(f"Bullish: {result.bullish_count}, Bearish: {result.bearish_count}, Neutral: {result.neutral_count}")
+    for pt in result.per_text:
+        logging.info(f"  [{pt.label:12}] {pt.score:+.3f}  {pt.text[:60]}...")
 
-    assert result["method"] in {"finbert", "lexicon"}
-    assert -1.0 <= result["aggregate_score"] <= 1.0
-    assert result["sentiment"] in {"BULLISH", "MILD_BULLISH", "NEUTRAL", "MILD_BEARISH", "BEARISH"}
+    assert result.method in {"finbert", "lexicon"}
+    assert -1.0 <= result.aggregate_score <= 1.0
+    assert result.sentiment in {"BULLISH", "MILD_BULLISH", "NEUTRAL", "MILD_BEARISH", "BEARISH"}
     logging.info("All finbert_sentiment tests passed.")

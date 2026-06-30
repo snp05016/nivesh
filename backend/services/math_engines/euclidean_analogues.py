@@ -6,6 +6,24 @@ Finds historical price patterns that most closely resemble the current window.
 
 from __future__ import annotations
 import math
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
+
+class AnalogueResult(BaseModel):
+    rank: int
+    date: str
+    distance: float
+    similarity_pct: float
+    method: str
+
+class ConsensusResponse(BaseModel):
+    consensus_return: float
+    bullish_count: int
+    bearish_count: int
+    total_analogues: Optional[int]
+    confidence: float
+    horizon: str
+    description: str
 
 
 def _normalize_window(prices: list[float]) -> list[float]:
@@ -77,7 +95,7 @@ def find_historical_analogues(
     historical_windows: list[tuple[str, list[float]]],
     n_analogues: int = 5,
     method: str = "euclidean",
-) -> list[dict]:
+) -> List[AnalogueResult]:
     """
     Find N closest historical price patterns to the current window.
 
@@ -127,26 +145,26 @@ def find_historical_analogues(
     top_n = scored[:n_analogues]
 
     # Compute similarity percentage (1 / (1 + distance)) normalized
-    results: list[dict] = []
+    results: List[AnalogueResult] = []
     for rank, item in enumerate(top_n, start=1):
         sim_pct = round(1.0 / (1.0 + item["distance"]) * 100, 2)
-        result = {
-            "rank": rank,
-            "date": item["date"],
-            "distance": item["distance"],
-            "similarity_pct": sim_pct,
-            "method": method,
-        }
+        result = AnalogueResult(
+            rank=rank,
+            date=item["date"],
+            distance=item["distance"],
+            similarity_pct=sim_pct,
+            method=method,
+        )
         results.append(result)
 
     return results
 
 
 def compute_analogue_consensus(
-    analogues: list[dict],
+    analogues: List[AnalogueResult],
     historical_forward_returns: dict[str, float],
     horizon_label: str = "30d",
-) -> dict:
+) -> ConsensusResponse:
     """
     Given analogue dates and a lookup of forward returns, compute consensus.
 
@@ -161,22 +179,23 @@ def compute_analogue_consensus(
     """
     returns_found = []
     for analogue in analogues:
-        fwd = historical_forward_returns.get(analogue["date"])
+        fwd = historical_forward_returns.get(analogue.date)
         if fwd is not None:
-            returns_found.append(fwd * analogue["similarity_pct"] / 100)
+            returns_found.append(fwd * analogue.similarity_pct / 100)
 
     if not returns_found:
-        return {
-            "consensus_return": 0.0,
-            "bullish_count": 0,
-            "bearish_count": 0,
-            "confidence": 0.0,
-            "horizon": horizon_label,
-            "description": "No forward return data available for analogues",
-        }
+        return ConsensusResponse(
+            consensus_return=0.0,
+            bullish_count=0,
+            bearish_count=0,
+            total_analogues=0,
+            confidence=0.0,
+            horizon=horizon_label,
+            description="No forward return data available for analogues",
+        )
 
     # Weighted average by similarity
-    total_weight = sum(a["similarity_pct"] / 100 for a in analogues[:len(returns_found)])
+    total_weight = sum(a.similarity_pct / 100 for a in analogues[:len(returns_found)])
     if total_weight == 0:
         consensus = sum(returns_found) / len(returns_found)
     else:
@@ -186,18 +205,18 @@ def compute_analogue_consensus(
     bearish = sum(1 for r in returns_found if r < 0)
     confidence = max(bullish, bearish) / len(returns_found) * 100 if returns_found else 0
 
-    return {
-        "consensus_return": round(consensus, 4),
-        "bullish_count": bullish,
-        "bearish_count": bearish,
-        "total_analogues": len(returns_found),
-        "confidence": round(confidence, 2),
-        "horizon": horizon_label,
-        "description": (
+    return ConsensusResponse(
+        consensus_return=round(consensus, 4),
+        bullish_count=bullish,
+        bearish_count=bearish,
+        total_analogues=len(returns_found),
+        confidence=round(confidence, 2),
+        horizon=horizon_label,
+        description=(
             f"Analogue consensus: {consensus:.1%} expected return over {horizon_label}. "
             f"{bullish}/{len(returns_found)} analogues bullish."
         ),
-    }
+    )
 
 
 if __name__ == "__main__":
@@ -216,15 +235,15 @@ if __name__ == "__main__":
     analogues_e = find_historical_analogues(current, hist, n_analogues=3, method="euclidean")
     logging.info("Euclidean analogues:")
     for a in analogues_e:
-        logging.info(f"  Rank {a['rank']}: {a['date']} distance={a['distance']:.4f} sim={a['similarity_pct']}%")
+        logging.info(f"  Rank {a.rank}: {a.date} distance={a.distance:.4f} sim={a.similarity_pct}%")
     assert len(analogues_e) <= 3
 
     analogues_c = find_historical_analogues(current, hist, n_analogues=3, method="cosine")
     logging.info("Cosine analogues:")
     for a in analogues_c:
-        logging.info(f"  Rank {a['rank']}: {a['date']} distance={a['distance']:.4f} sim={a['similarity_pct']}%")
+        logging.info(f"  Rank {a.rank}: {a.date} distance={a.distance:.4f} sim={a.similarity_pct}%")
 
     fwd_returns = {f"2020-0{i+1}-01": random.uniform(-0.1, 0.15) for i in range(9)}
     consensus = compute_analogue_consensus(analogues_e, fwd_returns)
-    logging.info(f"Consensus: {consensus['description']}")
+    logging.info(f"Consensus: {consensus.description}")
     logging.info("All euclidean_analogues tests passed.")

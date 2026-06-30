@@ -6,13 +6,37 @@ Evaluates earnings surprises and estimate revision momentum to signal drift.
 
 from __future__ import annotations
 import math
+from pydantic import BaseModel
+from typing import Any, Dict, List, Optional
+
+class PeadSignalResponse(BaseModel):
+    actual_eps: Optional[float] = None
+    consensus_eps: float
+    surprise_pct: float
+    sue_score: float
+    drift_direction: str
+    expected_drift_pct: Optional[float] = None
+    expected_drift_magnitude: float
+    signal: str
+    description: str
+    drift_horizon_days: Optional[int] = None
+
+class RevisionMomentumResponse(BaseModel):
+    revision_direction: str
+    revision_pct: Optional[float] = None
+    revision_velocity: float
+    current_estimate: Optional[float] = None
+    past_estimate: Optional[float] = None
+    lookback_periods: Optional[int] = None
+    signal: str
+    description: str
 
 
 def compute_pead_signal(
     actual_eps: float,
     consensus_eps: float,
     historical_surprise_pcts: list[float],
-) -> dict:
+) -> PeadSignalResponse:
     """
     Calculates the Post-Earnings Announcement Drift (PEAD) signal.
 
@@ -28,14 +52,16 @@ def compute_pead_signal(
             'expected_drift_magnitude', 'signal', and 'description'.
     """
     if consensus_eps == 0:
-        return {
-            "surprise_pct": 0.0,
-            "sue_score": 0.0,
-            "drift_direction": "NEUTRAL",
-            "expected_drift_magnitude": 0.0,
-            "signal": "NEUTRAL",
-            "description": "Consensus EPS is zero — cannot compute surprise",
-        }
+        return PeadSignalResponse(
+            actual_eps=actual_eps,
+            consensus_eps=consensus_eps,
+            surprise_pct=0.0,
+            sue_score=0.0,
+            drift_direction="NEUTRAL",
+            expected_drift_magnitude=0.0,
+            signal="NEUTRAL",
+            description="Consensus EPS is zero — cannot compute surprise",
+        )
 
     # Earnings surprise percentage
     surprise_pct = (actual_eps - consensus_eps) / abs(consensus_eps) * 100
@@ -88,24 +114,24 @@ def compute_pead_signal(
         0.0
     )
 
-    return {
-        "actual_eps": actual_eps,
-        "consensus_eps": consensus_eps,
-        "surprise_pct": round(surprise_pct, 2),
-        "sue_score": round(sue_score, 3),
-        "drift_direction": drift_direction,
-        "expected_drift_pct": round(signed_magnitude, 2),
-        "expected_drift_magnitude": round(expected_drift_magnitude, 2),
-        "signal": signal,
-        "description": description,
-        "drift_horizon_days": 60,
-    }
+    return PeadSignalResponse(
+        actual_eps=actual_eps,
+        consensus_eps=consensus_eps,
+        surprise_pct=round(surprise_pct, 2),
+        sue_score=round(sue_score, 3),
+        drift_direction=drift_direction,
+        expected_drift_pct=round(signed_magnitude, 2),
+        expected_drift_magnitude=round(expected_drift_magnitude, 2),
+        signal=signal,
+        description=description,
+        drift_horizon_days=60,
+    )
 
 
 def compute_revision_momentum(
     eps_estimates_history: list[float],
     analyst_count: int = 10,
-) -> dict:
+) -> RevisionMomentumResponse:
     """
     Computes earnings estimate revision momentum.
     Tracks the direction and velocity of analyst estimate changes over time.
@@ -119,12 +145,12 @@ def compute_revision_momentum(
         dict: A dictionary containing 'revision_direction', 'revision_velocity', and 'signal'.
     """
     if len(eps_estimates_history) < 2:
-        return {
-            "revision_direction": "STABLE",
-            "revision_velocity": 0.0,
-            "signal": "NEUTRAL",
-            "description": "Insufficient estimate history",
-        }
+        return RevisionMomentumResponse(
+            revision_direction="STABLE",
+            revision_velocity=0.0,
+            signal="NEUTRAL",
+            description="Insufficient estimate history",
+        )
 
     # Direction: compare current vs 3-period-ago
     lookback = min(3, len(eps_estimates_history) - 1)
@@ -155,16 +181,16 @@ def compute_revision_momentum(
         direction = "STABLE"
         signal = "NEUTRAL"
 
-    return {
-        "revision_direction": direction,
-        "revision_pct": round(pct_change, 2),
-        "revision_velocity": round(velocity, 3),
-        "current_estimate": current_est,
-        "past_estimate": past_est,
-        "lookback_periods": lookback,
-        "signal": signal,
-        "description": f"EPS estimates {direction.lower()} by {pct_change:.1f}% over {lookback} periods",
-    }
+    return RevisionMomentumResponse(
+        revision_direction=direction,
+        revision_pct=round(pct_change, 2),
+        revision_velocity=round(velocity, 3),
+        current_estimate=current_est,
+        past_estimate=past_est,
+        lookback_periods=lookback,
+        signal=signal,
+        description=f"EPS estimates {direction.lower()} by {pct_change:.1f}% over {lookback} periods",
+    )
 
 
 if __name__ == "__main__":
@@ -174,8 +200,8 @@ if __name__ == "__main__":
         consensus_eps=20.00,
         historical_surprise_pcts=[-2.0, 3.0, 1.5, -1.0, 4.0],
     )
-    logging.info(f"Strong beat: signal={result['signal']}, drift={result['expected_drift_pct']}%, SUE={result['sue_score']}")
-    assert result["signal"] in {"BUY", "MILD_BUY"}
+    logging.info(f"Strong beat: signal={result.signal}, drift={result.expected_drift_pct}%, SUE={result.sue_score}")
+    assert result.signal in {"BUY", "MILD_BUY"}
 
     # Miss scenario
     result2 = compute_pead_signal(
@@ -183,12 +209,12 @@ if __name__ == "__main__":
         consensus_eps=20.00,
         historical_surprise_pcts=[1.0, 2.0, -1.0, 0.5, 1.5],
     )
-    logging.info(f"Miss: signal={result2['signal']}, drift={result2['expected_drift_pct']}%, SUE={result2['sue_score']}")
-    assert result2["signal"] in {"SELL", "MILD_SELL"}
+    logging.info(f"Miss: signal={result2.signal}, drift={result2.expected_drift_pct}%, SUE={result2.sue_score}")
+    assert result2.signal in {"SELL", "MILD_SELL"}
 
     # Revision momentum
     rev = compute_revision_momentum([18.0, 18.5, 19.0, 19.8, 20.5])
-    logging.info(f"Revision: {rev['revision_direction']}, velocity={rev['revision_velocity']}")
-    assert rev["signal"] in {"BULLISH", "MILD_BULLISH"}
+    logging.info(f"Revision: {rev.revision_direction}, velocity={rev.revision_velocity}")
+    assert rev.signal in {"BULLISH", "MILD_BULLISH"}
 
     logging.info("All eps_drift_model tests passed.")

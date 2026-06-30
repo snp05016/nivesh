@@ -9,8 +9,38 @@ from __future__ import annotations
 import logging
 import math
 import os
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel
 
+class FCFProjection(BaseModel):
+    year: int
+    fcf: float
+    pv_fcf: float
+    discount_factor: float
+
+class DCFAssumptions(BaseModel):
+    fcf: float
+    growth_rate_pct: float
+    terminal_growth_pct: float
+    years: int
+    beta: float
+    equity_risk_premium_pct: float
+
+class DCFValuationResponse(BaseModel):
+    intrinsic_value: float
+    per_share_value: Optional[float]
+    current_price: Optional[float]
+    margin_of_safety_pct: Optional[float]
+    rating: str
+    wacc: float
+    cost_of_equity: float
+    risk_free_rate: float
+    terminal_value: float
+    pv_terminal_value: float
+    pv_fcf_sum: float
+    terminal_value_pct_of_total: float
+    fcf_projections: List[FCFProjection]
+    assumptions: DCFAssumptions
 
 # Default Indian 10-year G-Sec yield (fallback if not fetched)
 _DEFAULT_RISK_FREE_RATE = float(os.getenv("DEFAULT_RISK_FREE_RATE", "0.068"))
@@ -55,7 +85,7 @@ def compute_dcf_valuation(
     tax_rate: float = 0.25,
     shares_outstanding: Optional[float] = None,
     current_price: Optional[float] = None,
-) -> dict:
+) -> DCFValuationResponse:
     """
     Pure mathematical DCF model using CAPM for discount rate.
 
@@ -109,12 +139,12 @@ def compute_dcf_valuation(
         discount_factor = (1 + wacc) ** t
         pv_fcf = projected_fcf / discount_factor
         pv_fcf_sum += pv_fcf
-        fcf_projections.append({
-            "year": t,
-            "fcf": round(projected_fcf, 2),
-            "pv_fcf": round(pv_fcf, 2),
-            "discount_factor": round(discount_factor, 4),
-        })
+        fcf_projections.append(FCFProjection(
+            year=t,
+            fcf=round(projected_fcf, 2),
+            pv_fcf=round(pv_fcf, 2),
+            discount_factor=round(discount_factor, 4),
+        ))
 
     # Terminal value (Gordon Growth Model)
     fcf_terminal_year = fcf * (1 + growth_rate) ** years
@@ -146,29 +176,29 @@ def compute_dcf_valuation(
     else:
         rating = "UNKNOWN"
 
-    return {
-        "intrinsic_value": round(intrinsic_value, 2),
-        "per_share_value": round(per_share, 2) if per_share else None,
-        "current_price": current_price,
-        "margin_of_safety_pct": margin_of_safety,
-        "rating": rating,
-        "wacc": round(wacc * 100, 4),  # as percentage
-        "cost_of_equity": round(cost_of_equity * 100, 4),
-        "risk_free_rate": round(risk_free_rate * 100, 4),
-        "terminal_value": round(terminal_value, 2),
-        "pv_terminal_value": round(pv_terminal, 2),
-        "pv_fcf_sum": round(pv_fcf_sum, 2),
-        "terminal_value_pct_of_total": round(pv_terminal / intrinsic_value * 100, 1) if intrinsic_value else 0,
-        "fcf_projections": fcf_projections,
-        "assumptions": {
-            "fcf": fcf,
-            "growth_rate_pct": round(growth_rate * 100, 2),
-            "terminal_growth_pct": round(terminal_growth * 100, 2),
-            "years": years,
-            "beta": beta,
-            "equity_risk_premium_pct": round(equity_risk_premium * 100, 2),
-        },
-    }
+    return DCFValuationResponse(
+        intrinsic_value=round(intrinsic_value, 2),
+        per_share_value=round(per_share, 2) if per_share else None,
+        current_price=current_price,
+        margin_of_safety_pct=margin_of_safety,
+        rating=rating,
+        wacc=round(wacc * 100, 4),  # as percentage
+        cost_of_equity=round(cost_of_equity * 100, 4),
+        risk_free_rate=round(risk_free_rate * 100, 4),
+        terminal_value=round(terminal_value, 2),
+        pv_terminal_value=round(pv_terminal, 2),
+        pv_fcf_sum=round(pv_fcf_sum, 2),
+        terminal_value_pct_of_total=round(pv_terminal / intrinsic_value * 100, 1) if intrinsic_value else 0.0,
+        fcf_projections=fcf_projections,
+        assumptions=DCFAssumptions(
+            fcf=fcf,
+            growth_rate_pct=round(growth_rate * 100, 2),
+            terminal_growth_pct=round(terminal_growth * 100, 2),
+            years=years,
+            beta=beta,
+            equity_risk_premium_pct=round(equity_risk_premium * 100, 2),
+        ),
+    )
 
 
 if __name__ == "__main__":
@@ -186,11 +216,11 @@ if __name__ == "__main__":
         shares_outstanding=366,  # crores of shares
         current_price=3500.0,   # INR per share
     )
-    logging.info(f"Intrinsic Value: ₹{result['intrinsic_value']:,.0f} Cr")
-    logging.info(f"Per Share: ₹{result['per_share_value']:,.2f}")
-    logging.info(f"Margin of Safety: {result['margin_of_safety_pct']:.1f}%")
-    logging.info(f"WACC: {result['wacc']:.2f}%")
-    logging.info(f"Rating: {result['rating']}")
-    assert result["intrinsic_value"] > 0
-    assert result["wacc"] > 0
+    logging.info(f"Intrinsic Value: ₹{result.intrinsic_value:,.0f} Cr")
+    logging.info(f"Per Share: ₹{result.per_share_value:,.2f}")
+    logging.info(f"Margin of Safety: {result.margin_of_safety_pct:.1f}%")
+    logging.info(f"WACC: {result.wacc:.2f}%")
+    logging.info(f"Rating: {result.rating}")
+    assert result.intrinsic_value > 0
+    assert result.wacc > 0
     logging.info("All deterministic_dcf tests passed.")
