@@ -544,7 +544,13 @@ struct PortfolioScreen: View {
             )
         }
         .sheet(isPresented: $showTransactionSheet) {
-            QuickTransactionSheet()
+            if let user = authManager.currentUser {
+                ManualTransactionEntrySheet(userId: user.userId) {
+                    Task {
+                        await viewModel.fetchData(userId: user.userId)
+                    }
+                }
+            }
         }
     }
 

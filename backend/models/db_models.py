@@ -36,6 +36,7 @@ class User(Base):
     net_worth_ledger            = relationship("NetWorthLedger",            back_populates="user", cascade="all, delete-orphan")
     earnings_alerts             = relationship("EarningsAlert",             back_populates="user", cascade="all, delete-orphan")
     analysis_jobs               = relationship("AnalysisJob",               back_populates="user", cascade="all, delete-orphan")
+    multi_asset_transactions    = relationship("PortfolioTransaction",      back_populates="user", cascade="all, delete-orphan")
 
 
 class Portfolio(Base):
@@ -108,6 +109,32 @@ class Transaction(Base):
         Index("ix_portfolio_transactions_ticker", "ticker"),
         Index("ix_portfolio_transactions_group_id", "group_id"),
         Index("ix_portfolio_transactions_date", "date"),
+    )
+
+
+class PortfolioTransaction(Base):
+    """Immutable ledger of multi-asset portfolio transactions (Stocks, MFs, Gold, FDs)."""
+    __tablename__ = "multi_asset_transactions"
+
+    id               = Column(Integer, primary_key=True, autoincrement=True)
+    user_id          = Column(Integer, ForeignKey("users.id"), nullable=False)
+    asset_type       = Column(String(20), nullable=False)  # STOCK, MF, GOLD, FD
+    symbol           = Column(String(50), nullable=False)  # Ticker, ISIN, or account
+    transaction_type = Column(String(20), nullable=False)  # BUY, SELL, DEPOSIT, WITHDRAWAL, MATURITY
+    quantity         = Column(Float, nullable=False)
+    price            = Column(Float, nullable=False)
+    fees             = Column(Float, default=0.0, server_default="0.0")
+    date             = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    notes            = Column(String(500), nullable=True)
+    created_at       = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="multi_asset_transactions")
+
+    __table_args__ = (
+        Index("ix_multi_asset_transactions_user_id", "user_id"),
+        Index("ix_multi_asset_transactions_asset_type", "asset_type"),
+        Index("ix_multi_asset_transactions_symbol", "symbol"),
+        Index("ix_multi_asset_transactions_date", "date"),
     )
 
 

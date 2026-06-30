@@ -500,8 +500,8 @@ class NetworkManager: ObservableObject {
     
     func addHolding(userId: Int, ticker: String, companyName: String, shares: Double, buyPrice: Double, purchaseDate: Date, notes: String, targetPrice: Double, transactionType: String = "BUY") async throws {
         struct Req: Encodable {
-            let user_id: Int; let ticker: String; let company_name: String; let shares: Double; let buy_price: Double
-            let purchase_date: String; let notes: String; let target_price: Double; let transaction_type: String
+            let user_id: Int; let ticker: String; let exchange: String; let company_name: String; let shares: Double; let buy_price: Double
+            let group_name: String; let purchase_date: String; let notes: String; let target_price: Double; let transaction_type: String
         }
         guard let url = URL(string: "\(baseURL)/portfolio") else { throw NetworkError.invalidURL }
         var request = authRequest(url)
@@ -510,8 +510,8 @@ class NetworkManager: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "dd-MMM-yyyy"
         let body = Req(
-            user_id: userId, ticker: ticker, company_name: companyName, shares: shares, buy_price: buyPrice,
-            purchase_date: formatter.string(from: purchaseDate), notes: notes, target_price: targetPrice,
+            user_id: userId, ticker: ticker, exchange: "NSE", company_name: companyName, shares: shares, buy_price: buyPrice,
+            group_name: "holdings", purchase_date: formatter.string(from: purchaseDate), notes: notes, target_price: targetPrice,
             transaction_type: transactionType.uppercased()
         )
         request.httpBody = try JSONEncoder().encode(body)

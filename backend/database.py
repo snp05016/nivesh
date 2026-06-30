@@ -89,7 +89,7 @@ from models.db_models import (  # noqa: E402
     NetWorthLedger, MarketErrorLog, EarningsAlert, log_market_error,
     EarningsErrorLog, log_earnings_error, BlockDeal, FIIDIIFlow,
     NotificationErrorLog, log_notification_error, AdvisorBiography,
-    TextAdvisoryInsight, IdeasErrorLog, log_ideas_error,
+    TextAdvisoryInsight, IdeasErrorLog, log_ideas_error, PortfolioTransaction,
 )
 
 # ---------------------------------------------------------------------------
