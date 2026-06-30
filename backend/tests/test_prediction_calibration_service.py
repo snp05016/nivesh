@@ -51,7 +51,7 @@ def _patch_get_session(TestSession):
         try:
             yield session
             session.commit()
-        except Exception:
+        except Exception as _e:
             session.rollback()
             raise
         finally:

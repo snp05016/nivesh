@@ -79,12 +79,12 @@ class TranscriptExtractor:
                 try:
                     transcript = transcript_list.find_manually_created_transcript([lang])
                     break
-                except Exception:
+                except Exception as _e:
                     pass
             if transcript is None:
                 try:
                     transcript = transcript_list.find_generated_transcript(["en", "en-IN"])
-                except Exception:
+                except Exception as _e:
                     transcript = transcript_list.find_transcript(
                         [t.language_code for t in transcript_list]
                     )

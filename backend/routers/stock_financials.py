@@ -152,7 +152,8 @@ def _sector_for_symbol(symbol: str) -> str:
                 return entry["sector"]
     except Exception as e:
         import logging
-        logging.warning(f"Swallowed exception: {e}")
+        logging.error(f"Error occurred: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
     return "Diversified"
 
 

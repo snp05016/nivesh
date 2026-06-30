@@ -73,7 +73,7 @@ def _cleanup(session, pred_ids, tickers):
                 StockUniverse.ticker.in_(tickers)
             ).delete(synchronize_session=False)
         session.commit()
-    except Exception:
+    except Exception as _e:
         session.rollback()
 
 

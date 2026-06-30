@@ -156,7 +156,7 @@ def _resolve_with_fallback(base_ticker: str, preferred_suffix: str) -> str:
             with _ticker_resolution_lock:
                 _ticker_resolution_cache[cache_key] = t1
             return t1
-    except Exception:
+    except Exception as _e:
         pass
         
     # Try fallback
@@ -166,7 +166,7 @@ def _resolve_with_fallback(base_ticker: str, preferred_suffix: str) -> str:
             with _ticker_resolution_lock:
                 _ticker_resolution_cache[cache_key] = t2
             return t2
-    except Exception:
+    except Exception as _e:
         pass
         
     with _ticker_resolution_lock:

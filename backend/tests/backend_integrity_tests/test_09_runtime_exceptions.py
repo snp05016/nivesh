@@ -133,7 +133,7 @@ def run():
     try:
         try:
             raise SystemExit(0)
-        except Exception:
+        except Exception as _e:
             runner.fail("SystemExit_not_swallowed",
                         "SystemExit was swallowed by 'except Exception:' — "
                         "bare 'except Exception:' in get_session() swallows graceful server shutdown. "
@@ -146,7 +146,7 @@ def run():
     try:
         try:
             raise KeyboardInterrupt()
-        except Exception:
+        except Exception as _e:
             runner.fail("KeyboardInterrupt_not_swallowed",
                         "KeyboardInterrupt swallowed by 'except Exception:' — "
                         "Ctrl+C on the server will not stop the uvicorn worker cleanly.")

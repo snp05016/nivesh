@@ -78,7 +78,7 @@ class CacheService:
             # Loop changed — close old connection lazily, create fresh one
             try:
                 await self._redis.aclose()
-            except Exception:
+            except Exception as _e:
                 pass
             self._redis = None
             self._redis_loop_id = None
@@ -146,7 +146,7 @@ class CacheService:
             try:
                 await r.delete(full_key)
                 return
-            except Exception:
+            except Exception as _e:
                 pass
                 
         if namespace in self._fallback_cache and key in self._fallback_cache[namespace]:
@@ -180,7 +180,7 @@ def _run_async_in_thread(coro):
 def sync_get(namespace: str, key: str) -> Optional[Any]:
     try:
         return _run_async_in_thread(cache.get(namespace, key))
-    except Exception:
+    except Exception as _e:
         # Ultimate fallback: per-process dict
         if namespace in cache._fallback_cache and key in cache._fallback_cache[namespace]:
             expiry, val = cache._fallback_cache[namespace][key]
@@ -194,7 +194,7 @@ def sync_set(namespace: str, key: str, value: Any, ttl: Optional[int] = None) ->
     try:
         _run_async_in_thread(cache.set(namespace, key, value, ttl))
         return
-    except Exception:
+    except Exception as _e:
         pass
     # Fallback: per-process dict
     if namespace not in cache._fallback_cache:
@@ -327,7 +327,7 @@ class UnifiedCacheService:
                 return None
             if age < effective_ttl:
                 return data.get("value")
-        except Exception:
+        except Exception as _e:
             pass
         return None
 
@@ -352,11 +352,11 @@ class UnifiedCacheService:
                     json.dump({"ts": time.time(), "ttl": ttl, "value": value}, f, cls=_SafeJSONEncoder)
                 os.replace(tmp_path, safe_path)
                 os.chmod(safe_path, 0o600)
-            except Exception:
+            except Exception as _e:
                 if os.path.exists(tmp_path):
                     os.unlink(tmp_path)
                 raise
-        except Exception:
+        except Exception as _e:
             pass
 
 

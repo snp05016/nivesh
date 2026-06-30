@@ -269,14 +269,14 @@ def run_stress_test_job(
     try:
         from dotenv import load_dotenv
         load_dotenv(override=True)
-    except Exception:
+    except Exception as _e:
         pass
 
     # Dispose parent's connection pool — child process must not share parent DB file descriptors
     try:
         from database import ENGINE
         ENGINE.dispose()
-    except Exception:
+    except Exception as _e:
         pass
 
     from services.stress_test import run_stress_test

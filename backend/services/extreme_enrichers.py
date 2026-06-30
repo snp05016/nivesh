@@ -81,7 +81,7 @@ def _momentum_score(ticker: str, exchange: str) -> int | None:
             return None
         ret = (prices[-1] - prices[0]) / prices[0] * 100
         return _clamp(50 + ret)                          # +50% → 100, -50% → 0
-    except Exception:
+    except Exception as _e:
         return None
 
 
@@ -96,7 +96,7 @@ def _low_volatility_score(ticker: str, exchange: str) -> int | None:
         rets = [(prices[i] - prices[i - 1]) / prices[i - 1] for i in range(1, len(prices))]
         vol = statistics.pstdev(rets) * 100               # daily % stdev
         return _clamp(100 - vol * 20)                     # 0% → 100, 5%+ → 0
-    except Exception:
+    except Exception as _e:
         return None
 
 
@@ -134,7 +134,7 @@ def _compute_factor_scores(
     try:
         from services.nse_data_provider import get_fundamentals
         f = get_fundamentals(ticker, exchange) or {}
-    except Exception:
+    except Exception as _e:
         f = {}
     scores = {
         "value":          _value_score(f, peers_info or []),
@@ -151,7 +151,7 @@ def _compute_piotroski(ticker: str) -> dict | None:
         from services.piotroski import compute_piotroski
         out = compute_piotroski(ticker)
         return out or None
-    except Exception:
+    except Exception as _e:
         return None
 
 
@@ -188,7 +188,7 @@ def _financial_trends(ticker: str, exchange: str, prefetch_data: dict | None = N
             return None
         return {"years": years, "revenue_cr": revenue,
                 "net_profit_cr": net_profit, "net_margin_pct": margin}
-    except Exception:
+    except Exception as _e:
         return None
 
 
@@ -206,7 +206,7 @@ def _ownership_trends(ticker: str) -> dict | None:
             return None
         return {"dates": [d for d, _ in points],
                 "promoter_pledged_pct": [round(float(p), 2) for _, p in points]}
-    except Exception:
+    except Exception as _e:
         return None
 
 
@@ -241,10 +241,10 @@ def _get_peers_info(ticker: str, exchange: str, prefetch_data: dict | None = Non
                     p_info = future.result()
                     if p_info:
                         peers_info.append(p_info)
-                except Exception:
+                except Exception as _e:
                     pass
         return peers_info
-    except Exception:
+    except Exception as _e:
         return []
 
 

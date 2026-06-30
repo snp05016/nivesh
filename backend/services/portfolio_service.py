@@ -180,7 +180,7 @@ def _nse_session():
     })
     try:
         s.get("https://www.nseindia.com", timeout=8)
-    except Exception:
+    except Exception as _e:
         pass
     return s
 

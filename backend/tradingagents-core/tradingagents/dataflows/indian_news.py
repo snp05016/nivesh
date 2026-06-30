@@ -233,7 +233,7 @@ def _nse_session() -> requests.Session:
     try:
         s.get(_NSE_BASE, timeout=8)
         s.get(f"{_NSE_BASE}/get-quotes/equity?symbol=NIFTY", timeout=5)
-    except Exception:
+    except Exception as _e:
         pass
     return s
 

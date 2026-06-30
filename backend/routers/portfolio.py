@@ -509,7 +509,8 @@ def morning_summary_endpoint(user_id: int, authorization: str = Header(None)):
                     indices_lines.append(f"{idx['name']}: {idx['value']:.2f} ({chg_str})")
         except Exception as e:
             import logging
-            logging.warning(f"Swallowed exception: {e}")
+            logging.error(f"Error occurred: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Internal server error")
 
         portfolio_text = "\n".join(holding_lines) if holding_lines else "No holdings found."
         movers_text = "\n".join(significant_movers_lines) if significant_movers_lines else "None today"
@@ -1171,7 +1172,8 @@ def portfolio_advisor_consensus(user_id: int, days: int = 7):
                         seen.add(ah.ticker)
             except Exception as e:
                 import logging
-                logging.warning(f"Swallowed exception: {e}")
+                logging.error(f"Error occurred: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Internal server error")
 
         # ── total_videos_processed ──────────────────────────────────────────
         total_videos_processed = len({r.video_id for r in rows})
@@ -1689,12 +1691,14 @@ def portfolio_risk_analysis_endpoint(user_id: int, authorization: str = Header(N
                                 daily[dstr] = float(val)
                         except Exception as e:
                             import logging
-                            logging.warning(f"Swallowed exception: {e}")
+                            logging.error(f"Error occurred: {e}", exc_info=True)
+                            raise HTTPException(status_code=500, detail="Internal server error")
                     if daily:
                         _return_series[ticker] = daily
             except Exception as e:
                 import logging
-                logging.warning(f"Swallowed exception: {e}")
+                logging.error(f"Error occurred: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Internal server error")
 
             stock_details.append({
                 "ticker": ticker,
@@ -1798,7 +1802,8 @@ def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)
                         latest_analyses[ticker] = data
                     except Exception as e:
                         import logging
-                        logging.warning(f"Swallowed exception: {e}")
+                        logging.error(f"Error occurred: {e}", exc_info=True)
+                        raise HTTPException(status_code=500, detail="Internal server error")
 
             # FII trend: last 4 analyses per ticker (most recent first)
             fii_histories: dict[str, list[float]] = {}
@@ -1815,7 +1820,8 @@ def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)
                             fiis.append(float(fii))
                     except Exception as e:
                         import logging
-                        logging.warning(f"Swallowed exception: {e}")
+                        logging.error(f"Error occurred: {e}", exc_info=True)
+                        raise HTTPException(status_code=500, detail="Internal server error")
                 fii_histories[ticker] = fiis
 
             cutoff = datetime.now(timezone.utc) - timedelta(days=30)
@@ -2122,12 +2128,14 @@ def trade_journal_add_endpoint(req: TradeJournalAddRequest, authorization: str =
                 entry.company_name = req.company_name
             except Exception as e:
                 import logging
-                logging.warning(f"Swallowed exception: {e}")
+                logging.error(f"Error occurred: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Internal server error")
             try:
                 entry.mood = req.mood
             except Exception as e:
                 import logging
-                logging.warning(f"Swallowed exception: {e}")
+                logging.error(f"Error occurred: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Internal server error")
             session.add(entry)
             session.commit()
             session.refresh(entry)
@@ -2215,12 +2223,14 @@ def trade_journal_update_endpoint(entry_id: int, req: TradeJournalUpdateRequest,
                 entry.mood = req.mood
             except Exception as e:
                 import logging
-                logging.warning(f"Swallowed exception: {e}")
+                logging.error(f"Error occurred: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Internal server error")
             try:
                 entry.updated_at = datetime.now(timezone.utc)
             except Exception as e:
                 import logging
-                logging.warning(f"Swallowed exception: {e}")
+                logging.error(f"Error occurred: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Internal server error")
             session.commit()
             session.refresh(entry)
             result = {
@@ -2239,7 +2249,8 @@ def trade_journal_update_endpoint(entry_id: int, req: TradeJournalUpdateRequest,
                 result["updated_at"] = upd.strftime("%Y-%m-%d %H:%M") if upd else None
             except Exception as e:
                 import logging
-                logging.warning(f"Swallowed exception: {e}")
+                logging.error(f"Error occurred: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Internal server error")
         return result
     except HTTPException:
         raise
@@ -2388,7 +2399,8 @@ def export_portfolio_pdf(user_id: int, authorization: str = Header(None)):
                             red_flag_list.append(f"{ticker}: High pledging {pledged:.1f}%")
                     except Exception as e:
                         import logging
-                        logging.warning(f"Swallowed exception: {e}")
+                        logging.error(f"Error occurred: {e}", exc_info=True)
+                        raise HTTPException(status_code=500, detail="Internal server error")
                 if ticker in bf_map:
                     red_flag_list.append(f"{ticker}: Bearish signal flip in last 30 days")
 

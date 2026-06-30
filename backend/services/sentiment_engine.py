@@ -281,7 +281,7 @@ def compute_cisi(
         raw = math.tanh(pc1) * 100.0
         cisi_score = round(max(-100.0, min(100.0, raw)), 2)
 
-    except Exception:
+    except Exception as _e:
         logger.warning("CISI computation failed, returning neutral", exc_info=True)
         return {
             "cisi_score": 0.0,

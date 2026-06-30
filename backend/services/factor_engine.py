@@ -451,5 +451,5 @@ def detect_market_regime(close_series: pd.Series) -> dict:
                 "confidence_multiplier": 1.0,
                 "regime_description": "Normal volatility (fallback: HV-21 15-40)",
             }
-    except Exception:
+    except Exception as _e:
         return default

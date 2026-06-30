@@ -179,7 +179,7 @@ def run():
     finally:
         try:
             s5.rollback()
-        except Exception:
+        except Exception as _e:
             pass
         s5.close()
 

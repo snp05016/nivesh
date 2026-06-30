@@ -33,7 +33,7 @@ if _SECTOR_PE_MAP_PATH and Path(_SECTOR_PE_MAP_PATH).exists():
     try:
         with open(_SECTOR_PE_MAP_PATH, "r") as _f:
             SECTOR_PE_MAP: dict = json.load(_f)
-    except Exception:
+    except Exception as _e:
         SECTOR_PE_MAP = _SECTOR_PE_MAP_DEFAULTS
 else:
     SECTOR_PE_MAP = _SECTOR_PE_MAP_DEFAULTS
@@ -93,7 +93,7 @@ if _NSE_TICKER_OVERRIDES_PATH and Path(_NSE_TICKER_OVERRIDES_PATH).exists():
     try:
         with open(_NSE_TICKER_OVERRIDES_PATH, "r") as _f:
             NSE_TICKER_OVERRIDES: dict = json.load(_f)
-    except Exception:
+    except Exception as _e:
         NSE_TICKER_OVERRIDES = _NSE_TICKER_OVERRIDES_DEFAULTS
 else:
     NSE_TICKER_OVERRIDES = _NSE_TICKER_OVERRIDES_DEFAULTS
@@ -135,5 +135,5 @@ def get_user_agent() -> str:
             from fake_useragent import UserAgent
             _ua_generator = UserAgent(os='mac os x', browsers=['chrome', 'safari'])
         return _ua_generator.random
-    except Exception:
+    except Exception as _e:
         return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"

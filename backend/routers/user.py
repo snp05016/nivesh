@@ -166,7 +166,8 @@ def watchlist_get_endpoint(user_id: int, authorization: str = Header(None)):
                         last_signal_date = sig_row.analysis_date
             except Exception as e:
                 import logging
-                logging.warning(f"Swallowed exception: {e}")
+                logging.error(f"Error occurred: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Internal server error")
 
             asm_gsm_status = "UNKNOWN"
             try:

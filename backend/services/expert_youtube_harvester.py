@@ -119,7 +119,7 @@ def _fetch_transcript(video_id: str) -> str:
         from youtube_transcript_api import YouTubeTranscriptApi  # type: ignore
         segs = YouTubeTranscriptApi.get_transcript(video_id, languages=["en", "hi"])
         return " ".join(s["text"] for s in segs if s.get("text"))
-    except Exception:
+    except Exception as _e:
         return ""
 
 
@@ -154,7 +154,7 @@ def harvest_youtube_transcripts(limit: int = 20) -> int:
                     success=False,
                     error=f"Catastrophic failure: {exc}",
                 )
-        except Exception:
+        except Exception as _e:
             pass
         return 0
 

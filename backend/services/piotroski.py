@@ -28,7 +28,7 @@ def compute_piotroski(ticker: str) -> dict:
     def get(df, row, col=0):
         try:
             return float(df.loc[row].iloc[col])
-        except Exception:
+        except Exception as _e:
             return None
 
     try:

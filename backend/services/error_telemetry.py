@@ -161,7 +161,7 @@ def log_diagnostic_error(
             )
             session.add(entry)
             session.commit()
-    except Exception:
+    except Exception as _e:
         # telemetry itself must never cascade
         pass
 
@@ -184,7 +184,7 @@ def log_diagnostic_error(
                 )
                 session.add(entry)
                 session.commit()
-        except Exception:
+        except Exception as _e:
             pass
 
     # ------------------------------------------------------------------

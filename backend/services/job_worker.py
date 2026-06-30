@@ -50,7 +50,7 @@ def run_job(job_id: str, ticker: str, exchange: str,
     try:
         from dotenv import load_dotenv
         load_dotenv(override=True)
-    except Exception:
+    except Exception as _e:
         pass
 
     import database

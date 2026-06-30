@@ -211,7 +211,7 @@ def _safe_json(text: str) -> dict | None:
     try:
         obj = json.loads(cleaned[start : end + 1])
         return obj if isinstance(obj, dict) else None
-    except Exception:
+    except Exception as _e:
         return None
 
 
@@ -271,7 +271,7 @@ def reformat_single(
             temperature=0.2,
         )
         parsed = _safe_json(out)
-    except Exception:
+    except Exception as _e:
         parsed = None
 
     if not parsed:

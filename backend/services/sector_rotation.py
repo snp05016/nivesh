@@ -345,7 +345,7 @@ def compute_rrg_quadrant(ticker: str, benchmark: str = "^NSEI") -> dict:
             "rrg_summary": summary,
         }
 
-    except Exception:
+    except Exception as _e:
         return {
             "sector": "Unknown",
             "rrg_quadrant": "Unknown",

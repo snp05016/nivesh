@@ -43,5 +43,5 @@ def safe_validate_portfolio_json(data: dict) -> Optional[PortfolioSnapshotSchema
     """Validate without raising. Returns None on failure."""
     try:
         return PortfolioSnapshotSchema(**data)
-    except Exception:
+    except Exception as _e:
         return None

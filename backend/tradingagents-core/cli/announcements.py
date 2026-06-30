@@ -22,7 +22,7 @@ def fetch_announcements(url: str = None, timeout: float = None) -> dict:
             "announcements": data.get("announcements", [fallback]),
             "require_attention": data.get("require_attention", False),
         }
-    except Exception:
+    except Exception as _e:
         return {
             "announcements": [fallback],
             "require_attention": False,

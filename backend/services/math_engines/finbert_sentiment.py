@@ -1,10 +1,10 @@
-import logging
 """
 Financial News Sentiment Scoring engine.
 Tries FinBERT first; falls back to a financial lexicon to score text.
 """
 
 from __future__ import annotations
+import logging
 import re
 
 
@@ -136,7 +136,7 @@ def _try_finbert(texts: list[str]) -> list[float] | None:
             else:
                 scores.append(0.0)
         return scores
-    except Exception:
+    except Exception as _e:
         return None
 
 

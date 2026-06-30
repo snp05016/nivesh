@@ -130,7 +130,7 @@ def _resolve_single(row, session) -> None:
 
     try:
         session.commit()
-    except Exception:
+    except Exception as _e:
         session.rollback()
         raise
 
@@ -149,6 +149,6 @@ def _fetch_current_price(ticker: str) -> Optional[float]:
             )
             if hist is not None and len(hist) > 0:
                 return round(float(hist["Close"].iloc[-1]), 2)
-        except Exception:
+        except Exception as _e:
             continue
     return None

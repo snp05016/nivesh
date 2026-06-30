@@ -1240,7 +1240,7 @@ def _inject_piotroski(result: dict, ticker: str):
         pio = compute_piotroski(ticker.upper())
         result["piotroski_score"] = pio.get("f_score")
         result["piotroski_flags"] = pio.get("checks", {})
-    except Exception:
+    except Exception as _e:
         result["piotroski_score"] = None
         result["piotroski_flags"] = {}
 
@@ -1294,7 +1294,7 @@ def _inject_live_data(result: dict, ticker: str) -> dict:
                 if isinstance(pub, str):
                     try:
                         pub = int(datetime.fromisoformat(pub.replace("Z", "+00:00")).timestamp())
-                    except Exception:
+                    except Exception as _e:
                         pub = 0
                 recent_news.append({
                     "title": content.get("title") or item.get("title", ""),
@@ -2056,9 +2056,9 @@ def analyze(
                 mh = yf.Ticker(ns_ticker).major_holders
                 if "pledged" in str(mh).lower():
                     pledging_data = str(mh)
-            except Exception:
+            except Exception as _e:
                 pass
-    except Exception:
+    except Exception as _e:
         pass
 
     # ── ML Hybrid Pipeline: Quantitative Engine (teacher-student flow) ───

@@ -36,7 +36,7 @@ def _fetch_indian_gsec_yield() -> float:
                 val = float(obs[-1].get("value", 0))
                 if 2.0 < val < 15.0:
                     return val / 100
-    except Exception:
+    except Exception as _e:
         pass
     return _DEFAULT_RISK_FREE_RATE
 

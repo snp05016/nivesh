@@ -88,5 +88,5 @@ try:
 finally:
     try:
         Path(_tmp).unlink(missing_ok=True)
-    except Exception:
+    except Exception as _e:
         pass

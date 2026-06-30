@@ -42,7 +42,7 @@ for py_file in BACKEND_DIR.rglob("*.py"):
         continue
     try:
         content = py_file.read_text(errors="ignore")
-    except Exception:
+    except Exception as _e:
         continue
 
     for lineno, line in enumerate(content.splitlines(), 1):

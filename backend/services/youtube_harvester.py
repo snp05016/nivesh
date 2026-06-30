@@ -172,7 +172,7 @@ def get_company_name(ticker: str) -> str:
         for suffix in [" Limited", " Ltd.", " Ltd", " Private Limited", " Pvt. Ltd"]:
             name = name.replace(suffix, "").strip()
         return name
-    except Exception:
+    except Exception as _e:
         return t
 
 
@@ -192,7 +192,7 @@ def _parse_date(raw: str) -> datetime:
             return datetime.fromisoformat(str(raw).replace("Z", "+00:00")).replace(tzinfo=None)
         if len(str(raw)) == 8:
             return datetime.strptime(str(raw), "%Y%m%d")
-    except Exception:
+    except Exception as _e:
         pass
     return datetime.now(timezone.utc)
 

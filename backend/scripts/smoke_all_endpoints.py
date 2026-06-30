@@ -22,7 +22,7 @@ os.environ.setdefault("JWT_SECRET", "health-check-test")
 try:
     from database import init_db
     init_db()
-except Exception:
+except Exception as _e:
     pass
 
 try:

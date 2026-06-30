@@ -88,7 +88,7 @@ def _fetch_reliability() -> MLReliability | None:
             brier_score_30d=latest.get("brier_score"),
             calibration_error_30d=latest.get("calibration_error"),
         )
-    except Exception:
+    except Exception as _e:
         logger.debug("Reliability metrics unavailable", exc_info=True)
         return None
 
@@ -149,7 +149,7 @@ async def get_ml_signal(symbol: str) -> MLSignalResponse:
         return _build_unavailable_response(
             symbol, f"ML engine returned HTTP {exc.response.status_code}"
         )
-    except Exception:
+    except Exception as _e:
         logger.exception("Unexpected error calling ML engine for %s", symbol)
         return _build_unavailable_response(symbol, "Unexpected error contacting ML engine")
 
@@ -167,7 +167,7 @@ async def get_ml_signal(symbol: str) -> MLSignalResponse:
                 contribution=fd.get("contribution", 0.0),
                 direction=fd.get("direction", "positive"),
             ))
-        except Exception:
+        except Exception as _e:
             continue
 
     # Fetch reliability metrics (best-effort, never crash)
