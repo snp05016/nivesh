@@ -37,26 +37,26 @@
 
 ## Phase 3: Portfolio Analytics & Wealth Math
 ### Quant/Math Agent
-- [ ] Build `xirr_calculator.py` for accurate portfolio return measurement.
-- [ ] Build `capital_gains_calculator.py` (FIFO matching for STCG/LTCG Indian taxation).
-- [ ] Build `portfolio_xray.py` (Asset allocation and MF overlap logic).
+- [x] Build `xirr_calculator.py` for accurate portfolio return measurement.
+- [x] Build `capital_gains_calculator.py` (FIFO matching for STCG/LTCG Indian taxation).
+- [x] Build `portfolio_xray.py` (Asset allocation and MF overlap logic).
 ### Data Ingestion Agent
-- [ ] Build `amfi_nav_harvester.py` to daily pull and store Mutual Fund NAVs.
+- [x] Build `amfi_nav_harvester.py` to daily pull and store Mutual Fund NAVs.
 ### Document AI Agent
-- [ ] Build `cams_cas_parser.py` to extract transactions from protected CAMS/Karvy PDF statements.
+- [x] Build `cams_cas_parser.py` to extract transactions from protected CAMS/Karvy PDF statements.
 ### Data Verification Agent
-- [ ] Write tests to ensure capital gains logic respects the grandfathering rules and current tax slabs.
+- [x] Write tests to ensure capital gains logic respects the grandfathering rules and current tax slabs.
 
 ## Phase 4: Super PRO AI & Editorial Automation
 ### Quant/Math Agent
-- [ ] Build `seasonality_analysis.py` (Historical monthly return probability).
+- [x] Build `seasonality_analysis.py` (Historical monthly return probability).
 ### Data Ingestion Agent
-- [ ] Build webhook listeners for BSE/NSE real-time corporate announcements.
+- [x] Build webhook listeners for BSE/NSE real-time corporate announcements.
 ### Document AI Agent
-- [ ] Build `earnings_call_summarizer.py` (LLM prompt chains for Concall transcripts).
-- [ ] Build `whatsapp_alert_formatter.py` (Compressing complex financial data into readable AI alerts).
+- [x] Build `earnings_call_summarizer.py` (LLM prompt chains for Concall transcripts).
+- [x] Build `whatsapp_alert_formatter.py` (Compressing complex financial data into readable AI alerts).
 ### Data Verification Agent
-- [ ] Write latency tests for the ingestion-to-alert pipeline (must be < 2 seconds).
+- [x] Write latency tests for the ingestion-to-alert pipeline (must be < 2 seconds).
 
 ---
 *Note: Gemini exposes these Python modules as clean functions. The Claude team will import these functions into their FastAPI routers to serve them to the iOS App.*
