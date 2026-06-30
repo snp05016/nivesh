@@ -349,7 +349,7 @@ struct YTSTimestampSection: View {
                     }
                     .padding(.vertical, Theme.Spacing.small)
                     if stamp.id != stamps.last?.id {
-                        Divider().padding(.leading, 52)
+                        GuillocheDivider().padding(.leading, 52)
                     }
                 }
             }

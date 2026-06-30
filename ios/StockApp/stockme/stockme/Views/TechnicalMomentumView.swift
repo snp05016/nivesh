@@ -619,15 +619,14 @@ struct OIBreadthRow: View {
                     .font(Theme.officialStampFont(size: 10))
                     .foregroundStyle(Theme.inkTertiary)
             }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(color.opacity(0.12))
-                        .frame(height: 6)
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(color.opacity(0.7))
-                        .frame(width: geo.size.width * min(pct / 100.0, 1.0), height: 6)
-                }
+            let barWidth = UIScreen.main.bounds.width - 2 * Theme.screenPadding - 2 * Theme.Spacing.card
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(color.opacity(0.12))
+                    .frame(height: 6)
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(color.opacity(0.7))
+                    .frame(width: barWidth * min(pct / 100.0, 1.0), height: 6)
             }
             .frame(height: 6)
         }

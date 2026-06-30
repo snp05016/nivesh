@@ -773,16 +773,15 @@ struct PledgeIndicatorBar: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.tight) {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(Theme.borderFine)
-                        .frame(height: 6)
+            let barWidth = UIScreen.main.bounds.width - 2 * Theme.screenPadding - 2 * Theme.Spacing.card
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(Theme.borderFine)
+                    .frame(height: 6)
 
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(segmentColor)
-                        .frame(width: max(geo.size.width * CGFloat(clampedPct / 100.0), 4), height: 6)
-                }
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(segmentColor)
+                    .frame(width: max(barWidth * CGFloat(clampedPct / 100.0), 4), height: 6)
             }
             .frame(height: 6)
 

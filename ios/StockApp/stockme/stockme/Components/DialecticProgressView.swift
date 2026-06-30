@@ -138,16 +138,15 @@ struct DialecticProgressView: View {
             let total = client.events.isEmpty ? Self.fallbackStages.count
                       : (client.events.last?.totalStages ?? Self.fallbackStages.count)
             VStack(spacing: Theme.Spacing.small) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Theme.inkTertiary.opacity(0.1))
-                            .frame(height: 3)
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Theme.securityGold)
-                            .frame(width: geo.size.width * CGFloat(completedCount) / CGFloat(total), height: 3)
-                            .animation(.easeInOut(duration: 0.4), value: completedCount)
-                    }
+                let barWidth = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Theme.inkTertiary.opacity(0.1))
+                        .frame(height: 3)
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Theme.securityGold)
+                        .frame(width: barWidth * CGFloat(completedCount) / CGFloat(total), height: 3)
+                        .animation(.easeInOut(duration: 0.4), value: completedCount)
                 }
                 .frame(height: 3)
                 Text("Stage \(completedCount)/\(total)")

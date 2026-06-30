@@ -1,7 +1,9 @@
 import SwiftUI
 
 struct NewsTabView: View {
-    @ObservedObject var vm: StockProfileViewModel
+    let isLoading: Bool
+    let news: [NewsItem]?
+    let fetchOverview: () async -> Void
 
     var body: some View {
         LazyVStack(spacing: Theme.Spacing.card) {
@@ -12,9 +14,9 @@ struct NewsTabView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, Theme.Spacing.small)
 
-            if vm.overviewLoading {
+            if isLoading {
                 SPSkeletonBlock(rows: 5)
-            } else if let news = vm.quickInfo?.recentNews, !news.isEmpty {
+            } else if let news = news, !news.isEmpty {
                 ForEach(news) { article in
                     SPNewsCardView(article: article)
                 }
@@ -24,7 +26,7 @@ struct NewsTabView: View {
         }
         .padding(.horizontal, Theme.screenPadding)
         .padding(.vertical, Theme.Spacing.card)
-        .task { await vm.fetchOverview() }
+        .task { await fetchOverview() }
     }
 }
 

@@ -479,7 +479,12 @@ struct StockProfileView: View {
                         // 0: Overview = Overview + Chart + Financials
                         ScrollView {
                             LazyVStack(spacing: Theme.sectionSpacing) {
-                                OverviewTabView(ticker: ticker, vm: vm)
+                                OverviewTabView(
+                                    ticker: ticker,
+                                    isLoading: vm.overviewLoading,
+                                    quickInfo: vm.quickInfo,
+                                    fetchOverview: { await vm.fetchOverview() }
+                                )
                                 if let hist = vm.history, !hist.prices.isEmpty {
                                     GuillocheDivider()
                                         .padding(.horizontal, Theme.screenPadding)
@@ -504,7 +509,12 @@ struct StockProfileView: View {
                                 .padding(.horizontal, Theme.screenPadding)
                                 GuillocheDivider()
                                     .padding(.horizontal, Theme.screenPadding)
-                                FinancialsTabView(vm: vm)
+                                FinancialsTabView(
+                                    isLoading: vm.financialsLoading,
+                                    quarterlyFinancials: vm.quarterlyFinancials,
+                                    piotroski: vm.piotroski,
+                                    fetchFinancials: { await vm.fetchFinancials() }
+                                )
                             }
                             .padding(.bottom, Theme.sectionSpacing)
                         }
@@ -522,7 +532,11 @@ struct StockProfileView: View {
                         // 2: News & Events = News + Updates
                         ScrollView {
                             LazyVStack(spacing: Theme.sectionSpacing) {
-                                NewsTabView(vm: vm)
+                                NewsTabView(
+                                    isLoading: vm.overviewLoading,
+                                    news: vm.quickInfo?.recentNews,
+                                    fetchOverview: { await vm.fetchOverview() }
+                                )
                                 GuillocheDivider()
                                     .padding(.horizontal, Theme.screenPadding)
                                 UpdatesTabView()
@@ -534,7 +548,11 @@ struct StockProfileView: View {
                         // 3: Ownership = Holders + Governance
                         ScrollView {
                             LazyVStack(spacing: Theme.sectionSpacing) {
-                                HoldersTabView(vm: vm)
+                                HoldersTabView(
+                                    isLoading: vm.holdersLoading,
+                                    analystRatings: vm.analystRatings,
+                                    fetchHolders: { await vm.fetchHolders() }
+                                )
                                 GuillocheDivider()
                                     .padding(.horizontal, Theme.screenPadding)
                                 GovernanceTabView(ticker: ticker, vm: vm)

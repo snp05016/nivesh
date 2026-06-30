@@ -1,13 +1,15 @@
 import SwiftUI
 
 struct HoldersTabView: View {
-    @ObservedObject var vm: StockProfileViewModel
+    let isLoading: Bool
+    let analystRatings: AnalystRatingsResponse?
+    let fetchHolders: () async -> Void
 
     var body: some View {
         LazyVStack(spacing: Theme.Spacing.card) {
-            if vm.holdersLoading {
+            if isLoading {
                 SPSkeletonBlock(rows: 5)
-            } else if let ratings = vm.analystRatings {
+            } else if let ratings = analystRatings {
                 HoldersContentView(ratings: ratings)
             } else {
                 SPEmptyStateView(message: "Holder data unavailable")
@@ -15,7 +17,7 @@ struct HoldersTabView: View {
         }
         .padding(.horizontal, Theme.screenPadding)
         .padding(.vertical, Theme.Spacing.card)
-        .task { await vm.fetchHolders() }
+        .task { await fetchHolders() }
     }
 }
 

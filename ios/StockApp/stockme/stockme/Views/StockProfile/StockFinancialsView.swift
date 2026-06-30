@@ -764,26 +764,25 @@ struct PiotroskiScoreBar: View {
                     .foregroundStyle(Theme.bullGreen)
             }
 
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    // Background track
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(Theme.inkTertiary.opacity(0.12))
-                        .frame(height: 6)
+            let barWidth = UIScreen.main.bounds.width - 2 * Theme.screenPadding - 2 * Theme.Spacing.card
+            ZStack(alignment: .leading) {
+                // Background track
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(Theme.inkTertiary.opacity(0.12))
+                    .frame(height: 6)
 
-                    // Filled portion
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(scoreBarGradient)
-                        .frame(width: geo.size.width * CGFloat(score) / CGFloat(maxScore), height: 6)
+                // Filled portion
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(scoreBarGradient)
+                    .frame(width: barWidth * CGFloat(score) / CGFloat(maxScore), height: 6)
 
                     // Score indicator dot
                     Circle()
                         .fill(Theme.securityGold)
                         .frame(width: 10, height: 10)
                         .shadow(color: Theme.securityGold.opacity(0.4), radius: 3)
-                        .offset(x: geo.size.width * CGFloat(score) / CGFloat(maxScore) - 5)
+                        .offset(x: barWidth * CGFloat(score) / CGFloat(maxScore) - 5)
                 }
-            }
             .frame(height: 10)
 
             HStack {

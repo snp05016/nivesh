@@ -1,27 +1,30 @@
 import SwiftUI
 
 struct FinancialsTabView: View {
-    @ObservedObject var vm: StockProfileViewModel
+    let isLoading: Bool
+    let quarterlyFinancials: [QuarterlyFinancial]
+    let piotroski: PiotroskiData?
+    let fetchFinancials: () async -> Void
 
     var body: some View {
         LazyVStack(spacing: Theme.sectionSpacing) {
-            if vm.financialsLoading {
+            if isLoading {
                 SPSkeletonBlock(rows: 8)
             } else {
-                if !vm.quarterlyFinancials.isEmpty {
-                    FinancialsTableView(quarters: vm.quarterlyFinancials)
+                if !quarterlyFinancials.isEmpty {
+                    FinancialsTableView(quarters: quarterlyFinancials)
                 }
-                if let piotroski = vm.piotroski {
+                if let piotroski = piotroski {
                     PiotroskiCardView(data: piotroski)
                 }
-                if vm.quarterlyFinancials.isEmpty && vm.piotroski == nil {
+                if quarterlyFinancials.isEmpty && piotroski == nil {
                     SPEmptyStateView(message: "Financial data unavailable")
                 }
             }
         }
         .padding(.horizontal, Theme.screenPadding)
         .padding(.vertical, Theme.Spacing.card)
-        .task { await vm.fetchFinancials() }
+        .task { await fetchFinancials() }
     }
 }
 

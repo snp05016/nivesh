@@ -2,13 +2,15 @@ import SwiftUI
 
 struct OverviewTabView: View {
     let ticker: String
-    @ObservedObject var vm: StockProfileViewModel
+    let isLoading: Bool
+    let quickInfo: QuickInfo?
+    let fetchOverview: () async -> Void
 
     var body: some View {
         LazyVStack(spacing: Theme.sectionSpacing) {
-            if vm.overviewLoading {
+            if isLoading {
                 SPSkeletonBlock(rows: 6)
-            } else if let info = vm.quickInfo {
+            } else if let info = quickInfo {
                 OverviewContentView(ticker: ticker, info: info)
             } else {
                 SPEmptyStateView(message: "Overview unavailable")
@@ -16,7 +18,7 @@ struct OverviewTabView: View {
         }
         .padding(.horizontal, Theme.screenPadding)
         .padding(.vertical, Theme.Spacing.card)
-        .task { await vm.fetchOverview() }
+        .task { await fetchOverview() }
     }
 }
 
