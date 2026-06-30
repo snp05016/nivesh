@@ -217,7 +217,7 @@ struct EarningsDashboardView: View {
             .frame(minWidth: 100)
             .onChange(of: comparisonMode) { _, val in vm.comparisonMode = val }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Theme.Spacing.card)
         .padding(.top, Theme.Spacing.standard)
         .padding(.bottom, Theme.Spacing.medium)
         .background(Theme.canvasDeep)
@@ -233,7 +233,7 @@ struct EarningsDashboardView: View {
                         Text(name)
                             .font(.caption.weight(selectedTab == idx ? .bold : .regular))
                             .foregroundStyle(selectedTab == idx ? Theme.securityGold : Theme.inkTertiary)
-                            .padding(.horizontal, 12)
+                            .padding(.horizontal, Theme.Spacing.standard)
                             .padding(.vertical, 7)
                             .background(
                                 selectedTab == idx
@@ -447,7 +447,7 @@ struct EarningsProgressView: View {
                                 Text(capLabel(cap))
                                     .font(.caption.weight(vm.selectedMarketCap == cap ? .bold : .regular))
                                     .foregroundStyle(vm.selectedMarketCap == cap ? Theme.securityGold : Theme.inkSecondary)
-                                    .padding(.horizontal, 10)
+                                    .padding(.horizontal, Theme.Spacing.medium)
                                     .padding(.vertical, 5)
                                     .background(vm.selectedMarketCap == cap ? Theme.securityGold.opacity(0.10) : Theme.canvasDeep)
                                     .cornerRadius(Theme.CornerRadius.tight)
@@ -809,7 +809,7 @@ struct EarningsCalendarView: View {
                     .font(.footnote)
                     .foregroundStyle(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 24)
+                    .padding(.vertical, Theme.Spacing.large)
             } else {
                 ForEach(vm.calendarDayResults) { result in
                     calendarResultRow(result)
@@ -878,7 +878,7 @@ struct EarningsCalendarView: View {
                     }
                     .frame(width: colW * 0.17)
                     .foregroundStyle(alertSetFor == r.ticker ? Theme.securityGold : Theme.inkSecondary)
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, Theme.Spacing.medium)
                     .padding(.vertical, 6)
                     .background(alertSetFor == r.ticker ? Theme.securityGold.opacity(0.10) : Theme.canvasDeep)
                     .cornerRadius(Theme.CornerRadius.tight)
@@ -896,7 +896,7 @@ struct EarningsCalendarView: View {
                     }
                     .frame(width: colW * 0.17)
                     .foregroundStyle(Theme.inkSecondary)
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, Theme.Spacing.medium)
                     .padding(.vertical, 6)
                     .background(Theme.canvasDeep)
                     .cornerRadius(Theme.CornerRadius.tight)
@@ -1190,13 +1190,13 @@ struct ScreenerView: View {
                             .tracking(2)
                             .foregroundStyle(Theme.inkPrimary)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
+                    .padding(.horizontal, Theme.Spacing.card)
+                    .padding(.top, Theme.Spacing.card)
 
                     // Info hint
                     if vm.feed.isEmpty && !vm.isLoading {
                         emptyStateMessage
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, Theme.Spacing.card)
                     }
 
                     // Screener preset cards — banknote aesthetic grid
@@ -1208,21 +1208,21 @@ struct ScreenerView: View {
                             screenerPresetCard(preset)
                         }
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Theme.Spacing.card)
 
                     // Filtered results section
                     if let selected = selectedPreset, !filteredResults.isEmpty {
                         screenerResultsSection(presetId: selected)
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, Theme.Spacing.card)
                     } else if let selected = selectedPreset, !screenerBackendResults.isEmpty {
                         screenerBackendResultsSection(presetId: selected)
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, Theme.Spacing.card)
                     } else if selectedPreset != nil && filteredResults.isEmpty && screenerBackendResults.isEmpty && !isLoading {
                         noResultsForPreset
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, Theme.Spacing.card)
                     }
                 }
-                .padding(.bottom, 20)
+                .padding(.bottom, Theme.screenPadding)
             }
             .background(Theme.canvas)
             .navigationDestination(for: String.self) { ticker in
@@ -1266,11 +1266,11 @@ struct ScreenerView: View {
                     .foregroundStyle(Theme.inkTertiary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, Theme.screenPadding)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 32)
+        .padding(.vertical, Theme.Spacing.xLarge)
         .background(Theme.canvasDeep)
         .cornerRadius(Theme.CornerRadius.large)
         .overlay(
@@ -1284,7 +1284,7 @@ struct ScreenerView: View {
     private var noResultsForPreset: some View {
         VStack(spacing: Theme.Spacing.standard) {
             GuillocheDivider()
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Theme.Spacing.card)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                 HStack(spacing: Theme.Spacing.medium) {
@@ -1520,7 +1520,7 @@ struct ScreenerView: View {
                             Text("CHG%").tableHeaderStyle().frame(minWidth: colW * 0.14, alignment: .trailing)
                             Text("PROFIT GR%").tableHeaderStyle().frame(minWidth: colW * 0.18, alignment: .trailing)
                         }
-                        .padding(.horizontal, 10)
+                        .padding(.horizontal, Theme.Spacing.medium)
                         .padding(.vertical, 6)
                         .background(Theme.canvasDeep)
                         .cornerRadius(Theme.CornerRadius.small)
@@ -1559,7 +1559,7 @@ struct ScreenerView: View {
                                     .foregroundStyle(r.netProfitGrowthPct >= 0 ? Theme.bullGreen : Theme.bearRed)
                                     .frame(minWidth: colW * 0.18, alignment: .trailing)
                             }
-                            .padding(.horizontal, 10)
+                            .padding(.horizontal, Theme.Spacing.medium)
                             .padding(.vertical, 8)
 
                             if idx < min(filteredResults.count, 15) - 1 {
@@ -1900,8 +1900,8 @@ struct PostResultMonitorView: View {
                             .foregroundStyle(Theme.inkTertiary)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+                .padding(.horizontal, Theme.Spacing.card)
+                .padding(.top, Theme.Spacing.card)
 
                 // Table header
                 let headerW = UIScreen.main.bounds.width
@@ -1911,7 +1911,7 @@ struct PostResultMonitorView: View {
                     Text("LTP").tableHeaderStyle().frame(minWidth: headerW * 0.20, alignment: .trailing)
                     Text("CHG %").tableHeaderStyle().frame(minWidth: headerW * 0.16, alignment: .trailing)
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Theme.Spacing.card)
                 .padding(.vertical, 8)
                 .background(Theme.canvasDeep)
 
@@ -1928,11 +1928,11 @@ struct PostResultMonitorView: View {
                 } else {
                     ForEach(vm.postResultMovers) { mover in
                         postResultRow(mover)
-                        Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5).padding(.horizontal, 16)
+                        Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5).padding(.horizontal, Theme.Spacing.card)
                     }
                 }
             }
-            .padding(.bottom, 20)
+            .padding(.bottom, Theme.screenPadding)
         }
         .background(Theme.canvas)
         // 5-second throttle loop during market hours
@@ -2001,7 +2001,7 @@ struct PostResultMonitorView: View {
             }
             .frame(minWidth: rowW * 0.16, alignment: .trailing)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Theme.Spacing.card)
         .padding(.vertical, Theme.Spacing.medium)
     }
 
@@ -2017,8 +2017,8 @@ struct PostResultMonitorView: View {
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.15, height: 12).padding(.leading, 8)
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.10)).frame(width: colW * 0.15, height: 12).padding(.leading, 8)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, Theme.Spacing.card)
+        .padding(.vertical, Theme.Spacing.standard)
         .shimmerPlaceholder(isLoading: true)
     }
 }

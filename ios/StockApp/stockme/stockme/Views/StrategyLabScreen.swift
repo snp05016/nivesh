@@ -209,7 +209,7 @@ struct StrategyLabScreen: View {
                             Text("Retry")
                                 .font(Theme.roundedSecondary(size: 14, weight: .bold))
                                 .foregroundStyle(Theme.inkPrimary)
-                                .padding(.horizontal, 24)
+                                .padding(.horizontal, Theme.Spacing.large)
                                 .padding(.vertical, 8)
                                 .background(Theme.surfaceElevated)
                                 .clipShape(Capsule())

@@ -404,7 +404,7 @@ struct TutorialPageView: View {
                 .scaledToFit()
                 .frame(width: 80, height: 80)
                 .foregroundStyle(Theme.securityGold)
-                .padding(.bottom, 20)
+                .padding(.bottom, Theme.screenPadding)
 
             Text(title.uppercased())
                 .font(Theme.engravedSerif(size: 24, weight: .bold))

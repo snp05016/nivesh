@@ -21,7 +21,7 @@ struct HistoryScreen: View {
                         Spacer()
                     }
                     .padding(.horizontal, Theme.screenPadding)
-                    .padding(.top, 12)
+                    .padding(.top, Theme.Spacing.standard)
 
                     GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 

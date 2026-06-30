@@ -154,7 +154,7 @@ struct ValuationCalendarView: View {
                                     }
                                 )
                         }
-                        .padding(.bottom, 12)
+                        .padding(.bottom, Theme.Spacing.standard)
 
                         // Selected day tooltip
                         if let sel = selectedSnapshot {

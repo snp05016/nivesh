@@ -1222,9 +1222,9 @@ private struct PortfolioHeroNote: View {
                     StatNoteBlock(label: "UNITS", value: "\(count)", color: Theme.inkPrimary)
                 }
             }
-            .padding(.leading, 32)
-            .padding(.trailing, 24)
-            .padding(.vertical, 20)
+            .padding(.leading, Theme.Spacing.xLarge)
+            .padding(.trailing, Theme.Spacing.large)
+            .padding(.vertical, Theme.screenPadding)
         }
         .banknoteCard()
         .clipped()
@@ -1299,8 +1299,8 @@ private struct WatchlistRowView: View {
                 }
             }
             .padding(.vertical, Theme.Spacing.standard)
-            .padding(.leading, 12)
-            .padding(.trailing, 16)
+            .padding(.leading, Theme.Spacing.standard)
+            .padding(.trailing, Theme.Spacing.card)
         }
         .banknoteCard()
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -1336,7 +1336,7 @@ private struct WatchlistSkeletonRow: View {
             }
         }
         .padding(.vertical, Theme.Spacing.standard)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Theme.Spacing.card)
         .banknoteCard()
         .shimmerPlaceholder(isLoading: true)
     }
@@ -1411,7 +1411,7 @@ private struct AddHoldingSheet: View {
                         .background(Theme.inkPrimary.opacity(0.05))
                         .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                         .padding(.horizontal, Theme.screenPadding)
-                        .padding(.top, 16)
+                        .padding(.top, Theme.Spacing.card)
                         
                         if selectedEntry == nil && !searchResults.isEmpty {
                             List(searchResults) { entry in
@@ -1582,7 +1582,7 @@ private struct AddHoldingSheet: View {
                         .disabled(!canAdd)
                     }
                     .padding(.horizontal, Theme.screenPadding)
-                    .padding(.top, 24)
+                    .padding(.top, Theme.Spacing.large)
                     
                     Spacer()
                 }
@@ -1650,7 +1650,7 @@ private struct EditHoldingSheet: View {
                             Spacer()
                         }
                         .padding(.horizontal, Theme.screenPadding)
-                        .padding(.top, 24)
+                        .padding(.top, Theme.Spacing.large)
                         
                         VStack(spacing: Theme.Spacing.card) {
                             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
@@ -1768,7 +1768,7 @@ private struct NoteEditorSheet: View {
                                     .foregroundStyle(Theme.inkPrimary)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 20)
+                            .padding(.horizontal, Theme.screenPadding)
                             
                             // Text editor
                             TextEditor(text: $noteText)
@@ -1779,18 +1779,18 @@ private struct NoteEditorSheet: View {
                                 .background(Theme.canvasDeep)
                                 .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                                 .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(Theme.borderSage, lineWidth: 1))
-                                .padding(.horizontal, 20)
+                                .padding(.horizontal, Theme.screenPadding)
                             
                             // Character count
                             Text("\(noteText.count)/280 characters")
                                 .font(Theme.serialNumberFont(size: 11))
                                 .foregroundStyle(noteText.count > 280 ? Theme.bearRed : Theme.inkTertiary)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
-                                .padding(.horizontal, 20)
+                                .padding(.horizontal, Theme.screenPadding)
                             
                             Spacer()
                         }
-                        .padding(.top, 20)
+                        .padding(.top, Theme.screenPadding)
                     }
                     .navigationTitle("Note")
                     .navigationBarTitleDisplayMode(.inline)
@@ -1842,7 +1842,7 @@ private struct NoteEditorSheet: View {
                             .background(Theme.inkPrimary.opacity(0.05))
                             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                             .padding(.horizontal, Theme.screenPadding)
-                            .padding(.top, 16)
+                            .padding(.top, Theme.Spacing.card)
                             .padding(.bottom, 8)
                             
                             List(results) { entry in
@@ -2226,7 +2226,7 @@ private struct NoteEditorSheet: View {
                                     .font(.footnote.weight(.medium))
                                     .foregroundStyle(Theme.securityGold)
                             }
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, Theme.Spacing.card)
                             .padding(.vertical, Theme.Spacing.standard)
                             .background(Theme.canvasDeep)
 

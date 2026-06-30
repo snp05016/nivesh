@@ -43,7 +43,7 @@ struct AnalysisErrorStateView: View {
                         .padding(Theme.Spacing.large)
                         .banknoteCard()
                     }
-                    .padding(.top, 20)
+                    .padding(.top, Theme.screenPadding)
                 }
 
                 VStack(spacing: Theme.Spacing.card) {

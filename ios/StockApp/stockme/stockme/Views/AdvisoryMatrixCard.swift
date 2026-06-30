@@ -39,7 +39,7 @@ struct AdvisoryMatrixCard: View {
                     .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
             }
             .padding(.top, Theme.Spacing.standard)
-            .padding(.trailing, 16)
+            .padding(.trailing, Theme.Spacing.card)
 
             GuillocheDivider()
                 .padding(.horizontal, 4)
@@ -75,7 +75,7 @@ struct AdvisoryMatrixCard: View {
                 if index < insights.count - 1 {
                     Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
                         .background(Theme.borderFine)
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, Theme.Spacing.card)
                 }
             }
         }

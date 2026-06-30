@@ -54,8 +54,8 @@ struct AlertsScreen: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, Theme.screenPadding)
-                    .padding(.top, 12)
-                    .padding(.bottom, 20)
+                    .padding(.top, Theme.Spacing.standard)
+                    .padding(.bottom, Theme.screenPadding)
 
                     if viewModel.isLoading {
                         Spacer()

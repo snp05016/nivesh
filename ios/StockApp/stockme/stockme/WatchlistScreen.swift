@@ -265,7 +265,7 @@ struct WatchlistRow: View {
             // Sparkline (G1 — line only, no fill; green up / red down)
             SparklineView(values: sparklineSeries,
                           color: isPositive ? Theme.bullGreen : Theme.bearRed)
-                .frame(width: 60, height: 32)
+                .frame(width: UIScreen.main.bounds.width * 0.16, height: 32)
 
             // Price + change badge (G2)
             VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {

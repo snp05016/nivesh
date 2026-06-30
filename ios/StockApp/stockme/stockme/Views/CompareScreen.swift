@@ -71,7 +71,7 @@ struct CompareScreen: View {
 
                         Spacer(minLength: 80)
                     }
-                    .padding(.top, 12)
+                    .padding(.top, Theme.Spacing.standard)
                 }
             }
             .navigationTitle("COMPARE")

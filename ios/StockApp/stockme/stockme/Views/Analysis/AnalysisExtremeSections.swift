@@ -450,14 +450,15 @@ private struct PeerTableView: View {
     let peers: [PeerRow]
 
     var body: some View {
+        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
         ScrollView(.horizontal, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: Theme.Spacing.standard) {
-                    Text("Ticker").font(.caption2.weight(.bold)).frame(width: 120, alignment: .leading)
-                    Text("P/E").font(.caption2.weight(.bold)).frame(width: 52, alignment: .trailing)
-                    Text("ROE%").font(.caption2.weight(.bold)).frame(width: 56, alignment: .trailing)
-                    Text("D/E").font(.caption2.weight(.bold)).frame(width: 52, alignment: .trailing)
-                    Text("MCap").font(.caption2.weight(.bold)).frame(width: 72, alignment: .trailing)
+                    Text("Ticker").font(.caption2.weight(.bold)).frame(width: colW * 0.34, alignment: .leading)
+                    Text("P/E").font(.caption2.weight(.bold)).frame(width: colW * 0.15, alignment: .trailing)
+                    Text("ROE%").font(.caption2.weight(.bold)).frame(width: colW * 0.16, alignment: .trailing)
+                    Text("D/E").font(.caption2.weight(.bold)).frame(width: colW * 0.15, alignment: .trailing)
+                    Text("MCap").font(.caption2.weight(.bold)).frame(width: colW * 0.20, alignment: .trailing)
                 }
                 .foregroundStyle(Theme.inkTertiary)
                 .padding(.vertical, Theme.Spacing.xSmall)
@@ -466,17 +467,17 @@ private struct PeerTableView: View {
                     HStack(spacing: Theme.Spacing.standard) {
                         Text(p.ticker ?? p.name ?? "-")
                             .font(Theme.serialNumberFont(size: 11)).foregroundStyle(Theme.securityGold)
-                            .frame(width: 120, alignment: .leading)
+                            .frame(width: colW * 0.34, alignment: .leading)
                             .lineLimit(1)
                             .truncationMode(.tail)
                         Text(p.pe.map { String(format: "%.1f", $0) } ?? "-")
-                            .font(.caption).frame(width: 52, alignment: .trailing)
+                            .font(.caption).frame(width: colW * 0.15, alignment: .trailing)
                         Text(p.roePct.map { String(format: "%.1f", $0) } ?? "-")
-                            .font(.caption).frame(width: 56, alignment: .trailing)
+                            .font(.caption).frame(width: colW * 0.16, alignment: .trailing)
                         Text(p.debtToEquity.map { String(format: "%.1f", $0) } ?? "-")
-                            .font(.caption).frame(width: 52, alignment: .trailing)
+                            .font(.caption).frame(width: colW * 0.15, alignment: .trailing)
                         Text(p.marketcapCr.map { "\u{20B9}\(Int($0))Cr" } ?? "-")
-                            .font(.caption).frame(width: 72, alignment: .trailing)
+                            .font(.caption).frame(width: colW * 0.20, alignment: .trailing)
                     }
                     .foregroundStyle(Theme.inkPrimary)
                     .padding(.vertical, Theme.Spacing.xSmall)

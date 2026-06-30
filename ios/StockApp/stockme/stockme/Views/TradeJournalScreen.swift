@@ -56,7 +56,7 @@ struct TradeJournalScreen: View {
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
-                .padding(.bottom, 12)
+                .padding(.bottom, Theme.Spacing.standard)
 
                 if selectedTab == 0 {
                     journalListView

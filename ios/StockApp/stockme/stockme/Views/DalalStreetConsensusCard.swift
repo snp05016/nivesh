@@ -143,7 +143,7 @@ struct DalalStreetConsensusCard: View {
                     .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
             }
             .padding(.top, Theme.Spacing.standard)
-            .padding(.trailing, 16)
+            .padding(.trailing, Theme.Spacing.card)
 
             GuillocheDivider()
                 .padding(.horizontal, 4)
@@ -163,7 +163,7 @@ struct DalalStreetConsensusCard: View {
                     }
                 }
                 .padding(.horizontal, Theme.Spacing.card)
-                .padding(.bottom, 12)
+                .padding(.bottom, Theme.Spacing.standard)
 
                 GuillocheDivider()
                     .padding(.horizontal, 4)

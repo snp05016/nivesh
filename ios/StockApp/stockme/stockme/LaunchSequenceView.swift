@@ -93,7 +93,7 @@ struct LaunchSequenceView: View {
                 .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
                 .foregroundStyle(Theme.inkTertiary)
                 .opacity(subtitleOpacity)
-                .padding(.top, 10)
+                .padding(.top, Theme.Spacing.medium)
         }
     }
 
