@@ -666,23 +666,20 @@ def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header
 
     ticker = req.ticker.upper().strip()
     try:
-        with get_session() as session:
-            record_transaction(
-                session=session,
-                user_id=req.user_id,
-                ticker=ticker,
-                transaction_type=req.transaction_type.upper(),
-                quantity=req.shares,
-                price=req.buy_price,
-                fees=0.0,
-                notes=req.notes,
-                company_name=req.company_name,
-                target_price=req.target_price,
-                purchase_date=req.purchase_date,
-                is_virtual=getattr(req, "is_virtual", False),
-            )
-            session.commit()
-            _cache_invalidate("morning_brief", str(req.user_id))
+        record_transaction(
+            user_id=req.user_id,
+            ticker=ticker,
+            transaction_type=req.transaction_type.upper(),
+            quantity=req.shares,
+            price=req.buy_price,
+            fees=0.0,
+            notes=req.notes,
+            company_name=req.company_name,
+            target_price=req.target_price,
+            purchase_date=req.purchase_date,
+            is_virtual=getattr(req, "is_virtual", False),
+        )
+        _cache_invalidate("morning_brief", str(req.user_id))
 
         ns = _to_ns(ticker)
         current_price, prev_close = _yf_price(ns)

@@ -37,7 +37,6 @@ def get_or_create_default_group(session: Session, user_id: int) -> PortfolioGrou
 
 
 def record_transaction(
-    session: Session,
     user_id: int,
     ticker: str,
     transaction_type: str,
@@ -56,7 +55,6 @@ def record_transaction(
     Insert an immutable Transaction and refresh the Portfolio read-model.
 
     Args:
-        session:          Active SQLAlchemy session (from get_session() caller).
         user_id:          Authenticated user.
         ticker:           Normalised ticker symbol (caller must upper().strip()).
         transaction_type: One of BUY | SELL | SPLIT | BONUS | DIVIDEND.
@@ -74,49 +72,52 @@ def record_transaction(
     Returns:
         The newly created Transaction ORM object (flushed, not yet committed).
     """
-    resolved_group_id: int
-    if group_id is None:
-        group = get_or_create_default_group(session, user_id)
-        resolved_group_id = cast(int, group.id)
-    else:
-        resolved_group_id = group_id
-
-    tx_type_upper = transaction_type.upper()
-    if tx_type_upper == "SELL":
-        existing_holding = session.query(Portfolio).filter_by(
-            user_id=user_id, ticker=ticker, group_name="holdings"
-        ).first()
-        held = float(existing_holding.shares) if existing_holding is not None else 0.0  # type: ignore[arg-type]
-        if quantity > held:
-            raise ValueError(
-                f"Cannot SELL {quantity} of {ticker}: only {round(held, 4)} shares held."
-            )
-
-    tx = Transaction(
-        user_id=user_id,
-        group_id=resolved_group_id,
-        ticker=ticker,
-        transaction_type=transaction_type.upper(),
-        quantity=quantity,
-        price=price,
-        fees=fees,
-        date=date if date is not None else datetime.now(timezone.utc),
-        notes=notes,
-    )
-    session.add(tx)
-    session.flush()
-
-    _recalculate_portfolio_snapshot(
-        session=session,
-        user_id=user_id,
-        group_id=resolved_group_id,
-        ticker=ticker,
-        company_name=company_name,
-        target_price=target_price,
-        purchase_date=purchase_date,
-        is_virtual=is_virtual,
-    )
-    return tx
+    from database import get_session
+    with get_session() as session:
+        resolved_group_id: int
+        if group_id is None:
+            group = get_or_create_default_group(session, user_id)
+            resolved_group_id = cast(int, group.id)
+        else:
+            resolved_group_id = group_id
+    
+        tx_type_upper = transaction_type.upper()
+        if tx_type_upper == "SELL":
+            existing_holding = session.query(Portfolio).filter_by(
+                user_id=user_id, ticker=ticker, group_name="holdings"
+            ).first()
+            held = float(existing_holding.shares) if existing_holding is not None else 0.0  # type: ignore[arg-type]
+            if quantity > held:
+                raise ValueError(
+                    f"Cannot SELL {quantity} of {ticker}: only {round(held, 4)} shares held."
+                )
+    
+        tx = Transaction(
+            user_id=user_id,
+            group_id=resolved_group_id,
+            ticker=ticker,
+            transaction_type=transaction_type.upper(),
+            quantity=quantity,
+            price=price,
+            fees=fees,
+            date=date if date is not None else datetime.now(timezone.utc),
+            notes=notes,
+        )
+        session.add(tx)
+        session.flush()
+    
+        _recalculate_portfolio_snapshot(
+            session=session,
+            user_id=user_id,
+            group_id=resolved_group_id,
+            ticker=ticker,
+            company_name=company_name,
+            target_price=target_price,
+            purchase_date=purchase_date,
+            is_virtual=is_virtual,
+        )
+        session.commit()
+        return tx
 
 
 def _recalculate_portfolio_snapshot(
