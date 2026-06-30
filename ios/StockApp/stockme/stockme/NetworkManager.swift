@@ -957,8 +957,8 @@ class NetworkManager: ObservableObject {
     func searchStocks(q: String) async -> [StockEntry] {
         guard !q.isEmpty,
               let encoded = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let url = URL(string: "\(baseURL)/search?q=\(encoded)&limit=25") else { return [] }
-        var request = URLRequest(url: url)
+              let url = URL(string: "\(baseURL)/api/v1/search?query=\(encoded)") else { return [] }
+        var request = authRequest(url)
         request.timeoutInterval = 5
         guard let (data, resp) = try? await session.data(for: request),
               let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
@@ -970,6 +970,35 @@ class NetworkManager: ObservableObject {
         }
         guard let results = try? JSONDecoder().decode([SearchResult].self, from: data) else { return [] }
         return results.map { StockEntry(ticker: $0.ticker, companyName: $0.company_name, exchange: $0.exchange, sector: $0.sector) }
+    }
+
+    // MARK: - Dashboard Pulse
+    
+    struct IndexSnapshot: Decodable {
+        let name: String
+        let value: Double?
+        let change_pct: Double?
+        let change_abs: Double?
+    }
+    struct MomentumSignal: Decodable {
+        let ticker: String
+        let signal: String
+    }
+    
+    struct DashboardPulseResponse: Decodable {
+        let indices: [IndexSnapshot]
+        let momentum_signals: [MomentumSignal]
+        let fetched_at: String
+    }
+    
+    func fetchDashboardPulse() async throws -> DashboardPulseResponse {
+        guard let url = URL(string: "\(baseURL)/api/v1/market/dashboard-pulse") else { throw NetworkError.invalidURL }
+        let req = authRequest(url)
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        return try JSONDecoder().decode(DashboardPulseResponse.self, from: data)
     }
 
     // MARK: - Risk Analysis

@@ -957,3 +957,14 @@ class InAppNotification(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", backref="notifications")
+
+class Watchlist(Base):
+    """Stores user's watchlist tickers."""
+    __tablename__ = "watchlists"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    ticker = Column(String(30), nullable=False, index=True)
+    added_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", backref="watchlist_items")
