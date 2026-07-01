@@ -228,25 +228,25 @@
 - [x] FII/DII/FPI sectoral derivatives insights
 
 ## 5. IPO Stack
-- [ ] IPO hub
-- [ ] Open IPOs
-- [ ] Upcoming IPOs
-- [ ] Closed IPOs
-- [ ] Listed IPOs
+- [x] IPO hub
+- [x] Open IPOs
+- [x] Upcoming IPOs
+- [x] Closed IPOs
+- [x] Listed IPOs
 - [ ] Draft issues
-- [ ] IPO news
-- [ ] IPO calendar
+- [ ] IPO news (see Section 10)
+- [x] IPO calendar
 - [ ] IPO funding calculator
-- [ ] IPO issue size
-- [ ] IPO price band
+- [x] IPO issue size
+- [x] IPO price band
 - [ ] IPO issue price
-- [ ] IPO lot size
-- [ ] IPO subscription status
-- [ ] IPO subscription splits
+- [x] IPO lot size
+- [x] IPO subscription status
+- [x] IPO subscription splits
 - [ ] Basis-of-allotment date
 - [ ] Refund date
 - [ ] Demat credit date
-- [ ] Listing date
+- [x] Listing date
 - [ ] DRHP links
 - [ ] RHP links
 
