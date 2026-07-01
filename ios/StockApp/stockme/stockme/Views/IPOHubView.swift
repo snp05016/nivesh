@@ -1,32 +1,48 @@
 import SwiftUI
 
+// MARK: - IPO Hub
+
 struct IPOHubView: View {
-    @State private var selectedTab: IPOTab = .open
-    
-    enum IPOTab: String, CaseIterable {
-        case open = "Open"
-        case upcoming = "Upcoming"
-        case closed = "Closed"
-    }
-    
+    @StateObject private var vm = IPOListViewModel()
+    @State private var selectedTab: IPOStatus = .open
+
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 32) {
+            LazyVStack(spacing: Theme.sectionSpacing) {
                 IPOHubHeader()
-                
+
                 GuillocheDivider().padding(.horizontal, Theme.screenPadding)
-                
-                IPOTabSelector(selectedTab: $selectedTab)
-                
-                IPOListSection(tab: selectedTab)
+
+                IPOTabSelector(selectedTab: $selectedTab, counts: tabCounts)
+
+                IPOListSection(status: selectedTab, vm: vm)
             }
             .padding(.vertical, Theme.screenPadding)
         }
         .background(Theme.canvas.ignoresSafeArea())
         .navigationTitle("IPO Hub")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NavigationLink {
+                    IPOCalendarView(vm: vm)
+                } label: {
+                    Image(systemName: "calendar")
+                        .foregroundStyle(Theme.securityGold)
+                }
+            }
+        }
+        .onAppear { vm.startLiveUpdates() }
+        .onDisappear { vm.stopLiveUpdates() }
+        .refreshable { vm.fetchIPOs() }
+    }
+
+    private var tabCounts: [IPOStatus: Int] {
+        Dictionary(grouping: vm.allIPOs.filter { $0.status != nil }, by: { $0.status! }).mapValues(\.count)
     }
 }
+
+// MARK: - Header
 
 struct IPOHubHeader: View {
     var body: some View {
@@ -34,7 +50,7 @@ struct IPOHubHeader: View {
             Text("IPO Central")
                 .font(Theme.engravedSerif(size: 28, weight: .bold, relativeTo: .title))
                 .foregroundColor(Theme.inkPrimary)
-            
+
             Text("Track, analyze, and apply for the latest Initial Public Offerings.")
                 .font(Theme.engravedSerif(size: 16, weight: .regular, relativeTo: .body))
                 .foregroundColor(Theme.inkSecondary)
@@ -44,137 +60,294 @@ struct IPOHubHeader: View {
     }
 }
 
+// MARK: - Tab Selector
+
 struct IPOTabSelector: View {
-    @Binding var selectedTab: IPOHubView.IPOTab
-    
+    @Binding var selectedTab: IPOStatus
+    let counts: [IPOStatus: Int]
+
+    private let tabs: [IPOStatus] = [.open, .upcoming, .closed]
+
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(IPOHubView.IPOTab.allCases, id: \.self) { tab in
-                Button(action: { HapticManager.selection(); 
-                    HapticManager.selection()
+            ForEach(tabs, id: \.self) { tab in
+                IPOTabButton(tab: tab, isSelected: selectedTab == tab, count: counts[tab] ?? 0) {
                     selectedTab = tab
-                }) {
-                    VStack(spacing: Theme.Spacing.medium) {
-                        Text(tab.rawValue)
-                            .font(Theme.officialStampFont(size: 14, relativeTo: .subheadline))
-                            .tracking(1.5)
-                            .foregroundColor(selectedTab == tab ? Theme.inkPrimary : Theme.inkSecondary)
-                        
-                        Rectangle()
-                            .fill(selectedTab == tab ? Theme.inkPrimary : Color.clear)
-                            .frame(height: 2)
-                    }
                 }
-                .buttonStyle(EKPressStyle())
-                .frame(maxWidth: .infinity)
             }
         }
         .padding(.horizontal, Theme.screenPadding)
     }
 }
+
+private struct IPOTabButton: View {
+    let tab: IPOStatus
+    let isSelected: Bool
+    let count: Int
+    let action: () -> Void
+
+    var body: some View {
+        Button {
+            HapticManager.selection()
+            action()
+        } label: {
+            VStack(spacing: Theme.Spacing.medium) {
+                HStack(spacing: Theme.Spacing.xSmall) {
+                    Text(tab.displayLabel)
+                        .font(Theme.officialStampFont(size: 14, relativeTo: .subheadline))
+                        .tracking(1.5)
+                    if count > 0 {
+                        Text("\(count)")
+                            .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
+                    }
+                }
+                .foregroundColor(isSelected ? Theme.inkPrimary : Theme.inkSecondary)
+
+                Rectangle()
+                    .fill(isSelected ? Theme.inkPrimary : Color.clear)
+                    .frame(height: 2)
+            }
+        }
+        .buttonStyle(EKPressStyle())
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - List Section
 
 struct IPOListSection: View {
-    let tab: IPOHubView.IPOTab
-    
+    let status: IPOStatus
+    @ObservedObject var vm: IPOListViewModel
+
     var body: some View {
         VStack(spacing: Theme.Spacing.card) {
-            ForEach(0..<4, id: \.self) { index in
-                IPOCard(tab: tab, index: index)
+            if vm.isLoading && vm.allIPOs.isEmpty {
+                ProgressView()
+                    .tint(Theme.securityGold)
+                    .frame(maxWidth: .infinity, minHeight: 160)
+            } else if let error = vm.errorMessage {
+                IPOErrorState(message: error) { vm.fetchIPOs() }
+            } else {
+                let ipos = vm.ipos(for: status)
+                if ipos.isEmpty {
+                    IPOEmptyState(status: status)
+                } else {
+                    ForEach(ipos) { ipo in
+                        NavigationLink {
+                            IPODetailView(seed: ipo)
+                        } label: {
+                            IPOCard(ipo: ipo)
+                        }
+                        .buttonStyle(EKPressStyle())
+                    }
+                }
             }
         }
         .padding(.horizontal, Theme.screenPadding)
     }
 }
 
+struct IPOErrorState: View {
+    let message: String
+    let retry: () -> Void
+
+    var body: some View {
+        VStack(spacing: Theme.Spacing.standard) {
+            Text(message)
+                .font(Theme.engravedSerif(size: 13, relativeTo: .footnote))
+                .foregroundColor(Theme.inkSecondary)
+                .multilineTextAlignment(.center)
+            Button {
+                HapticManager.selection()
+                retry()
+            } label: {
+                Text("Retry")
+                    .font(Theme.labelStyle)
+                    .foregroundColor(Theme.securityGold)
+            }
+            .buttonStyle(EKPressStyle())
+        }
+        .frame(maxWidth: .infinity, minHeight: 160)
+    }
+}
+
+struct IPOEmptyState: View {
+    let status: IPOStatus
+
+    var body: some View {
+        VStack(spacing: Theme.Spacing.small) {
+            Text("No \(status.displayLabel) IPOs")
+                .font(Theme.engravedSerif(size: 15, weight: .bold, relativeTo: .subheadline))
+                .foregroundColor(Theme.inkPrimary)
+            Text("Check back soon — new listings are added as they're announced.")
+                .font(Theme.engravedSerif(size: 12, relativeTo: .footnote))
+                .foregroundColor(Theme.inkTertiary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, minHeight: 160)
+        .padding(Theme.Spacing.card)
+        .banknoteCard()
+    }
+}
+
+// MARK: - IPO Card
+
 struct IPOCard: View {
-    let tab: IPOHubView.IPOTab
-    let index: Int
-    
+    let ipo: IPOListing
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.card) {
-            HStack {
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                    .fill(Theme.canvasShadow)
-                    .frame(width: 40, height: 40)
-                    .overlay(
-                        Text("Tech")
-                            .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
-                    )
-                
-                VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                    Text("Swiggy Ltd.")
-                        .font(Theme.engravedSerif(size: 18, weight: .bold, relativeTo: .headline))
-                        .foregroundColor(Theme.inkPrimary)
-                    
-                    Text("Mainboard")
-                        .font(Theme.officialStampFont(size: 12, relativeTo: .caption))
-                        .tracking(1.5)
-                        .foregroundColor(Theme.inkSecondary)
-                }
-                
-                Spacer()
-                
-                if tab == .open {
-                    Text("Apply Now")
-                        .font(Theme.labelStyle)
-                        .padding(.horizontal, Theme.Spacing.medium)
-                        .padding(.vertical, Theme.Spacing.small)
-                        .background(Theme.bullGreen)
-                        .foregroundColor(Theme.canvas)
-                        .cornerRadius(Theme.CornerRadius.small)
-                } else if tab == .upcoming {
-                    Text("Nov 15")
-                        .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
-                        .foregroundColor(Theme.inkSecondary)
-                } else {
-                    Text("Listed")
-                        .font(Theme.labelStyle)
-                        .foregroundColor(Theme.inkTertiary)
-                }
-            }
-            
+            IPOCardHeader(ipo: ipo)
             GuillocheDivider()
-            
-            HStack(spacing: Theme.Spacing.large) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                    Text("Price Band")
-                        .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
-                        .tracking(1.5)
-                        .foregroundColor(Theme.inkTertiary)
-                    
-                    Text("₹371 - ₹390")
-                        .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
-                        .foregroundColor(Theme.inkPrimary)
-                }
-                
-                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                    Text("Lot Size")
-                        .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
-                        .tracking(1.5)
-                        .foregroundColor(Theme.inkTertiary)
-                    
-                    Text("38 Shares")
-                        .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
-                        .foregroundColor(Theme.inkPrimary)
-                }
-                
-                Spacer()
-                
-                if tab == .open {
-                    VStack(alignment: .trailing, spacing: Theme.Spacing.small) {
-                        Text("Closes In")
-                            .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
-                            .tracking(1.5)
-                            .foregroundColor(Theme.inkTertiary)
-                        
-                        Text("2 Days")
-                            .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
-                            .foregroundColor(Theme.bearRed)
-                    }
-                }
-            }
+            IPOCardStats(ipo: ipo)
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
     }
+}
+
+private struct IPOCardHeader: View {
+    let ipo: IPOListing
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.standard) {
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                .fill(Theme.canvasShadow)
+                .frame(width: 40, height: 40)
+                .overlay(
+                    Text(String(ipo.companyName.prefix(1)))
+                        .font(Theme.officialStampFont(size: 14, relativeTo: .subheadline))
+                        .foregroundColor(Theme.inkPrimary)
+                )
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                Text(ipo.companyName)
+                    .font(Theme.engravedSerif(size: 18, weight: .bold, relativeTo: .headline))
+                    .foregroundColor(Theme.inkPrimary)
+                    .lineLimit(1)
+
+                if let symbol = ipo.symbol {
+                    Text(symbol)
+                        .font(Theme.officialStampFont(size: 12, relativeTo: .caption))
+                        .tracking(1.5)
+                        .foregroundColor(Theme.inkSecondary)
+                }
+            }
+
+            Spacer()
+
+            IPOStatusBadge(ipo: ipo)
+        }
+    }
+}
+
+private struct IPOStatusBadge: View {
+    let ipo: IPOListing
+
+    var body: some View {
+        switch ipo.status {
+        case .open:
+            Text("Apply Now")
+                .font(Theme.labelStyle)
+                .padding(.horizontal, Theme.Spacing.medium)
+                .padding(.vertical, Theme.Spacing.small)
+                .background(Theme.bullGreen)
+                .foregroundColor(Theme.canvas)
+                .cornerRadius(Theme.CornerRadius.small)
+        case .upcoming:
+            Text(ipo.openDate ?? "—")
+                .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
+                .foregroundColor(Theme.inkSecondary)
+        case .closed, .listed:
+            Text(ipo.status?.displayLabel ?? "—")
+                .font(Theme.labelStyle)
+                .foregroundColor(Theme.inkTertiary)
+        case .none:
+            EmptyView()
+        }
+    }
+}
+
+private struct IPOCardStats: View {
+    let ipo: IPOListing
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.large) {
+            IPOStatColumn(label: "Price Band", value: ipo.priceBandDisplay, alignment: .leading)
+            IPOStatColumn(label: "Lot Size", value: ipo.lotSizeDisplay, alignment: .leading)
+
+            Spacer()
+
+            if let gmp = ipo.gmp {
+                IPOStatColumn(
+                    label: "GMP",
+                    value: IndianFormatter.price(gmp),
+                    alignment: .trailing,
+                    valueColor: gmp >= 0 ? Theme.bullGreen : Theme.bearRed
+                )
+            } else if ipo.status == .open, let closeDateStr = ipo.closeDate,
+                      let closeDate = ISO8601DateFormatter().date(from: closeDateStr) ?? DateFormatter.ipoDate.date(from: closeDateStr) {
+                IPOStatColumn(
+                    label: "Closes In",
+                    value: daysRemaining(until: closeDate),
+                    alignment: .trailing,
+                    valueColor: Theme.bearRed
+                )
+            }
+        }
+    }
+
+    private func daysRemaining(until date: Date) -> String {
+        let days = Calendar.current.dateComponents([.day], from: Date(), to: date).day ?? 0
+        return days <= 0 ? "Today" : "\(days) Day\(days == 1 ? "" : "s")"
+    }
+}
+
+private struct IPOStatColumn: View {
+    let label: String
+    let value: String
+    let alignment: HorizontalAlignment
+    var valueColor: Color = Theme.inkPrimary
+
+    var body: some View {
+        VStack(alignment: alignment, spacing: Theme.Spacing.small) {
+            Text(label.uppercased())
+                .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
+                .tracking(1.5)
+                .foregroundColor(Theme.inkTertiary)
+
+            Text(value)
+                .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
+                .foregroundColor(valueColor)
+        }
+    }
+}
+
+/// Compact "times subscribed" bar shown on open-IPO cards — full breakdown lives on the detail screen.
+struct IPOSubscriptionMiniBar: View {
+    let subscription: IPOSubscriptionDetail
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.small) {
+            Text("SUBSCRIBED")
+                .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+                .tracking(1.2)
+                .foregroundColor(Theme.inkTertiary)
+
+            Text(String(format: "%.2fx", subscription.totalTimes))
+                .font(Theme.serialNumberFont(size: 13, relativeTo: .subheadline))
+                .foregroundColor(subscription.totalTimes >= 1 ? Theme.bullGreen : Theme.holdAmber)
+
+            Spacer()
+        }
+    }
+}
+
+extension DateFormatter {
+    static let ipoDate: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
 }

@@ -1,69 +1,71 @@
 import SwiftUI
 import Combine
 
-struct IPOListing: Identifiable, Equatable {
-    let id = UUID()
-    let name: String
-    let issuePrice: String
-    let closeDate: String
-    var qibSubscription: Double
-    var niiSubscription: Double
-    var retailSubscription: Double
-    var totalSubscription: Double
-    var gmp: Double // Grey market premium
-}
-
+/// Drives the per-IPO detail screen — fetches full IPO detail plus a live-polled
+/// subscription snapshot (QIB / NII / Retail times subscribed).
 @MainActor
-class IPOViewModel: ObservableObject {
-    @Published var activeIPOs: [IPOListing] = []
-    @Published var isRefreshing: Bool = false
-    
-    private var timer: Timer?
-    
-    init() {
-        fetchActiveIPOs()
+class IPODetailViewModel: ObservableObject {
+    @Published var listing: IPOListing?
+    @Published var subscription: IPOSubscriptionDetail?
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String? = nil
+
+    private let ipoId: String
+    private var pollTimer: AnyCancellable?
+
+    init(ipoId: String, seed: IPOListing? = nil) {
+        self.ipoId = ipoId
+        self.listing = seed
+        self.subscription = nil
     }
-    
-    func fetchActiveIPOs() {
-        self.activeIPOs = [
-            IPOListing(name: "TechNova Solutions", issuePrice: "₹350 - 375", closeDate: "15 Oct", qibSubscription: 2.5, niiSubscription: 5.1, retailSubscription: 12.3, totalSubscription: 6.4, gmp: 85),
-            IPOListing(name: "GreenEnergy Ltd", issuePrice: "₹120 - 125", closeDate: "18 Oct", qibSubscription: 0.8, niiSubscription: 1.2, retailSubscription: 3.5, totalSubscription: 1.8, gmp: 12),
-            IPOListing(name: "Alpha Retail", issuePrice: "₹80 - 85", closeDate: "20 Oct", qibSubscription: 0.2, niiSubscription: 0.5, retailSubscription: 1.1, totalSubscription: 0.6, gmp: 4)
-        ]
-        startLiveUpdates()
+
+    deinit {
+        pollTimer?.cancel()
     }
-    
-    func startLiveUpdates() {
-        timer?.invalidate()
-        // Simulate live subscription updates every 5 seconds
-        timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.simulateLiveSubscriptionIncrease()
+
+    /// Fetches the IPO detail and its subscription snapshot together. `IPOListing` (the
+    /// detail response) carries no subscription fields — those live only on the dedicated
+    /// `/subscription-status` endpoint — so both calls are issued concurrently here.
+    func fetchDetail() {
+        isLoading = listing == nil
+        errorMessage = nil
+
+        Task {
+            do {
+                async let detailTask = NetworkManager.shared.getIPODetail(id: ipoId)
+                async let subscriptionTask: IPOSubscriptionDetail? = try? NetworkManager.shared.getIPOSubscription(id: ipoId)
+                let detail = try await detailTask
+                self.listing = detail
+                self.subscription = await subscriptionTask
+                self.isLoading = false
+            } catch {
+                self.errorMessage = "Couldn't load IPO details. Pull to retry."
+                self.isLoading = false
             }
         }
     }
-    
-    func stopLiveUpdates() {
-        timer?.invalidate()
-        timer = nil
+
+    /// Live-polls subscription figures every 20s — only meaningful while the IPO is open.
+    func startLiveSubscriptionUpdates() {
+        guard listing?.status == .open else { return }
+        pollTimer?.cancel()
+        pollTimer = Timer.publish(every: 20.0, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                self?.refreshSubscription()
+            }
     }
-    
-    private func simulateLiveSubscriptionIncrease() {
-        for i in 0..<activeIPOs.count {
-            activeIPOs[i].qibSubscription += Double.random(in: 0...0.5)
-            activeIPOs[i].niiSubscription += Double.random(in: 0...1.0)
-            activeIPOs[i].retailSubscription += Double.random(in: 0...2.0)
-            
-            // Recalculate total as a weighted average mock
-            let total = (activeIPOs[i].qibSubscription + activeIPOs[i].niiSubscription + activeIPOs[i].retailSubscription) / 3.0
-            activeIPOs[i].totalSubscription = total
-            
-            // Random GMP fluctuations
-            activeIPOs[i].gmp += Double.random(in: -2...5)
+
+    func stopLiveSubscriptionUpdates() {
+        pollTimer?.cancel()
+        pollTimer = nil
+    }
+
+    private func refreshSubscription() {
+        Task {
+            if let updated = try? await NetworkManager.shared.getIPOSubscription(id: ipoId) {
+                self.subscription = updated
+            }
         }
-    }
-    
-    deinit {
-        timer?.invalidate()
     }
 }

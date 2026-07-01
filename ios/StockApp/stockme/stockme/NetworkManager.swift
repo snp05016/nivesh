@@ -1422,6 +1422,97 @@ class NetworkManager: ObservableObject {
         return try JSONDecoder().decode(OptionsPayoffResponse.self, from: data)
     }
 
+    // MARK: - IPO Hub
+    //
+    // Endpoints match backend/routers/ipo.py exactly: GET /api/ipo (list, optional
+    // ?status=), GET /api/ipo/{id}, GET /api/ipo/{id}/subscription-status,
+    // GET /api/ipo/calendar. The backend returns plain JSON arrays (no envelope)
+    // and has no server-side month filter on /calendar — filtering by month is
+    // done client-side using the already-fetched list.
+
+    /// Fetches the IPO list, optionally filtered by status (open/upcoming/closed/listed).
+    func getIPOList(status: IPOStatus? = nil) async throws -> [IPOListing] {
+        var endpoint = "/api/ipo"
+        if let status { endpoint += "?status=\(status.rawValue)" }
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 20
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode([IPOListing].self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    /// Fetches full detail (price band, lot size, issue size, GMP, dates) for a single IPO.
+    func getIPODetail(id: String) async throws -> IPOListing {
+        let endpoint = "/api/ipo/\(id)"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 20
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode(IPOListing.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    /// Fetches live subscription status (times subscribed per category) for a single IPO.
+    func getIPOSubscription(id: String) async throws -> IPOSubscriptionDetail {
+        let endpoint = "/api/ipo/\(id)/subscription-status"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode(IPOSubscriptionDetail.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    /// Fetches all IPOs for the calendar view. The backend endpoint has no server-side
+    /// month filter (kept for backward compatibility, see routers/ipo.py), so callers
+    /// filter the returned list to the month they need.
+    func getIPOCalendar() async throws -> [IPOListing] {
+        let endpoint = "/api/ipo/calendar"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 20
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode([IPOListing].self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
 }
 
 // MARK: - Harvester API (Market Intelligence — merged into port 8000)

@@ -1015,18 +1015,33 @@ class MutualFund(Base):
 
 
 class IPOListing(Base):
-    """Stores upcoming and recent IPO details."""
+    """Stores upcoming, open, and closed/listed IPO details (IPO Hub)."""
     __tablename__ = "ipo_listings"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     company_name = Column(String(200), nullable=False, index=True)
     symbol = Column(String(30), nullable=True, index=True)
-    open_date = Column(String(20), nullable=True)
-    close_date = Column(String(20), nullable=True)
-    listing_date = Column(String(20), nullable=True)
+
+    # Legacy fields (kept for backward compatibility with earlier migration
+    # da1855cd2742_add_mf_and_ipo.py — do not drop without a data migration).
     issue_price_min = Column(Float, nullable=True)
     issue_price_max = Column(Float, nullable=True)
     subscription_status = Column(Text, nullable=True)
+
+    # IPO Hub fields
+    price_band_low = Column(Float, nullable=True)
+    price_band_high = Column(Float, nullable=True)
+    lot_size = Column(Integer, nullable=True)
+    issue_size_cr = Column(Float, nullable=True)  # total issue size in INR Crores
+    open_date = Column(String(20), nullable=True)
+    close_date = Column(String(20), nullable=True)
+    listing_date = Column(String(20), nullable=True)
+    status = Column(String(20), nullable=True, index=True)  # upcoming|open|closed|listed
+    subscription_qib = Column(Float, nullable=True)  # times subscribed (e.g. 2.5 = 2.5x)
+    subscription_nii = Column(Float, nullable=True)
+    subscription_retail = Column(Float, nullable=True)
+    gmp = Column(Float, nullable=True)  # Grey Market Premium, INR per share
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
