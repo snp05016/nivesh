@@ -998,14 +998,40 @@ class Watchlist(Base):
 
 
 class MutualFund(Base):
-    """Stores mutual fund details."""
+    """Stores mutual fund scheme details (MF Router).
+
+    Legacy fields (fund_name, amc, category) are kept for backward
+    compatibility with earlier migration da1855cd2742_add_mf_and_ipo.py —
+    do not drop without a data migration. New code should prefer
+    scheme_name/amc_name/category, kept in sync with the legacy columns
+    by the service layer.
+    """
     __tablename__ = "mutual_funds"
-    
+
     id = Column(Integer, primary_key=True, index=True)
+
+    # Legacy fields (kept for backward compatibility)
     fund_name = Column(String(200), nullable=False, index=True)
     amc = Column(String(100), nullable=False)
     category = Column(String(50), nullable=False)
+
+    # MF Router fields
+    scheme_code = Column(String(30), unique=True, nullable=True, index=True)
+    scheme_name = Column(String(200), nullable=True, index=True)
+    amc_name = Column(String(100), nullable=True)
+    sub_category = Column(String(50), nullable=True)
     nav = Column(Float, nullable=True)
+    nav_date = Column(String(20), nullable=True)
+    aum_cr = Column(Float, nullable=True)  # Assets Under Management, INR Crores
+    expense_ratio = Column(Float, nullable=True)  # percent
+    returns_1y = Column(Float, nullable=True)  # percent
+    returns_3y = Column(Float, nullable=True)  # percent, annualized (CAGR)
+    returns_5y = Column(Float, nullable=True)  # percent, annualized (CAGR)
+    risk_level = Column(String(20), nullable=True)  # Low/Moderate/High/Very High
+    fund_manager = Column(String(100), nullable=True)
+    is_direct_plan = Column(Boolean, nullable=True, default=True)
+    is_growth_plan = Column(Boolean, nullable=True, default=True)
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,

@@ -143,22 +143,8 @@ struct InstitutionalFlowResponse: Codable {
 }
 
 // MARK: - Mutual Fund
-struct MutualFundDTO: Codable, Identifiable {
-    let id: Int
-    let fundName: String
-    let amc: String
-    let category: String
-    let nav: Double?
-    
-    enum CodingKeys: String, CodingKey {
-        case id
-        case fundName = "fund_name"
-        case amc
-        case category
-        case nav
-    }
-}
-
+// MutualFundDTO now lives in Models/MutualFundModels.swift (richer MF Router
+// fields: scheme_code, aum_cr, returns_1y/3y/5y, expense_ratio, risk_level, etc).
 
 // MARK: - Combined Market Dashboard
 

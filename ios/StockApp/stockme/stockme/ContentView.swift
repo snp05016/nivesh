@@ -263,6 +263,7 @@ enum MarketSection: String, Hashable, CaseIterable {
     case earnings_surprise = "earnings_surprise"
     case options_strategy = "options_strategy"
     case ipo = "ipo"
+    case mutualFunds = "mutual_funds"
 
     var icon: String {
         switch self {
@@ -280,6 +281,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .earnings_surprise: return "wand.and.stars"
         case .options_strategy: return "arrow.up.arrow.down.circle.fill"
         case .ipo: return "doc.text.fill"
+        case .mutualFunds: return "chart.pie.fill"
         }
     }
     var hindi: String {
@@ -298,6 +300,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .earnings_surprise: return "आय आश्चर्य"
         case .options_strategy: return "विकल्प रणनीति"
         case .ipo: return "आईपीओ केंद्र"
+        case .mutualFunds: return "म्यूचुअल फंड"
         }
     }
     var englishTitle: String {
@@ -316,6 +319,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .earnings_surprise: return "EARNINGS SURPRISE"
         case .options_strategy: return "OPTIONS STRATEGY"
         case .ipo: return "IPO HUB"
+        case .mutualFunds: return "MUTUAL FUNDS"
         }
     }
     var subtitle: String {
@@ -334,6 +338,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .earnings_surprise: return "Earnings Surprise"
         case .options_strategy: return "Payoff Visualizer"
         case .ipo: return "Upcoming & Open Listings"
+        case .mutualFunds: return "Discover, Compare & Track"
         }
     }
     var description: String {
@@ -352,6 +357,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .earnings_surprise: return "Track and predict positive and negative earnings surprises"
         case .options_strategy: return "Build multi-leg options strategies with interactive P&L payoff charts"
         case .ipo: return "Price band, lot size, GMP, dates and live subscription status for every IPO"
+        case .mutualFunds: return "Browse by category, AUM and returns; NAV history, expense ratio, riskometer and SIP calculator"
         }
     }
     var accentColor: Color {
@@ -370,6 +376,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .earnings_surprise: return Theme.securityGold
         case .options_strategy: return Theme.bullGreen
         case .ipo: return Theme.securityGold
+        case .mutualFunds: return Theme.bullGreen
         }
     }
 
@@ -381,7 +388,7 @@ enum MarketSection: String, Hashable, CaseIterable {
 
         var sections: [MarketSection] {
             switch self {
-            case .discovery: return [.nl_screener, .screener, .earnings, .earnings_surprise, .ipo]
+            case .discovery: return [.nl_screener, .screener, .earnings, .earnings_surprise, .ipo, .mutualFunds]
             case .analytics: return [.correlation, .stress_test, .sector_rotation, .anomalies]
             case .trading:   return [.options_strategy, .strategy, .alerts, .technical]
             }
@@ -654,6 +661,7 @@ struct MarketsView: View {
         case .earnings_surprise: EarningsSurpriseScreen()
         case .options_strategy: OptionsStrategyScreen()
         case .ipo: IPOHubView()
+        case .mutualFunds: MutualFundDiscoveryView()
         }
     }
 
