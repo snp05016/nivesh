@@ -429,24 +429,24 @@
 - [x] CDN/media delivery layer
 
 ## 12. Community and Forum Stack
-- [ ] Forum homepage
-- [ ] Message boards
-- [ ] Stock-specific boards
-- [ ] Topic-specific boards
+- [x] Forum homepage
+- [x] Message boards
+- [ ] Stock-specific boards (board model supports it, no per-stock auto-provisioning yet)
+- [x] Topic-specific boards
 - [ ] Membership rules
 - [ ] Ask-the-expert
 - [ ] Top boarders
-- [ ] Latest threads
-- [ ] Polls
+- [x] Latest threads
+- [x] Polls
 - [ ] Historical polls
-- [ ] Market sentiments
+- [x] Market sentiments (per-post sentiment tagging)
 - [ ] Market Minds
   - [ ] Invitation-only expert community
   - [ ] Market-professional insights
-- [ ] User-generated content
-- [ ] Moderation tools
-- [ ] Spam filtering
-- [ ] Sentiment tagging
+- [x] User-generated content
+- [x] Moderation tools
+- [x] Spam filtering
+- [x] Sentiment tagging
 
 ## 13. Personal Finance and Product Distribution Stack
 - [ ] Finance tracker
