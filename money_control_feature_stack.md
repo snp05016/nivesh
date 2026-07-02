@@ -251,33 +251,33 @@
 - [ ] RHP links
 
 ## 6. Mutual Funds Stack
-- [ ] Mutual fund discovery
+- [x] Mutual fund discovery
 - [ ] Mutual fund comparison
-- [ ] Mutual fund tracking
-- [ ] Fund details
-- [ ] Latest NAV
-- [ ] Historical NAV
-- [ ] Historical performance
-- [ ] Rolling returns
-- [ ] Riskometer
-- [ ] SIP returns
-  - [ ] Absolute returns
-  - [ ] Annualized returns
-  - [ ] Period-specific SIP returns
+- [x] Mutual fund tracking
+- [x] Fund details
+- [x] Latest NAV
+- [x] Historical NAV
+- [x] Historical performance
+- [ ] Rolling returns (calculator exists, not yet wired to an endpoint/UI)
+- [x] Riskometer
+- [x] SIP returns
+  - [x] Absolute returns
+  - [x] Annualized returns
+  - [x] Period-specific SIP returns
 - [ ] MC30
   - [ ] Curated 30-fund basket
   - [ ] Core categories
   - [ ] Satellite categories
 - [ ] Mutual fund screeners
 - [ ] User risk assessment
-- [ ] AUM data
-- [ ] Expense ratio data
-- [ ] Fund portfolio holdings
-- [ ] Fund manager details
-- [ ] AMFI NAV integration
+- [x] AUM data
+- [x] Expense ratio data
+- [ ] Fund portfolio holdings (model/UI scaffolded, backend endpoint not implemented)
+- [x] Fund manager details
+- [x] AMFI NAV integration
 - [ ] AMC disclosure integration
 - [ ] Mutual fund transaction support inside portfolio
-  - [ ] SIP
+  - [ ] SIP (calculator only, not wired into portfolio transactions)
   - [ ] STP
   - [ ] SWP
   - [ ] Dividends
