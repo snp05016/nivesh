@@ -1,0 +1,248 @@
+"""Loan Marketplace API — MOCK NBFC loan offers, applications, and a MOCK
+credit bureau score lookup.
+
+Controller-only: HTTP validation lives here, all DB access and business
+logic live in services/loan_marketplace_service.py and
+services/credit_bureau_mock_service.py (Controller-Service-Repository).
+
+MOCK DATA — simulated for demo purposes, not a real integration. No real
+NBFC or credit-bureau API is called anywhere behind this router.
+"""
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
+
+from core.security import require_auth
+from services.credit_bureau_mock_service import get_mock_credit_report_summary
+from services.loan_marketplace_service import (
+    get_application_by_id,
+    link_bank_account,
+    list_applications_for_user,
+    list_linked_bank_accounts,
+    list_loan_offers,
+    seed_mock_loan_offers_if_empty,
+    submit_loan_application,
+)
+
+router = APIRouter(prefix="/api/finance", tags=["Loan Marketplace"])
+
+VALID_LOAN_TYPES = {"personal", "home", "car", "gold", "education"}
+
+
+# ---------------------------------------------------------------------------
+# Response / request models
+# ---------------------------------------------------------------------------
+
+class LoanOfferResponse(BaseModel):
+    id: int
+    nbfc_name: str
+    loan_type: str
+    min_amount: float
+    max_amount: float
+    interest_rate_pct: float
+    min_tenure_months: int
+    max_tenure_months: int
+    min_credit_score: int
+    processing_fee_pct: float
+
+    class Config:
+        from_attributes = True
+
+
+class CreditScoreResponse(BaseModel):
+    user_id: int
+    credit_score: int
+    score_band: str
+    bureau_name: str
+    score_range_min: int
+    score_range_max: int
+
+
+class SubmitLoanApplicationRequest(BaseModel):
+    loan_offer_id: int
+    requested_amount: float = Field(..., gt=0)
+    requested_tenure_months: int = Field(..., gt=0)
+    # MOCK KYC — device_id of the submitting device, checked against
+    # kyc_consent_service.verify_device_binding() before auto-approval.
+    # Simulated for demo purposes, not a real device/SIM-binding integration.
+    device_id: Optional[str] = None
+
+
+class LoanApplicationResponse(BaseModel):
+    id: int
+    user_id: int
+    loan_offer_id: int
+    requested_amount: float
+    requested_tenure_months: int
+    status: str
+    mock_credit_score_at_application: Optional[int] = None
+    decision_reason: Optional[str] = None
+    submitted_at: Optional[str] = None
+    decided_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class LinkedBankAccountResponse(BaseModel):
+    id: int
+    bank_name: str
+    account_type: str
+    masked_account_number: str
+    ifsc_code: Optional[str] = None
+    is_primary: bool
+    linked_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class LinkBankAccountRequest(BaseModel):
+    bank_name: str = Field(..., min_length=2, max_length=100)
+    masked_account_number: str = Field(..., min_length=4, max_length=20)
+    account_type: str = Field("savings", pattern="^(savings|current)$")
+    ifsc_code: Optional[str] = Field(None, max_length=15)
+
+
+# ---------------------------------------------------------------------------
+# Loan offers
+# ---------------------------------------------------------------------------
+
+@router.get("/loan-offers", response_model=List[LoanOfferResponse])
+def get_loan_offers(loan_type: Optional[str] = Query(None)):
+    """List MOCK NBFC loan offers, optionally filtered by loan_type."""
+    seed_mock_loan_offers_if_empty()  # mock data bootstrap — no-op once table is populated
+    if loan_type and loan_type not in VALID_LOAN_TYPES:
+        raise HTTPException(status_code=400, detail=f"loan_type must be one of {sorted(VALID_LOAN_TYPES)}")
+    offers = list_loan_offers(loan_type=loan_type)
+    return [
+        LoanOfferResponse(
+            id=o.id,
+            nbfc_name=o.nbfc_name,
+            loan_type=o.loan_type,
+            min_amount=float(o.min_amount),
+            max_amount=float(o.max_amount),
+            interest_rate_pct=float(o.interest_rate_pct),
+            min_tenure_months=o.min_tenure_months,
+            max_tenure_months=o.max_tenure_months,
+            min_credit_score=o.min_credit_score,
+            processing_fee_pct=float(o.processing_fee_pct),
+        )
+        for o in offers
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Mock credit score
+# ---------------------------------------------------------------------------
+
+@router.get("/credit-score", response_model=CreditScoreResponse)
+def get_my_credit_score(user_id: int = Depends(require_auth)):
+    """Return the caller's MOCK credit bureau score.
+
+    MOCK DATA — simulated for demo purposes, not a real credit bureau integration.
+    """
+    return get_mock_credit_report_summary(user_id)
+
+
+# ---------------------------------------------------------------------------
+# Loan applications
+# ---------------------------------------------------------------------------
+
+def _serialize_application(app) -> LoanApplicationResponse:
+    return LoanApplicationResponse(
+        id=app.id,
+        user_id=app.user_id,
+        loan_offer_id=app.loan_offer_id,
+        requested_amount=float(app.requested_amount),
+        requested_tenure_months=app.requested_tenure_months,
+        status=app.status,
+        mock_credit_score_at_application=app.mock_credit_score_at_application,
+        decision_reason=app.decision_reason,
+        submitted_at=app.submitted_at.isoformat() if app.submitted_at else None,
+        decided_at=app.decided_at.isoformat() if app.decided_at else None,
+    )
+
+
+@router.post("/loan-applications", response_model=LoanApplicationResponse)
+def create_loan_application(payload: SubmitLoanApplicationRequest, user_id: int = Depends(require_auth)):
+    """Submit a loan application against a MOCK NBFC offer.
+
+    Underwriting is a simplified, clearly-mocked demo rule driven by the
+    MOCK credit bureau score — not a real NBFC lending decision.
+    """
+    try:
+        application = submit_loan_application(
+            user_id=user_id,
+            loan_offer_id=payload.loan_offer_id,
+            requested_amount=payload.requested_amount,
+            requested_tenure_months=payload.requested_tenure_months,
+            device_id=payload.device_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return _serialize_application(application)
+
+
+@router.get("/loan-applications", response_model=List[LoanApplicationResponse])
+def get_my_loan_applications(user_id: int = Depends(require_auth)):
+    """List the caller's loan applications, most recent first."""
+    return [_serialize_application(a) for a in list_applications_for_user(user_id)]
+
+
+@router.get("/loan-applications/{application_id}", response_model=LoanApplicationResponse)
+def get_my_loan_application(application_id: int, user_id: int = Depends(require_auth)):
+    """Get a single loan application belonging to the caller."""
+    application = get_application_by_id(application_id, user_id)
+    if application is None:
+        raise HTTPException(status_code=404, detail="Loan application not found")
+    return _serialize_application(application)
+
+
+# ---------------------------------------------------------------------------
+# Linked bank accounts (MOCK — user-supplied labels only, no real account
+# numbers or account-aggregator integration)
+# ---------------------------------------------------------------------------
+
+@router.get("/linked-bank-accounts", response_model=List[LinkedBankAccountResponse])
+def get_my_linked_bank_accounts(user_id: int = Depends(require_auth)):
+    """List the caller's MOCK linked bank accounts."""
+    accounts = list_linked_bank_accounts(user_id)
+    return [
+        LinkedBankAccountResponse(
+            id=a.id,
+            bank_name=a.bank_name,
+            account_type=a.account_type,
+            masked_account_number=a.masked_account_number,
+            ifsc_code=a.ifsc_code,
+            is_primary=a.is_primary,
+            linked_at=a.linked_at.isoformat() if a.linked_at else None,
+        )
+        for a in accounts
+    ]
+
+
+@router.post("/linked-bank-accounts", response_model=LinkedBankAccountResponse)
+def create_linked_bank_account(payload: LinkBankAccountRequest, user_id: int = Depends(require_auth)):
+    """Register a MOCK linked bank account for the loan marketplace demo.
+
+    masked_account_number must already be masked by the client (e.g.
+    "XXXX1234") — this endpoint never accepts or stores full account numbers.
+    """
+    account = link_bank_account(
+        user_id=user_id,
+        bank_name=payload.bank_name,
+        masked_account_number=payload.masked_account_number,
+        account_type=payload.account_type,
+        ifsc_code=payload.ifsc_code,
+    )
+    return LinkedBankAccountResponse(
+        id=account.id,
+        bank_name=account.bank_name,
+        account_type=account.account_type,
+        masked_account_number=account.masked_account_number,
+        ifsc_code=account.ifsc_code,
+        is_primary=account.is_primary,
+        linked_at=account.linked_at.isoformat() if account.linked_at else None,
+    )

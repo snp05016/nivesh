@@ -1,0 +1,130 @@
+import SwiftUI
+import UIKit
+
+/// Drives LoanMarketplaceView — fetches mock loan offers and applies
+/// type/amount/tenure filters client-side, mirroring MutualFundViewModel's
+/// fetch/error/loading shape. MOCK DATA - simulated for demo purposes,
+/// not a real integration; no real NBFC/credit-bureau data.
+@MainActor
+class LoanViewModel: ObservableObject {
+    @Published var selectedLoanType: LoanType? = nil
+    @Published var minAmount: Double = 0
+    @Published var maxAmount: Double = 1_00_00_000 // 1 Cr ceiling for the amount slider
+    @Published var maxTenureMonths: Double = 360   // 30 years ceiling for the tenure slider
+
+    @Published var allOffers: [LoanOfferDTO] = []
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String? = nil
+
+    var filteredOffers: [LoanOfferDTO] {
+        var result = allOffers
+        if let type = selectedLoanType {
+            result = result.filter { $0.parsedLoanType == type }
+        }
+        if minAmount > 0 {
+            result = result.filter { $0.maxAmount >= minAmount }
+        }
+        if maxAmount < 1_00_00_000 {
+            result = result.filter { $0.minAmount <= maxAmount }
+        }
+        if maxTenureMonths < 360 {
+            result = result.filter { Double($0.minTenureMonths) <= maxTenureMonths }
+        }
+        return result.sorted { $0.interestRatePct < $1.interestRatePct }
+    }
+
+    func fetchOffers() async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            allOffers = try await NetworkManager.shared.fetchLoanOffers()
+            if allOffers.isEmpty {
+                errorMessage = "Couldn't load loan offers. Pull to retry."
+            }
+        } catch {
+            errorMessage = "Couldn't load loan offers. Pull to retry."
+        }
+        isLoading = false
+    }
+
+    func clearFilters() {
+        selectedLoanType = nil
+        minAmount = 0
+        maxAmount = 1_00_00_000
+        maxTenureMonths = 360
+    }
+}
+
+/// Drives LoanApplicationView's multi-step form (amount → tenure → purpose
+/// → KYC consent) and submits the (mock) application. MOCK DATA - simulated
+/// for demo purposes, not a real integration; the KYC consent checkbox does
+/// not trigger any real e-KYC/document-upload flow.
+@MainActor
+class LoanApplicationViewModel: ObservableObject {
+    let offer: LoanOfferDTO
+
+    @Published var amount: Double
+    @Published var tenureMonths: Int
+    @Published var purpose: String = ""
+    @Published var kycConsent: Bool = false
+
+    @Published var currentStep: Int = 0
+    let totalSteps = 4 // amount, tenure, purpose, KYC consent + review
+
+    @Published var isSubmitting: Bool = false
+    @Published var submissionError: String? = nil
+    @Published var submittedApplication: LoanApplicationResponse? = nil
+
+    init(offer: LoanOfferDTO) {
+        self.offer = offer
+        self.amount = offer.minAmount
+        self.tenureMonths = offer.minTenureMonths
+    }
+
+    var canAdvance: Bool {
+        switch currentStep {
+        case 0: return amount >= offer.minAmount && amount <= offer.maxAmount
+        case 1: return tenureMonths >= offer.minTenureMonths && tenureMonths <= offer.maxTenureMonths
+        case 2: return !purpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case 3: return kycConsent
+        default: return false
+        }
+    }
+
+    func advance() {
+        guard canAdvance, currentStep < totalSteps - 1 else { return }
+        currentStep += 1
+    }
+
+    func goBack() {
+        guard currentStep > 0 else { return }
+        currentStep -= 1
+    }
+
+    /// Submits the (mock) application. `purpose` is UI-only and not sent —
+    /// backend/routers/finance.py's SubmitLoanApplicationRequest has no
+    /// `purpose` field. KYC gating happens server-side (see
+    /// services/loan_marketplace_service.py's KYC gate): we send this
+    /// device's vendor identifier as `device_id` so the mock device-binding
+    /// check in services/kyc_consent_service.py can verify it.
+    func submit() async {
+        guard kycConsent else {
+            submissionError = "Please provide KYC consent to continue."
+            return
+        }
+        isSubmitting = true
+        submissionError = nil
+        let requestBody = LoanApplicationRequest(
+            loanOfferId: offer.id,
+            requestedAmount: amount,
+            requestedTenureMonths: tenureMonths,
+            deviceId: UIDevice.current.identifierForVendor?.uuidString
+        )
+        do {
+            submittedApplication = try await NetworkManager.shared.submitLoanApplication(requestBody)
+        } catch {
+            submissionError = "Couldn't submit your application. Please try again."
+        }
+        isSubmitting = false
+    }
+}

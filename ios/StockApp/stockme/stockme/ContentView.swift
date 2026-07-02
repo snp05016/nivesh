@@ -265,6 +265,8 @@ enum MarketSection: String, Hashable, CaseIterable {
     case ipo = "ipo"
     case mutualFunds = "mutual_funds"
     case forum = "forum"
+    case financeTracker = "finance_tracker"
+    case loanMarketplace = "loan_marketplace"
 
     var icon: String {
         switch self {
@@ -284,6 +286,8 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .ipo: return "doc.text.fill"
         case .mutualFunds: return "chart.pie.fill"
         case .forum: return "bubble.left.and.bubble.right.fill"
+        case .financeTracker: return "wallet.pass.fill"
+        case .loanMarketplace: return "banknote.fill"
         }
     }
     var hindi: String {
@@ -304,6 +308,8 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .ipo: return "आईपीओ केंद्र"
         case .mutualFunds: return "म्यूचुअल फंड"
         case .forum: return "सामुदायिक मंच"
+        case .financeTracker: return "वित्त ट्रैकर"
+        case .loanMarketplace: return "ऋण बाज़ार"
         }
     }
     var englishTitle: String {
@@ -324,6 +330,8 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .ipo: return "IPO HUB"
         case .mutualFunds: return "MUTUAL FUNDS"
         case .forum: return "COMMUNITY FORUM"
+        case .financeTracker: return "FINANCE TRACKER"
+        case .loanMarketplace: return "LOAN MARKETPLACE"
         }
     }
     var subtitle: String {
@@ -344,6 +352,8 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .ipo: return "Upcoming & Open Listings"
         case .mutualFunds: return "Discover, Compare & Track"
         case .forum: return "Boards, Threads & Polls"
+        case .financeTracker: return "Accounts, Balances & Spend"
+        case .loanMarketplace: return "Personal, Home, Car & Gold Loans"
         }
     }
     var description: String {
@@ -364,6 +374,8 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .ipo: return "Price band, lot size, GMP, dates and live subscription status for every IPO"
         case .mutualFunds: return "Browse by category, AUM and returns; NAV history, expense ratio, riskometer and SIP calculator"
         case .forum: return "Per-stock and general market message boards, threaded replies, upvotes and community polls"
+        case .financeTracker: return "Mock linked bank accounts, balance summary, and a placeholder spend categorization breakdown"
+        case .loanMarketplace: return "Browse demo loan offers by type and tenure, then submit a mock multi-step application"
         }
     }
     var accentColor: Color {
@@ -384,6 +396,8 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .ipo: return Theme.securityGold
         case .mutualFunds: return Theme.bullGreen
         case .forum: return Theme.avatarBlue
+        case .financeTracker: return Theme.securityGold
+        case .loanMarketplace: return Theme.holdAmber
         }
     }
 
@@ -395,7 +409,7 @@ enum MarketSection: String, Hashable, CaseIterable {
 
         var sections: [MarketSection] {
             switch self {
-            case .discovery: return [.nl_screener, .screener, .earnings, .earnings_surprise, .ipo, .mutualFunds, .forum]
+            case .discovery: return [.nl_screener, .screener, .earnings, .earnings_surprise, .ipo, .mutualFunds, .forum, .financeTracker, .loanMarketplace]
             case .analytics: return [.correlation, .stress_test, .sector_rotation, .anomalies]
             case .trading:   return [.options_strategy, .strategy, .alerts, .technical]
             }
@@ -670,6 +684,8 @@ struct MarketsView: View {
         case .ipo: IPOHubView()
         case .mutualFunds: MutualFundDiscoveryView()
         case .forum: ForumHubView()
+        case .financeTracker: FinanceTrackerView()
+        case .loanMarketplace: LoanMarketplaceView()
         }
     }
 

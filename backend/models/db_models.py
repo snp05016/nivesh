@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    Boolean, CheckConstraint, Column, DateTime, Float, Integer, JSON, String, Text,
+    Boolean, CheckConstraint, Column, DateTime, Float, Integer, JSON, Numeric, String, Text,
     ForeignKey, Index, UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -1191,4 +1191,134 @@ class ForumVote(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "post_id", name="uq_forum_vote_user_post"),
         UniqueConstraint("user_id", "poll_id", name="uq_forum_vote_user_poll"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# KYC / consent-management — loan marketplace
+#
+# MOCK DATA / SIMULATED — these models back a demo "SIM-binding"-style device
+# consent check and a granular consent ledger for the loan marketplace's KYC
+# flow. Nothing here talks to a real telecom carrier or credit bureau; see
+# services/kyc_consent_service.py for the simulated verification logic.
+# ---------------------------------------------------------------------------
+
+class KYCConsent(Base):
+    """Audit-trail record of a single consent grant/revocation.
+
+    Rows are never deleted — revoke_consent() sets revoked_at instead, so the
+    full consent history remains inspectable for compliance/audit purposes.
+    """
+    __tablename__ = "kyc_consents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # e.g. "data_sharing" | "credit_check" | "sim_binding"
+    consent_type = Column(String(40), nullable=False, index=True)
+    granted = Column(Boolean, nullable=False, default=False, server_default="0")
+    granted_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    ip_address = Column(String(64), nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+
+
+class DeviceBinding(Base):
+    """MOCK DATA — simulated SIM-binding / device-consent record.
+
+    NOT a real telecom SIM-swap-detection integration. Simply stores which
+    device_id(s) a user has registered so verify_device_binding() can do a
+    simulated match check for the KYC flow demo.
+    """
+    __tablename__ = "device_bindings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    device_id = Column(String(120), nullable=False, index=True)
+    bound_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    is_primary = Column(Boolean, nullable=False, default=True, server_default="1")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "device_id", name="uq_device_binding_user_device"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Loan Marketplace — MOCK NBFC / credit-bureau demo feature.
+# Owned by services/loan_marketplace_service.py + services/credit_bureau_mock_service.py,
+# exposed via routers/finance.py. All data here is simulated for demo
+# purposes — no real NBFC or credit-bureau integration.
+# ---------------------------------------------------------------------------
+
+class LinkedBankAccount(Base):
+    """MOCK DATA — a simulated bank account a user has "linked" for the loan
+    marketplace demo (e.g. for auto-debit / income-verification display).
+
+    NOT a real account-aggregator / bank integration — no real account
+    numbers or credentials are collected; values are user-supplied labels.
+    """
+    __tablename__ = "linked_bank_accounts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    bank_name = Column(String(100), nullable=False)
+    account_type = Column(String(20), nullable=False, default="savings", server_default="savings")  # savings|current
+    masked_account_number = Column(String(20), nullable=False)  # e.g. "XXXX1234" — never a real account number
+    ifsc_code = Column(String(15), nullable=True)
+    is_primary = Column(Boolean, nullable=False, default=True, server_default="1")
+    linked_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "masked_account_number", name="uq_linked_bank_account_user_number"),
+    )
+
+
+class LoanOffer(Base):
+    """MOCK DATA — simulated NBFC loan product listed on the loan marketplace.
+
+    Seeded by services/loan_marketplace_service.py:seed_mock_loan_offers_if_empty().
+    Not a real NBFC product catalog / rate-card integration.
+    """
+    __tablename__ = "loan_offers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nbfc_name = Column(String(100), nullable=False)
+    loan_type = Column(String(20), nullable=False, index=True)  # personal|home|car|gold|education
+    min_amount = Column(Numeric(14, 2), nullable=False)
+    max_amount = Column(Numeric(14, 2), nullable=False)
+    interest_rate_pct = Column(Numeric(5, 2), nullable=False)  # annual, e.g. 10.50
+    min_tenure_months = Column(Integer, nullable=False)
+    max_tenure_months = Column(Integer, nullable=False)
+    min_credit_score = Column(Integer, nullable=False, default=650, server_default="650")
+    processing_fee_pct = Column(Numeric(5, 2), nullable=False, default=1.0, server_default="1.0")
+    is_active = Column(Boolean, nullable=False, default=True, server_default="1")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    applications = relationship("LoanApplication", back_populates="loan_offer", cascade="all, delete-orphan")
+
+
+class LoanApplication(Base):
+    """A user's application against a LoanOffer. status is driven by the
+    demo underwriting rule in services/loan_marketplace_service.py — a
+    simplified, clearly-mocked stand-in for real NBFC underwriting.
+    """
+    __tablename__ = "loan_applications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    loan_offer_id = Column(Integer, ForeignKey("loan_offers.id"), nullable=False, index=True)
+    requested_amount = Column(Numeric(14, 2), nullable=False)
+    requested_tenure_months = Column(Integer, nullable=False)
+    status = Column(String(20), nullable=False, default="submitted", server_default="submitted", index=True)
+    # submitted|under_review|approved|rejected|disbursed
+    mock_credit_score_at_application = Column(Integer, nullable=True)
+    decision_reason = Column(Text, nullable=True)
+    submitted_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    decided_at = Column(DateTime, nullable=True)
+
+    loan_offer = relationship("LoanOffer", back_populates="applications")
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('submitted','under_review','approved','rejected','disbursed')",
+            name="ck_loan_application_status",
+        ),
     )
