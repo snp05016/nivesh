@@ -525,32 +525,32 @@
   - [ ] Market-veteran ideas
   - [ ] Centralized dashboard
   - [ ] All PRO features
-- [ ] Subscription management
-  - [ ] Monthly SKUs
+- [x] Subscription management (mock, client-side plan catalog)
+  - [x] Monthly SKUs
   - [ ] Quarterly SKUs
-  - [ ] Annual SKUs
+  - [x] Annual SKUs
   - [ ] Multiple iOS PRO price variants
-  - [ ] SuperPro monthly SKU
-  - [ ] SuperPro annual SKU
-- [ ] Paywall triggers
-- [ ] Entitlement management
-- [ ] Premium upsell surfaces
+  - [x] SuperPro monthly SKU
+  - [x] SuperPro annual SKU
+- [ ] Paywall triggers (banner exists, not wired to real feature gates)
+- [ ] Entitlement management (no server-side per-tier feature gating)
+- [x] Premium upsell surfaces
 - [ ] Programmatic advertising
 - [ ] Subscription revenue
 - [ ] Financial-product lead generation / commission revenue
 
 ## 15. Account, Settings, Privacy, and Platform Stack
 - [ ] User login
-- [ ] My Profile
-- [ ] KYC details
-- [ ] Subscription management
+- [x] My Profile
+- [ ] KYC details (no KYC status shown in profile/account settings)
+- [x] Subscription management
 - [ ] My Alerts configuration
-- [ ] Data privacy controls
-- [ ] Account security
-- [ ] SIM-binding controls
-- [ ] Data deletion
-- [ ] Data erasure requests
-- [ ] Consent withdrawal
+- [x] Data privacy controls
+- [x] Account security (mock password change, sessions, 2FA placeholder)
+- [ ] SIM-binding controls (device binding exists in backend, no account-settings UI)
+- [x] Data deletion (request workflow, non-destructive)
+- [x] Data erasure requests
+- [x] Consent withdrawal
 - [ ] Support workflows
 - [ ] Platform support
   - [ ] Android
@@ -574,7 +574,7 @@
 - [ ] Page-view activity collection
 - [ ] Third-party advertising integration
 - [ ] Third-party IT/data analytics sharing
-- [ ] Deletion-request workflow
+- [x] Deletion-request workflow
 
 ## 16. Data Source and Backend Architecture Stack
 - [ ] Market-data platform
@@ -661,17 +661,17 @@
 - [ ] RBI Account Aggregator compliance
 - [ ] FIU consent architecture
 - [ ] Time-bound user consent
-- [ ] Revocable consent flows
+- [x] Revocable consent flows
 - [ ] Data minimization
 - [ ] RBI digital lending compliance
 - [ ] Lending Service Provider requirements
 - [ ] Key Fact Statement display
 - [ ] APR disclosure
 - [ ] Direct lender-borrower fund flow
-- [ ] KYC security
-- [ ] SIM-binding fraud prevention
+- [x] KYC security (consent + device-binding gate on loan approval)
+- [ ] SIM-binding fraud prevention (mock device binding only, no fraud detection)
 - [ ] Privacy policy compliance
-- [ ] Data deletion compliance
+- [x] Data deletion compliance
 - [ ] Third-party data-sharing governance
 
 ## 18. Implementation Complexity Stack
