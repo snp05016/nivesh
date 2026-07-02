@@ -1,0 +1,101 @@
+import SwiftUI
+
+/// Drives PaywallView and SubscriptionManagementView — fetches the mock plan
+/// catalog + current plan, and performs the mock upgrade/downgrade/cancel
+/// actions. Mirrors LoanViewModel's fetch/error/loading shape. MOCK DATA -
+/// simulated for demo purposes, not a real integration; no real StoreKit
+/// purchase completion, no receipt validation, no real payment processor.
+@MainActor
+class SubscriptionViewModel: ObservableObject {
+    @Published var billingCycle: BillingCycle = .monthly
+
+    @Published var plans: [SubscriptionPlanDTO] = []
+    @Published var currentSubscription: CurrentSubscriptionDTO? = nil
+
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String? = nil
+
+    /// Set while an upgrade/cancel action is in flight, to disable buttons
+    /// and show an inline spinner instead of a full-screen loader.
+    @Published var isProcessingAction: Bool = false
+    @Published var actionErrorMessage: String? = nil
+
+    /// Success confirmation shown after a mock upgrade/cancel completes.
+    @Published var lastActionConfirmation: String? = nil
+
+    var currentTier: SubscriptionTier {
+        currentSubscription?.parsedTier ?? .free
+    }
+
+    /// Plans for the currently-selected billing cycle, one per tier,
+    /// ordered Free → PRO → Super PRO for the comparison matrix columns.
+    var visiblePlans: [SubscriptionPlanDTO] {
+        SubscriptionTier.allCases.compactMap { tier in
+            plans.first { $0.parsedTier == tier && $0.parsedCycle == billingCycle }
+        }
+    }
+
+    /// Annual discount badge text, derived from the PRO annual plan's
+    /// discount_pct (falls back to Super PRO if PRO isn't loaded yet).
+    var annualDiscountLabel: String? {
+        let annualPlans = plans.filter { $0.parsedCycle == .annual && $0.discountPct != nil }
+        guard let best = annualPlans.max(by: { ($0.discountPct ?? 0) < ($1.discountPct ?? 0) }),
+              let pct = best.discountPct, pct > 0 else { return nil }
+        return "Save \(Int(pct))%"
+    }
+
+    func loadPaywall() async {
+        isLoading = true
+        errorMessage = nil
+        // Plan/pricing catalog is client-side only — the backend has no
+        // plans-catalog endpoint (see SubscriptionPlanCatalog).
+        plans = SubscriptionPlanCatalog.all
+        do {
+            currentSubscription = try await NetworkManager.shared.fetchCurrentSubscription()
+        } catch {
+            errorMessage = "Couldn't load your current plan. Pull to retry."
+        }
+        isLoading = false
+    }
+
+    func loadCurrentSubscription() async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            currentSubscription = try await NetworkManager.shared.fetchCurrentSubscription()
+        } catch {
+            errorMessage = "Couldn't load your plan. Pull to retry."
+        }
+        isLoading = false
+    }
+
+    /// MOCK - simulated for demo purposes: no real StoreKit purchase sheet.
+    func upgrade(to plan: SubscriptionPlanDTO) async {
+        isProcessingAction = true
+        actionErrorMessage = nil
+        do {
+            currentSubscription = try await NetworkManager.shared.mockUpgradeSubscription(
+                tier: plan.parsedTier.rawValue, billingCycle: plan.parsedCycle.rawValue
+            )
+            lastActionConfirmation = "You're now on \(plan.parsedTier.displayName) (\(plan.parsedCycle.displayName))."
+        } catch {
+            actionErrorMessage = "Couldn't complete the upgrade. Please try again."
+        }
+        isProcessingAction = false
+    }
+
+    /// MOCK - simulated for demo purposes: no real StoreKit cancellation.
+    /// `reason` is UI-only — the backend endpoint takes no request body, so
+    /// it is not sent server-side (see NetworkManager+Subscription.swift).
+    func cancel(reason: String? = nil) async {
+        isProcessingAction = true
+        actionErrorMessage = nil
+        do {
+            currentSubscription = try await NetworkManager.shared.mockCancelSubscription()
+            lastActionConfirmation = "Your plan will remain active until the renewal date, then move to Free."
+        } catch {
+            actionErrorMessage = "Couldn't cancel your plan. Please try again."
+        }
+        isProcessingAction = false
+    }
+}

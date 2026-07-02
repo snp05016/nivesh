@@ -102,34 +102,43 @@ struct SettingsScreen: View {
     private var profileSection: some View {
         Group {
             if let user = authManager.currentUser {
-                HStack(spacing: Theme.Spacing.card) {
-                    ZStack {
-                        Circle().fill(Theme.securityGold).frame(width: 56, height: 56)
-                            .shadow(color: Theme.securityGold.opacity(0.3), radius: 8, y: 4)
-                        Text(String(user.displayName.prefix(1)).uppercased())
-                            .font(Theme.serialNumberFont(size: 24, relativeTo: .body).weight(.semibold))
-                            .foregroundStyle(Theme.canvas)
+                VStack(spacing: Theme.Spacing.none) {
+                    NavigationLink(destination: ProfileSettingsView()) {
+                        HStack(spacing: Theme.Spacing.card) {
+                            ZStack {
+                                Circle().fill(Theme.securityGold).frame(width: 56, height: 56)
+                                    .shadow(color: Theme.securityGold.opacity(0.3), radius: 8, y: 4)
+                                Text(String(user.displayName.prefix(1)).uppercased())
+                                    .font(Theme.serialNumberFont(size: 24, relativeTo: .body).weight(.semibold))
+                                    .foregroundStyle(Theme.canvas)
+                            }
+                            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                                Text(user.displayName)
+                                    .font(Theme.engravedSerif(size: 20, weight: .semibold)).foregroundStyle(Theme.inkPrimary)
+                                Text("Registry #\(String(user.userId))-AUTH")
+                                    .font(Theme.serialNumberFont(size: 11)).foregroundStyle(Theme.inkTertiary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Theme.inkTertiary)
+                        }
+                        .padding(Theme.Spacing.card)
+                        .contentShape(Rectangle())
                     }
-                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                        Text(user.displayName)
-                            .font(Theme.engravedSerif(size: 20, weight: .semibold)).foregroundStyle(Theme.inkPrimary)
-                        Text("Registry #\(String(user.userId))-AUTH")
-                            .font(Theme.serialNumberFont(size: 11)).foregroundStyle(Theme.inkTertiary)
-                    }
-                    Spacer()
+                    .buttonStyle(EKPressStyle())
+                    .simultaneousGesture(TapGesture().onEnded {
+                        devToolsTapCount += 1
+                        if devToolsTapCount >= 3 {
+                            HapticManager.success()
+                            withAnimation { showDevTools = true }
+                            devToolsTapCount = 0
+                        } else {
+                            HapticManager.selection()
+                        }
+                    })
                 }
-                .padding(Theme.Spacing.card)
                 .banknoteCard()
-                .onTapGesture {
-                    devToolsTapCount += 1
-                    if devToolsTapCount >= 3 {
-                        HapticManager.success()
-                        withAnimation { showDevTools = true }
-                        devToolsTapCount = 0
-                    } else {
-                        HapticManager.selection()
-                    }
-                }
             }
         }
     }
@@ -155,6 +164,7 @@ struct SettingsScreen: View {
             DateRow(icon: "clock.fill", color: Theme.securityGold, title: "Morning Brief Time", selection: morningBriefDate)
             PickerRow(icon: "speaker.wave.2", color: Theme.bearRed, title: "Notification Sound", selection: $notificationSound, options: ["Default", "rupee_rustle.mp3"])
             NavRow(icon: "moon.zzz", color: Theme.inkSecondary, title: "Quiet Hours", destination: QuietHoursView())
+            NavRow(icon: "bell.badge.circle", color: Theme.securityGold, title: "Notification Preferences", destination: NotificationPreferencesView())
         }
     }
 
@@ -244,6 +254,8 @@ struct SettingsScreen: View {
 
     private var accountSection: some View {
         SettingsGroup(title: "ACCOUNT", hindi: "खाता") {
+            NavRow(icon: "crown.fill", color: Theme.securityGold, title: "Subscription", destination: SubscriptionManagementView())
+            NavRow(icon: "lock.shield.fill", color: Theme.securityGold, title: "Account Security", destination: AccountSecurityView())
             PickerRow(icon: "indianrupeesign", color: Theme.securityGold, title: "Currency Format", selection: $currencyDisplay, options: ["Lakhs/Crores", "Absolute"])
             PickerRow(icon: "arrow.triangle.2.circlepath", color: Theme.inkSecondary, title: "Home Auto-refresh", selection: $homeAutoRefreshSeconds, options: ["0", "30", "60", "120"])
             ToggleRow(icon: "newspaper", color: Theme.securityGold, title: "IPO Alerts", isOn: $ipoAlerts)

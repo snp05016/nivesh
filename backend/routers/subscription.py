@@ -1,0 +1,58 @@
+"""Subscription API — /api/v1/subscription.
+
+MOCK — simulated for demo purposes, not a real integration. There is no
+real StoreKit purchase-completion handshake and no real payment processor
+wired to these endpoints; /upgrade and /cancel just record the requested
+state via services/subscription_service.py.
+"""
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from typing import Optional
+from datetime import datetime
+
+from core.security import require_auth
+from services import subscription_service
+
+router = APIRouter(prefix="/api/v1/subscription", tags=["Subscription"])
+
+
+class SubscriptionResponse(BaseModel):
+    user_id: int
+    tier: str
+    billing_cycle: Optional[str] = None
+    started_at: Optional[datetime] = None
+    renews_at: Optional[datetime] = None
+    is_active: bool
+    cancelled_at: Optional[datetime] = None
+
+
+class UpgradeRequest(BaseModel):
+    tier: str = Field(..., description="'pro' or 'super_pro'")
+    billing_cycle: str = Field(..., description="'monthly' or 'annual'")
+
+
+@router.get("", response_model=SubscriptionResponse)
+def get_subscription(user_id: int = Depends(require_auth)):
+    """Returns the caller's current subscription, lazily creating a
+    free-tier row on first access."""
+    return SubscriptionResponse(**subscription_service.get_or_create_subscription(user_id))
+
+
+@router.post("/upgrade", response_model=SubscriptionResponse)
+def upgrade_subscription(req: UpgradeRequest, user_id: int = Depends(require_auth)):
+    """MOCK upgrade — simulated for demo purposes. No real StoreKit
+    purchase or payment processor call happens server-side."""
+    try:
+        result = subscription_service.mock_upgrade(user_id, tier=req.tier, billing_cycle=req.billing_cycle)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return SubscriptionResponse(**result)
+
+
+@router.post("/cancel", response_model=SubscriptionResponse)
+def cancel_subscription(user_id: int = Depends(require_auth)):
+    """MOCK cancel — simulated for demo purposes. Tier stays until
+    `renews_at`; see services/subscription_service.mock_cancel() for the
+    "no cron reverts this" caveat."""
+    result = subscription_service.mock_cancel(user_id)
+    return SubscriptionResponse(**result)

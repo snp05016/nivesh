@@ -970,6 +970,52 @@ class UserPreference(Base):
     user = relationship("User", backref="preferences")
 
 
+class UserSubscription(Base):
+    """User premium subscription/tier record.
+
+    MOCK — simulated for demo purposes. No real payment processor or
+    StoreKit purchase completion is wired here; services/subscription_service.py's
+    mock_upgrade()/mock_cancel() just flip these columns directly.
+
+    Cancellation semantics: mock_cancel() sets is_active=False and
+    cancelled_at=now but deliberately leaves `tier` unchanged until
+    `renews_at` — i.e. the user logically keeps access through the end of
+    the billing period they already paid for. Once `renews_at` passes for a
+    cancelled (is_active=False) subscription, the tier should logically be
+    treated as "free" again, but there is NO cron/scheduled job in this repo
+    that flips `tier` back to "free" automatically — callers that care about
+    "is this subscription still actually entitled" should check
+    `is_active` and compare `renews_at` to now rather than trusting `tier`
+    alone once `is_active` is False.
+    """
+    __tablename__ = "user_subscriptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    tier = Column(String(20), nullable=False, default="free", server_default="free")
+    billing_cycle = Column(String(20), nullable=True)  # "monthly" | "annual" | NULL (free tier)
+    started_at = Column(DateTime, nullable=True)
+    renews_at = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True, server_default="1")
+    cancelled_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    user = relationship("User", backref="subscription")
+
+    __table_args__ = (
+        CheckConstraint("tier IN ('free','pro','super_pro')", name="ck_user_subscription_tier"),
+        CheckConstraint(
+            "billing_cycle IN ('monthly','annual') OR billing_cycle IS NULL",
+            name="ck_user_subscription_billing_cycle",
+        ),
+    )
+
+
 class InAppNotification(Base):
     """In-app notification inbox for AI alerts, earnings, system messages."""
     __tablename__ = "in_app_notifications"
@@ -1320,5 +1366,58 @@ class LoanApplication(Base):
         CheckConstraint(
             "status IN ('submitted','under_review','approved','rejected','disbursed')",
             name="ck_loan_application_status",
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Compliance — India DPDP-Act-style right-to-erasure / consent-withdrawal
+# demo. Owned by services/compliance_service.py, exposed via
+# routers/compliance.py.
+#
+# DEMO-GRADE ONLY: DataDeletionRequest is a request/workflow state machine.
+# Creating one (or moving it to "processing"/"completed") does NOT actually
+# delete any user data anywhere in this codebase — see the explicit warning
+# in compliance_service.request_account_deletion().
+# ---------------------------------------------------------------------------
+
+class AuditLogEntry(Base):
+    """Append-only audit trail row for compliance-relevant actions
+    (deletion requests, consent withdrawals, etc). Rows are never mutated
+    or deleted once written.
+    """
+    __tablename__ = "audit_log_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    action = Column(String(60), nullable=False, index=True)
+    # Free-form JSON-serialisable details about the action (e.g. consent_type,
+    # reason, previous/new status). Stored as JSON for structured audit reads.
+    details = Column(JSON, nullable=True, default="{}")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    ip_address = Column(String(64), nullable=True)
+
+
+class DataDeletionRequest(Base):
+    """Right-to-erasure workflow record (DPDP-Act style).
+
+    DEMO ONLY — this table tracks REQUEST STATE for a data-deletion workflow.
+    Reaching status "completed" here does not, by itself, delete any rows
+    anywhere else in the database. See compliance_service.py.
+    """
+    __tablename__ = "data_deletion_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    status = Column(String(20), nullable=False, default="pending", server_default="pending", index=True)
+    # pending|processing|completed|cancelled
+    requested_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    completed_at = Column(DateTime, nullable=True)
+    reason = Column(Text, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending','processing','completed','cancelled')",
+            name="ck_data_deletion_request_status",
         ),
     )
