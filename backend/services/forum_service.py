@@ -237,6 +237,11 @@ def create_thread(
     poll_options: Optional[list[str]] = None,
 ) -> Optional[dict]:
     """Create a thread + its OP post (+ optional poll). Returns the thread detail payload."""
+    body = body.strip()
+    verdict = moderate_post(body)
+    if verdict["action"] == "block":
+        return {"blocked": True, "reason": "spam_detected"}
+
     with get_session() as session:
         board = session.query(ForumBoard).filter(ForumBoard.id == board_id).first()
         if board is None:
@@ -246,7 +251,15 @@ def create_thread(
         session.add(thread)
         session.flush()
 
-        op_post = ForumPost(thread_id=thread.id, user_id=user_id, body=body.strip(), is_op=True)
+        op_post = ForumPost(
+            thread_id=thread.id,
+            user_id=user_id,
+            body=body,
+            is_op=True,
+            moderation_action=verdict["action"],
+            spam_score=verdict["spam_score"],
+            sentiment=verdict["sentiment"],
+        )
         session.add(op_post)
 
         if poll_question and poll_options:
@@ -282,6 +295,8 @@ def create_post(user_id: int, thread_id: int, body: str, parent_post_id: Optiona
 
         body = body.strip()
         verdict = moderate_post(body)
+        if verdict["action"] == "block":
+            return {"blocked": True, "reason": "spam_detected"}
 
         post = ForumPost(
             thread_id=thread_id,

@@ -181,6 +181,8 @@ def create_forum_thread(payload: CreateThreadRequest, user_id: int = Depends(req
     )
     if thread is None:
         raise HTTPException(status_code=404, detail="Board not found")
+    if isinstance(thread, dict) and thread.get("blocked"):
+        raise HTTPException(status_code=422, detail="Post rejected by spam filter")
     return thread
 
 
@@ -199,6 +201,8 @@ def create_forum_post(thread_id: int, payload: CreatePostRequest, user_id: int =
     )
     if post is None:
         raise HTTPException(status_code=404, detail="Thread or parent post not found")
+    if isinstance(post, dict) and post.get("blocked"):
+        raise HTTPException(status_code=422, detail="Post rejected by spam filter")
     return post
 
 
