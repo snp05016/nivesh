@@ -449,23 +449,23 @@
 - [x] Sentiment tagging
 
 ## 13. Personal Finance and Product Distribution Stack
-- [ ] Finance tracker
-  - [ ] Bank-account linking
+- [ ] Finance tracker (UI ships, no backend endpoints yet — see below)
+  - [ ] Bank-account linking (mock UI only, /api/finance/accounts not implemented)
   - [ ] Account Aggregator integration
   - [ ] Balance tracking
   - [ ] Monthly spend tracking
   - [ ] Transaction categorization
-- [ ] Loans marketplace
-  - [ ] Personal loans up to ₹50L
-  - [ ] NBFC partner integrations
+- [x] Loans marketplace (mock NBFC offers, credit score, underwriting)
+  - [x] Personal loans up to ₹50L
+  - [x] NBFC partner integrations (mock, generic NBFCs not named real brands)
   - [ ] Cashe integration
   - [ ] L&T Finance integration
   - [ ] Fibe integration
-  - [ ] Loan eligibility
-  - [ ] KYC handling
-  - [ ] Credit score inputs
-  - [ ] Interest-rate display
-  - [ ] EMI schedule
+  - [x] Loan eligibility (mock credit score + demo underwriting rule)
+  - [ ] KYC handling (device-binding/consent gate exists and blocks approval, but no HTTP route yet to grant consent — applications currently always fail closed)
+  - [x] Credit score inputs (mock credit bureau service)
+  - [x] Interest-rate display
+  - [ ] EMI schedule (summary EMI calc only, no month-by-month amortization table)
   - [ ] APR disclosure
   - [ ] Repayment illustration
   - [ ] Lending-service-provider disclosures
@@ -479,15 +479,15 @@
   - [ ] Net banking payment
   - [ ] Fixed-deposit calculator
 - [ ] Credit cards
-- [ ] Credit score
+- [x] Credit score
 - [ ] Fixed-income utilities
-- [ ] Tax/planning calculators
+- [x] Tax/planning calculators
 - [ ] Real-estate analytics
-- [ ] Calculators
-  - [ ] SIP calculator
-  - [ ] EMI calculator
-  - [ ] Income-tax calculator
-  - [ ] Gratuity calculator
+- [x] Calculators
+  - [x] SIP calculator
+  - [x] EMI calculator
+  - [x] Income-tax calculator
+  - [x] Gratuity calculator
   - [ ] Fixed-deposit calculator
 
 ## 14. Premium Subscription and Monetization Stack
