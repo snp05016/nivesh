@@ -264,6 +264,7 @@ enum MarketSection: String, Hashable, CaseIterable {
     case options_strategy = "options_strategy"
     case ipo = "ipo"
     case mutualFunds = "mutual_funds"
+    case forum = "forum"
 
     var icon: String {
         switch self {
@@ -282,6 +283,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .options_strategy: return "arrow.up.arrow.down.circle.fill"
         case .ipo: return "doc.text.fill"
         case .mutualFunds: return "chart.pie.fill"
+        case .forum: return "bubble.left.and.bubble.right.fill"
         }
     }
     var hindi: String {
@@ -301,6 +303,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .options_strategy: return "विकल्प रणनीति"
         case .ipo: return "आईपीओ केंद्र"
         case .mutualFunds: return "म्यूचुअल फंड"
+        case .forum: return "सामुदायिक मंच"
         }
     }
     var englishTitle: String {
@@ -320,6 +323,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .options_strategy: return "OPTIONS STRATEGY"
         case .ipo: return "IPO HUB"
         case .mutualFunds: return "MUTUAL FUNDS"
+        case .forum: return "COMMUNITY FORUM"
         }
     }
     var subtitle: String {
@@ -339,6 +343,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .options_strategy: return "Payoff Visualizer"
         case .ipo: return "Upcoming & Open Listings"
         case .mutualFunds: return "Discover, Compare & Track"
+        case .forum: return "Boards, Threads & Polls"
         }
     }
     var description: String {
@@ -358,6 +363,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .options_strategy: return "Build multi-leg options strategies with interactive P&L payoff charts"
         case .ipo: return "Price band, lot size, GMP, dates and live subscription status for every IPO"
         case .mutualFunds: return "Browse by category, AUM and returns; NAV history, expense ratio, riskometer and SIP calculator"
+        case .forum: return "Per-stock and general market message boards, threaded replies, upvotes and community polls"
         }
     }
     var accentColor: Color {
@@ -377,6 +383,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .options_strategy: return Theme.bullGreen
         case .ipo: return Theme.securityGold
         case .mutualFunds: return Theme.bullGreen
+        case .forum: return Theme.avatarBlue
         }
     }
 
@@ -388,7 +395,7 @@ enum MarketSection: String, Hashable, CaseIterable {
 
         var sections: [MarketSection] {
             switch self {
-            case .discovery: return [.nl_screener, .screener, .earnings, .earnings_surprise, .ipo, .mutualFunds]
+            case .discovery: return [.nl_screener, .screener, .earnings, .earnings_surprise, .ipo, .mutualFunds, .forum]
             case .analytics: return [.correlation, .stress_test, .sector_rotation, .anomalies]
             case .trading:   return [.options_strategy, .strategy, .alerts, .technical]
             }
@@ -662,6 +669,7 @@ struct MarketsView: View {
         case .options_strategy: OptionsStrategyScreen()
         case .ipo: IPOHubView()
         case .mutualFunds: MutualFundDiscoveryView()
+        case .forum: ForumHubView()
         }
     }
 

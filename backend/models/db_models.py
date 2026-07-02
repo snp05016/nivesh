@@ -1074,3 +1074,121 @@ class IPOListing(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+
+# ---------------------------------------------------------------------------
+# Community Forum (message boards, threads, replies, polls, votes)
+# ---------------------------------------------------------------------------
+
+class ForumBoard(Base):
+    """A discussion board — either a general market board or a per-stock board."""
+    __tablename__ = "forum_boards"
+
+    id = Column(Integer, primary_key=True, index=True)
+    slug = Column(String(60), unique=True, nullable=False, index=True)
+    name = Column(String(150), nullable=False)
+    description = Column(Text, nullable=True)
+    board_type = Column(String(20), nullable=False, default="general")  # general|stock
+    ticker = Column(String(30), nullable=True, index=True)  # set when board_type == "stock"
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    threads = relationship("ForumThread", back_populates="board", cascade="all, delete-orphan")
+
+
+class ForumThread(Base):
+    """A discussion thread belonging to a single board, opened by one user."""
+    __tablename__ = "forum_threads"
+
+    id = Column(Integer, primary_key=True, index=True)
+    board_id = Column(Integer, ForeignKey("forum_boards.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String(200), nullable=False)
+    is_pinned = Column(Boolean, nullable=False, default=False, server_default="0")
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    board = relationship("ForumBoard", back_populates="threads")
+    posts = relationship("ForumPost", back_populates="thread", cascade="all, delete-orphan")
+    poll = relationship("ForumPoll", back_populates="thread", uselist=False, cascade="all, delete-orphan")
+
+
+class ForumPost(Base):
+    """A post inside a thread. The first post (is_op=True) holds the thread body;
+    subsequent posts are replies. parent_post_id supports nested replies.
+    """
+    __tablename__ = "forum_posts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    thread_id = Column(Integer, ForeignKey("forum_threads.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    parent_post_id = Column(Integer, ForeignKey("forum_posts.id"), nullable=True, index=True)
+    body = Column(Text, nullable=False)
+    is_op = Column(Boolean, nullable=False, default=False, server_default="0")
+
+    # Denormalized vote counters — source of truth for idempotent voting lives in ForumVote.
+    upvotes = Column(Integer, nullable=False, default=0, server_default="0")
+    downvotes = Column(Integer, nullable=False, default=0, server_default="0")
+
+    # Moderation verdict from services/forum_moderation_service.py:moderate_post(),
+    # applied at creation time in services/forum_service.py:create_post().
+    moderation_action = Column(String(10), nullable=False, default="allow", server_default="allow")  # allow|flag|block
+    spam_score = Column(Integer, nullable=True)
+    sentiment = Column(String(10), nullable=True)  # bullish|bearish|neutral
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    thread = relationship("ForumThread", back_populates="posts")
+
+
+class ForumPoll(Base):
+    """A poll attached 1:1 to a thread."""
+    __tablename__ = "forum_polls"
+
+    id = Column(Integer, primary_key=True, index=True)
+    thread_id = Column(Integer, ForeignKey("forum_threads.id"), unique=True, nullable=False, index=True)
+    question = Column(String(300), nullable=False)
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    thread = relationship("ForumThread", back_populates="poll")
+    options = relationship("ForumPollOption", back_populates="poll", cascade="all, delete-orphan")
+
+
+class ForumPollOption(Base):
+    """A single answer option belonging to a poll."""
+    __tablename__ = "forum_poll_options"
+
+    id = Column(Integer, primary_key=True, index=True)
+    poll_id = Column(Integer, ForeignKey("forum_polls.id"), nullable=False, index=True)
+    option_text = Column(String(150), nullable=False)
+    vote_count = Column(Integer, nullable=False, default=0, server_default="0")
+
+    poll = relationship("ForumPoll", back_populates="options")
+
+
+class ForumVote(Base):
+    """Tracks one vote per user per post (up/down) or per poll (single option pick).
+    Idempotency/toggle logic lives in services/forum_service.py; the unique
+    constraints here just guarantee "one vote per user per target" at the DB level.
+    """
+    __tablename__ = "forum_votes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    post_id = Column(Integer, ForeignKey("forum_posts.id"), nullable=True, index=True)
+    poll_id = Column(Integer, ForeignKey("forum_polls.id"), nullable=True, index=True)
+    poll_option_id = Column(Integer, ForeignKey("forum_poll_options.id"), nullable=True, index=True)
+    vote_value = Column(Integer, nullable=False, default=1)  # +1 up / -1 down for posts; +1 for poll picks
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "post_id", name="uq_forum_vote_user_post"),
+        UniqueConstraint("user_id", "poll_id", name="uq_forum_vote_user_poll"),
+    )

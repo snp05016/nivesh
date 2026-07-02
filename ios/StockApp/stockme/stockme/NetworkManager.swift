@@ -1515,6 +1515,184 @@ class NetworkManager: ObservableObject {
 
 }
 
+// MARK: - Community Forum
+//
+// Endpoints match backend/routers/forum.py exactly (prefix /api/forum):
+// GET /boards (list), GET /boards/{board_id}/threads (list),
+// GET /threads/{thread_id} (detail), POST /threads (create, auth),
+// POST /threads/{thread_id}/posts (reply, auth), POST /posts/{post_id}/vote
+// (auth), POST /polls/{poll_id}/vote (auth). The backend returns plain JSON
+// (no envelope). Mutating calls use `authRequest(_:)` so the Bearer token is
+// attached automatically.
+
+extension NetworkManager {
+
+    /// Fetches all discussion boards (general market + per-stock boards).
+    func getForumBoards() async throws -> [ForumBoard] {
+        let endpoint = "/api/forum/boards"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 20
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode([ForumBoard].self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    /// Fetches thread summaries for a single board.
+    func getForumThreads(boardId: Int) async throws -> [ForumThreadSummary] {
+        let endpoint = "/api/forum/boards/\(boardId)/threads"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 20
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode([ForumThreadSummary].self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    /// Fetches a thread with all its posts and poll (if any).
+    func getForumThreadDetail(threadId: Int) async throws -> ForumThreadDetail {
+        let endpoint = "/api/forum/threads/\(threadId)"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 20
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode(ForumThreadDetail.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    /// Creates a new thread (with opening post, and optional poll) on a board. Requires auth.
+    func createForumThread(boardId: Int, title: String, body: String, pollQuestion: String? = nil, pollOptions: [String]? = nil) async throws -> ForumThreadDetail {
+        struct Req: Encodable {
+            let board_id: Int
+            let title: String
+            let body: String
+            let poll_question: String?
+            let poll_options: [String]?
+        }
+        let endpoint = "/api/forum/threads"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = authRequest(url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(board_id: boardId, title: title, body: body, poll_question: pollQuestion, poll_options: pollOptions))
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode(ForumThreadDetail.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    /// Replies to a thread, optionally nested under a parent post. Requires auth.
+    func createForumPost(threadId: Int, body: String, parentPostId: Int? = nil) async throws -> ForumPost {
+        struct Req: Encodable {
+            let body: String
+            let parent_post_id: Int?
+        }
+        let endpoint = "/api/forum/threads/\(threadId)/posts"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = authRequest(url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(body: body, parent_post_id: parentPostId))
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode(ForumPost.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    /// Upvotes/downvotes a post. Re-voting the same direction removes the vote server-side. Requires auth.
+    func voteForumPost(postId: Int, direction: String) async throws -> ForumVoteResult {
+        struct Req: Encodable { let direction: String }
+        let endpoint = "/api/forum/posts/\(postId)/vote"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = authRequest(url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(direction: direction))
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode(ForumVoteResult.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    /// Casts (or moves) a user's single vote on a poll. Requires auth.
+    func voteForumPoll(pollId: Int, optionId: Int) async throws -> ForumPoll {
+        struct Req: Encodable { let option_id: Int }
+        let endpoint = "/api/forum/polls/\(pollId)/vote"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = authRequest(url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Req(option_id: optionId))
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode(ForumPoll.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+}
+
 // MARK: - Mutual Fund Hub
 //
 // Endpoints match backend/routers/mutual_funds.py (prefix /api/mutual-funds).
