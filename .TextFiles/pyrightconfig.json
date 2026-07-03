@@ -1,0 +1,9 @@
+{
+  "include": ["backend"],
+  "exclude": ["backend/venv", "backend/.venv", "backend/tradingagents-core"],
+  "pythonVersion": "3.11",
+  "pythonPlatform": "Linux",
+  "extraPaths": ["backend"],
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "none"
+}

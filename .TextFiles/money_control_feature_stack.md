@@ -1,0 +1,796 @@
+# Moneycontrol App — Exhaustive Feature Stack
+
+## 1. Home, Discovery, and Navigation Stack
+- [x] Home dashboard
+- [x] Seamless navigation hub
+- [x] Global markets overview card
+- [x] Market ticker
+  - [x] Nifty ticker
+  - [x] Sensex ticker
+  - [x] Watchlist ticker
+  - [x] Portfolio ticker
+- [x] Top stories feed
+- [x] Breaking news feed
+- [x] News widgets
+  - [x] iOS home-screen widgets
+  - [x] Android home-screen widgets
+- [x] PRO / Super PRO upsell banners
+- [x] Universal search
+  - [x] Stock quotes search
+  - [x] Mutual funds search
+  - [x] ETF search
+  - [x] Commodities search
+  - [x] Futures and options search
+  - [x] Unlisted shares search
+  - [x] Currency search
+  - [x] News search
+  - [x] Topics search
+  - [x] Cryptocurrency search
+  - [x] Forum search
+  - [x] Notices search
+  - [x] Videos search
+  - [x] Glossary search
+  - [x] “All” search surface
+
+## 2. Market Data and Market Intelligence Stack
+- [x] Indian indices
+  - [x] Sensex
+  - [x] Nifty
+  - [x] Bank Nifty
+  - [x] Sectoral indices
+- [x] Global markets
+  - [x] US markets
+  - [x] European markets
+  - [x] Asian markets
+  - [x] Dow Jones
+  - [x] Nasdaq
+  - [x] Nikkei
+  - [x] FTSE
+- [x] Commodities
+  - [x] MCX
+  - [x] NCDEX
+- [x] Currencies
+- [x] Crypto
+- [x] ETFs
+- [x] Market movers
+  - [x] Top gainers
+  - [x] Top losers
+  - [x] Only buyers
+  - [x] Only sellers
+  - [x] Most active stocks
+  - [x] 52-week highs
+  - [x] 52-week lows
+- [x] Stock action pages
+- [x] Price shockers
+- [x] Volume shockers
+- [x] Price and volume shockers
+- [x] Market turnover
+  - [x] NSE cash turnover
+  - [x] BSE cash turnover
+  - [x] F&O turnover
+- [x] Pre-market data
+- [x] Post-market data
+- [x] Technical trends
+- [x] Open-interest trends
+- [x] Trending stocks
+- [x] Economic calendar
+- [x] Earnings calendar
+- [x] Scanners
+- [x] Sector analysis
+- [x] Stock ideas
+- [x] Deals
+  - [x] Bulk deals
+  - [x] Block deals
+- [x] Corporate actions
+- [x] FII activity
+- [x] DII activity
+- [x] FPI sectoral activity
+- [x] FII/DII graph-enabled analysis
+
+## 3. Stock Detail and Equity Research Stack
+- [x] Live stock quote page
+  - [x] Live price quote
+  - [x] Net change
+  - [x] Ticker symbol
+  - [x] Last traded price
+  - [x] VWAP
+  - [x] Bid/ask spread
+  - [x] Volume
+  - [x] Circuit limits
+  - [x] Market capitalization
+  - [x] Beta
+  - [x] 52-week range
+  - [x] Book value
+  - [x] Dividend yield
+  - [x] TTM EPS
+  - [x] TTM PE
+  - [x] Sector PE
+- [x] Interactive charting
+  - [x] Intraday charts
+  - [x] Historical charts
+  - [x] Line charts
+  - [x] Area charts
+  - [x] Candlestick charts
+  - [x] OHLC charts
+- [x] Stock page tabs
+  - [x] Overview
+  - [x] Chart
+  - [x] Forecast
+  - [x] MC Insights
+  - [x] MC Technicals
+  - [x] Chart Patterns
+  - [x] Stock Vitals
+  - [x] Scans
+  - [x] Price & Volume
+  - [x] Seasonality Analysis
+  - [x] News
+  - [x] Forum
+  - [x] Research
+  - [x] Deals
+  - [x] Corporate Action
+  - [x] Financials
+  - [x] Shareholding
+  - [x] Peers
+  - [x] About
+- [x] Stock Vitals
+  - [x] Altman Z-score
+  - [x] DuPont Analysis
+  - [x] Graham Number
+  - [x] Ohlson O-score
+  - [x] Financial strength decoding
+- [x] MC Insights
+  - [x] Price performance analysis
+  - [x] Financials analysis
+  - [x] Piotroski score analysis
+  - [x] Peer comparison
+  - [x] Sector-relative analysis
+  - [x] Shareholding analysis
+- [x] My Metrics
+  - [x] 120+ customizable parameters
+  - [x] Fundamental metrics
+  - [x] Technical metrics
+  - [x] Ratio metrics
+- [x] MC SWOT
+  - [x] Strengths
+  - [x] Weaknesses
+  - [x] Opportunities
+  - [x] Threats
+- [x] MC Technicals
+- [x] Technical ratings
+- [x] Forecast models
+- [x] Price forecast
+- [x] Valuation forecast
+- [x] Broker research
+- [x] Expert technical analysis
+- [x] Webinars
+- [x] Compare Stocks
+  - [x] Side-by-side comparison of up to 3 stocks
+  - [x] Fundamental comparison
+  - [x] Shareholding comparison
+- [x] Peer comparison
+- [x] Consensus forecast
+  - [x] Analyst estimates
+  - [x] Price targets
+  - [x] Upgrade data
+  - [x] Downgrade data
+- [x] Top holdings
+  - [x] Institutional holders
+  - [x] Promoter holders
+  - [x] Holding percentage changes
+- [x] Shareholding structure
+  - [x] Promoter holding
+  - [x] FII holding
+  - [x] DII holding
+  - [x] Public holding
+  - [x] Others
+  - [x] Pledge context
+  - [x] Top-holdings context
+- [x] Unlisted shares
+  - [x] Pre-IPO company price tracking
+  - [x] Unlisted company financials
+  - [x] Examples mentioned: CSK, NSE
+- [x] Seasonality analysis
+
+## 4. F&O, Derivatives, and Options Analytics Stack
+- [x] F&O market snapshot
+- [x] Option chain
+  - [x] Strike-wise calls
+  - [x] Strike-wise puts
+  - [x] Call LTP
+  - [x] Put LTP
+  - [x] Volume
+  - [x] Open interest
+  - [x] Change in open interest
+- [x] Stock expiry selection
+- [x] Rollover metrics
+- [x] Most-active F&O contracts
+- [x] Increase in open interest
+- [x] Decrease in open interest
+- [x] Advance/decline breakup
+- [x] Sector-wise open interest
+- [x] Sector-wise F&O volume
+- [x] Open-interest breakup tables
+- [x] OI trends
+- [x] Put-call ratio
+- [x] Multi-strike build-ups
+- [x] Options Greeks
+  - [x] Delta
+  - [x] Gamma
+  - [x] Theta
+  - [x] Vega
+- [x] Implied volatility engine
+- [x] Max Pain
+- [x] What-If analysis
+  - [x] Price-movement simulation
+  - [x] Time-decay simulation
+  - [x] Trade-planning simulator
+- [x] Options calculator / simulator
+- [x] FII/DII/FPI sectoral derivatives insights
+
+## 5. IPO Stack
+- [ ] IPO hub
+- [ ] Open IPOs
+- [ ] Upcoming IPOs
+- [ ] Closed IPOs
+- [ ] Listed IPOs
+- [ ] Draft issues
+- [ ] IPO news
+- [ ] IPO calendar
+- [ ] IPO funding calculator
+- [ ] IPO issue size
+- [ ] IPO price band
+- [ ] IPO issue price
+- [ ] IPO lot size
+- [ ] IPO subscription status
+- [ ] IPO subscription splits
+- [ ] Basis-of-allotment date
+- [ ] Refund date
+- [ ] Demat credit date
+- [ ] Listing date
+- [ ] DRHP links
+- [ ] RHP links
+
+## 6. Mutual Funds Stack
+- [ ] Mutual fund discovery
+- [ ] Mutual fund comparison
+- [ ] Mutual fund tracking
+- [ ] Fund details
+- [ ] Latest NAV
+- [ ] Historical NAV
+- [ ] Historical performance
+- [ ] Rolling returns
+- [ ] Riskometer
+- [ ] SIP returns
+  - [ ] Absolute returns
+  - [ ] Annualized returns
+  - [ ] Period-specific SIP returns
+- [ ] MC30
+  - [ ] Curated 30-fund basket
+  - [ ] Core categories
+  - [ ] Satellite categories
+- [ ] Mutual fund screeners
+- [ ] User risk assessment
+- [ ] AUM data
+- [ ] Expense ratio data
+- [ ] Fund portfolio holdings
+- [ ] Fund manager details
+- [ ] AMFI NAV integration
+- [ ] AMC disclosure integration
+- [ ] Mutual fund transaction support inside portfolio
+  - [ ] SIP
+  - [ ] STP
+  - [ ] SWP
+  - [ ] Dividends
+
+## 7. Portfolio and Wealth Tracking Stack
+- [x] Multi-asset portfolio tracking
+  - [x] Stocks
+  - [x] Mutual funds
+  - [x] Gold
+  - [x] Bullion
+  - [x] Bank deposits
+  - [x] Fixed deposits
+  - [x] Property
+  - [x] ULIPs
+  - [x] Loans
+- [x] Net worth dashboard
+- [x] Portfolio tabs
+  - [x] Stocks
+  - [x] Mutual Funds
+  - [x] ULIPs
+  - [x] Bullion
+  - [x] Property
+- [x] Real-time P&L
+- [x] Daily profit/loss tracking
+- [x] Asset allocation tracking
+- [x] Transaction history
+- [x] Manual transaction entry
+- [x] PDF contract-note upload
+- [x] Excel upload
+- [x] CAS import
+- [x] Scheduled transaction updates
+  - [x] Stock bonuses
+  - [x] Stock splits
+  - [x] Dividends
+  - [x] Tax events
+  - [x] Mutual fund SIP updates
+  - [x] Mutual fund STP updates
+  - [x] Mutual fund SWP updates
+  - [x] Mutual fund dividends
+  - [x] ULIP premium reminders
+  - [x] Fixed-deposit recurring transactions
+  - [x] Fixed-deposit reminders
+  - [x] Loan EMI reminders
+- [x] Corporate-action adjustment
+- [x] Filtered portfolio news
+- [x] Research linked to holdings
+- [x] Expert recommendations linked to holdings
+- [x] Portfolio alerts
+- [x] Reports
+  - [x] Profit/loss reports
+  - [x] Capital gains reports
+  - [x] Performance reports
+  - [x] Cash-flow reports
+  - [x] Tax reports
+  - [x] Other portfolio reports
+- [x] XIRR calculation
+- [x] Capital-gains calculation
+- [x] Portfolio X-Ray
+  - [x] Asset allocation diagnostics
+  - [x] Portfolio risk diagnostics
+  - [x] Mutual fund overlap analysis
+  - [x] Underlying stock exposure mapping
+
+## 8. Watchlist, Personalization, and Habit Loop Stack
+- [x] Personalized watchlist
+  - [x] Stocks
+  - [x] Mutual funds
+  - [x] Commodities
+  - [x] Futures
+- [x] Web/mobile watchlist sync
+- [x] User-following graph
+- [x] Selectable interests
+- [x] Followed stocks
+- [x] Top-followed stocks
+- [x] Last-visited stocks
+- [x] Stock labels
+- [x] Watchlist-linked stock insights
+- [x] Watchlist-linked alerts
+- [x] Personalized news
+  - [x] Based on portfolio
+  - [x] Based on watchlist
+- [x] Personalized ticker
+- [x] Notification hub
+- [x] Re-engagement loops
+
+## 9. Alerts and Notification Stack
+- [x] Price alerts
+- [x] Stock alerts
+- [x] News alerts
+- [x] Corporate-action alerts
+- [x] Earnings alerts
+- [x] Macro-event alerts
+- [x] Market-mover alerts
+- [x] Watchlist alerts
+- [x] Portfolio alerts
+- [x] Last-visited-stock triggers
+- [x] Notification preferences
+- [x] Push notification delivery
+- [x] Firebase Cloud Messaging / APNs-style delivery layer
+- [x] High-throughput event matching
+- [x] User-rule matching engine
+
+## 10. News, Editorial, and Content Stack
+- [x] Latest news
+- [x] Business news
+- [x] Economy news
+- [x] Company news
+- [x] Mutual fund news
+- [x] Personal finance news
+- [x] IPO news
+- [x] Startup news
+- [x] Real estate news
+- [x] Banking news
+- [x] Opinion
+- [x] Explainers
+- [x] MC Buzz
+- [x] MC Features
+- [x] Editor’s Picks
+- [x] Tech section
+- [x] India section
+- [x] Learning Curve
+- [x] Trending events
+- [x] Exclusive interviews
+- [x] Article cards
+- [x] Personalized article feed
+- [x] Text-to-speech for articles
+- [x] News widgets
+- [x] CMS-backed editorial publishing
+
+## 11. Media Stack
+- [x] Live TV
+  - [x] CNBC AWAAZ
+  - [x] CNBC BAJAR
+  - [x] CNBC PRIME HD
+- [x] Video on demand
+- [x] Opening Bell
+- [x] Closing Bell
+- [x] Morning Trade
+- [x] Mid-day Mood Check
+- [x] Commodities Live
+- [x] Newspresso Live
+- [x] Podcasts
+  - [x] Market Minutes
+  - [x] The Week on Dalal Street
+  - [x] Simply Save
+  - [x] Policy Talks
+- [x] Audio/video thumbnails
+- [x] Streaming infrastructure
+- [x] CDN/media delivery layer
+
+## 12. Community and Forum Stack
+- [ ] Forum homepage
+- [ ] Message boards
+- [ ] Stock-specific boards
+- [ ] Topic-specific boards
+- [ ] Membership rules
+- [ ] Ask-the-expert
+- [ ] Top boarders
+- [ ] Latest threads
+- [ ] Polls
+- [ ] Historical polls
+- [ ] Market sentiments
+- [ ] Market Minds
+  - [ ] Invitation-only expert community
+  - [ ] Market-professional insights
+- [ ] User-generated content
+- [ ] Moderation tools
+- [ ] Spam filtering
+- [ ] Sentiment tagging
+
+## 13. Personal Finance and Product Distribution Stack
+- [ ] Finance tracker
+  - [ ] Bank-account linking
+  - [ ] Account Aggregator integration
+  - [ ] Balance tracking
+  - [ ] Monthly spend tracking
+  - [ ] Transaction categorization
+- [ ] Loans marketplace
+  - [ ] Personal loans up to ₹50L
+  - [ ] NBFC partner integrations
+  - [ ] Cashe integration
+  - [ ] L&T Finance integration
+  - [ ] Fibe integration
+  - [ ] Loan eligibility
+  - [ ] KYC handling
+  - [ ] Credit score inputs
+  - [ ] Interest-rate display
+  - [ ] EMI schedule
+  - [ ] APR disclosure
+  - [ ] Repayment illustration
+  - [ ] Lending-service-provider disclosures
+- [ ] Fixed deposits
+  - [ ] FD discovery
+  - [ ] FD comparison
+  - [ ] FD booking
+  - [ ] One-time SIM binding
+  - [ ] KYC completion
+  - [ ] UPI payment
+  - [ ] Net banking payment
+  - [ ] Fixed-deposit calculator
+- [ ] Credit cards
+- [ ] Credit score
+- [ ] Fixed-income utilities
+- [ ] Tax/planning calculators
+- [ ] Real-estate analytics
+- [ ] Calculators
+  - [ ] SIP calculator
+  - [ ] EMI calculator
+  - [ ] Income-tax calculator
+  - [ ] Gratuity calculator
+  - [ ] Fixed-deposit calculator
+
+## 14. Premium Subscription and Monetization Stack
+- [ ] Free tier
+  - [ ] Real-time quotes
+  - [ ] News
+  - [ ] Charts
+  - [ ] Portfolio
+  - [ ] Watchlist
+  - [ ] Forum
+  - [ ] Alerts
+  - [ ] Consumer-finance access
+  - [ ] Ads
+- [ ] PRO tier
+  - [ ] Ad-free or near-ad-free experience
+  - [ ] Personalized portfolio news
+  - [ ] Sharper analysis
+  - [ ] Ideas for profit
+  - [ ] Technical analysis
+  - [ ] Smart calendars
+  - [ ] Guru Speak lessons
+  - [ ] Comprehensive stock insights
+  - [ ] SWOT analysis
+  - [ ] Technical ratings
+  - [ ] Forecast models
+  - [ ] Technical Picks
+  - [ ] Economic Calendar
+  - [ ] Financial Times access
+  - [ ] Newsletters
+- [ ] Super PRO tier
+  - [ ] Alpha Generators
+  - [ ] Curated chart patterns
+  - [ ] AI-powered WhatsApp stock updates
+  - [ ] AI stock alerts
+  - [ ] Market-veteran ideas
+  - [ ] Centralized dashboard
+  - [ ] All PRO features
+- [ ] Subscription management
+  - [ ] Monthly SKUs
+  - [ ] Quarterly SKUs
+  - [ ] Annual SKUs
+  - [ ] Multiple iOS PRO price variants
+  - [ ] SuperPro monthly SKU
+  - [ ] SuperPro annual SKU
+- [ ] Paywall triggers
+- [ ] Entitlement management
+- [ ] Premium upsell surfaces
+- [ ] Programmatic advertising
+- [ ] Subscription revenue
+- [ ] Financial-product lead generation / commission revenue
+
+## 15. Account, Settings, Privacy, and Platform Stack
+- [ ] User login
+- [ ] My Profile
+- [ ] KYC details
+- [ ] Subscription management
+- [ ] My Alerts configuration
+- [ ] Data privacy controls
+- [ ] Account security
+- [ ] SIM-binding controls
+- [ ] Data deletion
+- [ ] Data erasure requests
+- [ ] Consent withdrawal
+- [ ] Support workflows
+- [ ] Platform support
+  - [ ] Android
+  - [ ] iPhone
+  - [ ] iPad
+  - [ ] iPod touch
+  - [ ] Apple Watch
+  - [ ] Apple Vision
+  - [ ] Desktop
+  - [ ] Mobile web
+  - [ ] Tablet
+  - [ ] Watch
+- [ ] English language support
+- [ ] Privacy labels
+- [ ] Usage-data tracking disclosure
+- [ ] Device identifier handling
+- [ ] Cookie handling
+- [ ] Advertising identifier handling
+- [ ] IP geolocation handling
+- [ ] Search-query collection
+- [ ] Page-view activity collection
+- [ ] Third-party advertising integration
+- [ ] Third-party IT/data analytics sharing
+- [ ] Deletion-request workflow
+
+## 16. Data Source and Backend Architecture Stack
+- [ ] Market-data platform
+  - [ ] Symbols master
+  - [ ] Real-time quotes
+  - [ ] Delayed quotes fallback
+  - [ ] Charts
+  - [ ] Indices
+  - [ ] Corporate actions
+  - [ ] Scanners
+  - [ ] Search
+  - [ ] Caching
+- [ ] Exchange data sources
+  - [ ] NSE
+  - [ ] BSE
+  - [ ] MCX
+  - [ ] NCDEX
+- [ ] Authorized data vendors
+  - [ ] Global Data Feeds
+  - [ ] Refinitiv
+  - [ ] Bloomberg
+- [ ] Fundamental data sources
+  - [ ] Accord Fintech / Ace Equity
+  - [ ] Capitaline
+  - [ ] CMIE Prowess
+- [ ] F&O data sources
+  - [ ] NSE F&O feed
+  - [ ] Strike data
+  - [ ] Call/put prices
+  - [ ] Expiry data
+  - [ ] Implied volatility data
+- [ ] Quant/math engine
+  - [ ] Black-Scholes model
+  - [ ] Greeks calculator
+  - [ ] Max Pain calculator
+  - [ ] What-If simulator
+- [ ] Mutual fund data sources
+  - [ ] AMFI
+  - [ ] AMC disclosures
+  - [ ] Value Research / Morningstar-style structured APIs
+- [ ] Portfolio data sources
+  - [ ] User input
+  - [ ] CAS import
+  - [ ] CAMS/KFintech-style CAS sources
+  - [ ] AMC holdings databases
+- [ ] Finance tracker sources
+  - [ ] RBI Account Aggregator ecosystem
+  - [ ] Finvu
+  - [ ] Onemoney
+  - [ ] Sahamati framework
+- [ ] Loan marketplace sources
+  - [ ] NBFC APIs
+  - [ ] Credit bureau APIs
+  - [ ] Cashe
+  - [ ] L&T Finance
+  - [ ] Fibe
+  - [ ] CIBIL / Experian-style bureau data
+- [ ] Media infrastructure
+  - [ ] Internal Network18 CMS
+  - [ ] AWS Media Services / Akamai-style CDN
+  - [ ] Video metadata
+  - [ ] Podcast metadata
+- [ ] Text-to-speech infrastructure
+  - [ ] Google Cloud TTS / AWS Polly-style APIs
+- [ ] Super PRO AI infrastructure
+  - [ ] BSE/NSE corporate announcements
+  - [ ] Earnings-call transcripts
+  - [ ] Concall summaries
+  - [ ] LLM summarization
+  - [ ] WhatsApp Business API
+  - [ ] Webhook delivery
+  - [ ] Low-latency alert pipeline
+
+## 17. Compliance, Risk, and Governance Stack
+- [ ] Real-time exchange data licensing
+- [ ] NSE/BSE/MCX/NCDEX display agreements
+- [ ] Exchange audit compliance
+- [ ] SEBI Research Analyst compliance
+- [ ] SEBI Investment Adviser compliance
+- [ ] Buy/sell recommendation disclosures
+- [ ] Conflict-of-interest declarations
+- [ ] Audit trails for recommendations
+- [ ] Risk disclosures
+- [ ] RBI Account Aggregator compliance
+- [ ] FIU consent architecture
+- [ ] Time-bound user consent
+- [ ] Revocable consent flows
+- [ ] Data minimization
+- [ ] RBI digital lending compliance
+- [ ] Lending Service Provider requirements
+- [ ] Key Fact Statement display
+- [ ] APR disclosure
+- [ ] Direct lender-borrower fund flow
+- [ ] KYC security
+- [ ] SIM-binding fraud prevention
+- [ ] Privacy policy compliance
+- [ ] Data deletion compliance
+- [ ] Third-party data-sharing governance
+
+## 18. Implementation Complexity Stack
+- [ ] Easy complexity
+  - [ ] News feed
+  - [ ] Media feed
+  - [ ] Article cards
+  - [ ] Video embedding
+  - [ ] SIP calculator
+  - [ ] EMI calculator
+  - [ ] Income-tax calculator
+  - [ ] Static fundamental data display
+- [ ] Medium complexity
+  - [ ] Watchlists
+  - [ ] Basic alerts
+  - [ ] Push notifications
+  - [ ] Mutual fund tracking
+  - [ ] AMFI NAV parsing
+  - [ ] XIRR calculations
+  - [ ] Community forum CRUD
+  - [ ] Moderation tools
+  - [ ] Spam filtering
+  - [ ] Sentiment tagging
+- [ ] Hard complexity
+  - [ ] Stock Vitals
+  - [ ] My Metrics
+  - [ ] DuPont calculations
+  - [ ] Altman Z-score calculations
+  - [ ] Clean financial normalization
+  - [ ] Portfolio X-Ray
+  - [ ] Mutual fund holding look-through
+  - [ ] Personal finance marketplace
+  - [ ] NBFC API orchestration
+  - [ ] KYC state management
+  - [ ] SIM-binding security
+- [ ] Very hard complexity
+  - [ ] Real-time F&O analytics
+  - [ ] Implied-volatility calculation
+  - [ ] Full option-chain Greeks computation
+  - [ ] Edge-device What-If simulations
+  - [ ] Super PRO AI alerts
+  - [ ] Exchange filing ingestion
+  - [ ] PDF-to-LLM summarization
+  - [ ] WhatsApp alert distribution
+  - [ ] Account Aggregator finance tracker
+  - [ ] Consent-management architecture
+  - [ ] Bank transaction normalization
+
+## 19. Verification and Unknowns Stack
+- [ ] Real-time market-data latency verification
+  - [ ] WebSocket verification
+  - [ ] REST polling verification
+  - [ ] Refresh interval measurement
+- [ ] Super PRO AI alert latency verification
+  - [ ] BSE announcement timestamp comparison
+  - [ ] WhatsApp alert arrival measurement
+  - [ ] LLM pipeline delay measurement
+- [ ] Paywall trigger verification
+  - [ ] Stock Vitals gating
+  - [ ] Compare Stocks limits
+  - [ ] Free vs PRO screen access
+- [ ] Portfolio import verification
+  - [ ] CAS parser accuracy
+  - [ ] Split adjustment accuracy
+  - [ ] Bonus adjustment accuracy
+  - [ ] Dividend reinvestment handling
+  - [ ] Capital-gains accuracy
+- [ ] Broker execution verification
+  - [ ] Whether the app supports direct buy/sell execution
+  - [ ] Zerodha Kite Connect possibility
+  - [ ] Upstox API possibility
+  - [ ] Informational-only tracker possibility
+- [ ] Accessibility verification
+  - [ ] Declared iOS accessibility feature support
+  - [ ] Actual app accessibility behavior
+
+## 20. Suggested Rebuild / Nivesh-Style Roadmap Stack
+- [ ] Foundation phase
+  - [ ] Identity
+  - [ ] Taxonomy
+  - [ ] Search
+  - [ ] Analytics
+- [ ] Market core phase
+  - [ ] Real-time or delayed quotes
+  - [ ] Charts
+  - [ ] Stock pages
+  - [ ] Watchlists
+  - [ ] News feed
+  - [ ] Widgets
+  - [ ] Basic alerts
+- [ ] Portfolio phase
+  - [ ] Transaction ingestion
+  - [ ] Asset taxonomy
+  - [ ] P&L logic
+  - [ ] Reports
+  - [ ] Corporate actions
+  - [ ] Multi-asset portfolio tracking
+- [ ] Premium phase
+  - [ ] Stock Vitals
+  - [ ] Portfolio X-Ray
+  - [ ] Forecasts
+  - [ ] Technical ratings
+  - [ ] Scans
+  - [ ] Paywall
+  - [ ] Entitlements
+  - [ ] AI WhatsApp alerts
+- [ ] Media and community phase
+  - [ ] CMS
+  - [ ] Video
+  - [ ] Podcasts
+  - [ ] Forum
+  - [ ] Community moderation
+- [ ] Distribution phase
+  - [ ] Finance tracker
+  - [ ] Account Aggregator integration
+  - [ ] Loans
+  - [ ] Fixed deposits
+  - [ ] KYC
+  - [ ] Partner integrations
+  - [ ] Legal disclosures
+  - [ ] Customer support
+  - [ ] Risk monitoring
