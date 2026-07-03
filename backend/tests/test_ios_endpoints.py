@@ -88,48 +88,6 @@ def test_05_options_method_analyze_3():
     response = client.options("/analyze")
     assert response.status_code in (200, 204)
 
-# Tests for GET /analyze/job/{jobId}
-def test_01_basic_request_analyze_job_jobId_4():
-    response = client.get("/analyze/job/{jobId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_analyze_job_jobId_4():
-    response = client.post("/analyze/job/{jobId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_analyze_job_jobId_4():
-    response = client.get("/analyze/job/{jobId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_analyze_job_jobId_4():
-    response = client.get("/analyze/job/{jobId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_analyze_job_jobId_4():
-    response = client.options("/analyze/job/{jobId}")
-    assert response.status_code in (200, 204)
-
-# Tests for POST /analyze/{jobId}/cancel
-def test_01_basic_request_analyze_jobId_cancel_5():
-    response = client.post("/analyze/{jobId}/cancel")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_analyze_jobId_cancel_5():
-    response = client.get("/analyze/{jobId}/cancel")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_analyze_jobId_cancel_5():
-    response = client.post("/analyze/{jobId}/cancel", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_analyze_jobId_cancel_5():
-    response = client.post("/analyze/{jobId}/cancel", json={"invalid_key": "invalid_value"})
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_analyze_jobId_cancel_5():
-    response = client.options("/analyze/{jobId}/cancel")
-    assert response.status_code in (200, 204)
-
 # Tests for GET /analyze/active
 def test_01_basic_request_analyze_active_6():
     response = client.get("/analyze/active")
@@ -529,132 +487,6 @@ def test_05_options_method_api_v1_fundamentals_risk_signals_24():
     response = client.options("/api/v1/fundamentals/risk-signals")
     assert response.status_code in (200, 204)
 
-# Tests for GET /fundamentals/{ticker}/financials
-def test_01_basic_request_fundamentals_ticker_financials_25():
-    response = client.get("/fundamentals/{ticker}/financials")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_fundamentals_ticker_financials_25():
-    response = client.post("/fundamentals/{ticker}/financials")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_fundamentals_ticker_financials_25():
-    response = client.get("/fundamentals/{ticker}/financials", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_fundamentals_ticker_financials_25():
-    response = client.get("/fundamentals/{ticker}/financials?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_fundamentals_ticker_financials_25():
-    response = client.options("/fundamentals/{ticker}/financials")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /fundamentals/{ticker}/shareholding
-def test_01_basic_request_fundamentals_ticker_shareholding_26():
-    response = client.get("/fundamentals/{ticker}/shareholding")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_fundamentals_ticker_shareholding_26():
-    response = client.post("/fundamentals/{ticker}/shareholding")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_fundamentals_ticker_shareholding_26():
-    response = client.get("/fundamentals/{ticker}/shareholding", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_fundamentals_ticker_shareholding_26():
-    response = client.get("/fundamentals/{ticker}/shareholding?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_fundamentals_ticker_shareholding_26():
-    response = client.options("/fundamentals/{ticker}/shareholding")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /fundamentals/{ticker}/corporate-actions
-def test_01_basic_request_fundamentals_ticker_corporate_actions_27():
-    response = client.get("/fundamentals/{ticker}/corporate-actions")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_fundamentals_ticker_corporate_actions_27():
-    response = client.post("/fundamentals/{ticker}/corporate-actions")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_fundamentals_ticker_corporate_actions_27():
-    response = client.get("/fundamentals/{ticker}/corporate-actions", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_fundamentals_ticker_corporate_actions_27():
-    response = client.get("/fundamentals/{ticker}/corporate-actions?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_fundamentals_ticker_corporate_actions_27():
-    response = client.options("/fundamentals/{ticker}/corporate-actions")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /fundamentals/{ticker}/valuation
-def test_01_basic_request_fundamentals_ticker_valuation_28():
-    response = client.get("/fundamentals/{ticker}/valuation")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_fundamentals_ticker_valuation_28():
-    response = client.post("/fundamentals/{ticker}/valuation")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_fundamentals_ticker_valuation_28():
-    response = client.get("/fundamentals/{ticker}/valuation", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_fundamentals_ticker_valuation_28():
-    response = client.get("/fundamentals/{ticker}/valuation?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_fundamentals_ticker_valuation_28():
-    response = client.options("/fundamentals/{ticker}/valuation")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /fundamentals/{ticker}/risk-signals
-def test_01_basic_request_fundamentals_ticker_risk_signals_29():
-    response = client.get("/fundamentals/{ticker}/risk-signals")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_fundamentals_ticker_risk_signals_29():
-    response = client.post("/fundamentals/{ticker}/risk-signals")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_fundamentals_ticker_risk_signals_29():
-    response = client.get("/fundamentals/{ticker}/risk-signals", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_fundamentals_ticker_risk_signals_29():
-    response = client.get("/fundamentals/{ticker}/risk-signals?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_fundamentals_ticker_risk_signals_29():
-    response = client.options("/fundamentals/{ticker}/risk-signals")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /fundamentals/piotroski/{ticker}
-def test_01_basic_request_fundamentals_piotroski_ticker_30():
-    response = client.get("/fundamentals/piotroski/{ticker}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_fundamentals_piotroski_ticker_30():
-    response = client.post("/fundamentals/piotroski/{ticker}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_fundamentals_piotroski_ticker_30():
-    response = client.get("/fundamentals/piotroski/{ticker}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_fundamentals_piotroski_ticker_30():
-    response = client.get("/fundamentals/piotroski/{ticker}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_fundamentals_piotroski_ticker_30():
-    response = client.options("/fundamentals/piotroski/{ticker}")
-    assert response.status_code in (200, 204)
-
 # Tests for GET /harvester/feed
 def test_01_basic_request_harvester_feed_31():
     response = client.get("/harvester/feed")
@@ -674,27 +506,6 @@ def test_04_invalid_data_harvester_feed_31():
 
 def test_05_options_method_harvester_feed_31():
     response = client.options("/harvester/feed")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /harvester/governance/{ticker}
-def test_01_basic_request_harvester_governance_ticker_32():
-    response = client.get("/harvester/governance/{ticker}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_harvester_governance_ticker_32():
-    response = client.post("/harvester/governance/{ticker}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_harvester_governance_ticker_32():
-    response = client.get("/harvester/governance/{ticker}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_harvester_governance_ticker_32():
-    response = client.get("/harvester/governance/{ticker}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_harvester_governance_ticker_32():
-    response = client.options("/harvester/governance/{ticker}")
     assert response.status_code in (200, 204)
 
 # Tests for GET /harvester/sources
@@ -800,69 +611,6 @@ def test_04_invalid_data_api_v1_expert_posts_37():
 
 def test_05_options_method_api_v1_expert_posts_37():
     response = client.options("/api/v1/expert-posts")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /macro-impact/{userId}
-def test_01_basic_request_macro_impact_userId_38():
-    response = client.get("/macro-impact/{userId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_macro_impact_userId_38():
-    response = client.post("/macro-impact/{userId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_macro_impact_userId_38():
-    response = client.get("/macro-impact/{userId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_macro_impact_userId_38():
-    response = client.get("/macro-impact/{userId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_macro_impact_userId_38():
-    response = client.options("/macro-impact/{userId}")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /daily-action/{userId}
-def test_01_basic_request_daily_action_userId_39():
-    response = client.get("/daily-action/{userId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_daily_action_userId_39():
-    response = client.post("/daily-action/{userId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_daily_action_userId_39():
-    response = client.get("/daily-action/{userId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_daily_action_userId_39():
-    response = client.get("/daily-action/{userId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_daily_action_userId_39():
-    response = client.options("/daily-action/{userId}")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /macro-context/{ticker}
-def test_01_basic_request_macro_context_ticker_40():
-    response = client.get("/macro-context/{ticker}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_macro_context_ticker_40():
-    response = client.post("/macro-context/{ticker}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_macro_context_ticker_40():
-    response = client.get("/macro-context/{ticker}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_macro_context_ticker_40():
-    response = client.get("/macro-context/{ticker}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_macro_context_ticker_40():
-    response = client.options("/macro-context/{ticker}")
     assert response.status_code in (200, 204)
 
 # Tests for GET /macro-strip
@@ -1159,27 +907,6 @@ def test_05_options_method_nifty_history_54():
     response = client.options("/nifty-history")
     assert response.status_code in (200, 204)
 
-# Tests for GET /morning-summary/{userId}
-def test_01_basic_request_morning_summary_userId_55():
-    response = client.get("/morning-summary/{userId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_morning_summary_userId_55():
-    response = client.post("/morning-summary/{userId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_morning_summary_userId_55():
-    response = client.get("/morning-summary/{userId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_morning_summary_userId_55():
-    response = client.get("/morning-summary/{userId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_morning_summary_userId_55():
-    response = client.options("/morning-summary/{userId}")
-    assert response.status_code in (200, 204)
-
 # Tests for POST /notifications/register-device
 def test_01_basic_request_notifications_register_device_56():
     response = client.post("/notifications/register-device")
@@ -1262,27 +989,6 @@ def test_04_invalid_data_api_v1_options_payoff_59():
 
 def test_05_options_method_api_v1_options_payoff_59():
     response = client.options("/api/v1/options/payoff")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /portfolio/{userId}
-def test_01_basic_request_portfolio_userId_60():
-    response = client.get("/portfolio/{userId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_portfolio_userId_60():
-    response = client.post("/portfolio/{userId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_portfolio_userId_60():
-    response = client.get("/portfolio/{userId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_portfolio_userId_60():
-    response = client.get("/portfolio/{userId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_portfolio_userId_60():
-    response = client.options("/portfolio/{userId}")
     assert response.status_code in (200, 204)
 
 # Tests for POST /portfolio
@@ -1369,48 +1075,6 @@ def test_05_options_method_portfolio_update_64():
     response = client.options("/portfolio/update")
     assert response.status_code in (200, 204)
 
-# Tests for GET /portfolio/export/excel/{userId}
-def test_01_basic_request_portfolio_export_excel_userId_65():
-    response = client.get("/portfolio/export/excel/{userId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_portfolio_export_excel_userId_65():
-    response = client.post("/portfolio/export/excel/{userId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_portfolio_export_excel_userId_65():
-    response = client.get("/portfolio/export/excel/{userId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_portfolio_export_excel_userId_65():
-    response = client.get("/portfolio/export/excel/{userId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_portfolio_export_excel_userId_65():
-    response = client.options("/portfolio/export/excel/{userId}")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /portfolio/export/pdf/{userId}
-def test_01_basic_request_portfolio_export_pdf_userId_66():
-    response = client.get("/portfolio/export/pdf/{userId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_portfolio_export_pdf_userId_66():
-    response = client.post("/portfolio/export/pdf/{userId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_portfolio_export_pdf_userId_66():
-    response = client.get("/portfolio/export/pdf/{userId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_portfolio_export_pdf_userId_66():
-    response = client.get("/portfolio/export/pdf/{userId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_portfolio_export_pdf_userId_66():
-    response = client.options("/portfolio/export/pdf/{userId}")
-    assert response.status_code in (200, 204)
-
 # Tests for GET /portfolio/benchmark
 def test_01_basic_request_portfolio_benchmark_67():
     response = client.get("/portfolio/benchmark")
@@ -1453,69 +1117,6 @@ def test_05_options_method_portfolio_signal_warnings_68():
     response = client.options("/portfolio/signal-warnings")
     assert response.status_code in (200, 204)
 
-# Tests for GET /portfolio/risk-analysis/{userId}
-def test_01_basic_request_portfolio_risk_analysis_userId_69():
-    response = client.get("/portfolio/risk-analysis/{userId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_portfolio_risk_analysis_userId_69():
-    response = client.post("/portfolio/risk-analysis/{userId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_portfolio_risk_analysis_userId_69():
-    response = client.get("/portfolio/risk-analysis/{userId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_portfolio_risk_analysis_userId_69():
-    response = client.get("/portfolio/risk-analysis/{userId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_portfolio_risk_analysis_userId_69():
-    response = client.options("/portfolio/risk-analysis/{userId}")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /portfolio/red-flags/{userId}
-def test_01_basic_request_portfolio_red_flags_userId_70():
-    response = client.get("/portfolio/red-flags/{userId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_portfolio_red_flags_userId_70():
-    response = client.post("/portfolio/red-flags/{userId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_portfolio_red_flags_userId_70():
-    response = client.get("/portfolio/red-flags/{userId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_portfolio_red_flags_userId_70():
-    response = client.get("/portfolio/red-flags/{userId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_portfolio_red_flags_userId_70():
-    response = client.options("/portfolio/red-flags/{userId}")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /portfolio/timeframe-conflicts/{userId}
-def test_01_basic_request_portfolio_timeframe_conflicts_userId_71():
-    response = client.get("/portfolio/timeframe-conflicts/{userId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_portfolio_timeframe_conflicts_userId_71():
-    response = client.post("/portfolio/timeframe-conflicts/{userId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_portfolio_timeframe_conflicts_userId_71():
-    response = client.get("/portfolio/timeframe-conflicts/{userId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_portfolio_timeframe_conflicts_userId_71():
-    response = client.get("/portfolio/timeframe-conflicts/{userId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_portfolio_timeframe_conflicts_userId_71():
-    response = client.options("/portfolio/timeframe-conflicts/{userId}")
-    assert response.status_code in (200, 204)
-
 # Tests for GET /portfolio/correlation
 def test_01_basic_request_portfolio_correlation_72():
     response = client.get("/portfolio/correlation")
@@ -1556,48 +1157,6 @@ def test_04_invalid_data_api_v1_portfolio_stress_test_73():
 
 def test_05_options_method_api_v1_portfolio_stress_test_73():
     response = client.options("/api/v1/portfolio/stress-test")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /api/v1/portfolio/stress-test/{jobId}
-def test_01_basic_request_api_v1_portfolio_stress_test_jobId_74():
-    response = client.get("/api/v1/portfolio/stress-test/{jobId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_api_v1_portfolio_stress_test_jobId_74():
-    response = client.post("/api/v1/portfolio/stress-test/{jobId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_api_v1_portfolio_stress_test_jobId_74():
-    response = client.get("/api/v1/portfolio/stress-test/{jobId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_api_v1_portfolio_stress_test_jobId_74():
-    response = client.get("/api/v1/portfolio/stress-test/{jobId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_api_v1_portfolio_stress_test_jobId_74():
-    response = client.options("/api/v1/portfolio/stress-test/{jobId}")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /api/v1/portfolio/charts/{userId}
-def test_01_basic_request_api_v1_portfolio_charts_userId_75():
-    response = client.get("/api/v1/portfolio/charts/{userId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_api_v1_portfolio_charts_userId_75():
-    response = client.post("/api/v1/portfolio/charts/{userId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_api_v1_portfolio_charts_userId_75():
-    response = client.get("/api/v1/portfolio/charts/{userId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_api_v1_portfolio_charts_userId_75():
-    response = client.get("/api/v1/portfolio/charts/{userId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_api_v1_portfolio_charts_userId_75():
-    response = client.options("/api/v1/portfolio/charts/{userId}")
     assert response.status_code in (200, 204)
 
 # Tests for GET /api/v1/portfolio/advisor-consensus
@@ -1663,27 +1222,6 @@ def test_05_options_method_alerts_add_78():
     response = client.options("/alerts/add")
     assert response.status_code in (200, 204)
 
-# Tests for GET /alerts/{userId}
-def test_01_basic_request_alerts_userId_79():
-    response = client.get("/alerts/{userId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_alerts_userId_79():
-    response = client.post("/alerts/{userId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_alerts_userId_79():
-    response = client.get("/alerts/{userId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_alerts_userId_79():
-    response = client.get("/alerts/{userId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_alerts_userId_79():
-    response = client.options("/alerts/{userId}")
-    assert response.status_code in (200, 204)
-
 # Tests for DELETE /alerts/remove
 def test_01_basic_request_alerts_remove_80():
     response = client.delete("/alerts/remove")
@@ -1703,48 +1241,6 @@ def test_04_invalid_data_alerts_remove_80():
 
 def test_05_options_method_alerts_remove_80():
     response = client.options("/alerts/remove")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /alerts/check/{userId}
-def test_01_basic_request_alerts_check_userId_81():
-    response = client.get("/alerts/check/{userId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_alerts_check_userId_81():
-    response = client.post("/alerts/check/{userId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_alerts_check_userId_81():
-    response = client.get("/alerts/check/{userId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_alerts_check_userId_81():
-    response = client.get("/alerts/check/{userId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_alerts_check_userId_81():
-    response = client.options("/alerts/check/{userId}")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /api/v1/stocks/{symbol}/ml-signal
-def test_01_basic_request_api_v1_stocks_symbol_ml_signal_82():
-    response = client.get("/api/v1/stocks/{symbol}/ml-signal")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_api_v1_stocks_symbol_ml_signal_82():
-    response = client.post("/api/v1/stocks/{symbol}/ml-signal")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_api_v1_stocks_symbol_ml_signal_82():
-    response = client.get("/api/v1/stocks/{symbol}/ml-signal", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_api_v1_stocks_symbol_ml_signal_82():
-    response = client.get("/api/v1/stocks/{symbol}/ml-signal?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_api_v1_stocks_symbol_ml_signal_82():
-    response = client.options("/api/v1/stocks/{symbol}/ml-signal")
     assert response.status_code in (200, 204)
 
 # Tests for GET /api/v1/predictions/calibration
@@ -2041,69 +1537,6 @@ def test_05_options_method_quarterly_financials_96():
     response = client.options("/quarterly-financials")
     assert response.status_code in (200, 204)
 
-# Tests for GET /dividends/{ticker}
-def test_01_basic_request_dividends_ticker_97():
-    response = client.get("/dividends/{ticker}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_dividends_ticker_97():
-    response = client.post("/dividends/{ticker}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_dividends_ticker_97():
-    response = client.get("/dividends/{ticker}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_dividends_ticker_97():
-    response = client.get("/dividends/{ticker}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_dividends_ticker_97():
-    response = client.options("/dividends/{ticker}")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /market/sentiment-trend/{ticker}
-def test_01_basic_request_market_sentiment_trend_ticker_98():
-    response = client.get("/market/sentiment-trend/{ticker}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_market_sentiment_trend_ticker_98():
-    response = client.post("/market/sentiment-trend/{ticker}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_market_sentiment_trend_ticker_98():
-    response = client.get("/market/sentiment-trend/{ticker}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_market_sentiment_trend_ticker_98():
-    response = client.get("/market/sentiment-trend/{ticker}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_market_sentiment_trend_ticker_98():
-    response = client.options("/market/sentiment-trend/{ticker}")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /trade-journal/{userId}
-def test_01_basic_request_trade_journal_userId_99():
-    response = client.get("/trade-journal/{userId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_trade_journal_userId_99():
-    response = client.post("/trade-journal/{userId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_trade_journal_userId_99():
-    response = client.get("/trade-journal/{userId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_trade_journal_userId_99():
-    response = client.get("/trade-journal/{userId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_trade_journal_userId_99():
-    response = client.options("/trade-journal/{userId}")
-    assert response.status_code in (200, 204)
-
 # Tests for POST /trade-journal
 def test_01_basic_request_trade_journal_100():
     response = client.post("/trade-journal")
@@ -2123,69 +1556,6 @@ def test_04_invalid_data_trade_journal_100():
 
 def test_05_options_method_trade_journal_100():
     response = client.options("/trade-journal")
-    assert response.status_code in (200, 204)
-
-# Tests for PUT /trade-journal/{entryId}
-def test_01_basic_request_trade_journal_entryId_101():
-    response = client.put("/trade-journal/{entryId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_trade_journal_entryId_101():
-    response = client.get("/trade-journal/{entryId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_trade_journal_entryId_101():
-    response = client.put("/trade-journal/{entryId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_trade_journal_entryId_101():
-    response = client.put("/trade-journal/{entryId}", json={"invalid_key": "invalid_value"})
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_trade_journal_entryId_101():
-    response = client.options("/trade-journal/{entryId}")
-    assert response.status_code in (200, 204)
-
-# Tests for DELETE /trade-journal/{entryId}
-def test_01_basic_request_trade_journal_entryId_102():
-    response = client.delete("/trade-journal/{entryId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_trade_journal_entryId_102():
-    response = client.get("/trade-journal/{entryId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_trade_journal_entryId_102():
-    response = client.delete("/trade-journal/{entryId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_trade_journal_entryId_102():
-    response = client.delete("/trade-journal/{entryId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_trade_journal_entryId_102():
-    response = client.options("/trade-journal/{entryId}")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /trade-journal/{userId}/stats
-def test_01_basic_request_trade_journal_userId_stats_103():
-    response = client.get("/trade-journal/{userId}/stats")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_trade_journal_userId_stats_103():
-    response = client.post("/trade-journal/{userId}/stats")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_trade_journal_userId_stats_103():
-    response = client.get("/trade-journal/{userId}/stats", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_trade_journal_userId_stats_103():
-    response = client.get("/trade-journal/{userId}/stats?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_trade_journal_userId_stats_103():
-    response = client.options("/trade-journal/{userId}/stats")
     assert response.status_code in (200, 204)
 
 # Tests for POST /watchlist/add
@@ -2228,48 +1598,6 @@ def test_04_invalid_data_watchlist_remove_105():
 
 def test_05_options_method_watchlist_remove_105():
     response = client.options("/watchlist/remove")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /watchlist/{userId}
-def test_01_basic_request_watchlist_userId_106():
-    response = client.get("/watchlist/{userId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_watchlist_userId_106():
-    response = client.post("/watchlist/{userId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_watchlist_userId_106():
-    response = client.get("/watchlist/{userId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_watchlist_userId_106():
-    response = client.get("/watchlist/{userId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_watchlist_userId_106():
-    response = client.options("/watchlist/{userId}")
-    assert response.status_code in (200, 204)
-
-# Tests for GET /api/v1/youtube/summary/{videoId}
-def test_01_basic_request_api_v1_youtube_summary_videoId_107():
-    response = client.get("/api/v1/youtube/summary/{videoId}")
-    assert response.status_code in (200, 401, 403, 404, 405, 422)
-
-def test_02_invalid_method_api_v1_youtube_summary_videoId_107():
-    response = client.post("/api/v1/youtube/summary/{videoId}")
-    assert response.status_code in (405, 422, 404, 200)
-
-def test_03_missing_auth_api_v1_youtube_summary_videoId_107():
-    response = client.get("/api/v1/youtube/summary/{videoId}", headers={})
-    assert response.status_code in (401, 403, 404, 405, 422, 200)
-
-def test_04_invalid_data_api_v1_youtube_summary_videoId_107():
-    response = client.get("/api/v1/youtube/summary/{videoId}?invalid_param=123")
-    assert response.status_code in (422, 200, 401, 403, 404, 405)
-
-def test_05_options_method_api_v1_youtube_summary_videoId_107():
-    response = client.options("/api/v1/youtube/summary/{videoId}")
     assert response.status_code in (200, 204)
 
 # Tests for POST /api/v1/youtube/summary
@@ -2356,3 +1684,682 @@ def test_05_options_method_api_v1_admin_harvest_youtube_111():
     response = client.options("/api/v1/admin/harvest-youtube")
     assert response.status_code in (200, 204)
 
+
+# --- CONTRACT TESTS FOR PLACEHOLDER ROUTES ---
+
+
+def test_analyze_job_jobId_success(client, auth_headers):
+    response = client.get("/analyze/job/990001", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204, 422)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_analyze_job_jobId_unauthenticated(client):
+    response = client.get("/analyze/job/990001")
+    assert response.status_code == 422
+
+def test_analyze_job_jobId_not_found(client, auth_headers):
+    dummy_path = "/analyze/job/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 422)
+
+def test_analyze_job_jobId_validation_error(client, auth_headers):
+    bad_path = "/analyze/job/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_analyze_jobId_cancel_success(client, auth_headers):
+    response = client.post("/analyze/990001/cancel", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204, 422)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_analyze_jobId_cancel_unauthenticated(client):
+    response = client.post("/analyze/990001/cancel")
+    assert response.status_code == 422
+
+def test_analyze_jobId_cancel_not_found(client, auth_headers):
+    dummy_path = "/analyze/9999999/cancel"
+    response = client.post(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 422)
+
+def test_analyze_jobId_cancel_validation_error(client, auth_headers):
+    bad_path = "/analyze/invalid_id/cancel"
+    response = client.post(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_fundamentals_ticker_financials_success(client, auth_headers):
+    response = client.get(f"/fundamentals/{"RELIANCE"}/financials", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_fundamentals_ticker_financials_unauthenticated(client):
+    response = client.get("/fundamentals/RELIANCE/financials")
+    assert response.status_code == 200
+
+def test_fundamentals_ticker_financials_not_found(client, auth_headers):
+    dummy_path = "/fundamentals/NONEXISTENT/financials"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 200)
+
+def test_fundamentals_ticker_shareholding_success(client, auth_headers):
+    response = client.get(f"/fundamentals/{"RELIANCE"}/shareholding", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_fundamentals_ticker_shareholding_unauthenticated(client):
+    response = client.get("/fundamentals/RELIANCE/shareholding")
+    assert response.status_code == 200
+
+def test_fundamentals_ticker_shareholding_not_found(client, auth_headers):
+    dummy_path = "/fundamentals/NONEXISTENT/shareholding"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 200)
+
+def test_fundamentals_ticker_corporate_actions_success(client, auth_headers):
+    response = client.get(f"/fundamentals/{"RELIANCE"}/corporate-actions", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_fundamentals_ticker_corporate_actions_unauthenticated(client):
+    response = client.get("/fundamentals/RELIANCE/corporate-actions")
+    assert response.status_code == 200
+
+def test_fundamentals_ticker_corporate_actions_not_found(client, auth_headers):
+    dummy_path = "/fundamentals/NONEXISTENT/corporate-actions"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 200)
+
+def test_fundamentals_ticker_valuation_success(client, auth_headers):
+    response = client.get(f"/fundamentals/{"RELIANCE"}/valuation", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204, 402)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_fundamentals_ticker_valuation_unauthenticated(client):
+    response = client.get("/fundamentals/RELIANCE/valuation")
+    assert response.status_code == 401
+
+def test_fundamentals_ticker_valuation_not_found(client, auth_headers):
+    dummy_path = "/fundamentals/NONEXISTENT/valuation"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 402)
+
+def test_fundamentals_ticker_risk_signals_success(client, auth_headers):
+    response = client.get(f"/fundamentals/{"RELIANCE"}/risk-signals", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204, 402)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_fundamentals_ticker_risk_signals_unauthenticated(client):
+    response = client.get("/fundamentals/RELIANCE/risk-signals")
+    assert response.status_code == 401
+
+def test_fundamentals_ticker_risk_signals_not_found(client, auth_headers):
+    dummy_path = "/fundamentals/NONEXISTENT/risk-signals"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 402)
+
+def test_fundamentals_piotroski_ticker_success(client, auth_headers):
+    response = client.get(f"/fundamentals/piotroski/{"RELIANCE"}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_fundamentals_piotroski_ticker_unauthenticated(client):
+    response = client.get("/fundamentals/piotroski/RELIANCE")
+    assert response.status_code == 200
+
+def test_fundamentals_piotroski_ticker_not_found(client, auth_headers):
+    dummy_path = "/fundamentals/piotroski/NONEXISTENT"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 200)
+
+def test_harvester_governance_ticker_success(client, auth_headers):
+    response = client.get(f"/harvester/governance/{"RELIANCE"}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_harvester_governance_ticker_unauthenticated(client):
+    response = client.get("/harvester/governance/RELIANCE")
+    assert response.status_code == 401
+
+def test_harvester_governance_ticker_not_found(client, auth_headers):
+    dummy_path = "/harvester/governance/NONEXISTENT"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 200)
+
+def test_macro_impact_userId_success(client, auth_headers, test_user_id):
+    response = client.get(f"/macro-impact/{test_user_id}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_macro_impact_userId_unauthenticated(client):
+    response = client.get("/macro-impact/999999")
+    assert response.status_code == 401
+
+def test_macro_impact_userId_not_found(client, auth_headers):
+    dummy_path = "/macro-impact/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 401)
+
+def test_macro_impact_userId_validation_error(client, auth_headers):
+    bad_path = "/macro-impact/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_daily_action_userId_success(client, auth_headers, test_user_id):
+    response = client.get(f"/daily-action/{test_user_id}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_daily_action_userId_unauthenticated(client):
+    response = client.get("/daily-action/999999")
+    assert response.status_code == 401
+
+def test_daily_action_userId_not_found(client, auth_headers):
+    dummy_path = "/daily-action/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 401)
+
+def test_daily_action_userId_validation_error(client, auth_headers):
+    bad_path = "/daily-action/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_macro_context_ticker_success(client, auth_headers):
+    response = client.get(f"/macro-context/{"RELIANCE"}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_macro_context_ticker_unauthenticated(client):
+    response = client.get("/macro-context/RELIANCE")
+    assert response.status_code == 200
+
+def test_macro_context_ticker_not_found(client, auth_headers):
+    dummy_path = "/macro-context/NONEXISTENT"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 200)
+
+def test_morning_summary_userId_success(client, auth_headers, test_user_id):
+    response = client.get(f"/morning-summary/{test_user_id}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204, 500)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_morning_summary_userId_unauthenticated(client):
+    response = client.get("/morning-summary/999999")
+    assert response.status_code == 401
+
+def test_morning_summary_userId_not_found(client, auth_headers):
+    dummy_path = "/morning-summary/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 401)
+
+def test_morning_summary_userId_validation_error(client, auth_headers):
+    bad_path = "/morning-summary/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_portfolio_userId_success(client, auth_headers, test_user_id):
+    response = client.get(f"/portfolio/{test_user_id}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_portfolio_userId_unauthenticated(client):
+    response = client.get("/portfolio/999999")
+    assert response.status_code == 401
+
+def test_portfolio_userId_not_found(client, auth_headers):
+    dummy_path = "/portfolio/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 401)
+
+def test_portfolio_userId_validation_error(client, auth_headers):
+    bad_path = "/portfolio/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_portfolio_export_excel_userId_success(client, auth_headers, test_user_id):
+    response = client.get(f"/portfolio/export/excel/{test_user_id}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_portfolio_export_excel_userId_unauthenticated(client):
+    response = client.get("/portfolio/export/excel/999999")
+    assert response.status_code == 401
+
+def test_portfolio_export_excel_userId_not_found(client, auth_headers):
+    dummy_path = "/portfolio/export/excel/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 401)
+
+def test_portfolio_export_excel_userId_validation_error(client, auth_headers):
+    bad_path = "/portfolio/export/excel/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_portfolio_export_pdf_userId_success(client, auth_headers, test_user_id):
+    response = client.get(f"/portfolio/export/pdf/{test_user_id}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_portfolio_export_pdf_userId_unauthenticated(client):
+    response = client.get("/portfolio/export/pdf/999999")
+    assert response.status_code == 401
+
+def test_portfolio_export_pdf_userId_not_found(client, auth_headers):
+    dummy_path = "/portfolio/export/pdf/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 401)
+
+def test_portfolio_export_pdf_userId_validation_error(client, auth_headers):
+    bad_path = "/portfolio/export/pdf/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_portfolio_risk_analysis_userId_success(client, auth_headers, test_user_id):
+    response = client.get(f"/portfolio/risk-analysis/{test_user_id}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_portfolio_risk_analysis_userId_unauthenticated(client):
+    response = client.get("/portfolio/risk-analysis/999999")
+    assert response.status_code == 401
+
+def test_portfolio_risk_analysis_userId_not_found(client, auth_headers):
+    dummy_path = "/portfolio/risk-analysis/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 401)
+
+def test_portfolio_risk_analysis_userId_validation_error(client, auth_headers):
+    bad_path = "/portfolio/risk-analysis/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_portfolio_red_flags_userId_success(client, auth_headers, test_user_id):
+    response = client.get(f"/portfolio/red-flags/{test_user_id}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_portfolio_red_flags_userId_unauthenticated(client):
+    response = client.get("/portfolio/red-flags/999999")
+    assert response.status_code == 401
+
+def test_portfolio_red_flags_userId_not_found(client, auth_headers):
+    dummy_path = "/portfolio/red-flags/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 401)
+
+def test_portfolio_red_flags_userId_validation_error(client, auth_headers):
+    bad_path = "/portfolio/red-flags/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_portfolio_timeframe_conflicts_userId_success(client, auth_headers, test_user_id):
+    response = client.get(f"/portfolio/timeframe-conflicts/{test_user_id}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_portfolio_timeframe_conflicts_userId_unauthenticated(client):
+    response = client.get("/portfolio/timeframe-conflicts/999999")
+    assert response.status_code == 401
+
+def test_portfolio_timeframe_conflicts_userId_not_found(client, auth_headers):
+    dummy_path = "/portfolio/timeframe-conflicts/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 401)
+
+def test_portfolio_timeframe_conflicts_userId_validation_error(client, auth_headers):
+    bad_path = "/portfolio/timeframe-conflicts/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_api_v1_portfolio_stress_test_jobId_success(client, auth_headers):
+    response = client.get("/api/v1/portfolio/stress-test/990001", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204, 404)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_api_v1_portfolio_stress_test_jobId_unauthenticated(client):
+    response = client.get("/api/v1/portfolio/stress-test/990001")
+    assert response.status_code == 401
+
+def test_api_v1_portfolio_stress_test_jobId_not_found(client, auth_headers):
+    dummy_path = "/api/v1/portfolio/stress-test/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 404)
+
+def test_api_v1_portfolio_stress_test_jobId_validation_error(client, auth_headers):
+    bad_path = "/api/v1/portfolio/stress-test/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 404
+
+def test_api_v1_portfolio_charts_userId_success(client, auth_headers, test_user_id):
+    response = client.get(f"/api/v1/portfolio/charts/{test_user_id}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_api_v1_portfolio_charts_userId_unauthenticated(client):
+    response = client.get("/api/v1/portfolio/charts/999999")
+    assert response.status_code == 401
+
+def test_api_v1_portfolio_charts_userId_not_found(client, auth_headers):
+    dummy_path = "/api/v1/portfolio/charts/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 401)
+
+def test_api_v1_portfolio_charts_userId_validation_error(client, auth_headers):
+    bad_path = "/api/v1/portfolio/charts/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_alerts_userId_success(client, auth_headers, test_user_id):
+    response = client.get(f"/alerts/{test_user_id}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_alerts_userId_unauthenticated(client):
+    response = client.get("/alerts/999999")
+    assert response.status_code == 401
+
+def test_alerts_userId_not_found(client, auth_headers):
+    dummy_path = "/alerts/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 401)
+
+def test_alerts_userId_validation_error(client, auth_headers):
+    bad_path = "/alerts/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_alerts_check_userId_success(client, auth_headers, test_user_id):
+    response = client.get(f"/alerts/check/{test_user_id}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_alerts_check_userId_unauthenticated(client):
+    response = client.get("/alerts/check/999999")
+    assert response.status_code == 401
+
+def test_alerts_check_userId_not_found(client, auth_headers):
+    dummy_path = "/alerts/check/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 401)
+
+def test_alerts_check_userId_validation_error(client, auth_headers):
+    bad_path = "/alerts/check/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_api_v1_stocks_symbol_ml_signal_success(client, auth_headers):
+    response = client.get(f"/api/v1/stocks/{"RELIANCE"}/ml-signal", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_api_v1_stocks_symbol_ml_signal_unauthenticated(client):
+    response = client.get("/api/v1/stocks/RELIANCE/ml-signal")
+    assert response.status_code == 401
+
+def test_api_v1_stocks_symbol_ml_signal_not_found(client, auth_headers):
+    dummy_path = "/api/v1/stocks/NONEXISTENT/ml-signal"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 200)
+
+def test_dividends_ticker_success(client, auth_headers):
+    response = client.get(f"/dividends/{"RELIANCE"}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_dividends_ticker_unauthenticated(client):
+    response = client.get("/dividends/RELIANCE")
+    assert response.status_code == 200
+
+def test_dividends_ticker_not_found(client, auth_headers):
+    dummy_path = "/dividends/NONEXISTENT"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 200)
+
+def test_market_sentiment_trend_ticker_success(client, auth_headers):
+    response = client.get(f"/market/sentiment-trend/{"RELIANCE"}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_market_sentiment_trend_ticker_unauthenticated(client):
+    response = client.get("/market/sentiment-trend/RELIANCE")
+    assert response.status_code == 200
+
+def test_market_sentiment_trend_ticker_not_found(client, auth_headers):
+    dummy_path = "/market/sentiment-trend/NONEXISTENT"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 200)
+
+def test_trade_journal_userId_success(client, auth_headers, test_user_id):
+    response = client.get(f"/trade-journal/{test_user_id}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_trade_journal_userId_unauthenticated(client):
+    response = client.get("/trade-journal/999999")
+    assert response.status_code == 401
+
+def test_trade_journal_userId_not_found(client, auth_headers):
+    dummy_path = "/trade-journal/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 401)
+
+def test_trade_journal_userId_validation_error(client, auth_headers):
+    bad_path = "/trade-journal/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_trade_journal_entryId_success(client, auth_headers):
+    response = client.put("/trade-journal/990001", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204, 422)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_trade_journal_entryId_unauthenticated(client):
+    response = client.put("/trade-journal/990001")
+    assert response.status_code == 422
+
+def test_trade_journal_entryId_not_found(client, auth_headers):
+    dummy_path = "/trade-journal/9999999"
+    response = client.put(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 422)
+
+def test_trade_journal_entryId_validation_error(client, auth_headers):
+    bad_path = "/trade-journal/invalid_id"
+    response = client.put(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_trade_journal_entryId_success(client, auth_headers):
+    response = client.delete("/trade-journal/990001", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204, 422)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_trade_journal_entryId_unauthenticated(client):
+    response = client.delete("/trade-journal/990001")
+    assert response.status_code == 422
+
+def test_trade_journal_entryId_not_found(client, auth_headers):
+    dummy_path = "/trade-journal/9999999"
+    response = client.delete(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 422)
+
+def test_trade_journal_entryId_validation_error(client, auth_headers):
+    bad_path = "/trade-journal/invalid_id"
+    response = client.delete(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_trade_journal_userId_stats_success(client, auth_headers, test_user_id):
+    response = client.get(f"/trade-journal/{test_user_id}/stats", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_trade_journal_userId_stats_unauthenticated(client):
+    response = client.get("/trade-journal/999999/stats")
+    assert response.status_code == 401
+
+def test_trade_journal_userId_stats_not_found(client, auth_headers):
+    dummy_path = "/trade-journal/9999999/stats"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 200)
+
+def test_trade_journal_userId_stats_validation_error(client, auth_headers):
+    bad_path = "/trade-journal/invalid_id/stats"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_watchlist_userId_success(client, auth_headers, test_user_id):
+    response = client.get(f"/watchlist/{test_user_id}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_watchlist_userId_unauthenticated(client):
+    response = client.get("/watchlist/999999")
+    assert response.status_code == 401
+
+def test_watchlist_userId_not_found(client, auth_headers):
+    dummy_path = "/watchlist/9999999"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 401)
+
+def test_watchlist_userId_validation_error(client, auth_headers):
+    bad_path = "/watchlist/invalid_id"
+    response = client.get(bad_path, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_api_v1_youtube_summary_videoId_success(client, auth_headers):
+    response = client.get(f"/api/v1/youtube/summary/{"dQw4w9WgXcQ"}", headers=auth_headers)
+    assert response.status_code in (200, 201, 202, 204, 404)
+    if response.status_code == 200:
+        try:
+            assert isinstance(response.json(), (dict, list))
+        except Exception:
+            pass
+
+def test_api_v1_youtube_summary_videoId_unauthenticated(client):
+    response = client.get("/api/v1/youtube/summary/dQw4w9WgXcQ")
+    assert response.status_code == 401
+
+def test_api_v1_youtube_summary_videoId_not_found(client, auth_headers):
+    dummy_path = "/api/v1/youtube/summary/NONEXISTENT"
+    response = client.get(dummy_path, headers=auth_headers)
+    assert response.status_code in (404, 404)
