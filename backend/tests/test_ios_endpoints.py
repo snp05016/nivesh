@@ -1735,7 +1735,7 @@ def test_analyze_jobId_cancel_validation_error(client, auth_headers):
     assert response.status_code == 422
 
 def test_fundamentals_ticker_financials_success(client, auth_headers):
-    response = client.get(f"/fundamentals/{"RELIANCE"}/financials", headers=auth_headers)
+    response = client.get("/fundamentals/RELIANCE/financials", headers=auth_headers)
     assert response.status_code in (200, 201, 202, 204)
     if response.status_code == 200:
         try:
@@ -1753,7 +1753,7 @@ def test_fundamentals_ticker_financials_not_found(client, auth_headers):
     assert response.status_code in (404, 200)
 
 def test_fundamentals_ticker_shareholding_success(client, auth_headers):
-    response = client.get(f"/fundamentals/{"RELIANCE"}/shareholding", headers=auth_headers)
+    response = client.get("/fundamentals/RELIANCE/shareholding", headers=auth_headers)
     assert response.status_code in (200, 201, 202, 204)
     if response.status_code == 200:
         try:
@@ -1771,7 +1771,7 @@ def test_fundamentals_ticker_shareholding_not_found(client, auth_headers):
     assert response.status_code in (404, 200)
 
 def test_fundamentals_ticker_corporate_actions_success(client, auth_headers):
-    response = client.get(f"/fundamentals/{"RELIANCE"}/corporate-actions", headers=auth_headers)
+    response = client.get("/fundamentals/RELIANCE/corporate-actions", headers=auth_headers)
     assert response.status_code in (200, 201, 202, 204)
     if response.status_code == 200:
         try:
@@ -1789,7 +1789,7 @@ def test_fundamentals_ticker_corporate_actions_not_found(client, auth_headers):
     assert response.status_code in (404, 200)
 
 def test_fundamentals_ticker_valuation_success(client, auth_headers):
-    response = client.get(f"/fundamentals/{"RELIANCE"}/valuation", headers=auth_headers)
+    response = client.get("/fundamentals/RELIANCE/valuation", headers=auth_headers)
     assert response.status_code in (200, 201, 202, 204, 402)
     if response.status_code == 200:
         try:
@@ -1807,7 +1807,7 @@ def test_fundamentals_ticker_valuation_not_found(client, auth_headers):
     assert response.status_code in (404, 402)
 
 def test_fundamentals_ticker_risk_signals_success(client, auth_headers):
-    response = client.get(f"/fundamentals/{"RELIANCE"}/risk-signals", headers=auth_headers)
+    response = client.get("/fundamentals/RELIANCE/risk-signals", headers=auth_headers)
     assert response.status_code in (200, 201, 202, 204, 402)
     if response.status_code == 200:
         try:
@@ -1825,7 +1825,7 @@ def test_fundamentals_ticker_risk_signals_not_found(client, auth_headers):
     assert response.status_code in (404, 402)
 
 def test_fundamentals_piotroski_ticker_success(client, auth_headers):
-    response = client.get(f"/fundamentals/piotroski/{"RELIANCE"}", headers=auth_headers)
+    response = client.get("/fundamentals/piotroski/RELIANCE", headers=auth_headers)
     assert response.status_code in (200, 201, 202, 204)
     if response.status_code == 200:
         try:
@@ -1843,7 +1843,7 @@ def test_fundamentals_piotroski_ticker_not_found(client, auth_headers):
     assert response.status_code in (404, 200)
 
 def test_harvester_governance_ticker_success(client, auth_headers):
-    response = client.get(f"/harvester/governance/{"RELIANCE"}", headers=auth_headers)
+    response = client.get("/harvester/governance/RELIANCE", headers=auth_headers)
     assert response.status_code in (200, 201, 202, 204)
     if response.status_code == 200:
         try:
@@ -1907,7 +1907,7 @@ def test_daily_action_userId_validation_error(client, auth_headers):
     assert response.status_code == 422
 
 def test_macro_context_ticker_success(client, auth_headers):
-    response = client.get(f"/macro-context/{"RELIANCE"}", headers=auth_headers)
+    response = client.get("/macro-context/RELIANCE", headers=auth_headers)
     assert response.status_code in (200, 201, 202, 204)
     if response.status_code == 200:
         try:
@@ -2178,7 +2178,7 @@ def test_alerts_check_userId_validation_error(client, auth_headers):
     assert response.status_code == 422
 
 def test_api_v1_stocks_symbol_ml_signal_success(client, auth_headers):
-    response = client.get(f"/api/v1/stocks/{"RELIANCE"}/ml-signal", headers=auth_headers)
+    response = client.get("/api/v1/stocks/RELIANCE/ml-signal", headers=auth_headers)
     assert response.status_code in (200, 201, 202, 204)
     if response.status_code == 200:
         try:
@@ -2196,7 +2196,7 @@ def test_api_v1_stocks_symbol_ml_signal_not_found(client, auth_headers):
     assert response.status_code in (404, 200)
 
 def test_dividends_ticker_success(client, auth_headers):
-    response = client.get(f"/dividends/{"RELIANCE"}", headers=auth_headers)
+    response = client.get("/dividends/RELIANCE", headers=auth_headers)
     assert response.status_code in (200, 201, 202, 204)
     if response.status_code == 200:
         try:
@@ -2214,7 +2214,7 @@ def test_dividends_ticker_not_found(client, auth_headers):
     assert response.status_code in (404, 200)
 
 def test_market_sentiment_trend_ticker_success(client, auth_headers):
-    response = client.get(f"/market/sentiment-trend/{"RELIANCE"}", headers=auth_headers)
+    response = client.get("/market/sentiment-trend/RELIANCE", headers=auth_headers)
     assert response.status_code in (200, 201, 202, 204)
     if response.status_code == 200:
         try:
@@ -2254,7 +2254,7 @@ def test_trade_journal_userId_validation_error(client, auth_headers):
     response = client.get(bad_path, headers=auth_headers)
     assert response.status_code == 422
 
-def test_trade_journal_entryId_success(client, auth_headers):
+def test_trade_journal_entryId_put_success(client, auth_headers):
     response = client.put("/trade-journal/990001", headers=auth_headers)
     assert response.status_code in (200, 201, 202, 204, 422)
     if response.status_code == 200:
@@ -2263,7 +2263,7 @@ def test_trade_journal_entryId_success(client, auth_headers):
         except Exception:
             pass
 
-def test_trade_journal_entryId_unauthenticated(client):
+def test_trade_journal_entryId_put_unauthenticated(client):
     response = client.put("/trade-journal/990001")
     assert response.status_code == 422
 
@@ -2277,7 +2277,7 @@ def test_trade_journal_entryId_validation_error(client, auth_headers):
     response = client.put(bad_path, headers=auth_headers)
     assert response.status_code == 422
 
-def test_trade_journal_entryId_success(client, auth_headers):
+def test_trade_journal_entryId_delete_success(client, auth_headers):
     response = client.delete("/trade-journal/990001", headers=auth_headers)
     assert response.status_code in (200, 201, 202, 204, 422)
     if response.status_code == 200:
@@ -2286,7 +2286,7 @@ def test_trade_journal_entryId_success(client, auth_headers):
         except Exception:
             pass
 
-def test_trade_journal_entryId_unauthenticated(client):
+def test_trade_journal_entryId_delete_unauthenticated(client):
     response = client.delete("/trade-journal/990001")
     assert response.status_code == 422
 
@@ -2347,7 +2347,7 @@ def test_watchlist_userId_validation_error(client, auth_headers):
     assert response.status_code == 422
 
 def test_api_v1_youtube_summary_videoId_success(client, auth_headers):
-    response = client.get(f"/api/v1/youtube/summary/{"dQw4w9WgXcQ"}", headers=auth_headers)
+    response = client.get("/api/v1/youtube/summary/dQw4w9WgXcQ", headers=auth_headers)
     assert response.status_code in (200, 201, 202, 204, 404)
     if response.status_code == 200:
         try:
