@@ -30,6 +30,7 @@ struct PortfolioToolsCard: View {
     let userId: Int
 
     @State private var showSIPSheet = false
+    @State private var showFDCalculatorSheet = false
     @State private var showBenchmarkSheet = false
     @State private var isExportingPDF = false
     @State private var isLoadingBenchmark = false
@@ -89,12 +90,28 @@ struct PortfolioToolsCard: View {
                     HapticManager.selection()
                     fetchBenchmark()
                 }
+
+                GuillocheDivider()
+                    .padding(.horizontal, Theme.Spacing.card)
+
+                ToolButtonRow(
+                    icon: "banknote.fill",
+                    title: "Fixed Deposit Calculator",
+                    subtitle: "Project FD maturity value",
+                    isLoading: false
+                ) {
+                    HapticManager.selection()
+                    showFDCalculatorSheet = true
+                }
             }
             .padding(.bottom, Theme.Spacing.medium)
         }
         .banknoteCard()
         .sheet(isPresented: $showSIPSheet) {
             SIPCalculatorSheet()
+        }
+        .sheet(isPresented: $showFDCalculatorSheet) {
+            FixedDepositCalculatorView()
         }
         .sheet(isPresented: $showBenchmarkSheet) {
             BenchmarkComparisonSheet(data: benchmarkData, errorMessage: benchmarkError)

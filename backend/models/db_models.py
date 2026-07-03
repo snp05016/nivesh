@@ -1462,3 +1462,78 @@ class DataDeletionRequest(Base):
             name="ck_data_deletion_request_status",
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# Fixed Deposits — MOCK NBFC/bank FD marketplace demo. Owned by
+# services/fixed_deposit_service.py, exposed via routers/fixed_deposits.py.
+#
+# MOCK DATA — simulated for demo purposes, not a real integration. No real
+# NBFC/bank FD issuer API is called anywhere behind this feature, and no
+# real UPI/net-banking payment gateway processes any money. Bookings settle
+# instantly in-process to simulate a completed transaction for demo
+# purposes only.
+# ---------------------------------------------------------------------------
+
+class FixedDepositScheme(Base):
+    """MOCK DATA — simulated bank/NBFC fixed-deposit product listed on the
+    FD marketplace for discovery/comparison.
+
+    Seeded by services/fixed_deposit_service.py:seed_mock_fd_schemes_if_empty().
+    Not a real bank/NBFC FD rate-card integration.
+    """
+    __tablename__ = "fixed_deposit_schemes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    issuer_name = Column(String(100), nullable=False)  # mock bank/NBFC name
+    min_tenure_months = Column(Integer, nullable=False)
+    max_tenure_months = Column(Integer, nullable=False)
+    min_amount = Column(Numeric(14, 2), nullable=False)
+    max_amount = Column(Numeric(14, 2), nullable=False)
+    interest_rate_pct = Column(Numeric(5, 2), nullable=False)  # general annual rate, e.g. 7.25
+    # additional rate applied for senior citizens (60+); demo does not
+    # itself verify age — a purely illustrative comparison field.
+    senior_citizen_bonus_pct = Column(Numeric(5, 2), nullable=False, default=0.50, server_default="0.50")
+    is_active = Column(Boolean, nullable=False, default=True, server_default="1")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    bookings = relationship("FixedDepositBooking", back_populates="scheme", cascade="all, delete-orphan")
+
+
+class FixedDepositBooking(Base):
+    """A user's MOCK fixed-deposit booking against a FixedDepositScheme.
+
+    MOCK DATA — simulated instant settlement. status defaults to
+    "confirmed" only after the MOCK KYC gate (active "sim_binding" consent +
+    verified device binding, see services/fixed_deposit_service.py) passes;
+    otherwise the booking is recorded as "failed" with a decision_reason.
+    No real UPI/net-banking payment gateway is called.
+    """
+    __tablename__ = "fixed_deposit_bookings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    scheme_id = Column(Integer, ForeignKey("fixed_deposit_schemes.id"), nullable=False, index=True)
+    principal_amount = Column(Numeric(14, 2), nullable=False)
+    tenure_months = Column(Integer, nullable=False)
+    interest_rate_pct = Column(Numeric(5, 2), nullable=False)  # rate locked at booking time
+    maturity_amount = Column(Numeric(14, 2), nullable=False)  # computed at booking time
+    payment_method = Column(String(20), nullable=False)  # upi|net_banking
+    status = Column(String(20), nullable=False, default="confirmed", server_default="confirmed", index=True)
+    # pending|confirmed|failed
+    decision_reason = Column(Text, nullable=True)
+    booked_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    matures_at = Column(DateTime, nullable=True)
+
+    scheme = relationship("FixedDepositScheme", back_populates="bookings")
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending','confirmed','failed')",
+            name="ck_fixed_deposit_booking_status",
+        ),
+        CheckConstraint(
+            "payment_method IN ('upi','net_banking')",
+            name="ck_fixed_deposit_booking_payment_method",
+        ),
+    )

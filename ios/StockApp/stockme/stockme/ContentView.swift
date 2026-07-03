@@ -267,6 +267,7 @@ enum MarketSection: String, Hashable, CaseIterable {
     case forum = "forum"
     case financeTracker = "finance_tracker"
     case loanMarketplace = "loan_marketplace"
+    case fixedDeposits = "fixed_deposits"
 
     var icon: String {
         switch self {
@@ -288,6 +289,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .forum: return "bubble.left.and.bubble.right.fill"
         case .financeTracker: return "wallet.pass.fill"
         case .loanMarketplace: return "banknote.fill"
+        case .fixedDeposits: return "lock.doc.fill"
         }
     }
     var hindi: String {
@@ -310,6 +312,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .forum: return "सामुदायिक मंच"
         case .financeTracker: return "वित्त ट्रैकर"
         case .loanMarketplace: return "ऋण बाज़ार"
+        case .fixedDeposits: return "सावधि जमा"
         }
     }
     var englishTitle: String {
@@ -332,6 +335,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .forum: return "COMMUNITY FORUM"
         case .financeTracker: return "FINANCE TRACKER"
         case .loanMarketplace: return "LOAN MARKETPLACE"
+        case .fixedDeposits: return "FIXED DEPOSITS"
         }
     }
     var subtitle: String {
@@ -354,6 +358,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .forum: return "Boards, Threads & Polls"
         case .financeTracker: return "Accounts, Balances & Spend"
         case .loanMarketplace: return "Personal, Home, Car & Gold Loans"
+        case .fixedDeposits: return "Compare Rates & Book NBFC FDs"
         }
     }
     var description: String {
@@ -376,6 +381,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .forum: return "Per-stock and general market message boards, threaded replies, upvotes and community polls"
         case .financeTracker: return "Mock linked bank accounts, balance summary, and a placeholder spend categorization breakdown"
         case .loanMarketplace: return "Browse demo loan offers by type and tenure, then submit a mock multi-step application"
+        case .fixedDeposits: return "Compare demo NBFC fixed deposit schemes by rate and tenure, project maturity value, and book"
         }
     }
     var accentColor: Color {
@@ -398,6 +404,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .forum: return Theme.avatarBlue
         case .financeTracker: return Theme.securityGold
         case .loanMarketplace: return Theme.holdAmber
+        case .fixedDeposits: return Theme.securityGold
         }
     }
 
@@ -409,7 +416,7 @@ enum MarketSection: String, Hashable, CaseIterable {
 
         var sections: [MarketSection] {
             switch self {
-            case .discovery: return [.nl_screener, .screener, .earnings, .earnings_surprise, .ipo, .mutualFunds, .forum, .financeTracker, .loanMarketplace]
+            case .discovery: return [.nl_screener, .screener, .earnings, .earnings_surprise, .ipo, .mutualFunds, .forum, .financeTracker, .loanMarketplace, .fixedDeposits]
             case .analytics: return [.correlation, .stress_test, .sector_rotation, .anomalies]
             case .trading:   return [.options_strategy, .strategy, .alerts, .technical]
             }
@@ -686,6 +693,7 @@ struct MarketsView: View {
         case .forum: ForumHubView()
         case .financeTracker: FinanceTrackerView()
         case .loanMarketplace: LoanMarketplaceView()
+        case .fixedDeposits: FixedDepositListView()
         }
     }
 
