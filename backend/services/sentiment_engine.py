@@ -242,8 +242,21 @@ def compute_cisi(
         # Normalize text_sentiment from [-1, 1] to [0, 1]
         text_norm = (text_sentiment_score + 1.0) / 2.0
 
-        # 1b. IPO Froth Score (placeholder)
-        ipo_froth_score = 0.0  # hardcoded until scraped data available
+        # 1b. IPO Froth Score
+        from models.db_models import IPOListing
+        ipo_froth_score = 0.0
+        with get_session() as db:
+            recent_ipos = db.query(IPOListing.gmp, IPOListing.price_band_high).filter(
+                IPOListing.gmp != None,
+                IPOListing.price_band_high != None,
+                IPOListing.price_band_high > 0
+            ).order_by(IPOListing.open_date.desc()).limit(10).all()
+
+            if recent_ipos:
+                returns = [float(r.gmp) / float(r.price_band_high) for r in recent_ipos]
+                avg_return = sum(returns) / len(returns)
+                # Map avg return to [0, 1]. Average 100% premium is extreme froth (1.0)
+                ipo_froth_score = max(0.0, min(1.0, avg_return))
 
         # 1c. F&O Retail Skew from microstructure
         fo_retail_skew = 0.0
