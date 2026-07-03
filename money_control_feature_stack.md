@@ -533,7 +533,7 @@
   - [x] SuperPro monthly SKU
   - [x] SuperPro annual SKU
 - [x] Paywall triggers (PaywallView now calls GET /api/v1/subscription/entitlements and renders real server-verified gating instead of a static matrix)
-- [x] Entitlement management (entitlement_service.py + require_entitlement() dependency; enforced on 2 real endpoints — predictions/performance, sector-rotation — as a demonstration; not every PRO/Super-PRO feature listed above is individually gated yet)
+- [x] Entitlement management (entitlement_service.py + require_entitlement() dependency; enforced on 6 real endpoints — predictions/performance, sector-rotation, fundamentals valuation/risk-signals, strategy backtest, options payoff. Deliberately left ungated: Alpha Generators, WhatsApp/AI stock alerts, curated chart patterns, market-veteran ideas, smart calendars, forum premium boards — none of these have a real corresponding backend feature in this codebase, so no stub endpoints were fabricated to gate)
 - [x] Premium upsell surfaces
 - [ ] Programmatic advertising
 - [ ] Subscription revenue
@@ -667,9 +667,9 @@
 - [x] Lending Service Provider requirements (illustrative demo disclosure screen only, same caveat as above)
 - [x] Key Fact Statement display (computed dynamically from real LoanOffer/FixedDepositScheme data — GET /api/v1/compliance/key-fact-statement — linked from Loan Application and FD Booking flows)
 - [x] APR disclosure (APR = interest_rate_pct + amortized processing fee, computed per offer; explanatory screen at disclosures/apr_disclosure)
-- [ ] Direct lender-borrower fund flow
+- [x] Direct lender-borrower fund flow (mock instant disbursement to the borrower's primary linked bank account — POST/GET .../loan-applications/{id}/disburse(ment); fails closed with a reason if no bank account is linked, never a silent no-op — no real fund transfer/NBFC rail)
 - [x] KYC security (consent + device-binding gate on loan approval)
-- [ ] SIM-binding fraud prevention (disclosure now explicitly labels this as a MOCK device-matching check, not real fraud detection — the underlying check itself is still mock-only, no real fraud detection was added)
+- [x] SIM-binding fraud prevention (still explicitly MOCK — no real telecom integration — but bind_device() now detects cross-user device reuse and rate-limits rapid rebinding, with every attempt logged to an audit table and surfaced via GET /api/kyc/fraud-signals + an Account Security Signals UI section)
 - [x] Privacy policy compliance (illustrative demo policy screen only — GET /api/v1/compliance/disclosures/privacy_policy — not real legal copy)
 - [x] Data deletion compliance
 - [x] Third-party data-sharing governance (illustrative demo disclosure screen only — GET /api/v1/compliance/disclosures/data_sharing_governance)
