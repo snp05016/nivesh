@@ -123,11 +123,49 @@ class LoanApplicationViewModel: ObservableObject {
         }
         isSubmitting = true
         submissionError = nil
+
+        guard let deviceId = UIDevice.current.identifierForVendor?.uuidString else {
+            submissionError = "Could not identify device for binding."
+            isSubmitting = false
+            return
+        }
+
+        // 1. Persist the KYC consent
+        do {
+            _ = try await NetworkManager.shared.grantConsent(type: "credit_check", granted: true)
+        } catch {
+            submissionError = "Failed to record KYC consent. Please try again."
+            isSubmitting = false
+            return
+        }
+
+        // 2. Verify or Bind the device
+        do {
+            let verifyResp = try await NetworkManager.shared.verifyDeviceBinding(deviceId: deviceId)
+            if !verifyResp.verified {
+                _ = try await NetworkManager.shared.bindDevice(deviceId: deviceId, isPrimary: true)
+
+                // Verify again to ensure the bind was accepted by the backend gate
+                let secondVerify = try await NetworkManager.shared.verifyDeviceBinding(deviceId: deviceId)
+                if !secondVerify.verified {
+                    submissionError = "Device binding rejected. Please use your primary registered device."
+                    isSubmitting = false
+                    return
+                }
+            }
+        } catch {
+            // Fallback for fraud checks/network failures
+            submissionError = "Device binding failed. Please use your primary registered device."
+            isSubmitting = false
+            return
+        }
+
+        // 3. Submit the loan application after prerequisites are confirmed
         let requestBody = LoanApplicationRequest(
             loanOfferId: offer.id,
             requestedAmount: amount,
             requestedTenureMonths: tenureMonths,
-            deviceId: UIDevice.current.identifierForVendor?.uuidString
+            deviceId: deviceId
         )
         do {
             submittedApplication = try await NetworkManager.shared.submitLoanApplication(requestBody)
