@@ -1,4 +1,5 @@
-et -uo pipefail
+#!/usr/bin/env bash
+set -uo pipefail
 
 ###############################################################################
 # Resolve repository root
