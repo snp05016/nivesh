@@ -72,8 +72,17 @@ def test_no_model_migration_drift(tmp_db):
     assert not missing_cols, f"Missing columns in migrated DB: {missing_cols}"
 
 
-def test_migration_head_revision_is_b2c3d4e5f6a7():
-    """The current Alembic head must be the index migration we created."""
-    versions_dir = BACKEND_DIR / "migrations" / "versions"
-    head_files = list(versions_dir.glob("b2c3d4e5f6a7_*.py"))
-    assert head_files, "Expected head migration b2c3d4e5f6a7 not found in versions/"
+def test_single_migration_head():
+    """Ensure the Alembic migration graph has exactly one head (no unmerged branches)."""
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    alembic_ini_path = BACKEND_DIR / "alembic.ini"
+    alembic_cfg = Config(str(alembic_ini_path))
+    # Explicitly set the script_location to avoid parsing issues with %(here)s in testing
+    alembic_cfg.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
+
+    script = ScriptDirectory.from_config(alembic_cfg)
+    heads = script.get_heads()
+
+    assert len(heads) == 1, f"Expected exactly 1 migration head, but found {len(heads)}: {heads}"
