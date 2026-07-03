@@ -5,5 +5,5 @@ from main import app
 client = TestClient(app)
 
 def test_sector_performance_endpoint():
-    response = client.get("/api/v1/market/sector-performance")
+    response = client.get("/sector-performance")
     assert response.status_code in [200, 401]
