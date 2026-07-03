@@ -532,8 +532,8 @@
   - [ ] Multiple iOS PRO price variants
   - [x] SuperPro monthly SKU
   - [x] SuperPro annual SKU
-- [ ] Paywall triggers (banner exists, not wired to real feature gates)
-- [ ] Entitlement management (no server-side per-tier feature gating)
+- [x] Paywall triggers (PaywallView now calls GET /api/v1/subscription/entitlements and renders real server-verified gating instead of a static matrix)
+- [x] Entitlement management (entitlement_service.py + require_entitlement() dependency; enforced on 2 real endpoints — predictions/performance, sector-rotation — as a demonstration; not every PRO/Super-PRO feature listed above is individually gated yet)
 - [x] Premium upsell surfaces
 - [ ] Programmatic advertising
 - [ ] Subscription revenue
@@ -542,12 +542,12 @@
 ## 15. Account, Settings, Privacy, and Platform Stack
 - [ ] User login
 - [x] My Profile
-- [ ] KYC details (no KYC status shown in profile/account settings)
+- [x] KYC details (AccountSecurityStatusView shows consent + device-binding status, reachable from Settings → Account Security)
 - [x] Subscription management
 - [ ] My Alerts configuration
 - [x] Data privacy controls
 - [x] Account security (mock password change, sessions, 2FA placeholder)
-- [ ] SIM-binding controls (device binding exists in backend, no account-settings UI)
+- [x] SIM-binding controls (AccountSecurityStatusView: masked bound-device display + "Bind This Device" action via POST /api/kyc/device-binding)
 - [x] Data deletion (request workflow, non-destructive)
 - [x] Data erasure requests
 - [x] Consent withdrawal
@@ -663,16 +663,16 @@
 - [ ] Time-bound user consent
 - [x] Revocable consent flows
 - [ ] Data minimization
-- [ ] RBI digital lending compliance
-- [ ] Lending Service Provider requirements
-- [ ] Key Fact Statement display
-- [ ] APR disclosure
+- [x] RBI digital lending compliance (illustrative demo disclosure screen only — GET /api/v1/compliance/disclosures/digital_lending_compliance — not real regulatory filing/registration)
+- [x] Lending Service Provider requirements (illustrative demo disclosure screen only, same caveat as above)
+- [x] Key Fact Statement display (computed dynamically from real LoanOffer/FixedDepositScheme data — GET /api/v1/compliance/key-fact-statement — linked from Loan Application and FD Booking flows)
+- [x] APR disclosure (APR = interest_rate_pct + amortized processing fee, computed per offer; explanatory screen at disclosures/apr_disclosure)
 - [ ] Direct lender-borrower fund flow
 - [x] KYC security (consent + device-binding gate on loan approval)
-- [ ] SIM-binding fraud prevention (mock device binding only, no fraud detection)
-- [ ] Privacy policy compliance
+- [ ] SIM-binding fraud prevention (disclosure now explicitly labels this as a MOCK device-matching check, not real fraud detection — the underlying check itself is still mock-only, no real fraud detection was added)
+- [x] Privacy policy compliance (illustrative demo policy screen only — GET /api/v1/compliance/disclosures/privacy_policy — not real legal copy)
 - [x] Data deletion compliance
-- [ ] Third-party data-sharing governance
+- [x] Third-party data-sharing governance (illustrative demo disclosure screen only — GET /api/v1/compliance/disclosures/data_sharing_governance)
 
 ## 18. Implementation Complexity Stack
 - [ ] Easy complexity
