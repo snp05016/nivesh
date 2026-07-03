@@ -15,6 +15,12 @@ from pydantic import BaseModel, Field
 
 from core.security import require_auth
 from services.credit_bureau_mock_service import get_mock_credit_report_summary
+from services.finance_tracker_service import (
+    create_summary,
+    link_demo_account,
+    list_accounts,
+    list_spend_categories,
+)
 from services.loan_marketplace_service import (
     get_application_by_id,
     link_bank_account,
@@ -103,6 +109,42 @@ class LinkBankAccountRequest(BaseModel):
     masked_account_number: str = Field(..., min_length=4, max_length=20)
     account_type: str = Field("savings", pattern="^(savings|current)$")
     ifsc_code: Optional[str] = Field(None, max_length=15)
+
+
+# ---------------------------------------------------------------------------
+# Finance Tracker — MOCK linked-account balance/spend-tracking demo.
+# Distinct from the Loan Marketplace's LinkedBankAccount models above.
+# ---------------------------------------------------------------------------
+
+class FinanceAccountResponse(BaseModel):
+    id: int
+    bank_name: str
+    account_type: str
+    masked_account_number: str
+    balance: float
+    last_synced_at: Optional[str] = None
+    is_mock: bool
+
+    class Config:
+        from_attributes = True
+
+
+class FinanceSummaryResponse(BaseModel):
+    total_balance: float
+    linked_account_count: int
+    monthly_income: float
+    monthly_spend: float
+
+
+class SpendCategoryResponse(BaseModel):
+    category: str
+    amount: float
+    percentage: float
+
+
+class LinkFinanceAccountDemoRequest(BaseModel):
+    bank_name: str = Field(..., min_length=2, max_length=100)
+    account_type: str = Field(..., pattern="^(savings|current|credit_card|wallet)$")
 
 
 # ---------------------------------------------------------------------------
@@ -246,3 +288,62 @@ def create_linked_bank_account(payload: LinkBankAccountRequest, user_id: int = D
         is_primary=account.is_primary,
         linked_at=account.linked_at.isoformat() if account.linked_at else None,
     )
+
+
+# ---------------------------------------------------------------------------
+# Finance Tracker — MOCK linked-account balance/spend-tracking demo.
+#
+# MOCK DATA — simulated for demo purposes, not a real integration. No real
+# account-aggregator / bank-linking (OAuth/Plaid-style) flow backs any of
+# these endpoints. Functionally distinct from /linked-bank-accounts above
+# (which backs the Loan Marketplace and has no balance field).
+# ---------------------------------------------------------------------------
+
+def _serialize_finance_account(account) -> FinanceAccountResponse:
+    return FinanceAccountResponse(
+        id=account.id,
+        bank_name=account.bank_name,
+        account_type=account.account_type,
+        masked_account_number=account.masked_account_number,
+        balance=float(account.balance),
+        last_synced_at=account.last_synced_at.isoformat() if account.last_synced_at else None,
+        is_mock=account.is_mock,
+    )
+
+
+@router.get("/accounts", response_model=List[FinanceAccountResponse])
+def get_finance_accounts(user_id: int = Depends(require_auth)):
+    """List the caller's MOCK Finance Tracker linked accounts."""
+    return [_serialize_finance_account(a) for a in list_accounts(user_id)]
+
+
+@router.get("/summary", response_model=FinanceSummaryResponse)
+def get_finance_summary(user_id: int = Depends(require_auth)):
+    """Aggregate balance summary across the caller's MOCK linked accounts.
+
+    monthly_income / monthly_spend are MOCK DATA — simulated for demo
+    purposes, not a real integration.
+    """
+    return FinanceSummaryResponse(**create_summary(user_id))
+
+
+@router.get("/spend-categories", response_model=List[SpendCategoryResponse])
+def get_finance_spend_categories(user_id: int = Depends(require_auth)):
+    """MOCK proportional spend-by-category breakdown. Not backed by real
+    transaction categorization ML — simulated for demo purposes.
+    """
+    return [SpendCategoryResponse(**c) for c in list_spend_categories(user_id)]
+
+
+@router.post("/accounts/link-demo", response_model=FinanceAccountResponse)
+def post_link_demo_finance_account(payload: LinkFinanceAccountDemoRequest, user_id: int = Depends(require_auth)):
+    """"Link Account (Demo)" — fabricates a new MOCK linked account.
+
+    MOCK DATA — simulated for demo purposes, not a real integration. No
+    real bank OAuth/Plaid flow happens here.
+    """
+    try:
+        account = link_demo_account(user_id, payload.bank_name, payload.account_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return _serialize_finance_account(account)

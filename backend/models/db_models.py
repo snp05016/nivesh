@@ -1371,6 +1371,47 @@ class LoanApplication(Base):
 
 
 # ---------------------------------------------------------------------------
+# Finance Tracker — MOCK personal-finance "linked account" demo. Owned by
+# services/finance_tracker_service.py, exposed via routers/finance.py.
+#
+# NOTE: This is functionally distinct from LinkedBankAccount above, which
+# backs the Loan Marketplace (no balance field, has ifsc_code/is_primary).
+# FinanceTrackerAccount instead backs the standalone Finance Tracker tab —
+# balances, sync timestamps, and a wallet/credit-card account type. Still
+# entirely MOCK DATA — simulated for demo purposes, not a real
+# account-aggregator / bank-linking (OAuth/Plaid-style) integration.
+# ---------------------------------------------------------------------------
+
+class FinanceTrackerAccount(Base):
+    """MOCK DATA — a simulated "linked" bank/wallet account for the Finance
+    Tracker tab (balance summary + spend-category breakdown).
+
+    NOT a real account-aggregator / bank integration — no real account
+    numbers or credentials are collected; masked_account_number and balance
+    are fabricated server-side by finance_tracker_service.link_demo_account().
+    """
+    __tablename__ = "finance_tracker_accounts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    bank_name = Column(String(100), nullable=False)
+    account_type = Column(String(20), nullable=False, default="savings", server_default="savings")
+    # savings|current|credit_card|wallet
+    masked_account_number = Column(String(20), nullable=False)  # e.g. "XXXX1234" — never a real account number
+    balance = Column(Numeric(14, 2), nullable=False, default=0, server_default="0")
+    last_synced_at = Column(DateTime, nullable=True)
+    is_mock = Column(Boolean, nullable=False, default=True, server_default="1")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        CheckConstraint(
+            "account_type IN ('savings','current','credit_card','wallet')",
+            name="ck_finance_tracker_account_type",
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Compliance — India DPDP-Act-style right-to-erasure / consent-withdrawal
 # demo. Owned by services/compliance_service.py, exposed via
 # routers/compliance.py.
