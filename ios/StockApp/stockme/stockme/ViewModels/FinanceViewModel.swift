@@ -19,17 +19,23 @@ class FinanceViewModel: ObservableObject {
     func loadAll() async {
         isLoading = true
         errorMessage = nil
-        async let accountsResult = try? NetworkManager.shared.fetchLinkedAccounts()
-        async let summaryResult = try? NetworkManager.shared.fetchFinanceSummary()
-        async let categoriesResult = try? NetworkManager.shared.fetchSpendCategories()
-
-        accounts = await accountsResult ?? []
-        summary = await summaryResult ?? .empty
-        spendCategories = await categoriesResult ?? []
-
-        if accounts.isEmpty && summary == .empty {
+        
+        do {
+            async let accountsTask = NetworkManager.shared.fetchLinkedAccounts()
+            async let summaryTask = NetworkManager.shared.fetchFinanceSummary()
+            async let categoriesTask = NetworkManager.shared.fetchSpendCategories()
+            
+            let fetchedAccounts = try await accountsTask
+            let fetchedSummary = try await summaryTask
+            let fetchedCategories = try await categoriesTask
+            
+            accounts = fetchedAccounts
+            summary = fetchedSummary
+            spendCategories = fetchedCategories
+        } catch {
             errorMessage = "Couldn't load your finance overview. Pull to retry."
         }
+        
         isLoading = false
     }
 
