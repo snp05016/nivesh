@@ -15,9 +15,18 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 from core.security import require_auth
-from services import compliance_service
+from services import compliance_service, disclosure_service
 
 router = APIRouter(prefix="/api/v1/compliance", tags=["Compliance"])
+
+_VALID_DISCLOSURE_KEYS = (
+    "privacy_policy",
+    "data_sharing_governance",
+    "digital_lending_compliance",
+    "lending_service_provider",
+    "apr_disclosure",
+    "sim_binding_fraud_prevention",
+)
 
 
 class DeletionRequestBody(BaseModel):
@@ -97,3 +106,60 @@ def get_audit_trail(limit: int = 50, user_id: int = Depends(require_auth)):
     newest first."""
     capped_limit = max(1, min(limit, 200))
     return compliance_service.get_audit_trail(user_id, limit=capped_limit)
+
+
+# ---------------------------------------------------------------------------
+# Disclosure content — static, illustrative/demo compliance copy + a
+# dynamically-computed Key Fact Statement (KFS) breakdown. Public/unauthed:
+# these are informational disclosures, not user-account operations.
+# ---------------------------------------------------------------------------
+
+@router.get("/disclosures/{key}")
+def get_disclosure_content(key: str):
+    """Returns static, illustrative disclosure content for `key`
+    (privacy_policy | data_sharing_governance | digital_lending_compliance |
+    lending_service_provider | apr_disclosure | sim_binding_fraud_prevention).
+
+    DEMO-GRADE: all returned content is clearly-labelled placeholder/demo
+    copy, not real legal or regulatory text — see services/disclosure_service.py.
+    """
+    if key not in _VALID_DISCLOSURE_KEYS:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown disclosure key '{key}'. Valid keys: {', '.join(_VALID_DISCLOSURE_KEYS)}",
+        )
+    content = disclosure_service.get_disclosure(key)
+    if content is None:
+        raise HTTPException(status_code=404, detail=f"Unknown disclosure key '{key}'")
+    return content
+
+
+@router.get("/key-fact-statement")
+def get_key_fact_statement(
+    loan_offer_id: Optional[int] = None,
+    scheme_id: Optional[int] = None,
+    amount: Optional[float] = None,
+    tenure_months: Optional[int] = None,
+):
+    """Returns a structured Key Fact Statement (KFS) breakdown — loan_amount,
+    interest_rate, all_fees, apr, tenure — computed dynamically from a real
+    LoanOffer (loan_offer_id) or FixedDepositScheme (scheme_id).
+
+    Exactly one of loan_offer_id / scheme_id is required. See
+    services/disclosure_service.compute_key_fact_statement() and the
+    'apr_disclosure' static disclosure for the APR formula used.
+    """
+    if (loan_offer_id is None) == (scheme_id is None):
+        raise HTTPException(
+            status_code=422,
+            detail="Provide exactly one of 'loan_offer_id' or 'scheme_id'",
+        )
+    kfs = disclosure_service.compute_key_fact_statement(
+        loan_offer_id=loan_offer_id,
+        scheme_id=scheme_id,
+        amount=amount,
+        tenure_months=tenure_months,
+    )
+    if kfs is None:
+        raise HTTPException(status_code=404, detail="Loan offer or FD scheme not found")
+    return kfs

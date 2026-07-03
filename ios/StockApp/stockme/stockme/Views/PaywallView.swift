@@ -61,6 +61,7 @@ struct PaywallView: View {
                 headerSection
                 billingToggle
                 tierCards
+                serverEntitlementsSection
                 if let confirmation = vm.lastActionConfirmation {
                     confirmationBanner(confirmation)
                 }
@@ -143,6 +144,35 @@ struct PaywallView: View {
                         showConfirmation = true
                     }
                 )
+            }
+        }
+    }
+
+    // MARK: - Server-Verified Entitlements
+    //
+    // Real gate check, not a static client-side assumption: sourced from
+    // GET /api/v1/subscription/entitlements (services/entitlement_service.py
+    // FEATURE_MIN_TIER), which is the exact set of feature keys real
+    // premium endpoints enforce server-side via core/entitlement_gate.py's
+    // require_entitlement() dependency.
+
+    @ViewBuilder
+    private var serverEntitlementsSection: some View {
+        if let entitlements = vm.entitlements {
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                Text("SERVER-VERIFIED ENTITLEMENTS")
+                    .font(Theme.officialStampFont(size: 10))
+                    .tracking(1.5)
+                    .foregroundStyle(Theme.inkSecondary)
+                VStack(spacing: Theme.Spacing.none) {
+                    ForEach(EntitlementFeatureKeyDisplay.all, id: \.key.rawValue) { entry in
+                        EntitlementFeatureRow(
+                            title: entry.title,
+                            isUnlocked: entitlements.isUnlocked(entry.key.rawValue)
+                        )
+                    }
+                }
+                .banknoteCard()
             }
         }
     }
@@ -306,6 +336,40 @@ private struct FeatureMatrixRow: View {
         } else {
             Text("—").foregroundStyle(Theme.inkTertiary)
         }
+    }
+}
+
+// MARK: - Server Entitlement Row
+
+private struct EntitlementFeatureKeyDisplay {
+    let key: EntitlementFeatureKey
+    let title: String
+
+    static let all: [EntitlementFeatureKeyDisplay] = [
+        .init(key: .advancedAnalysis, title: "Advanced Analysis Dashboards"),
+        .init(key: .forumPremiumBoard, title: "Forum Premium Boards"),
+        .init(key: .sectorRotation, title: "Sector Rotation Analytics"),
+        .init(key: .alphaGenerators, title: "Alpha Generators"),
+        .init(key: .whatsappAlerts, title: "WhatsApp Alerts"),
+    ]
+}
+
+private struct EntitlementFeatureRow: View {
+    let title: String
+    let isUnlocked: Bool
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.standard) {
+            Image(systemName: isUnlocked ? "checkmark.circle.fill" : "lock.fill")
+                .foregroundStyle(isUnlocked ? Theme.bullGreen : Theme.inkTertiary)
+            Text(title)
+                .font(Theme.engravedSerif(size: 12, relativeTo: .caption))
+                .foregroundStyle(Theme.inkPrimary)
+            Spacer()
+        }
+        .padding(.vertical, Theme.Spacing.standard)
+        .padding(.horizontal, Theme.Spacing.card)
+        Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
     }
 }
 

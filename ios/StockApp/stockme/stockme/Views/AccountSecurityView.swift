@@ -47,6 +47,7 @@ struct AccountSecurityView: View {
             Theme.canvasDeep.ignoresSafeArea()
             ScrollView {
                 VStack(spacing: Theme.Spacing.large) {
+                    kycDeviceSecurityLink
                     changePasswordSection
                     twoFactorSection
                     sessionsSection
@@ -57,6 +58,39 @@ struct AccountSecurityView: View {
         }
         .navigationTitle("Account Security")
         .navigationBarTitleDisplayMode(.large)
+    }
+
+    // MARK: - KYC & Device Security (real, already-merged /api/kyc/... endpoints)
+
+    private var kycDeviceSecurityLink: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+            sectionHeader("KYC & SIM-BINDING", hindi: "केवाईसी और डिवाइस बंधन")
+            NavigationLink(destination: AccountSecurityStatusView()) {
+                HStack(spacing: Theme.Spacing.standard) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                            .fill(Theme.securityGold.opacity(0.08)).frame(width: 32, height: 32)
+                        Image(systemName: "checkmark.shield.fill")
+                            .font(.subheadline.weight(.medium)).foregroundStyle(Theme.securityGold.opacity(0.7))
+                    }
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                        Text("KYC CONSENTS & DEVICE BINDING")
+                            .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
+                        Text("View consent status, bind this device (SIM-binding), verify loan/FD eligibility")
+                            .font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.inkTertiary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+                .padding(.vertical, Theme.Spacing.standard)
+                .padding(.horizontal, Theme.Spacing.card)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(EKPressStyle())
+            .banknoteCard()
+        }
     }
 
     // MARK: - Change Password

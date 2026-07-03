@@ -226,6 +226,8 @@ struct SettingsScreen: View {
     private var dataSection: some View {
         SettingsGroup(title: "DATA & PRIVACY", hindi: "डेटा और गोपनीयता") {
             NavRow(icon: "doc.text", color: Theme.securityGold, title: "Saved Reports", destination: ReportManagerView(reportManager: reportManager), badge: "\(reportManager.savedReports.count)")
+            NavRow(icon: "hand.raised", color: Theme.securityGold, title: "Privacy Policy", destination: DisclosureDetailView(key: .privacyPolicy))
+            NavRow(icon: "network", color: Theme.securityGold, title: "Data Sharing Governance", destination: DisclosureDetailView(key: .dataSharingGovernance))
             Button { HapticManager.selection(); 
     HapticManager.selection()
                 HapticManager.selection()

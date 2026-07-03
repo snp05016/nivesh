@@ -66,6 +66,19 @@ struct LoanApplicationHeader: View {
                 .foregroundColor(Theme.holdAmber)
                 .background(Theme.holdAmber.opacity(0.12))
                 .cornerRadius(Theme.CornerRadius.badge)
+
+            NavigationLink(destination: KeyFactStatementView(source: .loanOffer(id: offer.id))) {
+                HStack(spacing: Theme.Spacing.small) {
+                    Image(systemName: "doc.text.magnifyingglass").foregroundColor(Theme.securityGold)
+                    Text("View Key Fact Statement")
+                        .font(Theme.engravedSerif(size: 12, relativeTo: .caption))
+                        .foregroundColor(Theme.inkPrimary)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundColor(Theme.inkTertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(EKPressStyle())
         }
         .padding(.horizontal, Theme.screenPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -219,6 +232,9 @@ private struct LoanKYCConsentStep: View {
                 }
             }
             .buttonStyle(EKPressStyle())
+
+            DisclosureLinkRow(key: .digitalLendingCompliance)
+            DisclosureLinkRow(key: .lendingServiceProvider)
 
             LoanApplicationSummaryCard(vm: vm)
         }

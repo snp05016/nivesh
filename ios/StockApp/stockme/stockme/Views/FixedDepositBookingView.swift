@@ -83,6 +83,19 @@ struct FDBookingHeader: View {
                 .foregroundColor(Theme.holdAmber)
                 .background(Theme.holdAmber.opacity(0.12))
                 .cornerRadius(Theme.CornerRadius.badge)
+
+            NavigationLink(destination: KeyFactStatementView(source: .fdScheme(id: scheme.id))) {
+                HStack(spacing: Theme.Spacing.small) {
+                    Image(systemName: "doc.text.magnifyingglass").foregroundColor(Theme.securityGold)
+                    Text("View Key Fact Statement")
+                        .font(Theme.engravedSerif(size: 12, relativeTo: .caption))
+                        .foregroundColor(Theme.inkPrimary)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundColor(Theme.inkTertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(EKPressStyle())
         }
         .padding(.horizontal, Theme.screenPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -364,6 +377,16 @@ private struct FDAccountSettingsFollowUp: View {
             Text("This booking failed closed because device binding or KYC consent is incomplete. Open Account Settings to complete device binding and KYC consent, then try booking again.")
                 .font(Theme.engravedSerif(size: 12, relativeTo: .footnote))
                 .foregroundColor(Theme.inkSecondary)
+            NavigationLink(destination: AccountSecurityStatusView()) {
+                HStack(spacing: Theme.Spacing.small) {
+                    Text("Open KYC & Device Security")
+                        .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
+                        .tracking(1.0)
+                    Image(systemName: "arrow.right").font(.caption2.weight(.semibold))
+                }
+                .foregroundColor(Theme.holdAmber)
+            }
+            .buttonStyle(EKPressStyle())
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Theme.Spacing.standard)

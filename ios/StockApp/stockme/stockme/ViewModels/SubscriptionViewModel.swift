@@ -12,6 +12,14 @@ class SubscriptionViewModel: ObservableObject {
     @Published var plans: [SubscriptionPlanDTO] = []
     @Published var currentSubscription: CurrentSubscriptionDTO? = nil
 
+    /// Real server-side entitlements from GET /api/v1/subscription/entitlements
+    /// (services/entitlement_service.py) — `tier` here is the caller's
+    /// *effective* tier (derived from is_active/renews_at, not the possibly
+    /// stale `tier` column), so it's preferred over
+    /// `currentSubscription?.parsedTier` wherever both are available. See
+    /// `currentTier` below.
+    @Published var entitlements: EntitlementsDTO? = nil
+
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
 
@@ -23,8 +31,22 @@ class SubscriptionViewModel: ObservableObject {
     /// Success confirmation shown after a mock upgrade/cancel completes.
     @Published var lastActionConfirmation: String? = nil
 
+    /// The real, effective tier — prefers `entitlements.tier` (server-derived,
+    /// accounts for cancelled-but-not-yet-lapsed subscriptions) and falls
+    /// back to `currentSubscription`'s raw tier column if entitlements
+    /// haven't loaded yet.
     var currentTier: SubscriptionTier {
-        currentSubscription?.parsedTier ?? .free
+        entitlements?.parsedTier ?? currentSubscription?.parsedTier ?? .free
+    }
+
+    /// True if the caller's real, server-side entitlements unlock
+    /// `featureKey` (see EntitlementFeatureKey / entitlement_service.py
+    /// FEATURE_MIN_TIER). Defaults to `true` (ungated) if entitlements
+    /// haven't loaded yet or the key is unknown server-side, mirroring
+    /// has_entitlement()'s "unknown feature keys are never locked out"
+    /// fail-open behavior.
+    func isFeatureUnlocked(_ featureKey: EntitlementFeatureKey) -> Bool {
+        entitlements?.isUnlocked(featureKey.rawValue) ?? true
     }
 
     /// Plans for the currently-selected billing cycle, one per tier,
@@ -55,6 +77,10 @@ class SubscriptionViewModel: ObservableObject {
         } catch {
             errorMessage = "Couldn't load your current plan. Pull to retry."
         }
+        // Real server-side entitlement check — non-fatal if it fails, since
+        // currentSubscription already gives a (slightly less authoritative)
+        // fallback tier for the tier cards to render against.
+        entitlements = try? await NetworkManager.shared.fetchEntitlements()
         isLoading = false
     }
 

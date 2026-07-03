@@ -7,13 +7,18 @@ state via services/subscription_service.py.
 """
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Dict, Optional
 from datetime import datetime
 
 from core.security import require_auth
-from services import subscription_service
+from services import entitlement_service, subscription_service
 
 router = APIRouter(prefix="/api/v1/subscription", tags=["Subscription"])
+
+
+class EntitlementsResponse(BaseModel):
+    tier: str
+    features: Dict[str, bool]
 
 
 class SubscriptionResponse(BaseModel):
@@ -56,3 +61,11 @@ def cancel_subscription(user_id: int = Depends(require_auth)):
     "no cron reverts this" caveat."""
     result = subscription_service.mock_cancel(user_id)
     return SubscriptionResponse(**result)
+
+
+@router.get("/entitlements", response_model=EntitlementsResponse)
+def get_entitlements(user_id: int = Depends(require_auth)):
+    """Returns the caller's effective tier and a feature_key -> bool map of
+    server-side entitlements (see services/entitlement_service.py). The iOS
+    paywall banner calls this to decide what to show/gate client-side."""
+    return EntitlementsResponse(**entitlement_service.get_all_entitlements(user_id))
