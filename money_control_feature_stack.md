@@ -449,12 +449,12 @@
 - [x] Sentiment tagging
 
 ## 13. Personal Finance and Product Distribution Stack
-- [ ] Finance tracker (UI ships, no backend endpoints yet — see below)
-  - [ ] Bank-account linking (mock UI only, /api/finance/accounts not implemented)
+- [x] Finance tracker (backend now live: GET /api/finance/accounts, /summary, /spend-categories, POST /accounts/link-demo)
+  - [x] Bank-account linking (mock demo-linking only — no real Account Aggregator/OAuth flow)
   - [ ] Account Aggregator integration
-  - [ ] Balance tracking
-  - [ ] Monthly spend tracking
-  - [ ] Transaction categorization
+  - [x] Balance tracking (per-account balance + aggregate summary)
+  - [x] Monthly spend tracking (mock deterministic monthly_income/monthly_spend)
+  - [x] Transaction categorization (mock fixed-weight spend-category breakdown, not real ML categorization)
 - [x] Loans marketplace (mock NBFC offers, credit score, underwriting)
   - [x] Personal loans up to ₹50L
   - [x] NBFC partner integrations (mock, generic NBFCs not named real brands)
@@ -462,7 +462,7 @@
   - [ ] L&T Finance integration
   - [ ] Fibe integration
   - [x] Loan eligibility (mock credit score + demo underwriting rule)
-  - [ ] KYC handling (device-binding/consent gate exists and blocks approval, but no HTTP route yet to grant consent — applications currently always fail closed)
+  - [x] KYC handling (POST/GET/DELETE /api/kyc/consents + /api/kyc/device-binding now live — applications no longer always fail closed once consent is granted and a device is bound; iOS UI to call these routes is still pending, tracked under Section 15 SIM-binding controls)
   - [x] Credit score inputs (mock credit bureau service)
   - [x] Interest-rate display
   - [ ] EMI schedule (summary EMI calc only, no month-by-month amortization table)
