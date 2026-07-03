@@ -98,3 +98,4 @@ nest_asyncio>=1.5.0  # patch asyncio for nested event loops (correlation_engine)
 cachetools>=5.0.0  # TTLCache for yfinance client
 # celery[redis]>=5.3.0  # Uncomment to enable Celery background workers
 
+PyPDF2>=3.0.0
