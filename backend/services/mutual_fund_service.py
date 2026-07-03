@@ -11,6 +11,7 @@ from typing import Optional
 
 from database import get_session
 from models.db_models import MutualFund
+from sqlalchemy import or_
 
 VALID_CATEGORIES = {
     "Equity",
@@ -186,12 +187,12 @@ def list_funds(
         if category:
             query = query.filter(MutualFund.category == category)
         if amc_name:
-            query = query.filter(MutualFund.amc_name == amc_name)
+            query = query.filter(or_(MutualFund.amc_name == amc_name, MutualFund.amc == amc_name))
         if risk_level:
             query = query.filter(MutualFund.risk_level == risk_level)
         if search:
             like = f"%{search}%"
-            query = query.filter(MutualFund.scheme_name.ilike(like))
+            query = query.filter(or_(MutualFund.scheme_name.ilike(like), MutualFund.fund_name.ilike(like)))
         return query.order_by(MutualFund.aum_cr.desc().nullslast()).all()
 
 

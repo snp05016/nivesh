@@ -3,10 +3,10 @@
 Controller-only: HTTP validation lives here, all DB access and business
 logic live in services/mutual_fund_service.py (Controller-Service-Repository).
 """
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from services.mutual_fund_service import (
     get_fund_by_scheme_code,
@@ -21,9 +21,9 @@ router = APIRouter(prefix="/api/mutual-funds", tags=["Mutual Funds"])
 class MutualFundResponse(BaseModel):
     id: int
     scheme_code: Optional[str] = None
-    scheme_name: Optional[str] = None
-    amc_name: Optional[str] = None
-    category: Optional[str] = None
+    scheme_name: str
+    amc_name: str
+    category: str
     sub_category: Optional[str] = None
     nav: Optional[float] = None
     nav_date: Optional[str] = None
@@ -36,6 +36,27 @@ class MutualFundResponse(BaseModel):
     fund_manager: Optional[str] = None
     is_direct_plan: Optional[bool] = None
     is_growth_plan: Optional[bool] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def fallback_legacy_fields(cls, data: Any) -> Any:
+        if hasattr(data, "__dict__"):
+            d = dict(data.__dict__)
+            if not d.get("scheme_name"):
+                d["scheme_name"] = d.get("fund_name", "") or ""
+            if not d.get("amc_name"):
+                d["amc_name"] = d.get("amc", "") or ""
+            if not d.get("category"):
+                d["category"] = d.get("category", "") or ""
+            return d
+        elif isinstance(data, dict):
+            if not data.get("scheme_name"):
+                data["scheme_name"] = data.get("fund_name", "") or ""
+            if not data.get("amc_name"):
+                data["amc_name"] = data.get("amc", "") or ""
+            if not data.get("category"):
+                data["category"] = data.get("category", "") or ""
+        return data
 
     class Config:
         orm_mode = True

@@ -111,3 +111,40 @@ def test_auth_protected_routes_return_401_without_token(api_client):
     # Either 401 (auth checked) or 422 (missing param) or 200 with empty data
     # Must NOT be 500
     assert resp.status_code != 500
+
+
+def test_mutual_fund_legacy_data_fallback():
+    """MutualFundResponse must map legacy fields (fund_name, amc) to new fields."""
+    from routers.mutual_funds import MutualFundResponse
+
+    # Test dictionary input
+    legacy_dict = {
+        "id": 1,
+        "fund_name": "Axis Bluechip Fund",
+        "amc": "Axis Mutual Fund",
+        "category": "Equity",
+        "nav": 45.67
+    }
+    resp = MutualFundResponse.model_validate(legacy_dict)
+    assert resp.scheme_name == "Axis Bluechip Fund"
+    assert resp.amc_name == "Axis Mutual Fund"
+    assert resp.category == "Equity"
+    assert resp.nav == 45.67
+
+    # Test object input
+    class LegacyFund:
+        def __init__(self):
+            self.id = 2
+            self.fund_name = "SBI Small Cap"
+            self.amc = "SBI Mutual Fund"
+            self.category = "Equity"
+            self.nav = 120.5
+            self.scheme_name = None
+            self.amc_name = None
+
+    legacy_obj = LegacyFund()
+    resp_obj = MutualFundResponse.model_validate(legacy_obj)
+    assert resp_obj.scheme_name == "SBI Small Cap"
+    assert resp_obj.amc_name == "SBI Mutual Fund"
+    assert resp_obj.category == "Equity"
+    assert resp_obj.nav == 120.5
