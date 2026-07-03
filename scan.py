@@ -1,7 +1,13 @@
 import os
 import re
+import argparse
 
-dir_path = 'ios/StockApp/stockme/stockme/'
+parser = argparse.ArgumentParser(description='Scan frontend codebase for violations.')
+parser.add_argument('--root', default='ios/StockApp/stockme/stockme/', help='Root directory to scan.')
+parser.add_argument('--out', default='.agent-runs/frontend-scan/frontend_findings.md', help='Output file path for findings.')
+args = parser.parse_args()
+
+dir_path = args.root
 
 violations = []
 
@@ -58,8 +64,10 @@ for root, _, files in os.walk(dir_path):
             if has_button and not has_haptic:
                 violations.append(f"- **{path}** - Contains Button/onTapGesture but missing HapticManager/EKPressStyle entirely in the file.")
 
-out_path = '/Users/saumya/.gemini/antigravity-cli/brain/edbedb59-47b8-4cdf-aee5-be3c568fad2e/scratch/frontend_findings.md'
-os.makedirs(os.path.dirname(out_path), exist_ok=True)
+out_path = args.out
+out_dir = os.path.dirname(out_path)
+if out_dir:
+    os.makedirs(out_dir, exist_ok=True)
 with open(out_path, 'w') as f:
     f.write("# Frontend Codebase Scanner Findings\n\n")
     for v in violations:
