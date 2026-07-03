@@ -29,6 +29,12 @@ struct LoanApplicationView: View {
                 if let submitted = vm.submittedApplication {
                     LoanApplicationSubmittedCard(application: submitted)
                         .padding(.horizontal, Theme.screenPadding)
+
+                    if submitted.parsedStatus == .approved || submitted.parsedStatus == .disbursed {
+                        LoanDisbursementCard(vm: vm)
+                            .padding(.horizontal, Theme.screenPadding)
+                            .task { await vm.refreshDisbursementStatus() }
+                    }
                 } else {
                     LoanApplicationStepContent(vm: vm)
                         .padding(.horizontal, Theme.screenPadding)
@@ -359,5 +365,96 @@ struct LoanApplicationSubmittedCard: View {
         .frame(maxWidth: .infinity)
         .padding(Theme.Spacing.card)
         .banknoteCard()
+    }
+}
+
+// MARK: - Disbursement (Mock)
+
+/// Shown once a (mock) loan application reaches "approved" — lets the user
+/// trigger a fake disbursement and shows its status. MOCK DATA - simulated
+/// for demo purposes, not a real integration; no real funds are ever moved
+/// and no real NBFC is contacted.
+struct LoanDisbursementCard: View {
+    @ObservedObject var vm: LoanApplicationViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.card) {
+            Text("DISBURSEMENT (DEMO)")
+                .font(Theme.officialStampFont(size: 11, relativeTo: .caption))
+                .tracking(1.5)
+                .foregroundColor(Theme.inkSecondary)
+
+            Text("Simulated disbursement only — no real funds are moved and no real NBFC is contacted.")
+                .font(Theme.engravedSerif(size: 12, relativeTo: .footnote))
+                .foregroundColor(Theme.inkTertiary)
+
+            if let disbursement = vm.disbursement {
+                DisbursementStatusRow(disbursement: disbursement)
+            } else if let error = vm.disbursementError {
+                Text(error)
+                    .font(Theme.engravedSerif(size: 12, relativeTo: .footnote))
+                    .foregroundColor(Theme.bearRed)
+            }
+
+            if vm.disbursement == nil {
+                Button {
+                    HapticManager.selection()
+                    Task { await vm.requestDisbursement() }
+                } label: {
+                    HStack {
+                        Spacer()
+                        if vm.isRequestingDisbursement {
+                            ProgressView().tint(Theme.canvas)
+                        } else {
+                            Text("Request Disbursement (Demo)")
+                                .font(Theme.labelStyle)
+                        }
+                        Spacer()
+                    }
+                    .padding(Theme.Spacing.card)
+                    .background(Theme.securityGold)
+                    .foregroundColor(Theme.canvas)
+                    .cornerRadius(Theme.CornerRadius.medium)
+                }
+                .buttonStyle(EKPressStyle())
+                .disabled(vm.isRequestingDisbursement)
+            }
+        }
+        .padding(Theme.Spacing.card)
+        .banknoteCard()
+    }
+}
+
+private struct DisbursementStatusRow: View {
+    let disbursement: DisbursementDTO
+
+    private var statusColor: Color {
+        switch disbursement.parsedStatus {
+        case .completed: return Theme.bullGreen
+        case .failed: return Theme.bearRed
+        case .pending: return Theme.holdAmber
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+            GuillocheDivider()
+            SummaryRow(label: "Status", value: disbursement.parsedStatus.displayName)
+            if let amount = disbursement.disbursedAmountDisplay {
+                SummaryRow(label: "Amount", value: amount)
+            }
+            if let nbfc = disbursement.nbfcName {
+                SummaryRow(label: "NBFC (Demo)", value: nbfc)
+            }
+            if disbursement.parsedStatus == .failed, let reason = disbursement.failureReason {
+                Text(reason)
+                    .font(Theme.engravedSerif(size: 11, relativeTo: .caption2))
+                    .foregroundColor(Theme.bearRed)
+            }
+            Text("MOCK STATUS")
+                .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+                .tracking(1.2)
+                .foregroundColor(statusColor)
+        }
     }
 }

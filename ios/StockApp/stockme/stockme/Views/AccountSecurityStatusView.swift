@@ -14,6 +14,7 @@ struct AccountSecurityStatusView: View {
     @State private var consents: [ConsentDTO] = []
     @State private var deviceBindings: [DeviceBindingDTO] = []
     @State private var verifyResult: DeviceBindingVerifyDTO?
+    @State private var fraudSignals: FraudSignalsDTO?
 
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -39,6 +40,7 @@ struct AccountSecurityStatusView: View {
                         disclaimerBanner
                         consentSection
                         deviceBindingSection
+                        fraudSignalsSection
                         if let error = errorMessage {
                             Text(error)
                                 .font(Theme.serialNumberFont(size: 11))
@@ -155,6 +157,30 @@ struct AccountSecurityStatusView: View {
         deviceBindings.contains { $0.deviceId == currentDeviceId && $0.isPrimary }
     }
 
+    // MARK: - Fraud Signals
+
+    private var fraudSignalsSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+            sectionHeader("ACCOUNT SECURITY SIGNALS", hindi: "सुरक्षा संकेत")
+            VStack(spacing: Theme.Spacing.none) {
+                if let fraudSignals {
+                    if fraudSignals.isFlagged {
+                        FraudFlaggedRow(signals: fraudSignals)
+                    } else {
+                        FraudQuietRow(signals: fraudSignals)
+                    }
+                } else {
+                    FraudSignalsUnavailableRow()
+                }
+            }
+            .banknoteCard()
+
+            Text("MOCK CHECK — a simple counter over this app's own device-binding attempts, not a real fraud-detection engine.")
+                .font(Theme.engravedSerif(size: 10, relativeTo: .caption2))
+                .foregroundStyle(Theme.inkTertiary)
+        }
+    }
+
     private func sectionHeader(_ title: String, hindi: String) -> some View {
         HStack(alignment: .bottom, spacing: Theme.Spacing.tight) {
             Text(hindi).font(Theme.hindiFont(size: 9)).foregroundStyle(Theme.inkSecondary)
@@ -192,6 +218,14 @@ struct AccountSecurityStatusView: View {
                 // "no device bound" state; errorMessage stays focused on
                 // the consents fetch above.
             }
+        }
+
+        do {
+            fraudSignals = try await NetworkManager.shared.fetchFraudSignals()
+        } catch {
+            // Non-fatal — the section just shows an "unavailable" state;
+            // errorMessage stays focused on the consents fetch above.
+            fraudSignals = nil
         }
         isLoading = false
     }
@@ -329,6 +363,69 @@ private struct VerifyResultRow: View {
             Text(result.reason)
                 .font(Theme.serialNumberFont(size: 10))
                 .foregroundStyle(Theme.inkTertiary)
+            Spacer()
+        }
+        .padding(.vertical, Theme.Spacing.standard)
+        .padding(.horizontal, Theme.Spacing.card)
+    }
+}
+
+private struct FraudFlaggedRow: View {
+    let signals: FraudSignalsDTO
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.standard) {
+            ZStack {
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(Theme.bearRed.opacity(0.08)).frame(width: 32, height: 32)
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.subheadline.weight(.medium)).foregroundStyle(Theme.bearRed.opacity(0.8))
+            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                Text("ACCOUNT FLAGGED (MOCK)")
+                    .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.bearRed)
+                Text("\(signals.crossUserRejectionsTotal) cross-user rejection(s) · \(signals.rateLimitHits24h) rate-limit hit(s) in 24h — simulated check only, no real fraud engine.")
+                    .font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.inkTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+        }
+        .padding(.vertical, Theme.Spacing.standard)
+        .padding(.horizontal, Theme.Spacing.card)
+    }
+}
+
+private struct FraudQuietRow: View {
+    let signals: FraudSignalsDTO
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.standard) {
+            ZStack {
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .fill(Theme.bullGreen.opacity(0.08)).frame(width: 32, height: 32)
+                Image(systemName: "checkmark.shield")
+                    .font(.subheadline.weight(.medium)).foregroundStyle(Theme.bullGreen.opacity(0.7))
+            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                Text("No fraud signals detected (mock check)")
+                    .font(Theme.serialNumberFont(size: 12)).foregroundStyle(Theme.inkPrimary)
+                Text("\(signals.totalBindAttempts24h) device-bind attempt(s) in the last 24h.")
+                    .font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.inkTertiary)
+            }
+            Spacer()
+        }
+        .padding(.vertical, Theme.Spacing.standard)
+        .padding(.horizontal, Theme.Spacing.card)
+    }
+}
+
+private struct FraudSignalsUnavailableRow: View {
+    var body: some View {
+        HStack(spacing: Theme.Spacing.standard) {
+            Image(systemName: "questionmark.circle")
+                .foregroundStyle(Theme.inkTertiary)
+            Text("Fraud signal status unavailable right now.")
+                .font(Theme.serialNumberFont(size: 11)).foregroundStyle(Theme.inkTertiary)
             Spacer()
         }
         .padding(.vertical, Theme.Spacing.standard)

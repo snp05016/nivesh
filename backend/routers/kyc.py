@@ -15,6 +15,7 @@ from core.security import require_auth
 from services.kyc_consent_service import (
     bind_device,
     get_active_consents,
+    get_fraud_signals_for_user,
     record_consent,
     revoke_consent,
     verify_device_binding,
@@ -63,9 +64,30 @@ def list_consents(user_id: int = Depends(require_auth)):
 
 @router.post("/device-binding")
 def create_device_binding(body: BindDeviceRequest, user_id: int = Depends(require_auth)):
+    """Bind a device_id to the current user.
+
+    On rejection (MOCK fraud-signal heuristics — see kyc_consent_service.py),
+    the response body includes a "fraud_signal" field, e.g.
+    "cross_user_device_reuse" or "rebind_rate_limit_exceeded", in addition to
+    "bound": False and a human-readable "reason".
+    """
     return bind_device(user_id, body.device_id, body.is_primary)
 
 
 @router.get("/device-binding/verify")
 def check_device_binding(device_id: str = Query(...), user_id: int = Depends(require_auth)):
     return verify_device_binding(user_id, device_id)
+
+
+# ---------------------------------------------------------------------------
+# Fraud signals (MOCK — see kyc_consent_service.get_fraud_signals_for_user)
+# ---------------------------------------------------------------------------
+
+@router.get("/fraud-signals")
+def read_fraud_signals(user_id: int = Depends(require_auth)):
+    """MOCK DATA - simulated for demo purposes, not a real integration.
+
+    Summary of this user's device-binding fraud-signal audit trail
+    (DeviceBindingAttempt), for an account-security screen or admin view.
+    """
+    return get_fraud_signals_for_user(user_id)

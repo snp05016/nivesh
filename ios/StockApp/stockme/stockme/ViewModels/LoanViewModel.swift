@@ -75,6 +75,15 @@ class LoanApplicationViewModel: ObservableObject {
     @Published var submissionError: String? = nil
     @Published var submittedApplication: LoanApplicationResponse? = nil
 
+    // MARK: - Mock Disbursement
+    //
+    // MOCK DATA - simulated for demo purposes, not a real integration. No
+    // real funds are ever moved and no real NBFC is contacted. Only
+    // meaningful once submittedApplication.parsedStatus == .approved.
+    @Published var disbursement: DisbursementDTO? = nil
+    @Published var isRequestingDisbursement: Bool = false
+    @Published var disbursementError: String? = nil
+
     init(offer: LoanOfferDTO) {
         self.offer = offer
         self.amount = offer.minAmount
@@ -126,5 +135,31 @@ class LoanApplicationViewModel: ObservableObject {
             submissionError = "Couldn't submit your application. Please try again."
         }
         isSubmitting = false
+    }
+
+    /// "Request Disbursement (Demo)" action — only meaningful once the mock
+    /// application has reached "approved". MOCK DATA - simulated for demo
+    /// purposes, not a real integration; no real funds are ever moved.
+    func requestDisbursement() async {
+        guard let applicationId = submittedApplication?.id else { return }
+        isRequestingDisbursement = true
+        disbursementError = nil
+        do {
+            disbursement = try await NetworkManager.shared.requestDisbursement(applicationId: applicationId)
+        } catch {
+            disbursementError = "Couldn't request disbursement. Please try again."
+        }
+        isRequestingDisbursement = false
+    }
+
+    /// Polls the mock disbursement status, e.g. on view appear/refresh for
+    /// an already-approved application.
+    func refreshDisbursementStatus() async {
+        guard let applicationId = submittedApplication?.id else { return }
+        do {
+            disbursement = try await NetworkManager.shared.fetchDisbursementStatus(applicationId: applicationId)
+        } catch {
+            // Non-fatal — no disbursement requested yet is an expected 404.
+        }
     }
 }

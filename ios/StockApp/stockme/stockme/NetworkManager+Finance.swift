@@ -203,4 +203,55 @@ extension NetworkManager {
         do { return try JSONDecoder().decode(LoanApplicationResponse.self, from: data) }
         catch { throw NetworkError.decodingError(error.localizedDescription) }
     }
+
+    // MARK: - Mock Loan Disbursement
+    //
+    // MOCK DATA - simulated for demo purposes, not a real integration. No
+    // real funds are ever moved and no real NBFC is contacted. Best-effort
+    // against the concurrent mock-loan-disbursement backend work — verify
+    // endpoint paths/shape against the real router once it lands.
+
+    /// "Request Disbursement (Demo)" button action for an approved (mock)
+    /// loan application. POST /api/finance/loan-applications/{id}/disburse
+    func requestDisbursement(applicationId: Int) async throws -> DisbursementDTO {
+        let endpoint = "/api/finance/loan-applications/\(applicationId)/disburse"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = authRequest(url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 15
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode(DisbursementDTO.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    /// Polls (mock) disbursement status for a loan application.
+    /// GET /api/finance/loan-applications/{id}/disbursement
+    func fetchDisbursementStatus(applicationId: Int) async throws -> DisbursementDTO {
+        let endpoint = "/api/finance/loan-applications/\(applicationId)/disbursement"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = authRequest(url)
+        request.timeoutInterval = 20
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode(DisbursementDTO.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
 }

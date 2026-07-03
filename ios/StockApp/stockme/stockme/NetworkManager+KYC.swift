@@ -113,4 +113,30 @@ extension NetworkManager {
         do { return try JSONDecoder().decode(DeviceBindingVerifyDTO.self, from: data) }
         catch { throw NetworkError.decodingError(error.localizedDescription) }
     }
+
+    /// Fetches the (mock) aggregate fraud-signal counters for the signed-in
+    /// user's device-binding activity. MOCK DATA - simulated for demo
+    /// purposes, not a real fraud-detection engine. Best-effort against the
+    /// concurrent fraud-signals backend work's contract:
+    /// GET /api/kyc/fraud-signals ->
+    /// {total_bind_attempts_24h, cross_user_rejections_total,
+    ///  rate_limit_hits_24h, is_flagged}
+    func fetchFraudSignals() async throws -> FraudSignalsDTO {
+        let endpoint = "/api/kyc/fraud-signals"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = authRequest(url)
+        request.timeoutInterval = 20
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode(FraudSignalsDTO.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
 }

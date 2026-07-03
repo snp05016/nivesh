@@ -13,6 +13,10 @@ Every check in this file is simulated for a portfolio/demo build:
     that simply compares a submitted device_id against rows we stored ourselves.
   * There is no real credit-bureau / NBFC integration and no real government ID
     is collected or stored anywhere in this module.
+  * bind_device()'s cross-user-device-reuse and rebind-rate-limit checks are
+    genuine detection LOGIC over our own DeviceBinding/DeviceBindingAttempt
+    tables, but they remain MOCK DATA heuristics — simulated for demo
+    purposes, not a real telecom/SIM-swap-detection integration.
 
 INVARIANT (must be enforced by the loan marketplace's application-approval
 logic, e.g. services/loan_marketplace_service.py):
@@ -28,13 +32,20 @@ logic, e.g. services/loan_marketplace_service.py):
     that actually flips a loan application to "approved" must call both
     checks before approving.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from database import get_session
-from models.db_models import DeviceBinding, KYCConsent
+from models.db_models import DeviceBinding, DeviceBindingAttempt, KYCConsent
 
 CREDIT_CHECK_CONSENT = "credit_check"
+
+# Rebind rate-limit heuristic — MOCK DATA, simulated for demo purposes, not a
+# real integration. Models a "rapid device churn" fraud signal (SIM-swap
+# fraud often involves rapid device changes): more than this many bind
+# attempts (successful or rejected) by the same user_id within the trailing
+# 24h window trips the rate limit.
+MAX_BIND_ATTEMPTS_PER_24H = 5
 
 
 def _consent_to_dict(consent: KYCConsent) -> dict:
@@ -172,11 +183,91 @@ def verify_device_binding(user_id: int, device_id: str) -> dict:
         }
 
 
+def _log_bind_attempt(session, user_id: int, device_id: str, outcome: str, reason: Optional[str]) -> None:
+    """MOCK DATA — simulated for demo purposes, not a real integration.
+
+    Append-only audit row for every bind_device() call. Never updated or
+    deleted, so the full attempt history (successful or rejected) remains
+    inspectable for the fraud-signal heuristics below.
+    """
+    attempt = DeviceBindingAttempt(
+        user_id=user_id,
+        device_id=device_id,
+        attempted_at=datetime.now(timezone.utc),
+        outcome=outcome,
+        reason=reason,
+    )
+    session.add(attempt)
+
+
 def bind_device(user_id: int, device_id: str, is_primary: bool = True) -> dict:
     """MOCK DATA — register a device_id for user_id, simulating the initial
     SIM/device-binding step of KYC onboarding. Not a real telecom call.
+
+    Adds two genuine (though still MOCK / demo-only) fraud-detection LOGIC
+    checks on top of the plain existence check, both audited via
+    DeviceBindingAttempt:
+
+      1. Cross-user device reuse: if device_id is already bound as the
+         PRIMARY device of a DIFFERENT user_id, this looks like someone
+         reusing another person's already-registered primary device to try
+         to KYC-bind a new account — the bind is rejected.
+      2. Rebind rate limiting: if this user_id has made more than
+         MAX_BIND_ATTEMPTS_PER_24H bind attempts (successful or rejected) in
+         the trailing 24h, further attempts are rejected as a "rapid device
+         churn" heuristic (SIM-swap fraud often involves rapid device
+         changes).
+
+    On rejection, returns {"bound": False, "reason": str, "fraud_signal": str}
+    and does NOT create/update the DeviceBinding row. On success, returns the
+    same shape as before ({"id", "user_id", "device_id", "bound_at",
+    "is_primary"}) for backward compatibility with existing callers.
     """
     with get_session() as session:
+        window_start = datetime.now(timezone.utc) - timedelta(hours=24)
+        attempts_24h = (
+            session.query(DeviceBindingAttempt)
+            .filter(
+                DeviceBindingAttempt.user_id == user_id,
+                DeviceBindingAttempt.attempted_at >= window_start,
+            )
+            .count()
+        )
+        if attempts_24h >= MAX_BIND_ATTEMPTS_PER_24H:
+            reason = (
+                f"more than {MAX_BIND_ATTEMPTS_PER_24H} device bind attempts by "
+                f"this user in the last 24h (mock rapid-device-churn check)"
+            )
+            _log_bind_attempt(session, user_id, device_id, "rejected_rate_limit", reason)
+            session.commit()
+            return {
+                "bound": False,
+                "reason": reason,
+                "fraud_signal": "rebind_rate_limit_exceeded",
+            }
+
+        cross_user_primary = (
+            session.query(DeviceBinding)
+            .filter(
+                DeviceBinding.device_id == device_id,
+                DeviceBinding.is_primary.is_(True),
+                DeviceBinding.user_id != user_id,
+            )
+            .first()
+        )
+        if cross_user_primary is not None:
+            reason = (
+                "device_id is already registered as the primary device of a "
+                "different user (mock cross-user device reuse check)"
+            )
+            _log_bind_attempt(session, user_id, device_id, "rejected_cross_user", reason)
+            session.commit()
+            return {
+                "bound": False,
+                "reason": reason,
+                "fraud_signal": "cross_user_device_reuse",
+            }
+
         existing = (
             session.query(DeviceBinding)
             .filter(
@@ -187,8 +278,6 @@ def bind_device(user_id: int, device_id: str, is_primary: bool = True) -> dict:
         )
         if existing is not None:
             existing.is_primary = is_primary
-            session.commit()
-            session.refresh(existing)
             binding = existing
         else:
             binding = DeviceBinding(
@@ -198,8 +287,10 @@ def bind_device(user_id: int, device_id: str, is_primary: bool = True) -> dict:
                 is_primary=is_primary,
             )
             session.add(binding)
-            session.commit()
-            session.refresh(binding)
+
+        _log_bind_attempt(session, user_id, device_id, "bound", None)
+        session.commit()
+        session.refresh(binding)
 
         return {
             "id": binding.id,
@@ -207,4 +298,44 @@ def bind_device(user_id: int, device_id: str, is_primary: bool = True) -> dict:
             "device_id": binding.device_id,
             "bound_at": binding.bound_at,
             "is_primary": binding.is_primary,
+        }
+
+
+def get_fraud_signals_for_user(user_id: int) -> dict:
+    """MOCK DATA — simulated for demo purposes, not a real integration.
+
+    Summarizes the DeviceBindingAttempt audit trail for user_id into a
+    fraud-signal snapshot suitable for an account-security screen or admin
+    view. Not a real fraud-scoring model — just aggregate counts over the
+    mock heuristics enforced in bind_device().
+    """
+    with get_session() as session:
+        window_start = datetime.now(timezone.utc) - timedelta(hours=24)
+        attempts = (
+            session.query(DeviceBindingAttempt)
+            .filter(DeviceBindingAttempt.user_id == user_id)
+            .all()
+        )
+
+        total_bind_attempts_24h = sum(
+            1 for a in attempts if a.attempted_at and a.attempted_at >= window_start
+        )
+        cross_user_rejections_total = sum(
+            1 for a in attempts if a.outcome == "rejected_cross_user"
+        )
+        rate_limit_hits_24h = sum(
+            1
+            for a in attempts
+            if a.outcome == "rejected_rate_limit"
+            and a.attempted_at
+            and a.attempted_at >= window_start
+        )
+        is_flagged = any(a.outcome != "bound" for a in attempts)
+
+        return {
+            "user_id": user_id,
+            "total_bind_attempts_24h": total_bind_attempts_24h,
+            "cross_user_rejections_total": cross_user_rejections_total,
+            "rate_limit_hits_24h": rate_limit_hits_24h,
+            "is_flagged": is_flagged,
         }

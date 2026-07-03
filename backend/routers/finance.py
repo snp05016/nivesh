@@ -22,7 +22,9 @@ from services.finance_tracker_service import (
     list_spend_categories,
 )
 from services.loan_marketplace_service import (
+    disburse_loan,
     get_application_by_id,
+    get_disbursement_for_application,
     link_bank_account,
     list_applications_for_user,
     list_linked_bank_accounts,
@@ -86,6 +88,21 @@ class LoanApplicationResponse(BaseModel):
     decision_reason: Optional[str] = None
     submitted_at: Optional[str] = None
     decided_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class LoanDisbursementResponse(BaseModel):
+    id: int
+    loan_application_id: int
+    user_id: int
+    linked_bank_account_id: Optional[int] = None
+    nbfc_name: str
+    disbursed_amount: float
+    status: str
+    disbursed_at: Optional[str] = None
+    failure_reason: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -240,6 +257,53 @@ def get_my_loan_application(application_id: int, user_id: int = Depends(require_
     if application is None:
         raise HTTPException(status_code=404, detail="Loan application not found")
     return _serialize_application(application)
+
+
+# ---------------------------------------------------------------------------
+# Loan disbursement — MOCK DATA, simulated for demo purposes, not a real
+# integration. No real fund transfer, NBFC-to-bank settlement rail, or
+# payment gateway is involved; see services/loan_marketplace_service.py.
+# ---------------------------------------------------------------------------
+
+def _serialize_disbursement(d) -> LoanDisbursementResponse:
+    return LoanDisbursementResponse(
+        id=d.id,
+        loan_application_id=d.loan_application_id,
+        user_id=d.user_id,
+        linked_bank_account_id=d.linked_bank_account_id,
+        nbfc_name=d.nbfc_name,
+        disbursed_amount=float(d.disbursed_amount),
+        status=d.status,
+        disbursed_at=d.disbursed_at.isoformat() if d.disbursed_at else None,
+        failure_reason=d.failure_reason,
+    )
+
+
+@router.post("/loan-applications/{application_id}/disburse", response_model=LoanDisbursementResponse)
+def disburse_loan_application(application_id: int, user_id: int = Depends(require_auth)):
+    """Trigger a MOCK instant disbursement of an approved loan application to
+    the caller's primary linked bank account.
+
+    Fails closed (status="failed" with a failure_reason) rather than
+    silently no-op'ing if the caller has no primary LinkedBankAccount on
+    file yet. MOCK DATA — no real fund transfer or NBFC settlement rail is
+    involved.
+    """
+    try:
+        disbursement = disburse_loan(application_id, user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return _serialize_disbursement(disbursement)
+
+
+@router.get("/loan-applications/{application_id}/disbursement", response_model=LoanDisbursementResponse)
+def get_loan_application_disbursement(application_id: int, user_id: int = Depends(require_auth)):
+    """Fetch the disbursement status/history for a loan application belonging
+    to the caller."""
+    disbursement = get_disbursement_for_application(application_id, user_id)
+    if disbursement is None:
+        raise HTTPException(status_code=404, detail="No disbursement found for this loan application")
+    return _serialize_disbursement(disbursement)
 
 
 # ---------------------------------------------------------------------------

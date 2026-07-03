@@ -1282,6 +1282,26 @@ class DeviceBinding(Base):
     bound_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     is_primary = Column(Boolean, nullable=False, default=True, server_default="1")
 
+
+class DeviceBindingAttempt(Base):
+    """MOCK DATA - simulated for demo purposes, not a real integration.
+
+    Audit trail of every bind_device() call (successful or rejected), used
+    by the mock SIM-binding fraud-signal heuristics in
+    services/kyc_consent_service.py (cross-user device reuse detection and
+    rebind rate limiting). Rows are never deleted/updated — this is an
+    append-only audit log, not a real telecom fraud-detection feed.
+    """
+    __tablename__ = "device_binding_attempts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    device_id = Column(String(120), nullable=False, index=True)
+    attempted_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    # "bound" | "rejected_cross_user" | "rejected_rate_limit"
+    outcome = Column(String(30), nullable=False)
+    reason = Column(Text, nullable=True)
+
     __table_args__ = (
         UniqueConstraint("user_id", "device_id", name="uq_device_binding_user_device"),
     )
@@ -1366,6 +1386,41 @@ class LoanApplication(Base):
         CheckConstraint(
             "status IN ('submitted','under_review','approved','rejected','disbursed')",
             name="ck_loan_application_status",
+        ),
+    )
+
+
+class LoanDisbursement(Base):
+    """MOCK DATA — simulated for demo purposes, not a real integration. No
+    real fund transfer, NBFC-to-bank settlement rail, or payment gateway is
+    involved here — this models a lender "disbursing" an approved loan to
+    the borrower's linked bank account as an instant mock settlement.
+
+    Requires the borrower to already have a LinkedBankAccount (the loan
+    marketplace one, defined above — NOT FinanceTrackerAccount) marked
+    is_primary=True; if none exists, disbursement fails closed with
+    status="failed" and a failure_reason, rather than silently no-op'ing —
+    see services/loan_marketplace_service.py:disburse_loan().
+    """
+    __tablename__ = "loan_disbursements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    loan_application_id = Column(Integer, ForeignKey("loan_applications.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    linked_bank_account_id = Column(Integer, ForeignKey("linked_bank_accounts.id"), nullable=True, index=True)
+    nbfc_name = Column(String(100), nullable=False)  # copied from the loan offer at disbursement time
+    disbursed_amount = Column(Numeric(14, 2), nullable=False)
+    status = Column(String(20), nullable=False, default="completed", server_default="completed", index=True)
+    # pending|completed|failed — mock instant settlement defaults to "completed"
+    disbursed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    failure_reason = Column(Text, nullable=True)
+
+    loan_application = relationship("LoanApplication")
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending','completed','failed')",
+            name="ck_loan_disbursement_status",
         ),
     )
 

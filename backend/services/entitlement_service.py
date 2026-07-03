@@ -29,6 +29,10 @@ FEATURE_MIN_TIER = {
     "sector_rotation": "pro",         # routers/sector_rotation.py market rotation analytics
     "alpha_generators": "super_pro",  # high-conviction / alpha-generator style analysis
     "whatsapp_alerts": "super_pro",   # premium delivery channel for alerts/notifications
+    "comprehensive_stock_insights": "pro",  # routers/fundamentals.py valuation endpoints (real DB-backed CompanyValuation)
+    "swot_analysis": "pro",           # routers/fundamentals.py risk-signals endpoints (real DB-backed RiskSignal)
+    "technical_picks": "pro",         # routers/strategy.py /backtest — real technical-rule backtest engine (services/strategy_engine.py)
+    "ideas_for_profit": "pro",        # routers/options_strategy.py /options/payoff — real multi-leg options P&L/strategy builder
 }
 
 

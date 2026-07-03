@@ -5,12 +5,13 @@ AGENTS.md §3.1: Router handles HTTP validation and routing only.
 All business logic delegated to services/options_engine.py.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 import logging
 
 from services.options_engine import compute_options_payoff
+from core.entitlement_gate import require_entitlement
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,10 @@ class OptionsPayoffResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 @router.post("/options/payoff", response_model=OptionsPayoffResponse)
-def compute_strategy_payoff(req: OptionsPayoffRequest):
+def compute_strategy_payoff(
+    req: OptionsPayoffRequest,
+    user_id: int = Depends(require_entitlement("ideas_for_profit")),
+):
     """
     Compute the P&L payoff curve and key metrics for a multi-leg options strategy.
 
@@ -89,6 +93,9 @@ Returns the full payoff vector (100 price points ±20% around spot) plus:
 - Breakeven points
 - Net premium (credit/debit)
 - Strategy classification (e.g. "Iron Condor", "Bull Call Spread")
+
+    Gated behind the "ideas_for_profit" entitlement (pro tier or higher) —
+    see services/entitlement_service.py / core/entitlement_gate.py.
 
     Args:
         req (OptionsPayoffRequest): The req.

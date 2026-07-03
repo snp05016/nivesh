@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from database import get_session
-from models.db_models import LinkedBankAccount, LoanApplication, LoanOffer
+from models.db_models import LinkedBankAccount, LoanApplication, LoanDisbursement, LoanOffer
 from services.credit_bureau_mock_service import get_mock_credit_score
 from services.kyc_consent_service import get_active_consents, verify_device_binding
 
@@ -279,3 +279,104 @@ def link_bank_account(
         session.commit()
         session.refresh(account)
         return account
+
+
+# ---------------------------------------------------------------------------
+# Loan disbursement — MOCK DATA, simulated for demo purposes, not a real
+# integration. No real fund transfer, NBFC-to-bank settlement rail, or
+# payment gateway is involved. Models the real-world requirement that a
+# lender cannot disburse funds without a destination account: fails closed
+# (status="failed" + failure_reason) rather than silently no-op'ing when the
+# borrower has no primary LinkedBankAccount on file.
+# ---------------------------------------------------------------------------
+
+def disburse_loan(application_id: int, user_id: int) -> LoanDisbursement:
+    """Disburse an approved LoanApplication as a MOCK instant settlement.
+
+    Preconditions enforced (fail closed, not a silent no-op):
+      - The LoanApplication must exist and belong to user_id.
+      - The LoanApplication.status must be "approved" (already-disbursed or
+        not-yet-approved applications are rejected with a ValueError).
+      - The borrower must have at least one LinkedBankAccount (the loan
+        marketplace one — NOT FinanceTrackerAccount) with is_primary=True;
+        if none exists, a LoanDisbursement row is still created, but with
+        status="failed" and a failure_reason explaining that a bank account
+        must be linked first.
+
+    On success, the LoanApplication.status is advanced to "disbursed".
+    """
+    with get_session() as session:
+        application = (
+            session.query(LoanApplication)
+            .filter(LoanApplication.id == application_id, LoanApplication.user_id == user_id)
+            .first()
+        )
+        if application is None:
+            raise ValueError(f"Loan application {application_id} not found")
+        if application.status == "disbursed":
+            raise ValueError(f"Loan application {application_id} has already been disbursed")
+        if application.status != "approved":
+            raise ValueError(
+                f"Loan application {application_id} is not approved (status={application.status}); "
+                "cannot disburse"
+            )
+
+        offer = session.query(LoanOffer).filter(LoanOffer.id == application.loan_offer_id).first()
+        nbfc_name = offer.nbfc_name if offer is not None else "Unknown NBFC (mock)"
+
+        primary_account = (
+            session.query(LinkedBankAccount)
+            .filter(LinkedBankAccount.user_id == user_id, LinkedBankAccount.is_primary.is_(True))
+            .first()
+        )
+
+        if primary_account is None:
+            disbursement = LoanDisbursement(
+                loan_application_id=application.id,
+                user_id=user_id,
+                linked_bank_account_id=None,
+                nbfc_name=nbfc_name,
+                disbursed_amount=application.requested_amount,
+                status="failed",
+                failure_reason=(
+                    "MOCK DECISION: no primary linked bank account on file for this user — "
+                    "a bank account must be linked (and marked primary) via "
+                    "POST /linked-bank-accounts before funds can be disbursed."
+                ),
+                disbursed_at=datetime.now(timezone.utc),
+            )
+            session.add(disbursement)
+            session.commit()
+            session.refresh(disbursement)
+            return disbursement
+
+        disbursement = LoanDisbursement(
+            loan_application_id=application.id,
+            user_id=user_id,
+            linked_bank_account_id=primary_account.id,
+            nbfc_name=nbfc_name,
+            disbursed_amount=application.requested_amount,
+            status="completed",
+            failure_reason=None,
+            disbursed_at=datetime.now(timezone.utc),
+        )
+        session.add(disbursement)
+        application.status = "disbursed"
+        session.commit()
+        session.refresh(disbursement)
+        return disbursement
+
+
+def get_disbursement_for_application(application_id: int, user_id: int) -> Optional[LoanDisbursement]:
+    """Return the most recent LoanDisbursement for a given application (if any),
+    scoped to user_id so a caller cannot fetch another user's disbursement."""
+    with get_session() as session:
+        return (
+            session.query(LoanDisbursement)
+            .filter(
+                LoanDisbursement.loan_application_id == application_id,
+                LoanDisbursement.user_id == user_id,
+            )
+            .order_by(LoanDisbursement.disbursed_at.desc())
+            .first()
+        )
