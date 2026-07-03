@@ -469,15 +469,15 @@
   - [ ] APR disclosure
   - [ ] Repayment illustration
   - [ ] Lending-service-provider disclosures
-- [ ] Fixed deposits
-  - [ ] FD discovery
-  - [ ] FD comparison
-  - [ ] FD booking
-  - [ ] One-time SIM binding
-  - [ ] KYC completion
-  - [ ] UPI payment
-  - [ ] Net banking payment
-  - [ ] Fixed-deposit calculator
+- [x] Fixed deposits (mock FD marketplace: 8 schemes across 7 issuer names)
+  - [x] FD discovery (GET /api/fixed-deposits/schemes, filterable by tenure)
+  - [x] FD comparison (client-side sort by rate/tenure)
+  - [x] FD booking (POST /api/fixed-deposits/bookings, mock instant settlement)
+  - [x] One-time SIM binding (reuses POST /api/kyc/device-binding; booking fails closed without it)
+  - [x] KYC completion (reuses POST /api/kyc/consents "sim_binding"; booking fails closed without it)
+  - [x] UPI payment (mock rail selection only, explicitly labeled demo — no real payment collection)
+  - [x] Net banking payment (mock rail selection only, explicitly labeled demo — no real payment collection)
+  - [x] Fixed-deposit calculator (POST /api/fixed-deposits/calculator, quarterly-compounding, wired into Tools hub)
 - [ ] Credit cards
 - [x] Credit score
 - [ ] Fixed-income utilities
@@ -488,7 +488,7 @@
   - [x] EMI calculator
   - [x] Income-tax calculator
   - [x] Gratuity calculator
-  - [ ] Fixed-deposit calculator
+  - [x] Fixed-deposit calculator
 
 ## 14. Premium Subscription and Monetization Stack
 - [ ] Free tier
