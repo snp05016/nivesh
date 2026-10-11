@@ -174,7 +174,11 @@ struct PortfolioToolsCard: View {
                 }
             } catch {
                 await MainActor.run {
-                    benchmarkError = error.localizedDescription
+                    if case NetworkError.fetchFailed(_, 404, _) = error {
+                        benchmarkError = "Add holdings to compare against Nifty 50."
+                    } else {
+                        benchmarkError = error.localizedDescription
+                    }
                     benchmarkData = nil
                     showBenchmarkSheet = true
                     isLoadingBenchmark = false

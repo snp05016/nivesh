@@ -124,7 +124,8 @@ def test_benchmark_excludes_unpriced_holdings(client, monkeypatch):
     import routers.portfolio_analytics as portfolio_router
 
     uid, headers = _make_user_with_holdings([("TCS", 2, 3000.0), ("INFY", 4, 1500.0)])
-    nifty = SimpleNamespace(history=lambda **_kw: pd.DataFrame({"Close": [20000.0, 20100.0]}))
+    idx = pd.to_datetime([date.today() - timedelta(days=1), date.today()])
+    nifty = SimpleNamespace(history=lambda **_kw: pd.DataFrame({"Close": [20000.0, 20100.0]}, index=idx))
     monkeypatch.setattr(portfolio_router.yf, "Ticker", lambda _sym: nifty)
     monkeypatch.setattr(portfolio_router, "_to_ns", lambda t: t)
     monkeypatch.setattr(
