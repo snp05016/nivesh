@@ -145,7 +145,6 @@ struct PortfolioScreen: View {
     @State private var redFlags: RedFlagsResponse? = nil
 
         @State private var showBriefSheet = false
-    @State private var showTransactionSheet = false
 
 @StateObject private var tagsManager = WatchlistTagsManager()
     @State private var activeWatchlistTag: String? = nil
@@ -199,10 +198,10 @@ struct PortfolioScreen: View {
                             }
                             .buttonStyle(EKPressStyle())
                             .accessibilityLabel("Portfolio brief")
-                            Button { HapticManager.selection(); showTransactionSheet = true } label: {
+                            Button { HapticManager.selection(); showAddHoldingSheet = true } label: {
                                 ZStack {
                                     Circle().stroke(Theme.borderSage, lineWidth: 0.5).frame(width: 44, height: 44)
-                                    Text("₹").font(Theme.engravedSerif(size: 18, weight: .bold, relativeTo: .headline)).foregroundStyle(Theme.inkPrimary)
+                                    Image(systemName: "plus.circle").font(Theme.engravedSerif(size: 18, weight: .bold, relativeTo: .headline)).foregroundStyle(Theme.inkPrimary)
                                 }
                             }
                             .buttonStyle(EKPressStyle())
@@ -273,7 +272,10 @@ struct PortfolioScreen: View {
                             .banknoteCard()
                             .padding(.horizontal, Theme.screenPadding)
 
-                            if selectedTab == 0 {
+                            if selectedTab == 0 && viewModel.holdings.isEmpty && !viewModel.isLoading {
+                                EmptyHoldingsView { HapticManager.selection(); showAddHoldingSheet = true }
+                                    .padding(.horizontal, Theme.screenPadding)
+                            } else if selectedTab == 0 {
                                 // Screen B — holdings in a single banknote card, 0.5pt separators
                                 VStack(spacing: Theme.Spacing.none) {
                                     ForEach(Array(viewModel.holdings.enumerated()), id: \.element.id) { idx, holding in
@@ -298,6 +300,14 @@ struct PortfolioScreen: View {
                                                 deletingTicker = holding.stock.ticker
                                                 showDeleteAlert = true
                                             }
+                                        }
+                                        .accessibilityAction(named: "Edit holding") {
+                                            editingHolding = holding
+                                            showEditHoldingSheet = true
+                                        }
+                                        .accessibilityAction(named: "Remove from portfolio") {
+                                            deletingTicker = holding.stock.ticker
+                                            showDeleteAlert = true
                                         }
                                         if idx != viewModel.holdings.count - 1 {
                                             GuillocheDivider()
@@ -532,15 +542,6 @@ struct PortfolioScreen: View {
                 pnl: viewModel.totalValue - viewModel.investedValue,
                 holdings: viewModel.holdings
             )
-        }
-        .sheet(isPresented: $showTransactionSheet) {
-            if let user = authManager.currentUser {
-                ManualTransactionEntrySheet(userId: user.userId) {
-                    Task {
-                        await viewModel.fetchData(userId: user.userId)
-                    }
-                }
-            }
         }
     }
 
@@ -1355,6 +1356,37 @@ private struct WatchlistSkeletonRow: View {
     }
 }
 
+private struct EmptyHoldingsView: View {
+    let onAdd: () -> Void
+
+    var body: some View {
+        VStack(spacing: Theme.Spacing.small) {
+            Text("No holdings yet")
+                .font(Theme.engravedSerif(size: 15, weight: .bold, relativeTo: .subheadline))
+                .foregroundStyle(Theme.inkPrimary)
+            Text("Record a trade to start tracking your portfolio.")
+                .font(Theme.engravedSerif(size: 12, relativeTo: .footnote))
+                .foregroundStyle(Theme.inkTertiary)
+                .multilineTextAlignment(.center)
+            Button(action: onAdd) {
+                Text("ADD YOUR FIRST HOLDING")
+                    .font(Theme.officialStampFont(size: 11))
+                    .padding(.horizontal, Theme.Spacing.card)
+                    .padding(.vertical, Theme.Spacing.standard)
+                    .background(Theme.securityGold)
+                    .foregroundStyle(Theme.onAccent)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
+            }
+            .buttonStyle(EKPressStyle())
+            .accessibilityLabel("Add your first holding")
+            .padding(.top, Theme.Spacing.small)
+        }
+        .frame(maxWidth: .infinity, minHeight: 160)
+        .padding(Theme.Spacing.card)
+        .banknoteCard()
+    }
+}
+
 private struct AddHoldingSheet: View {
     let viewModel: PortfolioScreenViewModel
     let authManager: AuthManager
@@ -1500,10 +1532,10 @@ private struct AddHoldingSheet: View {
                                 .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
                         }
                         VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                            Text("PURCHASE DATE")
+                            Text(transactionType == "BUY" ? "PURCHASE DATE" : "SALE DATE")
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.inkSecondary)
-                            DatePicker("Trade date", selection: $purchaseDate, displayedComponents: .date)
+                            DatePicker("Trade date", selection: $purchaseDate, in: ...Date(), displayedComponents: .date)
                                 .labelsHidden()
                                 .accentColor(Theme.securityGold)
                                 .padding(Theme.Spacing.medium)
@@ -1529,7 +1561,7 @@ private struct AddHoldingSheet: View {
                             Text("NOTES / INVESTMENT REASON")
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.inkSecondary)
-                            TextField("Why did you buy this?", text: $notes)
+                            TextField(transactionType == "BUY" ? "Why did you buy this?" : "Why did you sell?", text: $notes)
                                 .font(Theme.serialNumberFont(size: 14))
                                 .foregroundStyle(Theme.inkPrimary)
                                 .padding(Theme.Spacing.standard)
@@ -1546,21 +1578,19 @@ private struct AddHoldingSheet: View {
                         
                         Button { HapticManager.selection(); 
     HapticManager.selection()
+                            // Enabled even when incomplete so the user sees why a trade can't be recorded.
+                            if let problem = TradeEntryValidator.validate(
+                                hasStock: selectedEntry != nil,
+                                type: transactionType,
+                                shares: shares,
+                                price: buyPrice,
+                                date: purchaseDate,
+                                heldShares: viewModel.holdings.first(where: { $0.stock.ticker == selectedEntry?.ticker })?.shares
+                            ) {
+                                errorText = problem
+                                return
+                            }
                             guard let entry = selectedEntry, let user = authManager.currentUser else { return }
-                            // Fix 3.7+3.8: Validate quantity > 0 and buyPrice > 0
-                            guard shares > 0 else {
-                                errorText = "Number of shares must be greater than zero"
-                                return
-                            }
-                            guard buyPrice > 0 else {
-                                errorText = "Buy price cannot be zero"
-                                return
-                            }
-                            // Fix 3.5: Block Western number scales in notes
-                            if notes.containsWesternScale {
-                                errorText = "Use Indian numbering (Lakhs/Crores) instead of Million/Billion"
-                                return
-                            }
                             isAdding = true
                             errorText = nil
                             Task {
@@ -1596,7 +1626,7 @@ private struct AddHoldingSheet: View {
                             .foregroundStyle(Theme.onAccent)
                             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
                         }
-                        .disabled(!canAdd)
+                        .disabled(isAdding)
                     }
                     .padding(.horizontal, Theme.screenPadding)
                     .padding(.top, Theme.Spacing.large)
