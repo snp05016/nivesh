@@ -185,7 +185,6 @@
 | `scripts/health_check.sh` | Checks /ping and /healthz endpoints |
 | `scripts/run_analysis.sh` | Triggers analysis for a given ticker via CLI |
 | `scripts/test_all.sh` | Runs the full backend test suite |
-| `scripts/commit.sh` | Helper for conventional commit format |
 | `scripts/check_stock.sh` | Quick stock data sanity check |
 | `scripts/check_stress_test.sh` | Stress test endpoint smoke test |
 | `scripts/checklength.sh` | Checks router/service file line lengths |

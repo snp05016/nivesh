@@ -59,6 +59,15 @@ graphify-out/
 .remember/
 .gitnexus/
 .codex/
+.claude-flow/
+.swarm/
+*.rvf
+*.rvf.lock
+.agent-runs/*/logs/
+# Dangling machine-specific symlink at the repo root
+/nivesh
+# Per-user generated charts (user data)
+backend/charts/
 
 # Agent work directories (temporary planning/report artifacts)
 .alpha-validation/
