@@ -14,18 +14,23 @@ import SwiftUI
 // Mirrors FixedDepositCalculatorView's shape (FDInputSlider + result card).
 // Embedded only in CalculatorsView (Settings > Tools > Calculators).
 
+/// Slider inputs, owned by CalculatorsView so they survive tab switches.
+struct EMIInputs {
+    var loanAmount: Double = 10_00_000
+    var interestRatePct: Double = 9.5
+    var tenureMonths: Double = 60
+}
+
 /// Inline, self-contained EMI calculator body (sliders + result card) with
 /// no NavigationStack of its own, embedded in CalculatorsView's tabbed container.
 struct EMICalculatorContent: View {
-    @State private var loanAmount: Double = 10_00_000
-    @State private var interestRatePct: Double = 9.5
-    @State private var tenureMonths: Double = 60
+    @Binding var inputs: EMIInputs
 
     private var result: EMICalculationResult {
         EMICalculationResult.computeLocally(
-            principal: loanAmount,
-            annualRatePct: interestRatePct,
-            tenureMonths: Int(tenureMonths)
+            principal: inputs.loanAmount,
+            annualRatePct: inputs.interestRatePct,
+            tenureMonths: Int(inputs.tenureMonths)
         )
     }
 
@@ -33,21 +38,21 @@ struct EMICalculatorContent: View {
         VStack(alignment: .leading, spacing: Theme.sectionSpacing) {
             FDInputSlider(
                 title: "Loan Amount",
-                value: $loanAmount,
+                value: $inputs.loanAmount,
                 range: 50_000...1_00_00_000,
                 step: 5_000,
                 display: { IndianFormatter.formatLakhsCrores($0) }
             )
             FDInputSlider(
                 title: "Interest Rate (p.a.)",
-                value: $interestRatePct,
+                value: $inputs.interestRatePct,
                 range: 5...24,
                 step: 0.1,
                 display: { String(format: "%.1f%%", $0) }
             )
             FDInputSlider(
                 title: "Tenure (Months)",
-                value: $tenureMonths,
+                value: $inputs.tenureMonths,
                 range: 6...360,
                 step: 1,
                 display: { "\(Int($0)) mo" }
@@ -96,7 +101,7 @@ private struct EMIResultCard: View {
                 .font(Theme.engravedSerif(size: 16, weight: .semibold, relativeTo: .title3))
                 .foregroundColor(Theme.inkPrimary)
 
-            Text(IndianFormatter.formatLakhsCrores(result.monthlyEMI))
+            Text(IndianFormatter.price(result.monthlyEMI))
                 .font(Theme.serialNumberFont(size: 28, relativeTo: .largeTitle))
                 .foregroundColor(Theme.securityGold)
             Text("MONTHLY EMI")

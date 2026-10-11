@@ -77,8 +77,13 @@ struct LoanOfferDTO: Codable, Identifiable, Equatable {
         "\(IndianFormatter.formatLakhsCrores(minAmount)) – \(IndianFormatter.formatLakhsCrores(maxAmount))"
     }
 
+    /// Whole years only when both ends are whole years; otherwise months,
+    /// so a 3–36 month gold loan doesn't read "0–3 yrs".
     var tenureRangeDisplay: String {
-        "\(minTenureMonths / 12)–\(maxTenureMonths / 12) yrs"
+        if minTenureMonths % 12 == 0 && maxTenureMonths % 12 == 0 {
+            return "\(minTenureMonths / 12)–\(maxTenureMonths / 12) yrs"
+        }
+        return "\(minTenureMonths)–\(maxTenureMonths) mo"
     }
 }
 

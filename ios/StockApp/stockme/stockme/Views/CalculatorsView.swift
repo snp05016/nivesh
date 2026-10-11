@@ -18,6 +18,10 @@ private enum CalculatorTab: String, CaseIterable, Identifiable {
 struct CalculatorsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTab: CalculatorTab = .emi
+    // Held here, not in the tab views, so inputs survive switching tabs.
+    @State private var emi = EMIInputs()
+    @State private var sip = SIPInputs()
+    @State private var gratuity = GratuityInputs()
 
     var body: some View {
         NavigationStack {
@@ -41,17 +45,17 @@ struct CalculatorsView: View {
                             Text("Estimate your monthly instalment before applying for a loan.")
                                 .font(Theme.engravedSerif(size: 13, relativeTo: .footnote))
                                 .foregroundColor(Theme.inkTertiary)
-                            EMICalculatorContent()
+                            EMICalculatorContent(inputs: $emi)
                         case .sip:
                             Text("Project systematic investment returns assuming constant monthly compounding.")
                                 .font(Theme.engravedSerif(size: 13, relativeTo: .footnote))
                                 .foregroundColor(Theme.inkTertiary)
-                            GenericSIPCalculatorContent()
+                            GenericSIPCalculatorContent(inputs: $sip)
                         case .gratuity:
                             Text("Estimate your gratuity payout under the Payment of Gratuity Act, 1972.")
                                 .font(Theme.engravedSerif(size: 13, relativeTo: .footnote))
                                 .foregroundColor(Theme.inkTertiary)
-                            GratuityCalculatorContent()
+                            GratuityCalculatorContent(inputs: $gratuity)
                         }
                     }
                     .padding(Theme.screenPadding)
@@ -73,16 +77,20 @@ struct CalculatorsView: View {
     }
 }
 
+private struct SIPInputs {
+    var monthlyAmount: Double = 5_000
+    var years: Double = 10
+    var assumedReturnPct: Double = 12
+}
+
 /// Generic SIP tab — reuses SIPCalculationResult.computeLocally (already a
 /// pure, fund-agnostic static function) so no fund selection is required.
 private struct GenericSIPCalculatorContent: View {
-    @State private var monthlyAmount: Double = 5_000
-    @State private var years: Double = 10
-    @State private var assumedReturnPct: Double = 12
+    @Binding var inputs: SIPInputs
 
     private var result: SIPCalculationResult {
         SIPCalculationResult.computeLocally(
-            monthlyAmount: monthlyAmount, annualReturnPct: assumedReturnPct, years: years
+            monthlyAmount: inputs.monthlyAmount, annualReturnPct: inputs.assumedReturnPct, years: inputs.years
         )
     }
 
@@ -90,21 +98,21 @@ private struct GenericSIPCalculatorContent: View {
         VStack(alignment: .leading, spacing: Theme.sectionSpacing) {
             FDInputSlider(
                 title: "Monthly SIP Amount",
-                value: $monthlyAmount,
+                value: $inputs.monthlyAmount,
                 range: 500...1_00_000,
                 step: 500,
                 display: { IndianFormatter.formatLakhsCrores($0) }
             )
             FDInputSlider(
                 title: "Investment Tenure (Years)",
-                value: $years,
+                value: $inputs.years,
                 range: 1...30,
                 step: 1,
                 display: { "\(Int($0)) yr" }
             )
             FDInputSlider(
                 title: "Expected Annual Return",
-                value: $assumedReturnPct,
+                value: $inputs.assumedReturnPct,
                 range: 1...30,
                 step: 0.5,
                 display: { String(format: "%.1f%%", $0) }
