@@ -1,8 +1,10 @@
 """
 Phase 2 backfill: convert legacy Portfolio snapshots to Transaction ledger entries.
 
-Idempotent: safe to run multiple times. Skips users that already have
-a 'Legacy Holdings' PortfolioGroup with transactions.
+Idempotent: safe to run multiple times. A holding whose (user, ticker)
+already has ledger rows is skipped. Backfilled rows go into the user's single
+default group (created as 'Legacy Holdings' only if the user has none), never a
+second default group (DB-09).
 
 Run from backend/ directory:
     ../venv/bin/python -m scripts.migrate_ledger
@@ -14,7 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from datetime import datetime, timezone
 from database import get_session
-from models.db_models import Portfolio, PortfolioGroup, Transaction
+from models.db_models import Portfolio, Transaction
+from services.ledger_service import get_or_create_default_group
 
 
 def backfill_user(session, uid: int) -> int:
@@ -24,29 +27,6 @@ def backfill_user(session, uid: int) -> int:
     Returns the number of transactions inserted (0 if already done — idempotent).
     Callers are responsible for calling session.commit().
     """
-    existing_group = (
-        session.query(PortfolioGroup)
-        .filter_by(user_id=uid, name="Legacy Holdings")
-        .first()
-    )
-    if existing_group:
-        existing_tx_count = (
-            session.query(Transaction)
-            .filter_by(user_id=uid, group_id=existing_group.id)
-            .count()
-        )
-        if existing_tx_count > 0:
-            return 0  # already backfilled
-
-    group = existing_group or PortfolioGroup(
-        user_id=uid,
-        name="Legacy Holdings",
-        is_default=True,
-    )
-    if not existing_group:
-        session.add(group)
-        session.flush()
-
     holdings = (
         session.query(Portfolio)
         .filter(
@@ -56,6 +36,14 @@ def backfill_user(session, uid: int) -> int:
         )
         .all()
     )
+    ledgered = {
+        row[0] for row in session.query(Transaction.ticker).filter(Transaction.user_id == uid).distinct()
+    }
+    holdings = [h for h in holdings if h.ticker not in ledgered]
+    if not holdings:
+        return 0  # nothing left to backfill
+
+    group = get_or_create_default_group(session, uid, name="Legacy Holdings")
 
     inserted = 0
     for h in holdings:

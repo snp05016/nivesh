@@ -30,6 +30,9 @@ class User(Base):
     is_admin      = Column(Boolean, nullable=False, default=False, server_default="0")
     # Bumped on password reset; JWT revocation check is AUTH-13.
     token_version = Column(Integer, nullable=False, default=0, server_default="0")
+    # DB-06: set by compliance_service.erase_user(); the row stays as a tombstone
+    # so retained audit/consent/forum rows keep a valid user_id.
+    deleted_at    = Column(DateTime, nullable=True)
 
     portfolio        = relationship("Portfolio",       back_populates="user", cascade="all, delete-orphan")
     analysis_history = relationship("AnalysisHistory", back_populates="user", cascade="all, delete-orphan")
@@ -89,6 +92,14 @@ class PortfolioGroup(Base):
 
     __table_args__ = (
         Index("ix_portfolio_groups_user_id", "user_id"),
+        # DB-09: at most one default group per user.
+        Index(
+            "uq_portfolio_groups_one_default",
+            "user_id",
+            unique=True,
+            sqlite_where=text("is_default = 1"),
+            postgresql_where=text("is_default"),
+        ),
     )
 
 
@@ -107,12 +118,22 @@ class Transaction(Base):
     date             = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     notes            = Column(String(500), nullable=True)
     created_at       = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    # DB-09: client Idempotency-Key; a retried POST returns the first row.
+    client_request_id = Column(String(64), nullable=True)
 
     __table_args__ = (
         Index("ix_portfolio_transactions_user_id", "user_id"),
         Index("ix_portfolio_transactions_ticker", "ticker"),
         Index("ix_portfolio_transactions_group_id", "group_id"),
         Index("ix_portfolio_transactions_date", "date"),
+        Index("uq_portfolio_transactions_client_req", "user_id", "client_request_id", unique=True),
+        # ADJUST to 0 shares (close_position) needs >= 0.
+        CheckConstraint("quantity >= 0", name="ck_portfolio_transactions_quantity_nonneg"),
+        CheckConstraint("price >= 0", name="ck_portfolio_transactions_price_nonneg"),
+        CheckConstraint(
+            "transaction_type IN ('BUY','SELL','SPLIT','BONUS','DIVIDEND','ADJUST')",
+            name="ck_portfolio_transactions_type",
+        ),
     )
 
 
@@ -1280,6 +1301,18 @@ class KYCConsent(Base):
     purpose = Column(String(200), nullable=True)
     app_version = Column(String(20), nullable=True)
 
+    __table_args__ = (
+        # DB-10: at most one active (granted, not revoked) row per user + type.
+        Index(
+            "uq_kyc_consents_active",
+            "user_id",
+            "consent_type",
+            unique=True,
+            sqlite_where=text("granted = 1 AND revoked_at IS NULL"),
+            postgresql_where=text("granted AND revoked_at IS NULL"),
+        ),
+    )
+
 
 class DeviceBinding(Base):
     """MOCK DATA — simulated SIM-binding / device-consent record.
@@ -1493,20 +1526,18 @@ class FinanceTrackerAccount(Base):
 
 
 # ---------------------------------------------------------------------------
-# Compliance — India DPDP-Act-style right-to-erasure / consent-withdrawal
-# demo. Owned by services/compliance_service.py, exposed via
-# routers/compliance.py.
-#
-# DEMO-GRADE ONLY: DataDeletionRequest is a request/workflow state machine.
-# Creating one (or moving it to "processing"/"completed") does NOT actually
-# delete any user data anywhere in this codebase — see the explicit warning
-# in compliance_service.request_account_deletion().
+# Compliance — India DPDP-Act-style right-to-erasure / consent-withdrawal.
+# Owned by services/compliance_service.py, exposed via routers/compliance.py
+# and routers/account.py. A pending DataDeletionRequest is executed after a
+# grace period by compliance_service.process_due_deletion_requests() (daily
+# scheduler job), which runs erase_user() per ERASURE_POLICY.
 # ---------------------------------------------------------------------------
 
 class AuditLogEntry(Base):
     """Append-only audit trail row for compliance-relevant actions
-    (deletion requests, consent withdrawals, etc). Rows are never mutated
-    or deleted once written.
+    (deletion requests, consent withdrawals, etc). Rows are never deleted;
+    erase_user() only clears ip_address and keeps them attributed to the
+    tombstoned user.
     """
     __tablename__ = "audit_log_entries"
 
@@ -1523,9 +1554,8 @@ class AuditLogEntry(Base):
 class DataDeletionRequest(Base):
     """Right-to-erasure workflow record (DPDP-Act style).
 
-    DEMO ONLY — this table tracks REQUEST STATE for a data-deletion workflow.
-    Reaching status "completed" here does not, by itself, delete any rows
-    anywhere else in the database. See compliance_service.py.
+    "completed" is set by compliance_service.erase_user() in the same
+    transaction that erases the user's data.
     """
     __tablename__ = "data_deletion_requests"
 

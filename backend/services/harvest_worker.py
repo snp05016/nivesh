@@ -300,6 +300,15 @@ def start_scheduler():
 
     _scheduler.add_job(_run_backfill_preferences, "cron", hour=21, minute=35)  # 3:05 AM IST
 
+    # ── Right-to-erasure: execute deletion requests past their grace period (DB-06) ──
+    def _run_process_deletion_requests():
+        from services.compliance_service import process_due_deletion_requests
+        done = process_due_deletion_requests()
+        logging.info(f"[erasure] {done} deletion request(s) completed")
+
+    _scheduler.add_job(_run_process_deletion_requests, "cron", hour=22, minute=0,
+                       id="process_deletion_requests", replace_existing=True)  # 3:30 AM IST
+
     # ── NEW jobs ──────────────────────────────────────────────────────────────
     _scheduler.add_job(_run_bhavcopy_download,    "cron", hour=13, minute=30)             # 7:00 PM IST
     _scheduler.add_job(_run_pregen_morning_briefs,"cron", hour=1,  minute=0)              # 6:30 AM IST

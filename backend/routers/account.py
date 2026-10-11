@@ -8,9 +8,8 @@ same as kyc.py/compliance.py/forum.py.
 
 MOCK/demo caveats are inherited from the underlying services: subscription
 state is not backed by a real payment processor (see subscription_service.py
-/ routers/subscription.py), and account deletion only drives a
-request/workflow state machine, not real irreversible data deletion (see
-compliance_service.py / routers/compliance.py).
+/ routers/subscription.py). Account deletion records a request that
+compliance_service erases after a grace period (see compliance_service.py).
 """
 from fastapi import APIRouter, Depends
 
@@ -35,8 +34,11 @@ def get_my_consents(user_id: int = Depends(require_auth)):
 
 @router.delete("/account")
 def delete_my_account(user_id: int = Depends(require_auth)):
-    """Request deletion of the current user's account (DEMO — workflow
-    state only, does NOT delete any data). If a deletion request is
-    already pending, the underlying service reports that instead of
-    creating a duplicate; either way the result dict is returned as-is."""
-    return compliance_service.request_account_deletion(user_id, reason=None)
+    """Request deletion of the current user's account. The daily erasure job
+    deletes or de-identifies the user's data once the request is
+    scheduled_erasure_after_days old; until then
+    POST /api/v1/compliance/deletion-requests/cancel withdraws it. If a
+    request is already pending, the service reports that instead of creating
+    a duplicate."""
+    result = compliance_service.request_account_deletion(user_id, reason=None)
+    return {**result, "scheduled_erasure_after_days": compliance_service.ERASURE_GRACE_DAYS}

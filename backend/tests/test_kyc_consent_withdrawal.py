@@ -37,7 +37,7 @@ def test_withdraw_via_record_consent_revokes(clean_consents):
 
     uid = clean_consents
     record_consent(uid, "credit_check", True)
-    record_consent(uid, "credit_check", True)  # two active rows
+    record_consent(uid, "credit_check", True)  # repeat grant: still one active row (DB-10)
     record_consent(uid, "data_sharing", True)
     assert has_active_credit_check_consent(uid) is True
 
@@ -59,7 +59,7 @@ def test_revoke_consent_revokes_all_rows(clean_consents):
     result = revoke_consent(uid, "data_sharing")
 
     assert result["revoked"] is True
-    assert result["revoked_count"] == 2
+    assert result["revoked_count"] == 1  # repeat grants reuse the active row (DB-10)
     assert result["consent_type"] == "data_sharing"
     assert result["revoked_at"] is not None
     assert "data_sharing" not in _active_types(uid)

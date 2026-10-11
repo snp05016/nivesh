@@ -4,9 +4,9 @@ withdrawal + audit trailing. /api/v1/compliance/*.
 Routers only validate HTTP input; all business logic + DB access lives in
 services/compliance_service.py.
 
-DEMO-GRADE: the deletion-request endpoints only drive a request/workflow
-state machine (DataDeletionRequest.status). No real, irreversible data
-deletion is performed anywhere in this router or its service.
+Deletion requests are executed by compliance_service.erase_user() (daily
+job, after compliance_service.ERASURE_GRACE_DAYS); a pending request can be
+cancelled until then.
 """
 from datetime import datetime
 
@@ -58,8 +58,8 @@ def request_account_deletion(
     request: Request,
     user_id: int = Depends(require_auth),
 ):
-    """Create a pending account-deletion request (DEMO — workflow state
-    only, does NOT delete any data)."""
+    """Create a pending account-deletion request; the user's data is erased
+    once it is compliance_service.ERASURE_GRACE_DAYS old unless cancelled."""
     result = compliance_service.request_account_deletion(
         user_id, reason=body.reason, ip_address=_client_ip(request)
     )

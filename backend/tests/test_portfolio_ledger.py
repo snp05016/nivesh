@@ -470,3 +470,171 @@ class TestTransactionsEndpoint:
         forbidden = ["million", "billion", "trillion"]
         for word in forbidden:
             assert word not in body, f"Western scale word '{word}' found in response"
+
+
+# ---------------------------------------------------------------------------
+# DB-09: date-ordered validation, (user, ticker) replay key, idempotency,
+# single default group, 422 instead of 500
+# ---------------------------------------------------------------------------
+
+from datetime import timedelta  # noqa: E402
+
+from sqlalchemy.exc import IntegrityError  # noqa: E402
+
+from services.ledger_service import LedgerError  # noqa: E402
+
+
+def _trade(user_id, group_id, ticker, tx_type, qty, price, date=None, client_request_id=None):
+    return record_transaction(
+        user_id=user_id, ticker=ticker, transaction_type=tx_type, quantity=qty, price=price,
+        group_id=group_id, company_name="Test Co", date=date, client_request_id=client_request_id,
+    )
+
+
+class TestLedgerConsistency:
+    def test_backdated_sell_before_buy_rejected(self, db_session):
+        g = _make_group(db_session)
+        db_session.commit()
+        now = datetime.now(timezone.utc)
+        _trade(1, g.id, "TCS", "BUY", 10, 3500.0, date=now)
+
+        with pytest.raises(LedgerError, match="only 0.0 shares held"):
+            _trade(1, g.id, "TCS", "SELL", 5, 3600.0, date=now - timedelta(days=1))
+
+        assert [t.transaction_type for t in session_query_all(db_session, "TCS", 1)] == ["BUY"]
+        h = _holding(db_session, 1, "TCS")
+        assert h is not None and _f(h.shares) == 10.0
+
+    def test_sell_invalidating_later_sell_rejected(self, db_session):
+        """BUY 100 (t-3), SELL 80 (t-1); a SELL 30 backdated to t-2 would leave the
+        t-1 SELL short, so it is rejected."""
+        g = _make_group(db_session)
+        db_session.commit()
+        now = datetime.now(timezone.utc)
+        _trade(1, g.id, "INFY", "BUY", 100, 1500.0, date=now - timedelta(days=3))
+        _trade(1, g.id, "INFY", "SELL", 80, 1600.0, date=now - timedelta(days=1))
+
+        with pytest.raises(LedgerError):
+            _trade(1, g.id, "INFY", "SELL", 30, 1550.0, date=now - timedelta(days=2))
+
+        assert len(session_query_all(db_session, "INFY", 1)) == 2
+        h = _holding(db_session, 1, "INFY")
+        assert h is not None and _f(h.shares) == 20.0
+
+    def test_two_groups_same_ticker_single_row(self, db_session):
+        default = _make_group(db_session)
+        other = PortfolioGroup(user_id=1, name="Speculative", is_default=False)
+        db_session.add(other)
+        db_session.commit()
+
+        _trade(1, default.id, "SBIN", "BUY", 10, 600.0)
+        _trade(1, other.id, "SBIN", "BUY", 5, 700.0)
+
+        rows = db_session.query(Portfolio).filter_by(user_id=1, ticker="SBIN", group_name="holdings").all()
+        assert len(rows) == 1
+        assert _f(rows[0].shares) == 15.0
+        assert _f(rows[0].buy_price) == 633.33  # (10*600 + 5*700) / 15
+
+    def test_idempotent_replay(self, db_session):
+        g = _make_group(db_session)
+        db_session.commit()
+
+        first = _trade(1, g.id, "ITC", "BUY", 10, 400.0, client_request_id="req-1")
+        again = _trade(1, g.id, "ITC", "BUY", 10, 400.0, client_request_id="req-1")
+
+        assert int(again.id) == int(first.id)  # type: ignore[arg-type]
+        assert len(session_query_all(db_session, "ITC", 1)) == 1
+        h = _holding(db_session, 1, "ITC")
+        assert h is not None and _f(h.shares) == 10.0
+
+    def test_default_group_unique(self, db_session):
+        _make_group(db_session)
+        db_session.commit()
+
+        db_session.add(PortfolioGroup(user_id=1, name="Legacy Holdings", is_default=True))
+        with pytest.raises(IntegrityError):
+            db_session.flush()
+
+
+def _api_user_headers() -> tuple[int, dict]:
+    import database
+    from uuid import uuid4
+    from models.db_models import User
+
+    with database.get_session() as session:
+        user = User(username=f"ledger_{uuid4().hex[:12]}", password_hash="x", display_name="Ledger API")
+        session.add(user)
+        session.commit()
+        user_id = int(user.id)  # type: ignore[arg-type]
+    return user_id, {"Authorization": f"Bearer {database.create_access_token(user_id)}"}
+
+
+class TestAddEndpointErrors:
+    def test_add_nan_shares_422(self, client):
+        user_id, headers = _api_user_headers()
+        # Raw body: the JSON encoder refuses NaN, the server's json.loads accepts it.
+        body = (
+            f'{{"user_id": {user_id}, "ticker": "TCS", "company_name": "TCS",'
+            ' "shares": NaN, "buy_price": 100.0}'
+        )
+
+        resp = client.post("/portfolio/add", content=body,
+                           headers={**headers, "Content-Type": "application/json"})
+
+        assert resp.status_code == 422, resp.text
+
+    def test_oversell_returns_422(self, client):
+        from unittest.mock import patch
+
+        user_id, headers = _api_user_headers()
+        payload = {"user_id": user_id, "ticker": "HDFCBANK", "company_name": "HDFC Bank",
+                   "shares": 10.0, "buy_price": 1500.0}
+        with patch("routers.portfolio._yf_price", return_value=(1550.0, 1540.0)):
+            bought = client.post("/portfolio/add", json=payload, headers=headers)
+            oversold = client.post("/portfolio/add", json={**payload, "shares": 15.0, "transaction_type": "SELL"},
+                                   headers=headers)
+
+        assert bought.status_code == 200, bought.text
+        assert oversold.status_code == 422, oversold.text
+        assert "only 10.0 shares held" in oversold.json()["detail"]
+
+    def test_idempotency_key_header_dedupes(self, client):
+        from unittest.mock import patch
+        from services.ledger_service import get_transactions_for_ticker
+
+        user_id, headers = _api_user_headers()
+        payload = {"user_id": user_id, "ticker": "WIPRO", "company_name": "Wipro",
+                   "shares": 3.0, "buy_price": 450.0}
+        with patch("routers.portfolio._yf_price", return_value=(455.0, 450.0)):
+            for _ in range(2):
+                resp = client.post("/portfolio/add", json=payload, headers={**headers, "Idempotency-Key": "retry-1"})
+                assert resp.status_code == 200, resp.text
+
+        assert len(get_transactions_for_ticker(user_id, "WIPRO")) == 1
+
+
+@pytest.mark.skipif(
+    not __import__("os").environ.get("TEST_DATABASE_URL", "").startswith("postgresql"),
+    reason="row-level concurrency needs Postgres (SQLite serialises writers)",
+)
+def test_concurrent_sells_exactly_one_succeeds():
+    import threading
+
+    user_id, _ = _api_user_headers()
+    record_transaction(user_id=user_id, ticker="NTPC", transaction_type="BUY", quantity=100, price=300.0)
+    outcomes: list[str] = []
+
+    def sell():
+        try:
+            record_transaction(user_id=user_id, ticker="NTPC", transaction_type="SELL", quantity=60, price=310.0)
+            outcomes.append("ok")
+        except LedgerError:
+            outcomes.append("rejected")
+
+    threads = [threading.Thread(target=sell) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert sorted(outcomes) == ["ok", "rejected"]

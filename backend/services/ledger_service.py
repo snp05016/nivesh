@@ -22,21 +22,37 @@ Rules (AGENTS.md §3.1):
 
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Optional, cast
 
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from models.db_models import Portfolio, PortfolioGroup, Transaction
 
 
-def get_or_create_default_group(session: Session, user_id: int) -> PortfolioGroup:
-    """Return the user's default PortfolioGroup, creating one if absent."""
-    group = session.query(PortfolioGroup).filter_by(user_id=user_id, is_default=True).first()
+class LedgerError(ValueError):
+    """A write that would make the ledger inconsistent (e.g. selling more
+    shares than held on the trade date). Routers map it to HTTP 422."""
+
+
+def get_or_create_default_group(
+    session: Session, user_id: int, name: str = "Core Holdings"
+) -> PortfolioGroup:
+    """Return the user's default PortfolioGroup (lowest id; at most one exists,
+    uq_portfolio_groups_one_default), creating one named `name` if absent."""
+    group = (
+        session.query(PortfolioGroup)
+        .filter_by(user_id=user_id, is_default=True)
+        .order_by(PortfolioGroup.id.asc())
+        .first()
+    )
     if group is None:
         group = PortfolioGroup(
             user_id=user_id,
-            name="Core Holdings",
+            name=name,
             is_default=True,
         )
         session.add(group)
@@ -49,22 +65,49 @@ def _as_utc(dt: datetime) -> datetime:
     return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
 
 
-def _ledger_rows(session: Session, user_id: int, group_id: int, ticker: str) -> list[Transaction]:
+def _lock_position(session: Session, user_id: int, ticker: str) -> None:
+    """Serialise ledger writes per (user, ticker) for the rest of the transaction."""
+    # ponytail: Postgres only (transaction-scoped advisory lock). SQLite already
+    # serialises writers; a stale concurrent writer gets SQLITE_BUSY ("database is
+    # locked") rather than a double-apply.
+    bind = session.get_bind()
+    if bind.dialect.name != "postgresql":
+        return
+    digest = hashlib.blake2b(f"{user_id}:{ticker}".encode(), digest_size=8).digest()
+    session.execute(
+        text("SELECT pg_advisory_xact_lock(:k)"),
+        {"k": int.from_bytes(digest, "big", signed=True)},
+    )
+
+
+def _ledger_rows(session: Session, user_id: int, ticker: str) -> list[Transaction]:
+    """The (user, ticker) ledger across all groups: the holdings read-model has
+    one row per (user, ticker), so every group's lots replay into it."""
     return (
         session.query(Transaction)
-        .filter_by(user_id=user_id, group_id=group_id, ticker=ticker)
+        .filter_by(user_id=user_id, ticker=ticker)
         .order_by(Transaction.date.asc(), Transaction.id.asc())
         .all()
     )
 
 
-def _replay(transactions: list[Transaction]) -> tuple[float, float]:
+def _replay(
+    transactions: list[Transaction], strict_from: Optional[Transaction] = None
+) -> tuple[float, float]:
     """WAC replay of a date-ordered ledger → (shares, wac). Rules in
-    _recalculate_portfolio_snapshot's docstring."""
+    _recalculate_portfolio_snapshot's docstring.
+
+    From `strict_from` (the trade being written) onwards, a SELL of more
+    shares than held at that point raises LedgerError: that rejects backdated
+    SELLs and SELLs that would invalidate a later one. Earlier rows keep the
+    legacy clamp so an old inconsistent ledger does not block every new write.
+    """
     total_shares: float = 0.0
     total_cost: float = 0.0
+    strict = False
 
     for tx in transactions:
+        strict = strict or (strict_from is not None and tx is strict_from)
         t = tx.transaction_type.upper()
         qty = cast(float, tx.quantity) if tx.quantity is not None else 0.0
         prc = cast(float, tx.price) if tx.price is not None else 0.0
@@ -74,6 +117,11 @@ def _replay(transactions: list[Transaction]) -> tuple[float, float]:
             total_cost += qty * prc + fee
             total_shares += qty
         elif t == "SELL":
+            if strict and qty > total_shares + 1e-9:
+                when = _as_utc(tx.date).date().isoformat() if tx.date is not None else "that date"  # type: ignore[arg-type]
+                raise LedgerError(
+                    f"Cannot SELL {qty} of {tx.ticker}: only {round(total_shares, 4)} shares held on {when}."
+                )
             if total_shares > 0:
                 sell_qty = min(qty, total_shares)
                 # Proportionally reduce cost basis
@@ -112,18 +160,15 @@ def _reconcile_with_read_model(
       ADJUST restating to the row (0 when absent), dated `as_of` so it replays
       right before the new trade (same timestamp, lower id).
 
-    Keyed like the replay (user, group, ticker); a no-op when the two agree.
+    Keyed like the replay (user, ticker); a no-op when the two agree. Callers
+    hold _lock_position, so concurrent first writes cannot both seed.
     """
-    # ponytail: no row lock, so two concurrent first writes on Postgres could both
-    # seed; and the one holdings row per (user, ticker) is compared with one group's
-    # ledger, which assumes one ledger group per ticker (true: every caller uses the
-    # default group). Add locking + the (user, ticker) replay key in DB-09.
     row = session.query(Portfolio).filter_by(
         user_id=user_id, ticker=ticker, group_name="holdings"
     ).first()
     row_shares = float(cast(float, row.shares) or 0.0) if row is not None else 0.0
     row_price = float(cast(float, row.buy_price) or 0.0) if row is not None else 0.0
-    transactions = _ledger_rows(session, user_id, group_id, ticker)
+    transactions = _ledger_rows(session, user_id, ticker)
 
     if not transactions:
         if row is None or row_shares <= 0:
@@ -176,6 +221,7 @@ def record_transaction(
     target_price: Optional[float] = None,
     purchase_date: Optional[str] = None,
     is_virtual: bool = False,
+    client_request_id: Optional[str] = None,
 ) -> Transaction:
     """
     Insert an immutable Transaction and refresh the Portfolio read-model.
@@ -194,12 +240,25 @@ def record_transaction(
         target_price:     Optional price target stored on the Portfolio row.
         purchase_date:    Human-readable date string stored on Portfolio row.
         is_virtual:       Paper-trade flag forwarded to Portfolio row.
+        client_request_id: Client Idempotency-Key; a repeat returns the first
+                          Transaction instead of inserting another.
 
     Returns:
-        The newly created Transaction ORM object (flushed, not yet committed).
+        The committed Transaction (the existing one for a repeated
+        client_request_id).
+
+    Raises:
+        LedgerError: a SELL exceeds the shares held on its trade date, or
+                     invalidates a later SELL. Nothing is written.
     """
     from database import get_session
     with get_session() as session:
+        _lock_position(session, user_id, ticker)
+        if client_request_id is not None:
+            existing_tx = _find_client_request(session, user_id, client_request_id)
+            if existing_tx is not None:
+                return existing_tx
+
         resolved_group_id: int
         if group_id is None:
             group = get_or_create_default_group(session, user_id)
@@ -221,17 +280,6 @@ def record_transaction(
             tx_date = _as_utc(latest[0])
         _reconcile_with_read_model(session, user_id, resolved_group_id, ticker, tx_date)
 
-        tx_type_upper = transaction_type.upper()
-        if tx_type_upper == "SELL":
-            existing_holding = session.query(Portfolio).filter_by(
-                user_id=user_id, ticker=ticker, group_name="holdings"
-            ).first()
-            held = float(existing_holding.shares) if existing_holding is not None else 0.0  # type: ignore[arg-type]
-            if quantity > held:
-                raise ValueError(
-                    f"Cannot SELL {quantity} of {ticker}: only {round(held, 4)} shares held."
-                )
-    
         tx = Transaction(
             user_id=user_id,
             group_id=resolved_group_id,
@@ -242,10 +290,24 @@ def record_transaction(
             fees=fees,
             date=tx_date,
             notes=notes,
+            client_request_id=client_request_id,
         )
         session.add(tx)
-        session.flush()
-    
+        try:
+            session.flush()
+        except IntegrityError:
+            # A concurrent request with the same Idempotency-Key won the insert.
+            session.rollback()
+            existing_tx = (
+                _find_client_request(session, user_id, client_request_id)
+                if client_request_id is not None else None
+            )
+            if existing_tx is None:
+                raise
+            return existing_tx
+
+        # Replays the whole (user, ticker) ledger in date order, so a backdated
+        # SELL is validated against the position held on its own date.
         _recalculate_portfolio_snapshot(
             session=session,
             user_id=user_id,
@@ -255,9 +317,19 @@ def record_transaction(
             target_price=target_price,
             purchase_date=purchase_date,
             is_virtual=is_virtual,
+            new_tx=tx,
         )
         session.commit()
+        session.refresh(tx)
         return tx
+
+
+def _find_client_request(session: Session, user_id: int, client_request_id: str) -> Optional[Transaction]:
+    return (
+        session.query(Transaction)
+        .filter_by(user_id=user_id, client_request_id=client_request_id)
+        .first()
+    )
 
 
 def _recalculate_portfolio_snapshot(
@@ -269,6 +341,7 @@ def _recalculate_portfolio_snapshot(
     target_price: Optional[float] = None,
     purchase_date: Optional[str] = None,
     is_virtual: bool = False,
+    new_tx: Optional[Transaction] = None,
 ) -> None:
     """
     Recompute the Portfolio read-model for one ticker using WAC.
@@ -281,15 +354,20 @@ def _recalculate_portfolio_snapshot(
     - DIVIDEND: no share or cost change — ignored here (recorded for income tracking)
     - ADJUST: total_shares = qty; total_cost = qty * price  (internal restatement)
 
+    The replay covers the (user, ticker) ledger across groups; `new_tx` (the
+    trade being written) and every later row are validated strictly, see
+    _replay. The row's group_id is the group of the latest transaction.
+
     After iterating all transactions:
     - no transactions → leave the Portfolio row untouched (never wipe a ledger-less row)
     - shares <= 0  → delete Portfolio row (position closed)
     - shares > 0   → UPSERT Portfolio row with new shares + wac
     """
-    transactions = _ledger_rows(session, user_id, group_id, ticker)
+    transactions = _ledger_rows(session, user_id, ticker)
     if not transactions:
         return
-    total_shares, wac = _replay(transactions)
+    total_shares, wac = _replay(transactions, strict_from=new_tx)
+    group_id = cast(Optional[int], transactions[-1].group_id) or group_id
 
     existing: Optional[Portfolio] = session.query(Portfolio).filter_by(
         user_id=user_id, ticker=ticker, group_name="holdings"
@@ -344,6 +422,7 @@ def adjust_position(
     """
     from database import get_session
     with get_session() as session:
+        _lock_position(session, user_id, ticker)
         row = session.query(Portfolio).filter_by(
             user_id=user_id, ticker=ticker, group_name="holdings"
         ).first()

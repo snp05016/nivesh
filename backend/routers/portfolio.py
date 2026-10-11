@@ -19,7 +19,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 import yfinance as yf
 
 from services.disk_cache import invalidate as _cache_invalidate
-from services.ledger_service import record_transaction, get_or_create_default_group, adjust_position, close_position
+from services.ledger_service import record_transaction, get_or_create_default_group, adjust_position, close_position, LedgerError
 from services.yfinance_client import _yf_price_with_status
 
 from helpers import (
@@ -690,7 +690,11 @@ def _parse_trade_date(s: Optional[str]) -> Optional[datetime]:
 
 @router.post("/portfolio")
 @router.post("/portfolio/add")
-def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header(None)):
+def portfolio_add_endpoint(
+    req: PortfolioAddRequest,
+    authorization: str = Header(None),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key", max_length=64),
+):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
     if token_user != req.user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -717,6 +721,7 @@ def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header
             target_price=req.target_price,
             purchase_date=trade_date.strftime("%Y-%m-%d") if trade_date else None,
             is_virtual=getattr(req, "is_virtual", False),
+            client_request_id=idempotency_key,
         )
         _cache_invalidate("morning_brief", str(req.user_id))
 
@@ -736,8 +741,10 @@ def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header
         }
     except HTTPException:
         raise
+    except LedgerError as e:  # e.g. oversell / backdated SELL: a client error, not a 500
+        raise HTTPException(status_code=422, detail=str(e))
     except ValueError as e:
-        # Ledger rule violations (e.g. "Cannot SELL 20 of TCS: only 10 shares held.")
+        # Other rule violations raised on the add path.
         raise HTTPException(status_code=400, detail=str(e))
     except Exception:
         logging.exception("[portfolio/add] failed for user %s %s", req.user_id, ticker)

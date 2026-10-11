@@ -35,6 +35,8 @@ logic, e.g. services/loan_marketplace_service.py):
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from sqlalchemy.exc import IntegrityError
+
 from database import get_session
 from models.db_models import DeviceBinding, DeviceBindingAttempt, KYCConsent
 from services.disclosure_service import CONSENT_PURPOSES, CURRENT_POLICY_VERSION, notice_hash
@@ -98,13 +100,15 @@ def record_consent(
     policy_version: Optional[str] = None,
     app_version: Optional[str] = None,
 ) -> dict:
-    """Persist a new consent record.
+    """Persist a consent record.
 
-    Each call inserts a new row (audit trail) rather than updating an
-    existing one, so the full grant/revoke history for a user + consent_type
-    is always reconstructable. granted=False is a withdrawal: it also revokes
-    every active grant of consent_type in the same transaction, so the
-    consent stops counting as active (KYC gates, GET /api/kyc/consents).
+    granted=True returns the existing active grant of consent_type when there
+    is one (at most one active row per user + type, uq_kyc_consents_active),
+    otherwise inserts a new row. granted=False is a withdrawal: it inserts a
+    granted=False history row and revokes every active grant of consent_type
+    in the same transaction, so the consent stops counting as active (KYC
+    gates, GET /api/kyc/consents). Rows are never updated otherwise, so the
+    grant/revoke history stays reconstructable.
 
     FINSEC-09: raises ValueError for a consent_type not in CONSENT_PURPOSES.
     Each row stores its purpose text, the policy_version the client showed
@@ -118,7 +122,11 @@ def record_consent(
     notice_key = "terms_of_use" if consent_type in ("terms", "disclaimer") else "privacy_policy"
     with get_session() as session:
         now = datetime.now(timezone.utc)
-        if not granted:
+        if granted:
+            active = _active_row(session, user_id, consent_type)
+            if active is not None:
+                return _consent_to_dict(active)
+        else:
             _revoke_active(session, user_id, consent_type, now)
         consent = KYCConsent(
             user_id=user_id,
@@ -132,34 +140,58 @@ def record_consent(
             app_version=app_version,
         )
         session.add(consent)
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError:
+            # A concurrent grant (double tap) won uq_kyc_consents_active.
+            session.rollback()
+            active = _active_row(session, user_id, consent_type) if granted else None
+            if active is None:
+                raise
+            return _consent_to_dict(active)
         session.refresh(consent)
         return _consent_to_dict(consent)
 
 
-def revoke_consent(user_id: int, consent_type: str) -> dict:
+def _active_row(session, user_id: int, consent_type: str) -> Optional[KYCConsent]:
+    return (
+        session.query(KYCConsent)
+        .filter(
+            KYCConsent.user_id == user_id,
+            KYCConsent.consent_type == consent_type,
+            KYCConsent.granted.is_(True),
+            KYCConsent.revoked_at.is_(None),
+        )
+        .first()
+    )
+
+
+def revoke_consent(user_id: int, consent_type: str, session=None) -> dict:
     """Revoke every active (granted, not-yet-revoked) consent of consent_type
     for user_id. Sets revoked_at — never deletes rows, so the audit trail is
     preserved. Returns the newest revoked row plus revoked_count.
+
+    With ``session`` the caller owns the transaction (no commit here), so it
+    can write its audit row atomically with the revoke (compliance_service).
     """
-    with get_session() as session:
-        result = revoke_consent_in_session(session, user_id, consent_type)
-        if result["revoked"]:
-            session.commit()
-        return result
+    if session is None:
+        with get_session() as own_session:
+            result = _revoke(own_session, user_id, consent_type)
+            own_session.commit()
+            return result
+    return _revoke(session, user_id, consent_type)
 
 
-def revoke_consent_in_session(session, user_id: int, consent_type: str) -> dict:
-    """revoke_consent() inside the caller's open session; the caller commits,
-    so another write (e.g. an audit row) can share the transaction.
-    """
+def _revoke(session, user_id: int, consent_type: str) -> dict:
     count = _revoke_active(session, user_id, consent_type, datetime.now(timezone.utc))
     if count == 0:
         return {
             "revoked": False,
+            "revoked_count": 0,
+            "consent_type": consent_type,
+            "revoked_at": None,
             "reason": f"no active '{consent_type}' consent found for user {user_id}",
         }
-
     newest = (
         session.query(KYCConsent)
         .filter(
@@ -170,7 +202,7 @@ def revoke_consent_in_session(session, user_id: int, consent_type: str) -> dict:
         .order_by(KYCConsent.granted_at.desc(), KYCConsent.id.desc())
         .first()
     )
-    return {"revoked": True, "revoked_count": count, **_consent_to_dict(newest)}
+    return {"revoked": True, "revoked_count": count, **_consent_to_dict(newest)}  # type: ignore[arg-type]
 
 
 def get_active_consents(user_id: int) -> list[dict]:

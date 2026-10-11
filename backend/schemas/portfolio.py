@@ -49,10 +49,12 @@ class PortfolioAddRequest(BaseModel):
     ticker: str
     exchange: str = "NSE"
     company_name: str
-    shares: float = Field(gt=0, description="Number of shares (must be > 0)")
-    buy_price: float = Field(gt=0, description="Price per share (must be > 0)")
+    # allow_inf_nan=False: NaN passes gt=0 (DB-09).
+    shares: float = Field(gt=0, le=1e9, allow_inf_nan=False, description="Number of shares (must be > 0)")
+    buy_price: float = Field(gt=0, le=1e9, allow_inf_nan=False, description="Price per share (must be > 0)")
     group_name: str = "holdings"
-    target_price: Optional[float] = None
+    # 0 means "no target" (the iOS add-holding body sends 0.0).
+    target_price: Optional[float] = Field(default=None, ge=0, le=1e9, allow_inf_nan=False)
     purchase_date: Optional[str] = None
     notes: Optional[str] = None
     transaction_type: str = "BUY"
@@ -75,9 +77,9 @@ class PortfolioRemoveRequest(BaseModel):
 class PortfolioUpdateRequest(BaseModel):
     user_id: int
     ticker: str
-    shares: float
-    buy_price: float
-    target_price: Optional[float] = None
+    shares: float = Field(gt=0, le=1e9, allow_inf_nan=False)
+    buy_price: float = Field(gt=0, le=1e9, allow_inf_nan=False)
+    target_price: Optional[float] = Field(default=None, ge=0, le=1e9, allow_inf_nan=False)
     purchase_date: Optional[str] = None
 
 
