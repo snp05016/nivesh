@@ -96,13 +96,13 @@ struct NiveshWidgetEntryView : View {
                 .tracking(1.5)
                 .foregroundStyle(Theme.inkSecondary)
             
-            Text(IndianFormatter.price(entry.niftyValue))
+            Text(IndianFormatter.points(entry.niftyValue))
             .lineLimit(1)
             .minimumScaleFactor(0.6)
                 .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
                 .foregroundStyle(Theme.inkPrimary)
                 
-            Text(entry.niftyChange >= 0 ? "+\(IndianFormatter.price(entry.niftyChange))" : IndianFormatter.price(entry.niftyChange))
+            Text(IndianFormatter.signedPoints(entry.niftyChange))
                 .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote))
                 .foregroundStyle(entry.niftyChange >= 0 ? Theme.bullGreen : Theme.bearRed)
         }

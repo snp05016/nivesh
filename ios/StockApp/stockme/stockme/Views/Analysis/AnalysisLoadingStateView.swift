@@ -214,16 +214,18 @@ struct AnalysisStockHeaderCard: View {
             GuillocheDivider()
             HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
                 Text("₹").font(Theme.engravedSerif(size: 24, weight: .bold)).foregroundStyle(Theme.goldPrimary)
-                Text((info.price ?? 0.0).inrFormatted.replacingOccurrences(of: "₹", with: ""))
+                Text(info.price.map { IndianFormatter.priceWithoutSymbol($0) } ?? "—")
                     .font(Theme.dataLarge()).foregroundStyle(Theme.inkPrimary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            HStack(spacing: Theme.Spacing.medium) {
-                Text("\((info.change ?? 0.0) >= 0 ? "+" : "")\((info.change ?? 0.0).inrFormatted)")
-                Text("(\((info.changePercent ?? 0.0).percentFormatted))")
+            if let change = info.change {
+                HStack(spacing: Theme.Spacing.medium) {
+                    Text(IndianFormatter.signedPrice(change))
+                    Text("(\(info.changePercent.map { $0.percentFormatted } ?? "—"))")
+                }
+                .font(Theme.monoTabular(size: 16))
+                .foregroundStyle(change >= 0 ? Theme.dataPositive : Theme.dataNegative)
             }
-            .font(Theme.monoTabular(size: 16))
-            .foregroundStyle((info.change ?? 0.0) >= 0 ? Theme.dataPositive : Theme.dataNegative)
         }
         .padding(Theme.Spacing.card)
         .background(Theme.surfaceElevated)

@@ -66,15 +66,15 @@ struct AnalysisCoreSections: View {
                             .foregroundStyle(Theme.inkPrimary)
                             .contentTransition(.numericText())
                     }
-                    if let info = viewModel.quickInfo {
+                    if let info = viewModel.quickInfo, let change = info.change {
                         HStack(spacing: Theme.Spacing.tight) {
-                            Image(systemName: (info.change ?? 0.0) >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
+                            Image(systemName: change >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
                                 .font(.caption2)
-                            Text("\((info.change ?? 0.0) >= 0 ? "+" : "")\((info.change ?? 0.0).inrFormatted)")
-                            Text("(\((info.changePercent ?? 0.0).percentFormatted))")
+                            Text(IndianFormatter.signedPrice(change))
+                            Text("(\(info.changePercent.map { $0.percentFormatted } ?? "—"))")
                         }
                         .font(Theme.monoTabular(size: 14, relativeTo: .footnote))
-                        .foregroundStyle((info.change ?? 0.0) >= 0 ? Theme.dataPositive : Theme.dataNegative)
+                        .foregroundStyle(change >= 0 ? Theme.dataPositive : Theme.dataNegative)
                     }
                     if livePrice != nil {
                         HStack(spacing: Theme.Spacing.small) {

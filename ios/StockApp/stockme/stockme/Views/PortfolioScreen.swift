@@ -583,13 +583,13 @@ struct PortfolioScreen: View {
         let totalVal = viewModel.totalValue.inrFormatted
         let investedVal = viewModel.investedValue.inrFormatted
         let rawPnl = viewModel.totalValue - viewModel.investedValue
-        let pnl = rawPnl.inrFormatted
+        let pnl = IndianFormatter.signedPrice(rawPnl)
         
         let text = """
         My Nivesh Portfolio 📈
-        Total Value: ₹\(totalVal)
-        Invested: ₹\(investedVal)
-        P&L: \(rawPnl >= 0 ? "+" : "")\(pnl)
+        Total Value: \(totalVal)
+        Invested: \(investedVal)
+        P&L: \(pnl)
         """
         
         if let encoded = text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
@@ -1293,7 +1293,7 @@ private struct WatchlistRowView: View {
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
-                    Text("₹\(item.currentPrice.inrFormatted)")
+                    Text(item.currentPrice.inrFormatted)
                         .contentTransition(.numericText())
                         .font(Theme.serialNumberFont(size: 14))
                         .foregroundStyle(Theme.inkPrimary)

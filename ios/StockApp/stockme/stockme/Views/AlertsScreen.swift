@@ -138,7 +138,7 @@ struct AlertsScreen: View {
                                 Text("ALERT TRIGGERED")
                                     .font(Theme.officialStampFont(size: 8))
                                     .foregroundStyle(Theme.inkSecondary)
-                                Text("\(first.ticker) reached ₹\(String(format: "%.2f", first.currentPrice))")
+                                Text("\(first.ticker) reached \(IndianFormatter.price(first.currentPrice))")
                                     .font(Theme.serialNumberFont(size: 13))
                                     .foregroundStyle(Theme.inkPrimary)
                             }
@@ -369,7 +369,7 @@ struct AddAlertSheet: View {
                                     if priceLoading {
                                         ProgressView().scaleEffect(0.5)
                                     } else if let price = currentPrice {
-                                        Text("Current: ₹\(String(format: "%.2f", price))").font(Theme.serialNumberFont(size: 11)).foregroundStyle(Theme.inkTertiary)
+                                        Text("Current: \(IndianFormatter.price(price))").font(Theme.serialNumberFont(size: 11)).foregroundStyle(Theme.inkTertiary)
                                     }
                                 }
                                 Spacer()
@@ -436,7 +436,7 @@ struct AddAlertSheet: View {
                                     .padding(Theme.Spacing.card)
                                     .banknoteCard()
                                 if let target = calculatedTargetPrice {
-                                    Text("Implied target price: ₹\(String(format: "%.2f", target))")
+                                    Text("Implied target price: \(IndianFormatter.price(target))")
                                         .font(Theme.serialNumberFont(size: 11))
                                         .foregroundStyle(Theme.securityGold)
                                 }

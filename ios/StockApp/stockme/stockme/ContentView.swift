@@ -565,8 +565,8 @@ struct MarketsView: View {
         let isPositive = index.changePct >= 0
         let changeStr  = (isPositive ? "+" : "") + String(format: "%.2f%%", index.changePct)
         let valueStr   = index.ticker == "USDINR=X"
-            ? String(format: "%.2f", index.value)
-            : IndianFormatter.price(index.value)
+            ? IndianFormatter.price(index.value)
+            : IndianFormatter.points(index.value)
 
         return VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
             Text(index.name)

@@ -389,7 +389,7 @@ struct SurpriseCard: View {
             Text(label)
                 .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                 .foregroundColor(Theme.inkTertiary)
-            Text(value != nil ? "₹\(String(format: "%.2f", value!))" : "--")
+            Text(IndianFormatter.price(value))
                 .font(Theme.serialNumberFont(size: 16, relativeTo: .body))
                 .foregroundColor(color)
         }

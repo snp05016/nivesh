@@ -284,7 +284,7 @@ struct MomentumStockRow: View {
                 .foregroundStyle(.primary.opacity(0.90))
                 .frame(minWidth: 80, alignment: .leading)
 
-            Text("₹\(IndianFormatter.price(stock.lastPrice))")
+            Text(IndianFormatter.price(stock.lastPrice))
                 .font(.footnote).monospaced()
                 .foregroundStyle(.primary.opacity(0.70))
 
@@ -1595,8 +1595,8 @@ struct IndexCardView: View {
 
     private var valueStr: String {
         index.ticker == "USDINR=X"
-            ? String(format: "%.2f", index.value)
-            : IndianFormatter.price(index.value)
+            ? IndianFormatter.price(index.value)
+            : IndianFormatter.points(index.value)
     }
     private var isPositive: Bool { index.changePct >= 0 }
     private var changeStr: String {
@@ -2563,9 +2563,9 @@ extension HomeScreen {
                             ForEach(viewModel.indices) { index in
                                 let valueStr: String = {
                                     if index.ticker == "USDINR=X" {
-                                        return String(format: "%.2f", index.value)
-                                    } else {
                                         return IndianFormatter.price(index.value)
+                                    } else {
+                                        return IndianFormatter.points(index.value)
                                     }
                                 }()
                                 let changeStr = (index.changePct >= 0 ? "+" : "") + String(format: "%.2f%%", index.changePct)

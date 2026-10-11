@@ -14,6 +14,25 @@ struct IndianFormatter {
         return f
     }()
 
+    /// Grouped en_IN decimal with exactly 2 fraction digits and no currency symbol (index points).
+    private static let pointsFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.locale = Locale(identifier: "en_IN")
+        f.minimumFractionDigits = 2
+        f.maximumFractionDigits = 2
+        return f
+    }()
+
+    /// Grouped en_IN whole number, for large crore figures ("1,90,000 Cr").
+    private static let wholeFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.locale = Locale(identifier: "en_IN")
+        f.maximumFractionDigits = 0
+        return f
+    }()
+
     private static let percentFormatter: NumberFormatter = {
         let f = NumberFormatter()
         f.numberStyle = .percent
@@ -26,6 +45,27 @@ struct IndianFormatter {
         priceFormatter.string(from: NSNumber(value: value)) ?? "₹0.00"
     }
 
+    /// Missing quote renders as an em dash, never as ₹0.00.
+    static func price(_ value: Double?) -> String {
+        guard let value else { return "—" }
+        return price(value)
+    }
+
+    /// Price with an explicit sign before the symbol: "+₹12.00" / "-₹12.00".
+    static func signedPrice(_ value: Double) -> String {
+        (value < 0 ? "-" : "+") + price(abs(value))
+    }
+
+    /// Index levels are points, not rupees: 22450.5 -> "22,450.50".
+    static func points(_ value: Double) -> String {
+        pointsFormatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
+    }
+
+    /// Signed index-point change: "+120.50" / "-120.50".
+    static func signedPoints(_ value: Double) -> String {
+        (value < 0 ? "-" : "+") + points(abs(value))
+    }
+
     static func percent(_ value: Double) -> String {
         let val = value / 100
         return percentFormatter.string(from: NSNumber(value: val)) ?? "0.00%"
@@ -36,17 +76,7 @@ struct IndianFormatter {
     }
 
     static func priceCompact(_ value: Double) -> String {
-        if useAbsoluteFormat { return price(value) }
-        let absVal = abs(value)
-        let sign = value < 0 ? "-" : ""
-
-        if absVal >= 10_000_000 {
-            return "₹\(sign)\(String(format: "%.2f", absVal / 10_000_000))Cr"
-        } else if absVal >= 100_000 {
-            return "₹\(sign)\(String(format: "%.2f", absVal / 100_000))L"
-        } else {
-            return price(value)
-        }
+        formatLakhsCrores(value)
     }
 
     /// Formats a large number using Indian scale: Crores > Lakhs > plain.
@@ -59,15 +89,15 @@ struct IndianFormatter {
         if absVal >= 1_00_00_000 { // 1 Crore = 1,00,00,000
             let crores = absVal / 1_00_00_000
             if crores >= 1000 {
-                return "₹\(sign)\(String(format: "%.0f", crores)) Cr"
+                return "\(sign)₹\(wholeFormatter.string(from: NSNumber(value: crores)) ?? String(format: "%.0f", crores)) Cr"
             } else if crores >= 100 {
-                return "₹\(sign)\(String(format: "%.1f", crores)) Cr"
+                return "\(sign)₹\(String(format: "%.1f", crores)) Cr"
             } else {
-                return "₹\(sign)\(String(format: "%.2f", crores)) Cr"
+                return "\(sign)₹\(String(format: "%.2f", crores)) Cr"
             }
         } else if absVal >= 1_00_000 { // 1 Lakh = 1,00,000
             let lakhs = absVal / 1_00_000
-            return "₹\(sign)\(String(format: "%.2f", lakhs)) L"
+            return "\(sign)₹\(String(format: "%.2f", lakhs)) L"
         } else {
             return price(value)
         }

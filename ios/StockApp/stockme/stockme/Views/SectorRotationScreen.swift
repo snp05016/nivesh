@@ -223,7 +223,7 @@ struct InstitutionalFlowHighlight: View {
             if let topBuy = sectors.max(by: { $0.fiiFlowCr < $1.fiiFlowCr }),
                let topSell = sectors.min(by: { $0.fiiFlowCr < $1.fiiFlowCr }) {
                 
-                Text("FIIs buying \(topBuy.name) (+₹\(Int(topBuy.fiiFlowCr)) Cr), selling \(topSell.name) (₹\(Int(topSell.fiiFlowCr)) Cr)")
+                Text("FIIs buying \(topBuy.name) (\(flowLabel(topBuy.fiiFlowCr))), selling \(topSell.name) (\(flowLabel(topSell.fiiFlowCr)))")
                     .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
                     .foregroundColor(Theme.inkPrimary)
             }
@@ -231,6 +231,11 @@ struct InstitutionalFlowHighlight: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Theme.Spacing.card)
         .banknoteCard()
+    }
+
+    /// Signed crore flow through the shared formatter: "+₹1,250 Cr" / "-₹340.0 Cr".
+    private func flowLabel(_ crores: Double) -> String {
+        (crores > 0 ? "+" : "") + IndianFormatter.formatLakhsCrores(crores * 1_00_00_000)
     }
 }
 

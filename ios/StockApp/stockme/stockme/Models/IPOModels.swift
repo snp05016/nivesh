@@ -59,7 +59,7 @@ struct IPOListing: Codable, Identifiable, Equatable {
 
     var priceBandDisplay: String {
         guard let low = priceBandLow, let high = priceBandHigh else { return "—" }
-        return "₹\(Int(low)) - ₹\(Int(high))"
+        return "\(IndianFormatter.price(low)) – \(IndianFormatter.price(high))"
     }
 
     var lotSizeDisplay: String {

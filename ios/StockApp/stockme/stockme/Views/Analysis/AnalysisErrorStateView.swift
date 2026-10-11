@@ -28,16 +28,18 @@ struct AnalysisErrorStateView: View {
                                 Text("₹")
                                     .font(Theme.engravedSerif(size: 24, weight: .bold))
                                     .foregroundStyle(Theme.securityGold)
-                                Text((qi.price ?? 0.0).inrFormatted.replacingOccurrences(of: "₹", with: ""))
+                                Text(qi.price.map { IndianFormatter.priceWithoutSymbol($0) } ?? "—")
                                     .font(Theme.serialNumberFont(size: 44))
                                     .foregroundStyle(Theme.inkPrimary)
                             }
-                            HStack(spacing: Theme.Spacing.medium) {
-                                Text("\((qi.change ?? 0.0) >= 0 ? "+" : "")\((qi.change ?? 0.0).inrFormatted)")
-                                Text("(\((qi.changePercent ?? 0.0).percentFormatted))")
+                            if let change = qi.change {
+                                HStack(spacing: Theme.Spacing.medium) {
+                                    Text(IndianFormatter.signedPrice(change))
+                                    Text("(\(qi.changePercent.map { $0.percentFormatted } ?? "—"))")
+                                }
+                                .font(Theme.serialNumberFont(size: 16))
+                                .foregroundStyle(change >= 0 ? Theme.bullGreen : Theme.bearRed)
                             }
-                            .font(Theme.serialNumberFont(size: 16))
-                            .foregroundStyle((qi.change ?? 0.0) >= 0 ? Theme.bullGreen : Theme.bearRed)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(Theme.Spacing.large)

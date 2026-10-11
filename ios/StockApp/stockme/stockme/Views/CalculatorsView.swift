@@ -93,7 +93,7 @@ private struct GenericSIPCalculatorContent: View {
                 value: $monthlyAmount,
                 range: 500...1_00_000,
                 step: 500,
-                display: { "₹\(Int($0))" }
+                display: { IndianFormatter.formatLakhsCrores($0) }
             )
             FDInputSlider(
                 title: "Investment Tenure (Years)",

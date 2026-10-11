@@ -289,7 +289,7 @@ private struct JournalEntryCard: View {
                     .cornerRadius(Theme.CornerRadius.small)
                 Spacer()
                 if let price = entry.priceAtTime {
-                    Text("₹\(String(format: "%.2f", price))")
+                    Text(IndianFormatter.price(price))
                         .font(Theme.monoTabular(size: 12, relativeTo: .caption))
                         .foregroundStyle(Theme.inkSecondary)
                 }

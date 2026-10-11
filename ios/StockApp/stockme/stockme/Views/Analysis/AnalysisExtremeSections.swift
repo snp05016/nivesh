@@ -477,7 +477,7 @@ private struct PeerTableView: View {
                             .font(.caption).frame(width: colW * 0.16, alignment: .trailing)
                         Text(p.debtToEquity.map { String(format: "%.1f", $0) } ?? "-")
                             .font(.caption).frame(width: colW * 0.15, alignment: .trailing)
-                        Text(p.marketcapCr.map { "\u{20B9}\(Int($0))Cr" } ?? "-")
+                        Text(p.marketcapCr.map { IndianFormatter.formatLakhsCrores($0 * 1_00_00_000) } ?? "-")
                             .font(.caption).frame(width: colW * 0.20, alignment: .trailing)
                     }
                     .foregroundStyle(Theme.inkPrimary)

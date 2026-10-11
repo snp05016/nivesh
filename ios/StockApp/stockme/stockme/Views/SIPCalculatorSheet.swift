@@ -33,7 +33,7 @@ struct SIPCalculatorSheet: View {
                         value: $monthlyAmount,
                         range: 500...100_000,
                         step: 500,
-                        display: { "₹\(Int($0))" }
+                        display: { IndianFormatter.formatLakhsCrores($0) }
                     )
                     SIPInputSlider(
                         title: "Investment Tenure (Years)",

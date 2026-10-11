@@ -170,8 +170,8 @@ struct MacroStripCardView: View {
                     )
                     MacroStripItemView(
                         label: "USD/INR",
-                        value: strip.usdInr.map { "Rs.\(String(format: "%.1f", $0))" } ?? "N/A",
-                        subtitle: "Rs. per $",
+                        value: strip.usdInr.map { IndianFormatter.price($0) } ?? "N/A",
+                        subtitle: "₹ per $",
                         icon: "dollarsign.arrow.circlepath",
                         color: (strip.usdInr ?? 0) > 85 ? Theme.bearRed : Theme.bullGreen
                     )
