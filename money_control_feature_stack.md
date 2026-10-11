@@ -1,280 +1,291 @@
 # Moneycontrol App — Exhaustive Feature Stack
 
+Legend: each line is a Moneycontrol capability. `[x]` means Nivesh delivers it today: a reachable iOS
+screen exists, backed by a backend route or service whenever the feature needs server data. Every `[x]`
+carries `(evidence: <repo-path>:<symbol>; ...)`, and `backend/tests/test_feature_stack_evidence.py`
+fails if a pointer's file or symbol disappears. `[ ]` means not delivered (or delivered only as backend
+code with no reachable screen); a parenthetical says what partially exists. Do not tick a box without
+an evidence pointer.
+
+Demo-only flows (Section 13 finance tracker, loans and fixed deposits, plus the Pre-IPO marketplace)
+are hidden from Release builds by `ReleaseGate`. The IPO and mutual-fund catalogs are seeded mock data
+in DEMO_MODE; there is no live IPO feed. Demo catalog screens that work end to end on seeded data stay `[x]` under this caveat, but a mock or illustrative stand-in for an external integration, a money movement, a regulatory obligation or a security control is not delivered and stays `[ ]`.
+
 ## 1. Home, Discovery, and Navigation Stack
-- [x] Home dashboard
-- [x] Seamless navigation hub
-- [x] Global markets overview card
-- [x] Market ticker
-  - [x] Nifty ticker
-  - [x] Sensex ticker
-  - [x] Watchlist ticker
-  - [x] Portfolio ticker
-- [x] Top stories feed
-- [x] Breaking news feed
-- [x] News widgets
-  - [x] iOS home-screen widgets
-  - [x] Android home-screen widgets
-- [x] PRO / Super PRO upsell banners
-- [x] Universal search
-  - [x] Stock quotes search
-  - [x] Mutual funds search
-  - [x] ETF search
-  - [x] Commodities search
-  - [x] Futures and options search
-  - [x] Unlisted shares search
-  - [x] Currency search
-  - [x] News search
-  - [x] Topics search
-  - [x] Cryptocurrency search
-  - [x] Forum search
-  - [x] Notices search
-  - [x] Videos search
-  - [x] Glossary search
-  - [x] “All” search surface
+- [x] Home dashboard (evidence: ios/StockApp/stockme/stockme/Views/HomeScreen.swift:HomeScreen; backend/routers/market.py:market_dashboard_endpoint)
+- [x] Seamless navigation hub (evidence: ios/StockApp/stockme/stockme/ContentView.swift:MarketSection)
+- [ ] Global markets overview card
+- [x] Market ticker (evidence: ios/StockApp/stockme/stockme/ContentView.swift:indexMiniChip; backend/services/nse_client.py:_INDICES_TICKERS)
+  - [x] Nifty ticker (evidence: backend/services/nse_client.py:^NSEI; ios/StockApp/stockme/stockme/ContentView.swift:indexMiniChip)
+  - [x] Sensex ticker (evidence: backend/services/nse_client.py:^BSESN; ios/StockApp/stockme/stockme/ContentView.swift:indexMiniChip)
+  - [ ] Watchlist ticker
+  - [ ] Portfolio ticker
+- [x] Top stories feed (evidence: ios/StockApp/stockme/stockme/Views/NewsMultimediaView.swift:NewsCarouselCard; backend/routers/analysis.py:get_home_feed)
+- [ ] Breaking news feed
+- [ ] News widgets (the only widget is the portfolio widget below)
+  - [x] iOS home-screen widgets (portfolio value/P&L widget, not news) (evidence: ios/StockApp/stockme/NiveshWidget/NiveshWidget.swift:NiveshWidget)
+  - [ ] Android home-screen widgets
+- [x] PRO / Super PRO upsell banners (evidence: ios/StockApp/stockme/stockme/Components/PremiumUpsellBanner.swift:PremiumUpsellBanner)
+- [ ] Universal search (GET /api/v1/search returns stock matches only; there is no multi-entity search surface)
+  - [x] Stock quotes search (evidence: backend/routers/search.py:universal_search; ios/StockApp/stockme/stockme/Views/SearchScreen.swift:searchStocks)
+  - [x] Mutual funds search (evidence: ios/StockApp/stockme/stockme/Views/MutualFundDiscoveryView.swift:MutualFundSearchBar; backend/routers/mutual_funds.py:get_mutual_funds)
+  - [ ] ETF search
+  - [ ] Commodities search
+  - [ ] Futures and options search
+  - [ ] Unlisted shares search
+  - [ ] Currency search
+  - [ ] News search
+  - [ ] Topics search
+  - [ ] Cryptocurrency search
+  - [ ] Forum search
+  - [ ] Notices search
+  - [ ] Videos search
+  - [x] Glossary search (on-device glossary) (evidence: ios/StockApp/stockme/stockme/Views/GlossaryBrowserView.swift:searchText)
+  - [ ] “All” search surface
 
 ## 2. Market Data and Market Intelligence Stack
-- [x] Indian indices
-  - [x] Sensex
-  - [x] Nifty
-  - [x] Bank Nifty
-  - [x] Sectoral indices
-- [x] Global markets
-  - [x] US markets
-  - [x] European markets
-  - [x] Asian markets
-  - [x] Dow Jones
-  - [x] Nasdaq
-  - [x] Nikkei
-  - [x] FTSE
-- [x] Commodities
-  - [x] MCX
-  - [x] NCDEX
-- [x] Currencies
-- [x] Crypto
-- [x] ETFs
-- [x] Market movers
-  - [x] Top gainers
-  - [x] Top losers
-  - [x] Only buyers
-  - [x] Only sellers
-  - [x] Most active stocks
-  - [x] 52-week highs
-  - [x] 52-week lows
-- [x] Stock action pages
-- [x] Price shockers
-- [x] Volume shockers
-- [x] Price and volume shockers
-- [x] Market turnover
-  - [x] NSE cash turnover
-  - [x] BSE cash turnover
-  - [x] F&O turnover
-- [x] Pre-market data
-- [x] Post-market data
-- [x] Technical trends
-- [x] Open-interest trends
-- [x] Trending stocks
-- [x] Economic calendar
-- [x] Earnings calendar
-- [x] Scanners
-- [x] Sector analysis
-- [x] Stock ideas
-- [x] Deals
-  - [x] Bulk deals
-  - [x] Block deals
-- [x] Corporate actions
-- [x] FII activity
-- [x] DII activity
-- [x] FPI sectoral activity
-- [x] FII/DII graph-enabled analysis
+- [x] Indian indices (evidence: backend/services/nse_client.py:_INDICES_TICKERS; ios/StockApp/stockme/stockme/ContentView.swift:indexMiniChip)
+  - [x] Sensex (evidence: backend/services/nse_client.py:^BSESN)
+  - [x] Nifty (evidence: backend/services/nse_client.py:^NSEI)
+  - [x] Bank Nifty (evidence: backend/services/nse_client.py:^NSEBANK)
+  - [x] Sectoral indices (evidence: backend/routers/market.py:sector_performance_endpoint; ios/StockApp/stockme/stockme/Views/HomeScreen.swift:getSectorPerformance)
+- [ ] Global markets
+  - [ ] US markets
+  - [ ] European markets
+  - [ ] Asian markets
+  - [ ] Dow Jones
+  - [ ] Nasdaq
+  - [ ] Nikkei
+  - [ ] FTSE
+- [ ] Commodities
+  - [ ] MCX
+  - [ ] NCDEX
+- [x] Currencies (USD/INR only) (evidence: backend/services/nse_client.py:USDINR; ios/StockApp/stockme/stockme/Views/StockProfile/MacroTabView.swift:MacroStripCardView)
+- [ ] Crypto
+- [ ] ETFs
+- [x] Market movers (evidence: backend/routers/market.py:top_movers_endpoint; ios/StockApp/stockme/stockme/Views/TechnicalMomentumView.swift:topMoversListTab)
+  - [x] Top gainers (evidence: backend/routers/market.py:gainers; ios/StockApp/stockme/stockme/Views/TechnicalMomentumView.swift:gainers)
+  - [x] Top losers (evidence: backend/routers/market.py:losers; ios/StockApp/stockme/stockme/Views/TechnicalMomentumView.swift:losers)
+  - [ ] Only buyers
+  - [ ] Only sellers
+  - [x] Most active stocks (evidence: backend/routers/market.py:active_by_volume; ios/StockApp/stockme/stockme/Views/TechnicalMomentumView.swift:activeByVolumeTab)
+  - [x] 52-week highs (52-week breakout anomalies) (evidence: backend/services/anomaly_scanner.py:52W_BREAKOUT; ios/StockApp/stockme/stockme/Views/MarketAnomalyScreen.swift:MarketAnomalyScreen)
+  - [x] 52-week lows (near-52-week-low bullish screen only) (evidence: backend/routers/analysis.py:52w_low_bullish; ios/StockApp/stockme/stockme/Views/SearchScreen.swift:52w_low_bullish)
+- [x] Stock action pages (evidence: ios/StockApp/stockme/stockme/Views/StockActionHubView.swift:StockActionHubView)
+- [x] Price shockers (evidence: backend/services/anomaly_scanner.py:GAP_UP; backend/routers/anomalies.py:read_anomalies; ios/StockApp/stockme/stockme/Views/MarketAnomalyScreen.swift:MarketAnomalyScreen)
+- [x] Volume shockers (evidence: backend/services/anomaly_scanner.py:VOLUME_SPIKE; ios/StockApp/stockme/stockme/Views/MarketAnomalyScreen.swift:MarketAnomalyScreen)
+- [x] Price and volume shockers (evidence: backend/services/anomaly_scanner.py:PRICE_VOLUME_DIVERGENCE; ios/StockApp/stockme/stockme/Views/MarketAnomalyScreen.swift:MarketAnomalyScreen)
+- [ ] Market turnover
+  - [ ] NSE cash turnover
+  - [ ] BSE cash turnover
+  - [ ] F&O turnover
+- [ ] Pre-market data
+- [ ] Post-market data
+- [x] Technical trends (evidence: ios/StockApp/stockme/stockme/Views/TechnicalMomentumView.swift:TechnicalMomentumView; backend/routers/market.py:dashboard_pulse_endpoint)
+- [ ] Open-interest trends (GET /api/v1/options/chain/{ticker} exists; no iOS screen)
+- [x] Trending stocks (evidence: ios/StockApp/stockme/stockme/Views/SearchScreen.swift:trendingStocks; backend/routers/market.py:top_movers_endpoint)
+- [ ] Economic calendar
+- [x] Earnings calendar (evidence: ios/StockApp/stockme/stockme/Views/EarningsDashboardView.swift:EarningsCalendarView; backend/routers/market.py:earnings_calendar_day_endpoint)
+- [x] Scanners (evidence: ios/StockApp/stockme/stockme/Views/SearchScreen.swift:screenerPresets; backend/routers/analysis.py:screener_endpoint)
+- [x] Sector analysis (evidence: ios/StockApp/stockme/stockme/Views/SectorRotationScreen.swift:SectorRotationScreen; backend/routers/sector_rotation.py:get_sector_rotation)
+- [x] Stock ideas (evidence: ios/StockApp/stockme/stockme/Views/ExpertNetworkView.swift:fetchIdeasFeed; backend/routers/market.py:ideas_feed_endpoint)
+- [ ] Deals
+  - [ ] Bulk deals
+  - [ ] Block deals (GET /block-deals/{ticker} exists; no iOS screen)
+- [ ] Corporate actions (StockCorporateActionsView exists but nothing navigates to it; the Corporate tab is an empty state)
+- [x] FII activity (per-sector apportionment of aggregate flows) (evidence: ios/StockApp/stockme/stockme/Views/SectorRotationScreen.swift:FIIFlowIndicator; backend/services/sector_rotation.py:total_fii_net)
+- [x] DII activity (per-sector apportionment of aggregate flows) (evidence: ios/StockApp/stockme/stockme/Views/SectorRotationScreen.swift:FIIFlowIndicator; backend/services/sector_rotation.py:total_dii_net)
+- [ ] FPI sectoral activity
+- [ ] FII/DII graph-enabled analysis
 
 ## 3. Stock Detail and Equity Research Stack
-- [x] Live stock quote page
-  - [x] Live price quote
-  - [x] Net change
-  - [x] Ticker symbol
-  - [x] Last traded price
-  - [x] VWAP
-  - [x] Bid/ask spread
-  - [x] Volume
-  - [x] Circuit limits
-  - [x] Market capitalization
-  - [x] Beta
-  - [x] 52-week range
-  - [x] Book value
-  - [x] Dividend yield
-  - [x] TTM EPS
-  - [x] TTM PE
-  - [x] Sector PE
-- [x] Interactive charting
-  - [x] Intraday charts
-  - [x] Historical charts
-  - [x] Line charts
-  - [x] Area charts
-  - [x] Candlestick charts
-  - [x] OHLC charts
-- [x] Stock page tabs
-  - [x] Overview
-  - [x] Chart
-  - [x] Forecast
-  - [x] MC Insights
-  - [x] MC Technicals
-  - [x] Chart Patterns
-  - [x] Stock Vitals
-  - [x] Scans
-  - [x] Price & Volume
-  - [x] Seasonality Analysis
-  - [x] News
-  - [x] Forum
-  - [x] Research
-  - [x] Deals
-  - [x] Corporate Action
-  - [x] Financials
-  - [x] Shareholding
-  - [x] Peers
-  - [x] About
-- [x] Stock Vitals
-  - [x] Altman Z-score
-  - [x] DuPont Analysis
-  - [x] Graham Number
-  - [x] Ohlson O-score
-  - [x] Financial strength decoding
-- [x] MC Insights
-  - [x] Price performance analysis
-  - [x] Financials analysis
-  - [x] Piotroski score analysis
-  - [x] Peer comparison
-  - [x] Sector-relative analysis
-  - [x] Shareholding analysis
-- [x] My Metrics
-  - [x] 120+ customizable parameters
-  - [x] Fundamental metrics
-  - [x] Technical metrics
-  - [x] Ratio metrics
-- [x] MC SWOT
-  - [x] Strengths
-  - [x] Weaknesses
-  - [x] Opportunities
-  - [x] Threats
-- [x] MC Technicals
-- [x] Technical ratings
-- [x] Forecast models
-- [x] Price forecast
-- [x] Valuation forecast
-- [x] Broker research
-- [x] Expert technical analysis
-- [x] Webinars
-- [x] Compare Stocks
-  - [x] Side-by-side comparison of up to 3 stocks
-  - [x] Fundamental comparison
-  - [x] Shareholding comparison
-- [x] Peer comparison
-- [x] Consensus forecast
-  - [x] Analyst estimates
-  - [x] Price targets
-  - [x] Upgrade data
-  - [x] Downgrade data
-- [x] Top holdings
-  - [x] Institutional holders
-  - [x] Promoter holders
-  - [x] Holding percentage changes
-- [x] Shareholding structure
-  - [x] Promoter holding
-  - [x] FII holding
-  - [x] DII holding
-  - [x] Public holding
-  - [x] Others
-  - [x] Pledge context
-  - [x] Top-holdings context
-- [x] Unlisted shares
-  - [x] Pre-IPO company price tracking
-  - [x] Unlisted company financials
-  - [x] Examples mentioned: CSK, NSE
-- [x] Seasonality analysis
+- [x] Live stock quote page (evidence: ios/StockApp/stockme/stockme/Views/StockProfileView.swift:StockProfileView; backend/routers/market.py:stock_profile_endpoint)
+  - [x] Live price quote (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/OverviewTabView.swift:OverviewContentView)
+  - [x] Net change (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/OverviewTabView.swift:changePercent)
+  - [x] Ticker symbol (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/OverviewTabView.swift:ticker.uppercased)
+  - [x] Last traded price (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/OverviewTabView.swift:info.price)
+  - [ ] VWAP
+  - [ ] Bid/ask spread
+  - [x] Volume (evidence: ios/StockApp/stockme/stockme/Views/StockProfileView.swift:p.volume)
+  - [ ] Circuit limits
+  - [ ] Market capitalization
+  - [ ] Beta
+  - [x] 52-week range (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/OverviewTabView.swift:week52High)
+  - [ ] Book value
+  - [ ] Dividend yield
+  - [ ] TTM EPS
+  - [x] TTM PE (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/OverviewTabView.swift:peRatio)
+  - [ ] Sector PE
+- [x] Interactive charting (evidence: ios/StockApp/stockme/stockme/Views/StockProfileView.swift:InteractivePriceChartView; backend/routers/market.py:stock_history_endpoint)
+  - [ ] Intraday charts
+  - [x] Historical charts (evidence: ios/StockApp/stockme/stockme/Views/StockProfileView.swift:fetchChart)
+  - [x] Line charts (evidence: ios/StockApp/stockme/stockme/Views/StockProfileView.swift:LineMark)
+  - [x] Area charts (evidence: ios/StockApp/stockme/stockme/Views/StockProfileView.swift:AreaMark)
+  - [x] Candlestick charts (evidence: ios/StockApp/stockme/stockme/Views/StockProfileView.swift:showCandlestick)
+  - [ ] OHLC charts
+- [x] Stock page tabs (evidence: ios/StockApp/stockme/stockme/Views/StockProfileView.swift:tabItems)
+  - [x] Overview (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/OverviewTabView.swift:OverviewTabView)
+  - [x] Chart (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/ChartTabView.swift:ChartTabView)
+  - [ ] Forecast (ForecastTabView is an empty state)
+  - [ ] MC Insights (MCInsightsTabView is an empty state)
+  - [ ] MC Technicals
+  - [ ] Chart Patterns
+  - [ ] Stock Vitals
+  - [ ] Scans
+  - [ ] Price & Volume
+  - [ ] Seasonality Analysis
+  - [x] News (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/NewsTabView.swift:NewsTabView; backend/routers/analysis.py:quick_info_endpoint)
+  - [ ] Forum
+  - [ ] Research
+  - [ ] Deals
+  - [ ] Corporate Action (CorporateTabView is an empty state)
+  - [x] Financials (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/FinancialsTabView.swift:FinancialsTabView; backend/routers/market.py:quarterly_financials_endpoint)
+  - [ ] Shareholding (FundamentalsTabView calls /api/v1/fundamentals/shareholding, which ignores the ticker and returns a RELIANCE list that ShareholdingResponse cannot decode, so the tab shows its error state; per-symbol /api/v1/fundamentals/{ticker}/shareholding exists but iOS does not call it)
+  - [ ] Peers (PeerComparisonView is an empty state)
+  - [ ] About
+- [ ] Stock Vitals
+  - [ ] Altman Z-score (services/math_engines/altman_z_score.py exists; not exposed to iOS)
+  - [ ] DuPont Analysis (services/math_engines/dupont_analysis.py exists; not exposed to iOS)
+  - [ ] Graham Number
+  - [ ] Ohlson O-score
+  - [ ] Financial strength decoding
+- [ ] MC Insights
+  - [ ] Price performance analysis
+  - [x] Financials analysis (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/ChartTabView.swift:QuarterlyRevenueSectionView)
+  - [x] Piotroski score analysis (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/FinancialsTabView.swift:PiotroskiCardView; backend/routers/portfolio.py:piotroski_endpoint)
+  - [ ] Peer comparison
+  - [ ] Sector-relative analysis
+  - [x] Shareholding analysis (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/ChartTabView.swift:PromoterHistorySectionView)
+- [ ] My Metrics
+  - [ ] 120+ customizable parameters
+  - [ ] Fundamental metrics
+  - [ ] Technical metrics
+  - [ ] Ratio metrics
+- [ ] MC SWOT
+  - [ ] Strengths
+  - [ ] Weaknesses
+  - [ ] Opportunities
+  - [ ] Threats
+- [x] MC Technicals (RSI and moving averages in the Chart tab) (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/ChartTabView.swift:RSIChartSectionView)
+- [x] Technical ratings (evidence: ios/StockApp/stockme/stockme/Views/TechnicalMomentumView.swift:MomentumIndicatorCard)
+- [x] Forecast models (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/StockMLSignalCard.swift:StockMLSignalCard; backend/routers/stock_financials.py:get_stock_ml_signal)
+- [ ] Price forecast
+- [ ] Valuation forecast
+- [ ] Broker research
+- [x] Expert technical analysis (public advisor commentary) (evidence: ios/StockApp/stockme/stockme/Views/ExpertNetworkView.swift:ExpertNetworkView; backend/routers/market.py:ideas_advisors_endpoint)
+- [ ] Webinars
+- [ ] Compare Stocks (GET /api/v1/compare exists; no iOS screen)
+  - [ ] Side-by-side comparison of up to 3 stocks
+  - [ ] Fundamental comparison
+  - [ ] Shareholding comparison
+- [ ] Peer comparison (PeerComparisonView is an empty state)
+- [x] Consensus forecast (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/HoldersTabView.swift:HoldersContentView; backend/routers/market.py:analyst_ratings_endpoint)
+  - [x] Analyst estimates (revenue estimate only; EPS and profit estimates are not populated) (evidence: ios/StockApp/stockme/stockme/Views/EarningsDashboardView.swift:VarianceTrackerView; backend/routers/market.py:earnings_estimates_endpoint)
+  - [ ] Price targets
+  - [ ] Upgrade data
+  - [ ] Downgrade data
+- [ ] Top holdings
+  - [ ] Institutional holders
+  - [ ] Promoter holders
+  - [x] Holding percentage changes (promoter holding history only) (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/ChartTabView.swift:PromoterHistorySectionView)
+- [ ] Shareholding structure (FundamentalsTabView calls /api/v1/fundamentals/shareholding, which ignores the ticker and returns a RELIANCE list that ShareholdingResponse cannot decode, so the tab shows its error state; per-symbol /api/v1/fundamentals/{ticker}/shareholding exists but iOS does not call it)
+  - [ ] Promoter holding (blocked by the Shareholding structure wiring bug above)
+  - [ ] FII holding (blocked by the Shareholding structure wiring bug above)
+  - [ ] DII holding (blocked by the Shareholding structure wiring bug above)
+  - [ ] Public holding (blocked by the Shareholding structure wiring bug above)
+  - [ ] Others
+  - [ ] Pledge context (blocked by the Shareholding structure wiring bug above)
+  - [ ] Top-holdings context
+- [ ] Unlisted shares (PreIPOMarketplaceView renders hard-coded mock companies; no backend route)
+  - [ ] Pre-IPO company price tracking
+  - [ ] Unlisted company financials
+  - [ ] Examples mentioned: CSK, NSE
+- [ ] Seasonality analysis
 
 ## 4. F&O, Derivatives, and Options Analytics Stack
-- [x] F&O market snapshot
-- [x] Option chain
-  - [x] Strike-wise calls
-  - [x] Strike-wise puts
-  - [x] Call LTP
-  - [x] Put LTP
-  - [x] Volume
-  - [x] Open interest
-  - [x] Change in open interest
-- [x] Stock expiry selection
-- [x] Rollover metrics
-- [x] Most-active F&O contracts
-- [x] Increase in open interest
-- [x] Decrease in open interest
-- [x] Advance/decline breakup
-- [x] Sector-wise open interest
-- [x] Sector-wise F&O volume
-- [x] Open-interest breakup tables
-- [x] OI trends
-- [x] Put-call ratio
-- [x] Multi-strike build-ups
-- [x] Options Greeks
-  - [x] Delta
-  - [x] Gamma
-  - [x] Theta
-  - [x] Vega
-- [x] Implied volatility engine
-- [x] Max Pain
-- [x] What-If analysis
-  - [x] Price-movement simulation
-  - [x] Time-decay simulation
-  - [x] Trade-planning simulator
-- [x] Options calculator / simulator
-- [x] FII/DII/FPI sectoral derivatives insights
+- [ ] F&O market snapshot
+- [ ] Option chain (GET /api/v1/options/chain/{ticker} exists; no iOS screen)
+  - [ ] Strike-wise calls
+  - [ ] Strike-wise puts
+  - [ ] Call LTP
+  - [ ] Put LTP
+  - [ ] Volume
+  - [ ] Open interest
+  - [ ] Change in open interest
+- [ ] Stock expiry selection
+- [ ] Rollover metrics
+- [ ] Most-active F&O contracts
+- [ ] Increase in open interest
+- [ ] Decrease in open interest
+- [ ] Advance/decline breakup
+- [ ] Sector-wise open interest
+- [ ] Sector-wise F&O volume
+- [ ] Open-interest breakup tables
+- [ ] OI trends
+- [ ] Put-call ratio
+- [ ] Multi-strike build-ups
+- [ ] Options Greeks (services/math_engines has Black-Scholes code; no iOS screen)
+  - [ ] Delta
+  - [ ] Gamma
+  - [ ] Theta
+  - [ ] Vega
+- [ ] Implied volatility engine
+- [ ] Max Pain
+- [ ] What-If analysis
+  - [x] Price-movement simulation (expiry payoff across underlying prices) (evidence: ios/StockApp/stockme/stockme/Views/OptionsStrategyScreen.swift:payoff; backend/routers/options_strategy.py:compute_strategy_payoff)
+  - [ ] Time-decay simulation
+  - [x] Trade-planning simulator (multi-leg strategy builder) (evidence: ios/StockApp/stockme/stockme/Views/OptionsStrategyScreen.swift:OptionsStrategyScreen)
+- [x] Options calculator / simulator (payoff calculator only) (evidence: ios/StockApp/stockme/stockme/Views/OptionsStrategyScreen.swift:OptionsStrategyScreen; backend/routers/options_strategy.py:compute_strategy_payoff)
+- [ ] FII/DII/FPI sectoral derivatives insights
 
 ## 5. IPO Stack
-- [x] IPO hub
-- [x] Open IPOs
-- [x] Upcoming IPOs
-- [x] Closed IPOs
-- [x] Listed IPOs
+- [x] IPO hub (evidence: ios/StockApp/stockme/stockme/Views/IPOHubView.swift:IPOHubView; backend/routers/ipo.py:list_ipo_hub)
+- [x] Open IPOs (evidence: ios/StockApp/stockme/stockme/Views/IPOHubView.swift:.open; backend/services/ipo_service.py:derive_ipo_status)
+- [x] Upcoming IPOs (evidence: ios/StockApp/stockme/stockme/Views/IPOHubView.swift:.upcoming; backend/services/ipo_service.py:derive_ipo_status)
+- [x] Closed IPOs (evidence: ios/StockApp/stockme/stockme/Views/IPOHubView.swift:.closed; backend/services/ipo_service.py:derive_ipo_status)
+- [x] Listed IPOs (evidence: ios/StockApp/stockme/stockme/Views/IPOHubView.swift:.listed; backend/services/ipo_service.py:derive_ipo_status)
 - [ ] Draft issues
 - [ ] IPO news (see Section 10)
-- [x] IPO calendar
+- [x] IPO calendar (evidence: ios/StockApp/stockme/stockme/Views/IPOCalendarView.swift:IPOCalendarView; backend/routers/ipo.py:get_ipo_calendar)
 - [ ] IPO funding calculator
-- [x] IPO issue size
-- [x] IPO price band
+- [x] IPO issue size (evidence: ios/StockApp/stockme/stockme/Views/IPODetailView.swift:issueSize; backend/routers/ipo.py:get_ipo_detail)
+- [x] IPO price band (evidence: ios/StockApp/stockme/stockme/Views/IPODetailView.swift:priceBand)
 - [ ] IPO issue price
-- [x] IPO lot size
-- [x] IPO subscription status
-- [x] IPO subscription splits
+- [x] IPO lot size (evidence: ios/StockApp/stockme/stockme/Views/IPODetailView.swift:lotSize)
+- [x] IPO subscription status (evidence: ios/StockApp/stockme/stockme/Views/IPODetailView.swift:subscription; backend/routers/ipo.py:get_ipo_subscription_status)
+- [x] IPO subscription splits (evidence: ios/StockApp/stockme/stockme/Views/IPODetailView.swift:qib)
 - [ ] Basis-of-allotment date
 - [ ] Refund date
 - [ ] Demat credit date
-- [x] Listing date
+- [x] Listing date (evidence: ios/StockApp/stockme/stockme/Views/IPODetailView.swift:listingDate)
 - [ ] DRHP links
 - [ ] RHP links
 
 ## 6. Mutual Funds Stack
-- [x] Mutual fund discovery
+- [x] Mutual fund discovery (evidence: ios/StockApp/stockme/stockme/Views/MutualFundDiscoveryView.swift:MutualFundDiscoveryView; backend/routers/mutual_funds.py:get_mutual_funds)
 - [ ] Mutual fund comparison
-- [x] Mutual fund tracking
-- [x] Fund details
-- [x] Latest NAV
-- [x] Historical NAV
-- [x] Historical performance
+- [ ] Mutual fund tracking (no mutual-fund holdings in the portfolio; see Section 7)
+- [x] Fund details (evidence: ios/StockApp/stockme/stockme/Views/MutualFundDetailView.swift:MutualFundDetailView; backend/routers/mutual_funds.py:get_mutual_fund_detail)
+- [x] Latest NAV (evidence: ios/StockApp/stockme/stockme/Views/MutualFundDetailView.swift:NAV)
+- [ ] Historical NAV (MutualFundDetailView has a NAV chart, but mutual_fund_service.get_nav_history returns [] until an AMFI historical-NAV feed exists)
+- [x] Historical performance (evidence: ios/StockApp/stockme/stockme/Views/MutualFundDetailView.swift:returns1y)
 - [ ] Rolling returns (calculator exists, not yet wired to an endpoint/UI)
-- [x] Riskometer
-- [x] SIP returns
-  - [x] Absolute returns
-  - [x] Annualized returns
-  - [x] Period-specific SIP returns
+- [x] Riskometer (evidence: ios/StockApp/stockme/stockme/Views/MutualFundDetailView.swift:Riskometer)
+- [ ] SIP returns (only a forward SIP projection (SIPCalculatorSheet), not historical SIP returns)
+  - [ ] Absolute returns
+  - [ ] Annualized returns
+  - [ ] Period-specific SIP returns
 - [ ] MC30
   - [ ] Curated 30-fund basket
   - [ ] Core categories
   - [ ] Satellite categories
 - [ ] Mutual fund screeners
 - [ ] User risk assessment
-- [x] AUM data
-- [x] Expense ratio data
+- [x] AUM data (evidence: ios/StockApp/stockme/stockme/Views/MutualFundDetailView.swift:aum)
+- [x] Expense ratio data (evidence: ios/StockApp/stockme/stockme/Views/MutualFundDetailView.swift:expenseRatio)
 - [ ] Fund portfolio holdings (model/UI scaffolded, backend endpoint not implemented)
-- [x] Fund manager details
-- [x] AMFI NAV integration
+- [x] Fund manager details (evidence: ios/StockApp/stockme/stockme/Views/MutualFundDetailView.swift:fundManager)
+- [x] AMFI NAV integration (manual CLI harvester; not scheduled) (evidence: backend/services/amfi_nav_harvester.py:parse_amfi_nav_text)
 - [ ] AMC disclosure integration
 - [ ] Mutual fund transaction support inside portfolio
   - [ ] SIP (calculator only, not wired into portfolio transactions)
@@ -283,212 +294,212 @@
   - [ ] Dividends
 
 ## 7. Portfolio and Wealth Tracking Stack
-- [x] Multi-asset portfolio tracking
-  - [x] Stocks
-  - [x] Mutual funds
-  - [x] Gold
-  - [x] Bullion
-  - [x] Bank deposits
-  - [x] Fixed deposits
-  - [x] Property
-  - [x] ULIPs
-  - [x] Loans
-- [x] Net worth dashboard
-- [x] Portfolio tabs
-  - [x] Stocks
-  - [x] Mutual Funds
-  - [x] ULIPs
-  - [x] Bullion
-  - [x] Property
-- [x] Real-time P&L
-- [x] Daily profit/loss tracking
-- [x] Asset allocation tracking
-- [x] Transaction history
-- [x] Manual transaction entry
-- [x] PDF contract-note upload
-- [x] Excel upload
-- [x] CAS import
-- [x] Scheduled transaction updates
-  - [x] Stock bonuses
-  - [x] Stock splits
-  - [x] Dividends
-  - [x] Tax events
-  - [x] Mutual fund SIP updates
-  - [x] Mutual fund STP updates
-  - [x] Mutual fund SWP updates
-  - [x] Mutual fund dividends
-  - [x] ULIP premium reminders
-  - [x] Fixed-deposit recurring transactions
-  - [x] Fixed-deposit reminders
-  - [x] Loan EMI reminders
-- [x] Corporate-action adjustment
-- [x] Filtered portfolio news
-- [x] Research linked to holdings
-- [x] Expert recommendations linked to holdings
-- [x] Portfolio alerts
-- [x] Reports
-  - [x] Profit/loss reports
-  - [x] Capital gains reports
-  - [x] Performance reports
-  - [x] Cash-flow reports
-  - [x] Tax reports
-  - [x] Other portfolio reports
-- [x] XIRR calculation
-- [x] Capital-gains calculation
-- [x] Portfolio X-Ray
-  - [x] Asset allocation diagnostics
-  - [x] Portfolio risk diagnostics
-  - [x] Mutual fund overlap analysis
-  - [x] Underlying stock exposure mapping
+- [ ] Multi-asset portfolio tracking (POST /portfolio/multi-asset/transaction accepts STOCK/MF/GOLD/FD, but iOS records stocks only)
+  - [x] Stocks (evidence: ios/StockApp/stockme/stockme/Views/PortfolioScreen.swift:PortfolioScreen; backend/routers/portfolio.py:portfolio_endpoint)
+  - [ ] Mutual funds
+  - [ ] Gold
+  - [ ] Bullion
+  - [ ] Bank deposits
+  - [ ] Fixed deposits
+  - [ ] Property
+  - [ ] ULIPs
+  - [ ] Loans
+- [ ] Net worth dashboard (GET /api/v1/market/net-worth-ledger exists; no iOS screen)
+- [ ] Portfolio tabs (the Portfolio tabs are Holdings / Watchlist / Journal / Inbox, not asset classes)
+  - [x] Stocks (evidence: ios/StockApp/stockme/stockme/Views/PortfolioScreen.swift:Holdings)
+  - [ ] Mutual Funds
+  - [ ] ULIPs
+  - [ ] Bullion
+  - [ ] Property
+- [x] Real-time P&L (evidence: ios/StockApp/stockme/stockme/Views/PortfolioScreen.swift:PortfolioHeroBlock; backend/routers/portfolio.py:portfolio_endpoint)
+- [x] Daily profit/loss tracking (daily valuation snapshots) (evidence: ios/StockApp/stockme/stockme/Views/PortfolioScreen.swift:ImmersivePortfolioHeroChart; backend/routers/portfolio.py:get_valuation_history)
+- [x] Asset allocation tracking (allocation by holding) (evidence: ios/StockApp/stockme/stockme/Views/PortfolioScreen.swift:PortfolioAllocationDonutCard)
+- [ ] Transaction history (TransactionTimelineView exists but nothing navigates to it)
+- [x] Manual transaction entry (evidence: ios/StockApp/stockme/stockme/Views/ManualTransactionEntrySheet.swift:ManualTransactionEntrySheet; backend/routers/portfolio.py:portfolio_add_endpoint)
+- [ ] PDF contract-note upload
+- [ ] Excel upload (only an Excel export exists)
+- [ ] CAS import (services/parsers/cams_cas_parser.py has no callers; no upload route or iOS importer)
+- [ ] Scheduled transaction updates
+  - [ ] Stock bonuses
+  - [ ] Stock splits
+  - [ ] Dividends
+  - [ ] Tax events
+  - [ ] Mutual fund SIP updates
+  - [ ] Mutual fund STP updates
+  - [ ] Mutual fund SWP updates
+  - [ ] Mutual fund dividends
+  - [ ] ULIP premium reminders
+  - [ ] Fixed-deposit recurring transactions
+  - [ ] Fixed-deposit reminders
+  - [ ] Loan EMI reminders
+- [ ] Corporate-action adjustment
+- [x] Filtered portfolio news (evidence: backend/routers/analysis.py:holding_tickers; ios/StockApp/stockme/stockme/Views/NewsMultimediaView.swift:fetchHomeFeed)
+- [ ] Research linked to holdings
+- [ ] Expert recommendations linked to holdings (GET /api/v1/portfolio/advisor-consensus exists; its card DalalStreetConsensusCard is not reachable)
+- [x] Portfolio alerts (evidence: ios/StockApp/stockme/stockme/Views/PortfolioScreen.swift:RedFlagsSection; backend/routers/portfolio.py:portfolio_red_flags_endpoint)
+- [ ] Reports
+  - [x] Profit/loss reports (Excel export with P&L columns) (evidence: ios/StockApp/stockme/stockme/Views/PortfolioScreen.swift:exportPortfolioExcel; backend/routers/portfolio.py:export_portfolio_excel)
+  - [ ] Capital gains reports
+  - [ ] Performance reports
+  - [ ] Cash-flow reports
+  - [ ] Tax reports
+  - [ ] Other portfolio reports (the PDF export lives in PortfolioToolsCard, which nothing renders)
+- [ ] XIRR calculation (services/math_engines/xirr_calculator.py has no callers)
+- [ ] Capital-gains calculation (services/math_engines/capital_gains_calculator.py has no callers)
+- [ ] Portfolio X-Ray
+  - [ ] Asset allocation diagnostics
+  - [ ] Portfolio risk diagnostics
+  - [ ] Mutual fund overlap analysis
+  - [ ] Underlying stock exposure mapping
 
 ## 8. Watchlist, Personalization, and Habit Loop Stack
-- [x] Personalized watchlist
-  - [x] Stocks
-  - [x] Mutual funds
-  - [x] Commodities
-  - [x] Futures
-- [x] Web/mobile watchlist sync
-- [x] User-following graph
-- [x] Selectable interests
-- [x] Followed stocks
-- [x] Top-followed stocks
-- [x] Last-visited stocks
-- [x] Stock labels
-- [x] Watchlist-linked stock insights
-- [x] Watchlist-linked alerts
-- [x] Personalized news
-  - [x] Based on portfolio
-  - [x] Based on watchlist
-- [x] Personalized ticker
-- [x] Notification hub
-- [x] Re-engagement loops
+- [x] Personalized watchlist (evidence: ios/StockApp/stockme/stockme/Views/PortfolioScreen.swift:WatchlistRowView; backend/routers/user.py:watchlist_get_endpoint)
+  - [x] Stocks (evidence: ios/StockApp/stockme/stockme/Views/PortfolioScreen.swift:WatchlistRowView; backend/routers/user.py:watchlist_get_endpoint)
+  - [ ] Mutual funds
+  - [ ] Commodities
+  - [ ] Futures
+- [ ] Web/mobile watchlist sync (no web client)
+- [ ] User-following graph
+- [ ] Selectable interests
+- [ ] Followed stocks
+- [ ] Top-followed stocks
+- [ ] Last-visited stocks
+- [x] Stock labels (device-local tags) (evidence: ios/StockApp/stockme/stockme/Views/PortfolioScreen.swift:WatchlistTagsManager)
+- [ ] Watchlist-linked stock insights
+- [ ] Watchlist-linked alerts
+- [x] Personalized news (evidence: backend/routers/analysis.py:holding_tickers; ios/StockApp/stockme/stockme/Views/NewsMultimediaView.swift:fetchHomeFeed)
+  - [x] Based on portfolio (evidence: backend/routers/analysis.py:holding_tickers; ios/StockApp/stockme/stockme/Views/NewsMultimediaView.swift:fetchHomeFeed)
+  - [ ] Based on watchlist
+- [ ] Personalized ticker
+- [x] Notification hub (evidence: ios/StockApp/stockme/stockme/Views/Core/NotificationInboxView.swift:NotificationInboxView; backend/routers/notifications_inbox.py:list_notifications)
+- [ ] Re-engagement loops
 
 ## 9. Alerts and Notification Stack
-- [x] Price alerts
-- [x] Stock alerts
-- [x] News alerts
-- [x] Corporate-action alerts
-- [x] Earnings alerts
-- [x] Macro-event alerts
-- [x] Market-mover alerts
-- [x] Watchlist alerts
-- [x] Portfolio alerts
-- [x] Last-visited-stock triggers
-- [x] Notification preferences
-- [x] Push notification delivery
-- [x] Firebase Cloud Messaging / APNs-style delivery layer
-- [x] High-throughput event matching
-- [x] User-rule matching engine
+- [x] Price alerts (evidence: ios/StockApp/stockme/stockme/Views/AlertsScreen.swift:AddAlertSheet; backend/routers/alerts.py:alerts_add_endpoint; backend/services/alerts_service.py:price_alert_poller)
+- [ ] Stock alerts
+- [ ] News alerts
+- [ ] Corporate-action alerts
+- [ ] Earnings alerts (POST /api/v1/earnings/alerts stores a subscription, but nothing delivers it)
+- [ ] Macro-event alerts
+- [ ] Market-mover alerts
+- [ ] Watchlist alerts
+- [x] Portfolio alerts (evidence: ios/StockApp/stockme/stockme/Views/PortfolioScreen.swift:RedFlagsSection; backend/routers/portfolio.py:portfolio_red_flags_endpoint)
+- [ ] Last-visited-stock triggers
+- [ ] Notification preferences (NotificationPreferencesView toggles are device-local @AppStorage; the backend does not read them)
+- [x] Push notification delivery (evidence: backend/services/alerts_service.py:_send_apns_push; ios/StockApp/stockme/stockme/AppDelegate.swift:didRegisterForRemoteNotificationsWithDeviceToken)
+- [x] Firebase Cloud Messaging / APNs-style delivery layer (APNs only) (evidence: backend/services/alerts_service.py:_send_apns_push; backend/routers/notifications.py:register_device)
+- [ ] High-throughput event matching
+- [x] User-rule matching engine (price-alert poller) (evidence: backend/services/alerts_service.py:_poll_once)
 
 ## 10. News, Editorial, and Content Stack
-- [x] Latest news
-- [x] Business news
-- [x] Economy news
-- [x] Company news
-- [x] Mutual fund news
-- [x] Personal finance news
-- [x] IPO news
-- [x] Startup news
-- [x] Real estate news
-- [x] Banking news
-- [x] Opinion
-- [x] Explainers
-- [x] MC Buzz
-- [x] MC Features
-- [x] Editor’s Picks
-- [x] Tech section
-- [x] India section
-- [x] Learning Curve
-- [x] Trending events
-- [x] Exclusive interviews
-- [x] Article cards
-- [x] Personalized article feed
-- [x] Text-to-speech for articles
-- [x] News widgets
-- [x] CMS-backed editorial publishing
+- [x] Latest news (evidence: ios/StockApp/stockme/stockme/Views/NewsMultimediaView.swift:NewsMultimediaView; backend/routers/analysis.py:get_home_feed)
+- [ ] Business news
+- [ ] Economy news
+- [x] Company news (evidence: ios/StockApp/stockme/stockme/Views/StockProfile/NewsTabView.swift:NewsTabView; backend/routers/analysis.py:quick_info_endpoint)
+- [ ] Mutual fund news
+- [ ] Personal finance news
+- [ ] IPO news
+- [ ] Startup news
+- [ ] Real estate news
+- [ ] Banking news
+- [ ] Opinion
+- [ ] Explainers
+- [ ] MC Buzz
+- [ ] MC Features
+- [ ] Editor’s Picks
+- [ ] Tech section
+- [ ] India section
+- [ ] Learning Curve
+- [ ] Trending events
+- [ ] Exclusive interviews
+- [x] Article cards (evidence: ios/StockApp/stockme/stockme/Views/NewsMultimediaView.swift:NewsListRow)
+- [x] Personalized article feed (evidence: backend/routers/analysis.py:holding_tickers; ios/StockApp/stockme/stockme/Views/NewsMultimediaView.swift:fetchHomeFeed)
+- [ ] Text-to-speech for articles (no TTS code in iOS or backend; see Section 16)
+- [ ] News widgets
+- [ ] CMS-backed editorial publishing
 
 ## 11. Media Stack
-- [x] Live TV
-  - [x] CNBC AWAAZ
-  - [x] CNBC BAJAR
-  - [x] CNBC PRIME HD
-- [x] Video on demand
-- [x] Opening Bell
-- [x] Closing Bell
-- [x] Morning Trade
-- [x] Mid-day Mood Check
-- [x] Commodities Live
-- [x] Newspresso Live
-- [x] Podcasts
-  - [x] Market Minutes
-  - [x] The Week on Dalal Street
-  - [x] Simply Save
-  - [x] Policy Talks
-- [x] Audio/video thumbnails
-- [x] Streaming infrastructure
-- [x] CDN/media delivery layer
+- [ ] Live TV (no AVPlayer/VideoPlayer anywhere)
+  - [ ] CNBC AWAAZ
+  - [ ] CNBC BAJAR
+  - [ ] CNBC PRIME HD
+- [x] Video on demand (links out to harvested YouTube videos) (evidence: ios/StockApp/stockme/stockme/Views/NewsMultimediaView.swift:VideoCard; backend/routers/analysis.py:youtube_videos)
+- [ ] Opening Bell
+- [ ] Closing Bell
+- [ ] Morning Trade
+- [ ] Mid-day Mood Check
+- [ ] Commodities Live
+- [ ] Newspresso Live
+- [ ] Podcasts (the 'Podcast Network' list renders harvested YouTube videos)
+  - [ ] Market Minutes
+  - [ ] The Week on Dalal Street
+  - [ ] Simply Save
+  - [ ] Policy Talks
+- [x] Audio/video thumbnails (evidence: ios/StockApp/stockme/stockme/Views/NewsMultimediaView.swift:thumbnailUrl)
+- [ ] Streaming infrastructure
+- [ ] CDN/media delivery layer
 
 ## 12. Community and Forum Stack
-- [x] Forum homepage
-- [x] Message boards
+- [x] Forum homepage (evidence: ios/StockApp/stockme/stockme/Views/ForumHubView.swift:ForumHubView; backend/routers/forum.py:list_forum_boards)
+- [x] Message boards (evidence: backend/routers/forum.py:list_board_threads; ios/StockApp/stockme/stockme/Views/ForumHubView.swift:ForumHubView)
 - [ ] Stock-specific boards (board model supports it, no per-stock auto-provisioning yet)
-- [x] Topic-specific boards
+- [x] Topic-specific boards (evidence: backend/services/forum_service.py:list_boards; ios/StockApp/stockme/stockme/Views/ForumHubView.swift:ForumHubView)
 - [ ] Membership rules
 - [ ] Ask-the-expert
 - [ ] Top boarders
-- [x] Latest threads
-- [x] Polls
+- [x] Latest threads (evidence: backend/services/forum_service.py:list_threads; ios/StockApp/stockme/stockme/Views/ForumHubView.swift:ForumHubView)
+- [x] Polls (evidence: ios/StockApp/stockme/stockme/Views/CreateThreadView.swift:pollQuestion; backend/routers/forum.py:vote_forum_poll)
 - [ ] Historical polls
-- [x] Market sentiments (per-post sentiment tagging)
+- [ ] Market sentiments (posts are sentiment-tagged server-side by forum_moderation_service.tag_sentiment; iOS does not show it)
 - [ ] Market Minds
   - [ ] Invitation-only expert community
   - [ ] Market-professional insights
-- [x] User-generated content
-- [x] Moderation tools
-- [x] Spam filtering
-- [x] Sentiment tagging
+- [x] User-generated content (evidence: ios/StockApp/stockme/stockme/Views/CreateThreadView.swift:CreateThreadView; backend/routers/forum.py:create_forum_thread)
+- [x] Moderation tools (evidence: ios/StockApp/stockme/stockme/Views/Forum/ForumModerationViews.swift:ForumReportSheet; backend/routers/forum.py:resolve_forum_report)
+- [x] Spam filtering (evidence: backend/services/forum_moderation_service.py:is_spam; backend/routers/forum.py:create_forum_thread)
+- [ ] Sentiment tagging (server-side only; see Market sentiments above)
 
 ## 13. Personal Finance and Product Distribution Stack
-- [x] Finance tracker (backend now live: GET /api/finance/accounts, /summary, /spend-categories, POST /accounts/link-demo)
-  - [x] Bank-account linking (mock demo-linking only — no real Account Aggregator/OAuth flow)
+- [x] Finance tracker (backend now live: GET /api/finance/accounts, /summary, /spend-categories, POST /accounts/link-demo) (evidence: ios/StockApp/stockme/stockme/Views/FinanceTrackerView.swift:FinanceTrackerView; backend/routers/finance.py:get_finance_accounts)
+  - [ ] Bank-account linking (mock demo-linking only via POST /api/finance/accounts/link-demo; no real Account Aggregator/OAuth flow)
   - [ ] Account Aggregator integration
-  - [x] Balance tracking (per-account balance + aggregate summary)
-  - [x] Monthly spend tracking (mock deterministic monthly_income/monthly_spend)
-  - [x] Transaction categorization (mock fixed-weight spend-category breakdown, not real ML categorization)
-- [x] Loans marketplace (mock NBFC offers, credit score, underwriting)
-  - [x] Personal loans up to ₹50L
-  - [x] NBFC partner integrations (mock, generic NBFCs not named real brands)
+  - [x] Balance tracking (per-account balance + aggregate summary) (evidence: ios/StockApp/stockme/stockme/Views/FinanceTrackerView.swift:FinanceTrackerView; backend/routers/finance.py:get_finance_summary)
+  - [ ] Monthly spend tracking (summary shows deterministic mock monthly_income/monthly_spend, not the user's real spend)
+  - [ ] Transaction categorization (mock fixed-weight spend-category breakdown, no real transactions or ML categorization)
+- [x] Loans marketplace (mock NBFC offers, credit score, underwriting) (evidence: ios/StockApp/stockme/stockme/Views/LoanMarketplaceView.swift:LoanMarketplaceView; backend/routers/finance.py:get_loan_offers)
+  - [x] Personal loans up to ₹50L (evidence: backend/services/loan_marketplace_service.py:_MOCK_LOAN_OFFERS)
+  - [ ] NBFC partner integrations (mock offer catalog with generic NBFC names; no partner integration)
   - [ ] Cashe integration
   - [ ] L&T Finance integration
   - [ ] Fibe integration
-  - [x] Loan eligibility (mock credit score + demo underwriting rule)
-  - [x] KYC handling (POST/GET/DELETE /api/kyc/consents + /api/kyc/device-binding now live — applications no longer always fail closed once consent is granted and a device is bound; iOS UI to call these routes is still pending, tracked under Section 15 SIM-binding controls)
-  - [x] Credit score inputs (mock credit bureau service)
-  - [x] Interest-rate display
+  - [x] Loan eligibility (mock credit score + demo underwriting rule) (evidence: backend/services/loan_marketplace_service.py:_evaluate_demo_underwriting)
+  - [ ] KYC handling (partial: consent records + device-binding gate exist via /api/kyc/consents and /api/kyc/device-binding (kyc_consent_service.record_consent / bind_device, iOS AccountSecurityStatusView); no identity/KYC verification or telecom SIM check; kyc_consent_service is MOCK/DEMO)
+  - [ ] Credit score inputs (credit_bureau_mock_service only; no credit-bureau integration)
+  - [x] Interest-rate display (evidence: ios/StockApp/stockme/stockme/Views/LoanMarketplaceView.swift:interestRateDisplay)
   - [ ] EMI schedule (summary EMI calc only, no month-by-month amortization table)
-  - [ ] APR disclosure
+  - [x] APR disclosure (same as §17 APR disclosure) (evidence: backend/services/disclosure_service.py:apr_disclosure; ios/StockApp/stockme/stockme/Views/DisclosureDetailView.swift:aprDisclosure)
   - [ ] Repayment illustration
   - [ ] Lending-service-provider disclosures
-- [x] Fixed deposits (mock FD marketplace: 8 schemes across 7 issuer names)
-  - [x] FD discovery (GET /api/fixed-deposits/schemes, filterable by tenure)
-  - [x] FD comparison (client-side sort by rate/tenure)
-  - [x] FD booking (POST /api/fixed-deposits/bookings, mock instant settlement)
-  - [x] One-time SIM binding (reuses POST /api/kyc/device-binding; booking fails closed without it)
-  - [x] KYC completion (reuses POST /api/kyc/consents "sim_binding"; booking fails closed without it)
-  - [x] UPI payment (mock rail selection only, explicitly labeled demo — no real payment collection)
-  - [x] Net banking payment (mock rail selection only, explicitly labeled demo — no real payment collection)
-  - [x] Fixed-deposit calculator (POST /api/fixed-deposits/calculator, quarterly-compounding, wired into Tools hub)
+- [x] Fixed deposits (mock FD marketplace: 8 schemes across 7 issuer names) (evidence: ios/StockApp/stockme/stockme/Views/FixedDepositListView.swift:FixedDepositListView; backend/routers/fixed_deposits.py:get_fd_schemes)
+  - [x] FD discovery (GET /api/fixed-deposits/schemes, filterable by tenure) (evidence: backend/routers/fixed_deposits.py:get_fd_schemes; ios/StockApp/stockme/stockme/Views/FixedDepositListView.swift:FixedDepositListView)
+  - [x] FD comparison (client-side sort by rate/tenure) (evidence: ios/StockApp/stockme/stockme/ViewModels/FixedDepositViewModel.swift:SortOrder)
+  - [x] FD booking (POST /api/fixed-deposits/bookings, mock instant settlement) (evidence: ios/StockApp/stockme/stockme/Views/FixedDepositBookingView.swift:FixedDepositBookingView; backend/routers/fixed_deposits.py:create_fd_booking)
+  - [ ] One-time SIM binding (partial: FD booking reuses the POST /api/kyc/device-binding device-binding gate (fixed_deposit_service._check_kyc_gate); no identity/KYC verification or telecom SIM check; kyc_consent_service is MOCK/DEMO)
+  - [ ] KYC completion (partial: FD booking requires a "sim_binding" consent row (fixed_deposit_service.REQUIRED_CONSENT_TYPE); no identity/KYC verification or telecom SIM check; kyc_consent_service is MOCK/DEMO, no government ID collected)
+  - [ ] UPI payment (mock rail selection in FD booking, labeled demo; no real payment collection)
+  - [ ] Net banking payment (mock rail selection in FD booking, labeled demo; no real payment collection)
+  - [x] Fixed-deposit calculator (POST /api/fixed-deposits/calculator, quarterly-compounding, reachable from the FD list toolbar) (evidence: ios/StockApp/stockme/stockme/Views/FixedDepositListView.swift:FixedDepositCalculatorView; backend/routers/fixed_deposits.py:post_fd_calculator)
 - [ ] Credit cards
-- [x] Credit score
+- [ ] Credit score (GET /api/finance/credit-score exists; no iOS screen)
 - [ ] Fixed-income utilities
-- [x] Tax/planning calculators
+- [ ] Tax/planning calculators (no income-tax calculator; see Calculators below)
 - [ ] Real-estate analytics
-- [x] Calculators
-  - [x] SIP calculator
-  - [x] EMI calculator
-  - [x] Income-tax calculator
-  - [x] Gratuity calculator
-  - [x] Fixed-deposit calculator
+- [x] Calculators (Settings → Calculators) (evidence: ios/StockApp/stockme/stockme/Views/CalculatorsView.swift:CalculatorsView; ios/StockApp/stockme/stockme/Views/SettingsScreen.swift:showCalculators)
+  - [x] SIP calculator (evidence: ios/StockApp/stockme/stockme/Views/CalculatorsView.swift:GenericSIPCalculatorContent)
+  - [x] EMI calculator (evidence: ios/StockApp/stockme/stockme/Views/CalculatorsView.swift:EMICalculatorContent; ios/StockApp/stockme/stockme/Views/EMICalculatorView.swift:EMICalculatorContent)
+  - [ ] Income-tax calculator
+  - [x] Gratuity calculator (evidence: ios/StockApp/stockme/stockme/Views/CalculatorsView.swift:GratuityCalculatorContent; ios/StockApp/stockme/stockme/Views/GratuityCalculatorView.swift:GratuityCalculatorContent)
+  - [x] Fixed-deposit calculator (evidence: ios/StockApp/stockme/stockme/Views/FixedDepositListView.swift:FixedDepositCalculatorView)
 
 ## 14. Premium Subscription and Monetization Stack
 - [ ] Free tier
@@ -525,32 +536,32 @@
   - [ ] Market-veteran ideas
   - [ ] Centralized dashboard
   - [ ] All PRO features
-- [x] Subscription management (mock, client-side plan catalog)
-  - [x] Monthly SKUs
+- [x] Subscription management (mock, client-side plan catalog) (evidence: ios/StockApp/stockme/stockme/Views/SubscriptionManagementView.swift:SubscriptionManagementView; backend/routers/subscription.py:get_subscription)
+  - [x] Monthly SKUs (evidence: ios/StockApp/stockme/stockme/Models/SubscriptionModels.swift:monthly; backend/services/subscription_service.py:_MONTHLY_DELTA)
   - [ ] Quarterly SKUs
-  - [x] Annual SKUs
+  - [x] Annual SKUs (evidence: ios/StockApp/stockme/stockme/Models/SubscriptionModels.swift:annual; backend/services/subscription_service.py:_ANNUAL_DELTA)
   - [ ] Multiple iOS PRO price variants
-  - [x] SuperPro monthly SKU
-  - [x] SuperPro annual SKU
-- [x] Paywall triggers (PaywallView now calls GET /api/v1/subscription/entitlements and renders the server-returned entitlement keys; the comparison matrix is client-side but lists only the 6 enforced features, with no tier quotas since none are enforced)
-- [x] Entitlement management (entitlement_service.py + require_entitlement() dependency; enforced on 6 real endpoints — predictions/performance, sector-rotation, fundamentals valuation/risk-signals, strategy backtest, options payoff. Deliberately left ungated: Alpha Generators, WhatsApp/AI stock alerts, curated chart patterns, market-veteran ideas, smart calendars, forum premium boards — none of these have a real corresponding backend feature in this codebase, so no stub endpoints were fabricated to gate)
-- [x] Premium upsell surfaces
+  - [x] SuperPro monthly SKU (evidence: ios/StockApp/stockme/stockme/Models/SubscriptionModels.swift:superPro)
+  - [x] SuperPro annual SKU (evidence: ios/StockApp/stockme/stockme/Models/SubscriptionModels.swift:superPro)
+- [x] Paywall triggers (PaywallView shows only server-enforced entitlement keys from GET /api/v1/subscription/entitlements) (evidence: ios/StockApp/stockme/stockme/Views/PaywallView.swift:catalog; backend/routers/subscription.py:get_entitlements)
+- [x] Entitlement management (entitlement_service.py + require_entitlement() dependency; enforced on 6 real endpoints — predictions/performance, sector-rotation, fundamentals valuation/risk-signals, strategy backtest, options payoff. Deliberately left ungated: Alpha Generators, WhatsApp/AI stock alerts, curated chart patterns, market-veteran ideas, smart calendars, forum premium boards — none of these have a real corresponding backend feature in this codebase, so no stub endpoints were fabricated to gate) (evidence: backend/services/entitlement_service.py:has_entitlement; backend/core/entitlement_gate.py:require_entitlement)
+- [x] Premium upsell surfaces (evidence: ios/StockApp/stockme/stockme/Components/PremiumUpsellBanner.swift:PremiumUpsellBanner)
 - [ ] Programmatic advertising
 - [ ] Subscription revenue
 - [ ] Financial-product lead generation / commission revenue
 
 ## 15. Account, Settings, Privacy, and Platform Stack
-- [ ] User login
-- [x] My Profile
-- [x] KYC details (AccountSecurityStatusView shows consent + device-binding status, reachable from Settings → Account Security)
-- [x] Subscription management
-- [ ] My Alerts configuration
-- [x] Data privacy controls
-- [x] Account security (mock password change, sessions, 2FA placeholder)
-- [x] SIM-binding controls (AccountSecurityStatusView: masked bound-device display + "Bind This Device" action via POST /api/kyc/device-binding)
-- [x] Data deletion (request workflow, non-destructive)
-- [x] Data erasure requests
-- [x] Consent withdrawal
+- [x] User login (evidence: backend/routers/auth.py:login_endpoint; ios/StockApp/stockme/stockme/Views/LoginScreen.swift:LoginScreen)
+- [x] My Profile (evidence: ios/StockApp/stockme/stockme/Views/ProfileSettingsView.swift:ProfileSettingsView)
+- [ ] KYC details (partial: AccountSecurityStatusView shows mock consent + device-binding status from Settings → Account Security; no identity/KYC verification or telecom SIM check; kyc_consent_service is MOCK/DEMO)
+- [x] Subscription management (evidence: ios/StockApp/stockme/stockme/Views/SubscriptionManagementView.swift:SubscriptionManagementView)
+- [x] My Alerts configuration (evidence: ios/StockApp/stockme/stockme/Views/AlertsScreen.swift:AlertsScreen; backend/routers/alerts.py:alerts_get_endpoint)
+- [x] Data privacy controls (evidence: ios/StockApp/stockme/stockme/Views/SettingsScreen.swift:hidePortfolioValues)
+- [ ] Account security (AccountSecurityView has a mock password change, sessions list and a 2FA placeholder)
+- [ ] SIM-binding controls (partial: device-binding only — masked bound-device display + "Bind This Device" via POST /api/kyc/device-binding (AccountSecurityStatusView.bindDevice); no identity/KYC verification or telecom SIM check; kyc_consent_service is MOCK/DEMO)
+- [ ] Data deletion (request queue only via POST /api/v1/compliance/deletion-requests, no iOS entry point; erasure pipeline tracked in FINSEC-03)
+- [ ] Data erasure requests (request queue only via POST /api/v1/compliance/deletion-requests, no iOS entry point; erasure pipeline tracked in FINSEC-03)
+- [x] Consent withdrawal (evidence: backend/services/kyc_consent_service.py:record_consent; ios/StockApp/stockme/stockme/Views/AccountSecurityStatusView.swift:grantConsent)
 - [ ] Support workflows
 - [ ] Platform support
   - [ ] Android
@@ -574,7 +585,7 @@
 - [ ] Page-view activity collection
 - [ ] Third-party advertising integration
 - [ ] Third-party IT/data analytics sharing
-- [x] Deletion-request workflow
+- [ ] Deletion-request workflow (request queue only via POST /api/v1/compliance/deletion-requests, no iOS entry point; erasure pipeline tracked in FINSEC-03)
 
 ## 16. Data Source and Backend Architecture Stack
 - [ ] Market-data platform
@@ -661,18 +672,18 @@
 - [ ] RBI Account Aggregator compliance
 - [ ] FIU consent architecture
 - [ ] Time-bound user consent
-- [x] Revocable consent flows
+- [x] Revocable consent flows (evidence: backend/services/kyc_consent_service.py:revoke_consent; backend/routers/kyc.py:delete_consent; ios/StockApp/stockme/stockme/Views/AccountSecurityStatusView.swift:grantConsent)
 - [ ] Data minimization
-- [x] RBI digital lending compliance (illustrative demo disclosure screen only — GET /api/v1/compliance/disclosures/digital_lending_compliance — not real regulatory filing/registration)
-- [x] Lending Service Provider requirements (illustrative demo disclosure screen only, same caveat as above)
-- [x] Key Fact Statement display (computed dynamically from real LoanOffer/FixedDepositScheme data — GET /api/v1/compliance/key-fact-statement — linked from Loan Application and FD Booking flows)
-- [x] APR disclosure (APR = interest_rate_pct + amortized processing fee, computed per offer; explanatory screen at disclosures/apr_disclosure)
-- [x] Direct lender-borrower fund flow (mock instant disbursement to the borrower's primary linked bank account — POST/GET .../loan-applications/{id}/disburse(ment); fails closed with a reason if no bank account is linked, never a silent no-op — no real fund transfer/NBFC rail)
-- [x] KYC security (consent + device-binding gate on loan approval)
-- [x] SIM-binding fraud prevention (still explicitly MOCK — no real telecom integration — but bind_device() now detects cross-user device reuse and rate-limits rapid rebinding, with every attempt logged to an audit table and surfaced via GET /api/kyc/fraud-signals + an Account Security Signals UI section)
-- [x] Privacy policy compliance (illustrative demo policy screen only — GET /api/v1/compliance/disclosures/privacy_policy — not real legal copy)
-- [x] Data deletion compliance
-- [x] Third-party data-sharing governance (illustrative demo disclosure screen only — GET /api/v1/compliance/disclosures/data_sharing_governance)
+- [ ] RBI digital lending compliance (illustrative demo disclosure screen only via GET /api/v1/compliance/disclosures/digital_lending_compliance; no regulatory compliance work)
+- [ ] Lending Service Provider requirements (illustrative demo disclosure screen only; no regulatory compliance work)
+- [x] Key Fact Statement display (computed dynamically from real LoanOffer/FixedDepositScheme data — GET /api/v1/compliance/key-fact-statement — linked from Loan Application and FD Booking flows) (evidence: backend/routers/compliance.py:get_key_fact_statement; ios/StockApp/stockme/stockme/Views/LoanApplicationView.swift:KeyFactStatementView)
+- [x] APR disclosure (APR = interest_rate_pct + amortized processing fee, computed per offer; explanatory screen at disclosures/apr_disclosure) (evidence: backend/services/disclosure_service.py:apr_disclosure; ios/StockApp/stockme/stockme/Views/DisclosureDetailView.swift:aprDisclosure)
+- [ ] Direct lender-borrower fund flow (mock instant disbursement record via .../loan-applications/{id}/disburse, fails closed without a linked bank account; no real fund transfer or NBFC rail)
+- [ ] KYC security (partial: consent + device-binding gate on loan approval (loan_marketplace_service._check_kyc_gate); no identity/KYC verification or telecom SIM check; kyc_consent_service is MOCK/DEMO)
+- [ ] SIM-binding fraud prevention (no telecom SIM verification; bind_device() only flags cross-user device reuse and rate-limits rebinding, surfaced via GET /api/kyc/fraud-signals)
+- [ ] Privacy policy compliance (illustrative demo policy screen only via GET /api/v1/compliance/disclosures/privacy_policy; not real legal copy)
+- [ ] Data deletion compliance (request queue only via POST /api/v1/compliance/deletion-requests, no iOS entry point; erasure pipeline tracked in FINSEC-03)
+- [ ] Third-party data-sharing governance (illustrative demo disclosure screen only via GET /api/v1/compliance/disclosures/data_sharing_governance; no governance process)
 
 ## 18. Implementation Complexity Stack
 - [ ] Easy complexity
