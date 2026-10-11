@@ -11,6 +11,7 @@ from helpers import (
 from database import MarketErrorLog
 from services.harvester_reformatter import strip_emoji
 from services.notifications_inbox import create_notification
+from services.sebi_registry import registration_for_channel
 
 _watchlist_price_cache: dict = {}
 _WATCHLIST_CACHE_TTL = 120
@@ -236,16 +237,18 @@ def get_experts_service() -> dict:
             sc = {s: d["stances"].count(s) for s in set(d["stances"])}
             dominant = max(sc, key=sc.get) if sc else "Neutral"
             focus = list(d["tickers"])[:4]
+            # Registration only from the SEBI registry, never assumed.
+            reg = registration_for_channel(d["channel_id"], name)
             experts.append({
                 "id": d["channel_id"] or name.replace(" ", "_"),
                 "name": name,
-                "sebi_reg_id": None,
+                "sebi_reg_id": reg,
                 "years_experience": 0,
                 "strategy": f"{dominant.title()} Analyst",
                 "focus_tags": focus,
                 "post_count": d["post_count"],
-                "is_verified": True,
-                "bio": f"Financial analyst covering {', '.join(focus[:3])}. "
+                "is_verified": reg is not None,
+                "bio": f"YouTube channel covering {', '.join(focus[:3])}. "
                        f"{d['post_count']} tracked calls in Nivesh.",
             })
         experts.sort(key=lambda e: e["post_count"], reverse=True)

@@ -14,6 +14,7 @@ from pathlib import Path
 
 import anthropic
 from services.llm_utils import deepseek_chat as _deepseek_chat, DEEPSEEK_MODEL as _DEEPSEEK_MODEL
+from services.sebi_registry import REGISTERED_CHANNELS
 
 # ---------------------------------------------------------------------------
 # Logging — handlers configured by the caller (CRON)
@@ -55,13 +56,8 @@ YOUTUBE_API_KEY: str = os.environ.get("YOUTUBE_API_KEY", "").strip()
 # Advisor registry
 # ---------------------------------------------------------------------------
 
-ADVISOR_REGISTRY = [
-    {"name": "SOIC", "channel_id": "UCB7GnQlJPIL6rBBqEoX87vA", "youtube_handle": "@soicfinance"},
-    {"name": "Basant Maheshwari", "channel_id": "UCqvuLvdIkUjAtSFrKw5LhXg", "youtube_handle": "@bmtheequitydesk"},
-    {"name": "Shankar Sharma", "channel_id": "UCAk_whGHM2aAiZZADLF_GOw", "youtube_handle": "@FirstGlobalAdvisory"},
-    {"name": "Neeraj Marathe", "channel_id": "UCfJkQXEUC8QH9LgPbaMFjdw", "youtube_handle": "@neerajmarathe"},
-    {"name": "Valuepickr", "channel_id": "UCBEHGVRm5ZG-NS4ZRbczxQQ", "youtube_handle": "@rupakroyc"},
-]
+# Only SEBI-registered channels with a known channel_id (services/sebi_registry.py).
+ADVISOR_REGISTRY = [c for c in REGISTERED_CHANNELS if c.get("channel_id")]
 
 # ---------------------------------------------------------------------------
 # DeepSeek V4 Flash stance extraction (Tier 1)

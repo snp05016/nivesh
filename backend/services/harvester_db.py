@@ -21,6 +21,7 @@ Public API:
 from __future__ import annotations
 
 import json
+import logging
 import os
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -141,6 +142,29 @@ class SourceHealth(Base):
 def init_harvester_db() -> None:
     """Create all tables. Safe to call repeatedly."""
     Base.metadata.create_all(bind=ENGINE)
+    _scrub_unverified_sebi_claims()
+
+
+def _scrub_unverified_sebi_claims() -> None:
+    """Reset SEBI claims on cards from unregulated sources (REG-01).
+
+    Older YouTube cards carry the former 'SEBI-registered finance creator' default
+    and LLM-written credentials can claim the same. Idempotent; never raises.
+    """
+    try:
+        from services.harvester_reformatter import REGULATED_SOURCE_TYPES, derive_credential
+        claim = (
+            HarvestedCard.source_type.notin_(sorted(REGULATED_SOURCE_TYPES)),
+            HarvestedCard.expert_credential.ilike("%sebi%"),
+        )
+        with get_session() as s:
+            for (source_type,) in s.query(HarvestedCard.source_type).filter(*claim).distinct().all():
+                s.query(HarvestedCard).filter(HarvestedCard.source_type == source_type, *claim).update(
+                    {HarvestedCard.expert_credential: derive_credential(source_type)},
+                    synchronize_session=False,
+                )
+    except Exception as e:
+        logging.getLogger("harvester.db").warning("SEBI credential scrub failed: %s", e)
 
 
 @contextmanager

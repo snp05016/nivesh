@@ -90,8 +90,16 @@ CREDENTIAL_BY_SOURCE: dict[str, str] = {
     "EXPERT_COLUMN": "Named, bylined market columnist — editorial accountability",
     "FINANCIAL_JOURNALIST": "Named financial journalist — professional standards",
     "EARNINGS_TRANSCRIPT": "Company management's own words — primary source",
-    "YOUTUBE": "SEBI-registered finance creator / market commentator",
+    "YOUTUBE": "Finance video channel / market commentator (registration not verified)",
 }
+
+# Only these sources may carry a registration / licence / certification claim; on
+# every other card an LLM-written claim is replaced by the source default.
+REGULATED_SOURCE_TYPES = frozenset({
+    "SEBI_FILING", "EXCHANGE_FILING", "SEBI_RIA_NOTE", "CRISIL_RATING",
+    "ICRA_RATING", "CARE_RATING", "INDIA_RATINGS", "AMFI_DATA",
+})
+_REGISTRATION_CLAIM_RE = re.compile(r"sebi|regist|certif|licen|verified", re.IGNORECASE)
 
 
 def derive_card_type(source_type: str) -> str:
@@ -284,7 +292,8 @@ def reformat_single(
         cred = int(parsed.get("credibility_score", floor_cred))
     except (TypeError, ValueError):
         cred = floor_cred
-    cred = max(0, min(10, cred))
+    # The LLM reads untrusted text: it may lower the score, never raise it above the source default.
+    cred = max(0, min(floor_cred, cred))
     if cred < MIN_CREDIBILITY:
         return None  # explicit rejection
 
@@ -309,7 +318,12 @@ def reformat_single(
     if not title:
         title = summary[:117] + ("..." if len(summary) > 117 else "")
 
-    credential = strip_emoji(str(parsed.get("expert_credential", ""))).strip() or derive_credential(source_type)
+    credential = strip_emoji(str(parsed.get("expert_credential", ""))).strip()
+    if not credential or (
+        (source_type or "").upper() not in REGULATED_SOURCE_TYPES
+        and _REGISTRATION_CLAIM_RE.search(credential)
+    ):
+        credential = derive_credential(source_type)
 
     return {
         "title": title,

@@ -203,34 +203,6 @@ struct HarvesterSourceStatus: Codable, Identifiable {
     }
 }
 
-// MARK: - Expert Network
-
-struct MarketExpert: Identifiable {
-    let id: String
-    let name: String
-    let sebiRegId: String?
-    let yearsExperience: Int
-    let strategy: String          // e.g. "Harmonic Trading Strategy"
-    let focusTags: [String]       // e.g. ["Charts", "Currency", "Gold"]
-    let postCount: Int
-    let isVerified: Bool
-    let bio: String
-}
-
-struct ExpertPost: Identifiable {
-    let id: String
-    let expertId: String
-    let expertName: String
-    let content: String           // unhedged plain-english analysis
-    let ticker: String?
-    let chartImageUrl: String?
-    let publishedAt: Date
-    let likeCount: Int
-    let isPremium: Bool
-    var isLiked: Bool = false
-    var isBookmarked: Bool = false
-}
-
 // MARK: - OTC Advisory
 
 struct OTCAdvisory: Identifiable {

@@ -34,6 +34,7 @@ from services.scraper import (
 from services.options_scraper import fetch_option_chain, compute_derivatives_metrics
 from services.nse_data_provider import get_price_history, get_fundamentals
 from services.filings_extractor import harvest_filings, get_cached_filings
+from services.sebi_registry import REGISTERED_CHANNELS
 
 router = APIRouter(tags=["Market Data"])
 
@@ -2606,183 +2607,39 @@ Cached 15 minutes. Raises 503 if NSE is unreachable.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Ideas Workspace — Verified Advisor Directory & Advisory Feed
+# Ideas Workspace — Registered Channel Directory & Advisory Feed
 # ═══════════════════════════════════════════════════════════════════════════════
-
-# Real SEBI-registered research analysts who publish public market commentary.
-SEBI_ADVISORS = [
-    {
-        "name": "Rajesh Palviya",
-        "sebi": "INH000002347",
-        "experience": 18,
-        "framework": "Technical Analysis, Volume Profile, Options Data",
-        "bio": (
-            "Rajesh Palviya is Head of Technical & Derivatives Research at Axis Securities. "
-            "He specializes in reading institutional order flow, volume profile analysis, and "
-            "options market internals. His daily market outlook — published on the Axis Securities "
-            "YouTube channel — covers Nifty/Bank Nifty levels, sector rotation, and derivatives "
-            "data interpretation. Palviya's methodology centres on identifying high-probability "
-            "zones where institutional accumulation or distribution is visible through volume "
-            "anomalies and open interest build-up."
-        ),
-    },
-    {
-        "name": "Anand James",
-        "sebi": "INH000003819",
-        "experience": 16,
-        "framework": "Wyckoff Method, Elliott Wave, Intermarket Analysis",
-        "bio": (
-            "Anand James is Chief Market Strategist at Geojit Financial Services. His analytical "
-            "framework combines classical Wyckoff accumulation/distribution schematics with Elliott "
-            "Wave counts to identify structural market phases. James is known for his intermarket "
-            "approach — correlating currency, commodity, and bond market signals with equity index "
-            "positioning. His research notes frequently appear on Geojit's official platforms."
-        ),
-    },
-    {
-        "name": "Sneha Seth",
-        "sebi": "INH000008241",
-        "experience": 14,
-        "framework": "Derivatives Analytics, PCR, Max Pain Theory",
-        "bio": (
-            "Sneha Seth is a SEBI-registered research analyst specializing in derivatives market "
-            "structure. She uses options chain analysis, put-call ratios, and max pain theory to "
-            "gauge market sentiment and identify strike-level concentration. Her work focuses on "
-            "decoding institutional hedging behaviour through weekly and monthly expiry data "
-            "patterns published across financial media platforms."
-        ),
-    },
-    {
-        "name": "Gaurav Bissa",
-        "sebi": "INH000006853",
-        "experience": 15,
-        "framework": "Price Action, Ichimoku Cloud, Momentum",
-        "bio": (
-            "Gaurav Bissa is a technical research analyst known for his clean price action "
-            "methodology. He employs Ichimoku Kinko Hyo overlays, momentum oscillators, and "
-            "multi-timeframe analysis to filter noise and identify trend continuations. His "
-            "commentary — published through LKP Securities and financial news channels — "
-            "emphasizes risk-reward ratios and stop-loss discipline."
-        ),
-    },
-    {
-        "name": "Nagaraj Shetti",
-        "sebi": "INH000009712",
-        "experience": 20,
-        "framework": "Classical Chart Patterns, Fibonacci, Market Cycles",
-        "bio": (
-            "Nagaraj Shetti is a senior technical research analyst at HDFC Securities with two "
-            "decades of market experience. His framework relies on classical chart patterns — "
-            "head and shoulders, double tops/bottoms, flags, and wedges — combined with Fibonacci "
-            "retracement and extension levels. Shetti's daily notes cover Nifty, Bank Nifty, and "
-            "high-conviction stock picks with clearly defined entry, target, and stop-loss levels."
-        ),
-    },
-    {
-        "name": "Chandan Taparia",
-        "sebi": "INH000011523",
-        "experience": 13,
-        "framework": "Options Strategies, F&O Data Analysis",
-        "bio": (
-            "Chandan Taparia is a derivatives analyst at Motilal Oswal Financial Services. He "
-            "specializes in futures and options data interpretation — tracking rollover percentages, "
-            "open interest shifts, and implied volatility surfaces to construct options-based "
-            "trading strategies. His daily F&O commentary is widely followed by retail traders "
-            "for Nifty and stock-specific derivative trade ideas."
-        ),
-    },
-    {
-        "name": "Milan Vaishnav",
-        "sebi": "INH000013092",
-        "experience": 17,
-        "framework": "Relative Strength, Sector Rotation, Market Breadth",
-        "bio": (
-            "Milan Vaishnav is a CMT charterholder and founder of Gemstone Equity Research. "
-            "His analytical approach centres on relative strength analysis, sector rotation "
-            "dynamics, and market breadth indicators. Vaishnav's research identifies leadership "
-            "shifts across sectors using relative rotation graphs (RRG) and advance-decline "
-            "data, helping investors allocate capital to outperforming segments."
-        ),
-    },
-    {
-        "name": "Shubham Agarwal",
-        "sebi": "INH000014768",
-        "experience": 12,
-        "framework": "Quantitative Momentum, Mean Reversion, Algo Trading",
-        "bio": (
-            "Shubham Agarwal is a SEBI-registered quantitative research analyst specializing in "
-            "systematic trading strategies. His work integrates momentum factor models, mean "
-            "reversion signals, and volatility regime filters to construct rule-based portfolios. "
-            "Agarwal publishes research on backtested quantitative strategies through his advisory "
-            "platform, focusing on risk-adjusted return optimization."
-        ),
-    },
-]
-
-
-def _populate_advisor_biographies() -> int:
-    """Insert SEBI_ADVISORS into the database if the table is empty.
-    Returns the number of rows inserted (0 if already populated)."""
-    try:
-        with get_session() as session:
-            if session.query(AdvisorBiography).count() > 0:
-                return 0
-            count = 0
-            for a in SEBI_ADVISORS:
-                session.add(AdvisorBiography(
-                    advisor_name=a["name"],
-                    sebi_reg_number=a["sebi"],
-                    experience_years=a["experience"],
-                    analytical_framework=a["framework"],
-                    full_biography_text=a["bio"],
-                ))
-                count += 1
-            session.commit()
-            return count
-    except Exception as e:
-        logging.info(f"[IDEAS] Failed to populate advisor biographies: {e}")
-        return 0
-
 
 # ── GET /api/v1/ideas/advisors ─────────────────────────────────────────────
 
 @router.get("/api/v1/ideas/advisors")
 def ideas_advisors_endpoint():
     """
-    Returns verified SEBI-registered research analysts with full biographies.
-Auto-populates the table from the built-in SEBI_ADVISORS list if empty.
+    Returns the YouTube channels in services/sebi_registry.py with their SEBI
+registration numbers. Built from that registry only, never from the database,
+so no unverified registration claim can be served.
 Response: { "advisors": [...], "count": N, "fetched_at": "..." }
-
-    Args:
-
-    Returns:
-        Any: The response.
     """
-    now_iso = datetime.now(timezone.utc).isoformat()
-    try:
-        _populate_advisor_biographies()
-        with get_session() as session:
-            rows = session.query(AdvisorBiography).order_by(
-                AdvisorBiography.experience_years.desc()
-            ).all()
-            return {
-                "advisors": [
-                    {
-                        "id": r.id,
-                        "advisor_name": r.advisor_name,
-                        "sebi_reg_number": r.sebi_reg_number,
-                        "experience_years": r.experience_years,
-                        "analytical_framework": r.analytical_framework,
-                        "full_biography_text": r.full_biography_text,
-                    }
-                    for r in rows
-                ],
-                "count": len(rows),
-                "fetched_at": now_iso,
-            }
-    except Exception as e:
-        log_ideas_error("ideas_advisors", str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to fetch advisors: {e}")
+    advisors = [
+        {
+            "id": i + 1,
+            "advisor_name": c["name"],
+            "sebi_reg_number": c["sebi_reg"],
+            "experience_years": 0,
+            "analytical_framework": ", ".join(t.replace("_", " ").title() for t in c["tags"]),
+            "full_biography_text": (
+                f"Registered entity: {c['entity']}. SEBI registration {c['sebi_reg']} "
+                "(verify at sebi.gov.in). Publishes market commentary on YouTube."
+            ),
+            "created_at": None,
+        }
+        for i, c in enumerate(REGISTERED_CHANNELS)
+    ]
+    return {
+        "advisors": advisors,
+        "count": len(advisors),
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 # ── GET /api/v1/ideas/feed ─────────────────────────────────────────────────

@@ -12,19 +12,23 @@ struct AdvisorBioCard: View {
                     Text(advisor.advisorName)
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(Theme.inkPrimary)
-                    Text("\(advisor.experienceYears) Years of Market Research")
-                        .font(.caption)
-                        .foregroundStyle(Theme.inkTertiary)
+                    if advisor.experienceYears > 0 {
+                        Text("\(advisor.experienceYears) Years of Market Research")
+                            .font(.caption)
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
                 }
                 Spacer()
-                // SEBI badge
-                Text("SEBI\nREG")
-                    .font(.caption2.weight(.bold))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(Theme.bullGreen)
-                    .padding(Theme.Spacing.tight)
-                    .background(Theme.bullGreen.opacity(0.08))
-                    .cornerRadius(Theme.CornerRadius.small)
+                // SEBI badge: only with the registration number the backend registry returned
+                if !advisor.sebiRegNumber.isEmpty {
+                    Text("SEBI REG\n\(advisor.sebiRegNumber)")
+                        .font(.caption2.weight(.bold))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(Theme.bullGreen)
+                        .padding(Theme.Spacing.tight)
+                        .background(Theme.bullGreen.opacity(0.08))
+                        .cornerRadius(Theme.CornerRadius.small)
+                }
             }
 
             // Framework tags
