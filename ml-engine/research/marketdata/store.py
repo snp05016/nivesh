@@ -661,9 +661,13 @@ def resolve_entity(
     isin: str | None = None,
     as_of: date | str | None = None,
     data_dir: str | Path | None = None,
+    entities: pd.DataFrame | None = None,
 ) -> str | None:
-    """entity_id for an ISIN (tried first) or a symbol, as known on ``as_of``; None if unknown."""
-    ep = load_entities(data_dir)
+    """entity_id for an ISIN (tried first) or a symbol, as known on ``as_of``; None if unknown.
+
+    ``entities`` (``load_entities`` output) avoids re-reading the file in batch callers.
+    """
+    ep = load_entities(data_dir) if entities is None else entities
     ts = pd.Timestamp(as_of) if as_of is not None else None
     if ts is not None:
         ep = ep.loc[ep["valid_from"] <= ts]
