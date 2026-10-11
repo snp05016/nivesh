@@ -4,10 +4,10 @@ Deploy backend to server: `192.168.1.122`. Use `/nivesh-deploy` skill for the fu
 
 ## Pre-Flight
 ```bash
-git checkout main
-git pull --ff-only origin main
-SHA=$(git rev-parse --short HEAD)
-git diff-index --quiet HEAD  # verify clean
+# verify clean BEFORE switching branches
+git diff-index --quiet HEAD && test -z "$(git ls-files --others --exclude-standard)" || { echo "Local tree dirty"; exit 1; }
+git fetch origin && git checkout main && git pull --ff-only origin main
+SHA=$(git rev-parse HEAD)
 ```
 
 ## Deploy Steps (AGENTS.md §6.5)
@@ -29,7 +29,7 @@ ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && \
 
 # 5. Verify SHA
 ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && \
-  git rev-parse --short HEAD"
+  git rev-parse HEAD"
 
 # 6. Restart
 ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh/backend && \
@@ -50,11 +50,15 @@ curl -s https://api.nivesh.qzz.io/api/v1/predictions/performance -H "Auth: Beare
 curl -s https://api.nivesh.qzz.io/api/v1/stocks/RELIANCE.NS/financials -H "Auth: Bearer admin"
 curl -s https://api.nivesh.qzz.io/dividends/RELIANCE.NS
 
-# Run tests on server
-ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh/backend && \
+# Run tests on server, in a throwaway worktree with no backend/.env (never the prod checkout)
+ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && \
+  git worktree add --detach /tmp/nivesh-test-$SHA $SHA && \
+  cd /tmp/nivesh-test-$SHA/backend && test ! -e .env && \
+  ENVIRONMENT=test DATABASE_URL=sqlite:////tmp/nivesh-test-$SHA/backend/stockapp_test.db \
   /home/saumyapatel/Desktop/nivesh/venv/bin/python3 -m pytest \
   tests/test_quantlab_api.py tests/test_prediction_calibration_api.py \
-  tests/test_predictions_performance.py -q"
+  tests/test_predictions_performance.py -q; rc=\$?; \
+  cd / && git -C /home/saumyapatel/Desktop/nivesh worktree remove --force /tmp/nivesh-test-$SHA; exit \$rc"
 ```
 
 ## Don't Deploy If
