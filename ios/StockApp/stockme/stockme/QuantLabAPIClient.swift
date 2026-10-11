@@ -70,8 +70,8 @@ extension NetworkManager {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(body))
         }
         do {
+            // No .convertFromSnakeCase: the models' explicit snake_case CodingKeys already map.
             let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
             return try decoder.decode(BacktestResult.self, from: data)
         } catch {
             throw NetworkError.decodingError(error.localizedDescription)
@@ -113,8 +113,8 @@ extension NetworkManager {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(body))
         }
         do {
+            // No .convertFromSnakeCase: the models' explicit snake_case CodingKeys already map.
             let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
             return try decoder.decode(RegimeBreakdownResponse.self, from: data)
         } catch {
             throw NetworkError.decodingError(error.localizedDescription)

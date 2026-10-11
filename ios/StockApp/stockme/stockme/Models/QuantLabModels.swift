@@ -288,13 +288,15 @@ struct ModelVersionsResponse: Codable {
 
 // MARK: - Backtest
 
+// `var` so synthesized Decodable reads these; a `let` with a default is never decoded.
 struct BacktestParams: Codable {
-    let horizon: String = "30d"
-    let strategyType: String = "momentum"
-    let topK: Int = 10
-    let confidenceThreshold: Double = 0.5
-    let positionSizing: String = "equal"
-    let costPreset: String = "medium"
+    var horizon: String = "30d"
+    var strategyType: String = "momentum"
+    var topK: Int = 10
+    // Backend compares against confidence_pct on a 0-100 scale (schema default 50.0).
+    var confidenceThreshold: Double = 50.0
+    var positionSizing: String = "equal"
+    var costPreset: String = "medium"
 
     enum CodingKeys: String, CodingKey {
         case horizon
@@ -307,24 +309,24 @@ struct BacktestParams: Codable {
 }
 
 struct PortfolioMetrics: Codable {
-    let grossReturn: Double = 0
-    let netReturn: Double = 0
-    let cagr: Double = 0
-    let sharpe: Double = 0
-    let sortino: Double = 0
-    let maxDrawdown: Double = 0
-    let volatility: Double = 0
-    let hitRate: Double = 0
-    let averageWin: Double = 0
-    let averageLoss: Double = 0
-    let profitFactor: Double = 0
-    let turnover: Double = 0
-    let averageHoldingPeriod: Double? = nil
-    let exposure: Double? = nil
-    let cashPercentage: Double? = nil
-    let sectorConcentration: Double? = nil
-    let drawdownDuration: Double? = nil
-    let benchmarkExcessReturn: Double = 0
+    let grossReturn: Double
+    let netReturn: Double
+    let cagr: Double
+    let sharpe: Double
+    let sortino: Double
+    let maxDrawdown: Double
+    let volatility: Double
+    let hitRate: Double
+    let averageWin: Double
+    let averageLoss: Double
+    let profitFactor: Double
+    let turnover: Double
+    let averageHoldingPeriod: Double?
+    let exposure: Double?
+    let cashPercentage: Double?
+    let sectorConcentration: Double?
+    let drawdownDuration: Double?
+    let benchmarkExcessReturn: Double
 
     enum CodingKeys: String, CodingKey {
         case cagr, sharpe, sortino, volatility, turnover, exposure
@@ -340,6 +342,31 @@ struct PortfolioMetrics: Codable {
         case sectorConcentration = "sector_concentration"
         case drawdownDuration = "drawdown_duration"
         case benchmarkExcessReturn = "benchmark_excess_return"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func num(_ key: CodingKeys) throws -> Double {
+            try c.decodeIfPresent(Double.self, forKey: key) ?? 0
+        }
+        grossReturn = try num(.grossReturn)
+        netReturn = try num(.netReturn)
+        cagr = try num(.cagr)
+        sharpe = try num(.sharpe)
+        sortino = try num(.sortino)
+        maxDrawdown = try num(.maxDrawdown)
+        volatility = try num(.volatility)
+        hitRate = try num(.hitRate)
+        averageWin = try num(.averageWin)
+        averageLoss = try num(.averageLoss)
+        profitFactor = try num(.profitFactor)
+        turnover = try num(.turnover)
+        averageHoldingPeriod = try c.decodeIfPresent(Double.self, forKey: .averageHoldingPeriod)
+        exposure = try c.decodeIfPresent(Double.self, forKey: .exposure)
+        cashPercentage = try c.decodeIfPresent(Double.self, forKey: .cashPercentage)
+        sectorConcentration = try c.decodeIfPresent(Double.self, forKey: .sectorConcentration)
+        drawdownDuration = try c.decodeIfPresent(Double.self, forKey: .drawdownDuration)
+        benchmarkExcessReturn = try num(.benchmarkExcessReturn)
     }
 }
 
