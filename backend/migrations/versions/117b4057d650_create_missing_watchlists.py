@@ -6,7 +6,7 @@ create_all'd) have no watchlists table (DB-07). Fresh databases already get it
 from the frozen baseline, hence the existence guard.
 
 Revision ID: 117b4057d650
-Revises: t4u5v6w7x8y9
+Revises: ec35eaf96b81
 Create Date: 2026-10-11
 """
 from typing import Sequence, Union
@@ -17,7 +17,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "117b4057d650"
-down_revision: Union[str, Sequence[str], None] = "t4u5v6w7x8y9"
+down_revision: Union[str, Sequence[str], None] = "ec35eaf96b81"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
