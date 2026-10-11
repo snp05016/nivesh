@@ -16,6 +16,8 @@ enum NetworkError: Error, LocalizedError {
     case analysisDiagnostic(AnalysisErrorInfo)
     /// Detailed fetch failure — endpoint, HTTP status, raw body prefix for diagnostics
     case fetchFailed(endpoint: String, status: Int, body: String)
+    /// HTTP 402 from core/entitlement_gate.py: the caller's plan doesn't include this feature.
+    case paymentRequired(requiredTier: String?, message: String?)
 
     /// User-facing copy. Never contains endpoints, HTTP codes or response bodies;
     /// those live in `diagnosticDetail` for logs and DEBUG-only diagnostics.
@@ -37,6 +39,31 @@ enum NetworkError: Error, LocalizedError {
             return "\(info.userMessage) \(info.suggestedActionText)"
         case .fetchFailed(_, let status, _):
             return Self.userMessage(status: status, serverDetail: nil)
+        case .paymentRequired:
+            return "This feature is part of Nivesh \((requiredTier ?? .pro).displayName). Upgrade to unlock it."
+        }
+    }
+
+    /// Tier a 402 says is needed (PRO when the server omitted or sent an unknown tier); nil for other errors.
+    var requiredTier: SubscriptionTier? {
+        guard case .paymentRequired(let raw, _) = self else { return nil }
+        return raw.flatMap(SubscriptionTier.init(rawValue:)) ?? .pro
+    }
+
+    /// Maps a non-2xx response to a typed error: 402 -> paymentRequired (parsing
+    /// `{"detail": {"required_tier", "message"}}`), 401 -> unauthorized, else fetchFailed.
+    static func fromHTTP(status: Int, data: Data, endpoint: String) -> NetworkError {
+        switch status {
+        case 402:
+            let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            let detail = obj?["detail"] as? [String: Any]
+            return .paymentRequired(requiredTier: detail?["required_tier"] as? String,
+                                    message: detail?["message"] as? String)
+        case 401:
+            return .unauthorized
+        default:
+            let body = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            return .fetchFailed(endpoint: endpoint, status: status, body: String(body))
         }
     }
 
@@ -54,6 +81,8 @@ enum NetworkError: Error, LocalizedError {
             return "[\(info.requestUrl)] HTTP \(info.httpStatusCode): \(info.displayDetail)"
         case .fetchFailed(let endpoint, let status, let body):
             return "[\(endpoint)] HTTP \(status): \(body.prefix(200))"
+        case .paymentRequired(let tier, let message):
+            return "HTTP 402: requires \(tier ?? "<unknown>") tier: \(message ?? "<no detail>")"
         }
     }
 
@@ -1198,8 +1227,7 @@ class NetworkManager: ObservableObject {
             throw err
         }
         guard (200...299).contains(http.statusCode) else {
-            let body = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
-            let err = NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(body))
+            let err = NetworkError.fromHTTP(status: http.statusCode, data: data, endpoint: endpoint)
             GlobalErrorDiagnoser.shared.trackNetworkError(err, endpoint: endpoint)
             throw err
         }
@@ -1344,7 +1372,7 @@ class NetworkManager: ObservableObject {
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
         }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 15
@@ -1357,8 +1385,7 @@ class NetworkManager: ObservableObject {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
         }
         guard (200...299).contains(http.statusCode) else {
-            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
-            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+            throw NetworkError.fromHTTP(status: http.statusCode, data: data, endpoint: endpoint)
         }
         return try JSONDecoder().decode(OptionsPayoffResponse.self, from: data)
     }

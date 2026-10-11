@@ -37,6 +37,8 @@ struct OptionsStrategyScreen: View {
     @State private var localPayoff: [PayoffVectorPoint] = []
     @State private var localMetrics: (maxProfit: Double, maxLoss: Double, breakevens: [Double], netPremium: Double, maxProfitUnlimited: Bool, maxLossUnlimited: Bool)? = nil
     @State private var errorMessage: String? = nil
+    /// Set when the payoff API answers 402 (plan doesn't include the builder).
+    @State private var lockedTier: SubscriptionTier? = nil
     @State private var showHelp = false
 
     private var parsedSpot: Double { Double(spotPrice) ?? 0 }
@@ -295,7 +297,11 @@ struct OptionsStrategyScreen: View {
                 localMetricsCard(local)
             }
 
-            if let err = errorMessage {
+            if let tier = lockedTier, ReleaseGate.demoFeatures {
+                PremiumUpsellBanner(message: "Server-side payoff analysis is part of \(tier.displayName)",
+                                    tier: tier, featureKey: .ideasForProfit)
+                    .padding(.horizontal, Theme.screenPadding)
+            } else if let err = errorMessage {
                 Text(err)
                     .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .caption))
                     .foregroundStyle(Theme.bearRed)
@@ -708,6 +714,7 @@ struct OptionsStrategyScreen: View {
     private func fetchFromAPI() {
         isLoading = true
         errorMessage = nil
+        lockedTier = nil
         Task {
             do {
                 let apiLegs = legs.map { $0.toAPILeg() }
@@ -723,6 +730,7 @@ struct OptionsStrategyScreen: View {
             } catch {
                 await MainActor.run {
                     errorMessage = error.localizedDescription
+                    lockedTier = (error as? NetworkError)?.requiredTier
                     isLoading = false
                 }
             }

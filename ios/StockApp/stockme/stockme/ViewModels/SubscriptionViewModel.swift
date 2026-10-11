@@ -41,12 +41,15 @@ class SubscriptionViewModel: ObservableObject {
 
     /// True if the caller's real, server-side entitlements unlock
     /// `featureKey` (see EntitlementFeatureKey / entitlement_service.py
-    /// FEATURE_MIN_TIER). Defaults to `true` (ungated) if entitlements
-    /// haven't loaded yet or the key is unknown server-side, mirroring
-    /// has_entitlement()'s "unknown feature keys are never locked out"
-    /// fail-open behavior.
+    /// FEATURE_MIN_TIER). Fails closed (`false`) while entitlements haven't
+    /// loaded or couldn't be fetched; the server stays authoritative either way.
     func isFeatureUnlocked(_ featureKey: EntitlementFeatureKey) -> Bool {
-        entitlements?.isUnlocked(featureKey.rawValue) ?? true
+        entitlements?.isUnlocked(featureKey.rawValue) ?? false
+    }
+
+    /// Loads the caller's real entitlements; leaves them nil (locked) on failure.
+    func refreshEntitlements() async {
+        entitlements = try? await NetworkManager.shared.fetchEntitlements()
     }
 
     /// Plans for the currently-selected billing cycle, one per tier,

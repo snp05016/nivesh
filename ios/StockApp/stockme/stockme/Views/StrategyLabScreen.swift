@@ -87,6 +87,8 @@ class StrategyLabViewModel: ObservableObject {
     
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
+    /// Set when the backtest API answers 402 (plan doesn't include Strategy Lab).
+    @Published var lockedTier: SubscriptionTier? = nil
     @Published var result: StrategyBacktestResult? = nil
     
     @Published var compareResult: StrategyBacktestResult? = nil
@@ -100,6 +102,7 @@ class StrategyLabViewModel: ObservableObject {
     func runBacktest() async {
         isLoading = true
         errorMessage = nil
+        lockedTier = nil
         result = nil
         
         do {
@@ -110,6 +113,7 @@ class StrategyLabViewModel: ObservableObject {
             }
         } catch {
             errorMessage = error.localizedDescription
+            lockedTier = (error as? NetworkError)?.requiredTier
         }
         
         isLoading = false
@@ -120,6 +124,7 @@ class StrategyLabViewModel: ObservableObject {
         isComparing = true
         isLoading = true
         errorMessage = nil
+        lockedTier = nil
         
         do {
             compareResult = try await fetchBacktest(ticker: selectedTicker, strategyId: strategy.id, years: selectedYears)
@@ -128,6 +133,7 @@ class StrategyLabViewModel: ObservableObject {
             }
         } catch {
             errorMessage = error.localizedDescription
+            lockedTier = (error as? NetworkError)?.requiredTier
         }
         
         isLoading = false
@@ -140,8 +146,8 @@ class StrategyLabViewModel: ObservableObject {
     }
     
     private func fetchBacktest(ticker: String, strategyId: String, years: Int) async throws -> StrategyBacktestResult {
-        let urlStr = "\(NetworkManager.shared.baseURL)/analysis/backtest"
-        guard let url = URL(string: urlStr) else {
+        let endpoint = "/analysis/backtest"
+        guard let url = URL(string: "\(NetworkManager.shared.baseURL)\(endpoint)") else {
             throw URLError(.badURL)
         }
 
@@ -157,14 +163,15 @@ class StrategyLabViewModel: ObservableObject {
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await NetworkManager.shared.session.data(for: request)
         
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            struct ErrorResponse: Decodable { let detail: String }
-            if let errorMsg = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
-                throw NSError(domain: "BacktestError", code: 1, userInfo: [NSLocalizedDescriptionKey: errorMsg.detail])
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 402 {
+                throw NetworkError.fromHTTP(status: 402, data: data, endpoint: endpoint)
             }
-            throw URLError(.badServerResponse)
+            // Keep the server's short reason (e.g. insufficient price history on 400).
+            throw NetworkError.serverError(httpResponse.statusCode, NetworkError.serverDetail(from: data))
         }
         
         return try JSONDecoder().decode(StrategyBacktestResult.self, from: data)
@@ -193,12 +200,16 @@ struct StrategyLabScreen: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 50)
+                } else if let tier = viewModel.lockedTier, ReleaseGate.demoFeatures {
+                    PremiumUpsellBanner(message: "Strategy backtests are part of \(tier.displayName)",
+                                        tier: tier, featureKey: .technicalPicks)
+                        .padding(.horizontal, Theme.screenPadding)
                 } else if let error = viewModel.errorMessage {
                     VStack(spacing: Theme.Spacing.medium) {
                         Image(systemName: "exclamationmark.triangle")
                             .font(Theme.engravedSerif(size: 24))
                             .foregroundStyle(Theme.bearRed)
-                        Text("API Unavailable or Insufficient Data")
+                        Text(viewModel.lockedTier.map { "\($0.displayName) Feature" } ?? "API Unavailable or Insufficient Data")
                             .font(Theme.engravedSerif(size: 16, weight: .bold))
                             .foregroundStyle(Theme.bearRed)
                         Text(error)

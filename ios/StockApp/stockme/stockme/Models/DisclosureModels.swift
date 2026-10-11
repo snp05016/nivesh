@@ -176,4 +176,8 @@ enum EntitlementFeatureKey: String {
     case sectorRotation = "sector_rotation"
     case alphaGenerators = "alpha_generators"
     case whatsappAlerts = "whatsapp_alerts"
+    case comprehensiveStockInsights = "comprehensive_stock_insights"
+    case swotAnalysis = "swot_analysis"
+    case technicalPicks = "technical_picks"
+    case ideasForProfit = "ideas_for_profit"
 }

@@ -139,7 +139,6 @@ class ExpertNetworkViewModel: ObservableObject {
 struct ExpertNetworkView: View {
     @StateObject private var vm = ExpertNetworkViewModel()
     @State private var selectedSegment = 0
-    private let isSuperpro: Bool = true
 
     // MARK: - Harvester state
     @State private var harvestedCards: [HarvestedCard] = []

@@ -107,7 +107,9 @@ class PreIPOViewModel: ObservableObject {
 struct PreIPOMarketplaceView: View {
     @StateObject private var vm = PreIPOViewModel()
     @EnvironmentObject var authManager: AuthManager
-    private let isSuperpro: Bool = true
+    @StateObject private var subscriptionVM = SubscriptionViewModel()
+    /// Real effective tier from GET /subscription/entitlements; locked (free) until loaded.
+    private var isSuperpro: Bool { subscriptionVM.currentTier == .superPro }
 
     var body: some View {
         ZStack {
@@ -124,6 +126,7 @@ struct PreIPOMarketplaceView: View {
             }
         }
         .task { vm.load() }
+        .task { await subscriptionVM.refreshEntitlements() }
     }
 
     // MARK: Header
