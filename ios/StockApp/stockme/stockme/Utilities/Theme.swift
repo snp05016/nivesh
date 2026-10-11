@@ -26,6 +26,12 @@ enum Theme {
         return UIColor(red: r, green: g, blue: b, alpha: alpha)
     }
 
+    /// Scheme-aware colour resolved per trait collection (light/dark hex).
+    private static func dynamic(_ light: String, _ dark: String) -> Color {
+        let lightColor = uiColor(light), darkColor = uiColor(dark)
+        return Color(UIColor { $0.userInterfaceStyle == .dark ? darkColor : lightColor })
+    }
+
     // Kept for backward-compat — now always returns the dark value since palette is fixed dark
     static func adaptive(_ light: String, _ dark: String, alpha: CGFloat = 1) -> Color {
         Color(uiColor(dark, alpha: alpha))
@@ -55,11 +61,18 @@ enum Theme {
 
     // MARK: - Market Signals
 
-    static let bullGreen      = Color(uiColor("00D4AA"))                         // neon teal (same as securityGold)
-    static var bullGreenLight: Color { Color(uiColor("00D4AA")).opacity(0.13) }
-    static let bearRed        = Color(uiColor("E85555"))                         // vivid red
-    static var bearRedLight:   Color { Color(uiColor("E85555")).opacity(0.13) }
-    static let holdAmber      = Color(uiColor("B08020"))                         // amber hold
+    // Neon in dark mode, deep variants in light mode so text stays >= 4.5:1
+    // on every theme canvas (stockmeTests/ThemeContrastTests.swift).
+    static let bullGreen      = dynamic("006954", "00D4AA")                      // deep green / neon teal
+    static var bullGreenLight: Color { bullGreen.opacity(0.13) }
+    static let bearRed        = dynamic("B91919", "E85555")                      // deep red / vivid red
+    static var bearRedLight:   Color { bearRed.opacity(0.13) }
+    static let holdAmber      = dynamic("785716", "B08020")                      // deep amber / amber hold
+
+    /// Text and icons drawn on a `securityGold` fill.
+    static let onAccent = dynamic("FFFFFF", "0B0D12")
+    /// Text and icons drawn on a bullGreen / bearRed / holdAmber fill.
+    static let onStatus = dynamic("FFFFFF", "0B0D12")
 
     // Legacy aliases — Signal.color in Models.swift uses these
     static let signalEmerald = bullGreen
@@ -131,10 +144,10 @@ enum Theme {
 
     // MARK: - Data Colors
 
-    static let dataPositive      = Color(uiColor("00D4AA"))
-    static let dataNegative      = Color(uiColor("E85555"))
-    static let dataPositiveMuted = Color(uiColor("00D4AA")).opacity(0.15)
-    static let dataNegativeMuted = Color(uiColor("E85555")).opacity(0.15)
+    static let dataPositive      = bullGreen
+    static let dataNegative      = bearRed
+    static let dataPositiveMuted = bullGreen.opacity(0.15)
+    static let dataNegativeMuted = bearRed.opacity(0.15)
     static var goldPrimary: Color { securityGold }                      // alias
     static var goldMuted: Color  { securityGold.opacity(0.30) }
 

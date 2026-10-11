@@ -170,7 +170,7 @@ struct AlertsScreen: View {
                             ZStack {
                                 Circle().fill(Theme.securityGold).frame(width: 56, height: 56)
                                     .shadow(color: Theme.securityGold.opacity(0.3), radius: 10, x: 0, y: 5)
-                                Image(systemName: "bell.badge.plus").font(.title2.weight(.bold)).foregroundStyle(.white)
+                                Image(systemName: "bell.badge.plus").font(.title2.weight(.bold)).foregroundStyle(Theme.onAccent)
                             }
                         }
                         .padding(.trailing, Theme.Spacing.xLarge + Theme.Spacing.large + Theme.Spacing.standard)

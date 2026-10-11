@@ -52,7 +52,11 @@ struct SubscriptionManagementView: View {
                 if let error = vm.actionErrorMessage ?? vm.errorMessage {
                     inlineBanner(error, icon: "exclamationmark.triangle.fill", color: Theme.bearRed)
                 }
-                actionsSection
+                if ReleaseGate.demoFeatures {
+                    actionsSection
+                } else {
+                    BetaPlanNotice()
+                }
             }
             .padding(.horizontal, Theme.Spacing.screen)
             .padding(.vertical, Theme.Spacing.large)
@@ -184,6 +188,28 @@ struct SubscriptionManagementView: View {
         .padding(Theme.Spacing.card)
         .background(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).fill(color.opacity(0.1)))
         .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(color.opacity(0.3), lineWidth: 1))
+    }
+}
+
+// MARK: - Beta Plan Notice
+//
+// Shown instead of the mock upgrade/cancel actions in Release builds
+// (ReleaseGate): paid tiers must be sold through App Store in-app purchase.
+
+struct BetaPlanNotice: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.standard) {
+            Image(systemName: "gift.fill")
+                .foregroundStyle(Theme.securityGold)
+                .imageScale(.large)
+            Text("All features are free during the beta. Paid plans will be offered through App Store in-app purchase.")
+                .font(Theme.engravedSerif(size: 13, relativeTo: .caption))
+                .foregroundStyle(Theme.inkPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(Theme.Spacing.card)
+        .banknoteCard()
     }
 }
 

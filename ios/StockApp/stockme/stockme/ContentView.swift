@@ -523,7 +523,7 @@ struct MarketsView: View {
                         }
                         .padding(.horizontal, Theme.screenPadding)
 
-                        ForEach(category.sections, id: \.self) { section in
+                        ForEach(category.sections.filter { ReleaseGate.isVisible($0) }, id: \.self) { section in
                             if section == .screener {
                                 Button { HapticManager.selection(); showScreener = true } label: {
                                     sectionCardContent(section)
@@ -541,11 +541,13 @@ struct MarketsView: View {
                     }
                 }
 
-                NavigationLink(value: MarketSection.unlisted) {
-                    sectionCardContent(.unlisted)
+                if ReleaseGate.isVisible(.unlisted) {
+                    NavigationLink(value: MarketSection.unlisted) {
+                        sectionCardContent(.unlisted)
+                    }
+                    .buttonStyle(EKPressStyle())
+                    .padding(.horizontal, Theme.screenPadding)
                 }
-                .buttonStyle(EKPressStyle())
-                .padding(.horizontal, Theme.screenPadding)
             }
             .padding(.bottom, Theme.sectionSpacing)
         }

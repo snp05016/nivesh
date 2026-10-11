@@ -1211,7 +1211,7 @@ private struct TimeframeConflictCard: View {
                 Spacer()
                 Text(isBottomFishing ? "BUY THE DIP" : "TAKE PROFITS")
                     .font(Theme.microLabel(size: 10).weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.onStatus)
                     .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                     .background(isBottomFishing ? Theme.signalEmerald : Theme.signalRuby)
                     .cornerRadius(3)

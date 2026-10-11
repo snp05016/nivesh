@@ -796,9 +796,9 @@ private struct TaggingSheet: View {
 private struct PortfolioRiskCard: View {
     let riskAnalysis: RiskAnalysis?
 
-    // NOTE: signalEmerald (Theme.bullGreen = "2D5A3D"/"4A8A5D") and
-    // signalRuby (Theme.bearRed = "8B3A2A"/"C05540") must maintain >=4.5:1
-    // contrast against Theme.canvas ("F5F0E8"/"1C1A14") per WCAG AA.
+    // NOTE: signalEmerald/signalRuby are scheme-aware (Theme.bullGreen /
+    // Theme.bearRed); their >=4.5:1 contrast on every theme canvas is
+    // enforced by stockmeTests/ThemeContrastTests.swift.
     var riskColor: Color {
         guard let score = riskAnalysis?.riskScore else { return Theme.securityGold }
         if score <= 4 { return Theme.signalEmerald }
@@ -849,7 +849,7 @@ private struct PortfolioRiskCard: View {
                     ForEach(warnings) { w in
                         Text("\(w.ticker) \(String(format: "%.0f", w.pctOfPortfolio))%")
                             .font(.caption2)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.onStatus)
                             .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                             .background(Theme.signalRuby)
                             .cornerRadius(Theme.CornerRadius.small)
@@ -900,7 +900,7 @@ private struct RedFlagsSection: View {
                             .foregroundStyle(Theme.signalRuby)
                         Text("\(rf.totalFlags)")
                             .font(.caption2.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.onStatus)
                             .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                             .background(Theme.signalRuby)
                             .clipShape(Capsule())
@@ -1572,7 +1572,7 @@ private struct AddHoldingSheet: View {
                         } label: {
                             HStack(spacing: Theme.Spacing.medium) {
                                 if isAdding {
-                                    ProgressView().tint(.white)
+                                    ProgressView().tint(Theme.onAccent)
                                 }
                                 Text(isAdding ? "RECORDING…" : "RECORD \(transactionType)")
                                     .font(Theme.officialStampFont(size: 11))
@@ -1580,7 +1580,7 @@ private struct AddHoldingSheet: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, Theme.Spacing.standard)
                             .background(canAdd ? Theme.securityGold : Theme.inkTertiary.opacity(0.3))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.onAccent)
                             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
                         }
                         .disabled(!canAdd)
@@ -1712,7 +1712,7 @@ private struct EditHoldingSheet: View {
                             } label: {
                                 HStack(spacing: Theme.Spacing.medium) {
                                     if isSaving {
-                                        ProgressView().tint(.white)
+                                        ProgressView().tint(Theme.onAccent)
                                     }
                                     Text(isSaving ? "SAVING…" : "SAVE CHANGES")
                                         .font(Theme.officialStampFont(size: 11))
@@ -1720,7 +1720,7 @@ private struct EditHoldingSheet: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, Theme.Spacing.standard)
                                 .background(canSave ? Theme.securityGold : Theme.inkTertiary.opacity(0.3))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Theme.onAccent)
                                 .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.large))
                             }
                             .disabled(!canSave)
@@ -2552,7 +2552,7 @@ struct TransactionTimelineView: View {
                             // Type badge
                             Text(item.transactionType.uppercased())
                                 .font(Theme.officialStampFont(size: 8))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Theme.onStatus)
                                 .padding(.horizontal, Theme.Spacing.small)
                                 .padding(.vertical, Theme.Spacing.xSmall)
                                 .background(isBuy ? Theme.bullGreen : Theme.bearRed)

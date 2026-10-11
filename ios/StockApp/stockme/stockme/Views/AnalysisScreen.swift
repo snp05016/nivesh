@@ -1225,7 +1225,7 @@ struct NewsReaderView: View {
                                         Image(systemName: "arrow.up.right")
                                     }
                                     .font(Theme.officialStampFont(size: 11))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(Theme.canvas)
                                     .padding(.vertical, Theme.Spacing.standard)
                                     .frame(maxWidth: .infinity)
                                     .background(Theme.inkPrimary)
@@ -1237,7 +1237,7 @@ struct NewsReaderView: View {
                                     Image(systemName: "link.badge.plus")
                                 }
                                 .font(Theme.officialStampFont(size: 11))
-                                .foregroundStyle(.white.opacity(0.5))
+                                .foregroundStyle(Theme.canvas.opacity(0.5))
                                 .padding(.vertical, Theme.Spacing.standard)
                                 .frame(maxWidth: .infinity)
                                 .background(Theme.inkPrimary.opacity(0.5))

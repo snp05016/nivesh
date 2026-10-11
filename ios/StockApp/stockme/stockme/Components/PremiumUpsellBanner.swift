@@ -32,12 +32,18 @@ struct PremiumUpsellBanner: View {
     @State private var hasCheckedEntitlement = false
 
     var body: some View {
-        Group {
-            if !isUnlocked {
-                bannerButton
+        // Release builds have no in-app purchase yet (ReleaseGate), so the
+        // upsell and its mock paywall are Debug-only.
+        if ReleaseGate.demoFeatures {
+            Group {
+                if !isUnlocked {
+                    bannerButton
+                }
             }
+            .task { await checkEntitlement() }
+        } else {
+            EmptyView()
         }
-        .task { await checkEntitlement() }
     }
 
     private func checkEntitlement() async {

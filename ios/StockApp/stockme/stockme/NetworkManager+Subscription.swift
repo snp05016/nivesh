@@ -42,6 +42,9 @@ extension NetworkManager {
         catch { throw NetworkError.decodingError(error.localizedDescription) }
     }
 
+    // Debug-only (ReleaseGate, App Review 3.1.1): paid tiers must go through
+    // StoreKit in-app purchase, so the mock upgrade/cancel never ships.
+    #if DEBUG
     /// "Upgrade"/"Downgrade" action from the paywall or management screen.
     /// MOCK - simulated for demo purposes: asks the mock backend to flip the
     /// user's plan row. No real StoreKit purchase sheet is presented, no
@@ -94,4 +97,5 @@ extension NetworkManager {
         do { return try JSONDecoder().decode(CurrentSubscriptionDTO.self, from: data) }
         catch { throw NetworkError.decodingError(error.localizedDescription) }
     }
+    #endif
 }

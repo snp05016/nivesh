@@ -123,7 +123,7 @@ struct TradeJournalScreen: View {
                             Button(action: { HapticManager.selection(); newAction = action }) {
                                 Text(action)
                                     .font(.caption.weight(.semibold))
-                                    .foregroundStyle(newAction == action ? .white : Theme.inkSecondary)
+                                    .foregroundStyle(newAction == action ? Theme.onStatus : Theme.inkSecondary)
                                     .padding(.horizontal, Theme.Spacing.standard).padding(.vertical, Theme.Spacing.tight)
                                     .background(newAction == action ? actionColor(action) : Theme.canvasDeep)
                                     .cornerRadius(Theme.CornerRadius.small)
@@ -172,7 +172,7 @@ struct TradeJournalScreen: View {
                             Button(action: { HapticManager.selection(); newMood = newMood == mood.lowercased() ? nil : mood.lowercased() }) {
                                 Text(mood)
                                     .font(.caption)
-                                    .foregroundStyle(newMood == mood.lowercased() ? .white : Theme.inkSecondary)
+                                    .foregroundStyle(newMood == mood.lowercased() ? Theme.onAccent : Theme.inkSecondary)
                                     .padding(.horizontal, Theme.Spacing.medium).padding(.vertical, Theme.Spacing.small)
                                     .background(newMood == mood.lowercased() ? Theme.securityGold : Theme.canvasDeep)
                                     .cornerRadius(Theme.CornerRadius.small)
@@ -283,7 +283,7 @@ private struct JournalEntryCard: View {
                     .foregroundStyle(Theme.inkPrimary)
                 Text(entry.action)
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.onStatus)
                     .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                     .background(actionColor)
                     .cornerRadius(Theme.CornerRadius.small)

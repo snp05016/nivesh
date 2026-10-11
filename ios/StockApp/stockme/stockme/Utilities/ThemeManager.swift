@@ -76,12 +76,12 @@ enum AppTheme: String, CaseIterable, Codable {
 
     var accentLight: Color {
         switch self {
-        case .darkImmersive:   return Color(red: 0.38, green: 0.58, blue: 0.97)  // electric blue
+        case .darkImmersive:   return Color(red: 0.122, green: 0.404, blue: 0.957) // #1F67F4 — deep electric blue (AA on canvas)
         case .chocolateBrown:  return Color(red: 0.55, green: 0.27, blue: 0.07)  // deep chocolate
-        case .greenishYellow:  return Color(red: 0.35, green: 0.55, blue: 0.15)  // forest green
-        case .fluorescentBlue: return Color(red: 0.18, green: 0.42, blue: 0.85)  // royal blue
-        case .lavender:        return Color(red: 0.50, green: 0.35, blue: 0.75)  // deep purple
-        case .brightYellow:    return Color(red: 0.85, green: 0.65, blue: 0.05)  // amber gold
+        case .greenishYellow:  return Color(red: 0.306, green: 0.478, blue: 0.129) // #4E7A21 — forest green
+        case .fluorescentBlue: return Color(red: 0.153, green: 0.404, blue: 0.847) // #2767D8 — royal blue
+        case .lavender:        return Color(red: 0.490, green: 0.337, blue: 0.745) // #7D56BE — deep purple
+        case .brightYellow:    return Color(red: 0.537, green: 0.412, blue: 0.031) // #896908 — dark amber gold
         case .stoneGrey:       return Color(red: 0.40, green: 0.40, blue: 0.42)  // charcoal
         }
     }
@@ -110,6 +110,9 @@ enum AppTheme: String, CaseIterable, Codable {
         }
     }
 
+    // Every ink and accent below keeps WCAG AA (>= 4.5:1) on its canvas;
+    // enforced by stockmeTests/ThemeContrastTests.swift.
+
     // MARK: - Ink — Dark mode (light text on dark backgrounds)
 
     var inkPrimaryDark: Color {
@@ -127,7 +130,7 @@ enum AppTheme: String, CaseIterable, Codable {
     var inkSecondaryDark: Color {
         switch self {
         case .darkImmersive:   return Color(red: 0.53, green: 0.60, blue: 0.67)  // #8899AA
-        case .chocolateBrown:  return Color(red: 0.60, green: 0.48, blue: 0.38)  // warm tan
+        case .chocolateBrown:  return Color(red: 0.616, green: 0.494, blue: 0.392) // #9D7E64 — warm tan
         case .greenishYellow:  return Color(red: 0.50, green: 0.58, blue: 0.42)  // sage
         case .fluorescentBlue: return Color(red: 0.45, green: 0.55, blue: 0.70)  // steel
         case .lavender:        return Color(red: 0.55, green: 0.48, blue: 0.68)  // mauve
@@ -138,13 +141,13 @@ enum AppTheme: String, CaseIterable, Codable {
 
     var inkTertiaryDark: Color {
         switch self {
-        case .darkImmersive:   return Color(red: 0.33, green: 0.40, blue: 0.47)  // #556677
-        case .chocolateBrown:  return Color(red: 0.42, green: 0.32, blue: 0.25)  // muted terracotta
-        case .greenishYellow:  return Color(red: 0.32, green: 0.42, blue: 0.28)  // muted moss
-        case .fluorescentBlue: return Color(red: 0.28, green: 0.38, blue: 0.52)  // muted sky
-        case .lavender:        return Color(red: 0.38, green: 0.30, blue: 0.50)  // muted mauve
-        case .brightYellow:    return Color(red: 0.48, green: 0.40, blue: 0.28)  // muted khaki
-        case .stoneGrey:       return Color(red: 0.40, green: 0.42, blue: 0.45)  // dim silver
+        case .darkImmersive:   return Color(red: 0.431, green: 0.514, blue: 0.600) // #6E8399
+        case .chocolateBrown:  return Color(red: 0.631, green: 0.482, blue: 0.380) // #A17B61 — muted terracotta
+        case .greenishYellow:  return Color(red: 0.412, green: 0.541, blue: 0.361) // #698A5C — muted moss
+        case .fluorescentBlue: return Color(red: 0.376, green: 0.494, blue: 0.663) // #607EA9 — muted sky
+        case .lavender:        return Color(red: 0.537, green: 0.451, blue: 0.671) // #8973AB — muted mauve
+        case .brightYellow:    return Color(red: 0.592, green: 0.494, blue: 0.345) // #977E58 — muted khaki
+        case .stoneGrey:       return Color(red: 0.475, green: 0.498, blue: 0.533) // #797F88 — dim silver
         }
     }
 
@@ -176,13 +179,13 @@ enum AppTheme: String, CaseIterable, Codable {
 
     var inkTertiaryLight: Color {
         switch self {
-        case .darkImmersive:   return Color(red: 0.45, green: 0.48, blue: 0.52)  // light slate
-        case .chocolateBrown:  return Color(red: 0.52, green: 0.38, blue: 0.28)  // terracotta
-        case .greenishYellow:  return Color(red: 0.40, green: 0.50, blue: 0.35)  // moss
-        case .fluorescentBlue: return Color(red: 0.35, green: 0.45, blue: 0.58)  // sky slate
+        case .darkImmersive:   return Color(red: 0.416, green: 0.443, blue: 0.478) // #6A717A — slate
+        case .chocolateBrown:  return Color(red: 0.467, green: 0.341, blue: 0.251) // #775740 — terracotta
+        case .greenishYellow:  return Color(red: 0.369, green: 0.459, blue: 0.322) // #5E7552 — moss
+        case .fluorescentBlue: return Color(red: 0.333, green: 0.431, blue: 0.557) // #556E8E — sky slate
         case .lavender:        return Color(red: 0.48, green: 0.38, blue: 0.58)  // mauve grey
-        case .brightYellow:    return Color(red: 0.58, green: 0.50, blue: 0.35)  // khaki
-        case .stoneGrey:       return Color(red: 0.48, green: 0.50, blue: 0.52)  // silver
+        case .brightYellow:    return Color(red: 0.494, green: 0.424, blue: 0.298) // #7E6C4C — khaki
+        case .stoneGrey:       return Color(red: 0.408, green: 0.424, blue: 0.443) // #686C71 — silver
         }
     }
 }

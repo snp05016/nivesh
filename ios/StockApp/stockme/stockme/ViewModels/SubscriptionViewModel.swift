@@ -99,6 +99,7 @@ class SubscriptionViewModel: ObservableObject {
     func upgrade(to plan: SubscriptionPlanDTO) async {
         isProcessingAction = true
         actionErrorMessage = nil
+        #if DEBUG
         do {
             currentSubscription = try await NetworkManager.shared.mockUpgradeSubscription(
                 tier: plan.parsedTier.rawValue, billingCycle: plan.parsedCycle.rawValue
@@ -107,6 +108,9 @@ class SubscriptionViewModel: ObservableObject {
         } catch {
             actionErrorMessage = "Couldn't complete the upgrade. Please try again."
         }
+        #else
+        actionErrorMessage = "Purchases are not available in this build."
+        #endif
         isProcessingAction = false
     }
 
@@ -116,12 +120,16 @@ class SubscriptionViewModel: ObservableObject {
     func cancel(reason: String? = nil) async {
         isProcessingAction = true
         actionErrorMessage = nil
+        #if DEBUG
         do {
             currentSubscription = try await NetworkManager.shared.mockCancelSubscription()
             lastActionConfirmation = "Your plan will remain active until the renewal date, then move to Free."
         } catch {
             actionErrorMessage = "Couldn't cancel your plan. Please try again."
         }
+        #else
+        actionErrorMessage = "Purchases are not available in this build."
+        #endif
         isProcessingAction = false
     }
 }

@@ -146,7 +146,7 @@ struct StockRow: View {
                     if let status = asmGsmStatus, status == "ASM" || status == "GSM" {
                         Text("⚠ \(status)")
                             .font(Theme.microLabel(size: 9).weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.onStatus)
                             .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                             .background(Theme.dataNegative)
                             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
@@ -166,7 +166,7 @@ struct StockRow: View {
                     if let days = daysUntilEvent, days <= 14 {
                         Text("Results in \(days)d")
                             .font(Theme.microLabel(size: 9))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.onStatus)
                             .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
                             .background(days <= 3 ? Theme.dataNegative : Theme.goldPrimary)
                             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
