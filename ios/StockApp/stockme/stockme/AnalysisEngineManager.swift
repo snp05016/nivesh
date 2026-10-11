@@ -20,6 +20,7 @@ final class AnalysisEngineManager: ObservableObject {
     @Published var result: StockAnalysis? = nil  // full result when SUCCEEDED
 
     private var pollTask: Task<Void, Never>? = nil
+    private var lastTerminalNotified: String? = nil
 
     private var currentUserId: Int? {
         guard let data = UserDefaults.standard.data(forKey: "nivesh_user_v1"),
@@ -29,66 +30,90 @@ final class AnalysisEngineManager: ObservableObject {
 
     private init() {}
 
+    static let terminalStatuses: Set<String> = ["SUCCEEDED", "FAILED", "TIMEOUT", "CANCELLED"]
+
+    /// The watcher polls only while the server reports a job in flight; no job means stop.
+    static func shouldKeepPolling(_ job: JobStatus?) -> Bool {
+        guard let job else { return false }
+        return job.status == "RUNNING" || job.status == "QUEUED"
+    }
+
     // MARK: - Start watching
 
+    /// One GET /analyze/active check (on launch / foreground). A running job is then
+    /// followed via GET /analyze/job/{id} until it ends; with no job nothing polls.
+    /// jobStarted() restarts it when this device starts a job.
     func startWatching() {
         stopWatching()
+        guard let uid = currentUserId else { return }
         pollTask = Task {
-            var lastTerminalNotified: String? = nil
+            var jobId: String? = nil
+            var failures = 0
             while !Task.isCancelled {
-                guard let uid = currentUserId else {
-                    try? await Task.sleep(nanoseconds: 3_000_000_000); continue
-                }
                 do {
-                    if let job = try await NetworkManager.shared.getActiveJob(userId: uid) {
-                        activeJobId = job.jobId
-                        ticker = job.ticker
-                        scanType = job.scanType
-                        status = job.status
-                        stage = job.stage
-                        progressPct = Double(job.progressPct ?? 0)
-                        if let cps = job.checkpoints { checkpoints = Array(cps.suffix(8)) }
-                        error = job.error
-                        isRunning = job.status == "RUNNING" || job.status == "QUEUED"
-
-                        // Fetch full result on terminal states
-                        if (job.status == "SUCCEEDED" || job.status == "FAILED" || job.status == "TIMEOUT")
-                            && job.result == nil, let jid = activeJobId {
-                            let full = try? await NetworkManager.shared.pollJob(jobId: jid, userId: uid)
-                            self.result = full?.result
-                        } else {
-                            self.result = job.result
-                        }
-
-                        // Fire local notification once per terminal transition
-                        let terminal = ["SUCCEEDED", "FAILED", "TIMEOUT", "CANCELLED"]
-                        if terminal.contains(job.status), lastTerminalNotified != job.jobId {
-                            lastTerminalNotified = job.jobId
-                            fireLocalNotification(job: job)
-                            if job.status != "RUNNING" { isRunning = false }
-                        }
+                    let job: JobStatus?
+                    if let jid = jobId {
+                        job = try await NetworkManager.shared.pollJob(jobId: jid, userId: uid)
                     } else {
-                        isRunning = false; activeJobId = nil; ticker = nil
+                        job = try await NetworkManager.shared.getActiveJob(userId: uid)
                     }
-
-                    if isRunning { try? await Task.sleep(nanoseconds: 2_000_000_000) }
-                    else { try? await Task.sleep(nanoseconds: 3_000_000_000) }
+                    if Task.isCancelled { return }
+                    failures = 0
+                    apply(job)
+                    guard Self.shouldKeepPolling(job) else { return }
+                    jobId = job?.jobId
                 } catch {
-                    try? await Task.sleep(nanoseconds: 5_000_000_000)
+                    if Task.isCancelled { return }
+                    failures += 1
+                    // Lost/foreign job, undecodable payload or a dead connection: stop and
+                    // re-check on the next foreground instead of polling forever.
+                    let lost = AnalysisViewModel.pollOutcome(for: error) != .retry
+                    if lost || error is DecodingError || failures >= AnalysisViewModel.maxPollFailures {
+                        isRunning = false
+                        return
+                    }
                 }
+                try? await Task.sleep(nanoseconds: AnalysisViewModel.pollDelay(consecutiveFailures: failures))
             }
         }
+    }
+
+    /// Called when this device starts (or attaches to) a job.
+    func jobStarted() {
+        startWatching()
     }
 
     func stopWatching() {
         pollTask?.cancel(); pollTask = nil
     }
 
+    private func apply(_ job: JobStatus?) {
+        guard let job else {
+            isRunning = false; activeJobId = nil; ticker = nil
+            return
+        }
+        activeJobId = job.jobId
+        ticker = job.ticker
+        scanType = job.scanType
+        status = job.status
+        stage = job.stage
+        progressPct = Double(job.progressPct ?? 0)
+        if let cps = job.checkpoints { checkpoints = Array(cps.suffix(8)) }
+        error = job.error
+        result = job.result  // GET /analyze/job/{id} carries the full result once SUCCEEDED
+        isRunning = Self.shouldKeepPolling(job)
+        // Fire a local notification once per terminal transition.
+        if Self.terminalStatuses.contains(job.status), lastTerminalNotified != job.jobId {
+            lastTerminalNotified = job.jobId
+            fireLocalNotification(job: job)
+        }
+    }
+
     // MARK: - Cancel
 
     func cancelActiveJob() {
         guard let jid = activeJobId else { return }
-        // The watcher keeps running: it must pick up the next job after this one.
+        // The watcher sees CANCELLED on its next poll and stops; the next job restarts it.
         Task {
             try? await NetworkManager.shared.cancelJob(jobId: jid, userId: currentUserId)
             await MainActor.run {

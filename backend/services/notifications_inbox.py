@@ -27,6 +27,15 @@ def create_notification(
         return notif.id
 
 
+def _iso_utc(dt: Optional[datetime]) -> Optional[str]:
+    """ISO-8601 with an explicit UTC offset. created_at is a naive UTC column."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).isoformat(timespec="milliseconds")
+
+
 def get_notifications(user_id: int, limit: int = 50) -> list[dict]:
     with get_session() as session:
         notifs = (
@@ -44,7 +53,7 @@ def get_notifications(user_id: int, limit: int = 50) -> list[dict]:
                 "body": n.body,
                 "is_read": n.is_read,
                 "action_url": n.action_url,
-                "created_at": n.created_at.isoformat() if n.created_at else None,
+                "created_at": _iso_utc(n.created_at),  # type: ignore[arg-type]
             }
             for n in notifs
         ]

@@ -36,14 +36,17 @@ struct NotificationDTO: Codable, Identifiable {
         }
     }
 
+    private static let display: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .short
+        f.timeStyle = .short
+        return f
+    }()
+
     var formattedTime: String {
         guard let raw = createdAt else { return "" }
-        let formatter = ISO8601DateFormatter()
-        guard let date = formatter.date(from: raw) else { return raw }
-        let rel = DateFormatter()
-        rel.dateStyle = .short
-        rel.timeStyle = .short
-        return rel.string(from: date)
+        guard let date = WireDate.parseISO(raw) else { return raw }
+        return Self.display.string(from: date)
     }
 }
 

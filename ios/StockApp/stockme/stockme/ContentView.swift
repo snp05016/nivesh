@@ -6,6 +6,7 @@ struct ContentView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var tutorialManager: TutorialManager
     @EnvironmentObject var engineManager: AnalysisEngineManager
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 0
     @State private var launchAnimDone = false
 
@@ -108,6 +109,14 @@ struct ContentView: View {
             setupTabBarAppearance()
             setupNavBarAppearance()
             engineManager.startWatching()
+        }
+        // The engine watcher checks once per foreground / login and polls only while a job runs.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { engineManager.startWatching() }
+            else if phase == .background { engineManager.stopWatching() }
+        }
+        .onChange(of: authManager.isLoggedIn) { _, loggedIn in
+            if loggedIn { engineManager.startWatching() } else { engineManager.stopWatching() }
         }
         .onChange(of: selectedTheme) { _, _ in
             setupTabBarAppearance()

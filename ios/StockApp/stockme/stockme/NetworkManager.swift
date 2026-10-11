@@ -215,10 +215,7 @@ class NetworkManager: ObservableObject {
     /// Fix 3.14: Format date as IST string (India Standard Time, +05:30).
     /// All calendar/earnings queries must use IST before encoding into backend params.
     static func istDateString(from date: Date = Date()) -> String {
-        let fmt = DateFormatter()
-        fmt.timeZone = TimeZone(identifier: "Asia/Kolkata")
-        fmt.dateFormat = "yyyy-MM-dd"
-        return fmt.string(from: date)
+        WireDate.istDayFormatter.string(from: date)
     }
 
     func authRequest(_ url: URL) -> URLRequest {
@@ -502,7 +499,7 @@ class NetworkManager: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let body = Req(
             user_id: userId, ticker: ticker, exchange: "NSE", company_name: companyName, shares: shares, buy_price: buyPrice,
-            group_name: "holdings", purchase_date: WireDate.ddMMMyyyy.string(from: purchaseDate), notes: notes, target_price: targetPrice,
+            group_name: "holdings", purchase_date: WireDate.dayKey(purchaseDate), notes: notes, target_price: targetPrice,
             transaction_type: transactionType.uppercased()
         )
         request.httpBody = try JSONEncoder().encode(body)

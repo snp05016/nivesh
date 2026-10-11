@@ -22,6 +22,8 @@ class AnalysisViewModel: ObservableObject {
 
     private var analysisTask: Task<Void, Never>?
     private var pollJobTask: Task<Void, Never>?
+    /// Set by an explicit Cancel; a superseding fetchAnalysis call resets it.
+    private var cancelRequested = false
 
     /// What AnalysisScreen does on appear when it was NOT launched from the
     /// action hub (holding rows, Home, Search, Earnings push it directly).
@@ -209,6 +211,7 @@ class AnalysisViewModel: ObservableObject {
         // Set synchronously so the Run button disappears before a second tap can land.
         isLoading = true
         jobId = nil  // a stale id from a previous run would pin isLoading = true below
+        cancelRequested = false
 
         analysisTask = Task {
             isLoading = true
@@ -216,6 +219,12 @@ class AnalysisViewModel: ObservableObject {
             engineCheckpoints = []
 
             let parallelStart = Date()
+            // POST /analyze goes out alongside the supplementary loads, and its response is
+            // handled before awaiting them: jobId must be known as soon as the job exists so
+            // Cancel can reach the server job instead of leaving it to spend credits.
+            async let startResponse = NetworkManager.shared.startAnalysisJob(
+                ticker: ticker, exchange: "NSE", userId: userId, deepScan: deepScan, scanType: scanType)
+            async let impacts = Self.loadMacroImpacts(userId: userId)
             async let qi = NetworkManager.shared.quickInfo(ticker: ticker)
             async let qfr = NetworkManager.shared.getQuarterlyFinancialsResponse(ticker: ticker)
             async let nifty = NetworkManager.shared.getNiftyHistory(days: 365)
@@ -223,56 +232,27 @@ class AnalysisViewModel: ObservableObject {
             async let earnings = NetworkManager.shared.getEarningsCalendar()
             async let ratings = NetworkManager.shared.getAnalystRatings(ticker: ticker)
 
-            quickInfo = await qi
-            let qfResult = await qfr
-            quarterlyFinancials = qfResult?.quarters ?? []
-            promoterHistory = qfResult?.promoterHistory ?? []
-            niftyPrices = await nifty
-            macroStrip = await macro
-            earningsEvents = await earnings
-            self.analystRatings = await ratings
-
-            if let uid = userId {
-                self.macroImpacts = (try? await NetworkManager.shared.fetchMacroImpact(userId: uid))?.impacts ?? []
-            }
-
-            let quickInfoElapsed = Date().timeIntervalSince(parallelStart)
-
-            if Task.isCancelled { return }
-
-            // ── v2 engine: start background job, then poll with fallback ──
+            // ── v2 engine: start background job, then poll ──
+            var cachedResult: StockAnalysis? = nil
             do {
-                let start = try await NetworkManager.shared.startAnalysisJob(
-                    ticker: ticker, exchange: "NSE", userId: userId, deepScan: deepScan, scanType: scanType)
+                let start = try await startResponse
+                let quickInfoElapsed = Date().timeIntervalSince(parallelStart)
+                let outcome = Self.classify(start, ticker: ticker)
 
-                if let cachedAnalysis = start.analysis {
-                    await MainActor.run {
-                        analysis = cachedAnalysis
-                        reportManager.saveReport(cachedAnalysis)
-                        isLoading = false
+                if Task.isCancelled {
+                    // Cancel landed after the server answered but before jobId was set, so
+                    // cancelAnalysis() could not cancel the job the server just created.
+                    if cancelRequested, case .attach(let jid) = outcome {
+                        Task { try? await NetworkManager.shared.cancelJob(jobId: jid, userId: nil) }
                     }
                     return
                 }
 
-                let outcome = Self.classify(start, ticker: ticker)
-                if case .conflict(let otherTicker) = outcome {
-                    errorInfo = AnalysisErrorInfo(
-                        diagnostic: nil,
-                        rawError: "An analysis for \(otherTicker) is already running. Wait for it to finish, then try again.",
-                        httpStatusCode: 409, responseBody: start.errorDetail ?? "", responseHeaders: "",
-                        requestUrl: NetworkManager.shared.baseURL + "/analyze", elapsedSeconds: 0,
-                        quickInfoElapsed: quickInfoElapsed, isRetryable: true,
-                        isMockMode: useMock, isDeepScan: deepScan)
-                } else if outcome == .unexpected {
-                    errorInfo = AnalysisErrorInfo(
-                        diagnostic: nil, rawError: "Unexpected response from server",
-                        httpStatusCode: 0, responseBody: "", responseHeaders: "",
-                        requestUrl: NetworkManager.shared.baseURL + "/analyze", elapsedSeconds: 0,
-                        quickInfoElapsed: quickInfoElapsed, isRetryable: true,
-                        isMockMode: useMock, isDeepScan: deepScan)
-                }
-
-                if case .attach(let attachJobId) = outcome {
+                switch outcome {
+                case .cached:
+                    cachedResult = start.analysis  // shown once the supplementary data is in
+                case .attach(let attachJobId):
+                    AnalysisEngineManager.shared.jobStarted()
                     jobId = attachJobId
                     pollFailures = 0
                     let ctx = PollContext(jobId: attachJobId, userId: userId, ticker: ticker, scanType: scanType,
@@ -286,28 +266,57 @@ class AnalysisViewModel: ObservableObject {
                             try? await Task.sleep(nanoseconds: delay)
                         }
                     }
+                case .conflict(let otherTicker):
+                    errorInfo = AnalysisErrorInfo(
+                        diagnostic: nil,
+                        rawError: "An analysis for \(otherTicker) is already running. Wait for it to finish, then try again.",
+                        httpStatusCode: 409, responseBody: start.errorDetail ?? "", responseHeaders: "",
+                        requestUrl: NetworkManager.shared.baseURL + "/analyze", elapsedSeconds: 0,
+                        quickInfoElapsed: quickInfoElapsed, isRetryable: true,
+                        isMockMode: useMock, isDeepScan: deepScan)
+                case .unexpected:
+                    errorInfo = AnalysisErrorInfo(
+                        diagnostic: nil, rawError: "Unexpected response from server",
+                        httpStatusCode: 0, responseBody: "", responseHeaders: "",
+                        requestUrl: NetworkManager.shared.baseURL + "/analyze", elapsedSeconds: 0,
+                        quickInfoElapsed: quickInfoElapsed, isRetryable: true,
+                        isMockMode: useMock, isDeepScan: deepScan)
                 }
             } catch {
-                if !Task.isCancelled {
-                    if let networkError = error as? NetworkError,
-                       let diag = networkError.diagnosticInfo {
-                        var info = diag
-                        info = AnalysisErrorInfo(
-                            diagnostic: info.diagnostic, rawError: info.rawError,
-                            httpStatusCode: info.httpStatusCode, responseBody: info.responseBody,
-                            responseHeaders: info.responseHeaders, requestUrl: info.requestUrl,
-                            elapsedSeconds: info.elapsedSeconds, quickInfoElapsed: quickInfoElapsed,
-                            isRetryable: info.isRetryable, isMockMode: info.isMockMode, isDeepScan: info.isDeepScan)
-                        self.errorInfo = info
-                    } else {
-                        self.errorInfo = AnalysisErrorInfo(
-                            diagnostic: nil, rawError: error.localizedDescription,
-                            httpStatusCode: 0, responseBody: "", responseHeaders: "",
-                            requestUrl: NetworkManager.shared.baseURL + "/analyze",
-                            elapsedSeconds: 0, quickInfoElapsed: quickInfoElapsed,
-                            isRetryable: true, isMockMode: useMock, isDeepScan: deepScan)
-                    }
+                if Task.isCancelled { return }
+                let quickInfoElapsed = Date().timeIntervalSince(parallelStart)
+                if let networkError = error as? NetworkError,
+                   let info = networkError.diagnosticInfo {
+                    self.errorInfo = AnalysisErrorInfo(
+                        diagnostic: info.diagnostic, rawError: info.rawError,
+                        httpStatusCode: info.httpStatusCode, responseBody: info.responseBody,
+                        responseHeaders: info.responseHeaders, requestUrl: info.requestUrl,
+                        elapsedSeconds: info.elapsedSeconds, quickInfoElapsed: quickInfoElapsed,
+                        isRetryable: info.isRetryable, isMockMode: info.isMockMode, isDeepScan: info.isDeepScan)
+                } else {
+                    self.errorInfo = AnalysisErrorInfo(
+                        diagnostic: nil, rawError: error.localizedDescription,
+                        httpStatusCode: 0, responseBody: "", responseHeaders: "",
+                        requestUrl: NetworkManager.shared.baseURL + "/analyze",
+                        elapsedSeconds: 0, quickInfoElapsed: quickInfoElapsed,
+                        isRetryable: true, isMockMode: useMock, isDeepScan: deepScan)
                 }
+            }
+
+            quickInfo = await qi
+            let qfResult = await qfr
+            quarterlyFinancials = qfResult?.quarters ?? []
+            promoterHistory = qfResult?.promoterHistory ?? []
+            niftyPrices = await nifty
+            macroStrip = await macro
+            earningsEvents = await earnings
+            self.analystRatings = await ratings
+            self.macroImpacts = await impacts
+
+            if Task.isCancelled { return }
+            if let cached = cachedResult {
+                analysis = cached
+                reportManager.saveReport(cached)
             }
 
             // v2 engine: isLoading stays true until the poll loop sets analysis/errorInfo
@@ -315,7 +324,13 @@ class AnalysisViewModel: ObservableObject {
         }
     }
 
+    private static func loadMacroImpacts(userId: Int?) async -> [MacroImpactItem] {
+        guard let uid = userId else { return [] }
+        return (try? await NetworkManager.shared.fetchMacroImpact(userId: uid))?.impacts ?? []
+    }
+
     func cancelAnalysis() {
+        cancelRequested = true
         // v2 engine — cancel via API instead of local task cancellation
         if let jid = jobId {
             Task {
@@ -373,11 +388,7 @@ struct AnalysisScreen: View {
     // Retained copy of analysis to prevent EXC_BAD_ACCESS from view model dealloc
     @State private var retainedAnalysis: StockAnalysis? = nil
 
-    private static var todayString: String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: Date())
-    }
+    private static var todayString: String { WireDate.dayKey(Date()) }
 
     private static let deepScanDisabledTickers: Set<String> = [
         "NIFTY", "SENSEX", "BANKNIFTY", "NIFTYBANK", "INDIAVIX",
@@ -387,12 +398,8 @@ struct AnalysisScreen: View {
 
     private var parsedPurchaseDate: Date? {
         guard let s = purchaseDateStr else { return nil }
-        let fmt = DateFormatter()
-        for f in ["dd-MMM-yyyy", "yyyy-MM-dd", "MM/dd/yyyy"] {
-            fmt.dateFormat = f
-            if let d = fmt.date(from: s) { return d }
-        }
-        return nil
+        // New rows are "yyyy-MM-dd"; older rows were stored as "dd-MMM-yyyy".
+        return WireDate.day(s) ?? WireDate.ddMMMyyyy.date(from: s)
     }
 
     var body: some View {

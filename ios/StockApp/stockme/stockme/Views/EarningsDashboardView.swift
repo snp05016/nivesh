@@ -86,8 +86,7 @@ class EarningsDashboardViewModel: ObservableObject {
 
     func loadCalendarDay(date: Date) async {
         calendarError = nil
-        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
-        let dateStr = f.string(from: date)
+        let dateStr = WireDate.dayKey(date)
         // Use enhanced endpoint with sparkline price data
         if let calResp = await NetworkManager.shared.fetchEarningsCalendar(date: dateStr) {
             self.calendarDayResults = calResp.results
@@ -569,9 +568,7 @@ struct EarningsCalendarView: View {
                 let event = EKEvent(eventStore: eventStore)
                 event.title = title
                 
-                let df = DateFormatter()
-                df.dateFormat = "yyyy-MM-dd"
-                if let date = df.date(from: dateStr) {
+                if let date = WireDate.day(dateStr) {
                     event.startDate = date
                     event.endDate = date.addingTimeInterval(60 * 60)
                     event.notes = "Earnings report"
@@ -611,8 +608,7 @@ struct EarningsCalendarView: View {
         return f.string(from: date).uppercased()
     }
     private func apiDate(_ date: Date) -> String {
-        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: date)
+        WireDate.dayKey(date)
     }
     private func isSelected(_ date: Date) -> Bool {
         calendar.isDate(date, inSameDayAs: vm.selectedCalendarDate)

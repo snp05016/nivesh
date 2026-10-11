@@ -73,7 +73,7 @@ class PortfolioScreenViewModel: ObservableObject {
             holdings = data
             totalValue = holdings.reduce(0) { $0 + $1.currentValue }
             investedValue = holdings.reduce(0) { $0 + $1.investedValue }
-            todayPnL = holdings.reduce(0) { $0 + ($1.stock.currentPrice * $1.shares * ($1.stock.changePercent/100)) }
+            todayPnL = holdings.reduce(0) { $0 + $1.dayPnL }
         } catch {
             print("Portfolio fetch error: \(error)")
         }

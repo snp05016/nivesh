@@ -23,6 +23,13 @@ struct PortfolioHolding: Codable, Identifiable {
     var investedValue: Double { buyPrice * shares }
     var pnl: Double { currentValue - investedValue }
     var pnlPercent: Double { investedValue > 0 ? (pnl / investedValue) * 100 : 0 }
+    /// Today's P&L = shares x (price - prevClose). changePercent is relative to the
+    /// previous close (backend day_change_pct), so it must not be applied to today's price.
+    var dayPnL: Double {
+        let p = stock.changePercent
+        guard priceAvailable, p > -100 else { return 0 }
+        return currentValue * p / (100 + p)
+    }
 
     enum CodingKeys: String, CodingKey {
         case stock, shares, buyPrice = "buy_price", notes
