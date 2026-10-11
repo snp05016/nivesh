@@ -14,7 +14,7 @@ downgrade: drops the index if present. job_id stays VARCHAR(36): narrowing it
 would truncate the ids already issued.
 
 Revision ID: f32cf73ca308
-Revises: 25342fdfb06f
+Revises: 6646d6dc6c12
 Create Date: 2026-10-11
 """
 from typing import Sequence, Union
@@ -25,7 +25,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "f32cf73ca308"
-down_revision: Union[str, Sequence[str], None] = "25342fdfb06f"
+down_revision: Union[str, Sequence[str], None] = "6646d6dc6c12"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
