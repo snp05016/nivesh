@@ -60,20 +60,54 @@ def test_migration_sources_do_not_use_create_all_or_manual_alter_table():
 
 
 def test_base_revision_creates_current_model_tables():
+    """DB-07: the root revision is frozen DDL covering every model table.
+
+    It must create each table with an explicit ``op.create_table`` call and
+    must not import app models or call metadata create_all/drop_all.
+    """
+    import ast
+
     import models.db_models as db_models
 
     script = _alembic_script()
-    base_revision_id = script.get_bases()[0]
-    base_script = script.get_revision(base_revision_id)
+    base_script = script.get_revision(script.get_bases()[0])
     assert base_script is not None
 
-    spec = importlib.util.spec_from_file_location("base_revision_for_contract_test", base_script.path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    def create_table_names(tree: ast.AST) -> set[str]:
+        return {
+            node.args[0].value
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "create_table"
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "op"
+            and node.args
+            and isinstance(node.args[0], ast.Constant)
+        }
 
+    tree = ast.parse(Path(base_script.path).read_text(encoding="utf-8"))
+    metadata_calls = [
+        node.attr for node in ast.walk(tree)
+        if isinstance(node, ast.Attribute) and node.attr in ("create_all", "drop_all")
+    ]
+    model_imports = [
+        node for node in ast.walk(tree)
+        if (isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] == "models")
+        or (isinstance(node, ast.Import) and any(a.name.split(".")[0] == "models" for a in node.names))
+    ]
+    assert not metadata_calls, f"root revision calls {metadata_calls}"
+    assert not model_imports, "root revision imports app models"
+
+    root_tables = create_table_names(tree)
+    assert root_tables, "root revision creates no tables with op.create_table"
+
+    # Tables added after the baseline live in later revisions, so coverage is
+    # checked across the whole history: every model table needs explicit DDL.
+    created = set(root_tables)
+    for path in VERSIONS_DIR.glob("*.py"):
+        created |= create_table_names(ast.parse(path.read_text(encoding="utf-8")))
     model_tables = set(db_models.Base.metadata.tables)
-    source = Path(base_script.path).read_text(encoding="utf-8")
-    assert source
-    assert "Base.metadata.create_all" in source
     assert model_tables
+    missing = model_tables - created
+    assert not missing, f"model tables without op.create_table DDL: {sorted(missing)}"

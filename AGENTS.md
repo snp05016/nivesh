@@ -240,7 +240,7 @@ Schema change checklist:
 1. Edit `models/db_models.py`
 2. `alembic revision --autogenerate -m "description"`
 3. Review the generated migration file
-4. `alembic upgrade head` (local) or, on the server, `scripts/backup_db.py && alembic upgrade head` (`alembic stamp head` if the DB already matches, also after `scripts/backup_db.py`)
+4. `alembic upgrade head` (local) or, on the server, `scripts/backup_db.py && alembic upgrade head`. Never `alembic stamp`: stamping marks migrations as applied without running them. If a DB has drifted from the migrations, fix it with a guarded catch-up migration. Production gets its schema only from migrations (`init_db` runs `create_all` only when `ENVIRONMENT` is `development` or `test`).
 5. Commit both the model change AND the migration file
 
 ---

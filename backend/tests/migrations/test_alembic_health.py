@@ -85,3 +85,86 @@ def test_single_migration_head():
     heads = script.get_heads()
 
     assert len(heads) == 1, f"Expected exactly 1 migration head, but found {len(heads)}: {heads}"
+
+
+ROOT_REVISION_FILE = BACKEND_DIR / "migrations" / "versions" / "0dc3e605ea33_initial_schema.py"
+
+
+def _alembic(db_path, *args):
+    env = {**os.environ, "DATABASE_URL": f"sqlite:///{db_path}"}
+    return subprocess.run(
+        [PYTHON, "-m", "alembic", *args],
+        cwd=str(BACKEND_DIR), capture_output=True, text=True, env=env,
+    )
+
+
+def test_root_revision_is_frozen_ddl():
+    """DB-07: the baseline must be explicit DDL, not create_all() of today's models."""
+    import ast
+
+    tree = ast.parse(ROOT_REVISION_FILE.read_text())
+    model_imports = [
+        node.module for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("models")
+    ]
+    metadata_calls = [
+        node.attr for node in ast.walk(tree)
+        if isinstance(node, ast.Attribute) and node.attr in ("create_all", "drop_all")
+    ]
+    assert not model_imports, f"root revision imports app models: {model_imports}"
+    assert not metadata_calls, f"root revision calls {metadata_calls}"
+
+
+def test_root_downgrade_raises(tmp_db):
+    """Downgrading the baseline must refuse instead of dropping every table."""
+    up = _alembic(tmp_db, "upgrade", "0dc3e605ea33")
+    assert up.returncode == 0, up.stderr
+    down = _alembic(tmp_db, "downgrade", "base")
+    assert down.returncode != 0
+    assert "cannot be downgraded" in down.stdout + down.stderr
+
+
+def test_watchlists_created_for_db_missing_it(tmp_db):
+    """117b4057d650 must create watchlists on a DB built before the model existed."""
+    from sqlalchemy import create_engine, inspect, text
+
+    assert _alembic(tmp_db, "upgrade", "t4u5v6w7x8y9").returncode == 0
+    engine = create_engine(f"sqlite:///{tmp_db}")
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE watchlists"))
+    assert "watchlists" not in inspect(engine).get_table_names()
+
+    result = _alembic(tmp_db, "upgrade", "head")
+    assert result.returncode == 0, result.stderr
+    insp = inspect(engine)
+    assert "watchlists" in insp.get_table_names()
+    assert {ix["name"] for ix in insp.get_indexes("watchlists")} == {
+        "ix_watchlists_id", "ix_watchlists_user_id", "ix_watchlists_ticker",
+    }
+    engine.dispose()
+
+
+def test_named_indexes_and_constraints_match_models(tmp_db):
+    """A DB built only by migrations must carry every named index/constraint of the models."""
+    from sqlalchemy import CheckConstraint, UniqueConstraint, create_engine, inspect
+
+    assert _alembic(tmp_db, "upgrade", "head").returncode == 0
+    from models.db_models import Base
+
+    insp = inspect(create_engine(f"sqlite:///{tmp_db}"))
+    problems = {}
+    for name, table in Base.metadata.tables.items():
+        model_ix = {ix.name for ix in table.indexes if isinstance(ix.name, str)}
+        db_ix = {ix["name"] for ix in insp.get_indexes(name)}
+        model_uq = {c.name for c in table.constraints if isinstance(c, UniqueConstraint) and isinstance(c.name, str)}
+        db_uq = {c["name"] for c in insp.get_unique_constraints(name) if c["name"]}
+        model_ck = {c.name for c in table.constraints if isinstance(c, CheckConstraint) and isinstance(c.name, str)}
+        db_ck = {c["name"] for c in insp.get_check_constraints(name) if c["name"]}
+        diff = {
+            kind: (sorted(map(str, model - db)), sorted(map(str, db - model)))
+            for kind, model, db in (("index", model_ix, db_ix), ("unique", model_uq, db_uq), ("check", model_ck, db_ck))
+            if model != db
+        }
+        if diff:
+            problems[name] = diff
+    assert not problems, f"(missing, extra) per table: {problems}"

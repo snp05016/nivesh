@@ -69,20 +69,23 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
 
-    def _include_object(obj, name, type_, reflected, compare_to):
-        # SQLite can't reliably introspect FK and UniqueConstraints — created by
-        # create_all() so they exist in the DB but alembic can't see them to compare.
-        if type_ in ("foreign_key_constraint", "unique_constraint"):
-            return False
-        return True
-
     with connectable.connect() as connection:
+        # SQLite can't reliably introspect FK/unique constraints and reports
+        # type-affinity aliases (REAL/TEXT vs Float/JSON) as drift, so those
+        # comparisons are skipped there. Postgres (prod + CI) compares them all.
+        is_sqlite = connection.dialect.name == "sqlite"
+
+        def _include_object(obj, name, type_, reflected, compare_to):
+            if is_sqlite and type_ in ("foreign_key_constraint", "unique_constraint"):
+                return False
+            return True
+
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
             render_as_batch=True,          # SQLite doesn't support ALTER, use batch mode
-            compare_type=False,            # SQLite type affinity aliases (REAL/TEXT vs Float/JSON) are not real drift
-            compare_server_default=False,  # Server defaults differ by affinity too; not actionable on SQLite
+            compare_type=not is_sqlite,
+            compare_server_default=False,  # Server default rendering differs per dialect; not actionable
             include_object=_include_object,
         )
 

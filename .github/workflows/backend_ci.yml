@@ -43,3 +43,52 @@ jobs:
       run: |
         alembic upgrade head
         alembic check
+
+  migrations-postgres:
+    # DB-07: build the schema from migrations alone on the production engine and
+    # fail on any model drift (types, FKs and unique constraints included).
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nivesh_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/nivesh_test
+      NIVESH_TESTING: "1"
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r backend/requirements.txt
+        pip install pytest
+
+    - name: Upgrade and check migrations on Postgres
+      working-directory: backend
+      run: |
+        alembic upgrade head
+        alembic check
+
+    - name: Migration health tests
+      working-directory: backend
+      run: |
+        python -m pytest tests/migrations tests/test_migration_163d_downgrade.py -q --noconftest

@@ -216,10 +216,13 @@ DAD_HOLDINGS = [
 def init_db() -> None:
     """Initialize the database schema and seed initial data.
     
-    Creates all tables if they don't exist and seeds default users
+    In development/test, creates all tables if they don't exist; any other
+    environment gets its schema only from `alembic upgrade head` (DB-07), so
+    create_all can't paper over a missing migration. Seeds default users
     and portfolio holdings if the database is empty.
     """
-    Base.metadata.create_all(ENGINE)
+    if os.environ.get("ENVIRONMENT", "development") in ("development", "test"):
+        Base.metadata.create_all(ENGINE)
 
     with get_session() as session:
         if session.query(User).count() > 0:

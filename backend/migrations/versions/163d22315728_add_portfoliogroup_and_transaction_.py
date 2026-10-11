@@ -178,7 +178,13 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
+    """Downgrade schema.
+
+    Only drops objects first introduced here; tables created defensively in
+    upgrade() (youtube_video_summaries, dividend_ledger, in_app_notifications,
+    tax_reports, user_preferences) and portfolio.is_virtual belong to earlier
+    revisions (e5f6a7b8c9d0, f0a1b2c3d4e5, g1h2i3j4k5l6) and are left alone.
+    """
     bind = op.get_bind()
 
     with op.batch_alter_table('trade_journal', schema=None) as batch_op:
@@ -189,8 +195,6 @@ def downgrade() -> None:
         if _column_exists(bind, 'portfolio', 'group_id'):
             batch_op.drop_index('ix_portfolio_group_id')
             batch_op.drop_column('group_id')
-        if _column_exists(bind, 'portfolio', 'is_virtual'):
-            batch_op.drop_column('is_virtual')
 
     if _table_exists(bind, 'portfolio_transactions'):
         with op.batch_alter_table('portfolio_transactions', schema=None) as batch_op:
@@ -200,33 +204,7 @@ def downgrade() -> None:
             batch_op.drop_index('ix_portfolio_transactions_date')
         op.drop_table('portfolio_transactions')
 
-    if _table_exists(bind, 'user_preferences'):
-        with op.batch_alter_table('user_preferences', schema=None) as batch_op:
-            batch_op.drop_index(batch_op.f('ix_user_preferences_user_id'))
-            batch_op.drop_index(batch_op.f('ix_user_preferences_id'))
-        op.drop_table('user_preferences')
-
-    if _table_exists(bind, 'tax_reports'):
-        op.drop_table('tax_reports')
-
     if _table_exists(bind, 'portfolio_groups'):
         with op.batch_alter_table('portfolio_groups', schema=None) as batch_op:
             batch_op.drop_index('ix_portfolio_groups_user_id')
         op.drop_table('portfolio_groups')
-
-    if _table_exists(bind, 'in_app_notifications'):
-        with op.batch_alter_table('in_app_notifications', schema=None) as batch_op:
-            batch_op.drop_index(batch_op.f('ix_in_app_notifications_user_id'))
-            batch_op.drop_index(batch_op.f('ix_in_app_notifications_id'))
-        op.drop_table('in_app_notifications')
-
-    if _table_exists(bind, 'dividend_ledger'):
-        with op.batch_alter_table('dividend_ledger', schema=None) as batch_op:
-            batch_op.drop_index('ix_dividend_ledger_user_ticker')
-        op.drop_table('dividend_ledger')
-
-    if _table_exists(bind, 'youtube_video_summaries'):
-        with op.batch_alter_table('youtube_video_summaries', schema=None) as batch_op:
-            batch_op.drop_index(batch_op.f('ix_youtube_video_summaries_video_id'))
-            batch_op.drop_index(batch_op.f('ix_youtube_video_summaries_id'))
-        op.drop_table('youtube_video_summaries')
