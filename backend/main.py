@@ -28,7 +28,6 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import Request
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.staticfiles import StaticFiles
 import uuid
 from fastapi.responses import StreamingResponse, HTMLResponse, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -296,13 +295,9 @@ app.include_router(kyc.router)
 app.include_router(compliance.router)
 app.include_router(account.router)
 app.include_router(fixed_deposits.router)
-# ---------------------------------------------------------------------------
-# Static files — serve generated portfolio charts
-# ---------------------------------------------------------------------------
-import os as _os
-_charts_dir = _os.path.join(_os.path.dirname(__file__), "charts")
-_os.makedirs(_charts_dir, exist_ok=True)
-app.mount("/charts", StaticFiles(directory=_charts_dir), name="charts")
+# Portfolio chart PNGs are served only through the owner-checked route
+# GET /api/v1/portfolio/charts/{user_id}/image/{filename} (routers/portfolio.py).
+# Never mount backend/charts publicly.
 
 # ---------------------------------------------------------------------------
 # Admin Harvest Endpoints & Scheduler — imported from harvest_worker (Phase 3)

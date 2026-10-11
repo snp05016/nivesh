@@ -103,3 +103,6 @@ scratch_*.py
 *.png
 *.gif
 *.svg
+
+# Generated per-user portfolio charts (private financial data; never commit)
+backend/charts/

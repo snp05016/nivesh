@@ -7,13 +7,14 @@ import json
 import time
 import math
 import random
+import re
 import threading
 from datetime import datetime, date, timedelta, timezone
 from typing import Optional
 from collections import Counter, defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Header, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 import yfinance as yf
 
 from services.disk_cache import invalidate as _cache_invalidate
@@ -1223,6 +1224,24 @@ async def get_valuation_history(user_id: int, days: int = 90, authorization: str
         }
 
 
+# Generated chart PNGs and meta JSON live here; never serve this dir publicly.
+_CHART_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "charts"))
+
+
+# ---------------------------------------------------------------------------
+# 14b. GET /api/v1/portfolio/charts/{user_id}/image/{filename}
+# ---------------------------------------------------------------------------
+@router.get("/api/v1/portfolio/charts/{user_id}/image/{filename}")
+def portfolio_chart_image(user_id: int, filename: str, caller: int = Depends(require_auth)):
+    """Serve one of the caller's own chart PNGs. 404 for anyone else's or any other file."""
+    if caller != user_id or not re.fullmatch(rf"chart_{user_id}_\d{{1,2}}\.png", filename):
+        raise HTTPException(status_code=404, detail="Not found")
+    path = os.path.join(_CHART_DIR, filename)
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse(path, media_type="image/png", headers={"Cache-Control": "private, no-store"})
+
+
 # ---------------------------------------------------------------------------
 # 14a. GET /api/v1/portfolio/charts/{user_id}
 # ---------------------------------------------------------------------------
@@ -1259,8 +1278,7 @@ Uses a thread-pool executor so the event loop is never blocked.
         import time as _time_module
         from concurrent.futures import ThreadPoolExecutor
 
-        chart_dir = os.path.join(os.path.dirname(__file__), "..", "charts")
-        chart_dir = os.path.abspath(chart_dir)
+        chart_dir = _CHART_DIR
         os.makedirs(chart_dir, exist_ok=True)
 
         # ── Cache: serve existing charts unless regenerate was requested ──
@@ -1294,7 +1312,7 @@ Uses a thread-pool executor so the event loop is never blocked.
                     "filename": fname,
                     "title": meta.get("title", f"Chart {n}"),
                     "description": meta.get("description", "Portfolio chart"),
-                    "url": f"/charts/{fname}",
+                    "url": f"/api/v1/portfolio/charts/{user_id}/image/{fname}",
                 })
             return {"charts": cached_charts, "count": len(cached_charts), "cached": True}
 
@@ -1325,7 +1343,7 @@ Uses a thread-pool executor so the event loop is never blocked.
                     "filename": c["filename"],
                     "title": c["title"],
                     "description": c["description"],
-                    "url": f"/charts/{c['filename']}",
+                    "url": f"/api/v1/portfolio/charts/{user_id}/image/{c['filename']}",
                 }
                 for c in charts
             ],

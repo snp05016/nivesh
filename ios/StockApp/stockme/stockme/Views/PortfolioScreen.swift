@@ -2153,7 +2153,7 @@ private struct NoteEditorSheet: View {
                 }) {
                     VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                         // Chart image
-                        AsyncImage(url: URL(string: "\(NetworkManager.shared.baseURL)\(chart.url)")) { phase in
+                        AuthenticatedChartImage(path: chart.url) { phase in
                             switch phase {
                             case .success(let image):
                                 image
@@ -2237,7 +2237,7 @@ private struct NoteEditorSheet: View {
 
                             // Full chart image
                             ScrollView([.horizontal, .vertical]) {
-                                AsyncImage(url: URL(string: "\(NetworkManager.shared.baseURL)\(chart.url)")) { phase in
+                                AuthenticatedChartImage(path: chart.url) { phase in
                                     switch phase {
                                     case .success(let image):
                                         image
@@ -2598,6 +2598,46 @@ struct TransactionTimelineView: View {
             isLoading = true
             items = (try? await NetworkManager.shared.fetchTransactions(userId: userId, ticker: ticker)) ?? []
             isLoading = false
+        }
+    }
+}
+
+// MARK: - Authenticated chart image
+
+/// Loads a portfolio chart PNG with the Bearer token. AsyncImage cannot send
+/// Authorization, and the backend serves charts only to their owner (AUTH-04).
+struct AuthenticatedChartImage<Content: View>: View {
+    let path: String
+    let content: (AsyncImagePhase) -> Content
+    @State private var phase: AsyncImagePhase = .empty
+
+    init(path: String, @ViewBuilder content: @escaping (AsyncImagePhase) -> Content) {
+        self.path = path
+        self.content = content
+    }
+
+    var body: some View {
+        content(phase)
+            .task(id: path) { await load() }
+    }
+
+    private func load() async {
+        phase = .empty
+        guard let url = URL(string: "\(NetworkManager.shared.baseURL)\(path)") else {
+            phase = .failure(URLError(.badURL))
+            return
+        }
+        do {
+            let request = NetworkManager.shared.authRequest(url)
+            let (data, response) = try await NetworkManager.shared.session.data(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 200,
+                  let uiImage = UIImage(data: data) else {
+                phase = .failure(URLError(.badServerResponse))
+                return
+            }
+            phase = .success(Image(uiImage: uiImage))
+        } catch {
+            phase = .failure(error)
         }
     }
 }
