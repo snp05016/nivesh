@@ -123,10 +123,11 @@ def test_dead_token_pruned(db, monkeypatch, tmp_path, status_code, body, pruned)
 
     monkeypatch.setattr(alerts_service.httpx, "AsyncClient", _Client)
 
-    ok = asyncio.run(alerts_service._send_apns_push(
+    result = asyncio.run(alerts_service._send_apns_push(
         user_id=1, ticker="TCS", target_price=100.0, current_price=120.0, direction="above"))
 
-    assert ok is False
+    PR = alerts_service.PushResult
+    assert result == (PR.NO_TOKENS if pruned else PR.FAILED)
     with db() as s:
         remaining = s.query(DeviceToken).filter_by(user_id=1).count()
     assert remaining == (0 if pruned else 1)

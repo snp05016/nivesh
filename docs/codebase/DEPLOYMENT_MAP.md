@@ -51,7 +51,7 @@ AGENTS.md requires backend verification on `saumyapatel@192.168.1.122`, not by r
 4. Fetch/switch/pull `--ff-only` on intended branch (or `git checkout --detach <SHA>`) and verify remote `HEAD` equals local SHA.
 5. Restart with `sudo systemctl restart nivesh`, then `systemctl is-active --quiet nivesh && curl -fsS http://localhost:8000/ping`.
 6. Run relevant `python3 -m pytest` remotely.
-7. Health-check `/ping`, `/health`, `/health/live` or feature-specific endpoints and inspect `journalctl -u nivesh --since '-10 min'`.
+7. Health-check `/ping`, `/health/live`, `/health/ready` or feature-specific endpoints and inspect `journalctl -u nivesh --since '-10 min'`.
 
 ## Environment and Secrets
 
@@ -63,10 +63,9 @@ AGENTS.md requires backend verification on `saumyapatel@192.168.1.122`, not by r
 
 | Check | Meaning | Failure implication |
 |---|---|---|
-| `GET /ping` | Zero-dependency backend process check. | Uvicorn/app not reachable. |
-| `GET /health` | Lightweight iOS health endpoint. | App route/middleware failure. |
-| `GET /health/live` | DB-backed liveness check. | DB unreachable or session failure. |
-| `GET /healthz` | Router health endpoint. | Router registration or DB-backed health issue depending implementation. |
+| `GET /ping`, `GET /health/live` | Liveness: process only, no dependencies. | Uvicorn/app not reachable. |
+| `GET /health`, `GET /health/ready` | Readiness: DB `SELECT 1`; 503 with no error text when it fails. Docker HEALTHCHECK target. | DB unreachable or session failure. |
+| `GET /healthz` | Admin-only dependency/config report (DB, DeepSeek/Anthropic keys, JWT secret, APNs config, h2, scheduler, ML engine, Redis). 503 only when the DB is down; other gaps are listed under `degraded`. | Missing config or a down dependency behind a silent fallback. |
 | Feature endpoint smoke | Confirms route + service + data path. | Deployment incomplete even if process is alive. |
 
 Rollback after failed deployment should restore the last verified commit and record the rollback in the issue/PR/deployment record.
@@ -80,7 +79,7 @@ Public clients (the iOS app) reach the backend only through `https://api.nivesh.
 | API bind | `127.0.0.1:8000` by default (`NIVESH_BIND_HOST`, overridable in `backend/.env` only if the proxy runs on another host) | `backend/nivesh.service` |
 | Client IP | `--proxy-headers --forwarded-allow-ips 127.0.0.1`: `X-Forwarded-For` is trusted only from a proxy on the same host; the rate limiter keys on `request.client.host` | `backend/nivesh.service`, `backend/main.py` |
 | ML engine | Container listens on `0.0.0.0:8001` inside Docker but is published as `127.0.0.1:8001:8001` (no auth on its routes, so it must never be LAN-reachable; Docker-published ports bypass ufw) | `scripts/deploy_ml_microservice.sh`, `ml-engine/Dockerfile` |
-| Health probe | `scripts/health_check.sh` defaults to `https://api.nivesh.qzz.io`; checks `/ping`, `/health`, `/healthz` and public routes, exits non-zero on any failure | `scripts/health_check.sh` |
+| Health probe | `scripts/health_check.sh` defaults to `https://api.nivesh.qzz.io`; checks `/ping`, `/health/live`, `/health/ready` and public routes, exits non-zero on any failure | `scripts/health_check.sh` |
 
 Not yet captured in the repository (owner to fill in; commit the config with credentials removed):
 

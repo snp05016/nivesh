@@ -1,3 +1,4 @@
+import asyncio
 import time
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
@@ -12,6 +13,7 @@ from database import MarketErrorLog
 from services.harvester_reformatter import strip_emoji
 from services.notifications_inbox import create_notification
 from services.preferences import push_allowed
+from services.alerts_service import PushResult, send_apns
 from services.sebi_registry import registration_for_channel
 from services import entitlement_service
 
@@ -141,20 +143,16 @@ def get_watchlist(user_id: int) -> Optional[dict]:
     return {"watchlist": result}
 
 
-def _deliver_apns(user_id: int, payload: dict) -> bool:
+def _deliver_apns(user_id: int, payload: dict) -> PushResult:
+    """Real APNs delivery via alerts_service.send_apns (SILENT-07). Sync routes run
+    in the threadpool with no running event loop, so asyncio.run is safe here."""
     if not push_allowed(user_id):
-        return False
-    try:
-        with get_session() as session:
-            tokens = session.query(DeviceToken).filter_by(user_id=user_id).all()
-            if not tokens:
-                return False
-            for dt in tokens:
-                logging.info(f"[APNs] Would deliver to {dt.platform} token {dt.device_token[:12]}... : {payload.get('title', '')}")
-        return True
-    except Exception as e:
-        logging.info(f"[APNs] Delivery failed for user {user_id}: {e}")
-        return False
+        return PushResult.DISABLED
+    return asyncio.run(send_apns(user_id, payload["title"], payload["body"], payload.get("data")))
+
+
+def _with_delivery(payload: dict, result: PushResult) -> dict:
+    return {**payload, "delivered": result == PushResult.SENT, "delivery_status": result.value}
 
 def test_notification(user_id: int, ticker: str, exchange: str) -> dict:
     ns_ticker = _to_ns(ticker)
@@ -180,8 +178,7 @@ def test_notification(user_id: int, ticker: str, exchange: str) -> dict:
         "data": {"ticker": ticker.upper(), "exchange": exchange},
     }
 
-    _deliver_apns(user_id, payload)
-    return payload
+    return _with_delivery(payload, _deliver_apns(user_id, payload))
 
 def push_morning_summary(user_id: int) -> Optional[dict]:
     with get_session() as session:
@@ -215,8 +212,9 @@ def push_morning_summary(user_id: int) -> Optional[dict]:
     }
 
     create_notification(user_id, "morning_brief", payload["title"], body)
-    _deliver_apns(user_id, payload)
-    return {"success": True, "payload": payload}
+    # Flat like /notifications/test: iOS decodes title/body at the root.
+    out = _with_delivery(payload, _deliver_apns(user_id, payload))
+    return {**out, "success": out["delivered"]}
 
 
 def get_experts_service() -> dict:

@@ -3,11 +3,10 @@
 The price-alert poller path is covered by
 test_notifications_inbox_producer.test_alerts_disabled_skips_push.
 """
-from contextlib import contextmanager
-
 import pytest
 
 from services import preferences, user_service
+from services.alerts_service import PushResult
 
 
 @pytest.mark.parametrize(
@@ -24,39 +23,32 @@ def test_push_allowed(monkeypatch, prefs, expected):
     assert preferences.push_allowed(1) is expected
 
 
-def test_deliver_apns_returns_false_when_disabled(monkeypatch):
-    # Record the call: _deliver_apns swallows exceptions from get_session,
-    # so a raising sentinel alone would not catch a removed gate.
+def test_deliver_apns_disabled_skips_send(monkeypatch):
     called = []
 
-    def _no_db():
-        called.append(True)
-        raise RuntimeError("token lookup must not run when pushes are off")
+    async def _send(*args):
+        called.append(args)
+        return PushResult.SENT
 
     monkeypatch.setattr(user_service, "push_allowed", lambda _uid: False)
-    monkeypatch.setattr(user_service, "get_session", _no_db)
+    monkeypatch.setattr(user_service, "send_apns", _send)
 
-    assert user_service._deliver_apns(1, {"title": "TCS"}) is False
+    assert user_service._deliver_apns(1, {"title": "TCS", "body": "b"}) is PushResult.DISABLED
     assert not called
 
 
-def test_deliver_apns_runs_when_allowed(monkeypatch):
-    class _Query:
-        def filter_by(self, **_kw):
-            return self
+def test_deliver_apns_uses_real_sender_when_allowed(monkeypatch):
+    """SILENT-07: no more log-only stub; the result is the real sender's."""
+    called = []
 
-        def all(self):
-            return [type("DT", (), {"platform": "ios", "device_token": "a" * 64})()]
-
-    class _Session:
-        def query(self, _model):
-            return _Query()
-
-    @contextmanager
-    def _get_session():
-        yield _Session()
+    async def _send(*args):
+        called.append(args)
+        return PushResult.NOT_CONFIGURED
 
     monkeypatch.setattr(user_service, "push_allowed", lambda _uid: True)
-    monkeypatch.setattr(user_service, "get_session", _get_session)
+    monkeypatch.setattr(user_service, "send_apns", _send)
 
-    assert user_service._deliver_apns(1, {"title": "TCS"}) is True
+    result = user_service._deliver_apns(1, {"title": "TCS", "body": "b", "data": {"ticker": "TCS"}})
+
+    assert result is PushResult.NOT_CONFIGURED
+    assert called == [(1, "TCS", "b", {"ticker": "TCS"})]

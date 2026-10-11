@@ -23,7 +23,7 @@ _INLINE_AUTH = re.compile(r"\brequire_(?:auth|admin)\(")
 PUBLIC_ROUTES = {
     # Infrastructure, CORS preflight and the admin dashboard shell (its data routes need admin).
     ("GET", "/"), ("GET", "/ping"), ("GET", "/api/v1/ping"), ("GET", "/health"),
-    ("GET", "/health/live"), ("GET", "/healthz"), ("GET", "/favicon.ico"),
+    ("GET", "/health/live"), ("GET", "/health/ready"), ("GET", "/favicon.ico"),
     ("OPTIONS", "/{rest_of_path:path}"),
     # Authentication itself.
     ("POST", "/login"), ("POST", "/register"),

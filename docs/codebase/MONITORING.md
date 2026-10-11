@@ -7,12 +7,14 @@ Single home server, no paid tooling. Four pieces, each owned by the operator.
 Create a free HTTP monitor (UptimeRobot or healthchecks.io), 5 minute interval, alerting
 the owner's phone:
 
-- URL: `https://api.nivesh.qzz.io/healthz` (runs `SELECT 1`; 503 when the DB is down).
-  Once `/health` checks the DB (REL-18), point the monitor at `/health` instead.
+- URL: `https://api.nivesh.qzz.io/health/ready` (runs `SELECT 1`; 503 when the DB is down;
+  `/health` is an alias).
 - Alert when the status is not 200 or the request times out.
 
 `/ping` and `/health/live` only prove the process answers HTTP; never use them as the
 uptime signal.
+`/healthz` is admin-only (JWT) and returns 401 to an anonymous monitor; it is not an
+uptime target.
 
 ## 2. Backup dead-man switch
 

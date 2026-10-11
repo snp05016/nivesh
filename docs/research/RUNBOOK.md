@@ -14,7 +14,7 @@ Companion documents: [METHODOLOGY.md](METHODOLOGY.md) and [COMPLIANCE.md](COMPLI
 
   Long jobs (`backfill`, `train`) should run under `nohup` or `tmux` on the host so an SSH drop does not kill them. Training runs with `nice -n 10` and 3 threads.
 - **Never print secrets.** `ML_ENGINE_API_KEY` lives in `~/nivesh-data/ml-engine.env` (ml-engine) and `backend/.env` (backend). Check that a key is set with `grep -c '^ML_ENGINE_API_KEY=.' <file>`, never with `cat` or `echo`.
-- **Admin views.** `GET /healthz` (`research` block), `GET /api/v1/research/admin/status`, `GET /api/v1/research/track-record` and `GET /api/v1/research/model-card?detail=full` (all admin-only except `/healthz`).
+- **Admin views.** `GET /healthz` (`research` block), `GET /api/v1/research/admin/status`, `GET /api/v1/research/track-record` and `GET /api/v1/research/model-card?detail=full` (all four are admin-only).
 - **Flags** live in `backend/.env` and are read by `services/research/config.py` at backend start. Restart the backend after any change and confirm the effective values in `/healthz` and `/admin/status`.
 
 ## Command reference

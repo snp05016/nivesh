@@ -2,8 +2,11 @@ import asyncio
 import httpx
 import logging
 import os
+import threading
 import jwt as pyjwt
 import time
+from enum import Enum
+from typing import Optional
 from urllib.parse import quote as _url_quote
 
 from helpers import _yf_price, _to_ns, get_session, PriceTarget
@@ -96,86 +99,104 @@ def get_alerts_data(user_id: int):
         })
     return result
 
-async def _send_apns_push(user_id: int, ticker: str, target_price: float, current_price: float, direction: str):
-    """Sends an Apple Push Notification via APNs HTTP/2 to the user's registered device(s)."""
-    apns_topic = os.getenv("APNS_TOPIC", "com.nivesh.app")
+class PushResult(str, Enum):
+    """Outcome of one push attempt. Only SENT means a device accepted it."""
+    SENT = "sent"
+    NO_TOKENS = "no_tokens"
+    NOT_CONFIGURED = "not_configured"
+    DISABLED = "disabled"  # user turned alerts off (IOSCORE-23)
+    FAILED = "failed"
+
+
+# Apple rejects provider tokens refreshed more often than every 20 min and expires
+# them after 60 min (TooManyProviderTokenUpdates / ExpiredProviderToken).
+_PROVIDER_TOKEN_TTL = 50 * 60
+_provider_tokens: dict = {}
+_provider_lock = threading.Lock()
+_unconfigured_warned = False
+
+
+def _provider_token(team_id: str, key_id: str, key_path: str) -> str:
+    """ES256 provider JWT, re-minted only every 50 minutes."""
+    key = (team_id, key_id, key_path)
+    with _provider_lock:
+        cached = _provider_tokens.get(key)
+        if cached and time.time() - cached[1] < _PROVIDER_TOKEN_TTL:
+            return cached[0]
+        with open(key_path, "r") as f:
+            auth_key = f.read()
+        now = int(time.time())
+        token = pyjwt.encode({"iss": team_id, "iat": now}, auth_key, algorithm="ES256",
+                             headers={"kid": key_id})
+        _provider_tokens[key] = (token, now)
+        return token
+
+
+async def send_apns(user_id: int, title: str, body: str, data: Optional[dict] = None) -> PushResult:
+    """Push one alert to every iOS device of `user_id` via APNs HTTP/2."""
+    global _unconfigured_warned
+    with get_session() as session:
+        tokens = [
+            t for (t,) in session.query(DeviceToken.device_token)
+            .filter_by(user_id=user_id, platform="ios").all()
+        ]
+    if not tokens:
+        logger.info("No device tokens registered for user %d, APNs push skipped", user_id)
+        return PushResult.NO_TOKENS
+
     apns_key_path = os.getenv("APNS_AUTH_KEY_PATH", "")
     apns_key_id = os.getenv("APNS_KEY_ID", "")
     apns_team_id = os.getenv("APNS_TEAM_ID", "")
-    apns_env = os.getenv("APNS_ENVIRONMENT", "development")
-
-    apns_host = (
-        "https://api.push.apple.com" if apns_env == "production"
-        else "https://api.sandbox.push.apple.com"
-    )
-
-    with get_session() as session:
-        tokens = (
-            session.query(DeviceToken.device_token)
-            .filter_by(user_id=user_id, platform="ios")
-            .all()
-        )
-
-    if not tokens:
-        logger.info(f"No device tokens registered for user {user_id}, skipping APNs push for {ticker}")
-        return True
-
-    payload = {
-        "aps": {
-            "alert": {
-                "title": f"{ticker} Alert Triggered",
-                "body": f"{ticker} is now {'above' if direction == 'above' else 'below'} {target_price} (Current: {current_price})",
-            },
-            "sound": "default",
-            "badge": 1,
-        },
-        "ticker": ticker,
-        "type": "price_alert",
-    }
-
     if not apns_key_path or not apns_key_id or not apns_team_id:
-        logger.warning(f"APNs credentials not configured — logged push for {ticker} to user {user_id} with {len(tokens)} device(s)")
-        return True
+        if not _unconfigured_warned:
+            logger.warning("APNs credentials not configured: pushes are not delivered")
+            _unconfigured_warned = True
+        return PushResult.NOT_CONFIGURED
 
     try:
-        with open(apns_key_path, "r") as f:
-            auth_key = f.read()
-
-        token_payload = {"iss": apns_team_id, "iat": int(time.time())}
-        apns_token = pyjwt.encode(token_payload, auth_key, algorithm="ES256", headers={"kid": apns_key_id})
-
-        headers = {
-            "apns-topic": apns_topic,
-            "apns-push-type": "alert",
-            "apns-priority": "10",
-            "authorization": f"bearer {apns_token}",
-        }
+        apns_token = _provider_token(apns_team_id, apns_key_id, apns_key_path)
     except FileNotFoundError:
         logger.error("APNs auth key not found at configured path")
-        return False
+        return PushResult.NOT_CONFIGURED
     except Exception as e:
         logger.error("APNs JWT signing failed (%s)", type(e).__name__)
-        return False
+        return PushResult.FAILED
+
+    apns_host = (
+        "https://api.push.apple.com" if os.getenv("APNS_ENVIRONMENT", "development") == "production"
+        else "https://api.sandbox.push.apple.com"
+    )
+    headers = {
+        "apns-topic": os.getenv("APNS_TOPIC", "com.nivesh.app"),
+        "apns-push-type": "alert",
+        "apns-priority": "10",
+        "authorization": f"bearer {apns_token}",
+    }
+    payload = {"aps": {"alert": {"title": title, "body": body}, "sound": "default", "badge": 1},
+               **(data or {})}
 
     any_success = False
     dead_tokens = []
-    for (device_token,) in tokens:
-        url = f"{apns_host}/3/device/{_url_quote(device_token)}"
-        try:
-            async with httpx.AsyncClient(http2=True) as client:
-                response = await client.post(url, json=payload, headers=headers)
+    try:
+        # ponytail: one client per push (shared across its devices); a process-wide
+        # client would need one per event loop (poller loop vs asyncio.run callers).
+        async with httpx.AsyncClient(http2=True, timeout=10) as client:
+            for device_token in tokens:
+                url = f"{apns_host}/3/device/{_url_quote(device_token)}"
+                try:
+                    response = await client.post(url, json=payload, headers=headers)
+                except httpx.HTTPError:
+                    logger.warning("APNs HTTP transport error for user %d", user_id)
+                    continue
                 if response.status_code == 200:
-                    logger.info("APNs push sent to user %d for %s", user_id, ticker)
                     any_success = True
                 elif _is_dead_token(response):
                     dead_tokens.append(device_token)
                 else:
                     logger.warning("APNs push rejected %d for user %d: %s",
                                    response.status_code, user_id, response.text[:200])
-        except httpx.HTTPError:
-            logger.warning("APNs HTTP transport error for user %d", user_id)
-        except Exception as e:
-            logger.warning("APNs dispatch error for user %d (%s)", user_id, type(e).__name__)
+    except Exception as e:  # e.g. ImportError when h2 is missing
+        logger.error("APNs dispatch error for user %d (%s)", user_id, type(e).__name__)
     if dead_tokens:
         with get_session() as session:
             session.query(DeviceToken).filter(
@@ -184,7 +205,21 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
             ).delete(synchronize_session=False)
             session.commit()
         logger.info("Pruned %d unregistered APNs token(s) for user %d", len(dead_tokens), user_id)
-    return any_success or not tokens
+    if any_success:
+        logger.info("APNs push sent to user %d", user_id)
+        return PushResult.SENT
+    return PushResult.NO_TOKENS if len(dead_tokens) == len(tokens) else PushResult.FAILED
+
+
+async def _send_apns_push(user_id: int, ticker: str, target_price: float, current_price: float,
+                          direction: str) -> PushResult:
+    """Price-alert push for `ticker`."""
+    return await send_apns(
+        user_id,
+        f"{ticker} Alert Triggered",
+        f"{ticker} is now {direction} ₹{target_price:,.2f} (current ₹{current_price:,.2f})",
+        {"ticker": ticker, "type": "price_alert"},
+    )
 
 
 def _is_dead_token(response) -> bool:
@@ -263,15 +298,16 @@ async def _poll_once() -> None:
 
         if not push_allowed(user_id):
             continue
-        push_ok = await _send_apns_push(
+        result = await _send_apns_push(
             user_id=user_id,
             ticker=ticker,
             target_price=target_price,
             current_price=current_price,
             direction=direction
         )
-        if not push_ok:
-            logger.warning("APNs push failed for alert %d (inbox row written)", alert_id)
+        if result != PushResult.SENT:
+            logger.warning("APNs push not delivered for alert %d: %s (inbox row written)",
+                           alert_id, getattr(result, "value", result))
 
 
 async def price_alert_poller():

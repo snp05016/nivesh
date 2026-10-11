@@ -237,7 +237,12 @@ async def _http_exception_handler(_req: _FRequest, exc: HTTPException):
     # 502/503/504 carry deliberate, client-safe retry messages (callers must not put
     # exception text in them); every other 5xx is masked.
     if exc.status_code >= 500 and exc.status_code not in (502, 503, 504):
-        logger.error(f"HTTP {exc.status_code} at {_req.method} {_req.url.path}: {exc.detail}")
+        # Routers raise HTTPException(500) inside `except Exception`; log that cause (SILENT-06).
+        cause = exc.__cause__ or exc.__context__
+        logger.error(
+            "HTTP %s at %s %s: %s", exc.status_code, _req.method, _req.url.path, exc.detail,
+            exc_info=(type(cause), cause, cause.__traceback__) if cause else None,
+        )
         return _JSONResponse(
             status_code=exc.status_code,
             content={"detail": "Internal server error. The error has been logged."},
@@ -272,7 +277,7 @@ from routers import harvester as harvester_router
 from routers.health import router as health_router  # Task 56
 from routers import youtube_summary as youtube_summary_router
 
-app.include_router(health_router)  # /healthz
+app.include_router(health_router)  # every health probe (REL-18)
 app.include_router(auth.router)
 app.include_router(correlation.router)
 # Domain routers split out of portfolio.py / market.py (ARCH-14). portfolio_analytics must stay
@@ -500,22 +505,6 @@ from schemas import (
     BatchAnalyzeRequest,
     TradeJournalAddRequest, TradeJournalUpdateRequest,
 )
-
-
-# ---------------------------------------------------------------------------
-# Liveness probe — Section 16
-# Zero-latency, dependency-free. Used by Docker HEALTHCHECK and k8s liveness.
-# Confirms DB is reachable; does NOT call yfinance or any external service.
-# ---------------------------------------------------------------------------
-
-@app.get("/health/live")
-async def liveness_probe():
-    """
-    Shallow liveness probe endpoint.
-
-    Always returns 200 OK as long as the HTTP server is responsive.
-    """
-    return {"status": "alive", "time": datetime.now(timezone.utc).isoformat()}
 
 
 # ---------------------------------------------------------------------------

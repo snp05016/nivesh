@@ -1,12 +1,23 @@
 """
-Task 56: /healthz system health check endpoint.
-Checks DB, yfinance, Anthropic API key, and Redis availability.
+Health probes, the only place they are defined (REL-18).
+
+- /ping (main.py), /api/v1/ping, /health/live: process liveness, no dependencies.
+- /health, /health/ready: readiness, DB `SELECT 1`; 503 with no error text when down.
+- /healthz: admin-only dependency/config report; no third-party (yfinance) calls.
 """
+import importlib.util
 import os
 import time
 
-from fastapi import APIRouter
+import httpx
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+
+from core.config_guard import apns_configured, jwt_secret_problem
 from core.logging_config import get_logger
+from core.security import require_admin
+from database import get_session
 
 router = APIRouter(tags=["Health"])
 logger = get_logger("health")
@@ -14,90 +25,79 @@ logger = get_logger("health")
 
 @router.get("/api/v1/ping")
 def ping():
-    """
-    Lightweight liveness check — no dependency checks.
-
-    Args:
-
-    Returns:
-        Any: The response.
-    """
+    """Lightweight liveness check — no dependency checks."""
     return {"status": "ok"}
+
+
+@router.get("/health/live")
+def liveness():
+    """Process liveness only: 200 while the server answers requests."""
+    return {"status": "alive"}
+
+
+def _db_ok() -> bool:
+    try:
+        with get_session() as db:
+            db.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        logger.exception("Readiness DB check failed")
+        return False
 
 
 @router.get("/health")
-def health_lite():
-    """
-    iOS health check alias — lightweight 200 with no dependency checks.
+@router.get("/health/ready")
+def readiness():
+    """Readiness: 200 when the database answers, else 503 (no error text)."""
+    if _db_ok():
+        return {"status": "ok"}
+    return JSONResponse({"status": "unavailable"}, status_code=503)
 
-    Args:
 
-    Returns:
-        Any: The response.
-    """
-    return {"status": "ok"}
+def _ml_engine_ok() -> bool:
+    url = (os.getenv("ML_ENGINE_URL") or "http://localhost:8001").rstrip("/")
+    try:
+        return httpx.get(f"{url}/health", timeout=1.0).status_code == 200
+    except Exception:
+        return False
+
+
+def _redis_ok() -> bool:
+    try:
+        import redis as _redis
+        _redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"), socket_timeout=1).ping()
+        return True
+    except Exception:
+        return False
 
 
 @router.get("/healthz")
-def healthz():
-    """
-    System health check. Returns status of each component.
-200 = all critical components healthy.
-503 = one or more critical components down.
+def healthz(_admin: int = Depends(require_admin)):
+    """Admin dependency/config report. 503 only when the DB is down; other gaps are 'degraded'."""
+    from services.harvest_worker import _scheduler
 
-    Args:
-
-    Returns:
-        Any: The response.
-    """
-    results: dict = {}
-    overall_ok = True
-
-    # 1. Database connectivity
-    try:
-        from database import get_session
-        with get_session() as db:
-            db.execute(__import__("sqlalchemy").text("SELECT 1"))
-        results["db"] = {"status": "ok"}
-    except Exception as e:
-        results["db"] = {"status": "error", "detail": str(e)[:120]}
-        overall_ok = False
-
-    # 2. yfinance lightweight ping
-    try:
-        import yfinance as yf
-        fi = yf.Ticker("RELIANCE.NS").fast_info
-        price = getattr(fi, "last_price", None)
-        results["yfinance"] = {"status": "ok", "last_price": price}
-    except Exception as e:
-        results["yfinance"] = {"status": "degraded", "detail": str(e)[:120]}
-        # Not critical — don't fail overall
-
-    # 3. Anthropic API key present
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
-    results["anthropic"] = {
-        "status": "ok" if anthropic_key else "missing_key",
-        "key_set": bool(anthropic_key),
+    db_ok = _db_ok()
+    config = {
+        "deepseek_key_set": bool(os.getenv("DEEPSEEK_API_KEY")),
+        "anthropic_key_set": bool(os.getenv("ANTHROPIC_API_KEY")),
+        "jwt_secret_set": jwt_secret_problem(os.getenv("JWT_SECRET")) is None,
+        "apns_configured": apns_configured() and os.path.isfile(os.getenv("APNS_AUTH_KEY_PATH", "")),
+        "h2_installed": importlib.util.find_spec("h2") is not None,
     }
-    if not anthropic_key:
-        overall_ok = False
-
-    # 4. Redis (optional)
-    try:
-        import redis as _redis
-        r = _redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"), socket_timeout=2)
-        r.ping()
-        results["redis"] = {"status": "ok"}
-    except Exception as e:
-        results["redis"] = {"status": "unavailable", "detail": str(e)[:80]}
-        # Redis is optional — not a critical failure
-
-    status_code = 200 if overall_ok else 503
+    checks = {
+        "scheduler": bool(_scheduler and _scheduler.running),
+        "ml_engine": _ml_engine_ok(),
+        "redis": _redis_ok(),
+        **config,
+    }
     payload = {
-        "status": "healthy" if overall_ok else "degraded",
-        "components": results,
+        "status": "healthy" if db_ok else "unavailable",
+        "db": "ok" if db_ok else "error",
+        "config": config,
+        "scheduler": {"running": checks["scheduler"]},
+        "ml_engine": "ok" if checks["ml_engine"] else "unreachable",
+        "redis": "ok" if checks["redis"] else "unavailable",
+        "degraded": sorted(name for name, ok in checks.items() if not ok),
         "checked_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
-
-    from fastapi.responses import JSONResponse
-    return JSONResponse(content=payload, status_code=status_code)
+    return JSONResponse(content=payload, status_code=200 if db_ok else 503)

@@ -48,8 +48,8 @@ ssh -o ConnectTimeout=5 saumyapatel@192.168.1.122 "
 ### Step 3 — Health Checks
 ```bash
 curl -fsS --max-time 5 https://api.nivesh.qzz.io/ping         # expect {"pong":true}
-curl -fsS --max-time 5 https://api.nivesh.qzz.io/health       # expect 200
-curl -fsS --max-time 10 https://api.nivesh.qzz.io/health/live # expect 200
+curl -fsS --max-time 5 https://api.nivesh.qzz.io/health/live  # process liveness, expect 200
+curl -fsS --max-time 10 https://api.nivesh.qzz.io/health/ready # DB readiness, 503 if the DB is down
 ```
 - All 3 must return 200 (`-f` makes curl exit non-zero on any 4xx/5xx)
 - If not → ABORT "Health check failed"

@@ -76,10 +76,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 EXPOSE 8000
 
-# ── Liveness / readiness probe (used by Kubernetes / Docker health check) ────
-# Fixes #88: Use /health/live (DB check) instead of unconditional /health
+# ── Readiness probe (Docker health check) ────────────────────────────────────
+# /health/ready runs a DB SELECT 1 and returns 503 when the database is down
+# (#88, REL-18); /health/live is process-only and would stay healthy.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/health/live || exit 1
+    CMD curl -fsS http://localhost:${PORT}/health/ready || exit 1
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────
 # Fixes #84: --workers 1 avoids in-memory state inconsistency across worker processes

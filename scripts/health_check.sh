@@ -45,10 +45,10 @@ echo ""
 
 echo "── Health ──"
 check      "GET /ping (liveness)"                            200 "$BASE_URL/ping"
-# /health is still the always-200 iOS alias (routers/health.py); it becomes a real
-# DB readiness check once REL-18 lands. /healthz returns 503 when a critical component is down.
-check      "GET /health"                                     200 "$BASE_URL/health"
-check      "GET /healthz (readiness)"                        200 "$BASE_URL/healthz"
+# /health/ready (alias /health) is the DB readiness check: 503 when the DB is down.
+# /healthz is admin-only (REL-18), so it is not probed here.
+check      "GET /health/live (liveness)"                     200 "$BASE_URL/health/live"
+check      "GET /health/ready (readiness)"                   200 "$BASE_URL/health/ready"
 
 echo "── Market (public, no auth) ──"
 check_body "GET /quick-info?ticker="                         200 "$BASE_URL/quick-info?ticker=$TICKER&exchange=NSE"
