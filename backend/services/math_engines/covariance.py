@@ -1,5 +1,6 @@
 """Covariance matrices for stress testing — normal and crisis regimes."""
 from __future__ import annotations
+import logging
 import numpy as np
 import pandas as pd
 import yfinance as yf
@@ -20,8 +21,10 @@ def fetch_historical_returns(tickers: list[str], period: str = "2y") -> dict[str
                 rets = hist["Close"].pct_change().dropna()
                 returns_dict[t] = rets.values
             else:
+                logging.warning("[Covariance] no price history for %s", t)
                 returns_dict[t] = np.array([])
-        except Exception as _e:
+        except Exception as exc:
+            logging.warning("[Covariance] history fetch failed for %s: %s", t, exc)
             returns_dict[t] = np.array([])
     return returns_dict
 
@@ -60,10 +63,8 @@ def compute_covariance_matrix(
             matrix.append(arr[-common_len:])
     
     data = np.column_stack([m for m in matrix if len(m) > 0])
-    if data.shape[1] < 2:
-        return np.eye(n) * 0.0001
-    
-    cov = np.cov(data.T)
+    # atleast_2d: a single valid column yields its own 1x1 variance, not the identity fallback
+    cov = np.atleast_2d(np.cov(data, rowvar=False))
     full_cov = np.eye(n) * np.mean(np.diag(cov) if cov.size > 0 else 0.0001)
     valid_indices = [i for i, arr in enumerate(matrix) if len(arr) > 0]
     for i, vi in enumerate(valid_indices):
@@ -87,25 +88,19 @@ def compute_crisis_covariance(
     if n == 0:
         return np.array([])
     
-    # Base covariance
-    cov = compute_covariance_matrix(returns, ticker_order)
-    
+    return crisis_covariance_from(compute_covariance_matrix(returns, ticker_order), broken_arrow_corr)
+
+def crisis_covariance_from(cov: np.ndarray, broken_arrow_corr: float = 0.85) -> np.ndarray:
+    """Broken Arrow crisis matrix from an existing covariance: keep each variance,
+    set every pairwise correlation to broken_arrow_corr (zero-variance rows stay zero)."""
     if cov.size == 0:
         return cov
-        
-    # Extract variances to compute volatilities
-    variances = np.diag(cov)
-    vols = np.sqrt(np.maximum(variances, 1e-12))
-    
-    # Broken Arrow Protocol: inflate correlations
+    n = cov.shape[0]
+    vols = np.sqrt(np.maximum(np.diag(cov), 0.0))
     corr = np.ones((n, n)) * broken_arrow_corr
     np.fill_diagonal(corr, 1.0)
-    
     # Reconstruct covariance: Σ = D * R * D
-    vol_matrix = np.outer(vols, vols)
-    crisis_cov = corr * vol_matrix
-    
-    return crisis_cov
+    return corr * np.outer(vols, vols)
 
 def conditional_shock_propagation(
     shocked_factors: dict[str, float],

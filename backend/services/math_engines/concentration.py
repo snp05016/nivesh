@@ -126,7 +126,8 @@ def compute_concentration_analysis(
     
     holdings_mrc.sort(key=lambda x: abs(x.risk_contribution), reverse=True)
     
-    conc_score = max(0.0, min(100.0, 100.0 - 20.0 * (np.log(hhi + 1) - np.log(1))))
+    # Linear in HHI: 100 for an infinitely diversified book, 0 for a single stock (HHI 10,000).
+    conc_score = max(0.0, min(100.0, 100.0 - hhi / 100.0))
     
     return ConcentrationAnalysisResponse(
         hhi=round(hhi, 1),

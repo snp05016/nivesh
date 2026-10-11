@@ -170,23 +170,21 @@ def test_engine_emits_real_phase_progress(monkeypatch):
         "shares": 10.0,
         "price": 100.0,
         "value": 1000.0,
-        "betas": {
-            "market": 1.0,
-            "oil": 0.2,
-            "rates": -0.3,
-            "fx": 0.1,
-            "inflation": -0.2,
-        },
+        "yf_symbol": "TCS.NS",
+        "betas": {"market": 1.0, "market_beta_source": "estimated"},
         "sector": "IT",
-        "volatility": 0.25,
+        "size_bucket": "large",
+        "fallback_daily_vol": 0.015,
         "avg_daily_volume": 1_000_000.0,
-        "spread_bps": 0.005,
+        "spread_bps": 0.0005,
+        "price_source": "live",
+        "adv_source": "info",
     }]
     monkeypatch.setattr(stress_test, "enrich_holdings", lambda *_args, **_kwargs: enriched)
     monkeypatch.setattr(
         covariance,
         "fetch_historical_returns",
-        lambda *_args, **_kwargs: {"TCS": np.linspace(-0.01, 0.01, 30)},
+        lambda *_args, **_kwargs: {"TCS.NS": np.linspace(-0.01, 0.01, 30)},
     )
 
     events = []
@@ -209,11 +207,21 @@ def test_engine_emits_real_phase_progress(monkeypatch):
 
 def test_beta_estimation_defaults_sector_for_fallback(monkeypatch):
     from services import stress_test
+    from services.math_engines.vasicek import MacroBetasResponse
 
-    monkeypatch.setattr(
-        stress_test,
-        "get_adjusted_macro_betas",
-        lambda ticker, sector: {"market": 1.0, "sector": sector},
-    )
+    seen = {}
 
-    assert stress_test._estimate_betas("UNKNOWN")["sector"] == "Other"
+    def fake_betas(ticker, sector):
+        seen["sector"] = sector
+        return MacroBetasResponse(
+            market=1.0, midcap=0.0, smallcap=0.0, oil=0.0, rates=0.0,
+            fx=0.0, inflation=0.0, fii_flow=0.0, dii_flow=0.0,
+        )
+
+    monkeypatch.setattr(stress_test, "get_adjusted_macro_betas", fake_betas)
+
+    betas = stress_test._estimate_betas("UNKNOWN")
+    assert seen["sector"] == "Other"
+    # Engine consumers index and .get() the betas, so they must be a plain dict.
+    assert isinstance(betas, dict)
+    assert betas["market"] == 1.0

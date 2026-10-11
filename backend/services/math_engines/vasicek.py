@@ -1,5 +1,6 @@
 """Vasicek Bayesian Shrinkage estimator for equity beta sensitivities (§4.2)."""
 from __future__ import annotations
+import logging
 import numpy as np
 import pandas as pd
 import yfinance as yf
@@ -16,6 +17,8 @@ class MacroBetasResponse(BaseModel):
     inflation: float
     fii_flow: float
     dii_flow: float
+    # "estimated" when market beta came from >= 20 aligned daily returns, else "default" (1.0)
+    market_beta_source: str = "estimated"
 
 def compute_ewma_beta(
     stock_returns: np.ndarray,
@@ -138,7 +141,9 @@ def get_adjusted_macro_betas(ticker: str, sector: str = "Other") -> MacroBetasRe
     Fetch 1-year historical daily returns for the ticker and benchmark (^NSEI) using yfinance.
     Compute empirical beta and its standard error, then shrink towards a sector mean.
     Returns the adjusted macro factor betas required by stress_test.py.
+    Only the market beta is estimated; the other factor betas are 0.0.
     """
+    beta_source = "estimated"
     try:
         # Fetch 1-year historical daily returns
         stock_data = yf.download(ticker, period="1y", interval="1d", progress=False)
@@ -164,7 +169,9 @@ def get_adjusted_macro_betas(ticker: str, sector: str = "Other") -> MacroBetasRe
         # Align dates
         df = pd.concat([stock_ret, market_ret], axis=1, join="inner").dropna()
         if len(df) < 20:
+            logging.warning("[Vasicek] only %d aligned returns for %s, defaulting beta to 1.0", len(df), ticker)
             market_beta = 1.0
+            beta_source = "default"
         else:
             s_ret = df.iloc[:, 0].values
             m_ret = df.iloc[:, 1].values
@@ -192,17 +199,22 @@ def get_adjusted_macro_betas(ticker: str, sector: str = "Other") -> MacroBetasRe
                 prior_var=prior_var
             )
             
-    except Exception as _e:
+    except Exception as exc:
+        logging.warning("[Vasicek] beta estimation failed for %s, defaulting to 1.0: %s", ticker, exc)
         market_beta = 1.0
+        beta_source = "default"
 
+    # ponytail: macro/flow/size betas not estimated (0.0, the stress engine applies the market
+    # leg and size buckets instead); add factor regressions (BZ=F, INR=X, ...) when needed
     return MacroBetasResponse(
         market=float(market_beta),
-        midcap=1.2 if float(market_beta) > 1.0 else 0.8,
-        smallcap=1.3 if float(market_beta) > 1.0 else 0.7,
-        oil=0.2,
-        rates=-0.3,
-        fx=0.1,
-        inflation=-0.2,
-        fii_flow=0.5,
-        dii_flow=-0.2,
+        midcap=0.0,
+        smallcap=0.0,
+        oil=0.0,
+        rates=0.0,
+        fx=0.0,
+        inflation=0.0,
+        fii_flow=0.0,
+        dii_flow=0.0,
+        market_beta_source=beta_source,
     )

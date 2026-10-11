@@ -32,6 +32,16 @@ class TestScenarioEngine:
         assert SCENARIOS_DEF["banking_crisis"]["sector"]["Banking"] == -30.0
 
 
+@pytest.fixture
+def no_price_history(monkeypatch):
+    """Hermetic: every yfinance download comes back empty, forcing the beta fallback."""
+    import pandas as pd
+    from services.math_engines import vasicek
+
+    monkeypatch.setattr(vasicek.yf, "download", lambda *_a, **_k: pd.DataFrame())
+
+
+@pytest.mark.usefixtures("no_price_history")
 class TestVasicekEngine:
     def test_beta_estimation_returns_expected_factors(self):
         from services.stress_test import _estimate_betas
@@ -46,8 +56,10 @@ class TestVasicekEngine:
         from services.stress_test import _estimate_betas
         betas = _estimate_betas("INVALID_TICKER_XYZ123")
         assert betas["market"] == 1.0
-        assert betas["rates"] == -0.3
-        assert betas["fii_flow"] == 0.5
+        assert betas["market_beta_source"] == "default"
+        # Macro/flow betas are not estimated, so they must not inject fake exposure.
+        assert betas["rates"] == 0.0
+        assert betas["fii_flow"] == 0.0
 
     def test_beta_all_factors_present(self):
         from services.stress_test import _estimate_betas, FACTOR_CATEGORIES
@@ -70,8 +82,7 @@ class TestLiquidityEngine:
             gamma=0.2,
             volume_suppression=0.0,
         )
-        assert "impact_pct" in result
-        assert result["impact_pct"] < 1.0
+        assert result.impact_pct < 1.0
 
     def test_square_root_impact_large_position(self):
         from services.math_engines.liquidity import square_root_impact
@@ -83,7 +94,7 @@ class TestLiquidityEngine:
             gamma=0.2,
             volume_suppression=1.0,
         )
-        assert result["impact_pct"] > 1.0
+        assert result.impact_pct > 1.0
 
     def test_volume_suppression_increases_impact(self):
         from services.math_engines.liquidity import square_root_impact
@@ -103,7 +114,7 @@ class TestLiquidityEngine:
             gamma=0.2,
             volume_suppression=0.4,
         )
-        assert stressed["impact_pct"] > normal["impact_pct"]
+        assert stressed.impact_pct > normal.impact_pct
 
     def test_portfolio_liquidity_loss(self):
         from services.math_engines.liquidity import portfolio_liquidity_loss
@@ -114,9 +125,8 @@ class TestLiquidityEngine:
              "volatility": 0.03, "spread_bps": 0.005},
         ]
         result = portfolio_liquidity_loss(holdings, volume_suppression=0.4, gamma=0.2)
-        assert "total_liquidity_loss_pct" in result
-        assert "total_liquidity_loss_inr" in result
-        assert result["total_liquidity_loss_pct"] > 0
+        assert result.total_liquidity_loss_inr > 0
+        assert result.total_liquidity_loss_pct > 0
 
 
 class TestConcentrationEngine:
@@ -129,8 +139,8 @@ class TestConcentrationEngine:
         cov = np.eye(n) * 0.04
         result = compute_concentration_analysis(tickers, weights, sectors, cov)
         # HHI = n * (100/n)^2 = 10000/n  → for n=50, HHI = 200
-        assert result["hhi"] < 1500  # well below diversified threshold
-        assert result["hhi_classification"] == "Diversified"
+        assert result.hhi < 1500  # well below diversified threshold
+        assert result.hhi_classification == "Diversified"
 
     def test_hhi_single_stock(self):
         from services.math_engines.concentration import compute_concentration_analysis
@@ -140,8 +150,8 @@ class TestConcentrationEngine:
         cov = np.eye(1) * 0.04
         result = compute_concentration_analysis(tickers, weights, sectors, cov)
         # Single stock: HHI = (100)^2 = 10000
-        assert result["hhi"] == 10000.0 or result["hhi"] == 10000
-        assert result["hhi_classification"] == "Concentrated"
+        assert result.hhi == 10000.0
+        assert result.hhi_classification == "Concentrated"
 
     def test_hhi_classification(self):
         from services.math_engines.concentration import compute_concentration_analysis
@@ -150,7 +160,7 @@ class TestConcentrationEngine:
         sectors = ["Banking", "Banking", "IT"]
         cov = np.eye(3) * 0.04
         result = compute_concentration_analysis(tickers, weights, sectors, cov)
-        assert result["hhi"] > 0.25
+        assert result.hhi > 0.25
 
     def test_marginal_risk_contribution(self):
         from services.math_engines.concentration import compute_concentration_analysis
@@ -164,7 +174,17 @@ class TestConcentrationEngine:
             [0.005, 0.01, 0.005, 0.04],
         ])
         result = compute_concentration_analysis(tickers, weights, sectors, cov)
-        assert "top_concentration_drivers" in result or "marginal_risk_contributions" in result
+        assert len(result.marginal_risk_contributions) == 4
+
+    def test_concentration_score_scale(self):
+        from services.math_engines.concentration import compute_concentration_analysis
+        single = compute_concentration_analysis(["T0"], np.array([1.0]), ["IT"], np.eye(1) * 0.04)
+        assert single.concentration_score == 0.0
+        n = 50
+        spread = compute_concentration_analysis(
+            [f"T{i}" for i in range(n)], np.ones(n) / n, ["IT"] * n, np.eye(n) * 0.04
+        )
+        assert spread.concentration_score == pytest.approx(98.0)
 
 
 class TestCovarianceEngine:

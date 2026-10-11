@@ -67,6 +67,7 @@ struct StressTestResult: Codable, Identifiable {
     let impactInr: Double
     let holdings: [StressTestHolding]
     let scores: StressTestScores
+    let dataQuality: StressDataQuality?
 
     enum CodingKeys: String, CodingKey {
         case name
@@ -74,6 +75,22 @@ struct StressTestResult: Codable, Identifiable {
         case impactInr = "impact_inr"
         case holdings
         case scores
+        case dataQuality = "data_quality"
+    }
+}
+
+/// Provenance of the stress-test inputs; `degraded` means some inputs were estimated.
+struct StressDataQuality: Codable {
+    let coveragePct: Double
+    let degraded: Bool
+    let costBasisTickers: [String]
+    let covariance: String
+
+    enum CodingKeys: String, CodingKey {
+        case coveragePct = "coverage_pct"
+        case degraded
+        case costBasisTickers = "cost_basis_tickers"
+        case covariance
     }
 }
 
@@ -736,6 +753,11 @@ struct StressScenarioSection: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.large) {
+            if let quality = result.dataQuality, quality.degraded {
+                StressDataQualityBanner(quality: quality)
+                    .padding(.horizontal, Theme.screenPadding)
+            }
+
             // SUMMARY CARD
             VStack(spacing: Theme.Spacing.standard) {
                 Text(result.name)
@@ -827,6 +849,30 @@ struct StressScenarioSection: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Data Quality Banner
+
+struct StressDataQualityBanner: View {
+    let quality: StressDataQuality
+
+    private var correlations: String {
+        switch quality.covariance {
+        case "historical": return "measured"
+        case "partial": return "partly estimated"
+        default: return "not measured"
+        }
+    }
+
+    var body: some View {
+        Text("Estimated inputs: \(quality.costBasisTickers.count) holding(s) priced at cost; correlations \(correlations); macro sensitivities are assumptions.")
+            .font(Theme.microLabel(size: 12, relativeTo: .caption))
+            .foregroundColor(Theme.inkSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.Spacing.standard)
+            .background(Theme.bearRed.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
     }
 }
 
