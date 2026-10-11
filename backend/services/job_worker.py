@@ -12,6 +12,7 @@ elsewhere (e.g. cancelled through another uvicorn worker).
 from __future__ import annotations
 
 import json
+import logging
 import os
 import threading
 import time
@@ -100,9 +101,13 @@ def run_job(job_id: str, ticker: str, exchange: str,
             result_json=json.dumps(result, default=str),
         )
     except Exception as e:
+        # The owner polls error and checkpoints, and raw exception text can carry
+        # provider responses or internals: log it here (multiprocessing prints the
+        # traceback when the re-raise ends the process) and store generic text (AUTH-08).
+        logging.error("[job_worker] analysis job %s failed: %r", job_id, e)
         database.append_checkpoint(job_id, stage="failed", agent="Engine",
-                                   message=f"Analysis failed: {e}", state="error", pct=0)
-        database.update_job(job_id, status="FAILED", error=str(e))
+                                   message="Analysis failed", state="error", pct=0)
+        database.update_job(job_id, status="FAILED", error="Analysis failed. Please try again.")
         raise
     finally:
         stop_heartbeat.set()

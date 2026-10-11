@@ -8,7 +8,8 @@ TICKER=""; MODE="normal"; USER_ID=""; EXCHANGE="NSE"; TIMEOUT=""
 
 usage() {
   echo "Usage: $0 --ticker SYM --mode normal|deep|extreme --user ID [--exchange NSE] [--host URL] [--timeout SEC]"
-  echo "Starts a PAID /analyze job (LLM spend): requires ALLOW_PAID_ENDPOINTS=1. Optional NIVESH_TOKEN is sent as a Bearer token."
+  echo "Starts a PAID /analyze job (LLM spend): requires ALLOW_PAID_ENDPOINTS=1 and NIVESH_TOKEN (a JWT for the --user account;"
+  echo "job status is owner-only, so a missing or foreign token cannot poll the job)."
   exit 2
 }
 
@@ -50,11 +51,14 @@ if [[ "${ALLOW_PAID_ENDPOINTS:-}" != "1" ]]; then
   echo "Refusing to start a paid /analyze job on $HOST (ticker=$TICKER mode=$MODE). Set ALLOW_PAID_ENDPOINTS=1 to proceed." >&2
   exit 3
 fi
-AUTH_ARGS=()
-[[ -n "${NIVESH_TOKEN:-}" ]] && AUTH_ARGS=(-H "Authorization: Bearer $NIVESH_TOKEN")
+if [[ -z "${NIVESH_TOKEN:-}" ]]; then
+  echo "NIVESH_TOKEN is not set: it must be a JWT for --user $USER_ID (job polling requires the owner's token). No job started." >&2
+  usage
+fi
+AUTH_ARGS=(-H "Authorization: Bearer $NIVESH_TOKEN")
 
 echo "==> POST /analyze  ticker=$TICKER mode=$MODE scan_type=$SCAN_TYPE deep=$DEEP user=$USER_ID host=$HOST"
-RESP=$(curl -s -X POST "$HOST/analyze" ${AUTH_ARGS[@]+"${AUTH_ARGS[@]}"} -H 'Content-Type: application/json' \
+RESP=$(curl -s -X POST "$HOST/analyze" "${AUTH_ARGS[@]}" -H 'Content-Type: application/json' \
   -d "{\"ticker\":\"$TICKER\",\"exchange\":\"$EXCHANGE\",\"user_id\":$USER_ID,\"scan_type\":\"$SCAN_TYPE\",\"deep_scan\":$DEEP}")
 
 ERR=$(echo "$RESP" | jqget error_code)
@@ -73,8 +77,12 @@ while true; do
     echo "TIMEOUT after ${ELAPSED}s; last poll:"; echo "$JOB" | python3 -m json.tool 2>/dev/null || echo "$JOB"
     exit 124
   fi
-  JOB=$(curl -s ${AUTH_ARGS[@]+"${AUTH_ARGS[@]}"} "$HOST/analyze/job/$JOB_ID?user_id=$USER_ID")
+  JOB=$(curl -s "${AUTH_ARGS[@]}" "$HOST/analyze/job/$JOB_ID")
   STATUS=$(echo "$JOB" | jqget status)
+  if [[ -z "$STATUS" ]]; then
+    # 401/404 body ({detail} or {error}): token missing/expired or not the job owner.
+    echo "Poll failed (is NIVESH_TOKEN for --user $USER_ID?): $JOB" >&2; exit 1
+  fi
   STAGE=$(echo "$JOB" | jqget stage)
   PROG=$(echo "$JOB" | jqget progress_pct)
   printf "    [%4ss] %-10s %-26s %s%%\n" "$ELAPSED" "${STATUS:-?}" "${STAGE:-—}" "${PROG:-0}"

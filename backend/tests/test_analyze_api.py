@@ -30,6 +30,12 @@ def _uid():
     return uid
 
 
+def _auth(uid):
+    # Job routes take the caller from the bearer token, not ?user_id= (AUTH-08).
+    import database
+    return {"Authorization": f"Bearer {database.create_access_token(uid)}"}
+
+
 def test_analyze_returns_202_immediately(api_client):
     import database
     uid = _uid()
@@ -56,23 +62,23 @@ def test_job_poll_and_cancel(api_client):
     uid = _uid()
     jid = api_client.post("/analyze",
                       json={"ticker": "INFY", "exchange": "NSE", "user_id": uid}).json()["job_id"]
-    poll = api_client.get(f"/analyze/job/{jid}")
+    poll = api_client.get(f"/analyze/job/{jid}", headers=_auth(uid))
     assert poll.status_code == 200
     assert poll.json()["status"] in ("QUEUED", "RUNNING")
 
-    cancel = api_client.post(f"/analyze/{jid}/cancel")
+    cancel = api_client.post(f"/analyze/{jid}/cancel", headers=_auth(uid))
     assert cancel.status_code == 200
     assert database.get_job(jid)["status"] == "CANCELLED"
 
 
 def test_active_endpoint(api_client):
     uid = _uid()
-    assert api_client.get(f"/analyze/active?user_id={uid}").json()["status"] == "NONE"
+    assert api_client.get("/analyze/active", headers=_auth(uid)).json()["status"] == "NONE"
     jid = api_client.post("/analyze",
                       json={"ticker": "TCS", "exchange": "NSE", "user_id": uid}).json()["job_id"]
-    active = api_client.get(f"/analyze/active?user_id={uid}").json()
+    active = api_client.get("/analyze/active", headers=_auth(uid)).json()
     assert active["job_id"] == jid
 
 
 def test_job_not_found(api_client):
-    assert api_client.get("/analyze/job/doesnotexist").status_code == 404
+    assert api_client.get("/analyze/job/doesnotexist", headers=_auth(_uid())).status_code == 404

@@ -32,6 +32,12 @@ class AnalyzeRequest(BaseModel):
             raise ValueError("Exchange must be NSE or BSE")
         return v
 
+    @field_validator("scan_type", mode="before")
+    def normalize_scan_type(cls, v):
+        # Unknown values used to dodge both the cache and the one-job-per-type guard
+        # (AUTH-17); the Literal rejects them, this only folds case and whitespace first.
+        return v.strip().lower() if isinstance(v, str) else v
+
     @field_validator("risk_tolerance")
     def validate_risk_tolerance(cls, v):
         if v is None:

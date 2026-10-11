@@ -18,9 +18,7 @@ def login_endpoint(req: LoginRequest):
 @router.post("/register")
 def register_endpoint(req: RegisterRequest, request: Request):
     client_ip = request.client.host if request.client else "unknown"
-    reg_key = f"reg_{client_ip}"
-    _check_rate_limit(reg_key, "/register")
-    
+    # The security middleware already limits POST /register per client IP.
     try:
         return register_user(
             req.username, req.password, req.display_name,

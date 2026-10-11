@@ -16,7 +16,7 @@ def test_sixth_login_in_a_minute_is_429(client):
 
 def test_register_limit_key_matches():
     for _ in range(10):
-        assert _check_rate_limit("reg_cmon19", "/register") is True
+        assert _check_rate_limit("reg_cmon19", "/register", "POST") is True
     with pytest.raises(HTTPException) as exc:
-        _check_rate_limit("reg_cmon19", "/register")
+        _check_rate_limit("reg_cmon19", "/register", "POST")
     assert exc.value.status_code == 429

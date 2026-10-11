@@ -137,8 +137,10 @@ _nse_dp.get_fundamentals.return_value = {}
 _TEST_DATABASE_URL = os.environ["DATABASE_URL"]
 # Docs are off by default (REL-26); schema-contract tests need /openapi.json.
 os.environ.setdefault("ENABLE_API_DOCS", "true")
-# Keep the job cap out of unrelated tests; cap tests patch MAX_CONCURRENT_JOBS.
+# Keep the job caps out of unrelated tests (the session DB keeps their QUEUED rows);
+# cap tests patch MAX_CONCURRENT_JOBS / MAX_JOBS_PER_USER.
 os.environ.setdefault("MAX_CONCURRENT_JOBS", "10000")
+os.environ.setdefault("MAX_JOBS_PER_USER", "10000")
 
 # ---------------------------------------------------------------------------
 # STEP 2b: No real child processes (TEST-02)

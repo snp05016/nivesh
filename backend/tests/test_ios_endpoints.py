@@ -4,45 +4,47 @@
 # --- CONTRACT TESTS FOR PLACEHOLDER ROUTES ---
 
 
+# Job routes take the caller from the bearer token and answer 404 for missing or
+# foreign jobs (AUTH-08).
 def test_analyze_job_jobId_success(client, auth_headers):
     response = client.get("/analyze/job/990001", headers=auth_headers)
-    assert response.status_code in (200, 201, 202, 204, 422)
+    assert response.status_code in (200, 201, 202, 204, 404)
     if response.status_code == 200:
         assert isinstance(response.json(), (dict, list))
 
 def test_analyze_job_jobId_unauthenticated(client):
     response = client.get("/analyze/job/990001")
-    assert response.status_code == 422
+    assert response.status_code == 401
 
 def test_analyze_job_jobId_not_found(client, auth_headers):
     dummy_path = "/analyze/job/9999999"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 422)
+    assert response.status_code == 404
 
 def test_analyze_job_jobId_validation_error(client, auth_headers):
     bad_path = "/analyze/job/invalid_id"
     response = client.get(bad_path, headers=auth_headers)
-    assert response.status_code == 422
+    assert response.status_code == 404
 
 def test_analyze_jobId_cancel_success(client, auth_headers):
     response = client.post("/analyze/990001/cancel", headers=auth_headers)
-    assert response.status_code in (200, 201, 202, 204, 422)
+    assert response.status_code in (200, 201, 202, 204, 404)
     if response.status_code == 200:
         assert isinstance(response.json(), (dict, list))
 
 def test_analyze_jobId_cancel_unauthenticated(client):
     response = client.post("/analyze/990001/cancel")
-    assert response.status_code == 422
+    assert response.status_code == 401
 
 def test_analyze_jobId_cancel_not_found(client, auth_headers):
     dummy_path = "/analyze/9999999/cancel"
     response = client.post(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 422)
+    assert response.status_code == 404
 
 def test_analyze_jobId_cancel_validation_error(client, auth_headers):
     bad_path = "/analyze/invalid_id/cancel"
     response = client.post(bad_path, headers=auth_headers)
-    assert response.status_code == 422
+    assert response.status_code == 404
 
 def test_fundamentals_ticker_financials_success(client, auth_headers):
     response = client.get("/fundamentals/RELIANCE/financials", headers=auth_headers)

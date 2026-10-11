@@ -182,7 +182,7 @@ class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
         from fastapi.responses import JSONResponse
         
         try:
-            _rate_limiter._check_rate_limit(client_ip, endpoint)
+            _rate_limiter._check_rate_limit(client_ip, endpoint, request.method)
         except HTTPException as e:
             return JSONResponse(
                 status_code=e.status_code, 

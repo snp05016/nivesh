@@ -294,7 +294,8 @@
 - Cache-hit response: complete normalized analysis JSON with `_cache_type = CACHE HIT`.
 - Async response: `202` body `{job_id, status: QUEUED, ticker, scan_type}`.
 - Conflict response: `409` body with `error_code=ALREADY_RUNNING` and active `job_id`.
-- Polling: `GET /analyze/job/{job_id}?user_id=...` returns job state, progress/checkpoints, and `result` when succeeded.
+- Capacity responses: `503` (`error_code=CAPACITY`, platform cap `MAX_CONCURRENT_JOBS`) or `429` (`error_code=TOO_MANY_JOBS`, per-account cap `MAX_JOBS_PER_USER`), both with `Retry-After: 30`.
+- Polling: `GET /analyze/job/{job_id}` with a Bearer token returns the caller's job state, progress/checkpoints, and `result` when succeeded; `GET /analyze/active` and `POST /analyze/{job_id}/cancel` also take the caller from the token. A missing or foreign job is `404`; ownerless jobs are admin-only.
 
 ### Portfolio stress test
 

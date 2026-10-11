@@ -221,7 +221,7 @@ def test_capacity_ignores_own_and_stale_rows(monkeypatch):
         ],
     )
 
-    assert job_manager._active_job_count("mine") == 1
+    assert [job["job_id"] for job in job_manager._active_jobs("mine")] == ["live"]
 
 
 def test_running_job_is_visible_from_any_api_worker(client, auth_headers, test_user_id):

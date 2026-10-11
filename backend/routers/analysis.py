@@ -23,15 +23,14 @@ from helpers import (
     get_session, EXCHANGE_SUFFIX, NSE_TICKERS, NSE_TICKER_OVERRIDES,
     _resolve_ticker, _to_ns, _yf_price, _yf_fetch_info,
     _quick_info_cache, _quick_info_lock, _QUICK_INFO_TTL,
-    _get_analyze_semaphore, _acquire_analysis_slot, _release_analysis_slot,
-    _ANALYZE_MAX_CONCURRENT, _RUNNING_ANALYSES_STALENESS_SEC,
+    _RUNNING_ANALYSES_STALENESS_SEC,
     _dash_start_job, _dash_end_job,
     _log_token_usage, TOKEN_LOG_PATH,
     AnalyzeRequest, BatchAnalyzeRequest,
     AnalysisHistory, Portfolio, SignalEvent, PriceTarget,
     NewsArticle, YouTubeVideo, PKScreenerSignal,
     get_analysis_for_date, get_all_ticker_history, save_analysis,
-    require_admin, get_current_user_id,
+    require_admin, require_auth, is_admin, get_current_user_id,
     _check_rate_limit,
 )
 
@@ -66,7 +65,8 @@ _BEARISH_SIGNALS = {"BEARISH", "CAUTIOUSLY BEARISH"}
 
 # ── Item 47: Batch Analysis ───────────────────────────────────────────
 @router.post("/batch")
-def batch_analysis(req: BatchAnalyzeRequest):
+def batch_analysis(req: BatchAnalyzeRequest, caller: int = Depends(require_auth)):
+    # The caller's own history only; the body's user_id is ignored (AUTH-08).
     if len(req.tickers) > 20:
         raise HTTPException(status_code=400, detail="Max 20 tickers allowed per batch")
     
@@ -75,7 +75,7 @@ def batch_analysis(req: BatchAnalyzeRequest):
         for ticker in req.tickers:
             # Query the latest AnalysisHistory for this ticker
             db_analysis = (db.query(AnalysisHistory)
-                           .filter(AnalysisHistory.ticker == ticker, AnalysisHistory.user_id == req.user_id)
+                           .filter(AnalysisHistory.ticker == ticker, AnalysisHistory.user_id == caller)
                            .order_by(AnalysisHistory.analysis_date.desc())
                            .first())
             if db_analysis and db_analysis.full_json:
@@ -502,7 +502,7 @@ kills the run. One running job per user (guarded by the DB job state).
     """
     import database
     from repositories.job_repo import JobAlreadyActive
-    from services.job_manager import spawn_job
+    from services.job_manager import JobCapacityError, JobUserLimitError, spawn_job
 
     ticker = req.ticker.upper()
 
@@ -553,6 +553,19 @@ kills the run. One running job per user (guarded by the DB job state).
                   req.user_id, deep_scan, req.scan_type,
                   language=req.language, debate_rounds=req.debate_rounds,
                   risk_tolerance=req.risk_tolerance)
+    except JobCapacityError as e:
+        # Admission control (AUTH-17): platform-wide or per-account worker cap.
+        database.update_job(job["job_id"], status="FAILED", error=str(e))
+        per_user = isinstance(e, JobUserLimitError)
+        return _JSONResponse(
+            status_code=429 if per_user else 503,
+            headers={"Retry-After": "30"},
+            content={
+                "error_code": "TOO_MANY_JOBS" if per_user else "CAPACITY",
+                "detail": str(e),
+                "suggested_action": "RETRY_LATER",
+            },
+        )
     except Exception as e:
         database.update_job(job["job_id"], status="FAILED",
                             error=f"Failed to spawn worker: {e}")
@@ -567,67 +580,73 @@ kills the run. One running job per user (guarded by the DB job state).
             "ticker": ticker, "scan_type": req.scan_type}
 
 
-@router.get("/analyze/job/{job_id}")
-def get_job_status(job_id: str, user_id: int | None = None):
-    """
-    Poll a job: status, stage, progress_pct, checkpoints, and result when done.
-When user_id is provided, verifies the job belongs to that user (IDOR guard).
+def _owned_job(job_id: str, caller: int) -> dict | None:
+    """The job when the caller owns it or is an admin, else None (AUTH-08).
 
-    Args:
-        job_id (str): The job_id.
-        user_id (Any): The user_id.
-
-    Returns:
-        Any: The response.
+    Identity comes from the bearer token only; a ?user_id= query is ignored. Jobs
+    with no owner (anonymous runs) are admin-only, and a missing job looks the same
+    as someone else's.
     """
     import database
     job = database.get_job(job_id)
-    if not job:
-        return _JSONResponse(status_code=422, content={"error": "job not found"})
-    if user_id is not None and job.get("user_id") is not None and job["user_id"] != user_id:
-        return _JSONResponse(status_code=403, content={"error": "job does not belong to this user"})
+    if not job or (job.get("user_id") != caller and not is_admin(caller)):
+        return None
+    job.pop("pid", None)  # server internals stay off the wire
+    return job
+
+
+@router.get("/analyze/job/{job_id}")
+def get_job_status(job_id: str, caller: int = Depends(require_auth)):
+    """
+    Poll the caller's job: status, stage, progress_pct, checkpoints, and result when done.
+
+    Args:
+        job_id (str): The job_id.
+        caller (int): User id from the bearer token.
+
+    Returns:
+        Any: The job; 404 when it is missing or not the caller's.
+    """
+    job = _owned_job(job_id, caller)
+    if job is None:
+        return _JSONResponse(status_code=404, content={"error": "job not found"})
     return job
 
 
 @router.get("/analyze/active")
-def get_active_job(user_id: int | None = None):
+def get_active_job(caller: int = Depends(require_auth)):
     """
-    The user's current running/queued job — drives the app's global running indicator.
-Requires user_id parameter; returns NONE when user_id is null/absent (IDOR guard).
+    The caller's current running/queued job — drives the app's global running indicator.
 
     Args:
-        user_id (Any): The user_id.
+        caller (int): User id from the bearer token.
 
     Returns:
-        Any: The response.
+        Any: The job, or {"status": "NONE"}.
     """
     import database
-    if user_id is None:
+    job = database.get_active_job_for_user(caller)
+    if not job:
         return {"status": "NONE"}
-    job = database.get_active_job_for_user(user_id)
-    return job or {"status": "NONE"}
+    job.pop("pid", None)
+    return job
 
 
 @router.post("/analyze/{job_id}/cancel")
-def cancel_job_endpoint(job_id: str, user_id: int | None = None):
+def cancel_job_endpoint(job_id: str, caller: int = Depends(require_auth)):
     """
-    Cancel a running job (terminates the worker subprocess to stop credit spend).
-When user_id is provided, verifies the job belongs to that user before cancelling (IDOR guard).
+    Cancel the caller's job (admins may cancel any) and stop its worker subprocess.
 
     Args:
         job_id (str): The job_id.
-        user_id (Any): The user_id.
+        caller (int): User id from the bearer token.
 
     Returns:
-        Any: The response.
+        Any: The response; 404 when the job is missing or not the caller's.
     """
-    import database
     from services.job_manager import cancel_job
-    job = database.get_job(job_id)
-    if not job:
-        return _JSONResponse(status_code=422, content={"error": "job not found"})
-    if user_id is not None and job.get("user_id") is not None and job["user_id"] != user_id:
-        return _JSONResponse(status_code=403, content={"error": "job does not belong to this user"})
+    if _owned_job(job_id, caller) is None:
+        return _JSONResponse(status_code=404, content={"error": "job not found"})
     cancel_job(job_id)
     return {"job_id": job_id, "status": "CANCELLED"}
 

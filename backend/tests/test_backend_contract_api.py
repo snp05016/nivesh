@@ -100,6 +100,8 @@ def test_analyze_valid_request_returns_async_job_contract(client, monkeypatch):
 
     user_id, _token = _create_contract_user()
     monkeypatch.setattr(job_manager, "spawn_job", lambda *args, **kwargs: None)
+    # Force a cache miss: scan_type is validated now, so a random one no longer dodges the cache.
+    monkeypatch.setattr(database, "get_analysis_for_date", lambda *args, **kwargs: None)
 
     response = client.post(
         "/analyze",
@@ -107,7 +109,7 @@ def test_analyze_valid_request_returns_async_job_contract(client, monkeypatch):
             "ticker": "RELIANCE",
             "exchange": "NSE",
             "user_id": user_id,
-            "scan_type": f"contract_{uuid4().hex[:8]}",
+            "scan_type": "standard",
         },
     )
 
@@ -119,6 +121,19 @@ def test_analyze_valid_request_returns_async_job_contract(client, monkeypatch):
     assert body["ticker"] == "RELIANCE"
 
     database.update_job(body["job_id"], status="CANCELLED")
+
+
+def test_analyze_rejects_unknown_scan_type(client):
+    # An unknown scan_type used to bypass the cache and the per-type job guard (AUTH-17).
+    user_id, _token = _create_contract_user()
+
+    response = client.post(
+        "/analyze",
+        json={"ticker": "RELIANCE", "exchange": "NSE", "user_id": user_id, "scan_type": "standard2"},
+    )
+
+    assert response.status_code == 422
+    assert "scan_type must be standard, deep or extreme" in response.text
 
 
 def test_analyze_rejects_invalid_exchange_before_job_creation(client):

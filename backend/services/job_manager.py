@@ -26,6 +26,10 @@ _registry_lock = threading.Lock()
 # Platform-wide cap on QUEUED/RUNNING worker jobs, counted from the DB so it holds
 # across uvicorn workers.
 MAX_CONCURRENT_JOBS = int(os.getenv("MAX_CONCURRENT_JOBS", "6"))
+# Per-owner cap across every scan type and stress tests, so varying scan_type or
+# opening more screens cannot multiply one account's workers. Anonymous jobs
+# (user_id None) all share one owner bucket (AUTH-17).
+MAX_JOBS_PER_USER = int(os.getenv("MAX_JOBS_PER_USER", "2"))
 # Longer than any worker's wall-clock budget (extreme = 600 s): an active row older
 # than this belongs to a worker that died without updating it, so it holds no slot.
 _STALE_ACTIVE_SEC = 900
@@ -35,9 +39,14 @@ class JobCapacityError(RuntimeError):
     """Raised when MAX_CONCURRENT_JOBS worker jobs are already active."""
 
 
-def _active_job_count(exclude_job_id: str) -> int:
+class JobUserLimitError(JobCapacityError):
+    """Raised when the job's owner already has MAX_JOBS_PER_USER active jobs."""
+
+
+def _active_jobs(exclude_job_id: str) -> list[dict]:
+    """Active rows that still hold a worker slot, minus the job being started."""
     cutoff = datetime.now(timezone.utc) - timedelta(seconds=_STALE_ACTIVE_SEC)
-    count = 0
+    active = []
     for job in job_repo.list_active_jobs():
         if job.get("job_id") == exclude_job_id:
             continue
@@ -48,18 +57,25 @@ def _active_job_count(exclude_job_id: str) -> int:
                 ts = ts.replace(tzinfo=timezone.utc)
             if ts < cutoff:
                 continue
-        count += 1
-    return count
+        active.append(job)
+    return active
 
 
-def spawn_process(job_id: str, target, args: tuple) -> int | None:
+def spawn_process(job_id: str, target, args: tuple, user_id: int | None = None) -> int | None:
     """Start a daemon worker for an already-created job row and register it.
 
-    Every subprocess job goes through here so shutdown_all/cancel_job cover it.
-    Raises JobCapacityError when the platform-wide cap is reached.
+    Every subprocess job goes through here so shutdown_all/cancel_job and the
+    admission caps cover it. The row exists before this check, so two concurrent
+    starts can only both be refused, never both admitted past a cap. Raises
+    JobCapacityError at the platform-wide cap and JobUserLimitError when the owner
+    (user_id) is at its own cap.
     """
-    if _active_job_count(job_id) >= MAX_CONCURRENT_JOBS:
+    active = _active_jobs(job_id)
+    if len(active) >= MAX_CONCURRENT_JOBS:
         raise JobCapacityError("Server busy, please retry shortly")
+    if sum(1 for job in active if job.get("user_id") == user_id) >= MAX_JOBS_PER_USER:
+        raise JobUserLimitError("Too many analyses running for this account. "
+                                "Wait for one to finish, then try again.")
     p = MP_CTX.Process(target=target, args=args, daemon=True)
     p.start()
     with _registry_lock:
@@ -76,6 +92,7 @@ def spawn_job(job_id: str, ticker: str, exchange: str,
         run_job,
         (job_id, ticker, exchange, user_id, deep_scan, scan_type,
          language, debate_rounds, risk_tolerance),
+        user_id=user_id,
     )
 
 

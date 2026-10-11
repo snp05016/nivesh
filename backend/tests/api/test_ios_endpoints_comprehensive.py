@@ -170,10 +170,10 @@ def test_macro_context_endpoint(client):
     assert resp.status_code == 200
 
 
-def test_analyze_job_spawning_and_polling_idor(client, auth_headers, test_user_id, monkeypatch):
-    """Test job polling and ensure IDOR protection blocks unauthorized users."""
+def test_analyze_job_spawning_and_polling_idor(client, auth_headers, test_user_id):
+    """Job polling takes the caller from the bearer token; ?user_id= is ignored (AUTH-08)."""
     import uuid
-    job_id = str(uuid.uuid4())[:12]
+    job_id = str(uuid.uuid4())
 
     # Insert a job belonging to test_user_id into SQLite test DB
     with database.get_session() as session:
@@ -186,34 +186,32 @@ def test_analyze_job_spawning_and_polling_idor(client, auth_headers, test_user_i
             exchange="NSE",
             scan_type="standard",
             status="QUEUED",
+            pid=4242,
             created_at=datetime.now(timezone.utc)
         )
         session.add(job)
         session.commit()
 
-    # 1. Access without query parameter user_id and without Auth header -> 403 Forbidden
-    resp = client.get(f"/analyze/job/{job_id}")
-    assert resp.status_code == 403
-    assert resp.json()["error"] == "job does not belong to this user"
+    try:
+        # 1. No bearer token -> 401, even when ?user_id= names the owner
+        assert client.get(f"/analyze/job/{job_id}").status_code == 401
+        assert client.get(f"/analyze/job/{job_id}?user_id={test_user_id}").status_code == 401
 
-    # 2. Access with incorrect user_id query parameter (e.g. 99999) -> 403 Forbidden
-    resp = client.get(f"/analyze/job/{job_id}?user_id=99999")
-    assert resp.status_code == 403
+        # 2. Owner's token -> 200, without the worker pid
+        resp = client.get(f"/analyze/job/{job_id}", headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.json()["job_id"] == job_id
+        assert "pid" not in resp.json()
 
-    # 3. Access with correct user_id query parameter -> 200 OK
-    resp = client.get(f"/analyze/job/{job_id}?user_id={test_user_id}")
-    assert resp.status_code == 200
-    assert resp.json()["job_id"] == job_id
-
-    # 4. Access with correct Auth header, omitting user_id query parameter -> 200 OK
-    resp = client.get(f"/analyze/job/{job_id}", headers=auth_headers)
-    assert resp.status_code == 200
-    assert resp.json()["job_id"] == job_id
-
-    # 5. Access with mismatched Auth header (using a dummy token representing another user) -> 403
-    mismatched_token = database.create_access_token(user_id=99999)
-    resp = client.get(f"/analyze/job/{job_id}", headers={"Authorization": f"Bearer {mismatched_token}"})
-    assert resp.status_code == 403
+        # 3. Another user's token -> 404, even when ?user_id= names the owner
+        other = {"Authorization": f"Bearer {database.create_access_token(user_id=99999)}"}
+        assert client.get(f"/analyze/job/{job_id}", headers=other).status_code == 404
+        resp = client.get(f"/analyze/job/{job_id}?user_id={test_user_id}", headers=other)
+        assert resp.status_code == 404
+        assert resp.json() == {"error": "job not found"}
+    finally:
+        # Free the (user, scan_type) active slot for later tests.
+        database.update_job(job_id, status="CANCELLED")
 
 
 def test_analyze_active_endpoint(client, auth_headers):

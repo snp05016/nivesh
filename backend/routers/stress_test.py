@@ -49,13 +49,15 @@ def start_stress_test(req: StressTestRequest, user_id: int = Depends(require_aut
             launch.job_id,
             run_stress_test_job,
             (launch.job_id, launch.holdings, launch.scenarios),
+            user_id=user_id,
         )
         record_stress_test_process(launch.job_id, pid)
     except job_manager.JobCapacityError as exc:
+        # Platform-wide or per-account cap (AUTH-17); both messages are fixed, user-safe text.
         mark_stress_test_start_failed(launch.job_id, exc)
         raise HTTPException(
             status_code=429,
-            detail="Server busy, please retry shortly",
+            detail=str(exc),
             headers={"Retry-After": "30"},
         ) from exc
     except Exception as exc:

@@ -42,5 +42,8 @@ def test_worker_marks_failed(monkeypatch):
         jw.run_job(job["job_id"], "TCS", "NSE", 11_111_112, False, "standard")
 
     g = database.get_job(job["job_id"])
+    assert g is not None
     assert g["status"] == "FAILED"
-    assert "deepseek down" in g["error"]
+    # The raw exception stays in the server log; the owner polls generic text (AUTH-08).
+    assert g["error"] == "Analysis failed. Please try again."
+    assert all("deepseek down" not in cp["message"] for cp in g["checkpoints"])
