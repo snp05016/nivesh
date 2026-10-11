@@ -992,7 +992,9 @@ def export_portfolio_excel(user_id: int, _caller: int = Depends(require_user_mat
                     last_signals[h.ticker] = row.signal
                     last_confidence[h.ticker] = row.confidence_pct
 
+            # The caller's own analyses only; never other users' research.
             history_rows = session.query(AnalysisHistory)\
+                .filter(AnalysisHistory.user_id == user_id)\
                 .order_by(AnalysisHistory.created_at.desc()).limit(100).all()
             # Detach data before session closes
             history_data = [(r.analysis_date, r.ticker, r.signal, r.confidence_pct,

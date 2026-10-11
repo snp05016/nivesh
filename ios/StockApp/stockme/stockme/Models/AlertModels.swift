@@ -259,28 +259,3 @@ struct PostResultMoversResponse: Codable {
         case fetchedAt = "fetched_at"
     }
 }
-
-// MARK: - Earnings Error Telemetry
-
-struct EarningsErrorLogEntry: Codable, Identifiable {
-    var id: Int
-    let timestamp: String?
-    let module: String
-    let errorTrace: String
-    let failedTicker: String?
-    enum CodingKeys: String, CodingKey {
-        case id, timestamp, module
-        case errorTrace = "error_trace"
-        case failedTicker = "failed_ticker"
-    }
-}
-
-struct EarningsErrorLogsResponse: Codable {
-    let errors: [EarningsErrorLogEntry]
-    let count: Int
-    let fetchedAt: String
-    enum CodingKeys: String, CodingKey {
-        case errors, count
-        case fetchedAt = "fetched_at"
-    }
-}

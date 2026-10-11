@@ -105,6 +105,14 @@ from services.confidence_fusion import _fuse_final_confidence, get_ml_engine_mod
 # ---------------------------------------------------------------------------
 # TradingAgents framework
 # ---------------------------------------------------------------------------
+# The vendored fork (backend/tradingagents-core) is loaded ONLY through this
+# sys.path insert; every importer of the pipeline goes through this module.
+# See docs/codebase/VENDORED_TRADINGAGENTS.md.
+import sys
+_TA_CORE = Path(__file__).resolve().parent.parent / "tradingagents-core"
+if _TA_CORE.is_dir() and str(_TA_CORE) not in sys.path:
+    sys.path.insert(0, str(_TA_CORE))
+
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.agents import (

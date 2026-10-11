@@ -31,11 +31,8 @@ COPY requirements.txt requirements.lock* ./
 RUN if [ -f requirements.lock ]; then pip install --no-cache-dir -r requirements.lock; \
     else pip install --no-cache-dir -r requirements.txt; fi
 
-# Install tradingagents-core as an editable local package if present
-COPY tradingagents-core ./tradingagents-core
-RUN if [ -f tradingagents-core/setup.py ] || [ -f tradingagents-core/pyproject.toml ]; then \
-        pip install --no-cache-dir -e ./tradingagents-core; \
-    fi
+# tradingagents-core is not pip-installed: COPY . . below ships it and
+# services/orchestrator.py adds it to sys.path.
 
 
 # ── Stage 2: runtime ─────────────────────────────────────────────────────────

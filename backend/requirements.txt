@@ -1,4 +1,6 @@
-# tradingagents-core: local fork installed via: pip install -e ./tradingagents-core
+# tradingagents-core: vendored fork loaded via sys.path in services/orchestrator.py
+# (not pip-installed); see docs/codebase/VENDORED_TRADINGAGENTS.md. Its runtime
+# floors live here: langchain-core/langgraph/langchain-anthropic below.
 
 # Nivesh backend — direct requirements (human-edited input, OPS-16)
 # Installs use requirements.lock (exact pins frozen from the working server
@@ -19,9 +21,9 @@ alembic>=1.14.0
 
 # AI / LLM
 anthropic>=0.40.0
-langchain-anthropic>=0.3.3
-langchain-core>=0.3.24
-langgraph>=0.2.56
+langchain-anthropic>=0.3.15
+langchain-core>=0.3.81
+langgraph>=0.4.8
 openai>=1.0.0
 
 # Market data
@@ -55,9 +57,6 @@ apscheduler>=3.10.4
 # Export
 openpyxl>=3.1.5
 fpdf2>=2.8.1
-
-# Tradingagents core deps (installed separately via tradingagents-core)
-# If installing from local path: pip install -e ./tradingagents-core
 
 # Firecrawl scraping SDK (optional — falls back to direct scraping without API key)
 firecrawl-py==4.28.2

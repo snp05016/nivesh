@@ -312,29 +312,6 @@ struct CapIndexGridEntry: Codable, Identifiable {
     }
 }
 
-struct MarketErrorEntry: Codable, Identifiable {
-    var id: Int
-    let timestamp: String?
-    let component: String
-    let errorMessage: String
-    let contextTicker: String?
-    enum CodingKeys: String, CodingKey {
-        case id, timestamp, component
-        case errorMessage = "error_message"
-        case contextTicker = "context_ticker"
-    }
-}
-
-struct MarketErrorLogsResponse: Codable {
-    let errors: [MarketErrorEntry]
-    let count: Int
-    let fetchedAt: String
-    enum CodingKeys: String, CodingKey {
-        case errors, count
-        case fetchedAt = "fetched_at"
-    }
-}
-
 // MARK: - Extended Market Dashboard (with new core markets sections)
 
 struct ExtendedMarketDashboardResponse: Codable {

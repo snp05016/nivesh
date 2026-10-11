@@ -56,14 +56,7 @@ def run_job(job_id: str, ticker: str, exchange: str,
             user_id, deep_scan: bool, scan_type: str,
             language=None, debate_rounds=None, risk_tolerance=None) -> None:
     # Re-import deps + reload env inside the subprocess (AGENTS.md §3.3).
-    # v2 fix: tradingagents-core must be on sys.path before services.orchestrator
-    # resolves its tradingagents.default_config import.
-    import sys as _sys
-    from pathlib import Path as _Path
-    _tg_path = _Path(__file__).parent.parent / "tradingagents-core"
-    if _tg_path.exists() and str(_tg_path) not in _sys.path:
-        _sys.path.insert(0, str(_tg_path))
-
+    # services.orchestrator puts the vendored tradingagents-core on sys.path.
     try:
         from core.env import load_backend_env
         load_backend_env()

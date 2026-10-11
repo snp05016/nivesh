@@ -768,10 +768,6 @@ class NetworkManager: ObservableObject {
         return nil
     }
 
-    func getQuarterlyFinancials(ticker: String, exchange: String = "NSE") async -> [QuarterlyFinancial] {
-        await getQuarterlyFinancialsResponse(ticker: ticker, exchange: exchange)?.quarters ?? []
-    }
-
     // MARK: - Earnings Calendar
 
     func getEarningsCalendar() async -> [EarningsEvent] {
@@ -916,14 +912,6 @@ class NetworkManager: ObservableObject {
     func fetchDividends(ticker: String, exchange: String = "NSE") async throws -> DividendData {
         let endpoint = "/dividends/\(ticker.uppercased())?exchange=\(exchange)"
         let data = try await _fetchDecode(DividendData.self, endpoint: endpoint)
-        return data
-    }
-
-    // MARK: - Sentiment Trend
-
-    func fetchSentimentTrend(ticker: String, days: Int = 30) async throws -> SentimentTrend {
-        let endpoint = "/market/sentiment-trend/\(ticker.uppercased())?days=\(days)"
-        let data = try await _fetchDecode(SentimentTrend.self, endpoint: endpoint)
         return data
     }
 
@@ -1100,28 +1088,6 @@ class NetworkManager: ObservableObject {
         return try JSONDecoder().decode(NotificationPayload.self, from: data)
     }
 
-    struct HarvestYouTubeResponse: Decodable {
-        let channel_harvest: HarvestResult
-        let portfolio_harvest: HarvestResult
-    }
-
-    struct HarvestResult: Decodable {
-        let channels_processed: Int?
-        let total_channels: Int?
-        let videos_added: Int?
-        let tickers_processed: Int?
-        let by_ticker: [String: Int]?
-    }
-
-    func triggerYouTubeHarvest() async throws -> HarvestYouTubeResponse {
-        guard let url = URL(string: "\(baseURL)/api/v1/admin/harvest-youtube") else { throw NetworkError.invalidURL }
-        var request = authRequest(url)
-        request.httpMethod = "POST"
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
-        return try JSONDecoder().decode(HarvestYouTubeResponse.self, from: data)
-    }
-
     func scheduleLocalNotification(title: String, body: String, userInfo: [String: Any]) {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             guard settings.authorizationStatus == .authorized else { return }
@@ -1266,21 +1232,6 @@ class NetworkManager: ObservableObject {
 
     func fetchEarningsProgress() async throws -> EarningsProgressResponse {
         return try await _fetchDecode(EarningsProgressResponse.self, endpoint: "/api/v1/earnings/progress")
-    }
-
-    func fetchEarningsFeed(marketCap: String = "all", sort: String = "latest") async throws -> [EarningsResult] {
-        let resp: EarningsFeedResponse = try await _fetchDecode(
-            EarningsFeedResponse.self,
-            endpoint: "/api/v1/earnings/feed?market_cap=\(marketCap)&sort=\(sort)",
-            timeout: 20
-        )
-        return resp.results
-    }
-
-    func fetchEarningsCalendarDay(date: String) async throws -> [EarningsResult] {
-        struct Resp: Decodable { let results: [EarningsResult] }
-        let r = try await _fetchDecode(Resp.self, endpoint: "/api/v1/earnings/calendar?date=\(date)")
-        return r.results
     }
 
     func fetchEarningsEstimates(ticker: String) async throws -> EarningsEstimate {
