@@ -62,13 +62,13 @@ def test_regression_B3_no_extra_body_in_anthropic_call():
 
     Fix: verified the client.messages.create() call has no extra_body kwarg.
     """
-    portfolio_path = BACKEND_ROOT / "routers" / "portfolio.py"
+    portfolio_path = BACKEND_ROOT / "routers" / "morning_brief.py"
     source = portfolio_path.read_text()
 
     # Search for 'extra_body' — must be zero occurrences
     extra_body_count = source.count("extra_body")
     assert extra_body_count == 0, \
-        f"B3 REGRESSION: Found {extra_body_count} 'extra_body' references in portfolio.py!"
+        f"B3 REGRESSION: Found {extra_body_count} 'extra_body' references in morning_brief.py!"
 
 
 # ---------------------------------------------------------------------------
@@ -220,21 +220,21 @@ def test_regression_N1_no_cache_control_in_orchestrator():
 
 
 # ---------------------------------------------------------------------------
-# N2 — No extra_body in portfolio.py (broader check than B3)
+# N2 — No extra_body in portfolio_exports.py (broader check than B3)
 # ---------------------------------------------------------------------------
 
 def test_regression_N2_no_extra_body_in_pdf_export():
-    """The portfolio.py router must contain zero 'extra_body' references
+    """The portfolio_exports.py router must contain zero 'extra_body' references
     anywhere in the file (not just the morning summary section).
 
-    Fix: verified zero matches in entire portfolio.py.
+    Fix: verified zero matches in entire portfolio_exports.py.
     """
-    portfolio_path = BACKEND_ROOT / "routers" / "portfolio.py"
+    portfolio_path = BACKEND_ROOT / "routers" / "portfolio_exports.py"
     source = portfolio_path.read_text()
 
     extra_body_count = source.count("extra_body")
     assert extra_body_count == 0, \
-        f"N2 REGRESSION: Found {extra_body_count} 'extra_body' references in portfolio.py!"
+        f"N2 REGRESSION: Found {extra_body_count} 'extra_body' references in portfolio_exports.py!"
 
 
 # ---------------------------------------------------------------------------
@@ -242,12 +242,12 @@ def test_regression_N2_no_extra_body_in_pdf_export():
 # ---------------------------------------------------------------------------
 
 def test_regression_N4_ttl_from_central_config():
-    """Both routers/portfolio.py and services/portfolio_snapshot.py must import
+    """Both routers/morning_brief.py and services/portfolio_snapshot.py must import
     MORNING_BRIEF_TTL from the same source: config.settings.
 
     Fix: both files use `from config.settings import MORNING_BRIEF_TTL`.
     """
-    portfolio_router = BACKEND_ROOT / "routers" / "portfolio.py"
+    portfolio_router = BACKEND_ROOT / "routers" / "morning_brief.py"
     snapshot_service = BACKEND_ROOT / "services" / "portfolio_snapshot.py"
 
     router_source = portfolio_router.read_text()
@@ -255,7 +255,7 @@ def test_regression_N4_ttl_from_central_config():
 
     # Both must import from config.settings
     assert "from config.settings import MORNING_BRIEF_TTL" in router_source, \
-        "N4 REGRESSION: portfolio.py does NOT import MORNING_BRIEF_TTL from config.settings!"
+        "N4 REGRESSION: morning_brief.py does NOT import MORNING_BRIEF_TTL from config.settings!"
     assert "from config.settings import MORNING_BRIEF_TTL" in snapshot_source, \
         "N4 REGRESSION: portfolio_snapshot.py does NOT import MORNING_BRIEF_TTL from config.settings!"
 
@@ -270,7 +270,7 @@ def test_regression_cache_namespace_is_consistent():
 
     Fix: both use 'morning_brief' as the namespace string.
     """
-    portfolio_router = BACKEND_ROOT / "routers" / "portfolio.py"
+    portfolio_router = BACKEND_ROOT / "routers" / "morning_brief.py"
     snapshot_service = BACKEND_ROOT / "services" / "portfolio_snapshot.py"
 
     router_source = portfolio_router.read_text()
@@ -278,7 +278,7 @@ def test_regression_cache_namespace_is_consistent():
 
     # Both use "morning_brief" as namespace
     assert '"morning_brief"' in router_source, \
-        "REGRESSION: portfolio.py does not use 'morning_brief' cache namespace!"
+        "REGRESSION: morning_brief.py does not use 'morning_brief' cache namespace!"
     assert '"morning_brief"' in snapshot_source or "'morning_brief'" in snapshot_source, \
         "REGRESSION: portfolio_snapshot.py does not use 'morning_brief' cache namespace!"
 
@@ -289,7 +289,7 @@ def test_regression_devanagari_check_before_cache_write():
 
     Fix: both functions call contains_devanagari() and reject Hindi output.
     """
-    portfolio_router = BACKEND_ROOT / "routers" / "portfolio.py"
+    portfolio_router = BACKEND_ROOT / "routers" / "morning_brief.py"
     snapshot_service = BACKEND_ROOT / "services" / "portfolio_snapshot.py"
 
     router_source = portfolio_router.read_text()
@@ -297,14 +297,14 @@ def test_regression_devanagari_check_before_cache_write():
 
     # Both must reference contains_devanagari
     assert "contains_devanagari" in router_source, \
-        "REGRESSION: portfolio.py does NOT check for Devanagari in AI output!"
+        "REGRESSION: morning_brief.py does NOT check for Devanagari in AI output!"
     assert "contains_devanagari" in snapshot_source, \
         "REGRESSION: portfolio_snapshot.py does NOT check for Devanagari in AI output!"
 
 
 def test_regression_fallback_has_required_fields():
     """The fallback dict must include all required fields: summary, movers, mood."""
-    portfolio_router = BACKEND_ROOT / "routers" / "portfolio.py"
+    portfolio_router = BACKEND_ROOT / "routers" / "morning_brief.py"
     source = portfolio_router.read_text()
 
     # The fallback dict is defined as:
@@ -317,9 +317,9 @@ def test_regression_fallback_has_required_fields():
 def test_regression_anthropic_call_has_max_3_retries():
     """The Anthropic API call must retry up to 3 times with exponential backoff.
 
-    Fix: the for attempt in range(3) loop in portfolio.py.
+    Fix: the for attempt in range(3) loop in morning_brief.py.
     """
-    portfolio_router = BACKEND_ROOT / "routers" / "portfolio.py"
+    portfolio_router = BACKEND_ROOT / "routers" / "morning_brief.py"
     source = portfolio_router.read_text()
 
     assert "range(3)" in source, \

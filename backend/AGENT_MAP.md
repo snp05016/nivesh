@@ -59,13 +59,23 @@ backend/
   │
   └── routers/
       ├── __init__.py
+      ├── admin_errors.py        # /api/v1/admin/*-errors diagnostic logs
+      ├── advisor_consensus.py   # /api/v1/portfolio/advisor-consensus
       ├── alerts.py              # Price alert CRUD
       ├── analysis.py            # AI analysis endpoints
       ├── auth.py                # Login/register
       ├── dashboard.py           # SSE live dashboard
-      ├── market.py              # Market data, indices, fundamentals
+      ├── earnings.py            # /earnings-calendar, /api/v1/earnings/*
+      ├── fundamentals.py        # /fundamentals/* (incl. piotroski)
+      ├── ideas.py               # /api/v1/ideas/*
+      ├── institutional.py       # FII/DII flow, block deals, institutional leaderboard
+      ├── market.py              # Market data, indices, pulse, stock profile, search
+      ├── morning_brief.py       # /morning-summary/{user_id}
       ├── notifications.py       # Push notification registration
-      ├── portfolio.py           # Portfolio CRUD, export, morning brief
+      ├── portfolio.py           # Holdings CRUD, ledger, transactions, multi-asset, stress test
+      ├── portfolio_analytics.py # Benchmark, risk, red flags, charts, attribution (include BEFORE portfolio)
+      ├── portfolio_exports.py   # Excel/PDF export
+      ├── trade_journal.py       # /trade-journal*
       └── user.py                # Profile, watchlist, device tokens
 ```
 

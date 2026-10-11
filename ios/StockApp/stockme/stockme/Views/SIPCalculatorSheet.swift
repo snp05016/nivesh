@@ -13,7 +13,6 @@ struct SIPCalculatorSheet: View {
     @State private var years: Double = 10
     @State private var assumedReturnPct: Double
     @State private var result: SIPCalculationResult?
-    @State private var isCalculating = false
 
     init(fund: MutualFundDTO) {
         self.fund = fund
@@ -48,7 +47,7 @@ struct SIPCalculatorSheet: View {
                         display: { String(format: "%.1f%%", $0) }
                     )
 
-                    SIPResultCard(result: result, isCalculating: isCalculating)
+                    SIPResultCard(result: result)
                 }
                 .padding(Theme.screenPadding)
             }
@@ -64,19 +63,17 @@ struct SIPCalculatorSheet: View {
                     .foregroundStyle(Theme.securityGold)
                 }
             }
-            .task { await recalculate() }
-            .onChange(of: monthlyAmount) { _, _ in Task { await recalculate() } }
-            .onChange(of: years) { _, _ in Task { await recalculate() } }
-            .onChange(of: assumedReturnPct) { _, _ in Task { await recalculate() } }
+            .onAppear { recalculate() }
+            .onChange(of: monthlyAmount) { _, _ in recalculate() }
+            .onChange(of: years) { _, _ in recalculate() }
+            .onChange(of: assumedReturnPct) { _, _ in recalculate() }
         }
     }
 
-    private func recalculate() async {
-        isCalculating = true
+    private func recalculate() {
         result = SIPCalculationResult.computeLocally(
             monthlyAmount: monthlyAmount, annualReturnPct: assumedReturnPct, years: years
         )
-        isCalculating = false
     }
 }
 
@@ -126,7 +123,6 @@ private struct SIPInputSlider: View {
 
 private struct SIPResultCard: View {
     let result: SIPCalculationResult?
-    let isCalculating: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.card) {
@@ -140,10 +136,6 @@ private struct SIPResultCard: View {
                     SIPResultTile(label: "Est. Returns", value: IndianFormatter.formatLakhsCrores(result.estimatedReturns), valueColor: Theme.bullGreen)
                 }
                 SIPResultTile(label: "Maturity Value", value: IndianFormatter.formatLakhsCrores(result.totalValue), valueColor: Theme.securityGold, isLarge: true)
-            } else if isCalculating {
-                ProgressView()
-                    .tint(Theme.securityGold)
-                    .frame(maxWidth: .infinity, minHeight: 60)
             }
         }
         .padding(Theme.Spacing.card)

@@ -12,7 +12,7 @@ from starlette.requests import Request
 import helpers
 import main
 import routers.analysis as analysis_router
-import routers.market as market_router
+import routers.earnings as earnings_router
 import routers.user as user_router
 
 
@@ -25,7 +25,7 @@ def test_single_data_harvesting_error_class():
 
 
 def test_data_harvesting_error_returns_503(client, monkeypatch):
-    monkeypatch.setattr(market_router, "fetch_earnings_sync_ratio", _boom)
+    monkeypatch.setattr(earnings_router, "fetch_earnings_sync_ratio", _boom)
     resp = client.get("/api/v1/earnings/sync-ratio")
     assert resp.status_code == 503
     assert "boom" not in resp.text
@@ -55,7 +55,7 @@ def test_option_chain_unavailable_503(client, monkeypatch):
 
 
 def test_earnings_calendar_failure_degraded_no_leak(client, monkeypatch):
-    monkeypatch.setattr(market_router, "get_session", _boom)
+    monkeypatch.setattr(earnings_router, "get_session", _boom)
     resp = client.get("/api/v1/earnings/calendar", params={"date": "2026-01-01"})
     assert resp.status_code == 200
     body = resp.json()

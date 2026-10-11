@@ -19,8 +19,6 @@ def test_dashboard_pulse_returns_scraper_momentum(client, monkeypatch):
         "fetched_at": "2026-10-09T10:00:00Z",
     })
     monkeypatch.setattr(market, "fetch_market_pulse", lambda: {})
-    monkeypatch.setattr(market, "harvest_filings", lambda: {})
-    monkeypatch.setattr(market, "fetch_earnings_sync_ratio", lambda: {})
     monkeypatch.setattr(market, "fetch_yoy_aggregate_indicators", lambda: {})
     monkeypatch.setattr(market, "_build_cap_index_grid", lambda: [])
 

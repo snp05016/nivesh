@@ -23,7 +23,7 @@ def pdf_holding(test_user_id, monkeypatch):
             shares=10, buy_price=100.0, group_name="holdings",
         ))
         session.commit()
-    monkeypatch.setattr("routers.portfolio._yf_price", lambda _sym: (110.0, 100.0))
+    monkeypatch.setattr("routers.portfolio_exports._yf_price", lambda _sym: (110.0, 100.0))
     yield test_user_id
     with get_session() as session:
         session.query(Portfolio).filter_by(user_id=test_user_id, ticker=_TICKER).delete()
@@ -31,9 +31,9 @@ def pdf_holding(test_user_id, monkeypatch):
 
 
 def test_fpdf2_probe_matches_installed_package():
-    import routers.portfolio as portfolio_router
+    import routers.portfolio_exports as exports_router
 
-    assert portfolio_router.FPDF2_AVAILABLE is FPDF_INSTALLED
+    assert exports_router.FPDF2_AVAILABLE is FPDF_INSTALLED
 
 
 @pytest.mark.skipif(not FPDF_INSTALLED, reason="fpdf2 not installed")
@@ -58,7 +58,7 @@ def test_export_makes_no_llm_call(client, auth_headers, pdf_holding, monkeypatch
 
 
 def test_export_unavailable_returns_503(client, auth_headers, test_user_id, monkeypatch):
-    monkeypatch.setattr("routers.portfolio.FPDF2_AVAILABLE", False)
+    monkeypatch.setattr("routers.portfolio_exports.FPDF2_AVAILABLE", False)
 
     resp = client.get(f"/portfolio/export/pdf/{test_user_id}", headers=auth_headers)
 
@@ -77,7 +77,7 @@ def test_export_with_unpriced_holding_still_returns_pdf(client, auth_headers, pd
         ))
         session.commit()
     monkeypatch.setattr(
-        "routers.portfolio._yf_price",
+        "routers.portfolio_exports._yf_price",
         lambda sym: (None, None) if sym.startswith(_UNPRICED) else (110.0, 100.0),
     )
     try:

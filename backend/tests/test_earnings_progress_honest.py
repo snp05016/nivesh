@@ -3,6 +3,7 @@
 /earnings/progress used to count the app's own analyses over a hardcoded 50;
 sync-ratio and dashboard-pulse must not turn a missing count into numbers.
 """
+import routers.earnings as earnings_router
 import routers.market as market_router
 
 
@@ -14,7 +15,7 @@ def test_progress_is_unavailable(client):
 
 def test_sync_ratio_without_declared_count_is_503(client, monkeypatch):
     monkeypatch.setattr(
-        market_router, "fetch_earnings_sync_ratio",
+        earnings_router, "fetch_earnings_sync_ratio",
         lambda: {"declared_count": None, "total_expected": 5042, "source": "unavailable"},
     )
     resp = client.get("/api/v1/earnings/sync-ratio")

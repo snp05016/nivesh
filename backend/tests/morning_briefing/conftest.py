@@ -62,7 +62,7 @@ def _ai_processing_consent(monkeypatch):
     """These tests exercise the AI brief path, which needs the opt-in
     'ai_processing' consent (FINSEC-04). The gate itself is covered by
     tests/test_ai_consent_gate.py."""
-    import routers.portfolio as _pmod
+    import routers.morning_brief as _pmod
     monkeypatch.setattr(_pmod, "has_active_consent", lambda *_args, **_kwargs: True)
 
 

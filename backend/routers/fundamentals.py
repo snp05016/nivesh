@@ -9,11 +9,27 @@ from schemas.stock_fundamentals import (
 )
 import services.fundamentals as fundamentals_service
 from core.entitlement_gate import require_entitlement
+from helpers import _dcache_get, _dcache_set
+from services.piotroski import compute_piotroski
 
 router = APIRouter(prefix="/fundamentals", tags=["Fundamentals"])
 router_v1 = APIRouter(prefix="/api/v1/fundamentals", tags=["Fundamentals"])
 
 # ── Core routes (prefix: /fundamentals) ──────────────────────────────────────
+
+# Moved from routers/portfolio.py (ARCH-14). Registered before /{ticker}/... so
+# GET /fundamentals/piotroski/{x} keeps matching this handler first.
+@router.get("/piotroski/{ticker}")
+def piotroski_endpoint(ticker: str):
+    ticker = ticker.upper()
+    cached = _dcache_get("piotroski", ticker)
+    if cached:
+        return cached
+    result = compute_piotroski(ticker)
+    result["ticker"] = ticker
+    _dcache_set("piotroski", ticker, result)
+    return result
+
 
 @router.get("/{ticker}/financials", response_model=List[FinancialMetrics])
 @router_v1.get("/{ticker}/financials", response_model=List[FinancialMetrics])

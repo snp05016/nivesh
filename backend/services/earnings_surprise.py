@@ -2,7 +2,7 @@ import logging
 from datetime import date
 from database import get_session
 from models.db_models import EarningsSurpriseHistory
-from routers.market import earnings_estimates_endpoint
+from routers.earnings import earnings_estimates_endpoint
 from services.disk_cache import get as _dc_get, set as _dc_set
 
 # Public, unauthenticated route: serve one computed result for an hour instead

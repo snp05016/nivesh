@@ -262,7 +262,7 @@ async def _global_exception_handler(_req: _FRequest, exc: Exception):
 # ---------------------------------------------------------------------------
 # Import and register routers
 # ---------------------------------------------------------------------------
-from routers import auth, portfolio, market, analysis, alerts, user, dashboard, notifications, brainstorming, strategy, copilot, anomalies, correlation, nl_screener, stress_test, sector_rotation, earnings_surprise, options_strategy, predictions, fundamentals, backtests, stock_financials, preferences, notifications_inbox, search, stocks, compare, ipo, mutual_funds, forum, finance, compliance, subscription, kyc, fixed_deposits, account
+from routers import auth, portfolio, market, analysis, portfolio_analytics, morning_brief, advisor_consensus, portfolio_exports, trade_journal, earnings, institutional, ideas, admin_errors, alerts, user, dashboard, notifications, brainstorming, strategy, copilot, anomalies, correlation, nl_screener, stress_test, sector_rotation, earnings_surprise, options_strategy, predictions, fundamentals, backtests, stock_financials, preferences, notifications_inbox, search, stocks, compare, ipo, mutual_funds, forum, finance, compliance, subscription, kyc, fixed_deposits, account
 from routers import harvester as harvester_router
 from routers.health import router as health_router  # Task 56
 from routers import youtube_summary as youtube_summary_router
@@ -270,8 +270,20 @@ from routers import youtube_summary as youtube_summary_router
 app.include_router(health_router)  # /healthz
 app.include_router(auth.router)
 app.include_router(correlation.router)
+# Domain routers split out of portfolio.py / market.py (ARCH-14). portfolio_analytics must stay
+# BEFORE portfolio: GET /portfolio/benchmark and /portfolio/signal-warnings would otherwise be
+# captured by GET /portfolio/{user_id}.
+app.include_router(portfolio_analytics.router)
 app.include_router(portfolio.router)
+app.include_router(morning_brief.router)
+app.include_router(advisor_consensus.router)
+app.include_router(portfolio_exports.router)
+app.include_router(trade_journal.router)
 app.include_router(market.router)
+app.include_router(earnings.router)
+app.include_router(institutional.router)
+app.include_router(ideas.router)
+app.include_router(admin_errors.router)
 app.include_router(analysis.router)
 app.include_router(alerts.router)
 app.include_router(user.router)
@@ -309,7 +321,7 @@ app.include_router(compliance.router)
 app.include_router(account.router)
 app.include_router(fixed_deposits.router)
 # Portfolio chart PNGs are served only through the owner-checked route
-# GET /api/v1/portfolio/charts/{user_id}/image/{filename} (routers/portfolio.py).
+# GET /api/v1/portfolio/charts/{user_id}/image/{filename} (routers/portfolio_analytics.py).
 # Never mount backend/charts publicly.
 
 # ---------------------------------------------------------------------------

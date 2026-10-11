@@ -28,12 +28,12 @@ def test_single_data_harvesting_error_class():
 
 
 def test_market_scrape_failure_returns_503(client, monkeypatch):
-    import routers.market as market
+    import routers.earnings as earnings
 
     def _boom():
         raise RuntimeError("upstream scrape failed")
 
-    monkeypatch.setattr(market, "fetch_earnings_sync_ratio", _boom)
+    monkeypatch.setattr(earnings, "fetch_earnings_sync_ratio", _boom)
     resp = client.get("/api/v1/earnings/sync-ratio")
     assert resp.status_code == 503, resp.text
     assert resp.json()["detail"].startswith("Market data source temporarily unavailable")

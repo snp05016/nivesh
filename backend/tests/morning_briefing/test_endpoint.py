@@ -118,10 +118,10 @@ class TestEndpointCaching:
         call_count = [0]
 
         # Replace the mocked disk_cache with a real in-memory dict.
-        # The portfolio router imports _dcache_get/_dcache_set at module load
+        # The morning-brief router imports _dcache_get/_dcache_set at module load
         # time, so we must monkeypatch the router module's own reference.
         _test_cache = {}
-        import routers.portfolio as _pmod
+        import routers.morning_brief as _pmod
         monkeypatch.setattr(_pmod, "_dcache_get", lambda ns, key: _test_cache.get(f"{ns}:{key}"))
         monkeypatch.setattr(_pmod, "_dcache_set", lambda ns, key, val, ttl=None: _test_cache.__setitem__(f"{ns}:{key}", val))
 

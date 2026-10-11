@@ -106,7 +106,7 @@ def test_yf_price_with_status_falls_back_to_last_good(monkeypatch):
 
 
 def test_benchmark_without_nifty_data_returns_503(client, monkeypatch):
-    import routers.portfolio as portfolio_router
+    import routers.portfolio_analytics as portfolio_router
 
     uid, headers = _make_user_with_holdings([("TCS", 2, 3000.0)])
     empty = SimpleNamespace(history=lambda **_kw: pd.DataFrame())
@@ -118,7 +118,7 @@ def test_benchmark_without_nifty_data_returns_503(client, monkeypatch):
 
 
 def test_benchmark_excludes_unpriced_holdings(client, monkeypatch):
-    import routers.portfolio as portfolio_router
+    import routers.portfolio_analytics as portfolio_router
 
     uid, headers = _make_user_with_holdings([("TCS", 2, 3000.0), ("INFY", 4, 1500.0)])
     nifty = SimpleNamespace(history=lambda **_kw: pd.DataFrame({"Close": [20000.0, 20100.0]}))
@@ -202,7 +202,7 @@ def test_valuation_history_backfill_is_estimated_not_persisted(client, monkeypat
     """REL-10: the 30-day back-fill uses today's shares/cost, so it is returned flagged
     as estimated and never written to PortfolioValuationHistory."""
     import database
-    import routers.portfolio as portfolio_router
+    import routers.portfolio_analytics as portfolio_router
     from models.db_models import PortfolioValuationHistory
 
     uid, headers = _make_user_with_holdings([("TCS", 2, 3000.0)])

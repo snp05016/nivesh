@@ -282,7 +282,7 @@ def test_morning_summary_endpoint(client, auth_headers, test_user_id, monkeypatc
     mock_anthropic.messages.create.return_value = mock_msg
     monkeypatch.setattr(anthropic, "Anthropic", lambda *args, **kwargs: mock_anthropic)
     # The AI brief needs the opt-in 'ai_processing' consent (FINSEC-04).
-    monkeypatch.setattr("routers.portfolio.has_active_consent", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr("routers.morning_brief.has_active_consent", lambda *_args, **_kwargs: True)
 
     # 2. Authenticated access -> 200 OK
     resp = client.get(f"/morning-summary/{test_user_id}", headers=auth_headers)

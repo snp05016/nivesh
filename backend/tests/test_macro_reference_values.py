@@ -71,7 +71,8 @@ def test_repo_unset_is_null(client, vix_down, repo_unset):
 
 
 def test_no_repo_literals():
-    for rel in ("routers/market.py", "routers/portfolio.py"):
+    for rel in ("routers/market.py", "routers/portfolio.py", "routers/portfolio_analytics.py",
+                "routers/morning_brief.py"):
         src = (_BACKEND / rel).read_text()
         assert "6.50" not in src, rel
         assert '"rbi_repo_rate_pct", 6.5' not in src, rel
