@@ -32,13 +32,16 @@ except ImportError:
 
 
 def _rsi_numpy(close: pd.Series, period: int = 14) -> float:
-    delta = close.diff().dropna()
-    gain = delta.clip(lower=0).rolling(period).mean()
-    loss = (-delta.clip(upper=0)).rolling(period).mean()
-    rs = gain / loss.replace(0, np.nan)
-    rsi = 100 - (100 / (1 + rs))
-    val = rsi.iloc[-1]
-    return round(float(val), 2) if not np.isnan(val) else 50.0
+    # Wilder smoothing, mirroring ta.momentum.RSIIndicator.
+    delta = close.diff()
+    gain = delta.where(delta > 0, 0.0).ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
+    loss = (-delta.where(delta < 0, 0.0)).ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
+    avg_gain, avg_loss = float(gain.iloc[-1]), float(loss.iloc[-1])
+    if np.isnan(avg_gain) or np.isnan(avg_loss):
+        return 50.0  # insufficient history
+    if avg_loss == 0:
+        return 100.0 if avg_gain > 0 else 50.0  # no losses = max overbought; flat = neutral
+    return round(100 - 100 / (1 + avg_gain / avg_loss), 2)
 
 
 def compute_indicators(df: pd.DataFrame, ticker: str = "") -> dict:
