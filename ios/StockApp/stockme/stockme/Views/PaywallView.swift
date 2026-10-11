@@ -84,7 +84,7 @@ struct PaywallView: View {
             Text("Unlock the Full Research Desk")
                 .font(Theme.engravedSerif(size: 22, weight: .bold))
                 .foregroundStyle(Theme.inkPrimary)
-            Text("Deeper AI analysis, unlimited alerts, and institutional-grade tools.")
+            Text("Valuation insights, risk signals, strategy backtests and sector rotation analytics.")
                 .font(Theme.engravedSerif(size: 13, relativeTo: .subheadline))
                 .foregroundStyle(Theme.inkSecondary)
         }
@@ -154,7 +154,8 @@ struct PaywallView: View {
     // GET /api/v1/subscription/entitlements (services/entitlement_service.py
     // FEATURE_MIN_TIER), which is the exact set of feature keys real
     // premium endpoints enforce server-side via core/entitlement_gate.py's
-    // require_entitlement() dependency.
+    // require_entitlement() dependency. Only keys the server returns are
+    // rendered, so the server drives the list.
 
     @ViewBuilder
     private var serverEntitlementsSection: some View {
@@ -165,7 +166,7 @@ struct PaywallView: View {
                     .tracking(1.5)
                     .foregroundStyle(Theme.inkSecondary)
                 VStack(spacing: Theme.Spacing.none) {
-                    ForEach(EntitlementFeatureKeyDisplay.all, id: \.key.rawValue) { entry in
+                    ForEach(EntitlementFeatureKeyDisplay.all.filter { entitlements.features[$0.key.rawValue] != nil }, id: \.key.rawValue) { entry in
                         EntitlementFeatureRow(
                             title: entry.title,
                             isUnlocked: entitlements.isUnlocked(entry.key.rawValue)
@@ -347,11 +348,12 @@ private struct EntitlementFeatureKeyDisplay {
     let title: String
 
     static let all: [EntitlementFeatureKeyDisplay] = [
-        .init(key: .advancedAnalysis, title: "Advanced Analysis Dashboards"),
-        .init(key: .forumPremiumBoard, title: "Forum Premium Boards"),
-        .init(key: .sectorRotation, title: "Sector Rotation Analytics"),
-        .init(key: .alphaGenerators, title: "Alpha Generators"),
-        .init(key: .whatsappAlerts, title: "WhatsApp Alerts"),
+        .init(key: .advancedAnalysis, title: "Prediction performance dashboards"),
+        .init(key: .sectorRotation, title: "Sector rotation analytics"),
+        .init(key: .comprehensiveStockInsights, title: "Valuation insights"),
+        .init(key: .swotAnalysis, title: "Risk signals"),
+        .init(key: .technicalPicks, title: "Strategy backtests"),
+        .init(key: .ideasForProfit, title: "Options payoff builder"),
     ]
 }
 
@@ -407,18 +409,21 @@ private extension PaywallView {
 }
 
 // MARK: - Feature Catalog (client-side matrix content, not fetched from backend)
+//
+// Only features the backend actually enforces (entitlement_service
+// FEATURE_MIN_TIER, all "pro" today). No tier quotas (watchlist size, alert
+// counts, scan limits) exist server-side, so none are advertised here.
 
 enum SubscriptionFeatureCatalog {
+    private static let proAndAbove: [SubscriptionTier: String?] = [.free: nil, .pro: "yes", .superPro: "yes"]
+
     static let rows: [SubscriptionFeatureRow] = [
-        SubscriptionFeatureRow(title: "Watchlist size", values: [.free: "10", .pro: "100", .superPro: "Unlimited"]),
-        SubscriptionFeatureRow(title: "Price alerts", values: [.free: "5", .pro: "50", .superPro: "Unlimited"]),
-        SubscriptionFeatureRow(title: "AI Deep Scan analysis", values: [.free: "1/day", .pro: "20/day", .superPro: "Unlimited"]),
-        SubscriptionFeatureRow(title: "Real-time data (vs 15-min delay)", values: [.free: nil, .pro: "yes", .superPro: "yes"]),
-        SubscriptionFeatureRow(title: "Options strategy builder", values: [.free: nil, .pro: "yes", .superPro: "yes"]),
-        SubscriptionFeatureRow(title: "Portfolio stress test", values: [.free: nil, .pro: nil, .superPro: "yes"]),
-        SubscriptionFeatureRow(title: "Expert network access", values: [.free: nil, .pro: nil, .superPro: "yes"]),
-        SubscriptionFeatureRow(title: "Priority support", values: [.free: nil, .pro: "yes", .superPro: "yes"]),
-        SubscriptionFeatureRow(title: "Ad-free experience", values: [.free: nil, .pro: "yes", .superPro: "yes"]),
+        SubscriptionFeatureRow(title: "Prediction performance dashboards", values: proAndAbove),
+        SubscriptionFeatureRow(title: "Sector rotation analytics", values: proAndAbove),
+        SubscriptionFeatureRow(title: "Valuation insights", values: proAndAbove),
+        SubscriptionFeatureRow(title: "Risk signals", values: proAndAbove),
+        SubscriptionFeatureRow(title: "Strategy backtests", values: proAndAbove),
+        SubscriptionFeatureRow(title: "Options payoff builder", values: proAndAbove),
     ]
 }
 

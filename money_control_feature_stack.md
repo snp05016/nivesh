@@ -532,7 +532,7 @@
   - [ ] Multiple iOS PRO price variants
   - [x] SuperPro monthly SKU
   - [x] SuperPro annual SKU
-- [x] Paywall triggers (PaywallView now calls GET /api/v1/subscription/entitlements and renders real server-verified gating instead of a static matrix)
+- [x] Paywall triggers (PaywallView now calls GET /api/v1/subscription/entitlements and renders the server-returned entitlement keys; the comparison matrix is client-side but lists only the 6 enforced features, with no tier quotas since none are enforced)
 - [x] Entitlement management (entitlement_service.py + require_entitlement() dependency; enforced on 6 real endpoints — predictions/performance, sector-rotation, fundamentals valuation/risk-signals, strategy backtest, options payoff. Deliberately left ungated: Alpha Generators, WhatsApp/AI stock alerts, curated chart patterns, market-veteran ideas, smart calendars, forum premium boards — none of these have a real corresponding backend feature in this codebase, so no stub endpoints were fabricated to gate)
 - [x] Premium upsell surfaces
 - [ ] Programmatic advertising

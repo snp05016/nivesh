@@ -153,29 +153,27 @@ struct KeyFactStatementDTO: Codable, Equatable {
 /// is the caller's *effective* tier — derived from UserSubscription's
 /// is_active/renews_at rather than trusting the possibly-stale `tier`
 /// column directly (see entitlement_service.get_effective_tier). `features`
-/// maps a small, real set of feature keys (advanced_analysis,
-/// forum_premium_board, sector_rotation, alpha_generators,
-/// whatsapp_alerts — see entitlement_service.FEATURE_MIN_TIER) to whether
-/// the caller's effective tier currently unlocks them.
+/// maps every server-enforced feature key (entitlement_service.FEATURE_MIN_TIER,
+/// one key per require_entitlement() call site) to whether the caller's
+/// effective tier currently unlocks it.
 struct EntitlementsDTO: Codable, Equatable {
     let tier: String
     let features: [String: Bool]
 
     var parsedTier: SubscriptionTier { SubscriptionTier(rawValue: tier) ?? .free }
 
+    /// Fails closed: a key the server did not return is treated as locked.
     func isUnlocked(_ featureKey: String) -> Bool {
-        features[featureKey] ?? true
+        features[featureKey] ?? false
     }
 }
 
 /// Feature keys gated server-side — mirrors
-/// backend/services/entitlement_service.py FEATURE_MIN_TIER exactly.
+/// backend/services/entitlement_service.py FEATURE_MIN_TIER exactly (the
+/// six keys routers enforce via require_entitlement()).
 enum EntitlementFeatureKey: String {
     case advancedAnalysis = "advanced_analysis"
-    case forumPremiumBoard = "forum_premium_board"
     case sectorRotation = "sector_rotation"
-    case alphaGenerators = "alpha_generators"
-    case whatsappAlerts = "whatsapp_alerts"
     case comprehensiveStockInsights = "comprehensive_stock_insights"
     case swotAnalysis = "swot_analysis"
     case technicalPicks = "technical_picks"

@@ -10,26 +10,11 @@ struct BenchmarkData: Codable {
     let information_ratio: Double?
 }
 
-struct SIPResult: Codable {
-    let total_investment: Double?
-    let maturity_value: Double?
-    let total_gain: Double?
-    let yearly_breakdown: [SIPYearRow]?
-}
-
-struct SIPYearRow: Codable, Identifiable {
-    var id: String { "\(year ?? 0)" }
-    let year: Int?
-    let invested: Double?
-    let value: Double?
-}
-
 // MARK: - Portfolio Tools Card
 
 struct PortfolioToolsCard: View {
     let userId: Int
 
-    @State private var showSIPSheet = false
     @State private var showFDCalculatorSheet = false
     @State private var showCalculatorsSheet = false
     @State private var showBenchmarkSheet = false
@@ -57,19 +42,6 @@ struct PortfolioToolsCard: View {
                 .padding(.horizontal, Theme.Spacing.card)
 
             VStack(spacing: Theme.Spacing.none) {
-                ToolButtonRow(
-                    icon: "chart.line.uptrend.xyaxis",
-                    title: "SIP Calculator",
-                    subtitle: "Project systematic investment returns",
-                    isLoading: false
-                ) {
-                    HapticManager.selection()
-                    showSIPSheet = true
-                }
-
-                GuillocheDivider()
-                    .padding(.horizontal, Theme.Spacing.card)
-
                 ToolButtonRow(
                     icon: "doc.richtext",
                     title: "Export PDF",
@@ -131,9 +103,6 @@ struct PortfolioToolsCard: View {
             .padding(.bottom, Theme.Spacing.medium)
         }
         .banknoteCard()
-        .sheet(isPresented: $showSIPSheet) {
-            PortfolioSIPCalculatorSheet()
-        }
         .sheet(isPresented: $showFDCalculatorSheet) {
             FixedDepositCalculatorView()
         }
@@ -240,248 +209,6 @@ private struct ToolButtonRow: View {
         }
         .buttonStyle(EKPressStyle())
         .disabled(isLoading)
-    }
-}
-
-// MARK: - SIP Calculator Sheet
-
-private struct PortfolioSIPCalculatorSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var monthlyAmount: String = "10000"
-    @State private var expectedReturn: String = "12"
-    @State private var years: String = "10"
-    @State private var stepUpPct: String = "0"
-
-    @State private var result: SIPResult? = nil
-    @State private var isCalculating = false
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                Theme.canvasDeep.ignoresSafeArea()
-
-                ScrollView {
-                    VStack(spacing: Theme.Spacing.large) {
-                        HStack {
-                            Spacer()
-                            Text("SIP CALCULATOR")
-                                .font(Theme.officialStampFont(size: 10))
-                                .tracking(2)
-                                .foregroundStyle(Theme.securityGold)
-                                .padding(.horizontal, Theme.Spacing.standard)
-                                .padding(.vertical, Theme.Spacing.tight)
-                                .background(Theme.securityGold.opacity(0.10))
-                                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                                    .stroke(Theme.securityGold.opacity(0.35), lineWidth: 0.5))
-                            Spacer()
-                        }
-                        .padding(.top, Theme.Spacing.standard)
-
-                        VStack(spacing: Theme.Spacing.standard) {
-                            SIPInputField(title: "Monthly Investment (₹)", text: $monthlyAmount)
-                            SIPInputField(title: "Expected Return (%)", text: $expectedReturn)
-                            SIPInputField(title: "Investment Period (Years)", text: $years)
-                            SIPInputField(title: "Annual Step-Up (%)", text: $stepUpPct)
-                        }
-                        .banknoteCard()
-
-                        Button { HapticManager.selection(); 
-    HapticManager.selection()
-                            HapticManager.impact(.medium)
-                            calculate()
-                        } label: {
-                            HStack(spacing: Theme.Spacing.medium) {
-                                if isCalculating {
-                                    ProgressView().tint(Theme.canvasDeep)
-                                }
-                                Text("CALCULATE")
-                                    .font(Theme.officialStampFont(size: 11))
-                                    .tracking(1.5)
-                            }
-                            .foregroundStyle(Theme.canvasDeep)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, Theme.Spacing.standard)
-                            .background(Theme.securityGold)
-                            .cornerRadius(Theme.CornerRadius.medium)
-                        }
-                        .buttonStyle(EKPressStyle())
-                        .disabled(isCalculating)
-
-                        if let r = result {
-                            SIPResultView(result: r)
-                                .padding(.top, Theme.Spacing.standard)
-                        }
-                    }
-                    .padding(Theme.Spacing.screen)
-                }
-            }
-            .navigationTitle("SIP Calculator")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }.buttonStyle(EKPressStyle())
-                        .foregroundStyle(Theme.inkPrimary)
-                }
-            }
-        }
-    }
-
-    private func calculate() {
-        HapticManager.impact(.medium)
-        isCalculating = true
-        let m = Double(monthlyAmount) ?? 10000
-        let r = (Double(expectedReturn) ?? 12) / 100.0
-        let n = Int(years) ?? 10
-        let step = (Double(stepUpPct) ?? 0) / 100.0
-
-        Task {
-            let (invested, maturity, gain, breakdown) = computeSIP(
-                monthly: m, annualReturn: r, years: n, stepUp: step
-            )
-            let s = SIPResult(
-                total_investment: invested,
-                maturity_value: maturity,
-                total_gain: gain,
-                yearly_breakdown: breakdown
-            )
-            await MainActor.run {
-                result = s
-                isCalculating = false
-                HapticManager.success()
-            }
-        }
-    }
-
-    private func computeSIP(
-        monthly: Double, annualReturn: Double, years: Int, stepUp: Double
-    ) -> (Double, Double, Double, [SIPYearRow]) {
-        let months = years * 12
-        let monthlyRate = annualReturn / 12.0
-        var totalInvested: Double = 0
-        var corpus: Double = 0
-        var yearlyBreakdown: [SIPYearRow] = []
-        var currentMonthly = monthly
-
-        for y in 1...years {
-            let yearStartInvested = totalInvested
-            let yearStartCorpus = corpus
-            for _ in 1...12 {
-                corpus += currentMonthly
-                totalInvested += currentMonthly
-                corpus *= (1 + monthlyRate)
-            }
-            let row = SIPYearRow(
-                year: y,
-                invested: totalInvested,
-                value: corpus
-            )
-            yearlyBreakdown.append(row)
-            currentMonthly *= (1 + stepUp)
-        }
-        let gain = corpus - totalInvested
-        return (totalInvested, corpus, gain, yearlyBreakdown)
-    }
-}
-
-// MARK: - SIP Input Field
-
-private struct SIPInputField: View {
-    let title: String
-    @Binding var text: String
-
-    var body: some View {
-        HStack(spacing: Theme.Spacing.standard) {
-            Text(title)
-                .font(Theme.engravedSerif(size: 12, weight: .regular, relativeTo: .callout))
-                .foregroundStyle(Theme.inkSecondary)
-                .frame(width: UIScreen.main.bounds.width * 0.42, alignment: .leading)
-            TextField(title, text: $text)
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
-                .font(Theme.serialNumberFont(size: 16, relativeTo: .body))
-                .foregroundStyle(Theme.inkPrimary)
-        }
-        .padding(.horizontal, Theme.Spacing.card)
-        .padding(.vertical, Theme.Spacing.medium)
-    }
-}
-
-// MARK: - SIP Result View
-
-private struct SIPResultView: View {
-    let result: SIPResult
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-            HStack {
-                Text("RESULTS")
-                    .font(Theme.sectionCapsLabel())
-                    .tracking(1.5)
-                    .foregroundStyle(Theme.securityGold)
-                Spacer()
-            }
-
-            HStack(spacing: Theme.Spacing.none) {
-                SIPMetricBox(label: "Invested", value: result.total_investment ?? 0)
-                SIPMetricBox(label: "Maturity", value: result.maturity_value ?? 0)
-                SIPMetricBox(label: "Gain", value: result.total_gain ?? 0, isGain: true)
-            }
-
-            if let breakdown = result.yearly_breakdown, !breakdown.isEmpty {
-                GuillocheDivider()
-                    .padding(.vertical, Theme.Spacing.small)
-
-                Text("YEAR-BY-YEAR")
-                    .font(Theme.officialStampFont(size: 9))
-                    .tracking(1)
-                    .foregroundStyle(Theme.inkSecondary)
-                    .padding(.bottom, Theme.Spacing.small)
-
-                ForEach(breakdown) { row in
-                    HStack(spacing: Theme.Spacing.none) {
-                        Text("Year \(row.year ?? 0)")
-                            .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
-                            .foregroundStyle(Theme.inkPrimary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Text(IndianFormatter.formatLakhsCrores(row.value ?? 0))
-                            .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
-                            .foregroundStyle(Theme.inkPrimary)
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                    }
-                    .padding(.horizontal, Theme.Spacing.tight)
-                    .padding(.vertical, Theme.Spacing.xSmall)
-                }
-            }
-        }
-        .padding(Theme.Spacing.card)
-        .banknoteCard()
-    }
-}
-
-// MARK: - SIP Metric Box
-
-private struct SIPMetricBox: View {
-    let label: String
-    let value: Double
-    var isGain: Bool = false
-
-    var body: some View {
-        VStack(spacing: Theme.Spacing.xSmall) {
-            Text(IndianFormatter.formatLakhsCrores(value))
-                .font(Theme.serialNumberFont(size: 15, relativeTo: .subheadline).weight(.bold))
-                .foregroundStyle(isGain
-                    ? (value >= 0 ? Theme.bullGreen : Theme.bearRed)
-                    : Theme.inkPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            Text(label.uppercased())
-                .font(Theme.officialStampFont(size: 8))
-                .tracking(1)
-                .foregroundStyle(Theme.inkTertiary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Spacing.tight)
     }
 }
 

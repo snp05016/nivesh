@@ -19,16 +19,13 @@ from services import subscription_service
 # user's effective tier against a feature's minimum required tier.
 TIER_RANK = {"free": 0, "pro": 1, "super_pro": 2}
 
-# Small, representative set of feature keys mapped to their minimum
-# required tier. These map to REAL endpoints already present in this
-# backend (see routers/predictions.py, routers/sector_rotation.py,
-# routers/forum.py) — not invented placeholder features.
+# Feature keys mapped to their minimum required tier. Every key here maps
+# 1:1 to a require_entitlement("<key>") call site in routers/ (enforced by
+# tests/test_entitlement_catalog.py). Do not add a key until an endpoint
+# actually gates on it: the iOS paywall renders this map verbatim.
 FEATURE_MIN_TIER = {
     "advanced_analysis": "pro",       # routers/predictions.py performance/calibration dashboards
-    "forum_premium_board": "pro",     # community forum premium discussion boards
     "sector_rotation": "pro",         # routers/sector_rotation.py market rotation analytics
-    "alpha_generators": "super_pro",  # high-conviction / alpha-generator style analysis
-    "whatsapp_alerts": "super_pro",   # premium delivery channel for alerts/notifications
     "comprehensive_stock_insights": "pro",  # routers/fundamentals.py valuation endpoints (real DB-backed CompanyValuation)
     "swot_analysis": "pro",           # routers/fundamentals.py risk-signals endpoints (real DB-backed RiskSignal)
     "technical_picks": "pro",         # routers/strategy.py /backtest — real technical-rule backtest engine (services/strategy_engine.py)

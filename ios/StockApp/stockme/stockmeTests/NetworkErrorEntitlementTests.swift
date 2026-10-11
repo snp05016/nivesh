@@ -64,8 +64,10 @@ final class NetworkErrorEntitlementTests: XCTestCase {
 
     func testFeatureFollowsServerEntitlements() {
         let vm = SubscriptionViewModel()
-        vm.entitlements = EntitlementsDTO(tier: "pro", features: ["technical_picks": true, "alpha_generators": false])
+        vm.entitlements = EntitlementsDTO(tier: "pro", features: ["technical_picks": true, "swot_analysis": false])
         XCTAssertTrue(vm.isFeatureUnlocked(.technicalPicks))
-        XCTAssertFalse(vm.isFeatureUnlocked(.alphaGenerators))
+        XCTAssertFalse(vm.isFeatureUnlocked(.swotAnalysis))
+        // Fail closed: a key the server did not return stays locked.
+        XCTAssertFalse(vm.isFeatureUnlocked(.sectorRotation))
     }
 }

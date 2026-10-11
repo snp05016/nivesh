@@ -83,6 +83,12 @@ struct GratuityCalculationResult: Equatable {
     let uncappedGratuity: Double
     let payableGratuity: Double
     let isCapped: Bool
+    /// False below `minimumYears` of continuous service: the Act pays
+    /// nothing then (finance_calculators.calculate_gratuity mirrors this).
+    let isEligible: Bool
+
+    /// Section 4(1) minimum continuous service for gratuity eligibility.
+    static let minimumYears = 5
 
     /// Statutory ceiling for employees covered under the Payment of
     /// Gratuity Act, 1972 (current value as of this demo).
@@ -92,13 +98,17 @@ struct GratuityCalculationResult: Equatable {
     /// Pure/local — simplified/demo estimate only, not tax or legal advice.
     static func computeLocally(lastDrawnSalary: Double, yearsOfService: Int) -> GratuityCalculationResult {
         let years = max(yearsOfService, 0)
+        guard years >= minimumYears else {
+            return GratuityCalculationResult(uncappedGratuity: 0, payableGratuity: 0, isCapped: false, isEligible: false)
+        }
         let uncapped = (lastDrawnSalary * 15 * Double(years)) / 26.0
         let payable = min(uncapped, statutoryCeiling)
 
         return GratuityCalculationResult(
             uncappedGratuity: (uncapped * 100).rounded() / 100,
             payableGratuity: (payable * 100).rounded() / 100,
-            isCapped: uncapped > statutoryCeiling
+            isCapped: uncapped > statutoryCeiling,
+            isEligible: true
         )
     }
 }
@@ -112,13 +122,22 @@ private struct GratuityResultCard: View {
                 .font(Theme.engravedSerif(size: 16, weight: .semibold, relativeTo: .title3))
                 .foregroundColor(Theme.inkPrimary)
 
-            Text(IndianFormatter.formatLakhsCrores(result.payableGratuity))
-                .font(Theme.serialNumberFont(size: 28, relativeTo: .largeTitle))
-                .foregroundColor(Theme.securityGold)
-            Text("PAYABLE GRATUITY")
-                .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
-                .tracking(1.2)
-                .foregroundColor(Theme.inkTertiary)
+            if result.isEligible {
+                Text(IndianFormatter.formatLakhsCrores(result.payableGratuity))
+                    .font(Theme.serialNumberFont(size: 28, relativeTo: .largeTitle))
+                    .foregroundColor(Theme.securityGold)
+                Text("PAYABLE GRATUITY")
+                    .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
+                    .tracking(1.2)
+                    .foregroundColor(Theme.inkTertiary)
+            } else {
+                Text("NOT ELIGIBLE")
+                    .font(Theme.serialNumberFont(size: 28, relativeTo: .largeTitle))
+                    .foregroundColor(Theme.inkSecondary)
+                Text("Gratuity is payable after \(GratuityCalculationResult.minimumYears) years of continuous service. Exceptions: no minimum on death or disablement; fixed-term employees may qualify after 1 year under the Code on Social Security, 2020.")
+                    .font(Theme.engravedSerif(size: 11, relativeTo: .caption2))
+                    .foregroundColor(Theme.inkTertiary)
+            }
 
             if result.isCapped {
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
