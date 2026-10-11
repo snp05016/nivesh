@@ -1,4 +1,7 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
+from core.security import require_auth
 from schemas.alpha_validation import (
     BacktestParams, BacktestResult, RegimeBreakdownResult,
     StrategySweepResult, CostAssumptions,
@@ -8,7 +11,10 @@ from services.alpha_validation_service import (
     run_alpha_validation, run_strategy_sweep, run_regime_breakdown
 )
 
-router = APIRouter()
+logger = logging.getLogger(__name__)
+
+# Every backtest is a full replay over history: never serve them anonymously (AUTH-26).
+router = APIRouter(dependencies=[Depends(require_auth)])
 
 @router.post("/alpha-validation", response_model=BacktestResult)
 def backtest_alpha_validation(params: BacktestParams):
@@ -83,7 +89,8 @@ def backtest_cost_sensitivity():
                 gross_return=res.metrics.gross_return,
                 turnover=res.metrics.turnover,
             )
-        except Exception as e:
-            results[preset] = CostPresetResult(error=str(e))
+        except Exception:
+            logger.exception("cost-sensitivity preset %s failed", preset)
+            results[preset] = CostPresetResult(error="unavailable")
 
     return CostSensitivityResponse(presets=results)

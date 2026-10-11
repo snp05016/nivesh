@@ -51,7 +51,7 @@ def dispatch_mock_push(device_token: str, title: str, body: str, user_id: int):
     }
 
     try:
-        logging.info(f"[APNs MOCK] Dispatching to {device_token}: {json.dumps(payload)}")
+        logging.info(f"[APNs MOCK] Dispatching to {device_token[:8]}...: {json.dumps(payload)}")
         return {
             "status": "queued",
             "payload": payload,

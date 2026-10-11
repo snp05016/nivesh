@@ -114,14 +114,19 @@ def _dash_end_job(job_id: str, result: dict | None = None, error: str | None = N
             entry["cache_type"] = "\u2014"
         _completed_analyses.appendleft(entry)
 
+_LOG_FIELD_MAX = 200
+
+
 def _dash_log_request(method: str, path: str, params: dict, status: int, duration_ms: float) -> None:
+    # Paths/params are attacker-controlled (404s included): cap their size before they sit in memory (AUTH-19).
+    capped = {str(k)[:_LOG_FIELD_MAX]: str(v)[:_LOG_FIELD_MAX] for k, v in list(params.items())[:20]}
     with _dash_lock:
         _request_log.appendleft({
             "id": str(uuid.uuid4())[:8],
             "ts": datetime.now(timezone.utc).isoformat(),
             "method": method,
-            "path": path,
-            "params": params,
+            "path": path[:_LOG_FIELD_MAX],
+            "params": capped,
             "status": status,
             "duration_ms": round(duration_ms),
         })

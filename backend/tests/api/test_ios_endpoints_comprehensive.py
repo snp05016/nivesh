@@ -294,8 +294,10 @@ def test_morning_summary_endpoint(client, auth_headers, test_user_id, monkeypatc
 
 
 def test_harvester_endpoints_auth(client, auth_headers):
-    # Harvester sources is public
+    # Harvester sources requires auth like its siblings (AUTH-26)
     resp = client.get("/harvester/sources")
+    assert resp.status_code == 401
+    resp = client.get("/harvester/sources", headers=auth_headers)
     assert resp.status_code == 200
 
     # Harvester feed requires auth

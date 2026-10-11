@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from helpers import require_admin
 from services.notifications_service import (
@@ -32,7 +32,7 @@ def register_device(req: RegisterDeviceRequest, authorization: str = Header(None
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/v1/dev/push-mock")
-def push_mock(req: PushMockRequest):
+def push_mock(req: PushMockRequest, _admin: int = Depends(require_admin)):
     try:
         return dispatch_mock_push(req.device_token, req.title, req.body, req.user_id)
     except PermissionError as e:

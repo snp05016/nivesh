@@ -1,7 +1,7 @@
 """
 Harvester endpoints — ported from nivesh-harvester/main.py into the main backend.
 
-All data endpoints require auth. /sources is public (health check).
+All data endpoints, /sources included, require auth.
 Admin endpoints (trigger/stats) require admin auth.
 """
 
@@ -38,7 +38,8 @@ def get_governance(ticker: str, limit: int = Query(default=20, ge=1, le=100), au
 
 
 @router.get("/sources")
-def get_sources():
+def get_sources(authorization: str = Header(None)):
+    require_auth(authorization)
     return fetch_sources()
 
 

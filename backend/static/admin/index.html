@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nivesh Admin Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha512-CQBWl4fJHWbryGE+Pc7UAxWMUMNMWzWxF4SQo9CgkJIN1kx6djDQZjh3Y8SZ1d+6I+1zze6Z7kHXO7q3UyZAWw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <link rel="stylesheet" href="/admin-assets/admin.css">
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="brand-icon">&#x20B9;</div>
+    <div class="brand-text">
+      <h1>Nivesh Admin Dashboard</h1>
+      <div class="sub" id="uptime">Loading...</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <button class="btn-view" data-action="refreshAll">Refresh</button>
+    <div class="uptime-pill" id="lu">Connecting...</div>
+    <div class="live-pill"><div class="dot"></div>Live &bull; 30s</div>
+  </div>
+</header>
+
+<nav class="main-nav">
+  <button class="nav-tab active" data-action="showPage" data-arg="overview">&#x1F4CA; Overview</button>
+  <button class="nav-tab" data-action="showPage" data-arg="users">&#x1F465; Users</button>
+  <button class="nav-tab" data-action="showPage" data-arg="ai">&#x1F916; AI Engine</button>
+  <button class="nav-tab" data-action="showPage" data-arg="harvesters">&#x1F33E; Harvesters</button>
+  <button class="nav-tab" data-action="showPage" data-arg="archive">&#x1F4DC; Archive</button>
+  <button class="nav-tab" data-action="showPage" data-arg="requests">&#x1F310; Requests</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE: OVERVIEW
+═══════════════════════════════════════════════════════════ -->
+<div class="page active" id="page-overview">
+
+  <div class="section-label" style="margin-top:24px">System Overview</div>
+  <div class="row4" style="margin-bottom:20px">
+    <div class="stat-tile tile-dark"><div class="val val-red" id="db_u">-</div><div class="lbl">Total Users</div></div>
+    <div class="stat-tile tile-dark"><div class="val val-green" id="db_h">-</div><div class="lbl">Holdings</div></div>
+    <div class="stat-tile tile-dark"><div class="val val-blue" id="db_a">-</div><div class="lbl">Analyses</div></div>
+    <div class="stat-tile tile-dark"><div class="val val-gold" id="db_s">-</div><div class="lbl">Signal Events</div></div>
+  </div>
+  <div class="row4" style="margin-bottom:20px">
+    <div class="stat-tile tile-dark"><div class="val val-dim" id="db_tj">-</div><div class="lbl">Journal Entries</div></div>
+    <div class="stat-tile tile-dark"><div class="val val-dim" id="db_news">-</div><div class="lbl">News Articles</div></div>
+    <div class="stat-tile tile-dark"><div class="val val-dim" id="db_yt">-</div><div class="lbl">YouTube Videos</div></div>
+    <div class="stat-tile tile-dark"><div class="val val-dim" id="c_q">-</div><div class="lbl">QuickInfo Cache</div></div>
+  </div>
+
+  <div class="section-label">AI Provider Health</div>
+  <div class="row3" style="margin-bottom:20px">
+    <div class="stat-tile tile-dark"><div class="val" id="h_ant">-</div><div class="lbl">Anthropic</div></div>
+    <div class="stat-tile tile-dark"><div class="val" id="h_ds">-</div><div class="lbl">DeepSeek</div></div>
+    <div class="stat-tile tile-dark"><div class="val" id="h_goog">-</div><div class="lbl">Google</div></div>
+  </div>
+
+  <div class="section-label">Per-Feature Health</div>
+  <div class="feature-grid" id="feature-error-grid" style="margin-bottom:20px">
+    <div class="empty" style="grid-column:1/-1">Loading...</div>
+  </div>
+
+  <div class="section-label">Live Analysis Monitor</div>
+  <div class="row2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Currently Running</span><span class="ts" id="ac"></span></div>
+      <div class="card-body" id="ab"><div class="empty">No active analyses</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Recently Completed</span><span class="ts" id="anc"></span></div>
+      <div style="overflow-x:auto">
+        <table><thead><tr><th>Time</th><th>Ticker</th><th>Type</th><th>Signal</th><th>Dur</th><th>Status</th></tr></thead>
+        <tbody id="at"><tr><td colspan="6" class="empty">No analyses yet</td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Harvested Content</div>
+  <div class="row2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Latest News Articles</span><span class="ts" id="lnc"></span></div>
+      <div style="overflow-x:auto">
+        <table><thead><tr><th>Time</th><th>Ticker</th><th>Headline</th><th>Sentiment</th></tr></thead>
+        <tbody id="lnt"><tr><td colspan="4" class="empty">No news</td></tr></tbody></table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Latest YouTube Videos</span><span class="ts" id="lvc"></span></div>
+      <div style="overflow-x:auto">
+        <table><thead><tr><th>Time</th><th>Ticker</th><th>Channel</th><th>Title</th></tr></thead>
+        <tbody id="lvt"><tr><td colspan="4" class="empty">No videos</td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE: USERS (per-user deep dive)
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-users">
+  <div style="padding-top:24px">
+    <div class="section-label">Per-User Intelligence</div>
+
+    <div class="user-selector-bar">
+      <label>Select User</label>
+      <select class="user-select" id="user-select">
+        <option value="">-- select user --</option>
+      </select>
+      <div class="user-stat-row" id="user-stat-chips"></div>
+    </div>
+
+    <!-- User sub-tabs -->
+    <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid #21262d">
+      <button class="tab-btn active" id="utab-portfolio" data-action="showUserTab" data-arg="portfolio">&#x1F4BC; Portfolio</button>
+      <button class="tab-btn" id="utab-analyses" data-action="showUserTab" data-arg="analyses">&#x1F9E0; AI Reports</button>
+      <button class="tab-btn" id="utab-valuation" data-action="showUserTab" data-arg="valuation">&#x1F4C8; Valuation Chart</button>
+      <button class="tab-btn" id="utab-alerts" data-action="showUserTab" data-arg="alerts">&#x1F514; Alerts</button>
+      <button class="tab-btn" id="utab-journal" data-action="showUserTab" data-arg="journal">&#x1F4D3; Trade Journal</button>
+      <button class="tab-btn" id="utab-networth" data-action="showUserTab" data-arg="networth">&#x1F4B0; Net Worth</button>
+    </div>
+
+    <!-- Portfolio tab -->
+    <div id="utab-content-portfolio">
+      <div class="section-label">Portfolio Holdings</div>
+      <div class="row3" style="margin-bottom:16px" id="portfolio-summary-stats">
+        <div class="stat-tile tile-dark"><div class="val val-blue" id="p-holdings">-</div><div class="lbl">Holdings</div></div>
+        <div class="stat-tile tile-dark"><div class="val val-amber" id="p-invested">-</div><div class="lbl">Total Invested</div></div>
+        <div class="stat-tile tile-dark"><div class="val val-dim" id="p-groups">-</div><div class="lbl">Groups</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Holdings Table</span></div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>#</th><th>Ticker</th><th>Company</th><th>Shares</th><th>Buy Price (₹)</th><th>Invested (₹)</th><th>Group</th><th>Notes</th><th>Added</th></tr></thead>
+          <tbody id="portfolio-table"><tr><td colspan="9" class="empty">Select a user above</td></tr></tbody></table>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Allocation by Group</span></div>
+          <div class="card-body"><div class="chart-container"><canvas id="chart-allocation"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Signal Distribution (Analyses)</span></div>
+          <div class="card-body"><div class="chart-container"><canvas id="chart-signals"></canvas></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Reports tab -->
+    <div id="utab-content-analyses" style="display:none">
+      <div class="section-label">AI Analysis Reports</div>
+      <div class="row4" style="margin-bottom:16px">
+        <div class="stat-tile tile-dark"><div class="val val-blue" id="a-total">-</div><div class="lbl">Total Analyses</div></div>
+        <div class="stat-tile tile-dark"><div class="val val-green" id="a-correct">-</div><div class="lbl">Correct Signals</div></div>
+        <div class="stat-tile tile-dark"><div class="val val-red" id="a-incorrect">-</div><div class="lbl">Incorrect</div></div>
+        <div class="stat-tile tile-dark"><div class="val val-gold" id="a-accuracy">-</div><div class="lbl">Accuracy</div></div>
+      </div>
+      <div id="analyses-list"><div class="empty">Select a user above</div></div>
+    </div>
+
+    <!-- Valuation Chart tab -->
+    <div id="utab-content-valuation" style="display:none">
+      <div class="section-label">Portfolio Valuation Over Time</div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Daily Snapshot — Total Value vs Invested vs Nifty (normalised)</span></div>
+        <div class="card-body"><div class="chart-container-lg"><canvas id="chart-valuation"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Daily P&L %</span></div>
+        <div class="card-body"><div class="chart-container"><canvas id="chart-pnl-pct"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Valuation History Table</span></div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>Date</th><th>Total Value (₹)</th><th>Invested (₹)</th><th>P&L (₹)</th><th>P&L %</th><th>Nifty Close</th></tr></thead>
+          <tbody id="valuation-table"><tr><td colspan="6" class="empty">No data</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerts tab -->
+    <div id="utab-content-alerts" style="display:none">
+      <div class="section-label">Price Alerts</div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Active &amp; Triggered Alerts</span></div>
+        <div id="alerts-list"><div class="empty">Select a user above</div></div>
+      </div>
+    </div>
+
+    <!-- Trade Journal tab -->
+    <div id="utab-content-journal" style="display:none">
+      <div class="section-label">Trade Journal</div>
+      <div id="journal-list"><div class="empty">Select a user above</div></div>
+    </div>
+
+    <!-- Net Worth tab -->
+    <div id="utab-content-networth" style="display:none">
+      <div class="section-label">Net Worth Ledger</div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Net Worth Over Time (₹)</span></div>
+        <div class="card-body"><div class="chart-container-lg"><canvas id="chart-networth"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Daily Ledger</span></div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>Date</th><th>Value (₹)</th><th>Day Δ (₹)</th><th>Day Δ %</th><th>Peak (₹)</th><th>Top Gainer</th><th>Top Loser</th></tr></thead>
+          <tbody id="networth-table"><tr><td colspan="7" class="empty">No data</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE: AI ENGINE
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-ai">
+  <div style="padding-top:24px">
+
+    <!-- ═══ AI Engine Monitor — Header ═══ -->
+    <div class="section-label">AI Engine Monitor</div>
+    <div class="row4" style="margin-bottom:16px">
+      <div class="stat-tile tile-dark"><div class="val val-green" id="ai_running">-</div><div class="lbl">Running</div></div>
+      <div class="stat-tile tile-dark"><div class="val val-blue" id="ai_queued">-</div><div class="lbl">Queued</div></div>
+      <div class="stat-tile tile-dark"><div class="val val-red" id="ai_stuck">-</div><div class="lbl">Stuck</div></div>
+      <div class="stat-tile tile-dark"><div class="val val-dim" id="ai_total">-</div><div class="lbl">Total Shown</div></div>
+    </div>
+
+    <!-- ═══ Mode selector ═══ -->
+    <div style="margin-bottom:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn-mode active" data-action="setAIMode" data-arg="running">Running</button>
+      <button class="btn-mode" data-action="setAIMode" data-arg="all">All Jobs</button>
+      <button class="btn-mode" data-action="setAIMode" data-arg="stuck">Stuck</button>
+      <input id="ai-ticker-filter" type="text" placeholder="Filter by ticker..." style="width:140px;background:#0a0a0a;border:1px solid #30363d;border-radius:6px;padding:6px 10px;color:#c9d1d9;font-size:11px;margin-left:12px">
+      <span class="ts" id="ai_updated" style="margin-left:auto">Loading...</span>
+    </div>
+
+    <!-- ═══ Running Jobs Table ═══ -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header"><span class="card-title">Jobs</span></div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Ticker</th><th>Status</th><th>Phase / Stage</th><th>Prog</th><th>Age</th><th>Elapsed</th><th>Scan</th><th>Tokens</th><th>Job ID</th>
+          </tr></thead>
+          <tbody id="ai-jobs-tbody"><tr><td colspan="9" class="empty">No jobs found</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ Phase Timeline ═══ -->
+    <div class="section-label">Phase Timelines</div>
+    <div id="ai-timelines" style="margin-bottom:20px">
+      <div class="empty">Select a running job to view its phase timeline</div>
+    </div>
+
+    <!-- ═══ Latest Successful Summary ═══ -->
+    <div class="section-label">Latest Completion per Ticker</div>
+    <div style="overflow-x:auto;margin-bottom:20px">
+      <table>
+        <thead><tr><th>Ticker</th><th>Signal</th><th>Conf</th><th>Tier</th><th>Price</th><th>12M Target</th><th>Upside</th><th>Tokens</th><th>Date</th></tr></thead>
+        <tbody id="ai-latest-tbody"><tr><td colspan="9" class="empty">No completed analyses</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- ═══ AI Model Usage (keep existing) ═══ -->
+    <div class="section-label">AI Model Usage &amp; Cost</div>
+    <div class="ai-model-grid" style="margin-bottom:20px">
+      <div class="model-card claude">
+        <div class="model-card-header"><div class="model-icon">&#x1F916;</div>
+          <div><div class="model-name">Claude (Anthropic)</div><div class="model-sub">Sonnet / Haiku — token_log.jsonl</div></div>
+        </div>
+        <div class="model-body">
+          <div class="model-stat"><div class="mv claude-val" id="cl_calls">-</div><div class="ml">Calls</div></div>
+          <div class="model-stat"><div class="mv claude-val" id="cl_in">-</div><div class="ml">Input Tokens</div></div>
+          <div class="model-stat"><div class="mv claude-val" id="cl_out">-</div><div class="ml">Output Tokens</div></div>
+        </div>
+        <div class="model-footer">
+          <span>Cost: <span id="cl_cost" style="color:#c9a84c">$-.--</span></span>
+          <span>Cache hit: <span id="cl_cache_hit" style="color:#3fb950">-</span></span>
+        </div>
+      </div>
+      <div class="model-card deepseek">
+        <div class="model-card-header"><div class="model-icon">&#x26A1;</div>
+          <div><div class="model-name">DeepSeek</div><div class="model-sub">deepseek-chat — token_log.jsonl</div></div>
+        </div>
+        <div class="model-body">
+          <div class="model-stat"><div class="mv deepseek-val" id="ds_calls">-</div><div class="ml">Calls</div></div>
+          <div class="model-stat"><div class="mv deepseek-val" id="ds_in">-</div><div class="ml">Input Tokens</div></div>
+          <div class="model-stat"><div class="mv deepseek-val" id="ds_out">-</div><div class="ml">Output Tokens</div></div>
+        </div>
+        <div class="model-footer">
+          <span>Cost: <span id="ds_cost" style="color:#c9a84c">$-.--</span></span>
+          <span>Share: <span id="ds_ratio" style="color:#bc8cff">-</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header"><span class="card-title">Session Token Totals (In-Memory)</span><span class="ts" id="tc"></span></div>
+      <div class="card-body">
+        <div class="stat-grid stat-grid-4">
+          <div class="stat-tile tile-dark"><div class="val val-red" id="ti">-</div><div class="lbl">Input</div></div>
+          <div class="stat-tile tile-dark"><div class="val val-green" id="to">-</div><div class="lbl">Output</div></div>
+          <div class="stat-tile tile-dark"><div class="val val-blue" id="tr">-</div><div class="lbl">Cache Read</div></div>
+          <div class="stat-tile tile-dark"><div class="val val-gold" id="tw">-</div><div class="lbl">Cache Write</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">Recent AI API Calls</div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Recent Claude / AI Calls</span><span class="ts" id="clc"></span></div>
+      <div style="overflow-x:auto">
+        <table><thead><tr><th>Time</th><th>Endpoint</th><th>Input</th><th>Output</th><th>Cache Read</th><th>Cache Write</th></tr></thead>
+        <tbody id="ct"><tr><td colspan="6" class="empty">No AI calls yet</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <div class="section-label">Scraper Engine</div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Scraper Cache Age</span></div>
+      <div class="card-body"><div class="stat-grid stat-grid-4" id="scraper_status_grid"><div class="empty" style="grid-column:1/-1">Loading...</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE: HARVESTERS
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-harvesters">
+  <div style="padding-top:24px">
+    <div class="section-label">Background Harvesters</div>
+    <div class="row2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Status &amp; Controls</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn-view" data-action="triggerHarvest" data-arg="youtube" id="btn-yt-harvest">&#x1F3A5; YouTube</button>
+            <button class="btn-view" data-action="triggerHarvest" data-arg="advisor" id="btn-adv-harvest">&#x1F4BC; Advisor</button>
+            <button class="btn-view" data-action="triggerHarvest" data-arg="news" id="btn-news-harvest">&#x1F4F0; News</button>
+          </div>
+        </div>
+        <div class="card-body"><div class="stat-grid stat-grid-4" id="harvest-status-grid"><div class="empty" style="grid-column:1/-1">Loading...</div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Harvester Logs</span><span class="ts" id="hrc"></span></div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>Time</th><th>Harvester</th><th>Result</th></tr></thead>
+          <tbody id="hrt"><tr><td colspan="3" class="empty">No logs</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">Latest Harvested Content</div>
+    <div class="row2">
+      <div class="card">
+        <div class="card-header"><span class="card-title">News Articles (last 20)</span></div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>Time</th><th>Ticker</th><th>Headline</th><th>Sent</th></tr></thead>
+          <tbody id="lnt2"><tr><td colspan="4" class="empty">No news</td></tr></tbody></table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">YouTube Videos (last 20)</span></div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>Time</th><th>Ticker</th><th>Channel</th><th>Title</th></tr></thead>
+          <tbody id="lvt2"><tr><td colspan="4" class="empty">No videos</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE: ARCHIVE
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-archive">
+  <div style="padding-top:24px">
+    <div class="section-label">Historical Analysis Archive (All Users)</div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">All Analyses (DB)</span><span class="ts" id="hnc"></span></div>
+      <div style="overflow-x:auto">
+        <table><thead><tr><th>Created</th><th>Ticker</th><th>Date</th><th>Signal</th><th>Conf</th><th>User</th><th>Correct</th><th>Details</th></tr></thead>
+        <tbody id="ht"><tr><td colspan="8" class="empty">No data</td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE: REQUESTS
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-requests">
+  <div style="padding-top:24px">
+    <div class="section-label">API Request Log</div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Last 50 Requests</span><span class="ts" id="rc"></span></div>
+      <div style="overflow-x:auto">
+        <table><thead><tr><th>Time</th><th>Method</th><th>Path</th><th>Params</th><th>Status</th><th>Duration</th></tr></thead>
+        <tbody id="rt"><tr><td colspan="6" class="empty">No requests</td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/admin-assets/admin.js"></script>
+</body>
+</html>

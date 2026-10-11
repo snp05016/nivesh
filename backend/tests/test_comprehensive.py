@@ -169,7 +169,7 @@ class TestPortfolioEndpoints:
     def test_portfolio_advisor_consensus(self):
         """Test getting advisor consensus."""
         response = client.get("/api/v1/portfolio/advisor-consensus?user_id=1")
-        assert response.status_code in [200, 404]
+        assert response.status_code == 401  # AUTH-26: requires a Bearer token
     
     def test_portfolio_valuation_history(self):
         """Test getting portfolio valuation history."""

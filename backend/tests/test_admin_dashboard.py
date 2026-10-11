@@ -100,9 +100,9 @@ def test_dashboard_user_data_404(client, as_admin):
 
 
 def test_admin_page_escapes_untrusted_strings(client):
-    # The CSP allows inline script and the page holds a real admin JWT, so attacker-controlled
-    # strings (logged request paths, usernames, scraped titles) must be HTML-escaped.
-    page = client.get("/").text
+    # The page holds a real admin JWT, so attacker-controlled strings (logged request paths,
+    # usernames, scraped titles) must be HTML-escaped. The script lives in /admin-assets/admin.js.
+    page = client.get("/admin-assets/admin.js").text
     assert "function esc(s)" in page
     assert 'title="${esc(r.path)}">${esc(r.path)}' in page
     assert "${esc(e.path||'-')}" in page

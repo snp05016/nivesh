@@ -14,7 +14,7 @@ from typing import Any, Optional
 from collections import Counter, defaultdict
 from types import SimpleNamespace
 
-from fastapi import APIRouter, Depends, HTTPException, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
 import yfinance as yf
 
@@ -866,13 +866,19 @@ def portfolio_note_endpoint(req: PortfolioNoteRequest, authorization: str = Head
 from services import stock_universe  # single NSE/BSE directory (ARCH-10)
 
 @router.get("/api/v1/portfolio/advisor-consensus")
-def portfolio_advisor_consensus(user_id: int, days: int = 7):
+def portfolio_advisor_consensus(
+    _caller: int = Depends(require_auth),
+    user_id: Optional[int] = None,
+    days: int = Query(7, ge=1, le=30),
+):
     """
     Aggregate AdvisorInsight rows into sector signals and trending tickers.
 
+    The result is market-wide, not per-user: user_id is accepted only for older iOS
+    builds and ignored (AUTH-26).
+
     Args:
-        user_id (int): The user_id.
-        days (int): The days.
+        days (int): Look-back window, 1-30.
 
     Returns:
         Any: The response.
@@ -884,14 +890,17 @@ def portfolio_advisor_consensus(user_id: int, days: int = 7):
         with get_session() as session:
             # ── Fetch all insights in the window ────────────────────────────
             rows = (
-                session.query(AdvisorInsight)
+                session.query(
+                    AdvisorInsight.ticker, AdvisorInsight.video_id, AdvisorInsight.view_count,
+                    AdvisorInsight.stance, AdvisorInsight.advisor_name,
+                )
                 .filter(AdvisorInsight.published_at >= cutoff)
                 .all()
             )
 
             # ── last_harvest_at: most recent created_at across entire table ─
             last_row = (
-                session.query(AdvisorInsight)
+                session.query(AdvisorInsight.created_at)
                 .order_by(AdvisorInsight.created_at.desc())
                 .first()
             )
@@ -900,23 +909,6 @@ def portfolio_advisor_consensus(user_id: int, days: int = 7):
                 if last_row and last_row.created_at
                 else None
             )
-
-            # ── Company names: prefer AnalysisHistory (most recent) ─────────
-            company_from_history: dict[str, str] = {}
-            try:
-                ah_rows = (
-                    session.query(AnalysisHistory.ticker, AnalysisHistory.created_at)
-                    .order_by(AnalysisHistory.created_at.desc())
-                    .all()
-                )
-                seen: set[str] = set()
-                for ah in ah_rows:
-                    if ah.ticker not in seen:
-                        seen.add(ah.ticker)
-            except Exception as e:
-                import logging
-                logging.error(f"Error occurred: {e}", exc_info=True)
-                raise HTTPException(status_code=500, detail="Internal server error")
 
         # ── total_videos_processed ──────────────────────────────────────────
         total_videos_processed = len({r.video_id for r in rows})
@@ -951,11 +943,7 @@ def portfolio_advisor_consensus(user_id: int, days: int = 7):
 
         trending_tickers = []
         for tk, td in sorted_tickers:
-            company_name = (
-                (stock_universe.by_ticker(tk) or {}).get("company_name")
-                or company_from_history.get(tk)
-                or tk
-            )
+            company_name = (stock_universe.by_ticker(tk) or {}).get("company_name") or tk
             trending_tickers.append({
                 "ticker": tk,
                 "company_name": company_name,

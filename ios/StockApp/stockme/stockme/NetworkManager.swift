@@ -1778,7 +1778,11 @@ extension NetworkManager {
         guard let url = URL(string: "\(harvesterBaseURL)/harvester/sources") else {
             throw NetworkError.invalidURL
         }
-        let (data, _) = try await URLSession.shared.data(from: url)
+        // /harvester/sources requires auth like its sibling harvester routes (AUTH-26).
+        let (data, resp) = try await session.data(for: authRequest(url))
+        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
         return try JSONDecoder().decode([HarvesterSourceStatus].self, from: data)
     }
 
