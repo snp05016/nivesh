@@ -86,7 +86,6 @@ def dividend_history_endpoint(ticker: str, exchange: str = "NSE"):
             fast = t.fast_info
             current_price = getattr(fast, "last_price", None)
         except Exception as e:
-            import logging
             logging.error(f"Error occurred: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -124,7 +123,6 @@ def dividend_history_endpoint(ticker: str, exchange: str = "NSE"):
                         try:
                             next_ex_date = div_date.strftime("%Y-%m-%d")
                         except Exception as e:
-                            import logging
                             logging.warning(f"Caught exception: {e}")
                             next_ex_date = str(div_date)
                         
@@ -227,12 +225,10 @@ def quarterly_financials_endpoint(ticker: str, exchange: str = "NSE"):
                                     "dii": dii or 0,
                                 })
                         except Exception as e:
-                            import logging
                             logging.error(f"Error occurred: {e}", exc_info=True)
                             raise HTTPException(status_code=500, detail="Internal server error")
             promoter_history = list(reversed(promoter_history[:4]))
         except Exception as e:
-            import logging
             logging.error(f"Error occurred: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -512,11 +508,9 @@ AI-generated analysis if a cached analysis exists.
                             result["ai_summary"] = macro_impact
                             result["ai_sentiment"] = sentiment
                     except Exception as e:
-                        import logging
                         logging.error(f"Error occurred: {e}", exc_info=True)
                         raise HTTPException(status_code=500, detail="Internal server error")
         except Exception as e:
-            import logging
             logging.error(f"Error occurred: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -674,7 +668,6 @@ def sector_weekly_endpoint():
                 "week_change_pct": week_chg,
             })
         except Exception as e:
-            import logging
             logging.warning(f"Caught exception: {e}")
             continue
     return {"sectors": results}
@@ -1012,7 +1005,6 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
                 if not fund_fii and _institutional_total_pct is not None:
                     fii_holding_pct = max(0.0, round(_institutional_total_pct - fund_dii, 2))
     except Exception as e:
-        import logging
         logging.error(f"Error occurred: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -1127,14 +1119,12 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
                                 "dii": dii_v or 0,
                             })
                     except Exception as e:
-                        import logging
                         logging.error(f"Error occurred: {e}", exc_info=True)
                         raise HTTPException(status_code=500, detail="Internal server error")
             quarterly_data["promoter_history"] = list(
                 reversed(quarterly_data["promoter_history"][:4])
             )
     except Exception as e:
-        import logging
         logging.error(f"Error occurred: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -1425,7 +1415,6 @@ def _build_cap_index_grid() -> list[dict]:
             info = yf.Ticker(ns).info
             return (ticker, info if info and info.get("regularMarketPrice") else None)
         except Exception as e:
-            import logging
             logging.warning(f"Caught exception: {e}")
             return (ticker, None)
 
@@ -1437,7 +1426,6 @@ def _build_cap_index_grid() -> list[dict]:
                 if info:
                     ticker_data[ticker] = info
             except Exception as e:
-                import logging
                 logging.error(f"Error occurred: {e}", exc_info=True)
                 raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -1479,7 +1467,6 @@ def _build_cap_index_grid() -> list[dict]:
                 if rev_growth is not None and not math.isnan(rev_growth):
                     rev_yoy_list.append(rev_growth)
             except Exception as e:
-                import logging
                 logging.warning(f"Caught exception: {e}")
                 continue
 
@@ -1613,7 +1600,6 @@ Response: {
                     "value": round(value, 0),
                 })
             except Exception as e:
-                import logging
                 logging.warning(f"Caught exception: {e}")
                 continue
 
@@ -1706,7 +1692,6 @@ def run_screener(preset: str = "52w_breakout"):
                                 "volume_ratio": round(volume_ratio, 2)
                             })
                 except Exception as e:
-                    import logging
                     logging.warning(f"Caught exception: {e}")
                     continue
             return {"preset": preset, "results": results}

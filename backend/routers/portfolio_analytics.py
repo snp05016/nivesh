@@ -211,7 +211,6 @@ def get_valuation_history(user_id: int, days: int = 90, _caller: int = Depends(r
                                 closes = hist["Close"].dropna()
                                 all_closes[t] = {d.strftime("%Y-%m-%d"): float(c) for d, c in closes.items()}
                         except Exception as e:
-                            import logging
                             logging.warning(f"Caught exception: {e}")
                             continue
 
@@ -358,7 +357,6 @@ Uses a thread-pool executor so the event loop is never blocked.
                     with open(meta_path) as f:
                         cached_meta = _json.loads(f.read())
                 except Exception as e:
-                    import logging
                     logging.warning(f"Caught exception: {e}")
                     cached_meta = {}
             cached_charts = []
@@ -391,7 +389,6 @@ Uses a thread-pool executor so the event loop is never blocked.
             with open(meta_path, "w") as mf:
                 _json.dump(meta_dict, mf)
         except Exception as e:
-            import logging
             logging.warning(f"Caught exception: {e}")
             pass  # metadata write is best-effort
         return {
@@ -468,13 +465,11 @@ def portfolio_risk_analysis_endpoint(user_id: int, _caller: int = Depends(requir
                             if not math.isnan(float(val)):
                                 daily[dstr] = float(val)
                         except Exception as e:
-                            import logging
                             logging.error(f"Error occurred: {e}", exc_info=True)
                             raise HTTPException(status_code=500, detail="Internal server error")
                     if daily:
                         _return_series[ticker] = daily
             except Exception as e:
-                import logging
                 logging.error(f"Error occurred: {e}", exc_info=True)
                 raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -576,7 +571,6 @@ def portfolio_red_flags_endpoint(user_id: int, _caller: int = Depends(require_us
                         data["_pledged_pct_db"] = row.promoter_pledged_pct
                         latest_analyses[ticker] = data
                     except Exception as e:
-                        import logging
                         logging.error(f"Error occurred: {e}", exc_info=True)
                         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -594,7 +588,6 @@ def portfolio_red_flags_endpoint(user_id: int, _caller: int = Depends(require_us
                         if fii is not None:
                             fiis.append(float(fii))
                     except Exception as e:
-                        import logging
                         logging.error(f"Error occurred: {e}", exc_info=True)
                         raise HTTPException(status_code=500, detail="Internal server error")
                 fii_histories[ticker] = fiis
@@ -610,7 +603,6 @@ def portfolio_red_flags_endpoint(user_id: int, _caller: int = Depends(require_us
         try:
             asm_gsm = _get_asm_gsm_lists()
         except Exception as e:
-            import logging
             logging.warning(f"Caught exception: {e}")
             asm_gsm = {"ASM": set(), "GSM": set()}
 
@@ -735,7 +727,6 @@ def macro_impact_endpoint(user_id: int, _caller: int = Depends(require_user_matc
                 val = info.get("regularMarketPrice") or info.get("currentPrice")
                 macro[key] = round(float(val), 2) if val and not math.isnan(float(val)) else None
             except Exception as e:
-                import logging
                 logging.warning(f"Caught exception: {e}")
                 macro[key] = None
         rbi = get_rbi_policy()
@@ -825,7 +816,6 @@ def portfolio_timeframe_conflicts_endpoint(user_id: int, _caller: int = Depends(
                 try:
                     data = json.loads(row.full_json)
                 except Exception as e:
-                    import logging
                     logging.warning(f"Caught exception: {e}")
                     continue
 
@@ -976,7 +966,6 @@ def portfolio_attribution_endpoint(
             
             sector = info_dict.get("sector", "Unknown")
         except Exception as e:
-            import logging
             logging.warning(f"Caught exception: {e}")
             current_price = h.buy_price
             sector = "Unknown"

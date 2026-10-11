@@ -2,7 +2,7 @@ import pytest
 from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
 
-from backend.services.copilot_service import process_copilot_request, strip_emoji, _manage_tokens
+from services.copilot_service import process_copilot_request, strip_emoji, _manage_tokens
 
 def test_strip_emoji():
     assert strip_emoji("Hello 👋") == "Hello"
@@ -14,8 +14,8 @@ def test_manage_tokens_no_summary():
     managed = _manage_tokens(history)
     assert len(managed) == 1
 
-@patch("backend.services.copilot_service.deepseek_chat")
-@patch("backend.services.copilot_service.claude_haiku")
+@patch("services.copilot_service.deepseek_chat")
+@patch("services.copilot_service.claude_haiku")
 def test_process_copilot_general(mock_claude, mock_deepseek):
     # Mock routing as GENERAL, and then the actual response
     mock_deepseek.side_effect = ["GENERAL", "Here is a general response."]
@@ -26,10 +26,10 @@ def test_process_copilot_general(mock_claude, mock_deepseek):
     assert mock_deepseek.call_count == 2
     mock_claude.assert_not_called()
 
-@patch("backend.services.copilot_service.has_active_consent", return_value=True)
-@patch("backend.services.copilot_service.deepseek_chat")
-@patch("backend.services.copilot_service.claude_haiku")
-@patch("backend.services.copilot_service.get_session")
+@patch("services.copilot_service.has_active_consent", return_value=True)
+@patch("services.copilot_service.deepseek_chat")
+@patch("services.copilot_service.claude_haiku")
+@patch("services.copilot_service.get_session")
 def test_process_copilot_portfolio(mock_get_session, mock_claude, mock_deepseek, _mock_consent):
     mock_deepseek.return_value = "PORTFOLIO"
     mock_claude.return_value = "Portfolio looks great."
@@ -51,10 +51,10 @@ def test_process_copilot_portfolio(mock_get_session, mock_claude, mock_deepseek,
     assert "quantity" not in prompt
 
 
-@patch("backend.services.copilot_service.has_active_consent")
-@patch("backend.services.copilot_service.deepseek_chat")
-@patch("backend.services.copilot_service.claude_haiku")
-@patch("backend.services.copilot_service.get_session")
+@patch("services.copilot_service.has_active_consent")
+@patch("services.copilot_service.deepseek_chat")
+@patch("services.copilot_service.claude_haiku")
+@patch("services.copilot_service.get_session")
 def test_process_copilot_portfolio_anonymous(mock_get_session, mock_claude, mock_deepseek, mock_consent):
     mock_deepseek.return_value = "PORTFOLIO"
 
@@ -65,8 +65,8 @@ def test_process_copilot_portfolio_anonymous(mock_get_session, mock_claude, mock
     mock_get_session.assert_not_called()
     mock_consent.assert_not_called()
 
-@patch("backend.services.copilot_service.deepseek_chat")
-@patch("backend.services.copilot_service.claude_haiku")
+@patch("services.copilot_service.deepseek_chat")
+@patch("services.copilot_service.claude_haiku")
 def test_process_copilot_deep_analysis(mock_claude, mock_deepseek):
     # Chat never runs an analysis itself; it deep-links to the analysis screen.
     mock_deepseek.side_effect = ["DEEP_ANALYSIS", "RELIANCE"]

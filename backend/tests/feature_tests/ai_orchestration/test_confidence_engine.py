@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 import pandas as pd
 
-from backend.services.confidence_engine import (
+from services.confidence_engine import (
     compute_signal_agreement, 
     apply_bear_asymmetry, 
     compute_final_confidence,

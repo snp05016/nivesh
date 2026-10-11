@@ -83,7 +83,6 @@ def batch_analysis(req: BatchAnalyzeRequest, caller: int = Depends(require_auth)
                     data = json.loads(db_analysis.full_json)
                     results.append({"ticker": ticker, "status": "cached", "data": data})
                 except Exception as e:
-                    import logging
                     logging.warning(f"Caught exception: {e}")
                     results.append({"ticker": ticker, "status": "not_cached"})
             else:
@@ -174,7 +173,6 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
             try:
                 return yf.Ticker(full_ticker).info or {}
             except Exception as e:
-                import logging
                 logging.warning(f"Caught exception: {e}")
                 return {}
 
@@ -183,7 +181,6 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                 tk = yf.Ticker(full_ticker)
                 return tk.history(period="1y")
             except Exception as e:
-                import logging
                 logging.warning(f"Caught exception: {e}")
                 import pandas as pd
                 return pd.DataFrame()
@@ -193,7 +190,6 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                 tk = yf.Ticker(full_ticker)
                 return tk.news if hasattr(tk, "news") and tk.news else []
             except Exception as e:
-                import logging
                 logging.warning(f"Caught exception: {e}")
                 return []
 
@@ -237,7 +233,6 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                     from datetime import datetime, timezone as _tz
                     pub = int(datetime.fromisoformat(pub.replace("Z", "+00:00")).timestamp())
                 except Exception as e:
-                    import logging
                     logging.warning(f"Caught exception: {e}")
                     pub = 0
 
@@ -281,7 +276,6 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                     fin = _et.quarterly_financials
                     return h3y, ern, fin
                 except Exception as e:
-                    import logging
                     logging.warning(f"Caught exception: {e}")
                     return None, None, None
 
@@ -290,7 +284,6 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                     d = _et.dividends
                     return d if d is not None and not d.empty else None
                 except Exception as e:
-                    import logging
                     logging.warning(f"Caught exception: {e}")
                     return None
 
@@ -299,7 +292,6 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                     a = _et.actions
                     return a if a is not None and not a.empty else None
                 except Exception as e:
-                    import logging
                     logging.warning(f"Caught exception: {e}")
                     return None
 
@@ -343,7 +335,6 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                     if divs_amt > 0:
                         corporate_actions.append({"date": dt.strftime("%d-%b-%Y"), "type": "dividend", "detail": f"Dividend ₹{round(divs_amt,2)}"})
         except Exception as e:
-            import logging
             logging.error(f"Error occurred: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -364,11 +355,9 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                         governance_score = _fj.get("governance_score")
                         governance_red_flags = _fj.get("governance_red_flags") or []
                     except Exception as e:
-                        import logging
                         logging.error(f"Error occurred: {e}", exc_info=True)
                         raise HTTPException(status_code=500, detail="Internal server error")
         except Exception as e:
-            import logging
             logging.error(f"Error occurred: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -380,7 +369,6 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
             elif t_base in lists.get("ASM", set()): asm_gsm_status = "ASM"
             elif not lists.get("ASM") and not lists.get("GSM"): asm_gsm_status = "UNKNOWN"
         except Exception as e:
-            import logging
             logging.warning(f"Caught exception: {e}")
             asm_gsm_status = "UNKNOWN"
 
@@ -526,12 +514,10 @@ kills the run. One running job per user (guarded by the DB job state).
                 try:
                     cached = _inject_live_data(cached, ticker)
                 except Exception as e:
-                    import logging
                     logging.error(f"Error occurred: {e}", exc_info=True)
                     raise HTTPException(status_code=500, detail="Internal server error")
                 return cached
     except Exception as e:
-        import logging
         logging.error(f"Error occurred: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -1358,7 +1344,6 @@ def daily_action_endpoint(user_id: int, _caller: int = Depends(require_user_matc
                             "is_bearish": True,
                         })
         except Exception as e:
-            import logging
             logging.error(f"Error occurred: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -1389,11 +1374,9 @@ def daily_action_endpoint(user_id: int, _caller: int = Depends(require_user_matc
                                     "long": round((lt - cp) / cp * 100, 1),
                                 })
                     except Exception as e:
-                        import logging
                         logging.error(f"Error occurred: {e}", exc_info=True)
                         raise HTTPException(status_code=500, detail="Internal server error")
         except Exception as e:
-            import logging
             logging.error(f"Error occurred: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -1406,7 +1389,6 @@ def daily_action_endpoint(user_id: int, _caller: int = Depends(require_user_matc
                 ).all()
                 triggered = [{"ticker": a.ticker, "direction": a.direction, "price": a.target_price} for a in alerts]
         except Exception as e:
-            import logging
             logging.error(f"Error occurred: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Internal server error")
 

@@ -405,7 +405,6 @@ def multi_asset_transaction_entry(req: MultiAssetTransactionRequest, token_user:
             session.commit()
             return {"success": True, "transaction_id": tx.id}
     except Exception as e:
-        import logging
         logging.error(f"Error saving multi-asset transaction: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -435,6 +434,5 @@ def multi_asset_transactions_history(user_id: int, asset_type: _Optional[str] = 
                 for tx in transactions
             ]
     except Exception as e:
-        import logging
         logging.error(f"Error fetching multi-asset transactions: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
