@@ -26,7 +26,7 @@ yfinance
 pandas
 numpy
 requests>=2.32.3
-httpx>=0.28.0
+httpx[http2]>=0.28.0  # http2 extra pulls in h2; APNs needs HTTP/2
 beautifulsoup4>=4.12.3
 lxml
 feedparser>=6.0.11
@@ -37,7 +37,7 @@ ta>=0.11.0
 python-dotenv>=1.0.1
 pydantic>=2.10.3
 pydantic-settings>=2.6.1
-PyJWT>=2.9.0
+PyJWT[crypto]>=2.9.0  # crypto extra pulls in cryptography for ES256 (APNs JWT)
 bcrypt>=4.2.1
 isodate>=0.6.1
 redis>=5.0.0
