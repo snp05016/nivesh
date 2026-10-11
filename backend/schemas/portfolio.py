@@ -12,13 +12,17 @@ class AnalyzeRequest(BaseModel):
     user_id: Optional[int] = None
     deep_scan: bool = False
     scan_type: str = "standard"   # "standard" | "extreme"
+    language: Optional[str] = None
+    debate_rounds: Optional[int] = None
+    risk_tolerance: Optional[str] = None
 
     @field_validator("ticker")
     def validate_ticker(cls, v):
         import re
         v = v.strip().upper()
-        if not re.match(r'^[A-Z0-9.&]{1,20}$', v):
-            raise ValueError("Invalid ticker format")
+        # Hyphen allowed: NSE symbols such as BAJAJ-AUTO
+        if not re.match(r'^[A-Za-z0-9&\-\.]{1,20}$', v):
+            raise ValueError("Ticker contains invalid characters")
         return v
 
     @field_validator("exchange")
@@ -52,6 +56,7 @@ class PortfolioAddRequest(BaseModel):
     purchase_date: Optional[str] = None
     notes: Optional[str] = None
     transaction_type: str = "BUY"
+    is_virtual: bool = False  # paper trade
 
     @field_validator("transaction_type")
     @classmethod
@@ -96,7 +101,7 @@ class AlertRemoveRequest(BaseModel):
 
 
 class BatchAnalyzeRequest(BaseModel):
-    tickers: list[str]
+    tickers: list[str] = Field(min_length=1, max_length=20)
     exchange: str = "NSE"
     user_id: int | None = None
 

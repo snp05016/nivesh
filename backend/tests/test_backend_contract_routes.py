@@ -126,8 +126,9 @@ def test_portfolio_add_validates_ownership_and_positive_numbers(client):
         "buy_price": 3500,
     }
     invalid = client.post("/portfolio/add", json=payload, headers=headers)
-    assert invalid.status_code == 400
-    assert "Shares" in invalid.json()["detail"]
+    # Rejected by schemas.PortfolioAddRequest (shares gt=0) before the handler runs.
+    assert invalid.status_code == 422
+    assert invalid.json()["detail"][0]["loc"] == ["body", "shares"]
 
     cross_user = client.post(
         "/portfolio/add",
