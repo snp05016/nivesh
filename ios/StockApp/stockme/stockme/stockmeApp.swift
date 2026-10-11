@@ -45,7 +45,6 @@ struct stockmeApp: App {
     @StateObject private var engineManager = AnalysisEngineManager.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("hasAcceptedDisclaimer") private var hasAcceptedDisclaimer = false
-    @AppStorage("hasSeenTutorial") private var hasSeenTutorial = false
     @State private var enginePollingStarted = false
     @State private var launchAnimDone = false
     @AppStorage("nivesh_crashCountSeen") private var crashCountSeen: Int = 0
@@ -72,7 +71,6 @@ struct stockmeApp: App {
     @State private var launchPhase: LaunchPhase = .loading
 
     // ── Boot sync gate ───────────────────────────────────────────────────
-    private let minimumLaunchDuration: TimeInterval = 3.0
     @State private var bootTasksComplete = false
 
     private var biometricTimeout: BiometricTimeout {
@@ -99,10 +97,9 @@ struct stockmeApp: App {
         WindowGroup {
             ZStack {
                 // ── Main interface (hidden during launch, revealed with spring)
+                // UX-20: the 3-page intro pager was dropped; OnboardingScreen already covers it.
                 Group {
-                    if !hasSeenTutorial {
-                        InteractiveTutorialScreen { hasSeenTutorial = true }
-                    } else if !hasCompletedOnboarding {
+                    if !hasCompletedOnboarding {
                         OnboardingScreen { hasCompletedOnboarding = true }
                     } else if !hasAcceptedDisclaimer {
                         DisclaimerScreen { hasAcceptedDisclaimer = true }
@@ -255,12 +252,7 @@ struct stockmeApp: App {
 
         _ = await (stockDB, authCheck, cacheWarm)
         await MainActor.run { bootTasksComplete = true }
-
-        // Sync gate: ensure minimum video playback before allowing exit
-        try? await Task.sleep(nanoseconds: UInt64(minimumLaunchDuration * 1_000_000_000))
-
-        // Bay: boot done + minimum video elapsed → LaunchSequenceView exits
-        // The LaunchSequenceView's internal animation (~3.1s) aligns with this gate
+        // The splash is dismissed by launchAnimDone, not by a minimum boot duration (UX-20).
     }
 
     private func loadStockDatabase() async {
@@ -315,93 +307,6 @@ struct stockmeApp: App {
                     // Stay locked — user can tap the button to retry
                 }
             }
-        }
-    }
-}
-
-// MARK: - Interactive Tutorial
-
-struct InteractiveTutorialScreen: View {
-    let onFinish: () -> Void
-    @State private var currentPage = 0
-
-    var body: some View {
-        ZStack {
-            Theme.canvas.ignoresSafeArea()
-
-            TabView(selection: $currentPage) {
-                TutorialPageView(
-                    title: "Banknote Aesthetic",
-                    subtitle: "Crafted for clarity. Every element feels like a secure, tactile piece of currency.",
-                    iconName: "banknote"
-                )
-                .tag(0)
-
-                TutorialPageView(
-                    title: "AI Analysis",
-                    subtitle: "Deep semantic understanding of market movements, news, and earnings.",
-                    iconName: "brain.head.profile"
-                )
-                .tag(1)
-
-                TutorialPageView(
-                    title: "Portfolio Management",
-                    subtitle: "Track your wealth with precision and actionable insights.",
-                    iconName: "chart.pie.fill"
-                )
-                .tag(2)
-            }
-            .tabViewStyle(.page(indexDisplayMode: .always))
-
-            VStack {
-                Spacer()
-                Button(action: {
-                    HapticManager.selection()
-                    if currentPage < 2 {
-                        withAnimation { currentPage += 1 }
-                    } else {
-                        onFinish()
-                    }
-                }) {
-                    Text(currentPage < 2 ? "Next" : "Get Started")
-                        .font(Theme.officialStampFont(size: 14))
-                        .foregroundStyle(Theme.canvasDeep)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Theme.securityGold)
-                        .cornerRadius(Theme.CornerRadius.medium)
-                }
-                .buttonStyle(EKPressStyle())
-                .padding(Theme.Spacing.screen)
-            }
-        }
-    }
-}
-
-struct TutorialPageView: View {
-    let title: String
-    let subtitle: String
-    let iconName: String
-
-    var body: some View {
-        VStack(spacing: Theme.Spacing.large) {
-            Image(systemName: iconName)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 80, height: 80)
-                .foregroundStyle(Theme.securityGold)
-                .padding(.bottom, Theme.screenPadding)
-
-            Text(title.uppercased())
-                .font(Theme.engravedSerif(size: 24, weight: .bold))
-                .foregroundStyle(Theme.inkPrimary)
-                .multilineTextAlignment(.center)
-
-            Text(subtitle)
-                .font(.body)
-                .foregroundStyle(Theme.inkSecondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, Theme.Spacing.xLarge)
         }
     }
 }

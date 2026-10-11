@@ -114,6 +114,9 @@ struct ImmersivePortfolioHeroChart: View {
     /// When false the static value header is omitted (e.g. Portfolio, where
     /// `PortfolioHeroBlock` is already the resting hero). The scrub tooltip still appears.
     var showValueHeader: Bool = true
+    /// Settings > Hide Portfolio Values: masks the header, scrub tooltip and VoiceOver value
+    /// for every caller (Home and Portfolio), so no surface leaks the rupee amount.
+    @AppStorage("nivesh_hidePortfolioValues") private var hideValues = false
 
     @State private var scrubIndex: Int? = nil
     @State private var drawProgress: CGFloat = 0
@@ -150,7 +153,7 @@ struct ImmersivePortfolioHeroChart: View {
                 EmptyView()
             } else {
                 VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-                    if showValueHeader {
+                    if showValueHeader && !hideValues {
                         valueHeader
                             .padding(.horizontal, Theme.screenPadding)
                     }
@@ -240,6 +243,7 @@ struct ImmersivePortfolioHeroChart: View {
     }
 
     private var accessibilityValueText: String {
+        if hideValues { return "Values hidden" }
         if let i = scrubIndex, snapshots.indices.contains(i) {
             let s = snapshots[i]
             return "\(dateString(from: s.parsedDate)), \(IndianFormatter.formatLakhsCrores(s.totalValue)), P&L \(IndianFormatter.delta(s.pnlPercent))"
@@ -269,7 +273,7 @@ struct ImmersivePortfolioHeroChart: View {
             .position(pt)
 
         // Floating price tooltip, clamped within the chart width.
-        if let d = displayDate {
+        if !hideValues, let d = displayDate {
             ScrubTooltipView(price: snapshots[i].totalValue, date: d)
                 .fixedSize()
                 .position(x: clampedTooltipX(pt.x, width: size.width), y: 16)

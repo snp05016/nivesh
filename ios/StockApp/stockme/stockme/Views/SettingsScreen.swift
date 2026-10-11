@@ -6,15 +6,13 @@ struct SettingsScreen: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var reportManager: LocalReportManager
 
-    // Trading
+    // Trading. UX-18: rows with no consumer (Risk Tolerance, Default Exchange, Notification
+    // Sound, Biometric for Trades, IPO Alerts) were removed rather than left as no-ops.
     @AppStorage("nivesh_defaultScanType") private var defaultScanType = "ask"
     @AppStorage("nivesh_autoRunOnTap") private var autoRunOnTap = false
-    @AppStorage("nivesh_riskTolerance") private var riskTolerance = "Moderate"
-    @AppStorage("nivesh_defaultExchange") private var defaultExchange = "Auto"
 
     // Notifications
     @AppStorage("morningBriefTime") private var morningBriefTime: Double = 0
-    @AppStorage("notificationSound") private var notificationSound = "Default"
 
     // AI & Analysis
     @AppStorage("defaultDeepScan") private var defaultDeepScan = false
@@ -36,12 +34,10 @@ struct SettingsScreen: View {
     // Data & Privacy
     @AppStorage("biometricTimeout") private var biometricTimeoutRaw = "immediately"
     @AppStorage("nivesh_hidePortfolioValues") private var hidePortfolioValues = false
-    @AppStorage("nivesh_biometricTradeLock") private var biometricTradeLock = false
 
     // Account
     @AppStorage("currencyDisplay") private var currencyDisplay = "Lakhs/Crores"
     @AppStorage("homeAutoRefreshSeconds") private var homeAutoRefreshSeconds = "0"
-    @AppStorage("ipoAlerts") private var ipoAlerts = false
 
     #if DEBUG
     // Dev (debug builds only)
@@ -161,8 +157,6 @@ struct SettingsScreen: View {
             PickerRow(icon: "sparkles", color: Theme.securityGold, title: "Default Scan Type", selection: $defaultScanType, options: ["ask", "standard", "deep", "extreme"],
                       labels: ["ask": "Ask Every Time", "standard": "Standard", "deep": "Deep", "extreme": "Extreme"])
             ToggleRow(icon: "bolt.fill", color: Theme.bullGreen, title: "Auto-run on Stock Tap", isOn: $autoRunOnTap)
-            PickerRow(icon: "shield.checkered", color: Theme.securityGold, title: "Risk Tolerance", selection: $riskTolerance, options: ["Conservative", "Moderate", "Aggressive"])
-            PickerRow(icon: "building.2", color: Theme.inkSecondary, title: "Default Exchange", selection: $defaultExchange, options: ["Auto", "NSE", "BSE"])
             NavRow(icon: "tag", color: Theme.inkSecondary, title: "Sector Blacklist", destination: SectorBlacklistView())
         }
     }
@@ -172,8 +166,6 @@ struct SettingsScreen: View {
     private var notificationsSection: some View {
         SettingsGroup(title: "NOTIFICATIONS", hindi: "सूचनाएं") {
             DateRow(icon: "clock.fill", color: Theme.securityGold, title: "Morning Brief Time", selection: morningBriefDate)
-            PickerRow(icon: "speaker.wave.2", color: Theme.bearRed, title: "Notification Sound", selection: $notificationSound, options: ["Default", "rupee_rustle.mp3"],
-                      labels: ["rupee_rustle.mp3": "Rupee Rustle"])
             NavRow(icon: "moon.zzz", color: Theme.inkSecondary, title: "Quiet Hours", destination: QuietHoursView())
             NavRow(icon: "bell.badge.circle", color: Theme.securityGold, title: "Notification Preferences", destination: NotificationPreferencesView())
         }
@@ -271,7 +263,6 @@ struct SettingsScreen: View {
             PickerRow(icon: "lock.shield", color: Theme.securityGold, title: "Biometric Lock", selection: $biometricTimeoutRaw, options: BiometricTimeout.allCases.map(\.rawValue),
                       labels: Dictionary(uniqueKeysWithValues: BiometricTimeout.allCases.map { ($0.rawValue, $0.label) }))
             ToggleRow(icon: "eye.slash", color: Theme.inkSecondary, title: "Hide Portfolio Values", isOn: $hidePortfolioValues)
-            ToggleRow(icon: "touchid", color: Theme.securityGold, title: "Biometric for Trades", isOn: $biometricTradeLock)
         }
     }
 
@@ -287,7 +278,6 @@ struct SettingsScreen: View {
             PickerRow(icon: "indianrupeesign", color: Theme.securityGold, title: "Currency Format", selection: $currencyDisplay, options: ["Lakhs/Crores", "Absolute"])
             PickerRow(icon: "arrow.triangle.2.circlepath", color: Theme.inkSecondary, title: "Home Auto-refresh", selection: $homeAutoRefreshSeconds, options: ["0", "30", "60", "120"],
                       labels: ["0": "Off", "30": "30 sec", "60": "1 min", "120": "2 min"])
-            ToggleRow(icon: "newspaper", color: Theme.securityGold, title: "IPO Alerts", isOn: $ipoAlerts)
             Button(role: .destructive) { HapticManager.selection();  showClearHistoryAlert = true } label: {
                 RowLabel(icon: "trash", color: Theme.bearRed, title: "VOID ALL RECORDS", tint: Theme.bearRed)
             }

@@ -2349,6 +2349,8 @@ struct PortfolioBriefSheet: View {
     let pnl: Double
     let holdings: [PortfolioHolding]
     @Environment(\.dismiss) var dismiss
+    // UX-18: "Hide Portfolio Values" must mask the brief too, not just the Portfolio hero and rows.
+    @AppStorage("nivesh_hidePortfolioValues") private var hideValues = false
 
     var body: some View {
         ScrollView {
@@ -2377,7 +2379,7 @@ struct PortfolioBriefSheet: View {
                 HStack(spacing: Theme.Spacing.standard) {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                         Text("VALUE").font(Theme.officialStampFont(size: 7)).tracking(1.2).foregroundStyle(Theme.inkTertiary)
-                        Text(IndianFormatter.priceCompact(portfolioValue))
+                        Text(hideValues ? "₹ ••••" : IndianFormatter.priceCompact(portfolioValue))
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                             .font(Theme.serialNumberFont(size: 16, relativeTo: .headline)).foregroundStyle(Theme.inkPrimary)
@@ -2386,9 +2388,9 @@ struct PortfolioBriefSheet: View {
                     VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                         Text("P&L").font(Theme.officialStampFont(size: 7)).tracking(1.2).foregroundStyle(Theme.inkTertiary)
                         // priceCompact keeps the minus ("-₹1.25 L"); only gains need an explicit "+".
-                        Text((pnl > 0 ? "+" : "") + IndianFormatter.priceCompact(pnl))
+                        Text(hideValues ? "₹ ••••" : (pnl > 0 ? "+" : "") + IndianFormatter.priceCompact(pnl))
                             .font(Theme.serialNumberFont(size: 16, relativeTo: .headline))
-                            .foregroundStyle(pnl >= 0 ? Theme.bullGreen : Theme.bearRed)
+                            .foregroundStyle(hideValues ? Theme.inkPrimary : (pnl >= 0 ? Theme.bullGreen : Theme.bearRed))
                     }
                 }
                 .padding(Theme.Spacing.card).banknoteCard()

@@ -8,6 +8,8 @@ struct AnalysisIdleStateView: View {
     let quickInfo: QuickInfo?
     let isRunning: Bool
     let onRun: () -> Void
+    /// Set when a saved report exists (e.g. after dismissing "Cached Report Found").
+    var onViewSaved: (() -> Void)? = nil
 
     var body: some View {
         ScrollView {
@@ -25,7 +27,7 @@ struct AnalysisIdleStateView: View {
                         }
                     }
                     GuillocheDivider()
-                    Text("No saved AI report for this stock yet.")
+                    Text(onViewSaved == nil ? "No saved AI report for this stock yet." : "Run a fresh AI report, or open the saved one.")
                         .font(Theme.engravedSerif(size: 15, weight: .bold))
                         .foregroundStyle(Theme.inkPrimary)
                     Text("Runs a full multi-agent AI analysis on our servers. Takes a few minutes and counts toward your daily analysis limit.")
@@ -51,6 +53,21 @@ struct AnalysisIdleStateView: View {
                 .disabled(isRunning)
                 .opacity(isRunning ? 0.4 : 1.0)
                 .accessibilityLabel("Run analysis")
+
+                if let onViewSaved {
+                    Button {
+                        HapticManager.selection()
+                        onViewSaved()
+                    } label: {
+                        Text("VIEW SAVED REPORT")
+                            .font(Theme.officialStampFont(size: 11))
+                            .foregroundStyle(Theme.securityGold)
+                            .padding(.vertical, Theme.Spacing.standard)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(EKPressStyle())
+                    .accessibilityLabel("View saved report")
+                }
 
                 NavigationLink(value: StockProfileDest(ticker: ticker, exchange: exchange)) {
                     Text("View stock profile")

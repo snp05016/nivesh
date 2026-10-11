@@ -1,6 +1,22 @@
 import SwiftUI
 import Combine
 
+/// One analysis run as the user asked for it, kept so Retry replays the same tier and settings.
+struct AnalysisRequest: Equatable {
+    let ticker: String
+    let deepScan: Bool
+    let scanType: String
+    let language: String?
+    let debateRounds: Int?
+
+    /// Maps the Settings picker values to the request fields: English is the server default (nil).
+    static func from(ticker: String, scanType: String, deepScan: Bool, languageSetting: String, roundsSetting: String) -> AnalysisRequest {
+        AnalysisRequest(ticker: ticker, deepScan: deepScan, scanType: scanType,
+                        language: languageSetting == "English" ? nil : languageSetting,
+                        debateRounds: Int(roundsSetting))
+    }
+}
+
 @MainActor
 class AnalysisViewModel: ObservableObject {
     @Published var analysis: StockAnalysis? = nil
@@ -24,6 +40,8 @@ class AnalysisViewModel: ObservableObject {
     private var pollJobTask: Task<Void, Never>?
     /// Set by an explicit Cancel; a superseding fetchAnalysis call resets it.
     private var cancelRequested = false
+    /// The most recent run, replayed by retryLast() so a failed Extreme scan is not retried as Standard.
+    @Published private(set) var lastRequest: AnalysisRequest?
 
     /// What AnalysisScreen does on appear when it was NOT launched from the
     /// action hub (holding rows, Home, Search, Earnings push it directly).
@@ -212,8 +230,11 @@ class AnalysisViewModel: ObservableObject {
         isLoading = true
         jobId = nil  // a stale id from a previous run would pin isLoading = true below
         cancelRequested = false
+        lastRequest = AnalysisRequest(ticker: ticker, deepScan: deepScan, scanType: scanType, language: language, debateRounds: debateRounds)
 
         analysisTask = Task {
+            // A Cancel that lands before this body runs must not turn the spinner back on.
+            guard !Task.isCancelled else { return }
             isLoading = true
             errorInfo = nil
             engineCheckpoints = []
@@ -223,7 +244,8 @@ class AnalysisViewModel: ObservableObject {
             // handled before awaiting them: jobId must be known as soon as the job exists so
             // Cancel can reach the server job instead of leaving it to spend credits.
             async let startResponse = NetworkManager.shared.startAnalysisJob(
-                ticker: ticker, exchange: "NSE", userId: userId, deepScan: deepScan, scanType: scanType)
+                ticker: ticker, exchange: "NSE", userId: userId, deepScan: deepScan, scanType: scanType,
+                language: language, debateRounds: debateRounds)
             async let impacts = Self.loadMacroImpacts(userId: userId)
             async let qi = NetworkManager.shared.quickInfo(ticker: ticker)
             async let qfr = NetworkManager.shared.getQuarterlyFinancialsResponse(ticker: ticker)
@@ -329,17 +351,26 @@ class AnalysisViewModel: ObservableObject {
         return (try? await NetworkManager.shared.fetchMacroImpact(userId: uid))?.impacts ?? []
     }
 
+    /// Re-runs the last request with the same tier, language and debate rounds.
+    func retryLast(userId: Int?, useMock: Bool, reportManager: LocalReportManager) {
+        guard let r = lastRequest else { return }
+        fetchAnalysis(ticker: r.ticker, userId: userId, useMock: useMock, reportManager: reportManager,
+                      deepScan: r.deepScan, scanType: r.scanType, language: r.language, debateRounds: r.debateRounds)
+    }
+
+    /// Returns the screen to idle at once (no error), whether or not the job had started.
     func cancelAnalysis() {
         cancelRequested = true
-        // v2 engine — cancel via API instead of local task cancellation
-        if let jid = jobId {
-            Task {
-                try? await NetworkManager.shared.cancelJob(jobId: jid, userId: nil)
-                await MainActor.run { isLoading = false }
-            }
-        }
+        let jid = jobId
         analysisTask?.cancel()
         pollJobTask?.cancel()
+        isLoading = false
+        jobId = nil
+        jobStatus = nil
+        // v2 engine: the job runs server-side, so cancel it there too (fire-and-forget).
+        if let jid {
+            Task { try? await NetworkManager.shared.cancelJob(jobId: jid, userId: nil) }
+        }
     }
 }
 
@@ -367,8 +398,6 @@ struct AnalysisScreen: View {
     @AppStorage("nivesh_showGovernanceFirst") private var showGovernanceFirst: Bool = false
     @AppStorage("nivesh_analysisLanguage") private var analysisLanguage: String = "English"
     @AppStorage("nivesh_debateRounds") private var debateRoundsStr: String = "1"
-    @AppStorage("nivesh_defaultExchange") private var defaultExchange: String = "Auto"
-    @AppStorage("nivesh_riskTolerance") private var riskTolerance: String = "Moderate"
     @AppStorage("nivesh_autoRegenerateStale") private var autoRegenerateStale: Bool = false
     @State private var deepScanEnabled: Bool = false
     @State private var isAnalyzing = false
@@ -408,7 +437,7 @@ struct AnalysisScreen: View {
                 
                 if let analysis = retainedAnalysis {
                     renderFullAnalysis(analysis)
-                } else if viewModel.isLoading || showingRegenerateAlert {
+                } else if viewModel.isLoading {
                     renderLoadingState()
                 } else if let errorInfo = viewModel.errorInfo {
                     renderErrorState(errorInfo)
@@ -421,7 +450,8 @@ struct AnalysisScreen: View {
                         onRun: {
                             HapticManager.impact(.medium)
                             runDefaultAnalysis()
-                        }
+                        },
+                        onViewSaved: previousAnalysis.map { saved -> () -> Void in { viewModel.analysis = saved } }
                     )
                 }
             }
@@ -485,20 +515,15 @@ struct AnalysisScreen: View {
                     case .cached:
                         // Show highest-priority cache (extreme > deep > standard)
                         if let cached = previousAnalysis { viewModel.analysis = cached }
-                        else { viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: false, scanType: "standard") }
+                        else { startRun(scanType: "standard", deepScan: false) }
                     case .standard:
-                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: false, scanType: "standard")
+                        startRun(scanType: "standard", deepScan: false)
                     case .regenerate:
-                        // Re-run at same tier as cached report
-                        let tier = previousAnalysis?.analysisTier ?? "standard"
-                        let isExtreme = tier == "extreme"
-                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: isExtreme, scanType: isExtreme ? "extreme" : "standard")
+                        regenerateAtCachedTier(previousAnalysis)
                     case .deepScan:
-                        let forbidden = Self.deepScanDisabledTickers.contains(ticker.uppercased())
-                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: !forbidden, scanType: "deep")
+                        startRun(scanType: "deep", deepScan: !deepScanForbidden)
                     case .extremeScan:
-                        let forbidden = Self.deepScanDisabledTickers.contains(ticker.uppercased())
-                        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: !forbidden, scanType: "extreme")
+                        startRun(scanType: "extreme", deepScan: !deepScanForbidden)
                     }
                 } else {
                     switch AnalysisViewModel.autoStart(
@@ -513,6 +538,8 @@ struct AnalysisScreen: View {
                         runDefaultAnalysis()
                     case .promptCached:
                         showingRegenerateAlert = true
+                        // Dismissing the dialog leaves the idle view, which shows the price.
+                        viewModel.loadQuickInfo(ticker: ticker)
                     case .idle:
                         // No saved report: show the idle state and wait for "Run analysis".
                         viewModel.loadQuickInfo(ticker: ticker)
@@ -544,7 +571,7 @@ struct AnalysisScreen: View {
                     }
                 },
                 .init("Regenerate") {
-                    viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: deepScanEnabled)
+                    regenerateAtCachedTier(reportManager.getReport(for: ticker))
                 },
                 .cancel()
             ]
@@ -562,9 +589,27 @@ struct AnalysisScreen: View {
     /// Default (non-hub) analysis run: user's deep-scan, language and debate settings.
     private func runDefaultAnalysis() {
         guard !viewModel.isLoading else { return }
-        let lang = analysisLanguage == "English" ? nil : analysisLanguage
-        let rounds = Int(debateRoundsStr)
-        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: deepScanEnabled, language: lang, debateRounds: rounds)
+        startRun(scanType: "standard", deepScan: deepScanEnabled)
+    }
+
+    private var deepScanForbidden: Bool { Self.deepScanDisabledTickers.contains(ticker.uppercased()) }
+
+    /// Every run goes through here so the language and debate-round settings always reach the request.
+    private func startRun(scanType: String, deepScan: Bool) {
+        let r = AnalysisRequest.from(ticker: ticker, scanType: scanType, deepScan: deepScan,
+                                     languageSetting: analysisLanguage, roundsSetting: debateRoundsStr)
+        viewModel.fetchAnalysis(ticker: r.ticker, userId: authManager.currentUser?.userId, useMock: useMockAI,
+                                reportManager: reportManager, deepScan: r.deepScan, scanType: r.scanType,
+                                language: r.language, debateRounds: r.debateRounds)
+    }
+
+    /// Regenerate keeps the cached report's tier instead of silently downgrading it to Standard.
+    private func regenerateAtCachedTier(_ cached: StockAnalysis?) {
+        switch cached?.cachedScanType ?? cached?.analysisTier ?? "standard" {
+        case "extreme": startRun(scanType: "extreme", deepScan: !deepScanForbidden)
+        case "deep": startRun(scanType: "deep", deepScan: !deepScanForbidden)
+        default: startRun(scanType: "standard", deepScan: deepScanEnabled && !deepScanForbidden)
+        }
     }
 
     // MARK: - Immersive hero chart
@@ -675,13 +720,12 @@ struct AnalysisScreen: View {
             quickInfo: viewModel.quickInfo,
             onRetry: {
                 HapticManager.impact(.medium)
-                viewModel.fetchAnalysis(
-                    ticker: ticker,
-                    userId: authManager.currentUser?.userId,
-                    useMock: useMockAI,
-                    reportManager: reportManager,
-                    deepScan: deepScanEnabled
-                )
+                // Replays the failed request (same tier, language, rounds); falls back to a default run.
+                if viewModel.lastRequest != nil {
+                    viewModel.retryLast(userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager)
+                } else {
+                    runDefaultAnalysis()
+                }
             }
         )
     }

@@ -229,7 +229,7 @@ enum Theme {
     static var spacingMultiplier: CGFloat {
         switch UserDefaults.standard.string(forKey: "nivesh_layoutDensity") ?? "Standard" {
         case "Compact": return 0.75
-        case "Comfortable": return 1.25
+        case "Comfortable", "Spacious": return 1.25  // Settings offers "Spacious" (UX-18)
         default: return 1.0
         }
     }

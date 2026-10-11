@@ -125,6 +125,9 @@ class AuthManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: Self.storageKey)
         UserDefaults.standard.removeObject(forKey: "nivesh_cached_portfolio_v1")
         UserDefaults.standard.removeObject(forKey: "nivesh_last_refresh_v1")
+        // UX-18: legacy device-only profile fields (no longer collected); purge the PII.
+        UserDefaults.standard.removeObject(forKey: "nivesh_profileEmail")
+        UserDefaults.standard.removeObject(forKey: "nivesh_profilePhone")
         WidgetSnapshotStore.clear()
     }
 }

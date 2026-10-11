@@ -5,13 +5,20 @@ import UIKit
 
 struct LaunchSequenceView: View {
     @Binding var isAnimationComplete: Bool
+    // UX-20: the splash plays once per install, and never under Reduce Motion / Reduce Animations.
+    @AppStorage("nivesh_hasSeenSplash") private var hasSeenSplash = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var timelineProgress: CGFloat = 0
     @State private var dissolveOpacity: CGFloat = 1
     @State private var triggerDissolve = false
 
-    private let totalDuration: TimeInterval = 3.2
-    private let dissolveDuration: TimeInterval = 0.4
+    private let totalDuration: TimeInterval = 1.2
+    private let dissolveDuration: TimeInterval = 0.3
+
+    static func shouldAnimate(hasSeenSplash: Bool, systemReduceMotion: Bool, defaults: UserDefaults = .standard) -> Bool {
+        !hasSeenSplash && !MotionPolicy.isReduced(systemReduceMotion: systemReduceMotion, defaults: defaults)
+    }
 
     var body: some View {
         ZStack {
@@ -32,6 +39,11 @@ struct LaunchSequenceView: View {
         }
         .preferredColorScheme(.dark)
         .onAppear {
+            guard Self.shouldAnimate(hasSeenSplash: hasSeenSplash, systemReduceMotion: reduceMotion) else {
+                isAnimationComplete = true
+                return
+            }
+            hasSeenSplash = true
             // Override UITraitCollection so Theme.* computed colors (which read
             // UITraitCollection.current.userInterfaceStyle directly) resolve to
             // their dark variants, regardless of the device's system appearance.

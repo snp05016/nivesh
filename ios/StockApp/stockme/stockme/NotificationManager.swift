@@ -157,7 +157,7 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
     }
 
     /// Schedule a local notification immediately, honouring the Push Notifications
-    /// master switch, quiet hours and the chosen sound. scheduleMorningBrief also
+    /// master switch and quiet hours. scheduleMorningBrief also
     /// honours the master switch. (NetworkManager.scheduleLocalNotification bypasses
     /// both but has no callers.)
     func scheduleLocal(title: String, body: String, subtitle: String = "",
@@ -172,13 +172,7 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
         content.body = body
         if !subtitle.isEmpty { content.subtitle = subtitle }
         content.userInfo = userInfo
-
-        let customSound = UserDefaults.standard.string(forKey: "notificationSound") ?? "Default"
-        if customSound == "Default" {
-            content.sound = .default
-        } else {
-            content.sound = UNNotificationSound(named: UNNotificationSoundName(customSound))
-        }
+        content.sound = .default
 
         let request = UNNotificationRequest(
             identifier: identifier ?? "nivesh_local_\(UUID().uuidString.prefix(8))",
@@ -224,6 +218,9 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
 
     // MARK: - Quiet Hours
 
+    /// Calendar weekday (1 = Sunday) to QuietHoursView's day index (0 = Sun).
+    static func quietHoursWeekday(fromCalendarWeekday weekday: Int) -> Int { weekday - 1 }
+
     private func isInQuietHours() -> Bool {
         let daysData = UserDefaults.standard.data(forKey: "nivesh_quietHoursDays") ?? Data()
         let activeDays: Set<Int> = (try? JSONDecoder().decode(Set<Int>.self, from: daysData)) ?? Set(0...6)
@@ -249,6 +246,6 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
         let windowStart = (overnight && currentSecs < endSecs)
             ? (calendar.date(byAdding: .day, value: -1, to: now) ?? now)
             : now
-        return activeDays.contains(calendar.component(.weekday, from: windowStart) - 1)
+        return activeDays.contains(quietHoursWeekday(fromCalendarWeekday: calendar.component(.weekday, from: windowStart)))
     }
 }
