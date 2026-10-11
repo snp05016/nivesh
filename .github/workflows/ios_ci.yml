@@ -6,16 +6,55 @@ on:
       - 'ios/**'
       - 'scripts/find_unreferenced_swift.py'
       - 'scripts/ios_release_checks.sh'
+      - 'scripts/ios_static_checks.sh'
+      - 'scripts/lint_ios_release_config.py'
+      - '.github/workflows/ios_ci.yml'
     branches: [ "main" ]
+  # No paths filter on pull_request: both checks must always report so they
+  # can be required on main. build-ios skips itself (reports Success) when
+  # the PR touches nothing iOS-related; see the `changes` step below.
   pull_request:
-    paths:
-      - 'ios/**'
-      - 'scripts/find_unreferenced_swift.py'
-      - 'scripts/ios_release_checks.sh'
     branches: [ "main" ]
 
 jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    outputs:
+      ios: ${{ steps.changes.outputs.ios }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Detect iOS-related changes
+      id: changes
+      env:
+        EVENT: ${{ github.event_name }}
+        BASE_REF: ${{ github.base_ref }}
+      # Fails the job (closed) if the diff itself fails; grep reads all input
+      # (no -q) so pipefail cannot trip on SIGPIPE. --no-renames lists both the
+      # old and new path of a move, so moving a file out of ios/ still counts;
+      # core.quotePath=false keeps non-ASCII paths unquoted for the ^ios/ match.
+      run: |
+        ios=true
+        if [ "$EVENT" = "pull_request" ]; then
+          files=$(git -c core.quotePath=false diff --no-renames --name-only "origin/$BASE_REF...HEAD")
+          if ! printf '%s\n' "$files" | grep -E '^(ios/|scripts/find_unreferenced_swift\.py|scripts/ios_release_checks\.sh|scripts/ios_static_checks\.sh|scripts/lint_ios_release_config\.py|\.github/workflows/ios_ci\.yml)' >/dev/null; then
+            ios=false
+          fi
+        fi
+        echo "ios=$ios" | tee -a "$GITHUB_OUTPUT"
+
+    - name: iOS static checks
+      run: bash scripts/ios_static_checks.sh
+
+    - name: Info.plist purpose-string lint
+      run: python3 scripts/lint_ios_release_config.py
+
   build-ios:
+    needs: static-checks
+    if: needs.static-checks.outputs.ios == 'true'
     runs-on: macos-latest
 
     steps:
@@ -34,6 +73,6 @@ jobs:
 
     - name: Build iOS App
       run: |
-        cd ios/StockApp/stockme || exit 0
+        cd ios/StockApp/stockme || exit 1
         set -o pipefail
         xcodebuild -project stockme.xcodeproj -scheme stockme -destination 'platform=iOS Simulator,name=iPhone 17' build 2>&1 | tail -20

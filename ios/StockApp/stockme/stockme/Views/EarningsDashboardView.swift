@@ -677,11 +677,7 @@ struct EarningsCalendarView: View {
             }
         }
         
-        if #available(iOS 17.0, *) {
-            eventStore.requestWriteOnlyAccessToEvents(completion: completion)
-        } else {
-            eventStore.requestAccess(to: .event, completion: completion)
-        }
+        eventStore.requestWriteOnlyAccessToEvents(completion: completion)
     }
 
     // Generate 14 days window centred on today

@@ -55,6 +55,12 @@
 	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Unlock Nivesh to access your portfolio</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Nivesh turns your spoken search into text to find stocks.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Nivesh uses the microphone only during voice search to hear the stock you ask for.</string>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>Nivesh adds the earnings dates you choose to your calendar.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 </dict>
