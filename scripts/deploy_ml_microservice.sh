@@ -45,9 +45,23 @@ fi
 
 echo "✅ Docker command verified: Using '${DOCKER_CMD[*]}'"
 
+# AUTH-21: hand the shared secret from backend/.env to the container through a
+# private env file (never on the command line, never echoed). The backend sends
+# it as X-ML-Engine-Key; with no key set the engine runs open (loopback only).
+ML_ENV_FILE="$(mktemp)"
+trap 'rm -f "${ML_ENV_FILE}"' EXIT
+chmod 600 "${ML_ENV_FILE}"
+ML_KEY_LINE="$(grep -E '^ML_ENGINE_API_KEY=' "${PROJECT_ROOT}/backend/.env" 2>/dev/null | tail -n 1 || true)"
+if [ -n "${ML_KEY_LINE#ML_ENGINE_API_KEY=}" ]; then
+    printf '%s\n' "${ML_KEY_LINE}" | sed -E "s/^(ML_ENGINE_API_KEY=)[\"'](.*)[\"']\$/\1\2/" > "${ML_ENV_FILE}"
+else
+    echo "⚠️ WARN: ML_ENGINE_API_KEY not set in backend/.env; ml-engine will accept unauthenticated calls." >&2
+fi
+
 run_container() {
     "${DOCKER_CMD[@]}" run -d \
         --name "${CONTAINER_NAME}" \
+        --env-file "${ML_ENV_FILE}" \
         -p "127.0.0.1:${PORT}:${PORT}" \
         --memory "${ML_MEMORY}" \
         --cpus "${ML_CPUS}" \

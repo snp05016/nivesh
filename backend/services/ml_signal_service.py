@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 import httpx
 
 from schemas.ml_signal import FeatureDriver, MLReliability, MLSignalResponse
-from services.qlib_engine.ml_client import build_ml_ohlcv_payload
+from services.qlib_engine.ml_client import build_ml_ohlcv_payload, ml_engine_headers
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +127,7 @@ async def get_ml_signal(symbol: str) -> MLSignalResponse:
             resp = await client.post(
                 f"{ML_ENGINE_URL}/predict/single",
                 json={"ticker": symbol, "ohlcv_data": ohlcv_data},
+                headers=ml_engine_headers(),
             )
             resp.raise_for_status()
             data = resp.json()

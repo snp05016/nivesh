@@ -29,6 +29,12 @@ _IST = ZoneInfo("Asia/Kolkata")
 _SESSION_FINAL_AT = time(15, 45)
 
 
+def ml_engine_headers() -> dict[str, str]:
+    """Shared-secret header for ml-engine calls (AUTH-21); empty when no key is set."""
+    key = os.getenv("ML_ENGINE_API_KEY")
+    return {"X-ML-Engine-Key": key} if key else {}
+
+
 def build_ml_ohlcv_payload(df: pd.DataFrame | None, now: datetime | None = None) -> list[dict]:
     """Build the ml-engine OHLCV payload from a yfinance-style daily frame.
 
@@ -88,6 +94,7 @@ async def predict_cross_section(ticker: str, ohlcv_data: list) -> dict | None:
                     "ticker": ticker,
                     "ohlcv_data": ohlcv_data,
                 },
+                headers=ml_engine_headers(),
             )
             if response.status_code == 200:
                 data = response.json()

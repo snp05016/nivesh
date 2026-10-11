@@ -68,9 +68,12 @@ def test_predict_single_is_sync_so_it_runs_in_threadpool() -> None:
 
 def test_deploy_scripts_publish_ml_port_on_loopback_only() -> None:
     scripts = Path(__file__).resolve().parents[2] / "scripts"
+    found = 0
+    # deploy_ml_engine.sh delegates the docker run to deploy_ml_microservice.sh.
     for name in ("deploy_ml_engine.sh", "deploy_ml_microservice.sh"):
         text = (scripts / name).read_text()
         mappings = re.findall(r"""\s-p\s+['"]?([^'"\s]+)""", text)
-        assert mappings, f"no docker -p mapping found in {name}"
+        found += len(mappings)
         for m in mappings:
             assert m.startswith("127.0.0.1:"), f"{name} publishes {m} beyond loopback"
+    assert found, "no docker -p mapping found in the deploy scripts"

@@ -9,6 +9,9 @@ Endpoints:
   POST /predict/single            — single-stock prediction from OHLCV data
   GET  /model/status              — loaded model metadata
 
+/predict/single and /model/status require the ``X-ML-Engine-Key`` header when
+ML_ENGINE_API_KEY is set (the backend sends it); /health stays open for probes.
+
 Only the LightGBM booster is served: model_type accepts "lightgbm" alone
 (no TRA weights ship, so "tra"/"ensemble" are rejected with 422).
 
@@ -19,8 +22,10 @@ Lifecycle:
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
+import os
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -30,7 +35,7 @@ from typing import Any
 
 import numpy as np
 import polars as pl
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from config import (
@@ -68,6 +73,17 @@ DEFAULT_PREDICTION_HORIZON = 20
 # Reject inputs whose latest bar is older than this (calendar days, covers
 # long exchange holidays): a stale series would be scored as if it were current.
 MAX_INPUT_AGE_DAYS = 10
+
+
+def require_api_key(x_ml_engine_key: str | None = Header(default=None)) -> None:
+    """Reject callers without the shared secret when ML_ENGINE_API_KEY is set.
+
+    ponytail: unset key = open (local dev); the loopback-only port publish is the
+    primary control, this is defence in depth for anything else on the host.
+    """
+    expected = os.getenv("ML_ENGINE_API_KEY")
+    if expected and not hmac.compare_digest((x_ml_engine_key or "").encode(), expected.encode()):
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 # ── Request / Response Models ──────────────────────────────────────────────────
@@ -326,6 +342,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     if _lightgbm_model is not None and not _model_validated:
         _LOG.warning("No passed promotion gate in %s — predictions are served as no_edge", MANIFEST_PATH)
 
+    if not os.getenv("ML_ENGINE_API_KEY"):
+        _LOG.warning("ML_ENGINE_API_KEY is not set — prediction endpoints accept unauthenticated calls")
     _LOG.info("ml-engine ready — listening on port 8001")
     yield
 
@@ -359,7 +377,7 @@ async def health() -> dict[str, str]:
 # ── Model Status ───────────────────────────────────────────────────────────────
 
 
-@app.get("/model/status", response_model=ModelStatus)
+@app.get("/model/status", response_model=ModelStatus, dependencies=[Depends(require_api_key)])
 async def model_status() -> ModelStatus:
     """Return loaded model metadata."""
     lightgbm_loaded = _lightgbm_model is not None
@@ -411,7 +429,7 @@ def _is_stale(rows: list[OHLCVRow]) -> bool:
 
 # Plain ``def``: FastAPI runs it in its threadpool, so CPU-bound polars/LightGBM
 # work never blocks the event loop (and /health) for other requests.
-@app.post("/predict/single", response_model=PredictionResult)
+@app.post("/predict/single", response_model=PredictionResult, dependencies=[Depends(require_api_key)])
 def predict_single(req: SingleStockRequest) -> PredictionResult:
     """Predict for a single stock from its OHLCV history."""
     if _feature_computer is None or _inference_engine is None:

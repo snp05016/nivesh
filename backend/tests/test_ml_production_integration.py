@@ -24,6 +24,8 @@ class _FakeResponse:
 
 
 class _FakeAsyncClient:
+    last_headers = None
+
     def __init__(self, *_, **__):
         self.payload = None
 
@@ -33,8 +35,9 @@ class _FakeAsyncClient:
     async def __aexit__(self, *_):
         return None
 
-    async def post(self, _url, json):
+    async def post(self, _url, json, headers=None):
         self.payload = json
+        _FakeAsyncClient.last_headers = headers
         return _FakeResponse()
 
 
@@ -61,6 +64,23 @@ def test_ml_client_preserves_trained_model_metadata(monkeypatch):
         "fallback_used": False,
         "p_up": 0.81,
     }
+
+
+@pytest.mark.parametrize(("key", "expected"), [("k-123", {"X-ML-Engine-Key": "k-123"}), (None, {})])
+def test_ml_client_sends_engine_key_only_when_configured(monkeypatch, key, expected):
+    """AUTH-21: ml-engine rejects calls without the shared secret once it is set."""
+    from services.qlib_engine import ml_client
+
+    if key is None:
+        monkeypatch.delenv("ML_ENGINE_API_KEY", raising=False)
+    else:
+        monkeypatch.setenv("ML_ENGINE_API_KEY", key)
+    monkeypatch.setattr(ml_client.httpx, "AsyncClient", _FakeAsyncClient)
+    _FakeAsyncClient.last_headers = None
+
+    asyncio.run(ml_client.predict_cross_section("RELIANCE", [{"open": 1, "high": 2, "low": 1, "close": 2, "volume": 100}]))
+
+    assert _FakeAsyncClient.last_headers == expected
 
 
 @pytest.mark.parametrize(

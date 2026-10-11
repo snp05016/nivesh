@@ -6,8 +6,11 @@ After=network.target
 Type=simple
 User=saumyapatel
 WorkingDirectory=/home/saumyapatel/Desktop/nivesh/backend
+# Loopback only: clients reach the API through the TLS proxy (api.nivesh.qzz.io).
+# backend/.env may override NIVESH_BIND_HOST if the proxy runs on another host.
+Environment=NIVESH_BIND_HOST=127.0.0.1
 EnvironmentFile=/home/saumyapatel/Desktop/nivesh/backend/.env
-ExecStart=/home/saumyapatel/Desktop/nivesh/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+ExecStart=/home/saumyapatel/Desktop/nivesh/venv/bin/uvicorn main:app --host ${NIVESH_BIND_HOST} --port 8000 --workers 4 --proxy-headers --forwarded-allow-ips 127.0.0.1
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal

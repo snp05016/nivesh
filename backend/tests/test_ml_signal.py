@@ -65,7 +65,7 @@ def _signal(symbol, payload=None, *, error=None, json_error=None):
         async def __aexit__(self, *_):
             return None
 
-        async def post(self, _url, json):
+        async def post(self, _url, json, headers=None):
             if error is not None:
                 raise error
             return response

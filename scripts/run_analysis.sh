@@ -3,7 +3,7 @@
 # poll the v2 job API to completion. Local tool; talks to the remote API.
 set -euo pipefail
 
-HOST="http://192.168.1.122:8000"   # matches iOS NetworkManager.defaultURL
+HOST="https://api.nivesh.qzz.io"   # matches iOS NetworkManager.defaultURL (backend binds loopback only)
 TICKER=""; MODE="normal"; USER_ID=""; EXCHANGE="NSE"; TIMEOUT=""
 
 usage() {
