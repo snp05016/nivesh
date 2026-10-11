@@ -7,6 +7,9 @@ ORM models live in this module.
 """
 from typing import Optional
 
+from sqlalchemy import case
+from sqlalchemy.exc import IntegrityError
+
 from database import get_session
 from models.db_models import (
     ForumBoard,
@@ -329,9 +332,22 @@ def create_post(user_id: int, thread_id: int, body: str, parent_post_id: Optiona
 # Voting
 # ---------------------------------------------------------------------------
 
+def _bump(session, model, row_id: Optional[int], column, delta: int) -> None:
+    """Atomic ``column = MAX(column + delta, 0)`` in SQL, so concurrent votes
+    never overwrite each other's counter changes (no ORM read-modify-write).
+    """
+    session.query(model).filter(model.id == row_id).update(
+        {column: case((column + delta < 0, 0), else_=column + delta)},
+        synchronize_session=False,
+    )
+
+
 def vote_post(user_id: int, post_id: int, direction: str) -> Optional[dict]:
     """Toggle-aware upvote/downvote on a post. Re-voting the same direction
     removes the vote; voting the opposite direction switches it.
+
+    Counters only move when the matching ForumVote write actually changed a
+    row, so a double-submitted tap is idempotent instead of drifting or 500ing.
     """
     if direction not in VOTE_DIRECTIONS:
         raise ValueError(f"Invalid direction '{direction}'. Must be one of {sorted(VOTE_DIRECTIONS)}")
@@ -348,33 +364,48 @@ def vote_post(user_id: int, post_id: int, direction: str) -> Optional[dict]:
             .first()
         )
 
-        if existing_vote is None:
-            session.add(ForumVote(user_id=user_id, post_id=post_id, vote_value=new_value))
-            if new_value == 1:
-                post.upvotes += 1
-            else:
-                post.downvotes += 1
-            user_vote = new_value
-        elif existing_vote.vote_value == new_value:
-            # Same direction again — remove the vote (toggle off).
-            if new_value == 1:
-                post.upvotes = max(post.upvotes - 1, 0)
-            else:
-                post.downvotes = max(post.downvotes - 1, 0)
-            session.delete(existing_vote)
-            user_vote = 0
-        else:
-            # Switching direction.
-            if existing_vote.vote_value == 1:
-                post.upvotes = max(post.upvotes - 1, 0)
-                post.downvotes += 1
-            else:
-                post.downvotes = max(post.downvotes - 1, 0)
-                post.upvotes += 1
-            existing_vote.vote_value = new_value
-            user_vote = new_value
+        def _col(value: int):
+            return ForumPost.upvotes if value == 1 else ForumPost.downvotes
 
-        session.commit()
+        try:
+            if existing_vote is None:
+                session.add(ForumVote(user_id=user_id, post_id=post_id, vote_value=new_value))
+                session.flush()  # raises IntegrityError on a concurrent duplicate before we count it
+                _bump(session, ForumPost, post_id, _col(new_value), 1)
+                user_vote = new_value
+            elif existing_vote.vote_value == new_value:
+                # Same direction again — remove the vote (toggle off).
+                removed = (
+                    session.query(ForumVote)
+                    .filter(ForumVote.id == existing_vote.id)
+                    .delete(synchronize_session=False)
+                )
+                if removed:
+                    _bump(session, ForumPost, post_id, _col(new_value), -1)
+                user_vote = 0
+            else:
+                # Switching direction.
+                switched = (
+                    session.query(ForumVote)
+                    .filter(ForumVote.id == existing_vote.id, ForumVote.vote_value == existing_vote.vote_value)
+                    .update({ForumVote.vote_value: new_value}, synchronize_session=False)
+                )
+                if switched:
+                    _bump(session, ForumPost, post_id, _col(existing_vote.vote_value), -1)
+                    _bump(session, ForumPost, post_id, _col(new_value), 1)
+                user_vote = new_value
+            session.commit()
+        except IntegrityError:
+            # A duplicate request already inserted (and counted) this vote.
+            session.rollback()
+            current = (
+                session.query(ForumVote)
+                .filter(ForumVote.user_id == user_id, ForumVote.post_id == post_id)
+                .first()
+            )
+            user_vote = current.vote_value if current else 0
+
+        session.refresh(post)  # counters were changed in SQL, not on the instance
         return {
             "post_id": post.id,
             "upvotes": post.upvotes,
@@ -401,22 +432,28 @@ def vote_poll(user_id: int, poll_id: int, option_id: int) -> Optional[dict]:
             .first()
         )
 
-        if existing_vote is None:
-            session.add(ForumVote(user_id=user_id, poll_id=poll_id, poll_option_id=option_id, vote_value=1))
-            option.vote_count += 1
-        elif existing_vote.poll_option_id == option_id:
-            # Re-voting the same option — no-op (idempotent).
-            pass
-        else:
-            previous_option = session.query(ForumPollOption).filter(
-                ForumPollOption.id == existing_vote.poll_option_id
-            ).first()
-            if previous_option is not None:
-                previous_option.vote_count = max(previous_option.vote_count - 1, 0)
-            option.vote_count += 1
-            existing_vote.poll_option_id = option_id
-
-        session.commit()
+        try:
+            if existing_vote is None:
+                session.add(ForumVote(user_id=user_id, poll_id=poll_id, poll_option_id=option_id, vote_value=1))
+                session.flush()  # raises IntegrityError on a concurrent duplicate before we count it
+                _bump(session, ForumPollOption, option_id, ForumPollOption.vote_count, 1)
+            elif existing_vote.poll_option_id == option_id:
+                # Re-voting the same option — no-op (idempotent).
+                pass
+            else:
+                previous_option_id = existing_vote.poll_option_id
+                moved = (
+                    session.query(ForumVote)
+                    .filter(ForumVote.id == existing_vote.id, ForumVote.poll_option_id == previous_option_id)
+                    .update({ForumVote.poll_option_id: option_id}, synchronize_session=False)
+                )
+                if moved:
+                    _bump(session, ForumPollOption, previous_option_id, ForumPollOption.vote_count, -1)
+                    _bump(session, ForumPollOption, option_id, ForumPollOption.vote_count, 1)
+            session.commit()
+        except IntegrityError:
+            # A duplicate request already inserted (and counted) this vote.
+            session.rollback()
 
         options = (
             session.query(ForumPollOption)
