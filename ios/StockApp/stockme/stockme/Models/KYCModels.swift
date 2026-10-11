@@ -76,7 +76,7 @@ enum KYCConsentType: String, CaseIterable, Identifiable {
 /// backend disclosure_service.CURRENT_POLICY_VERSION (FINSEC-09). Sent with
 /// every consent and at registration so the server records what was agreed to.
 nonisolated enum PolicyVersion {
-    static let current = "2026-10-11"
+    static let current = "2026-10-11.1"
 }
 
 /// Request body for POST /api/kyc/consents (backend RecordConsentRequest).

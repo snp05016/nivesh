@@ -31,7 +31,8 @@ class LoanViewModel: ObservableObject {
         if maxTenureMonths < 360 {
             result = result.filter { Double($0.minTenureMonths) <= maxTenureMonths }
         }
-        return result.sorted { $0.interestRatePct < $1.interestRatePct }
+        // REG-05: rank by all-in cost (max APR), not the headline rate.
+        return result.sorted { ($0.maxAprPct ?? $0.interestRatePct) < ($1.maxAprPct ?? $1.interestRatePct) }
     }
 
     func fetchOffers() async {

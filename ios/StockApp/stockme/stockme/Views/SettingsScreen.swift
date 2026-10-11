@@ -246,7 +246,7 @@ struct SettingsScreen: View {
             NavRow(icon: "hand.raised", color: Theme.securityGold, title: "Privacy Policy", destination: DisclosureDetailView(key: .privacyPolicy))
             NavRow(icon: "doc.plaintext", color: Theme.securityGold, title: "Terms of Use", destination: DisclosureDetailView(key: .termsOfUse))
             NavRow(icon: "envelope", color: Theme.securityGold, title: "Contact & Grievance Officer", destination: DisclosureDetailView(key: .grievanceOfficer))
-            NavRow(icon: "network", color: Theme.securityGold, title: "Data Sharing Governance", destination: DisclosureDetailView(key: .dataSharingGovernance))
+            NavRow(icon: "network", color: Theme.securityGold, title: DisclosureKey.dataSharingGovernance.displayTitle, destination: DisclosureDetailView(key: .dataSharingGovernance))
             Button {
                 HapticManager.selection()
                 URLCache.shared.removeAllCachedResponses()

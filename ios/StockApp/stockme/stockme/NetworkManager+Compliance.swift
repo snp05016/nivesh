@@ -73,10 +73,15 @@ extension NetworkManager {
     }
 
     /// Fetches the computed Key Fact Statement (KFS) breakdown for a loan
-    /// offer — loan_amount, interest_rate, all_fees, apr, tenure_months.
-    /// GET /api/v1/compliance/key-fact-statement?loan_offer_id=
-    func fetchKeyFactStatement(loanOfferId: Int) async throws -> KeyFactStatementDTO {
-        try await fetchKeyFactStatement(queryItem: URLQueryItem(name: "loan_offer_id", value: String(loanOfferId)))
+    /// offer — loan_amount, interest_rate, all_fees, apr, emi, tenure_months.
+    /// Pass the applicant's amount/tenure so the KFS describes the loan being
+    /// applied for (REG-05); nil falls back to the offer's minimums.
+    /// GET /api/v1/compliance/key-fact-statement?loan_offer_id=&amount=&tenure_months=
+    func fetchKeyFactStatement(loanOfferId: Int, amount: Double? = nil, tenureMonths: Int? = nil) async throws -> KeyFactStatementDTO {
+        var items = [URLQueryItem(name: "loan_offer_id", value: String(loanOfferId))]
+        if let amount { items.append(URLQueryItem(name: "amount", value: String(amount))) }
+        if let tenureMonths { items.append(URLQueryItem(name: "tenure_months", value: String(tenureMonths))) }
+        return try await fetchKeyFactStatement(queryItems: items)
     }
 
     /// Fetches the computed Key Fact Statement (KFS) breakdown for a fixed
@@ -84,12 +89,12 @@ extension NetworkManager {
     /// all_fees (always 0 for FDs in this demo), apr, tenure_months.
     /// GET /api/v1/compliance/key-fact-statement?scheme_id=
     func fetchKeyFactStatement(schemeId: Int) async throws -> KeyFactStatementDTO {
-        try await fetchKeyFactStatement(queryItem: URLQueryItem(name: "scheme_id", value: String(schemeId)))
+        try await fetchKeyFactStatement(queryItems: [URLQueryItem(name: "scheme_id", value: String(schemeId))])
     }
 
-    private func fetchKeyFactStatement(queryItem: URLQueryItem) async throws -> KeyFactStatementDTO {
+    private func fetchKeyFactStatement(queryItems: [URLQueryItem]) async throws -> KeyFactStatementDTO {
         var components = URLComponents(string: "\(baseURL)/api/v1/compliance/key-fact-statement")
-        components?.queryItems = [queryItem]
+        components?.queryItems = queryItems
 
         let endpoint = "/api/v1/compliance/key-fact-statement"
         guard let url = components?.url else {

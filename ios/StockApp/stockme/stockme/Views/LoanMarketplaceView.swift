@@ -269,11 +269,25 @@ private struct LoanOfferRowStats: View {
     let offer: LoanOfferDTO
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.large) {
-            LoanStatColumn(label: "Amount", value: offer.amountRangeDisplay)
-            LoanStatColumn(label: "Tenure", value: offer.tenureRangeDisplay)
-            LoanStatColumn(label: "Processing Fee", value: String(format: "%.1f%%", offer.processingFeePct))
-            Spacer()
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+            HStack(spacing: Theme.Spacing.large) {
+                LoanStatColumn(label: "Amount", value: offer.amountRangeDisplay)
+                LoanStatColumn(label: "Tenure", value: offer.tenureRangeDisplay)
+                LoanStatColumn(label: "Processing Fee", value: String(format: "%.1f%%", offer.processingFeePct))
+                Spacer()
+            }
+            // REG-05: all-in cost next to the headline rate.
+            if offer.maxAprPct != nil || offer.emiAtMin != nil {
+                HStack(spacing: Theme.Spacing.large) {
+                    if let apr = offer.maxAprPct {
+                        LoanStatColumn(label: "Max APR", value: String(format: "%.2f%%", apr))
+                    }
+                    if let emi = offer.emiAtMin {
+                        LoanStatColumn(label: "EMI from", value: IndianFormatter.formatLakhsCrores(emi))
+                    }
+                    Spacer()
+                }
+            }
         }
     }
 }

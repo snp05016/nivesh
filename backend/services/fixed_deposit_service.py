@@ -41,7 +41,7 @@ COMPOUNDING_PERIODS_PER_YEAR = 4
 # ---------------------------------------------------------------------------
 _MOCK_FD_SCHEMES = [
     {
-        "issuer_name": "HDFC Bank (mock)",
+        "issuer_name": "Demo Bank A (fictional)",
         "min_tenure_months": 6,
         "max_tenure_months": 12,
         "min_amount": 5_000,
@@ -50,7 +50,7 @@ _MOCK_FD_SCHEMES = [
         "senior_citizen_bonus_pct": 0.50,
     },
     {
-        "issuer_name": "HDFC Bank (mock)",
+        "issuer_name": "Demo Bank A (fictional)",
         "min_tenure_months": 13,
         "max_tenure_months": 24,
         "min_amount": 5_000,
@@ -59,7 +59,7 @@ _MOCK_FD_SCHEMES = [
         "senior_citizen_bonus_pct": 0.50,
     },
     {
-        "issuer_name": "SBI (mock)",
+        "issuer_name": "Demo Bank B (fictional)",
         "min_tenure_months": 12,
         "max_tenure_months": 36,
         "min_amount": 1_000,
@@ -68,7 +68,7 @@ _MOCK_FD_SCHEMES = [
         "senior_citizen_bonus_pct": 0.50,
     },
     {
-        "issuer_name": "SBI (mock)",
+        "issuer_name": "Demo Bank B (fictional)",
         "min_tenure_months": 37,
         "max_tenure_months": 120,
         "min_amount": 1_000,
@@ -77,7 +77,7 @@ _MOCK_FD_SCHEMES = [
         "senior_citizen_bonus_pct": 0.60,
     },
     {
-        "issuer_name": "Bajaj Finance (mock)",
+        "issuer_name": "Demo NBFC A (fictional)",
         "min_tenure_months": 12,
         "max_tenure_months": 60,
         "min_amount": 15_000,
@@ -86,7 +86,7 @@ _MOCK_FD_SCHEMES = [
         "senior_citizen_bonus_pct": 0.35,
     },
     {
-        "issuer_name": "ICICI Bank (mock)",
+        "issuer_name": "Demo Bank C (fictional)",
         "min_tenure_months": 6,
         "max_tenure_months": 24,
         "min_amount": 10_000,
@@ -95,7 +95,7 @@ _MOCK_FD_SCHEMES = [
         "senior_citizen_bonus_pct": 0.50,
     },
     {
-        "issuer_name": "Shriram Finance (mock)",
+        "issuer_name": "Demo NBFC B (fictional)",
         "min_tenure_months": 12,
         "max_tenure_months": 60,
         "min_amount": 5_000,
@@ -104,7 +104,7 @@ _MOCK_FD_SCHEMES = [
         "senior_citizen_bonus_pct": 0.40,
     },
     {
-        "issuer_name": "PNB Housing Finance (mock)",
+        "issuer_name": "Demo NBFC C (fictional)",
         "min_tenure_months": 24,
         "max_tenure_months": 120,
         "min_amount": 10_000,

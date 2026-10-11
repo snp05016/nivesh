@@ -32,6 +32,8 @@ from services.loan_marketplace_service import (
     list_applications_for_user,
     list_linked_bank_accounts,
     list_loan_offers,
+    offer_emi_at_min,
+    offer_max_apr,
     submit_loan_application,
 )
 from services.product_bounds import ProductBoundsError
@@ -57,6 +59,10 @@ class LoanOfferResponse(BaseModel):
     max_tenure_months: int
     min_credit_score: int
     processing_fee_pct: float
+    # REG-05: APR (IRR on the net disbursal) at the minimum amount and
+    # shortest tenure, and the lowest EMI (minimum amount, longest tenure).
+    max_apr_pct: float
+    emi_at_min: float
 
     class Config:
         from_attributes = True
@@ -177,7 +183,7 @@ class LinkFinanceAccountDemoRequest(BaseModel):
 
 @router.get("/loan-offers", response_model=List[LoanOfferResponse])
 def get_loan_offers(loan_type: Optional[str] = Query(None)):
-    """List MOCK NBFC loan offers, optionally filtered by loan_type."""
+    """List MOCK NBFC loan offers, optionally filtered by loan_type, ranked by max APR."""
     if loan_type and loan_type not in VALID_LOAN_TYPES:
         raise HTTPException(status_code=400, detail=f"loan_type must be one of {sorted(VALID_LOAN_TYPES)}")
     offers = list_loan_offers(loan_type=loan_type)
@@ -193,6 +199,8 @@ def get_loan_offers(loan_type: Optional[str] = Query(None)):
             max_tenure_months=o.max_tenure_months,
             min_credit_score=o.min_credit_score,
             processing_fee_pct=float(o.processing_fee_pct),
+            max_apr_pct=offer_max_apr(o),
+            emi_at_min=offer_emi_at_min(o),
         )
         for o in offers
     ]

@@ -6,10 +6,10 @@ HTTP input and call functions here.
 
 DEMO-GRADE / ILLUSTRATIVE CONTENT ONLY
 ---------------------------------------
-Except the privacy_policy / terms_of_use / grievance_officer notices (REG-12,
-interim wording pending legal review), every disclosure body below is
-clearly-labelled placeholder/demo copy for a
-portfolio project. It is NOT real legal advice, NOT a real regulatory
+Except the privacy_policy / terms_of_use / grievance_officer /
+data_sharing_governance notices (REG-12, UX-04: interim wording pending legal
+review), every disclosure body below is clearly-labelled placeholder/demo
+copy for a portfolio project. It is NOT real legal advice, NOT a real regulatory
 filing, and does NOT reference any real SEBI/RBI registration or license
 number. Nothing in this module should be treated as compliant legal text
 for an actual regulated lending/fintech product.
@@ -22,6 +22,7 @@ from typing import Optional, cast
 
 from database import get_session
 from models.db_models import FixedDepositScheme, LoanOffer
+from services.finance_calculators import calculate_apr, calculate_emi
 from services.product_bounds import check_product_bounds
 
 _MOCK_DISCLAIMER = (
@@ -60,7 +61,7 @@ _AI_PROCESSORS_TEXT = (
 # registration. Bump it whenever either text changes; iOS PolicyVersion.current
 # (Models/KYCModels.swift) must match. The bodies below are still interim
 # wording: the owner/legal must supply the final text.
-CURRENT_POLICY_VERSION = "2026-10-11"
+CURRENT_POLICY_VERSION = "2026-10-11.1"
 
 # FINSEC-09: purpose text stored with every consent row, so each record says
 # what the user agreed to. record_consent rejects any type not listed here.
@@ -133,8 +134,9 @@ STATIC_DISCLOSURES = {
             _section(
                 "How long we keep it",
                 "We keep your data while your account exists. To delete your "
-                "account, write to the Grievance Officer below with the username "
-                "on your account. Your account is then erased "
+                "account, use Settings > Account > Delete Account, or write to "
+                "the Grievance Officer below with the username on your account. "
+                "Your account is then erased "
                 "after a 7-day grace period in which you can cancel: holdings, "
                 "transactions, watchlists, alerts, journal entries, preferences "
                 "and device tokens are deleted, past stock analyses are kept "
@@ -149,8 +151,9 @@ STATIC_DISCLOSURES = {
                 "withdraw the credit-check, device-binding, data-sharing and "
                 "AI-processing consents in Settings > Account Security > KYC "
                 "Consents; withdrawing is as easy as giving consent, and "
-                "features that need that consent stop using your data. To ask "
-                "for deletion, to get a summary of your data, or to nominate "
+                "features that need that consent stop using your data. You can "
+                "delete your account in Settings > Account > Delete Account. To "
+                "ask for deletion by email, to get a summary of your data, or to nominate "
                 "someone to exercise these rights for you, write to the "
                 "Grievance Officer below.",
             ),
@@ -209,12 +212,15 @@ STATIC_DISCLOSURES = {
         "sections": [],
     },
     "data_sharing_governance": {
-        "title": "Third-Party Data Sharing Governance (Demo)",
-        "body": _MOCK_DISCLAIMER,
+        "title": "Third-Party Data Sharing",
+        "body": (
+            "This page lists every third party that receives data from your "
+            "account and why. See the Privacy Policy for what we collect."
+        ),
         "sections": [
             _section(
-                "Third parties in this demo",
-                "This demo app does not sell user data and does not use any data "
+                "Who receives your data",
+                "Nivesh does not sell user data and does not use any data "
                 "broker, ad network, or analytics reseller. Market data (prices, "
                 "fundamentals) is fetched from public market-data sources for "
                 "display purposes only. Apart from the hosting and Apple "
@@ -224,18 +230,18 @@ STATIC_DISCLOSURES = {
             ),
             _section("AI processors", _AI_PROCESSORS_TEXT),
             _section(
-                "Mock lending-marketplace partners",
-                "NBFC/bank names shown in the loan and FD marketplaces (e.g. "
-                "'HDFC Bank (mock)', 'Bajaj Finserv (mock)') are illustrative "
-                "labels on hand-seeded demo data — no real data-sharing "
-                "agreement or integration exists with any real institution.",
+                "Demo loan and FD marketplaces",
+                "Lender and issuer names in the demo loan and FD marketplaces "
+                "(for example 'Demo Lender A (fictional)') are fictional labels "
+                "on illustrative offers. No application, booking or other data "
+                "is shared with any real bank or NBFC, and no lending or deposit "
+                "partnership exists.",
             ),
             _section(
-                "Consent-based sharing",
-                "The KYC consent ledger (see services/kyc_consent_service.py) "
-                "models what a real consent-gated data-sharing flow would look "
-                "like: a 'data_sharing' consent type must be granted (and not "
-                "revoked) before any downstream sharing would be simulated.",
+                "Consent",
+                "Sharing with a lending or deposit partner would need the 'data "
+                "sharing' consent in Settings > Account Security > KYC Consents, "
+                "which you can withdraw there at any time.",
             ),
         ],
     },
@@ -280,13 +286,13 @@ STATIC_DISCLOSURES = {
         "sections": [
             _section(
                 "Formula used",
-                "For loan offers, this demo computes an illustrative Annual "
-                "Percentage Rate (APR) as: "
-                "APR = interest_rate_pct + (processing_fee_pct / tenure_years). "
-                "This amortizes the one-time processing fee evenly over the "
-                "loan's tenure and adds it to the nominal annual interest rate. "
-                "It is a simplified illustrative approximation, not the exact "
-                "IRR-based APR a real lender would be required to disclose.",
+                "For loan offers, the APR is the internal rate of return of the "
+                "monthly EMIs against the net amount disbursed (loan amount "
+                "minus the upfront processing fee), expressed as a nominal "
+                "annual rate (monthly rate x 12), following the RBI Key Fact "
+                "Statement method. It is computed for the amount and tenure you "
+                "choose; the shortest tenure gives the highest APR, which is the "
+                "'Max APR' shown on each offer and used to rank offers.",
             ),
             _section(
                 "Fixed deposits",
@@ -297,7 +303,7 @@ STATIC_DISCLOSURES = {
                 "Where this is used",
                 "See GET /api/v1/compliance/key-fact-statement for the computed, "
                 "per-offer/per-scheme breakdown (loan_amount, interest_rate, "
-                "all_fees, apr, tenure).",
+                "all_fees, apr, emi, total_repayable, tenure).",
             ),
         ],
     },
@@ -357,7 +363,7 @@ def compute_key_fact_statement(
     tenure_months: Optional[int] = None,
 ) -> Optional[dict]:
     """Computes a structured Key Fact Statement (KFS) breakdown
-    (loan_amount, interest_rate, all_fees, apr, tenure) from real
+    (loan_amount, interest_rate, all_fees, apr, emi, tenure) from real
     LoanOffer or FixedDepositScheme data.
 
     Exactly one of loan_offer_id / scheme_id must be provided by the
@@ -380,15 +386,15 @@ def compute_key_fact_statement(
             chosen_tenure = tenure_months if tenure_months is not None else offer.min_tenure_months
             if amount is not None or tenure_months is not None:
                 check_product_bounds(offer, chosen_amount, cast(int, chosen_tenure), "loan offer")
-            chosen_tenure = max(1, chosen_tenure)
+            chosen_tenure = max(1, cast(int, chosen_tenure))
 
             interest_rate_pct = _to_float(offer.interest_rate_pct)
             processing_fee_pct = _to_float(offer.processing_fee_pct)
             all_fees = round(chosen_amount * processing_fee_pct / 100, 2)
 
-            tenure_years = chosen_tenure / 12
-            fee_annualized_pct = processing_fee_pct / tenure_years if tenure_years > 0 else processing_fee_pct
-            apr = round(interest_rate_pct + fee_annualized_pct, 2)
+            # REG-05: IRR on the net disbursal, for the requested terms.
+            apr = calculate_apr(chosen_amount, interest_rate_pct, chosen_tenure, processing_fee_pct)
+            emi = calculate_emi(chosen_amount, interest_rate_pct, chosen_tenure)
 
             return {
                 "source": "loan_offer",
@@ -399,6 +405,8 @@ def compute_key_fact_statement(
                 "interest_rate": interest_rate_pct,
                 "all_fees": all_fees,
                 "apr": apr,
+                "emi": round(emi, 2),
+                "total_repayable": round(emi * chosen_tenure + all_fees, 2),
                 "tenure_months": chosen_tenure,
                 "disclaimer": _MOCK_DISCLAIMER,
             }

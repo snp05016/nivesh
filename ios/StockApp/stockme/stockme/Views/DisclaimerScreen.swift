@@ -2,7 +2,7 @@ import SwiftUI
 
 struct DisclaimerScreen: View {
     let onAccept: () -> Void
-    @State private var showTerms = false
+    @State private var shownDocument: DisclosureKey?
 
     var body: some View {
         ZStack {
@@ -64,15 +64,19 @@ struct DisclaimerScreen: View {
                     }
 
                     VStack(spacing: Theme.Spacing.xSmall) {
-                        Text("By continuing you agree to the")
+                        Text("By continuing you agree to the Terms of Use and Privacy Policy:")
                             .foregroundStyle(Theme.inkSecondary.opacity(0.6))
                             .multilineTextAlignment(.center)
-                        Button { showTerms = true } label: {
-                            Text("Terms of Use")
-                                .underline()
-                                .foregroundStyle(Theme.securityGold)
+                        HStack(spacing: Theme.Spacing.xSmall) {
+                            ForEach([DisclosureKey.termsOfUse, .privacyPolicy]) { doc in
+                                Button { shownDocument = doc } label: {
+                                    Text(doc.displayTitle)
+                                        .underline()
+                                        .foregroundStyle(Theme.securityGold)
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
-                        .buttonStyle(.plain)
                     }
                     .font(.caption2.weight(.bold))
                     .padding(.horizontal, Theme.Spacing.large)
@@ -82,8 +86,8 @@ struct DisclaimerScreen: View {
                 .staggerAppear(delay: 0.5)
             }
         }
-        .sheet(isPresented: $showTerms) {
-            NavigationStack { DisclosureDetailView(key: .termsOfUse) }
+        .sheet(item: $shownDocument) { doc in
+            NavigationStack { DisclosureDetailView(key: doc) }
                 .presentationDragIndicator(.visible)
         }
     }

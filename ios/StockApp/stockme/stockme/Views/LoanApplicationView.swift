@@ -19,7 +19,7 @@ struct LoanApplicationView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.sectionSpacing) {
-                LoanApplicationHeader(offer: vm.offer)
+                LoanApplicationHeader(offer: vm.offer, amount: vm.amount, tenureMonths: vm.tenureMonths)
 
                 GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
@@ -55,6 +55,9 @@ struct LoanApplicationView: View {
 
 struct LoanApplicationHeader: View {
     let offer: LoanOfferDTO
+    /// REG-05: the KFS must describe the requested loan, not the offer minimums.
+    let amount: Double
+    let tenureMonths: Int
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
@@ -73,7 +76,7 @@ struct LoanApplicationHeader: View {
                 .background(Theme.holdAmber.opacity(0.12))
                 .cornerRadius(Theme.CornerRadius.badge)
 
-            NavigationLink(destination: KeyFactStatementView(source: .loanOffer(id: offer.id))) {
+            NavigationLink(destination: KeyFactStatementView(source: .loanOffer(id: offer.id, amount: amount, tenureMonths: tenureMonths))) {
                 HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: "doc.text.magnifyingglass").foregroundColor(Theme.securityGold)
                     Text("View Key Fact Statement")

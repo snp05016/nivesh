@@ -53,6 +53,10 @@ struct LoanOfferDTO: Codable, Identifiable, Equatable {
     let maxTenureMonths: Int
     let minCreditScore: Int
     let processingFeePct: Double
+    /// REG-05: APR (IRR on the net disbursal) at the minimum amount and
+    /// shortest tenure, and the lowest EMI. Optional for older servers.
+    let maxAprPct: Double?
+    let emiAtMin: Double?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -65,6 +69,8 @@ struct LoanOfferDTO: Codable, Identifiable, Equatable {
         case maxTenureMonths = "max_tenure_months"
         case minCreditScore = "min_credit_score"
         case processingFeePct = "processing_fee_pct"
+        case maxAprPct = "max_apr_pct"
+        case emiAtMin = "emi_at_min"
     }
 
     var parsedLoanType: LoanType { LoanType(rawValue: loanType) ?? .personal }

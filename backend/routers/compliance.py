@@ -133,9 +133,9 @@ def get_disclosure_content(key: str):
     (privacy_policy | terms_of_use | grievance_officer | data_sharing_governance | digital_lending_compliance |
     lending_service_provider | apr_disclosure | sim_binding_fraud_prevention).
 
-    privacy_policy, terms_of_use and grievance_officer are the real (interim,
-    pending legal review) notices; the lending/KFS keys are still clearly-
-    labelled demo copy — see services/disclosure_service.py.
+    privacy_policy, terms_of_use, grievance_officer and data_sharing_governance
+    are the real (interim, pending legal review) notices; the lending/KFS keys
+    are still clearly-labelled demo copy — see services/disclosure_service.py.
     """
     if key not in _VALID_DISCLOSURE_KEYS:
         raise HTTPException(
@@ -161,7 +161,8 @@ def get_key_fact_statement(
 
     Exactly one of loan_offer_id / scheme_id is required. See
     services/disclosure_service.compute_key_fact_statement() and the
-    'apr_disclosure' static disclosure for the APR formula used.
+    'apr_disclosure' static disclosure for the APR method (IRR on the net
+    disbursal for the requested amount/tenure).
     """
     if (loan_offer_id is None) == (scheme_id is None):
         raise HTTPException(

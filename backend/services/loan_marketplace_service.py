@@ -11,13 +11,14 @@ hand-seeded demo data, and the approval rule is a simplified stand-in for
 real underwriting.
 """
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, cast
 
 from sqlalchemy.exc import IntegrityError
 
 from database import get_session
 from models.db_models import LinkedBankAccount, LoanApplication, LoanDisbursement, LoanOffer
 from services.credit_bureau_mock_service import get_mock_credit_score
+from services.finance_calculators import calculate_apr, calculate_emi
 from services.kyc_consent_service import check_kyc_gate
 from services.product_bounds import check_product_bounds
 
@@ -33,10 +34,11 @@ AUTO_REJECT_BELOW_SCORE = 500
 # ---------------------------------------------------------------------------
 # Mock/seed data — ~5 NBFC loan offers spanning personal/home/car/gold loans.
 # Clearly marked MOCK DATA; not a real NBFC product catalog integration.
+# REG-05: lender names are fictional; never seed a real bank/NBFC brand.
 # ---------------------------------------------------------------------------
 _MOCK_LOAN_OFFERS = [
     {
-        "nbfc_name": "Bajaj Finserv (mock)",
+        "nbfc_name": "Demo Lender A (fictional)",
         "loan_type": "personal",
         "min_amount": 50_000,
         "max_amount": 25_00_000,
@@ -47,7 +49,7 @@ _MOCK_LOAN_OFFERS = [
         "processing_fee_pct": 2.5,
     },
     {
-        "nbfc_name": "HDB Financial Services (mock)",
+        "nbfc_name": "Demo Lender B (fictional)",
         "loan_type": "personal",
         "min_amount": 25_000,
         "max_amount": 15_00_000,
@@ -58,7 +60,7 @@ _MOCK_LOAN_OFFERS = [
         "processing_fee_pct": 3.0,
     },
     {
-        "nbfc_name": "LIC Housing Finance (mock)",
+        "nbfc_name": "Demo Lender C (fictional)",
         "loan_type": "home",
         "min_amount": 5_00_000,
         "max_amount": 5_00_00_000,
@@ -69,7 +71,7 @@ _MOCK_LOAN_OFFERS = [
         "processing_fee_pct": 0.5,
     },
     {
-        "nbfc_name": "Tata Capital (mock)",
+        "nbfc_name": "Demo Lender D (fictional)",
         "loan_type": "car",
         "min_amount": 1_00_000,
         "max_amount": 50_00_000,
@@ -80,7 +82,7 @@ _MOCK_LOAN_OFFERS = [
         "processing_fee_pct": 1.0,
     },
     {
-        "nbfc_name": "Muthoot Finance (mock)",
+        "nbfc_name": "Demo Lender E (fictional)",
         "loan_type": "gold",
         "min_amount": 10_000,
         "max_amount": 20_00_000,
@@ -109,13 +111,37 @@ def seed_mock_loan_offers_if_empty() -> int:
         return len(_MOCK_LOAN_OFFERS)
 
 
+def offer_max_apr(offer: LoanOffer) -> float:
+    """APR at the offer's minimum amount and shortest tenure. The fee is a
+    fixed share of the amount, so the shortest tenure gives the highest APR."""
+    return calculate_apr(
+        float(offer.min_amount),  # type: ignore[arg-type]
+        float(offer.interest_rate_pct),  # type: ignore[arg-type]
+        int(offer.min_tenure_months),  # type: ignore[arg-type]
+        float(offer.processing_fee_pct),  # type: ignore[arg-type]
+    )
+
+
+def offer_emi_at_min(offer: LoanOffer) -> float:
+    """EMI at the offer's minimum amount and longest tenure (lowest EMI)."""
+    return round(
+        calculate_emi(
+            float(offer.min_amount),  # type: ignore[arg-type]
+            float(offer.interest_rate_pct),  # type: ignore[arg-type]
+            int(offer.max_tenure_months),  # type: ignore[arg-type]
+        ),
+        2,
+    )
+
+
 def list_loan_offers(loan_type: Optional[str] = None) -> list[LoanOffer]:
-    """List active mock loan offers, optionally filtered by loan_type."""
+    """List active mock loan offers, optionally filtered by loan_type, ranked
+    by max APR ascending (REG-05: the all-in cost, not the headline rate)."""
     with get_session() as session:
         query = session.query(LoanOffer).filter(LoanOffer.is_active.is_(True))
         if loan_type:
             query = query.filter(LoanOffer.loan_type == loan_type)
-        return query.order_by(LoanOffer.interest_rate_pct.asc()).all()
+        return sorted(query.all(), key=lambda o: (offer_max_apr(o), o.id))
 
 
 def get_loan_offer_by_id(offer_id: int) -> Optional[LoanOffer]:
@@ -126,23 +152,16 @@ def get_loan_offer_by_id(offer_id: int) -> Optional[LoanOffer]:
 def _evaluate_demo_underwriting(score: int, offer: LoanOffer) -> tuple[str, str]:
     """Simplified, clearly-mocked demo underwriting rule — NOT a real NBFC
     credit policy. Returns (status, reason).
+
+    REG-05: the score is a hash of the user id, not a bureau score, so the
+    reason text never shows it or presents it as a lender's decision.
     """
-    if score < AUTO_REJECT_BELOW_SCORE:
-        return "rejected", f"MOCK DECISION: credit score {score} is below the platform-wide minimum of {AUTO_REJECT_BELOW_SCORE}."
-    if score < offer.min_credit_score:
-        return "rejected", (
-            f"MOCK DECISION: credit score {score} is below {offer.nbfc_name}'s minimum "
-            f"requirement of {offer.min_credit_score} for this product."
-        )
-    if score >= offer.min_credit_score + MIN_SCORE_FOR_AUTO_APPROVAL_BUFFER:
-        return "approved", (
-            f"MOCK DECISION: credit score {score} comfortably clears {offer.nbfc_name}'s "
-            f"minimum of {offer.min_credit_score}; auto-approved for demo purposes."
-        )
-    return "under_review", (
-        f"MOCK DECISION: credit score {score} is close to {offer.nbfc_name}'s minimum of "
-        f"{offer.min_credit_score}; routed to manual review in this demo."
-    )
+    min_score = cast(int, offer.min_credit_score)
+    if score < AUTO_REJECT_BELOW_SCORE or score < min_score:
+        return "rejected", "MOCK DECISION: demo eligibility check not met. No real credit check was run."
+    if score >= min_score + MIN_SCORE_FOR_AUTO_APPROVAL_BUFFER:
+        return "approved", "MOCK DECISION: demo eligibility check passed; auto-approved for demo purposes."
+    return "under_review", "MOCK DECISION: demo eligibility check needs review; routed to manual review in this demo."
 
 
 def submit_loan_application(

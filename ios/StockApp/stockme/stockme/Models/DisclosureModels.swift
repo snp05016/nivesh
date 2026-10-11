@@ -97,7 +97,7 @@ enum DisclosureKey: String, CaseIterable, Identifiable {
         case .privacyPolicy: return "Privacy Policy"
         case .termsOfUse: return "Terms of Use"
         case .grievanceOfficer: return "Contact & Grievance Officer"
-        case .dataSharingGovernance: return "Data Sharing Governance"
+        case .dataSharingGovernance: return "Third-Party Data Sharing"
         case .digitalLendingCompliance: return "Digital Lending Compliance"
         case .lendingServiceProvider: return "Lending Service Provider"
         case .aprDisclosure: return "APR Disclosure"
@@ -105,11 +105,12 @@ enum DisclosureKey: String, CaseIterable, Identifiable {
         }
     }
 
-    /// REG-12: the privacy policy, terms and grievance contact are the real
-    /// notices; the lending/marketplace disclosures are still demo copy.
+    /// REG-12/UX-04: the privacy policy, terms, grievance contact and
+    /// third-party sharing list are the real notices; the lending/marketplace
+    /// disclosures are still demo copy.
     var isDemoContent: Bool {
         switch self {
-        case .privacyPolicy, .termsOfUse, .grievanceOfficer: return false
+        case .privacyPolicy, .termsOfUse, .grievanceOfficer, .dataSharingGovernance: return false
         default: return true
         }
     }
@@ -132,6 +133,9 @@ struct KeyFactStatementDTO: Codable, Equatable {
     let interestRate: Double
     let allFees: Double
     let apr: Double
+    /// REG-05: loan offers only; nil for FD schemes and older servers.
+    let emi: Double?
+    let totalRepayable: Double?
     let tenureMonths: Int
     let disclaimer: String?
 
@@ -145,7 +149,8 @@ struct KeyFactStatementDTO: Codable, Equatable {
         case loanAmount = "loan_amount"
         case interestRate = "interest_rate"
         case allFees = "all_fees"
-        case apr
+        case apr, emi
+        case totalRepayable = "total_repayable"
         case tenureMonths = "tenure_months"
         case disclaimer
     }

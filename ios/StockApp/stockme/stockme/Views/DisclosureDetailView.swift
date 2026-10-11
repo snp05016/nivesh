@@ -5,8 +5,8 @@ import SwiftUI
 // Generic screen that fetches and renders a DisclosureDTO by key from the
 // REAL GET /api/v1/compliance/disclosures/{key} endpoint
 // (backend/routers/compliance.py + backend/services/disclosure_service.py).
-// Privacy Policy, Terms of Use and Grievance Officer are the real notices
-// (no demo badge). Every other key (key.isDemoContent) is clearly-labelled
+// Privacy Policy, Terms of Use, Grievance Officer and Third-Party Data Sharing
+// are the real notices (no demo badge). Every other key (key.isDemoContent) is clearly-labelled
 // placeholder/demo copy: NOT real legal advice, NOT a real regulatory filing,
 // and does NOT reference any real SEBI/RBI registration or license number.
 
@@ -153,11 +153,12 @@ struct DisclosureLinkRow: View {
 // rate, all_fees, apr, tenure) from the REAL
 // GET /api/v1/compliance/key-fact-statement endpoint (backend/routers/
 // compliance.py + backend/services/disclosure_service.py). DEMO-GRADE — see
-// the 'apr_disclosure' DisclosureDetailView for the illustrative APR formula.
+// the 'apr_disclosure' DisclosureDetailView for the APR method (IRR on the
+// net disbursal, for the amount/tenure passed in .loanOffer).
 
 struct KeyFactStatementView: View {
     enum Source {
-        case loanOffer(id: Int)
+        case loanOffer(id: Int, amount: Double? = nil, tenureMonths: Int? = nil)
         case fdScheme(id: Int)
     }
 
@@ -215,6 +216,14 @@ struct KeyFactStatementView: View {
                     GuillocheDivider()
                     KFSRow(label: "APR", value: kfs.aprDisplay, valueColor: Theme.securityGold)
                     GuillocheDivider()
+                    if let emi = kfs.emi {
+                        KFSRow(label: "Monthly EMI", value: IndianFormatter.formatLakhsCrores(emi))
+                        GuillocheDivider()
+                    }
+                    if let total = kfs.totalRepayable {
+                        KFSRow(label: "Total Repayable", value: IndianFormatter.formatLakhsCrores(total))
+                        GuillocheDivider()
+                    }
                     KFSRow(label: "Tenure", value: kfs.tenureDisplay)
                 }
                 .banknoteCard()
@@ -238,8 +247,8 @@ struct KeyFactStatementView: View {
         errorMessage = nil
         do {
             switch source {
-            case .loanOffer(let id):
-                kfs = try await NetworkManager.shared.fetchKeyFactStatement(loanOfferId: id)
+            case .loanOffer(let id, let amount, let tenureMonths):
+                kfs = try await NetworkManager.shared.fetchKeyFactStatement(loanOfferId: id, amount: amount, tenureMonths: tenureMonths)
             case .fdScheme(let id):
                 kfs = try await NetworkManager.shared.fetchKeyFactStatement(schemeId: id)
             }
