@@ -135,6 +135,17 @@ class PortfolioTransaction(Base):
         Index("ix_multi_asset_transactions_asset_type", "asset_type"),
         Index("ix_multi_asset_transactions_symbol", "symbol"),
         Index("ix_multi_asset_transactions_date", "date"),
+        CheckConstraint("quantity > 0", name="ck_multi_asset_tx_quantity_positive"),
+        CheckConstraint("price >= 0", name="ck_multi_asset_tx_price_nonneg"),
+        CheckConstraint("fees >= 0", name="ck_multi_asset_tx_fees_nonneg"),
+        CheckConstraint(
+            "asset_type IN ('STOCK','MF','GOLD','FD')",
+            name="ck_multi_asset_tx_asset_type",
+        ),
+        CheckConstraint(
+            "transaction_type IN ('BUY','SELL','DEPOSIT','WITHDRAWAL','MATURITY')",
+            name="ck_multi_asset_tx_type",
+        ),
     )
 
 
@@ -1276,6 +1287,10 @@ class DeviceBinding(Base):
     bound_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     is_primary = Column(Boolean, nullable=False, default=True, server_default="1")
 
+    __table_args__ = (
+        UniqueConstraint("user_id", "device_id", name="uq_device_binding_user_device"),
+    )
+
 
 class DeviceBindingAttempt(Base):
     """MOCK DATA - simulated for demo purposes, not a real integration.
@@ -1295,10 +1310,6 @@ class DeviceBindingAttempt(Base):
     # "bound" | "rejected_cross_user" | "rejected_rate_limit"
     outcome = Column(String(30), nullable=False)
     reason = Column(Text, nullable=True)
-
-    __table_args__ = (
-        UniqueConstraint("user_id", "device_id", name="uq_device_binding_user_device"),
-    )
 
 
 # ---------------------------------------------------------------------------

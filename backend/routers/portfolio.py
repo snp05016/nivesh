@@ -2374,16 +2374,25 @@ def get_signal_accuracy():
         raise HTTPException(status_code=500, detail="Internal server error")
 
 from database import PortfolioTransaction
+from typing import Literal as _Literal
+from pydantic import Field as _Field, field_validator as _field_validator
 
 class MultiAssetTransactionRequest(_BaseModel):
     user_id: int
-    asset_type: str
-    symbol: str
-    transaction_type: str
-    quantity: float
-    price: float
-    fees: float = 0.0
-    notes: _Optional[str] = None
+    # Allowed values mirror the CHECK constraints on multi_asset_transactions.
+    asset_type: _Literal["STOCK", "MF", "GOLD", "FD"]
+    symbol: str = _Field(..., min_length=1, max_length=50)
+    transaction_type: _Literal["BUY", "SELL", "DEPOSIT", "WITHDRAWAL", "MATURITY"]
+    quantity: float = _Field(..., gt=0, allow_inf_nan=False)
+    price: float = _Field(..., ge=0, allow_inf_nan=False)
+    fees: float = _Field(0.0, ge=0, allow_inf_nan=False)
+    notes: _Optional[str] = _Field(None, max_length=500)
+
+    @_field_validator("asset_type", "transaction_type", mode="before")
+    @classmethod
+    def _upper(cls, v):
+        # Keep accepting lowercase input from existing clients.
+        return v.strip().upper() if isinstance(v, str) else v
 
 @router.post("/portfolio/multi-asset/transaction")
 def multi_asset_transaction_entry(req: MultiAssetTransactionRequest, authorization: str = Header(None)):

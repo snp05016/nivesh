@@ -17,6 +17,7 @@ from typing import Optional
 from database import get_session
 from models.db_models import FixedDepositBooking, FixedDepositScheme
 from services.kyc_consent_service import get_active_consents, verify_device_binding
+from services.product_bounds import check_product_bounds
 
 # Consent type that MUST be active before an FD booking can be confirmed.
 # FDs reuse the same KYC consent ledger as the loan marketplace but require
@@ -250,6 +251,8 @@ def book_fixed_deposit(
         scheme = session.query(FixedDepositScheme).filter(FixedDepositScheme.id == scheme_id).first()
         if scheme is None:
             raise ValueError(f"Fixed deposit scheme {scheme_id} not found")
+        # Also caps tenure, so the matures_at timedelta below cannot overflow.
+        check_product_bounds(scheme, principal_amount, tenure_months, "FD scheme")
 
         kyc_ok, kyc_reason = _check_kyc_gate(user_id, device_id)
 

@@ -17,6 +17,7 @@ from database import get_session
 from models.db_models import LinkedBankAccount, LoanApplication, LoanDisbursement, LoanOffer
 from services.credit_bureau_mock_service import get_mock_credit_score
 from services.kyc_consent_service import get_active_consents, verify_device_binding
+from services.product_bounds import check_product_bounds
 
 # Consent type that MUST be active before a loan application can be
 # auto-approved. Kept in sync with kyc_consent_service.CREDIT_CHECK_CONSENT.
@@ -192,6 +193,7 @@ def submit_loan_application(
         offer = session.query(LoanOffer).filter(LoanOffer.id == loan_offer_id).first()
         if offer is None:
             raise ValueError(f"Loan offer {loan_offer_id} not found")
+        check_product_bounds(offer, requested_amount, requested_tenure_months, "loan offer")
 
         score = get_mock_credit_score(user_id)
         status, reason = _evaluate_demo_underwriting(score, offer)

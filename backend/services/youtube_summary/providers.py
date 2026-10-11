@@ -106,7 +106,8 @@ class DeepSeekProvider(SummaryProvider):
                 logger.warning("DeepSeekProvider chunk %d failed: %s", idx, exc)
 
         if not partials:
-            return _empty_summary()
+            # Raise so the summarizer returns 502 and never caches an empty summary.
+            raise RuntimeError("all DeepSeek chunk calls failed")
 
         if len(partials) == 1:
             return _sanitize(partials[0])

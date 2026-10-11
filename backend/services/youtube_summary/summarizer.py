@@ -7,6 +7,8 @@ import os
 import threading
 from typing import Optional
 
+from fastapi import HTTPException
+
 from services.youtube_summary.cache import YouTubeSummaryCache
 from services.youtube_summary.chunking import TranscriptChunker
 from services.youtube_summary.providers import get_provider
@@ -26,6 +28,13 @@ _MAX_CHUNKS: int = 20
 _PROVIDER_NAME: Optional[str] = os.getenv("YOUTUBE_SUMMARY_PROVIDER", "deepseek")
 
 _VIDEO_URL_TEMPLATE = "https://www.youtube.com/watch?v={}"
+
+
+def _has_content(summary_dict: Optional[dict]) -> bool:
+    """True when a summary dict carries a TL;DR or at least one key point."""
+    if not summary_dict:
+        return False
+    return bool(summary_dict.get("tldr") or summary_dict.get("key_points"))
 
 
 class YouTubeSummaryService:
@@ -53,13 +62,16 @@ class YouTubeSummaryService:
           7. Assemble and return YouTubeVideoSummaryResponse.
         """
         if not _ENABLED:
-            return self._disabled_response(url_or_id)
+            raise HTTPException(
+                status_code=503,
+                detail="YouTube summary service is disabled.",
+            )
 
         video_id = _parse_video_id(url_or_id)
         if not video_id:
-            return self._error_response(
-                url_or_id or "",
-                "Could not parse a valid YouTube video ID from the provided input.",
+            raise HTTPException(
+                status_code=400,
+                detail="Could not parse a valid YouTube video ID from the provided input.",
             )
 
         video_url = _VIDEO_URL_TEMPLATE.format(video_id)
@@ -67,11 +79,10 @@ class YouTubeSummaryService:
         # ── Step 1: transcript extraction ──────────────────────────────────
         transcript = self._extractor.extract(video_id)
         if not transcript:
-            return self._error_response(
-                video_id,
-                "Transcript unavailable — the video may be private, have no captions, or "
-                "lack a YouTube API key / yt-dlp installation.",
-                video_url=video_url,
+            logger.warning("Transcript unavailable for video_id=%s", video_id)
+            raise HTTPException(
+                status_code=404,
+                detail="Transcript unavailable — the video may be private or have no captions.",
             )
 
         transcript_hash: str = transcript["hash"]
@@ -81,7 +92,8 @@ class YouTubeSummaryService:
         # ── Step 2: cache lookup ───────────────────────────────────────────
         if not force_refresh:
             cached_data = self._cache.get(video_id, transcript_hash)
-            if cached_data:
+            # Empty rows written before GH-634 are treated as a miss and regenerated.
+            if cached_data is not None and _has_content(cached_data):
                 logger.debug("Cache hit for video_id=%s", video_id)
                 return self._build_response(
                     video_id=video_id,
@@ -100,10 +112,9 @@ class YouTubeSummaryService:
         chunks = chunks[:_MAX_CHUNKS]
 
         if not chunks:
-            return self._error_response(
-                video_id,
-                "Transcript is empty after extraction.",
-                video_url=video_url,
+            raise HTTPException(
+                status_code=404,
+                detail="Transcript is empty after extraction.",
             )
 
         # ── Step 4: AI summarisation ───────────────────────────────────────
@@ -114,10 +125,15 @@ class YouTubeSummaryService:
             summary_dict = await provider.summarize_chunks(chunks)
         except Exception as exc:
             logger.error("Provider %s failed for %s: %s", provider_name, video_id, exc)
-            return self._error_response(
-                video_id,
-                f"Summary generation failed: {exc}",
-                video_url=video_url,
+            raise HTTPException(
+                status_code=502, detail="Summary generation failed"
+            ) from exc
+
+        # Never cache (or serve as "loaded") a summary with no content.
+        if not _has_content(summary_dict):
+            logger.error("Provider %s returned an empty summary for %s", provider_name, video_id)
+            raise HTTPException(
+                status_code=502, detail="Summary generation returned no content"
             )
 
         # ── Step 5: cache write ────────────────────────────────────────────
@@ -180,35 +196,6 @@ class YouTubeSummaryService:
             source=source,
         )
 
-    def _error_response(
-        self,
-        url_or_id: str,
-        error: str,
-        video_url: str = "",
-    ) -> YouTubeVideoSummaryResponse:
-        """Return a minimal error response preserving schema shape."""
-        vid = _parse_video_id(url_or_id) or url_or_id
-        if not video_url and vid:
-            video_url = _VIDEO_URL_TEMPLATE.format(vid)
-        logger.warning("YouTubeSummaryService error [%s]: %s", vid, error)
-        return YouTubeVideoSummaryResponse(
-            video_id=vid,
-            url=video_url,
-            title="",
-            channel="",
-            duration_seconds=0,
-            summary=SummaryContent(),
-            timestamps=[],
-            source=SourceMetadata(
-                transcript_source="none",
-                summary_provider="none",
-                cached=False,
-                transcript_hash="",
-                estimated_input_tokens=0,
-                estimated_output_tokens=0,
-            ),
-        )
-
     def get_cached(self, video_id: str) -> Optional[YouTubeVideoSummaryResponse]:
         """Return a cached response for video_id without requiring transcript hash.
 
@@ -232,6 +219,10 @@ class YouTubeSummaryService:
                 if row is None:
                     return None
                 summary_dict = _json.loads(str(row.summary_json))
+                if not _has_content(summary_dict):
+                    # Empty row from a past provider failure: report a miss so
+                    # the client regenerates via POST.
+                    return None
         except Exception as exc:
             logger.warning("get_cached failed for %s: %s", video_id, exc)
             return None
@@ -246,13 +237,6 @@ class YouTubeSummaryService:
             from_cache=True,
             provider_name=getattr(row, "summary_provider", "cached"),
             chunks_processed=0,
-        )
-
-    def _disabled_response(self, url_or_id: str) -> YouTubeVideoSummaryResponse:
-        """Return a stub response when the service is disabled via env var."""
-        return self._error_response(
-            url_or_id,
-            "YouTube summary service is disabled (YOUTUBE_SUMMARY_ENABLED=false).",
         )
 
 

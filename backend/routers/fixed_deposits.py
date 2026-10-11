@@ -22,6 +22,7 @@ from services.fixed_deposit_service import (
     list_bookings_for_user,
     list_fd_schemes,
 )
+from services.product_bounds import ProductBoundsError
 
 router = APIRouter(prefix="/api/fixed-deposits", tags=["Fixed Deposits"])
 
@@ -186,6 +187,8 @@ def create_fd_booking(payload: CreateFDBookingRequest, user_id: int = Depends(re
             payment_method=payload.payment_method,
             device_id=payload.device_id,
         )
+    except ProductBoundsError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     return _serialize_booking(booking)

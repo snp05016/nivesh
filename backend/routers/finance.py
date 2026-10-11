@@ -31,6 +31,7 @@ from services.loan_marketplace_service import (
     list_loan_offers,
     submit_loan_application,
 )
+from services.product_bounds import ProductBoundsError
 
 router = APIRouter(prefix="/api/finance", tags=["Loan Marketplace"])
 
@@ -237,6 +238,8 @@ def create_loan_application(payload: SubmitLoanApplicationRequest, user_id: int 
             requested_tenure_months=payload.requested_tenure_months,
             device_id=payload.device_id,
         )
+    except ProductBoundsError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     return _serialize_application(application)
