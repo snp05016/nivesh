@@ -7,3 +7,8 @@
 # Python
 __pycache__/
 *.pyc
+
+# Research engine data (raw bhavcopies, curated panel, models; /data in Docker)
+data/research/
+# ...but keep the reviewed reference tables in git
+!research/ref/*.csv
