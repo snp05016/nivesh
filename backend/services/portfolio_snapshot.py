@@ -14,6 +14,7 @@ from datetime import datetime, date, timedelta, timezone
 import sys
 import os
 import json
+from types import SimpleNamespace
 from typing import cast
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -63,7 +64,8 @@ def _net_worth_ledger_row(db, user_id, today_str, priced, total_value, total_inv
     made and non-trading days show no phantom moves.
 
     Args:
-        priced: (Portfolio holding, price) pairs for the holdings valued today.
+        priced: (holding, price) pairs for the holdings valued today; a holding
+            has ticker, company_name, shares and buy_price.
     """
     prev = db.query(NetWorthLedger).filter(
         NetWorthLedger.user_id == user_id,
@@ -131,9 +133,19 @@ def _net_worth_ledger_row(db, user_id, today_str, priced, total_value, total_inv
     )
 
 
-async def snapshot_all_users():
-    """Take the daily valuation snapshot and net-worth ledger row for all users."""
+async def snapshot_all_users() -> dict:
+    """Take the daily valuation snapshot and net-worth ledger row for all users.
+
+    Three phases so no DB session is held open across yfinance calls (DB-22):
+    a short read session, then pricing with no session, then one short write
+    session per user. A re-run the same day only fills the rows still missing,
+    so the 12:00 UTC retry job repairs users skipped for a missing price (DB-21).
+
+    Returns:
+        dict: Counts of users 'written', 'skipped_partial' and 'already' done today.
+    """
     today_str = date.today().isoformat()
+    stats = {"written": 0, "skipped_partial": 0, "already": 0}
 
     # Fetch NIFTY close for benchmark outside the per-user loop
     try:
@@ -143,64 +155,74 @@ async def snapshot_all_users():
     except Exception as _e:
         nifty_close = None
 
+    # Phase 1: who still needs today's rows, with holdings copied to plain values.
+    pending = []
     with get_session() as db:
-        users = db.query(User).all()
-
-        for user in users:
+        for (user_id,) in db.query(User.id).all():
             try:
                 # Skip if both of today's rows exist; checked separately so a
                 # re-run backfills whichever one is missing.
                 valuation_done = db.query(PortfolioValuationHistory.id).filter(
-                    PortfolioValuationHistory.user_id == user.id,
+                    PortfolioValuationHistory.user_id == user_id,
                     PortfolioValuationHistory.snapshot_date == today_str
                 ).first() is not None
                 ledger_done = db.query(NetWorthLedger.id).filter(
-                    NetWorthLedger.user_id == user.id,
+                    NetWorthLedger.user_id == user_id,
                     NetWorthLedger.snapshot_date == today_str
                 ).first() is not None
                 if valuation_done and ledger_done:
+                    stats["already"] += 1
                     continue
 
-                holdings = db.query(Portfolio).filter(
-                    Portfolio.user_id == user.id,
-                    Portfolio.group_name == "holdings"
-                ).all()
+                holdings = [
+                    SimpleNamespace(
+                        ticker=str(h.ticker),
+                        company_name=str(h.company_name or ""),
+                        shares=float(h.shares),  # type: ignore[arg-type]
+                        buy_price=float(h.buy_price),  # type: ignore[arg-type]
+                    )
+                    for h in db.query(Portfolio).filter(
+                        Portfolio.user_id == user_id,
+                        Portfolio.group_name == "holdings"
+                    ).all()
+                ]
+                if holdings:
+                    pending.append((user_id, valuation_done, ledger_done, holdings))
+            except Exception as e:
+                logger.error(f"Snapshot read error for user {user_id}: {e}")
+                db.rollback()
 
-                if not holdings:
-                    continue
+    # Phase 2: price each ticker once, with no session open.
+    prices = {}
+    for ticker in sorted({h.ticker for _, _, _, holdings in pending for h in holdings}):
+        prices[ticker] = await asyncio.to_thread(get_current_price, ticker)
 
-                total_invested = 0.0
-                total_value = 0.0
-                missing = []
-                priced = []
+    # Phase 3: one short write session per user.
+    for user_id, valuation_done, ledger_done, holdings in pending:
+        priced = [(h, prices[h.ticker]) for h in holdings if prices.get(h.ticker)]
+        missing = [h.ticker for h in holdings if not prices.get(h.ticker)]
+        total_value = sum(h.shares * price for h, price in priced)
+        total_invested = sum(h.shares * h.buy_price for h, _ in priced)
 
-                for holding in holdings:
-                    ticker = str(holding.ticker)
-                    shares = float(holding.shares)  # type: ignore[arg-type]
-                    price = await asyncio.to_thread(get_current_price, ticker)
-                    if price:
-                        total_value += shares * price
-                        total_invested += shares * float(holding.buy_price)  # type: ignore[arg-type]
-                        priced.append((holding, price))
-                    else:
-                        missing.append(ticker)
-
+        with get_session() as db:
+            try:
                 if missing:
                     latest = db.query(PortfolioValuationHistory.snapshot_date).filter(
-                        PortfolioValuationHistory.user_id == user.id
+                        PortfolioValuationHistory.user_id == user_id
                     ).order_by(PortfolioValuationHistory.snapshot_date.desc()).first()
                     gap_ok = latest is not None and date.fromisoformat(latest[0]) >= (
                         date.today() - timedelta(days=_SNAPSHOT_MAX_GAP_DAYS)
                     )
                     if gap_ok or len(missing) == len(holdings):
                         # Never persist a cost-basis valuation as the day's real value.
-                        # The scheduler runs once a day, so this leaves a gap for today.
-                        logger.warning(f"Snapshot skipped: user={user.id} no price for {missing}")
+                        # The retry run later today fills this gap if prices return.
+                        logger.warning(f"Snapshot skipped: user={user_id} no price for {missing}")
+                        stats["skipped_partial"] += 1
                         continue
                     # Unpriced holdings are left out of BOTH sides (same policy as
                     # /portfolio/benchmark), so value and P&L stay consistent.
                     logger.warning(
-                        f"Snapshot partial: user={user.id} excluded unpriced {missing} "
+                        f"Snapshot partial: user={user_id} excluded unpriced {missing} "
                         f"(no snapshot in {_SNAPSHOT_MAX_GAP_DAYS}+ days)"
                     )
 
@@ -209,7 +231,7 @@ async def snapshot_all_users():
 
                 if not valuation_done:
                     db.add(PortfolioValuationHistory(
-                        user_id=user.id,
+                        user_id=user_id,
                         snapshot_date=today_str,
                         total_value=round(total_value, 2),
                         total_invested=round(total_invested, 2),
@@ -219,15 +241,17 @@ async def snapshot_all_users():
                     ))
                 if not ledger_done:
                     db.add(_net_worth_ledger_row(
-                        db, user.id, today_str, priced, total_value, total_invested, pnl, pnl_pct, nifty_close,
+                        db, user_id, today_str, priced, total_value, total_invested, pnl, pnl_pct, nifty_close,
                     ))
                 db.commit()
-                logger.info(f"Snapshot saved: user={user.id} value=₹{total_value:,.0f}")
+                stats["written"] += 1
+                logger.info(f"Snapshot saved: user={user_id} value=₹{total_value:,.0f}")
 
             except Exception as e:
-                logger.error(f"Snapshot error for user {user.id}: {e}")
+                logger.error(f"Snapshot error for user {user_id}: {e}")
                 db.rollback()
-                continue
+
+    return stats
 
 
 async def pregen_morning_briefs_all_users() -> dict:

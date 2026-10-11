@@ -48,7 +48,8 @@ class User(Base):
 
 class Portfolio(Base):
     """Dual-purpose: group_name=holdings requires shares>0/buy_price>0 (API-enforced).
-    group_name=watchlist uses shares=0/buy_price=0 as intentional sentinels.
+    group_name=watchlist uses shares=0/buy_price=0 as intentional sentinels; watchlist
+    rows must set group_name="watchlist" explicitly (the default is "holdings").
     All holding queries MUST filter: Portfolio.group_name == 'holdings'.
     """
     __tablename__ = "portfolio"
@@ -61,7 +62,7 @@ class Portfolio(Base):
     buy_price     = Column(Float, nullable=False)
     target_price  = Column(Float, nullable=True)
     purchase_date = Column(String, nullable=True)
-    group_name    = Column(String(50), default="watchlist")
+    group_name    = Column(String(50), default="holdings")
     notes         = Column(Text, default="")
     is_virtual    = Column(Boolean, default=False, nullable=False, server_default="0")
     created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))

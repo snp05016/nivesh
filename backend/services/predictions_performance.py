@@ -7,7 +7,7 @@ Brier scores, and confidence calibration across multiple dimensions.
 
 from datetime import datetime, timezone
 from typing import Optional, Dict, List, Any
-from sqlalchemy import func, case, cast, Float
+from sqlalchemy import func, case, cast, Float, Numeric
 from database import get_session
 from models.db_models import AnalysisPrediction, StockUniverse
 
@@ -41,8 +41,11 @@ def _safe_hit_rate(hit_col):
     """
     total = func.count(case((hit_col.isnot(None), 1)))
     hits = func.count(case((hit_col.is_(True), 1)))
+    # Postgres has round(numeric, int) but no round(double precision, int): round as
+    # NUMERIC, then cast back so callers still get Python floats (DB-15).
+    ratio = cast(cast(hits, Float) / cast(total, Float), Numeric(12, 6))
     return func.coalesce(
-        case((total > 0, func.round(cast(hits, Float) / cast(total, Float), 4)), else_=None),
+        case((total > 0, cast(func.round(ratio, 4), Float)), else_=None),
         None,
     )
 

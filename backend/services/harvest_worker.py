@@ -280,6 +280,8 @@ def start_scheduler() -> bool:
     _scheduler.add_job(_run_harvest_youtube_metadata, "interval", hours=2, **_stagger(25))
     _scheduler.add_job(_run_harvest_portfolio_videos, "interval", hours=2, **_stagger(45))
     _scheduler.add_job(_snapshot_all_users_job,       "cron", hour=11, minute=0)   # 4:30 PM IST (11:00 UTC)
+    # Retry: fills only users the 11:00 run skipped for a missing price (DB-21).
+    _scheduler.add_job(_snapshot_all_users_job,       "cron", hour=12, minute=0)   # 5:30 PM IST (12:00 UTC)
     _scheduler.add_job(_run_nightly_screen_job,       "cron", hour=11, minute=15)  # 4:45 PM IST (11:15 UTC)
     _scheduler.add_job(_run_evaluate_analysis_outcomes,"cron", hour=20, minute=30)  # 2:00 AM IST (20:30 UTC)
 
@@ -358,7 +360,7 @@ def start_scheduler() -> bool:
     _scheduler.start()
     logging.info(
         "All schedulers started — existing: (advisor 1:30, news 12:30, yt-channel 1:00, "
-        "yt-portfolio 1:15, snapshot 4:30 PM, pkscreener 4:45 PM, outcome-eval 2:00 AM) | "
+        "yt-portfolio 1:15, snapshot 4:30 PM + retry 5:30 PM, pkscreener 4:45 PM, outcome-eval 2:00 AM) | "
         "new: (bhavcopy 7:00 PM, morning-brief-pregen 6:30 AM, "
         "piotroski-weekly Sun 11 PM, error-digest 7:00 AM, db-backup 2:30 AM) | "
         "harvesters: (expert 120min, sebi 120min, yt-expert 120min) [all IST]"

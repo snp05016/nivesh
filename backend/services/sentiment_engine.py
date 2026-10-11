@@ -192,15 +192,16 @@ def get_sentiment_trend(ticker: str, days: int = 30):
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     
     with get_session() as db:
-        # SQLite datetime casting workaround: substr(published_at, 1, 10)
-        date_expr = func.substr(NewsArticle.published_at, 1, 10)
+        # date() works on both dialects (SQLite: 'YYYY-MM-DD' text, Postgres: date);
+        # substr() on a timestamp does not exist on Postgres (DB-15).
+        date_expr = func.date(NewsArticle.published_at)
         
         results = db.query(
             date_expr.label('date_str'),
             func.avg(NewsArticle.sentiment_score).label('avg_score'),
             func.count(NewsArticle.id).label('article_count')
         ).filter(
-            NewsArticle.published_at >= cutoff.isoformat(),
+            NewsArticle.published_at >= cutoff.replace(tzinfo=None),
             or_(
                 NewsArticle.ticker == ticker,
                 NewsArticle.headline.like(f"%{ticker}%")
@@ -221,7 +222,7 @@ def get_sentiment_trend(ticker: str, days: int = 30):
                 label = 'Negative'
                 
             trend.append({
-                "date": r.date_str,
+                "date": str(r.date_str)[:10],
                 "avg_score": round(avg_score, 4),
                 "article_count": r.article_count,
                 "label": label

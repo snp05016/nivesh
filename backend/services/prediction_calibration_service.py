@@ -11,6 +11,7 @@ import math
 
 from sqlalchemy import func, case, cast, Float
 from database import get_session
+from services.predictions_performance import _safe_hit_rate
 from models.db_models import AnalysisPrediction, StockUniverse
 
 
@@ -68,23 +69,6 @@ def _safe_avg(expr):
         SQLAlchemy expression: The wrapped average expression.
     """
     return func.coalesce(func.avg(cast(expr, Float)), None)
-
-
-def _safe_hit_rate(hit_col):
-    """Compute hit rate as fraction of non-null hit_direction values that are TRUE.
-
-    Args:
-        hit_col: The SQLAlchemy column representing hit direction.
-
-    Returns:
-        SQLAlchemy expression: The calculated hit rate or None.
-    """
-    total = func.count(case((hit_col.isnot(None), 1)))
-    hits = func.count(case((hit_col.is_(True), 1)))
-    return func.coalesce(
-        case((total > 0, func.round(cast(hits, Float) / cast(total, Float), 4)), else_=None),
-        None,
-    )
 
 
 def _point_biserial(pillar_values: List[float], hit_values: List[bool]) -> Optional[float]:

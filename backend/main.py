@@ -778,9 +778,13 @@ def dashboard_user_data(user_id: int, authorization: str = Header(None)):
             holdings = session.query(Portfolio).filter(Portfolio.user_id == user_id).all()
             portfolio_rows = []
             total_invested = 0.0
+            holdings_count = 0
             for h in holdings:
                 invested = h.shares * h.buy_price
-                total_invested += invested
+                # Watchlist rows are exported with their label but are not holdings (DB-19).
+                if str(h.group_name or "watchlist") != "watchlist":
+                    total_invested += invested
+                    holdings_count += 1
                 portfolio_rows.append({
                     "id": h.id,
                     "ticker": h.ticker,
@@ -793,7 +797,7 @@ def dashboard_user_data(user_id: int, authorization: str = Header(None)):
                     "created_at": h.created_at.isoformat() if h.created_at else None,
                 })
             result["portfolio"] = portfolio_rows
-            result["portfolio_summary"] = {"total_invested": round(total_invested, 2), "holdings_count": len(portfolio_rows)}
+            result["portfolio_summary"] = {"total_invested": round(total_invested, 2), "holdings_count": holdings_count}
 
             # ── Analysis History ──
             analyses = session.query(AnalysisHistory).filter(

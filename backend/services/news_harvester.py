@@ -166,103 +166,112 @@ _FEED_TIMEOUT_SEC = 15
 
 
 async def harvest_news(lookback_hours: int = 26):
-    """Main harvest entry point. Called by nightly CRON."""
+    """Main harvest entry point. Called by nightly CRON.
+
+    No DB session is open while feeds download, bodies scrape or FinBERT scores
+    (DB-22): one short read per feed drops known URLs, then each fully built
+    article is inserted in its own short write session.
+    """
     from database import get_session
+    from sqlalchemy.exc import IntegrityError
     articles_added = 0
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=lookback_hours)
 
-    with get_session() as db:
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=lookback_hours)
+    for feed_config in RSS_FEEDS:
+        try:
+            # feedparser.parse(url) has no timeout: a hung feed server stalled the job forever.
+            resp = requests.get(feed_config["url"], timeout=_FEED_TIMEOUT_SEC,
+                                headers={"User-Agent": "Mozilla/5.0 (Nivesh RSS)"})
+            resp.raise_for_status()
+            feed = feedparser.parse(resp.content)
+            entries = [e for e in feed.entries[:20] if e.get("link", "")]  # Max 20 per feed
+            if not entries:
+                continue
 
-        for feed_config in RSS_FEEDS:
-            try:
-                # feedparser.parse(url) has no timeout: a hung feed server stalled the job forever.
-                resp = requests.get(feed_config["url"], timeout=_FEED_TIMEOUT_SEC,
-                                    headers={"User-Agent": "Mozilla/5.0 (Nivesh RSS)"})
-                resp.raise_for_status()
-                feed = feedparser.parse(resp.content)
-                for entry in feed.entries[:20]:  # Max 20 per feed
+            # Skip URLs already in DB (unique constraint on article_url)
+            with get_session() as db:
+                known = {
+                    u for (u,) in db.query(NewsArticle.article_url).filter(
+                        NewsArticle.article_url.in_([e.get("link") for e in entries])
+                    )
+                }
+
+            for entry in entries:
+                try:
+                    url = str(entry.get("link", ""))
+                    if url in known:
+                        continue
+                    known.add(url)
+
+                    # Parse publish date
                     try:
-                        # Skip if already in DB (unique constraint on article_url)
-                        url = entry.get("link", "")
-                        if not url:
-                            continue
+                        pub_date = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc) \
+                            if hasattr(entry, 'published_parsed') and entry.published_parsed \
+                            else datetime.now(timezone.utc)
+                    except (TypeError, AttributeError, ValueError):
+                        pub_date = datetime.now(timezone.utc)
 
-                        existing = db.query(NewsArticle).filter(
-                            NewsArticle.article_url == url
-                        ).first()
-                        if existing:
-                            continue
-
-                        # Parse publish date
-                        try:
-                            pub_date = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc) \
-                                if hasattr(entry, 'published_parsed') and entry.published_parsed \
-                                else datetime.now(timezone.utc)
-                        except (TypeError, AttributeError, ValueError):
-                            pub_date = datetime.now(timezone.utc)
-
-                        if pub_date < cutoff:
-                            continue
-
-                        headline = entry.get("title", "").strip()
-                        summary = entry.get("summary", "").strip()[:500]
-
-                        # Try feed-level image first (fast, no HTTP request)
-                        image_url = _extract_image_from_entry(entry)
-
-                        # Scrape full body + image (newspaper3k fills image if feed had none)
-                        body, scraped_image = scrape_article_body(url)
-                        if not image_url:
-                            image_url = scraped_image
-
-                        full_text = f"{headline} {summary} {body}"
-
-                        # Skip non-market articles (politics, sports, entertainment, etc.)
-                        if not is_market_relevant(full_text):
-                            logger.debug(f"Skipped non-market article: {headline[:60]}")
-                            continue
-
-                        article = NewsArticle(
-                            source=feed_config["source"],
-                            ticker=None,
-                            headline=headline,
-                            summary=summary,
-                            body_text=body,
-                            image_url=image_url,
-                            article_url=url,
-                            published_at=pub_date,
-                            sentiment=None,
-                            is_red_flag=is_red_flag(full_text),
-                        )
-                        db.add(article)
-                        db.flush() # Send to DB to get ID/check constraints, but don't commit yet
-
-                        # Ticker matching
-                        tickers = extract_tickers_from_text(full_text)
-                        if tickers:
-                            article.ticker = tickers[0]
-
-                        # Score with FinBERT
-                        try:
-                            label, score = score_article(headline, summary)
-                            article.sentiment_label = label
-                            article.sentiment_score = score
-                            article.sentiment = label.upper()
-                        except Exception as e:
-                            logger.warning(f"Sentiment scoring failed for article: {e}")
-
-                        db.commit() # Commit the full article processing unit
-                        articles_added += 1
-                        logger.info(f"Added: {headline[:60]}")
-
-                    except Exception as e:
-                        logger.warning(f"Article processing error: {e}")
-                        db.rollback() # Rollback the session on error
+                    if pub_date < cutoff:
                         continue
 
-            except Exception as e:
-                logger.error(f"Feed error for {feed_config['url']}: {e}")
-                continue
+                    headline = entry.get("title", "").strip()
+                    summary = entry.get("summary", "").strip()[:500]
+
+                    # Try feed-level image first (fast, no HTTP request)
+                    image_url = _extract_image_from_entry(entry)
+
+                    # Scrape full body + image (newspaper3k fills image if feed had none)
+                    body, scraped_image = scrape_article_body(url)
+                    if not image_url:
+                        image_url = scraped_image
+
+                    full_text = f"{headline} {summary} {body}"
+
+                    # Skip non-market articles (politics, sports, entertainment, etc.)
+                    if not is_market_relevant(full_text):
+                        logger.debug(f"Skipped non-market article: {headline[:60]}")
+                        continue
+
+                    tickers = extract_tickers_from_text(full_text)
+                    article = NewsArticle(
+                        source=feed_config["source"],
+                        ticker=tickers[0] if tickers else None,
+                        headline=headline,
+                        summary=summary,
+                        body_text=body,
+                        image_url=image_url,
+                        article_url=url,
+                        published_at=pub_date,
+                        sentiment=None,
+                        is_red_flag=is_red_flag(full_text),
+                    )
+
+                    # Score with FinBERT
+                    try:
+                        label, score = score_article(headline, summary)
+                        article.sentiment_label = label
+                        article.sentiment_score = score
+                        article.sentiment = label.upper()
+                    except Exception as e:
+                        logger.warning(f"Sentiment scoring failed for article: {e}")
+
+                    with get_session() as db:
+                        try:
+                            db.add(article)
+                            db.commit()
+                        except IntegrityError:
+                            db.rollback()  # inserted by a concurrent run
+                            continue
+                    articles_added += 1
+                    logger.info(f"Added: {headline[:60]}")
+
+                except Exception as e:
+                    logger.warning(f"Article processing error: {e}")
+                    continue
+
+        except Exception as e:
+            logger.error(f"Feed error for {feed_config['url']}: {e}")
+            continue
 
     logger.info(f"News harvest complete. {articles_added} articles added.")
     return articles_added

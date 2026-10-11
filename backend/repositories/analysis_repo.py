@@ -162,7 +162,7 @@ def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_
 
 
 def get_all_ticker_history(session: Session, ticker: str, user_id: Optional[int] = None, limit: int = 50) -> list[dict]:
-    """Retrieve all historical analysis results for a ticker.
+    """Retrieve the most recent `limit` analyses for a ticker, ordered oldest to newest.
 
     Args:
         session (Session): The SQLAlchemy database session.
@@ -171,14 +171,15 @@ def get_all_ticker_history(session: Session, ticker: str, user_id: Optional[int]
         limit (int, optional): Maximum number of records to return. Defaults to 50.
 
     Returns:
-        list[dict]: A list of historical analysis dictionaries.
+        list[dict]: Historical analysis dictionaries, oldest first; the last element is the newest.
     """
     q = session.query(AnalysisHistory).filter(AnalysisHistory.ticker == ticker.upper())
     if user_id is not None:
         q = q.filter(AnalysisHistory.user_id == user_id)
-    rows = q.order_by(AnalysisHistory.created_at.asc()).limit(limit).all()
+    # Newest window first, then reverse: ordering asc before LIMIT returned the oldest rows (DB-16).
+    rows = q.order_by(AnalysisHistory.created_at.desc(), AnalysisHistory.id.desc()).limit(limit).all()
     results = []
-    for r in rows:
+    for r in reversed(rows):
         res = json.loads(r.full_json)
         res.setdefault("confidence_math_breakdown", r.confidence_math_breakdown or {})
         res["raw_output"] = r.raw_output
