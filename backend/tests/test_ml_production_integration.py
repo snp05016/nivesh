@@ -8,6 +8,8 @@ class _FakeResponse:
 
     def json(self):
         return {
+            "signal_state": "ok",
+            "p_up": 0.81,
             "direction": 1,
             "expected_direction": 1,
             "confidence": 0.73,
@@ -57,6 +59,7 @@ def test_ml_client_preserves_trained_model_metadata(monkeypatch):
         "horizon": 20,
         "feature_count": 158,
         "fallback_used": False,
+        "p_up": 0.81,
     }
 
 

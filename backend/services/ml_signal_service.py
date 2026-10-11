@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 ML_ENGINE_URL = os.getenv("ML_ENGINE_URL", "http://localhost:8001")
 ML_ENGINE_TIMEOUT = 5.0  # seconds
+NO_EDGE_WARNING = "This model has not shown out-of-sample skill, so no direction is shown."
 
 
 def _direction_label(direction: int) -> str:
@@ -153,6 +154,25 @@ async def get_ml_signal(symbol: str) -> MLSignalResponse:
         logger.exception("Unexpected error calling ML engine for %s", symbol)
         return _build_unavailable_response(symbol, "Unexpected error contacting ML engine")
 
+    # Fail closed: only a model that passed the promotion gate ("ok") carries a
+    # direction. A missing signal_state (older ml-engine) counts as no_edge.
+    if data.get("signal_state") != "ok":
+        return MLSignalResponse(
+            symbol=symbol,
+            direction=0,
+            direction_label="NO VALIDATED SIGNAL",
+            confidence=None,
+            confidence_pct=None,
+            model_version=data.get("model_version"),
+            ml_engine_mode=data.get("ml_engine_mode", "unknown"),
+            lightgbm_loaded=data.get("lightgbm_loaded", False),
+            generated_at=datetime.now(timezone.utc).isoformat(),
+            reliability=None,
+            status="no_edge",
+            signal_state="no_edge",
+            warning=NO_EDGE_WARNING,
+        )
+
     # Map ML engine response to our schema
     direction = data.get("direction", 0)
     confidence = data.get("confidence")
@@ -188,5 +208,6 @@ async def get_ml_signal(symbol: str) -> MLSignalResponse:
         feature_drivers=feature_drivers,
         reliability=reliability,
         status="ready",
+        signal_state="ok",
         warning=data.get("warning"),
     )

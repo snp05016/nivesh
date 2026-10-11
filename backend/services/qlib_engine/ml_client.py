@@ -24,8 +24,10 @@ async def predict_cross_section(ticker: str, ohlcv_data: list) -> dict | None:
             open, high, low, close, volume (all float).
 
     Returns:
-        dict with keys ``direction`` (int: -1 / 0 / +1) and
-        ``confidence`` (float 0-1), or **None** on any failure.
+        dict with keys ``direction`` (int: -1 / 0 / +1),
+        ``confidence`` (float 0-1) and ``p_up``, or **None** on any failure
+        and whenever the engine reports no validated signal
+        (``signal_state`` other than ``"ok"``).
     """
     try:
         async with httpx.AsyncClient(timeout=ML_ENGINE_TIMEOUT) as client:
@@ -38,12 +40,22 @@ async def predict_cross_section(ticker: str, ohlcv_data: list) -> dict | None:
             )
             if response.status_code == 200:
                 data = response.json()
+                # Only a gated model's output carries a direction; anything else
+                # (including an older engine without signal_state) is no signal.
+                if data.get("signal_state") != "ok":
+                    return None
                 lightgbm_loaded = bool(data.get("lightgbm_loaded", False))
                 ml_engine_mode = data.get("ml_engine_mode") or (
                     "trained_lightgbm_baseline"
                     if lightgbm_loaded
                     else "fallback_technical_heuristic"
                 )
+                fallback_used = data.get(
+                    "fallback_used",
+                    ml_engine_mode != "trained_lightgbm_baseline",
+                )
+                if data.get("model_validated"):
+                    ml_engine_mode = "trained_live_calibrated"
                 return {
                     "direction": data.get("direction", data.get("expected_direction")),
                     "confidence": data.get("confidence", data.get("confidence_score")),
@@ -52,10 +64,8 @@ async def predict_cross_section(ticker: str, ohlcv_data: list) -> dict | None:
                     "lightgbm_loaded": lightgbm_loaded,
                     "horizon": data.get("horizon"),
                     "feature_count": data.get("feature_count"),
-                    "fallback_used": data.get(
-                        "fallback_used",
-                        ml_engine_mode != "trained_lightgbm_baseline",
-                    ),
+                    "fallback_used": fallback_used,
+                    "p_up": data.get("p_up"),
                 }
             return None
     except (

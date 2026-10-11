@@ -28,7 +28,7 @@ from typing import Any
 import numpy as np
 import polars as pl
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from config import (
     LIGHTGBM_MODEL_PATH,
@@ -54,6 +54,10 @@ _feature_scaler: dict[str, dict[str, float]] | None = None
 _feature_computer: FeatureComputer | None = None
 _inference_engine: InferenceEngine | None = None
 _model_version: str | None = None
+_model_validated: bool = False
+
+# Written at promotion time; records the gate result, base rate and neutral band.
+MANIFEST_PATH = LIGHTGBM_MODEL_PATH.parent / "MANIFEST.json"
 
 SUPPORTED_HORIZONS = [20]
 DEFAULT_PREDICTION_HORIZON = 20
@@ -112,6 +116,8 @@ class SingleStockRequest(BaseModel):
 
 class PredictionResult(BaseModel):
     """Prediction result for a single stock."""
+    model_config = ConfigDict(protected_namespaces=())  # allow the model_validated field
+
     ticker: str = ""
     direction: int | None = Field(
         default=None,
@@ -173,6 +179,24 @@ class PredictionResult(BaseModel):
         default=True,
         description="Whether the response came from a fallback path",
     )
+    signal_state: str = Field(
+        default="no_edge",
+        description="'ok' only when a validated model produced a direction; otherwise 'no_edge'",
+    )
+    p_up: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Booster probability of an up move over the horizon",
+    )
+    base_rate: float | None = Field(
+        default=None,
+        description="Training base rate of the up class",
+    )
+    model_validated: bool = Field(
+        default=False,
+        description="Whether the deployed model passed the promotion gate",
+    )
 
 
 class CrossSectionResponse(BaseModel):
@@ -184,6 +208,8 @@ class CrossSectionResponse(BaseModel):
 
 class ModelStatus(BaseModel):
     """Model metadata response."""
+    model_config = ConfigDict(protected_namespaces=())  # allow the model_validated field
+
     lightgbm_loaded: bool
     tra_loaded: bool
     scaler_loaded: bool
@@ -192,6 +218,7 @@ class ModelStatus(BaseModel):
     feature_count: int
     lightgbm_path: str | None = None
     model_version: str | None = None
+    model_validated: bool = False
 
 
 # ── Version Detection ─────────────────────────────────────────────────────────
@@ -240,6 +267,21 @@ def _detect_model_version(model_path: Path) -> str | None:
     return None
 
 
+def _load_manifest() -> dict[str, Any]:
+    """Return the parsed model manifest, or {} when it is absent or unreadable.
+
+    Without a manifest whose gate passed, the booster is served as no_edge.
+    """
+    try:
+        manifest = json.loads(MANIFEST_PATH.read_text())
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError) as exc:
+        _LOG.error("Ignoring unreadable model manifest %s: %s", MANIFEST_PATH, exc)
+        return {}
+    return manifest if isinstance(manifest, dict) else {}
+
+
 # ── Lifespan ───────────────────────────────────────────────────────────────────
 
 
@@ -247,7 +289,7 @@ def _detect_model_version(model_path: Path) -> str | None:
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Load models and scaler at startup; clean up at shutdown."""
     global _lightgbm_model, _tra_model, _feature_scaler
-    global _feature_computer, _inference_engine, _model_version
+    global _feature_computer, _inference_engine, _model_version, _model_validated
 
     _LOG.info("ml-engine starting up — loading models...")
 
@@ -295,13 +337,22 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         feature_list=FEATURE_LIST,
         scaler_params=_feature_scaler,
     )
+    manifest = _load_manifest() if _lightgbm_model is not None else {}
+    gate = manifest.get("gate")
+    _model_validated = isinstance(gate, dict) and gate.get("passed") is True
     _inference_engine = InferenceEngine(
         lightgbm_model=_lightgbm_model,
         tra_model=_tra_model,
         lgb_params=LIGHTGBM_PARAMS,
         regime_thresholds=REGIME_THRESHOLDS,
         confidence_config=CONFIDENCE_CONFIG,
+        lgb_objective=_lightgbm_model.dump_model().get("objective") if _lightgbm_model is not None else None,
+        model_validated=_model_validated,
+        base_rate=manifest.get("base_rate"),
+        neutral_band=manifest.get("neutral_band"),
     )
+    if _lightgbm_model is not None and not _model_validated:
+        _LOG.warning("No passed promotion gate in %s — predictions are served as no_edge", MANIFEST_PATH)
 
     _LOG.info("ml-engine ready — listening on port 8001")
     yield
@@ -350,6 +401,7 @@ async def model_status() -> ModelStatus:
         feature_count=len(FEATURE_LIST),
         lightgbm_path=str(LIGHTGBM_MODEL_PATH) if lightgbm_loaded else None,
         model_version=_model_version,
+        model_validated=_model_validated,
     )
 
 
@@ -418,6 +470,10 @@ async def predict_single(req: SingleStockRequest) -> PredictionResult:
         features=FEATURE_LIST[:20],  # first 20 feature names as context
         prediction_time_ms=round(elapsed_ms, 2),
         raw_score=result.get("raw_score"),
+        signal_state=result["signal_state"],
+        p_up=result["p_up"],
+        base_rate=result["base_rate"],
+        model_validated=_model_validated,
         model_version=_model_version if lightgbm_loaded else None,
         horizon=DEFAULT_PREDICTION_HORIZON,
         feature_count=len(FEATURE_LIST),
@@ -459,6 +515,10 @@ async def predict_cross_section(req: CrossSectionRequest) -> CrossSectionRespons
                     features=FEATURE_LIST[:20],
                     prediction_time_ms=0.0,  # individual timings not meaningful in batch
                     raw_score=result.get("raw_score"),
+                    signal_state=result["signal_state"],
+                    p_up=result["p_up"],
+                    base_rate=result["base_rate"],
+                    model_validated=_model_validated,
                     model_version=_model_version if lightgbm_loaded else None,
                     horizon=DEFAULT_PREDICTION_HORIZON,
                     feature_count=len(FEATURE_LIST),

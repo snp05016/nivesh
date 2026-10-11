@@ -1,9 +1,11 @@
 """Unit tests for ML signal service and schema."""
+import asyncio
 import sys
 import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import pandas as pd
 import pytest
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timezone
@@ -20,8 +22,9 @@ from schemas.ml_signal import MLSignalResponse, FeatureDriver, MLReliability
 
 @pytest.fixture
 def successful_ml_response():
-    """Mock ML engine response for a successful prediction."""
+    """Mock ML engine response for a prediction from a gated (validated) model."""
     return {
+        "signal_state": "ok",
         "direction": 1,
         "confidence": 0.63,
         "model_version": "lightgbm_alpha158_20260624",
@@ -30,13 +33,48 @@ def successful_ml_response():
     }
 
 
-def _make_mock_response(json_data, status_code=200):
-    """Build a mock httpx.Response with the given JSON payload."""
-    mock_resp = MagicMock()
-    mock_resp.status_code = status_code
-    mock_resp.json.return_value = json_data
-    mock_resp.raise_for_status.return_value = None
-    return mock_resp
+def _history(rows: int = 30) -> pd.DataFrame:
+    """Daily OHLCV frame shaped like yfinance Ticker.history()."""
+    index = pd.date_range("2026-01-01", periods=rows, freq="D", tz="Asia/Kolkata")
+    return pd.DataFrame(
+        {"Open": 100.0, "High": 101.0, "Low": 99.0, "Close": 100.5, "Volume": 1_000_000.0},
+        index=index,
+    )
+
+
+def _signal(symbol, payload=None, *, error=None, json_error=None):
+    """Run get_ml_signal with yfinance and the ml-engine HTTP call stubbed out.
+
+    The engine returns ``payload``, raises ``error`` from post(), or returns a
+    response whose .json() raises ``json_error``.
+    """
+    response = MagicMock()
+    response.raise_for_status.return_value = None
+    if json_error is not None:
+        response.json.side_effect = json_error
+    else:
+        response.json.return_value = payload
+
+    class _FakeAsyncClient:
+        def __init__(self, *_, **__):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_):
+            return None
+
+        async def post(self, _url, json):
+            if error is not None:
+                raise error
+            return response
+
+    yf = MagicMock()
+    yf.Ticker.return_value.history.return_value = _history()
+    with patch("services.ml_signal_service.yf", yf), \
+            patch("services.ml_signal_service.httpx.AsyncClient", _FakeAsyncClient):
+        return asyncio.run(get_ml_signal(symbol))
 
 
 # ---------------------------------------------------------------------------
@@ -44,22 +82,16 @@ def _make_mock_response(json_data, status_code=200):
 # ---------------------------------------------------------------------------
 
 class TestMLSignalSuccess:
-    """Verify the happy path: ML engine returns a valid prediction."""
+    """Verify the happy path: a validated model returns a prediction."""
 
     @patch("services.ml_signal_service._fetch_reliability", return_value=None)
-    @patch("services.ml_signal_service.httpx.Client")
-    def test_ml_signal_success(self, mock_client_cls, _mock_rel, successful_ml_response):
-        """Successful ML engine response maps to ready MLSignalResponse."""
-        mock_client = MagicMock()
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client.post.return_value = _make_mock_response(successful_ml_response)
-        mock_client_cls.return_value = mock_client
-
-        result = get_ml_signal("RELIANCE")
+    def test_ml_signal_success(self, _mock_rel, successful_ml_response):
+        """A signal_state 'ok' response maps to a ready MLSignalResponse."""
+        result = _signal("RELIANCE", successful_ml_response)
 
         assert isinstance(result, MLSignalResponse)
         assert result.status == "ready"
+        assert result.signal_state == "ok"
         assert result.direction == 1
         assert result.direction_label == "BULLISH"
         assert result.confidence == 0.63
@@ -72,6 +104,42 @@ class TestMLSignalSuccess:
 
 
 # ---------------------------------------------------------------------------
+# 1b. No validated signal (containment): never show a direction
+# ---------------------------------------------------------------------------
+
+class TestMLSignalNoEdge:
+    """An unvalidated model, or an engine without signal_state, fails closed."""
+
+    @pytest.mark.parametrize("signal_state", [None, "no_edge"])
+    @patch("services.ml_signal_service._fetch_reliability")
+    def test_unvalidated_signal_is_no_edge(self, mock_rel, signal_state):
+        payload = {
+            "direction": 1,
+            "confidence": 0.9,
+            "model_version": "lightgbm_alpha158_20260624",
+            "ml_engine_mode": "trained_lightgbm_baseline",
+            "lightgbm_loaded": True,
+        }
+        if signal_state is not None:
+            payload["signal_state"] = signal_state
+
+        result = _signal("TCS", payload)
+
+        assert result.status == "no_edge"
+        assert result.signal_state == "no_edge"
+        assert result.direction == 0
+        assert result.direction_label == "NO VALIDATED SIGNAL"
+        assert result.confidence is None
+        assert result.confidence_pct is None
+        assert result.reliability is None
+        assert result.warning
+        assert result.model_version == "lightgbm_alpha158_20260624"
+        assert result.ml_engine_mode == "trained_lightgbm_baseline"
+        assert result.lightgbm_loaded is True
+        mock_rel.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
 # 2. Timeout handling
 # ---------------------------------------------------------------------------
 
@@ -79,15 +147,8 @@ class TestMLSignalTimeout:
     """ML engine timeout produces graceful unavailable response."""
 
     @patch("services.ml_signal_service._fetch_reliability", return_value=None)
-    @patch("services.ml_signal_service.httpx.Client")
-    def test_ml_signal_timeout(self, mock_client_cls, _mock_rel):
-        mock_client = MagicMock()
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client.post.side_effect = httpx.TimeoutException("timed out")
-        mock_client_cls.return_value = mock_client
-
-        result = get_ml_signal("TCS")
+    def test_ml_signal_timeout(self, _mock_rel):
+        result = _signal("TCS", error=httpx.TimeoutException("timed out"))
 
         assert result.status == "unavailable"
         assert result.direction == 0
@@ -106,15 +167,8 @@ class TestMLSignalConnectionError:
     """ML engine connection refusal returns unavailable with warning."""
 
     @patch("services.ml_signal_service._fetch_reliability", return_value=None)
-    @patch("services.ml_signal_service.httpx.Client")
-    def test_ml_signal_connection_error(self, mock_client_cls, _mock_rel):
-        mock_client = MagicMock()
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client.post.side_effect = httpx.ConnectError("connection refused")
-        mock_client_cls.return_value = mock_client
-
-        result = get_ml_signal("INFY")
+    def test_ml_signal_connection_error(self, _mock_rel):
+        result = _signal("INFY", error=httpx.ConnectError("connection refused"))
 
         assert result.status == "unavailable"
         assert result.warning is not None
@@ -132,18 +186,8 @@ class TestMLSignalInvalidResponse:
     """Non-JSON or malformed ML engine response handled gracefully."""
 
     @patch("services.ml_signal_service._fetch_reliability", return_value=None)
-    @patch("services.ml_signal_service.httpx.Client")
-    def test_ml_signal_invalid_response(self, mock_client_cls, _mock_rel):
-        mock_client = MagicMock()
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_resp = MagicMock()
-        mock_resp.raise_for_status.return_value = None
-        mock_resp.json.side_effect = ValueError("Invalid JSON")
-        mock_client.post.return_value = mock_resp
-        mock_client_cls.return_value = mock_client
-
-        result = get_ml_signal("HDFC")
+    def test_ml_signal_invalid_response(self, _mock_rel):
+        result = _signal("HDFC", json_error=ValueError("Invalid JSON"))
 
         assert result.status == "unavailable"
         assert result.direction == 0
@@ -176,20 +220,14 @@ class TestMLSignalDirectionLabels:
         (0, "NEUTRAL"),
     ])
     @patch("services.ml_signal_service._fetch_reliability", return_value=None)
-    @patch("services.ml_signal_service.httpx.Client")
-    def test_ml_signal_direction_labels(self, mock_client_cls, _mock_rel, direction, expected_label):
-        """End-to-end: direction integer in ML response produces correct label."""
-        mock_client = MagicMock()
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client.post.return_value = _make_mock_response({
+    def test_ml_signal_direction_labels(self, _mock_rel, direction, expected_label):
+        """End-to-end: direction integer in a validated ML response produces correct label."""
+        result = _signal("SBIN", {
+            "signal_state": "ok",
             "direction": direction,
             "confidence": 0.50,
             "ml_engine_mode": "test",
         })
-        mock_client_cls.return_value = mock_client
-
-        result = get_ml_signal("SBIN")
         assert result.direction == direction
         assert result.direction_label == expected_label
 
@@ -209,37 +247,23 @@ class TestMLSignalConfidencePct:
         (0.501, 50),
     ])
     @patch("services.ml_signal_service._fetch_reliability", return_value=None)
-    @patch("services.ml_signal_service.httpx.Client")
-    def test_ml_signal_confidence_pct_calculation(
-        self, mock_client_cls, _mock_rel, raw_confidence, expected_pct
-    ):
-        mock_client = MagicMock()
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client.post.return_value = _make_mock_response({
+    def test_ml_signal_confidence_pct_calculation(self, _mock_rel, raw_confidence, expected_pct):
+        result = _signal("WIPRO", {
+            "signal_state": "ok",
             "direction": 1,
             "confidence": raw_confidence,
             "ml_engine_mode": "test",
         })
-        mock_client_cls.return_value = mock_client
-
-        result = get_ml_signal("WIPRO")
         assert result.confidence_pct == expected_pct
 
     @patch("services.ml_signal_service._fetch_reliability", return_value=None)
-    @patch("services.ml_signal_service.httpx.Client")
-    def test_ml_signal_null_confidence_yields_null_pct(self, mock_client_cls, _mock_rel):
+    def test_ml_signal_null_confidence_yields_null_pct(self, _mock_rel):
         """When ML engine omits confidence, both confidence and confidence_pct are None."""
-        mock_client = MagicMock()
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client.post.return_value = _make_mock_response({
+        result = _signal("LT", {
+            "signal_state": "ok",
             "direction": 0,
             "ml_engine_mode": "fallback",
         })
-        mock_client_cls.return_value = mock_client
-
-        result = get_ml_signal("LT")
         assert result.confidence is None
         assert result.confidence_pct is None
 
@@ -269,6 +293,21 @@ class TestMLSignalSchemaValidation:
         assert resp.feature_drivers == []
         assert resp.reliability is None
         assert resp.warning is None
+
+    def test_signal_state_is_optional_and_accepts_no_edge(self):
+        def build(signal_state=None):
+            return MLSignalResponse(
+                symbol="TCS",
+                direction=0,
+                direction_label="NO VALIDATED SIGNAL",
+                ml_engine_mode="trained_lightgbm_baseline",
+                generated_at=datetime.now(timezone.utc).isoformat(),
+                status="no_edge",
+                signal_state=signal_state,
+            )
+
+        assert build().signal_state is None
+        assert build("no_edge").signal_state == "no_edge"
 
     def test_valid_unavailable_response(self):
         resp = MLSignalResponse(

@@ -17,7 +17,7 @@ class MLReliability(BaseModel):
 class MLSignalResponse(BaseModel):
     symbol: str
     direction: int  # 1=bullish, -1=bearish, 0=neutral
-    direction_label: str  # "BULLISH", "BEARISH", "NEUTRAL"
+    direction_label: str  # "BULLISH", "BEARISH", "NEUTRAL", "NO VALIDATED SIGNAL"
     confidence: Optional[float] = None
     confidence_pct: Optional[int] = None
     model_version: Optional[str] = None
@@ -28,5 +28,6 @@ class MLSignalResponse(BaseModel):
     generated_at: str
     feature_drivers: List[FeatureDriver] = []
     reliability: Optional[MLReliability] = None
-    status: str  # "ready", "unavailable", "error"
+    status: str  # "ready", "no_edge", "unavailable", "error"
     warning: Optional[str] = None
+    signal_state: Optional[str] = None  # ml-engine signal_state: "ok" or "no_edge"

@@ -33,7 +33,7 @@ Versioned Artifact Registry (training/artifacts/<version>/)
 Production Deployment (models/lgb_model.txt + features.json)
   |
   v
-Inference Endpoint (LightGBM probability or heuristic fallback)
+Inference Endpoint (LightGBM P(up); a direction only for a gated model, else no_edge)
 ```
 
 Key source files:
@@ -46,7 +46,7 @@ Key source files:
 | `training/evaluation.py` | Aggregate metrics, calibration analysis, report generation |
 | `training/model_registry.py` | Versioned artifact storage and production deployment |
 | `training/data_adapter.py` | Data loading (CSV, Parquet, yfinance, synthetic) |
-| `pipeline/inference.py` | Production inference (trained model or heuristic fallback) |
+| `pipeline/inference.py` | Production inference (booster P(up); no_edge unless the model passed the gate) |
 | `models/lgb_model.py` | LGBEnsembleModel wrapper around LightGBM Booster |
 | `models/model_loader.py` | Unified loader for LightGBM, TRA, and scaler artifacts |
 | `config.py` | Feature list, model paths, LightGBM hyperparameters |
@@ -247,40 +247,42 @@ artifact = load_model_artifact("lightgbm_baseline_alpha158_v1_20260620")
 
 ## 6. Production Endpoint Behavior
 
-The `InferenceEngine` in `pipeline/inference.py` handles two modes at prediction time:
+The `InferenceEngine` in `pipeline/inference.py` serves the booster's output as a probability. It never turns an unvalidated model, or a heuristic, into a direction.
 
 ### Trained Model Mode
 
 When `models/lgb_model.txt` exists and loads successfully:
 
-- The LightGBM Booster receives a single-row Alpha158 feature vector and outputs a probability.
-- The raw probability is mapped to a discrete direction: `+1` (bullish) if probability > 0.505, `-1` (bearish) if probability < 0.495, `0` (neutral) otherwise.
-- Confidence is calibrated from the model probability using signal strength, feature coverage, volatility penalty, trend agreement, and RSV extremity.
-- Response metadata: `mode = "trained_lightgbm_baseline"`.
+- The booster must be a binary classifier (`objective=binary`). Startup fails otherwise, because the output is read as P(up) over the 20-day horizon, not as a return forecast.
+- The booster receives a single-row Alpha158 feature vector. Its output is returned as `p_up` (and `raw_score`). It is never compared with return-scale thresholds.
+- A direction is served only when `models/MANIFEST.json` records a passed promotion gate (`"gate": {"passed": true}`) together with the training `base_rate` (share of up labels) and a `neutral_band` chosen on held-out data. Then, with `edge = p_up - base_rate`:
+  - `expected_direction` is `+1` if `edge > neutral_band`, `-1` if `edge < -neutral_band`, `0` otherwise;
+  - `confidence_score = 0.5 + |edge|`, capped at `max_confidence` (0.5 means no edge over the base rate);
+  - `signal_state = "ok"`.
+- Without such a manifest, every response is `signal_state = "no_edge"` with `expected_direction = 0` and `confidence_score = 0.0`. The backend then reports "no validated signal" and the iOS app hides the direction and confidence. This is the current state: the shipped 3-tree booster outputs 0.52-0.63 for any input, so a 0.5 cut-off would label every stock bullish (the training up-rate is about 0.58).
+- Response metadata: `ml_engine_mode = "trained_lightgbm_baseline"`, plus `model_validated` (gate passed) and `base_rate` from the manifest.
 
-### Fallback Heuristic Mode
+### No Model, TRA and Ensemble
 
-When no trained model file exists:
-
-- A multi-factor heuristic blends short-term momentum (ROC5), medium-term momentum (ROC20), RSV mean-reversion, volatility dampening (STD5), and trend agreement.
-- The heuristic output is clipped to `[-0.05, +0.05]` and mapped through the same direction thresholds.
-- Response metadata: `mode = "fallback_technical_heuristic"`.
+When no trained model file exists, or `model_type` is `tra` or `ensemble` (no TRA weights ship), the response is `signal_state = "no_edge"` with `p_up = null`. No heuristic direction is produced.
 
 ### Response Shape
 
-Both modes return the same dict structure:
+All modes return the same dict structure:
 
 ```json
 {
-  "expected_direction": 1,
-  "confidence_score": 0.6234,
-  "raw_score": 0.0312,
-  "features_used": ["KMID", "ROC5", "STD20", "..."],
-  "model_version": "lightgbm_baseline_alpha158_v1_20260624"
+  "expected_direction": 0,
+  "confidence_score": 0.0,
+  "raw_score": 0.579334,
+  "p_up": 0.579334,
+  "base_rate": null,
+  "signal_state": "no_edge",
+  "features_used": ["KMID", "KLEN", "KMID2", "..."]
 }
 ```
 
-The `model_version` field is populated from `models/DEPLOYED_VERSION` when a trained model is active, allowing downstream consumers to track which model produced each prediction.
+`/predict/single` and `/predict/cross-section` add `model_validated`, `ml_engine_mode`, `lightgbm_loaded`, `horizon` and `model_version`. The `model_version` field is populated from `models/DEPLOYED_VERSION` when a trained model is active, allowing downstream consumers to track which model produced each prediction.
 
 ---
 

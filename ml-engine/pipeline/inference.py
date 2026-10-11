@@ -1,17 +1,22 @@
 """
-InferenceEngine — runs predictions using the loaded model and returns
-results in the quant_payload-compatible dict shape.
+InferenceEngine — runs the loaded LightGBM booster and returns results in the
+quant_payload-compatible dict shape.
 
-Supports three modes:
-  lightgbm  — tabular: single-row Alpha158 features -> scalar score
-  tra       — sequence: [seq_len, 158] -> scalar score via TRA PyTorch model
-  ensemble  — weighted average of lightgbm + tra scores
+The booster is a binary classifier (objective=binary): its output is P(up)
+over the training horizon, not a return forecast. A direction is served only
+for a model that passed the promotion gate (model_validated) with a known
+training base rate and neutral band; every other case (unvalidated model,
+no model, TRA/ensemble with no shipped TRA weights) returns signal_state
+"no_edge" with direction 0 and confidence 0.0.
 
 Output contract (matches quant_payload keys from orchestrator.py:§1893):
   {
-    "expected_direction": int (-1, 0, 1),
-    "confidence_score": float (0-1),
-    "raw_score": float (model output before thresholding),
+    "expected_direction": int (-1, 0, 1),  # always 0 unless signal_state == "ok"
+    "confidence_score": float (0-1),       # always 0.0 unless signal_state == "ok"
+    "raw_score": float | None,             # booster P(up); None without a booster
+    "p_up": float | None,
+    "base_rate": float | None,             # training base rate of the up class
+    "signal_state": "ok" | "no_edge",
     "features_used": list[str],
   }
 """
@@ -25,12 +30,7 @@ import numpy as np
 
 _LOG = logging.getLogger(__name__)
 
-# ── Direction thresholds ───────────────────────────────────────────────────────
-
-# Raw model score is a future return prediction (e.g. 0.02 = +2%).
-# These thresholds map it to discrete direction (-1, 0, 1).
-# Values are aligned with the existing quant_engine regime detection.
-DIRECTION_THRESHOLD = 0.005  # ±0.5% — below this = neutral
+_MODEL_TYPES = ("lightgbm", "tra", "ensemble")
 
 
 class InferenceEngine:
@@ -43,12 +43,34 @@ class InferenceEngine:
         lgb_params: dict[str, Any] | None = None,
         regime_thresholds: dict[str, Any] | None = None,
         confidence_config: dict[str, Any] | None = None,
+        lgb_objective: str | None = None,
+        model_validated: bool = False,
+        base_rate: float | None = None,
+        neutral_band: float | None = None,
     ) -> None:
+        # predict() reads the booster output as P(up); a booster trained on any
+        # other objective (e.g. a return regressor) would be silently misread.
+        if lightgbm_model is not None and not (lgb_objective or "").startswith("binary"):
+            raise ValueError(
+                f"Unsupported LightGBM objective {lgb_objective!r}: the inference "
+                "contract reads the booster output as P(up) from a binary classifier"
+            )
         self._lgb_model = lightgbm_model
         self._tra_model = tra_model
         self._lgb_params = lgb_params or {}
         self._regime = regime_thresholds or {}
         self._conf = confidence_config or {}
+        self._base_rate = None if base_rate is None else float(base_rate)
+        self._neutral_band = None if neutral_band is None else float(neutral_band)
+        self._validated = bool(model_validated) and lightgbm_model is not None
+        if self._validated:
+            if self._base_rate is None or self._neutral_band is None:
+                raise ValueError("A validated model needs base_rate and neutral_band")
+            if not (0.0 < self._base_rate < 1.0 and 0.0 <= self._neutral_band < 0.5):
+                raise ValueError(
+                    f"base_rate {self._base_rate} must be in (0, 1) and "
+                    f"neutral_band {self._neutral_band} in [0, 0.5)"
+                )
 
     def predict(
         self,
@@ -64,37 +86,44 @@ class InferenceEngine:
             model_type: "lightgbm", "tra", or "ensemble".
 
         Returns:
-            Dict with expected_direction, confidence_score, raw_score, features_used.
+            Dict with expected_direction, confidence_score, raw_score, p_up,
+            base_rate, signal_state and features_used.
         """
-        if model_type == "lightgbm":
-            raw_score = self._predict_lgb(features_df)
-        elif model_type == "tra":
-            raw_score = self._predict_tra(features_df)
-        elif model_type == "ensemble":
-            raw_lgb = self._predict_lgb(features_df)
-            raw_tra = self._predict_tra(features_df)
-            # Ensemble: 60% LightGBM + 40% TRA
-            raw_score = 0.6 * raw_lgb + 0.4 * raw_tra
-        else:
+        if model_type not in _MODEL_TYPES:
             raise ValueError(f"Unknown model_type: {model_type}")
 
-        direction = self._score_to_direction(raw_score)
-        confidence = self._calibrate_confidence(raw_score, features_df)
+        # Only the LightGBM booster yields a probability. No TRA weights ship,
+        # so tra/ensemble have no model output to serve.
+        p_up = None
+        if model_type == "lightgbm" and self._lgb_model is not None:
+            p_up = self._predict_lgb(features_df)
 
+        direction, confidence, signal_state = 0, 0.0, "no_edge"
+        base, band = self._base_rate, self._neutral_band
+        if p_up is not None and self._validated and base is not None and band is not None:
+            edge = p_up - base
+            if abs(edge) > band:
+                direction = 1 if edge > 0 else -1
+            # 0.5 at the base rate and rising with |edge|; equals the probability
+            # of the called outcome when the base rate is 0.5.
+            confidence = round(min(self._conf.get("max_confidence", 0.95), 0.5 + abs(edge)), 4)
+            signal_state = "ok"
+
+        p = None if p_up is None else round(p_up, 6)
         return {
             "expected_direction": direction,
             "confidence_score": confidence,
-            "raw_score": round(float(raw_score), 6),
+            "raw_score": p,
+            "p_up": p,
+            "base_rate": base,
+            "signal_state": signal_state,
             "features_used": list(features_df.columns)[:20],
         }
 
     # ── Model-specific prediction ──────────────────────────────────────────
 
     def _predict_lgb(self, features_df: Any) -> float:
-        """LightGBM prediction. Falls back to heuristic if model not loaded."""
-        if self._lgb_model is None:
-            return self._fallback_score(features_df)
-
+        """LightGBM prediction: the booster's P(up) for the single feature row."""
         # Convert Polars to numpy
         if hasattr(features_df, "to_numpy"):
             X = features_df.to_numpy().astype(np.float64)
@@ -105,150 +134,4 @@ class InferenceEngine:
             X = X.reshape(1, -1)
 
         preds = self._lgb_model.predict(X)
-        return float(preds[0]) if len(preds) > 0 else 0.0
-
-    def _predict_tra(self, features_df: Any) -> float:
-        """TRA PyTorch sequence prediction. Falls back to heuristic if not loaded."""
-        if self._tra_model is None:
-            return self._fallback_score(features_df)
-
-        import torch
-
-        if hasattr(features_df, "to_numpy"):
-            X = features_df.to_numpy().astype(np.float32)
-        else:
-            X = np.array(features_df, dtype=np.float32)
-
-        # TRA expects [batch=1, seq_len=60, features=158]
-        # If we only have 1 row, repeat it to pad to seq_len
-        seq_len = 60
-        if X.shape[0] < seq_len:
-            padding = np.tile(X[0:1], (seq_len - X.shape[0], 1))
-            X = np.vstack([padding, X])  # pad at start so latest is at end
-        X = X[-seq_len:]  # take last seq_len rows
-
-        tensor = torch.from_numpy(X).unsqueeze(0)  # [1, 60, 158]
-        with torch.no_grad():
-            # TRA model needs hist_errors — pass zeros for cold start
-            hist_errors = torch.zeros(1, self._tra_model.num_states)
-            output = self._tra_model(tensor, hist_errors)
-        return float(output.item())
-
-    def _fallback_score(self, features_df: Any) -> float:
-        """Multi-factor heuristic combining momentum, mean-reversion, and volatility.
-
-        Used when no trained model is available. Balances trend-following
-        with overbought/oversold detection to avoid always-bullish bias.
-        """
-        def _get(col: str, default: float) -> float:
-            if col not in col_list:
-                return default
-            val = features_df[col][0]
-            return float(val) if val is not None else default
-
-        columns = features_df.columns if hasattr(features_df, "columns") else []
-        col_list = list(columns)
-
-        # Alpha158 ROC = Ref(close, N) / close
-        # ROC < 1 means price rose over N days (bullish momentum)
-        # ROC > 1 means price fell over N days (bearish momentum)
-        roc5 = _get("ROC5", 1.0)
-        roc20 = _get("ROC20", 1.0)
-
-        # Short-term momentum: how much price moved in 5 days
-        short_mom = 1.0 - roc5   # positive = bullish
-        # Medium-term momentum: how much price moved in 20 days
-        med_mom = 1.0 - roc20    # positive = bullish
-
-        # RSV: position within N-day range [0=bottom, 1=top]
-        rsv5 = _get("RSV5", 0.5)
-        rsv20 = _get("RSV20", 0.5)
-
-        # Overbought/oversold: blend short and medium RSV for mean-reversion
-        rsv_blend = 0.4 * rsv5 + 0.6 * rsv20
-        overbought_penalty = max(0.0, (rsv_blend - 0.7) * 3.0)
-        oversold_boost = max(0.0, (0.3 - rsv_blend) * 3.0)
-
-        # Volatility: high STD relative to price = uncertain = dampen signal
-        std5 = _get("STD5", 0.01)
-        vol_dampening = 1.0 / (1.0 + std5 * 50.0)  # high vol -> lower confidence
-
-        # Trend divergence: short-term vs medium-term disagreement
-        # If short momentum and medium momentum disagree, reduce signal
-        divergence = abs(short_mom - med_mom)
-        agreement_mult = 1.0 / (1.0 + divergence * 10.0)
-
-        # Composite: blend momentum with mean-reversion
-        raw_momentum = 0.5 * short_mom + 0.5 * med_mom
-        mean_reversion = oversold_boost - overbought_penalty
-
-        score = (0.6 * raw_momentum + 0.4 * mean_reversion) * vol_dampening * agreement_mult
-
-        return np.clip(score * 0.05, -0.05, 0.05)
-
-    # ── Direction mapping ──────────────────────────────────────────────────
-
-    @staticmethod
-    def _score_to_direction(raw_score: float) -> int:
-        """Map raw return prediction to discrete direction.
-
-        Threshold of ±0.5% separates signal from noise.
-        Matches the existing quant_engine confidence calibration.
-        """
-        if raw_score > DIRECTION_THRESHOLD:
-            return 1
-        elif raw_score < -DIRECTION_THRESHOLD:
-            return -1
-        return 0
-
-    # ── Confidence calibration ─────────────────────────────────────────────
-
-    def _calibrate_confidence(self, raw_score: float, features_df: Any) -> float:
-        """Calibrate confidence score (0-1) from model output.
-
-        Five components combined multiplicatively:
-        1. Signal magnitude — stronger |score| = higher base confidence
-        2. Feature coverage — more valid windows = more data = higher confidence
-        3. Volatility penalty — high STD = uncertain = lower confidence
-        4. Trend agreement — short/medium momentum agreement boosts confidence
-        5. Extremity boost — RSV near 0 or 1 = clearer signal
-        """
-        min_conf = self._conf.get("min_confidence", 0.05)
-        max_conf = self._conf.get("max_confidence", 0.95)
-
-        def _get(col: str, default: float) -> float:
-            if not hasattr(features_df, "columns") or col not in features_df.columns:
-                return default
-            val = features_df[col][0]
-            return float(val) if val is not None else default
-
-        # 1. Signal strength: sigmoid scaled for typical heuristic range [0, 0.05]
-        # Use a gentler scaling (×40) to spread the range more
-        abs_score = abs(raw_score)
-        signal_conf = 1.0 / (1.0 + np.exp(-abs_score * 40))  # [0.5, ~0.88] for [0, 0.05]
-
-        # 2. Feature coverage: count how many of the 5 windows produced non-zero features
-        coverage = 0
-        for w in [5, 10, 20, 30, 60]:
-            if _get(f"ROC{w}", 0.0) != 0.0:
-                coverage += 1
-        coverage_mult = 0.5 + 0.5 * (coverage / 5.0)  # [0.5, 1.0]
-
-        # 3. Volatility penalty: high STD5 = noisy = less confident
-        std5 = _get("STD5", 0.01)
-        vol_penalty = 1.0 / (1.0 + std5 * 30.0)  # [0.25, 1.0] for typical range
-
-        # 4. Trend agreement: short vs medium momentum alignment
-        roc5 = _get("ROC5", 1.0)
-        roc20 = _get("ROC20", 1.0)
-        short_dir = np.sign(1.0 - roc5)
-        med_dir = np.sign(1.0 - roc20)
-        agreement = 0.8 if short_dir != med_dir else 1.0
-
-        # 5. Extremity: RSV near 0 or 1 = clearer directional signal
-        rsv20 = _get("RSV20", 0.5)
-        extremity = abs(rsv20 - 0.5) * 2.0  # [0, 1]
-        extremity_mult = 1.0 + extremity * 0.15
-
-        confidence = signal_conf * coverage_mult * vol_penalty * agreement * extremity_mult
-        return round(float(np.clip(confidence, min_conf, max_conf)), 4)
+        return float(preds[0])

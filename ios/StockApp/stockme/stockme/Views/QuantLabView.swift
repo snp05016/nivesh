@@ -175,10 +175,10 @@ struct ModelSignalSection: View {
                 QuantLabLoadingCard()
             } else if let error = error {
                 QuantLabErrorCard(message: error)
-            } else if let signal = signal {
+            } else if let signal = signal, signal.status == "ready" {
                 ModelSignalContent(signal: signal)
             } else {
-                QuantLabEmptyCard(message: "ML signal unavailable for this symbol.")
+                QuantLabEmptyCard(message: signal?.warning ?? "ML signal unavailable for this symbol.")
             }
         }
     }

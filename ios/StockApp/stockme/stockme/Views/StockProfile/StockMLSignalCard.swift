@@ -15,10 +15,11 @@ struct StockMLSignalCard: View {
                 MLSignalShimmerContent()
             } else if let error = error {
                 MLSignalErrorContent(message: error)
-            } else if let signal = signal {
+            } else if let signal = signal, signal.status == "ready" {
                 MLSignalLoadedContent(signal: signal, onOpenQuantLab: onOpenQuantLab)
             } else {
-                MLSignalUnavailableContent(onOpenQuantLab: onOpenQuantLab)
+                // no_edge (no validated model) or unavailable: no direction or confidence
+                MLSignalUnavailableContent(message: signal?.warning, onOpenQuantLab: onOpenQuantLab)
             }
         }
         .padding(Theme.Spacing.card)
@@ -226,6 +227,7 @@ private struct MLSignalShimmerContent: View {
 // MARK: - Unavailable State
 
 private struct MLSignalUnavailableContent: View {
+    var message: String? = nil
     let onOpenQuantLab: () -> Void
 
     var body: some View {
@@ -239,7 +241,7 @@ private struct MLSignalUnavailableContent: View {
                         .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
                         .tracking(1.2)
                         .foregroundStyle(Theme.inkTertiary)
-                    Text("Signal unavailable — tap to explore Quant Lab")
+                    Text(message ?? "Signal unavailable — tap to explore Quant Lab")
                         .font(.caption2)
                         .foregroundStyle(Theme.inkTertiary.opacity(0.7))
                 }
