@@ -64,6 +64,7 @@ class PortfolioScreenViewModel: ObservableObject {
 
     @Published var watchlistItems: [WatchlistItem] = []
     @Published var watchlistLoading = false
+    @Published var watchlistError: String? = nil
 
     func fetchData(userId: Int) async {
         isLoading = true
@@ -89,13 +90,16 @@ class PortfolioScreenViewModel: ObservableObject {
         watchlistLoading = false
     }
 
+    /// Optimistic: the row disappears at once and comes back if the DELETE fails.
     func removeFromWatchlist(ticker: String, userId: Int) async {
+        let old = watchlistItems
+        watchlistItems.removeAll { $0.ticker == ticker }
         do {
             try await NetworkManager.shared.removeFromWatchlist(userId: userId, ticker: ticker)
-            await fetchWatchlist(userId: userId)
             NotificationCenter.default.post(name: .watchlistUpdated, object: nil)
         } catch {
-            print("Watchlist remove error: \(error)")
+            watchlistItems = old
+            watchlistError = "\(ticker) is still on your watchlist. Check your connection and try again."
         }
     }
 
@@ -304,53 +308,7 @@ struct PortfolioScreen: View {
                                 .banknoteCard()
                                 .padding(.horizontal, Theme.screenPadding)
                             } else if selectedTab == 1 {
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: Theme.Spacing.medium) {
-                                        ForEach(tagsManager.allUniqueTags, id: \.self) { tag in
-                                            Button { HapticManager.selection(); 
-    HapticManager.selection()
-                                                HapticManager.selection()
-                                                activeWatchlistTag = activeWatchlistTag == tag ? nil : tag
-                                            } label: {
-                                                Text(tag.uppercased())
-                                                    .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
-                                                    .foregroundStyle(activeWatchlistTag == tag ? Theme.canvasDeep : Theme.inkPrimary)
-                                                    .padding(.horizontal, Theme.Spacing.standard)
-                                                    .padding(.vertical, Theme.Spacing.tight)
-                                                    .background(Capsule().fill(activeWatchlistTag == tag ? Theme.securityGold : Theme.canvasDeep))
-                                            }
-                                            .buttonStyle(EKPressStyle())
-                                        }
-                                    }
-                                    .padding(.horizontal, Theme.screenPadding)
-                                }
-                                ScrollView(.horizontal) {
-                                    HStack(spacing: Theme.Spacing.standard) {
-                                        ForEach(viewModel.watchlistItems.filter { item in
-                                            activeWatchlistTag == nil || (tagsManager.tags[item.ticker]?.contains(activeWatchlistTag!) ?? false)
-                                        }) { item in
-                                            Button { HapticManager.selection(); 
-    HapticManager.selection()
-                                                HapticManager.selection()
-                                                stockTapTicker = item.ticker
-                                                stockTapCompanyName = item.companyName
-                                                showStockTapAction = true
-                                            } label: {
-                                                WatchlistRowView(item: item, tags: tagsManager.tags[item.ticker] ?? [], onRemove: {
-                                                    guard let user = authManager.currentUser else { return }
-                                                    Task { await viewModel.removeFromWatchlist(ticker: item.ticker, userId: user.userId) }
-                                                }, onTag: {
-                                                    taggingTicker = item.ticker
-                                                    showTagSheet = true
-                                                })
-                                                .frame(width: UIScreen.main.bounds.width * 0.62)
-                                            }
-                                            .buttonStyle(.plain)
-                                        }
-                                    }
-                                    .padding(.horizontal, Theme.screenPadding)
-                                }
-                                .scrollIndicators(.hidden)
+                                watchlistTabContent
                             } else if selectedTab == 2 {
                                 if let user = authManager.currentUser {
                                     TradeJournalScreen(userId: user.userId)
@@ -540,6 +498,15 @@ struct PortfolioScreen: View {
                 },
                 .cancel()
             ]
+        )
+        .sheet(isPresented: $showTagSheet) {
+            TaggingSheet(ticker: taggingTicker, tagsManager: tagsManager)
+        }
+        .banknoteDialog(
+            "Couldn't remove stock",
+            isPresented: Binding(get: { viewModel.watchlistError != nil }, set: { if !$0 { viewModel.watchlistError = nil } }),
+            message: viewModel.watchlistError,
+            buttons: [.init("OK")]
         )
         .banknoteDialog(
             "Couldn't update holding",
@@ -734,20 +701,22 @@ struct PortfolioScreen: View {
                         stockTapCompanyName = item.companyName
                         showStockTapAction = true
                     } label: {
-                        WatchlistRowView(item: item, tags: tagsManager.tags[item.ticker] ?? [], onRemove: {
-                            guard let user = authManager.currentUser else { return }
-                            Task { await viewModel.removeFromWatchlist(ticker: item.ticker, userId: user.userId) }
-                        }, onTag: {
-                            taggingTicker = item.ticker
-                            showTagSheet = true
-                        })
+                        WatchlistRowView(item: item, tags: tagsManager.tags[item.ticker] ?? [])
                     }
                     .buttonStyle(.plain)
+                    // swipeActions only work inside a List; this tab is a plain stack, so long-press it is.
+                    .contextMenu {
+                        Button("Tag") { HapticManager.selection()
+                            taggingTicker = item.ticker
+                            showTagSheet = true
+                        }
+                        Button("Remove from Watchlist", role: .destructive) { HapticManager.selection()
+                            guard let user = authManager.currentUser else { return }
+                            Task { await viewModel.removeFromWatchlist(ticker: item.ticker, userId: user.userId) }
+                        }
+                    }
+                    .padding(.horizontal, Theme.screenPadding)
                 }
-            }
-            .padding(.horizontal, activeWatchlistTag == nil || tagsManager.allUniqueTags.isEmpty ? Theme.screenPadding : 0) // adjusted padding since scrollview needs full width
-            .sheet(isPresented: $showTagSheet) {
-                TaggingSheet(ticker: taggingTicker, tagsManager: tagsManager)
             }
         }
     }
@@ -1312,8 +1281,6 @@ private struct StatNoteBlock: View {
 private struct WatchlistRowView: View {
     let item: WatchlistItem
     var tags: [String] = []
-    let onRemove: () -> Void
-    let onTag: () -> Void
 
     var body: some View {
         HStack(spacing: Theme.Spacing.none) {
@@ -1362,16 +1329,6 @@ private struct WatchlistRowView: View {
             .padding(.trailing, Theme.Spacing.card)
         }
         .banknoteCard()
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive, action: { HapticManager.selection(); onRemove() }) { Label("Remove", systemImage: "trash")
-            }
-            .tint(Theme.bearRed)
-        }
-        .swipeActions(edge: .leading) {
-            Button(action: { HapticManager.selection(); onTag() }) { Label("Tag", systemImage: "tag")
-            }
-            .tint(Theme.securityGold)
-        }
     }
 }
 
