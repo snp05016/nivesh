@@ -73,7 +73,8 @@ def nifty_history_endpoint(days: int = Query(365, ge=1, le=3650)):
                     time.sleep((1.5 * (2 ** attempt)) + (random.random() * 0.5))
 
         if hist is None or hist.empty:
-            return {"prices": []}
+            # [] would read as "no history"; iOS treats non-2xx as unavailable.
+            raise HTTPException(status_code=503, detail="NIFTY history unavailable")
 
         result = []
         for date, row in hist.iterrows():
@@ -84,7 +85,10 @@ def nifty_history_endpoint(days: int = Query(365, ge=1, le=3650)):
         payload = {"prices": result}
         _dcache_set("market", cache_key, payload, ttl=1800)
         return _trim_nifty_prices(payload, days)
-    except Exception as e:
+    except HTTPException:
+        raise
+    except Exception:
+        logging.exception("[NIFTY-HISTORY] failed")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/dividends/{ticker}")

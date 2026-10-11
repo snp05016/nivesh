@@ -13,8 +13,8 @@ def test_all_keys_present_and_graceful(monkeypatch):
     monkeypatch.setattr(ex, "_compute_piotroski", lambda *a, **k: None)
     monkeypatch.setattr(ex, "_financial_trends", lambda *a, **k: None)
     monkeypatch.setattr(ex, "_ownership_trends", lambda *a, **k: None)
-    # conftest mocks services.nse_data_provider as a MagicMock, so the missing
-    # get_sector_peers import "succeeds" in tests; in prod it ImportErrors → [].
+    # nse_data_provider is the real module in tests (TEST-12); no peer source is
+    # wired yet, so stub the peer bundle to its production value.
     monkeypatch.setattr(ex, "_peer_comparison", lambda *a, **k: [])
     out = ex.build_extreme_bundles("ZZZZ", "NSE")
     assert set(out) == {"factor_scores", "piotroski", "financial_trends",

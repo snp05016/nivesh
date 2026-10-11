@@ -122,8 +122,8 @@ struct PromoterHistoryPoint: Codable, Identifiable {
     var id: String { period }
     let period: String
     let promoter: Double
-    let fii: Double
-    let dii: Double
+    let fii: Double?  // null when the analysis has no FII figure (SILENT-21)
+    let dii: Double?
 }
 
 // MARK: - Risk Analysis

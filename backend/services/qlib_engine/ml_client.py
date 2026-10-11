@@ -10,6 +10,7 @@ orchestrator and never cause 500s.
 import os
 import asyncio
 import logging
+import time as _time
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
@@ -27,6 +28,20 @@ ML_MAX_HISTORY_ROWS = 252
 _IST = ZoneInfo("Asia/Kolkata")
 # NSE closes at 15:30 IST; the day's bar is treated as final from 15:45.
 _SESSION_FINAL_AT = time(15, 45)
+
+# Last WARNING time per failure reason, so an ml-engine outage logs once a minute
+# per cause instead of once per analysis.
+# ponytail: per-process throttle; a metrics counter replaces it when one exists.
+_WARN_INTERVAL_S = 60.0
+_last_warned: dict[str, float] = {}
+
+
+def _warn(reason: str, msg: str, *args, **kwargs) -> None:
+    now = _time.monotonic()
+    if now - _last_warned.get(reason, float("-inf")) < _WARN_INTERVAL_S:
+        return
+    _last_warned[reason] = now
+    logger.warning(msg, *args, **kwargs)
 
 
 def ml_engine_headers() -> dict[str, str]:
@@ -125,6 +140,12 @@ async def predict_cross_section(ticker: str, ohlcv_data: list) -> dict | None:
                     "fallback_used": fallback_used,
                     "p_up": data.get("p_up"),
                 }
+            _warn(
+                f"http_{response.status_code}",
+                "[ml_client] ml-engine /predict/single returned %s: %s",
+                response.status_code,
+                response.text[:200],
+            )
             return None
     except (
         httpx.TimeoutException,
@@ -135,7 +156,8 @@ async def predict_cross_section(ticker: str, ohlcv_data: list) -> dict | None:
         ValueError,
         OSError,
         RuntimeError,
-    ):
+    ) as exc:
+        _warn(type(exc).__name__, "[ml_client] ml-engine call failed: %r", exc)
         return None
 
 
@@ -153,7 +175,7 @@ def predict_cross_section_sync(ticker: str, ohlcv_data: list) -> dict | None:
             predict_cross_section(ticker, ohlcv_data)
         )
     except Exception as e:
-        logger.warning("[ml_client] sync call failed: %s", type(e).__name__)
+        _warn("sync", "[ml_client] sync call failed: %s", type(e).__name__, exc_info=True)
         return None
     finally:
         loop.close()

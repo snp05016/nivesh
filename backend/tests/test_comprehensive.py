@@ -203,8 +203,8 @@ class TestMarketEndpoints:
     def test_nifty_history(self):
         """Test Nifty history endpoint."""
         response = client.get("/nifty-history?days=30")
-        assert response.status_code == 200
-        assert "prices" in response.json()
+        # yfinance is mocked empty: no history is a 503, not {"prices": []} (SILENT-21).
+        assert response.status_code == 503
     
     def test_sector_performance(self):
         """Test sector performance endpoint."""

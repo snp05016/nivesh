@@ -894,6 +894,7 @@ def screener_endpoint(preset: str):
         raise HTTPException(status_code=503, detail="Market data service temporarily unavailable. Try again in a few minutes.")
     try:
         results = []
+        failures = 0  # per-candidate lookups that raised or got no market data
 
         if preset == "ghar_ghar_modi":
             try:
@@ -915,14 +916,18 @@ def screener_endpoint(preset: str):
                     try:
                         ns = _to_ns(ticker)
                         info = _yf_fetch_info(ns)
+                        if not info:  # breaker open or yfinance failed
+                            failures += 1
+                            continue
                         pe = info.get("trailingPE") or info.get("forwardPE")
                         sector = info.get("sector") or "Unknown"
                         sector_pe = SECTOR_PE_MAP.get(sector, 25)
                         if pe is None or pe <= 0 or pe >= sector_pe:
                             continue
                         # Piotroski F-Score check
-                        f_score = compute_piotroski(ticker)
-                        if f_score < 7:
+                        # compute_piotroski returns a dict; f_score is None when data is short.
+                        f_score = compute_piotroski(ticker).get("f_score")
+                        if f_score is None or f_score < 7:
                             continue
                         company = info.get("longName") or info.get("shortName") or ticker
                         results.append({
@@ -935,7 +940,8 @@ def screener_endpoint(preset: str):
                             "pe_ratio": round(pe, 1),
                         })
                     except Exception as e:
-                        logging.warning(f"Caught exception: {e}")
+                        logging.warning(f"[SCREENER {preset}] candidate failed: {e}", exc_info=True)
+                        failures += 1
                         continue
                 results = results[:12]
             except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
@@ -983,7 +989,8 @@ def screener_endpoint(preset: str):
                             "profit_growth_pct": round(float(profit_growth), 1),
                         })
                     except Exception as e:
-                        logging.warning(f"Caught exception: {e}")
+                        logging.warning(f"[SCREENER {preset}] candidate failed: {e}", exc_info=True)
+                        failures += 1
                         continue
                 results = results[:12]
             except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
@@ -1007,6 +1014,9 @@ def screener_endpoint(preset: str):
                         try:
                             ns = _to_ns(r.ticker)
                             info = _yf_fetch_info(ns)
+                            if not info:  # breaker open or yfinance failed
+                                failures += 1
+                                continue
                             rsi_val = None
                             # Try to get RSI from various yfinance fields or compute approximate
                             try:
@@ -1020,8 +1030,9 @@ def screener_endpoint(preset: str):
                                     rs = gain / loss.replace(0, 1e-10)
                                     rsi_val = 100 - (100 / (1 + float(rs.iloc[-1])))
                             except Exception as e:
-                                logging.warning(f"Caught exception: {e}")
-                                rsi_val = None
+                                logging.warning(f"[SCREENER {preset}] history fetch failed for {ns}: {e}")
+                                failures += 1
+                                continue
                             if rsi_val is None or rsi_val >= 30:
                                 continue
                             # Check PCR from options using options_scraper (avoid yfinance rate limits)
@@ -1048,7 +1059,8 @@ def screener_endpoint(preset: str):
                                 "pcr": pcr_val,
                             })
                         except Exception as e:
-                            logging.warning(f"Caught exception: {e}")
+                            logging.warning(f"[SCREENER {preset}] candidate failed: {e}", exc_info=True)
+                            failures += 1
                             continue
                 results = results[:12]
             except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
@@ -1074,6 +1086,9 @@ def screener_endpoint(preset: str):
                     try:
                         ns = _to_ns(ticker)
                         info = _yf_fetch_info(ns)
+                        if not info:  # breaker open or yfinance failed
+                            failures += 1
+                            continue
                         pe = info.get("trailingPE") or info.get("forwardPE")
                         sector = info.get("sector") or "Unknown"
                         sector_pe = SECTOR_PE_MAP.get(sector, 25)
@@ -1088,7 +1103,8 @@ def screener_endpoint(preset: str):
                             "reason": f"Signal: {signal}, Confidence: {conf}%, PE below sector avg",
                         })
                     except Exception as e:
-                        logging.warning(f"Caught exception: {e}")
+                        logging.warning(f"[SCREENER {preset}] candidate failed: {e}", exc_info=True)
+                        failures += 1
                         continue
                 results = results[:12]
             except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
@@ -1136,7 +1152,8 @@ def screener_endpoint(preset: str):
                                 "reason": f"Low pledging ({pledged:.1f}%), signal: {r.signal}",
                             })
                         except Exception as e:
-                            logging.warning(f"Caught exception: {e}")
+                            logging.warning(f"[SCREENER {preset}] candidate failed: {e}", exc_info=True)
+                            failures += 1
                             continue
                 results = results[:12]
             except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
@@ -1175,7 +1192,8 @@ def screener_endpoint(preset: str):
                                 "reason": f"FII increased: {fii1:.1f}% → {fii0:.1f}%",
                             })
                         except Exception as e:
-                            logging.warning(f"Caught exception: {e}")
+                            logging.warning(f"[SCREENER {preset}] candidate failed: {e}", exc_info=True)
+                            failures += 1
                             continue
                 results = results[:12]
             except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
@@ -1209,7 +1227,8 @@ def screener_endpoint(preset: str):
                                 "reason": ts_story.strip()[:60],
                             })
                         except Exception as e:
-                            logging.warning(f"Caught exception: {e}")
+                            logging.warning(f"[SCREENER {preset}] candidate failed: {e}", exc_info=True)
+                            failures += 1
                             continue
                 results = results[:12]
             except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
@@ -1233,6 +1252,9 @@ def screener_endpoint(preset: str):
                     try:
                         ns = _to_ns(ticker)
                         info = _yf_fetch_info(ns)
+                        if not info:  # breaker open or yfinance failed
+                            failures += 1
+                            continue
                         current = info.get("currentPrice") or info.get("regularMarketPrice")
                         low52 = info.get("fiftyTwoWeekLow")
                         if not current or not low52 or low52 <= 0:
@@ -1253,17 +1275,26 @@ def screener_endpoint(preset: str):
                             "reason": "Price near 52W low, signal bullish",
                         })
                     except Exception as e:
-                        logging.warning(f"Caught exception: {e}")
+                        logging.warning(f"[SCREENER {preset}] candidate failed: {e}", exc_info=True)
+                        failures += 1
                         continue
                 results = results[:12]
             except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
                 logging.info(f"[SCREENER 52w_low_bullish] {_se}")
 
         else:
-            return []
+            raise HTTPException(status_code=400, detail="Unknown preset")
 
-        _yf_circuit_record_success()
+        # _yf_fetch_info records its own successes; a blanket success here would
+        # reset the breaker after the per-candidate failures above.
+        if failures:
+            logging.warning("[SCREENER %s] %d candidate lookups failed, %d results", preset, failures, len(results))
+            if not results:
+                _yf_circuit_record_failure()
+                raise HTTPException(status_code=503, detail="Market data temporarily unavailable")
         return results
+    except HTTPException:
+        raise
     except Exception:
         logging.exception("[SCREENER] Top-level error")
         _yf_circuit_record_failure()
@@ -1389,12 +1420,14 @@ def daily_action_endpoint(user_id: int, _caller: int = Depends(require_user_matc
                     log_endpoint="daily_action",
                 ).strip().rstrip(".")
             except Exception as e:
-                logging.info(f"[DAILY-ACTION] DeepSeek failed: {e}")
+                logging.warning(f"[DAILY-ACTION] DeepSeek failed, serving the static action: {e}")
 
         return {"action": action, "urgency": urgency}
 
-    except Exception as e:
-        return {"action": "Check your portfolio for any recent signal changes.", "urgency": "low"}
+    except Exception:
+        # A canned low-urgency tip would hide an outage; iOS hides the card on non-2xx.
+        logging.exception("[DAILY-ACTION] failed")
+        raise HTTPException(status_code=503, detail="Daily action unavailable")
 
 
 # ---------------------------------------------------------------------------

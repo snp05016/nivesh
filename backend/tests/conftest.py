@@ -49,8 +49,6 @@ _HEAVY_MODS = [
     "yfinance",
     "openpyxl",
     "openpyxl.styles",
-    "services.options_scraper",
-    "services.nse_data_provider",
 ]
 
 # fpdf / fpdf2 need real ModuleSpec objects so that importlib.util.find_spec() returns None
@@ -123,14 +121,6 @@ _anthropic_msg = MagicMock()
 _anthropic_msg.content = [MagicMock(text='{"signal":"BULLISH"}')]
 _anthropic_msg.usage = MagicMock(input_tokens=100, output_tokens=50)
 _anthropic_client.messages.create.return_value = _anthropic_msg
-
-_options = sys.modules["services.options_scraper"]
-_options.fetch_option_chain.return_value = {}
-_options.compute_derivatives_metrics.return_value = {}
-
-_nse_dp = sys.modules["services.nse_data_provider"]
-_nse_dp.get_price_history.return_value = []
-_nse_dp.get_fundamentals.return_value = {}
 
 # ---------------------------------------------------------------------------
 # STEP 2: Test environment
@@ -224,16 +214,32 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pytest
 from fastapi.testclient import TestClient
 
-# Patch services.disk_cache before app import
-_disk_cache_mock = MagicMock()
-_disk_cache_mock.get.return_value = None
-_disk_cache_mock.set.return_value = None
-_disk_cache_mock.stats.return_value = {"hits": 0, "misses": 0}
-sys.modules["services.disk_cache"] = _disk_cache_mock
+# TEST-12: services.disk_cache, piotroski, nse_data_provider and options_scraper
+# are the real modules (a MagicMock module hid missing imports and parsing
+# regressions). Only their network edges are stubbed, before the app import so
+# `from X import f` call sites bind the stubs; yfinance is the mock above.
+# The shared cache never touches Redis: its default localhost:6379 is the
+# production Redis on the server. Entries live in its memory fallback,
+# cleared per test by _clear_shared_cache.
+import services.cache_service as _cache_service
+_cache_service.cache._down_until = float("inf")
 
-_piotroski_mock = MagicMock()
-_piotroski_mock.compute_piotroski.return_value = {"score": 5, "interpretation": "Strong"}
-sys.modules["services.piotroski"] = _piotroski_mock
+import services.nse_data_provider as _nse_dp
+import services.options_scraper as _options
+
+for _mod, _stubs in (
+    (_nse_dp, {
+        "get_price_history": lambda *_a, **_k: None,
+        "get_fundamentals": lambda *_a, **_k: {},
+        "fetch_info": lambda *_a, **_k: {},
+        "download_bhavcopy": lambda *_a, **_k: {},
+        "get_delivery_data": lambda *_a, **_k: {},
+    }),
+    (_options, {"fetch_option_chain": lambda *_a, **_k: None}),
+):
+    for _name, _stub in _stubs.items():
+        assert hasattr(_mod, _name), f"{_mod.__name__}.{_name} no longer exists"
+        setattr(_mod, _name, _stub)
 
 from main import app
 import database as _database
@@ -264,6 +270,14 @@ def _reset_rate_limiter():
     _rate_limit_store.clear()
     yield
     _rate_limit_store.clear()
+
+
+@pytest.fixture(autouse=True)
+def _clear_shared_cache():
+    """Start every test with an empty shared cache (TEST-12: disk_cache is real now)."""
+    with _cache_service.cache._lock:
+        _cache_service.cache._fallback_cache.clear()
+    yield
 
 
 @pytest.fixture(autouse=True)

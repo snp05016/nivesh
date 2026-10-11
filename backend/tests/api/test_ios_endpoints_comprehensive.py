@@ -162,7 +162,8 @@ def test_piotroski_endpoint(client):
     resp = client.get("/fundamentals/piotroski/RELIANCE")
     assert resp.status_code == 200
     data = resp.json()
-    assert "score" in data
+    # The real compute_piotroski runs now (TEST-12), not a {"score": 5} mock.
+    assert "f_score" in data and "grade" in data
 
 
 def test_macro_context_endpoint(client):

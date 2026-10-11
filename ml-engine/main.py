@@ -245,16 +245,16 @@ def _detect_model_version(model_path: Path) -> str | None:
     if deployed_version_file.exists():
         try:
             return deployed_version_file.read_text().strip()
-        except Exception:
-            pass
+        except Exception as exc:
+            _LOG.warning("Model version detection failed at %s: %s", deployed_version_file, exc)
 
     # Check for VERSION file next to the model
     version_file = model_path.parent / "VERSION"
     if version_file.exists():
         try:
             return version_file.read_text().strip()
-        except Exception:
-            pass
+        except Exception as exc:
+            _LOG.warning("Model version detection failed at %s: %s", version_file, exc)
 
     # Check training/artifacts for version directories or metadata
     artifacts_dir = model_path.parent.parent / "training" / "artifacts"
@@ -265,8 +265,8 @@ def _detect_model_version(model_path: Path) -> str | None:
             try:
                 meta = json.loads(meta_file.read_text())
                 return meta.get("version") or meta.get("model_version")
-            except Exception:
-                pass
+            except Exception as exc:
+                _LOG.warning("Model version detection failed at %s: %s", meta_file, exc)
 
         # Fall back to latest versioned subdirectory name
         try:
@@ -276,8 +276,8 @@ def _detect_model_version(model_path: Path) -> str | None:
             )
             if version_dirs:
                 return version_dirs[0]
-        except Exception:
-            pass
+        except Exception as exc:
+            _LOG.warning("Model version detection failed at %s: %s", artifacts_dir, exc)
 
     return None
 

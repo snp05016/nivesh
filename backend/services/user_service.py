@@ -269,9 +269,10 @@ def get_experts_service() -> dict:
             })
         experts.sort(key=lambda e: e["post_count"], reverse=True)
         return {"experts": experts[:20], "fetched_at": now_iso}
-    except Exception as e:
-        logging.info(f"[EXPERTS] {e}")
-        return {"experts": [], "fetched_at": now_iso}
+    except Exception:
+        # An empty list would read as "no experts yet"; let the failure surface as a 500.
+        logging.exception("[EXPERTS] failed")
+        raise
 
 
 def get_expert_posts_service(limit: int = 30) -> dict:
@@ -301,9 +302,10 @@ def get_expert_posts_service(limit: int = 30) -> dict:
                 "stance": r.stance,
             })
         return {"posts": posts, "fetched_at": now_iso}
-    except Exception as e:
-        logging.info(f"[EXPERT-POSTS] {e}")
-        return {"posts": [], "fetched_at": now_iso}
+    except Exception:
+        # An empty list would read as "no experts yet"; let the failure surface as a 500.
+        logging.exception("[EXPERT-POSTS] failed")
+        raise
 
 
 def fetch_error_telemetry() -> dict:
