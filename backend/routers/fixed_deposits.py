@@ -21,7 +21,6 @@ from services.fixed_deposit_service import (
     get_fd_scheme_by_id,
     list_bookings_for_user,
     list_fd_schemes,
-    seed_mock_fd_schemes_if_empty,
 )
 
 router = APIRouter(prefix="/api/fixed-deposits", tags=["Fixed Deposits"])
@@ -113,7 +112,6 @@ def get_fd_schemes(
     """List MOCK bank/NBFC FD schemes for discovery/comparison, optionally
     filtered by tenure range. Client sorts/filters the returned list.
     """
-    seed_mock_fd_schemes_if_empty()  # mock data bootstrap — no-op once table is populated
     schemes = list_fd_schemes(min_tenure=min_tenure_months, max_tenure=max_tenure_months)
     return [_serialize_scheme(s) for s in schemes]
 

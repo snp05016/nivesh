@@ -13,7 +13,6 @@ from services.mutual_fund_service import (
     get_fund_by_scheme_code,
     get_nav_history,
     list_funds,
-    seed_mock_funds_if_empty,
 )
 
 router = APIRouter(prefix="/api/mutual-funds", tags=["Mutual Funds"])
@@ -82,14 +81,12 @@ def get_mutual_funds(
     search: Optional[str] = Query(None, description="Free-text search on scheme name"),
 ):
     """List/search/filter mutual funds."""
-    seed_mock_funds_if_empty()  # mock data bootstrap — no-op once table is populated
     return list_funds(category=category, amc_name=amc_name, search=search, risk_level=risk_level)
 
 
 @router.get("/{scheme_code}", response_model=MutualFundResponse)
 def get_mutual_fund_detail(scheme_code: str):
     """Get mutual fund detail by scheme_code."""
-    seed_mock_funds_if_empty()
     fund = get_fund_by_scheme_code(scheme_code)
     if not fund:
         raise HTTPException(status_code=404, detail="Mutual fund not found")
@@ -102,7 +99,6 @@ def get_mutual_fund_nav_history(
     days: int = Query(30, ge=1, le=365, description="Number of days of NAV history to return"),
 ):
     """Get NAV history (list of {date, nav}) for a scheme; [] when no real history exists."""
-    seed_mock_funds_if_empty()
     history = get_nav_history(scheme_code, days=days)
     if history is None:
         raise HTTPException(status_code=404, detail="Mutual fund not found")

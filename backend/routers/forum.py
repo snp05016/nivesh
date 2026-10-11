@@ -21,7 +21,6 @@ from services.forum_service import (
     list_threads,
     report_post,
     resolve_report,
-    seed_mock_boards_if_empty,
     thread_count_for_board,
     unblock,
     vote_poll,
@@ -169,7 +168,6 @@ class ResolveReportRequest(BaseModel):
 @router.get("/boards", response_model=List[ForumBoardResponse])
 def list_forum_boards():
     """List discussion boards (general market boards + per-stock boards)."""
-    seed_mock_boards_if_empty()  # mock data bootstrap — no-op once table is populated
     boards = list_boards()
     return [
         ForumBoardResponse(

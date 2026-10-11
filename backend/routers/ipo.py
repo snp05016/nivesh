@@ -15,7 +15,6 @@ from services.ipo_service import (
     get_ipo_by_symbol,
     get_subscription_status,
     list_ipos,
-    seed_mock_ipos_if_empty,
 )
 
 router = APIRouter(prefix="/api/ipo", tags=["IPO"])
@@ -73,7 +72,6 @@ def list_ipo_hub(
     )
 ):
     """List IPOs, optionally filtered by status."""
-    seed_mock_ipos_if_empty()  # mock data bootstrap — no-op once table is populated
     if status is not None and status not in VALID_STATUSES:
         raise HTTPException(
             status_code=400,
@@ -85,7 +83,6 @@ def list_ipo_hub(
 @router.get("/calendar", response_model=List[IPOResponse])
 def get_ipo_calendar():
     """Get upcoming and ongoing IPOs (IPO Calendar). Kept for backward compatibility."""
-    seed_mock_ipos_if_empty()
     return list_ipos()
 
 

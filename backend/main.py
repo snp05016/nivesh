@@ -313,6 +313,31 @@ from services.harvest_worker import router as harvest_router, start_scheduler, s
 app.include_router(harvest_router)
 
 
+def _seed_catalogs():
+    """Seed catalogs at startup, never from GET handlers (FAKE-06 / GH-696).
+
+    Forum boards are structural categories and always seeded. The mutual-fund,
+    IPO, loan-offer and FD-scheme catalogs hold illustrative figures, so they
+    are seeded only when DEMO_MODE is set (dev/demo servers).
+    """
+    from config.settings import DEMO_MODE
+    from services import fixed_deposit_service, forum_service, ipo_service
+    from services import loan_marketplace_service, mutual_fund_service
+    seeders = [forum_service.seed_mock_boards_if_empty]
+    if DEMO_MODE:
+        seeders += [
+            mutual_fund_service.seed_mock_funds_if_empty,
+            ipo_service.seed_mock_ipos_if_empty,
+            loan_marketplace_service.seed_mock_loan_offers_if_empty,
+            fixed_deposit_service.seed_mock_fd_schemes_if_empty,
+        ]
+    for seed in seeders:
+        try:
+            seed()
+        except Exception as e:
+            logging.warning("[startup] %s failed: %s", seed.__name__, e)
+
+
 async def _on_startup():
     """
     Execute application startup routines.
@@ -343,6 +368,7 @@ async def _on_startup():
         _seed_harvester_sources()
     except Exception as e:
         logging.warning("Harvester DB init failed: %s", e)
+    _seed_catalogs()
     from routers.alerts import _price_alert_poller
     import asyncio
     asyncio.create_task(_price_alert_poller())

@@ -17,6 +17,8 @@ VALID_STATUSES = {"upcoming", "open", "closed", "listed"}
 # Mock/seed data — no live scraper is wired in for this pass. This mirrors
 # the shape a real NSE/BSE IPO harvester would eventually populate.
 # Clearly marked MOCK DATA; safe to delete once a real harvester exists.
+# Seeded only at startup and only when DEMO_MODE=true (main._seed_catalogs);
+# migration e0edc81fbf84 purges these rows from existing databases.
 # ---------------------------------------------------------------------------
 _MOCK_IPOS = [
     {

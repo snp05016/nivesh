@@ -4,10 +4,18 @@ The NAV-history endpoint must never fabricate points (it used to return a
 seeded pseudo-random walk), and the seeded sample catalog must be flagged
 `is_sample` so clients label it instead of presenting it as live fund data.
 """
+import pytest
+
 from routers.mutual_funds import MutualFundResponse
-from services.mutual_fund_service import SAMPLE_SCHEME_CODES
+from services.mutual_fund_service import SAMPLE_SCHEME_CODES, seed_mock_funds_if_empty
 
 SAMPLE_CODE = "INF209K01157"  # Parag Parikh Flexi Cap — part of the seeded sample catalog
+
+
+@pytest.fixture(autouse=True)
+def _sample_catalog():
+    # GET handlers no longer seed (FAKE-06); seed the demo catalog explicitly.
+    seed_mock_funds_if_empty()
 
 
 def test_nav_history_never_fabricated(client):

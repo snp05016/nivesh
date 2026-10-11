@@ -36,9 +36,9 @@ HIDDEN = "hidden"
 
 
 # ---------------------------------------------------------------------------
-# Mock/seed data — a couple of boards and one example thread so the Forum Hub
-# has something to render before real user content exists.
-# Clearly marked MOCK DATA; safe to delete once real threads accumulate.
+# Seed boards — structural categories so the Forum Hub has somewhere to post.
+# Seeded at startup (main._seed_catalogs). No seed threads or posts: content
+# must never be attributed to a real user who did not write it.
 # ---------------------------------------------------------------------------
 _MOCK_BOARDS = [
     {
@@ -66,10 +66,7 @@ _MOCK_BOARDS = [
 
 
 def seed_mock_boards_if_empty() -> int:
-    """Populate forum_boards (+ one example thread) when the table is empty.
-
-    MOCK DATA — for development/demo only. Returns number of boards inserted.
-    """
+    """Populate forum_boards when the table is empty. Returns boards inserted."""
     with get_session() as session:
         existing = session.query(ForumBoard).count()
         if existing > 0:
@@ -86,34 +83,6 @@ def seed_mock_boards_if_empty() -> int:
             )
             session.add(board)
             boards.append(board)
-        session.flush()  # assign ids
-
-        # Seed one example thread on the General Market board, if a user exists
-        # to own it. If no users exist yet (fresh DB), skip — the thread will
-        # simply be created by the first real user via the API.
-        seed_user = session.query(User).order_by(User.id.asc()).first()
-        if seed_user is not None:
-            general_board = boards[0]
-            thread = ForumThread(
-                board_id=general_board.id,
-                user_id=seed_user.id,
-                title="Welcome to the Nivesh Community Forum",
-                is_pinned=True,
-            )
-            session.add(thread)
-            session.flush()
-            op_post = ForumPost(
-                thread_id=thread.id,
-                user_id=seed_user.id,
-                body=(
-                    "Kick off the discussion here — share your market views, ask "
-                    "questions about any stock, and vote on polls from fellow "
-                    "investors. Be respectful and back up your calls with data."
-                ),
-                is_op=True,
-            )
-            session.add(op_post)
-
         session.commit()
         return len(boards)
 

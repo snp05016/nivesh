@@ -39,6 +39,13 @@ else:
     SECTOR_PE_MAP = _SECTOR_PE_MAP_DEFAULTS
 
 # ---------------------------------------------------------------------------
+# DEMO_MODE: seed the illustrative mutual-fund, IPO, loan-offer and FD-scheme
+# catalogs at startup. Dev/demo servers only; production keeps it false so
+# users never see invented figures as real data.
+# ---------------------------------------------------------------------------
+DEMO_MODE: bool = os.getenv("DEMO_MODE", "false").strip().lower() in ("1", "true", "yes")
+
+# ---------------------------------------------------------------------------
 # Task 32: AdvisorInsights lookback window
 # ---------------------------------------------------------------------------
 ADVISOR_INSIGHTS_LOOKBACK_DAYS: int = int(os.getenv("ADVISOR_INSIGHTS_LOOKBACK_DAYS", 14))

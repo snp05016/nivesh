@@ -29,7 +29,6 @@ from services.loan_marketplace_service import (
     list_applications_for_user,
     list_linked_bank_accounts,
     list_loan_offers,
-    seed_mock_loan_offers_if_empty,
     submit_loan_application,
 )
 
@@ -171,7 +170,6 @@ class LinkFinanceAccountDemoRequest(BaseModel):
 @router.get("/loan-offers", response_model=List[LoanOfferResponse])
 def get_loan_offers(loan_type: Optional[str] = Query(None)):
     """List MOCK NBFC loan offers, optionally filtered by loan_type."""
-    seed_mock_loan_offers_if_empty()  # mock data bootstrap — no-op once table is populated
     if loan_type and loan_type not in VALID_LOAN_TYPES:
         raise HTTPException(status_code=400, detail=f"loan_type must be one of {sorted(VALID_LOAN_TYPES)}")
     offers = list_loan_offers(loan_type=loan_type)
