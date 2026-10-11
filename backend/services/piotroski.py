@@ -9,6 +9,7 @@ Also provides batch_refresh_piotroski() for the weekly nightly cron job.
 """
 import logging
 import math
+from typing import Any
 
 import yfinance as yf
 
@@ -29,7 +30,8 @@ def compute_piotroski(ticker: str) -> dict:
     score = 0
     available = 0
 
-    def get(df, row, col=0):
+    # Any: pyright cannot narrow the `all(v is not None ...)` guards below.
+    def get(df, row, col=0) -> Any:
         try:
             v = float(df.loc[row].iloc[col])
         except Exception as _e:

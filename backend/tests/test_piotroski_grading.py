@@ -12,6 +12,7 @@ import pytest
 _spec = importlib.util.spec_from_file_location(
     "_piotroski_real", pathlib.Path(__file__).resolve().parents[1] / "services" / "piotroski.py"
 )
+assert _spec is not None and _spec.loader is not None
 piotroski = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(piotroski)
 
