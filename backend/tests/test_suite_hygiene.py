@@ -29,3 +29,15 @@ def test_pytest_ini_restricts_testpaths():
     if not (REPO_ROOT / ".git").exists():
         pytest.skip("backend/ deployed without the repo root (e.g. the Docker image)")
     assert _testpaths(REPO_ROOT / "pytest.ini") == ["backend/tests"]
+
+
+def test_no_absolute_user_paths_in_tests():
+    # A hard-coded '/Users/...' sys.path insert shadows modules with another checkout's copy.
+    tests = BACKEND / "tests"
+    hits = [
+        str(p.relative_to(tests))
+        for p in tests.rglob("*.py")
+        if p.resolve() != Path(__file__).resolve()
+        and "/Users/" in p.read_text(encoding="utf-8", errors="ignore")
+    ]
+    assert hits == []

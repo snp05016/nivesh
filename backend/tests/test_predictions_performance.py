@@ -94,12 +94,14 @@ class TestEmptyPerformance:
 
 class TestPopulatedPerformance:
     @pytest.fixture(autouse=True)
-    def seed_and_cleanup(self):
+    def seed_and_cleanup(self, client):
+        # The DB is shared with other modules, so assert on the delta our seed adds.
+        self.before = client.get("/api/v1/predictions/performance", headers=AUTH).json()
         with get_session() as session:
-            pred_ids, tickers = _seed(session)
+            self.pred_ids, tickers = _seed(session)
         yield
         with get_session() as session:
-            _cleanup(session, pred_ids, tickers)
+            _cleanup(session, self.pred_ids, tickers)
 
     @pytest.fixture
     def response(self, client):
@@ -108,7 +110,7 @@ class TestPopulatedPerformance:
     def test_total_predictions_includes_seeded(self, response):
         assert response.status_code == 200
         body = response.json()
-        assert body["total_predictions"] >= 5  # may include other test data
+        assert body["total_predictions"] == self.before["total_predictions"] + len(self.pred_ids)
 
     def test_response_schema(self, response):
         body = response.json()
@@ -169,10 +171,11 @@ class TestPopulatedPerformance:
                 if g["hit_rate_30d"] is not None:
                     assert 0.0 <= g["hit_rate_30d"] <= 1.0
 
-    def test_confidence_buckets_sum_to_at_least_seeded(self, response):
+    def test_confidence_buckets_add_exactly_seeded(self, response):
         body = response.json()
         total_in_buckets = sum(b["count"] for b in body["confidence_buckets"])
-        assert total_in_buckets >= 5
+        before_in_buckets = sum(b["count"] for b in self.before["confidence_buckets"])
+        assert total_in_buckets == before_in_buckets + len(self.pred_ids)
 
 
 class TestEdgeCases:
