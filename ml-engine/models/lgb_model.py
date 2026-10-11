@@ -46,7 +46,11 @@ DEFAULT_PARAMS: Dict[str, Any] = {
     "min_split_gain": 1e-4,
     "verbose": -1,
     "seed": 42,
-    "num_threads": os.cpu_count() or 4,
+    # Reproducible builds: a fixed thread count (not os.cpu_count(), which differs per
+    # machine) plus deterministic row-wise histograms give byte-identical boosters.
+    "num_threads": int(os.getenv("LGB_NUM_THREADS", "4")),
+    "deterministic": True,
+    "force_row_wise": True,
 }
 
 

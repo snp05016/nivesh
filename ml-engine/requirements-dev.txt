@@ -1,0 +1,5 @@
+# Tests and lint. Recreate a venv with: python3.12 -m venv venv && venv/bin/pip install -r requirements-dev.txt
+-r requirements-train.txt
+pytest==9.0.3
+httpx==0.28.1
+ruff==0.16.9

@@ -1587,6 +1587,7 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
                 final_state["_ml_horizon"] = ml_cross_raw.get("horizon")
                 final_state["_ml_feature_count"] = ml_cross_raw.get("feature_count")
                 final_state["_ml_fallback_used"] = bool(ml_cross_raw.get("fallback_used", False))
+                final_state["_ml_p_up"] = ml_cross_raw.get("p_up")
             else:
                 final_state["_ml_direction"] = None
                 final_state["_ml_confidence"] = None
@@ -1596,7 +1597,12 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
                 final_state["_ml_horizon"] = None
                 final_state["_ml_feature_count"] = None
                 final_state["_ml_fallback_used"] = True
-                
+                final_state["_ml_p_up"] = None
+            # Last completed bar the ml-engine was (or would have been) fed
+            final_state["_ml_input_asof"] = (
+                date.fromisoformat(_cal_ohlcv[-1]["date"]) if _cal_ohlcv else None
+            )
+
         final_state["_signal_agreement"] = agreement_data.get("agreement_ratio")
 
         def _nf(v, default=0):
@@ -1644,6 +1650,77 @@ Bounds 3M: {_nf((conformal_data.get('short_term_3m') or {}).get('lower'), 'N/A')
     except Exception as _cal_err:
         logging.info(f"[CALIBRATION] Pipeline failed: {_cal_err}")
         return raw_output
+
+
+# ML-16: label horizon in trading days; matches the ml-engine training label.
+_PREDICTION_HORIZON_DAYS = 20
+
+
+def _log_prediction(
+    result: dict,
+    breakdown: dict,
+    final_state,
+    scan_type: str,
+    ticker: str,
+    *,
+    fused_conf: int,
+    llm_conf,
+    quant_conf,
+    va_conf,
+    agree,
+    analysis_history_id: int | None = None,
+) -> None:
+    """Write one AnalysisPrediction row for a full (non-cached) analysis.
+
+    Idempotent per (symbol, input_asof_date, scan_type, model_version): a duplicate
+    hits the partial unique index and is skipped. Any other failure is a WARNING.
+    """
+    from sqlalchemy.exc import IntegrityError
+    from models.db_models import AnalysisPrediction
+
+    fs = final_state if isinstance(final_state, dict) else {}
+    asof = fs.get("_ml_input_asof")
+    target_date = None
+    if asof is not None:
+        import numpy as np
+        # ponytail: weekdays only, NSE holidays ignored; use the exchange calendar when one exists.
+        target_date = np.busday_offset(asof, _PREDICTION_HORIZON_DAYS, roll="forward").item()
+    weights_version = breakdown.get("weights_version") or (
+        "dynamic" if breakdown.get("dynamic_weights_active") else "static-v1"
+    )
+    try:
+        with get_session() as session:
+            session.add(AnalysisPrediction(
+                analysis_history_id=analysis_history_id,
+                symbol=ticker.upper(),
+                recommendation=result.get("signal", "HOLD"),
+                confidence_pct=fused_conf,
+                llm_confidence=llm_conf,
+                quant_confidence=quant_conf,
+                ml_confidence=fs.get("_ml_confidence"),
+                venn_abers_confidence=va_conf,
+                signal_agreement=agree,
+                ml_engine_mode=breakdown["ml_engine_mode"],
+                model_version=breakdown.get("model_version") or breakdown["ml_engine_mode"],
+                horizon_days=_PREDICTION_HORIZON_DAYS,
+                scan_type=scan_type,
+                regime_id=result.get("market_regime", "Unknown"),
+                entry_price=result.get("current_price_inr"),
+                target_price=(result.get("target_prices") or {}).get("medium_term_12m"),
+                ml_direction=fs.get("_ml_direction"),
+                ml_p_up=fs.get("_ml_p_up"),
+                input_asof_date=asof,
+                weights_version=weights_version,
+                ml_fallback_used=fs.get("_ml_fallback_used", True),
+                target_date=target_date,
+            ))
+            session.commit()
+    except IntegrityError:
+        logging.debug(f"[PREDICTION LOG] duplicate prediction skipped for {ticker.upper()} as of {asof}")
+    except Exception as _log_err:
+        logging.warning(
+            f"[PREDICTION LOG] Failed to write to analysis_predictions: {_log_err}", exc_info=True
+        )
 
 
 def _save_and_fetch_advisors(
@@ -1855,28 +1932,7 @@ def analyze(
                 cached_today["confidence_breakdown"] = breakdown
                 cached_today["ml_engine_mode"] = breakdown["ml_engine_mode"]
                 cached_today["model_version"] = _ml_model_version
-
-                # Log prediction (cache path)
-                from models.db_models import AnalysisPrediction
-                with get_session() as _ps:
-                    _pred = AnalysisPrediction(
-                        symbol=ticker.upper(),
-                        recommendation=cached_today.get("signal", "HOLD"),
-                        confidence_pct=fused_conf,
-                        llm_confidence=_llm_conf,
-                        quant_confidence=_quant_conf,
-                        ml_confidence=_ml_conf,
-                        venn_abers_confidence=_va_conf,
-                        signal_agreement=_agree,
-                        ml_engine_mode=breakdown["ml_engine_mode"],
-                        model_version=_ml_model_version,
-                scan_type=scan_type,
-                regime_id=cached_today.get("market_regime", "Unknown"),
-                entry_price=cached_today.get("current_price_inr"),
-                target_price=cached_today.get("target_prices", {}).get("medium_term_12m"),
-                    )
-                    _ps.add(_pred)
-                    _ps.commit()
+                # No AnalysisPrediction here: the full run that produced this report already logged it (ML-16).
             except Exception as _fuse_err:
                 logging.info(f"[WARN] Cache-path confidence fusion failed: {_fuse_err}")
 
@@ -2223,32 +2279,6 @@ def analyze(
     result["ml_feature_count"] = _ml_feature_count
     result["ml_horizon"] = _ml_horizon
     result["ml_fallback_used"] = _ml_fallback_used
-    
-    # Log it to AnalysisPrediction
-    try:
-        from models.db_models import AnalysisPrediction
-        with get_session() as session:
-            pred = AnalysisPrediction(
-                symbol=ticker.upper(),
-                recommendation=result.get("signal", "HOLD"),
-                confidence_pct=fused_conf,
-                llm_confidence=_llm_conf,
-                quant_confidence=_quant_conf,
-                ml_confidence=_ml_conf,
-                venn_abers_confidence=_va_conf,
-                signal_agreement=_agree,
-                ml_engine_mode=breakdown["ml_engine_mode"],
-                model_version=_ml_model_version or breakdown["ml_engine_mode"],
-                horizon_days=int(_ml_horizon or 30),
-                scan_type=scan_type,
-                regime_id=result.get("market_regime", "Unknown"),
-                entry_price=result.get("current_price_inr"),
-                target_price=result.get("target_prices", {}).get("medium_term_12m"),
-            )
-            session.add(pred)
-            session.commit()
-    except Exception as _log_err:
-        logging.info(f"[PREDICTION LOG] Failed to write to analysis_predictions: {_log_err}")
 
     result["ticker"] = ticker.upper()
     result["exchange"] = exchange
@@ -2271,6 +2301,13 @@ def analyze(
         )
         _advisor_rows_dicts = []
     result["advisor_matrix"] = _advisor_rows_dicts
+
+    _log_prediction(
+        result, breakdown, final_state, scan_type, ticker,
+        fused_conf=fused_conf, llm_conf=_llm_conf, quant_conf=_quant_conf,
+        va_conf=_va_conf, agree=_agree,
+        analysis_history_id=result.pop("_analysis_history_id", None),
+    )
 
     # Add deep scan metadata
     result["deep_scan_used"] = deep_scan_used

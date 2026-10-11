@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    Boolean, CheckConstraint, Column, DateTime, Float, Integer, JSON, Numeric, String, Text,
+    Boolean, CheckConstraint, Column, Date, DateTime, Float, Integer, JSON, Numeric, String, Text,
     ForeignKey, Index, UniqueConstraint, text,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -756,7 +756,7 @@ class AnalysisPrediction(Base):
     analysis_history_id   = Column(Integer, ForeignKey("analysis_history.id"), nullable=True, index=True)
     symbol                = Column(String(30), nullable=False, index=True)
     created_at            = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
-    horizon_days          = Column(Integer, nullable=False, default=30)
+    horizon_days          = Column(Integer, nullable=False, default=20)  # label horizon in trading days
 
     # Prediction inputs
     recommendation        = Column(String(20), nullable=False)   # BULLISH / BEARISH / HOLD
@@ -770,6 +770,14 @@ class AnalysisPrediction(Base):
     model_version         = Column(String(50), nullable=True, default="nivesh-v1.0-heuristic")
     scan_type             = Column(String(50), nullable=True, default="standard")
     regime_id             = Column(String(50), nullable=True)     # Market regime context
+
+    # Provenance (ML-16): what the ml-engine saw and said, and which weights fused it
+    ml_direction          = Column(Integer, nullable=True)        # -1 / 0 / 1 from ml-engine
+    ml_p_up               = Column(Float, nullable=True)          # ml-engine raw P(up)
+    input_asof_date       = Column(Date, nullable=True)           # last OHLCV bar fed to the model
+    weights_version       = Column(String(40), nullable=True)     # fusion weight set used
+    ml_fallback_used      = Column(Boolean, nullable=True)        # ml-engine fell back to heuristic
+    target_date           = Column(Date, nullable=True)           # input_asof_date + horizon_days business days
 
     # Prices at prediction time
     entry_price           = Column(Float, nullable=True)
@@ -789,6 +797,14 @@ class AnalysisPrediction(Base):
     __table_args__ = (
         Index("ix_ap_symbol_created", "symbol", "created_at"),
         Index("ix_ap_model_version", "model_version"),
+        # One prediction per symbol, input bar, scan type and model; legacy rows (no as-of date) are exempt.
+        Index(
+            "uq_ap_symbol_asof_scan_model",
+            "symbol", "input_asof_date", "scan_type", "model_version",
+            unique=True,
+            postgresql_where=text("input_asof_date IS NOT NULL"),
+            sqlite_where=text("input_asof_date IS NOT NULL"),
+        ),
     )
 
 # ── Fundamentals Expansion Models ─────────────────────────────────

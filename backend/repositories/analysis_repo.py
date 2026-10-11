@@ -89,6 +89,8 @@ def save_analysis(session: Session, user_id: Optional[int], ticker: str, result:
     session.add(record)
     session.commit()
 
+    # Not part of full_json (serialised above); lets the caller link its AnalysisPrediction row.
+    result["_analysis_history_id"] = record.id
     result["signal_changed"] = flipped
     result["previous_signal"] = prev_signal
     return result

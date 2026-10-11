@@ -1,0 +1,4 @@
+# Training and offline evaluation (training/, evaluate_truth.py, evaluate_alpha158_candidate.py).
+-r requirements.txt
+joblib==1.5.3
+shap==0.52.0

@@ -1,13 +1,13 @@
 # ml-engine runs in its own container, so it keeps its own Python minor (3.12,
 # chosen with the research pins) instead of the backend's /.python-version.
+# Keep in step with ml-engine/.python-version (training and serving share one Python).
 FROM python:3.12-slim
 
 WORKDIR /app
 
-# System deps for LightGBM, Torch, and Celery
+# LightGBM installs from a wheel and needs only the OpenMP runtime.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
-    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security (default USER when run without --user).
@@ -15,7 +15,8 @@ RUN useradd --create-home --shell /bin/bash mluser && \
     chown mluser:mluser /app
 
 # requirements.lock: exact pins frozen from the running image (OPS-16);
-# requirements.txt is only the fallback until that lock is committed.
+# requirements.txt (serving pins only; training/dev extras live in
+# requirements-train.txt / -dev.txt) is the fallback until that lock is committed.
 COPY requirements.txt requirements.lock* ./
 RUN if [ -f requirements.lock ]; then pip install --no-cache-dir -r requirements.lock; \
     else pip install --no-cache-dir -r requirements.txt; fi
