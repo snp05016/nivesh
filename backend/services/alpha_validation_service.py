@@ -1,11 +1,9 @@
-import logging
 """
 Realistic Alpha Validation Engine
 Implements realistic backtesting of Nivesh predictions against market frictions.
 """
 import math
 import json
-import os
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
@@ -374,32 +372,3 @@ def run_regime_breakdown(params: BacktestParams) -> RegimeBreakdownResult:
             regimes=regimes,
             conclusion=conclusion
         )
-
-
-# Phase 8: Report Generation
-def generate_reports():
-    """Generates markdown reports summarizing the alpha validation results.
-
-    Creates multiple detailed reports (e.g., strategy sweep, regime breakdown, failure cases)
-    in the `.alpha-validation` directory.
-    """
-    reports_dir = os.path.join(os.path.dirname(os.path.dirname(os.getcwd())), ".alpha-validation")
-    if "backend" in os.getcwd():
-        reports_dir = os.path.join(os.path.dirname(os.getcwd()), ".alpha-validation")
-    os.makedirs(reports_dir, exist_ok=True)
-    
-    reports = {
-        "ALPHA_VALIDATION_REPORT.md": "# Alpha Validation Report\n\nNivesh's base ML models have a 53.4% hit rate before costs, providing a slight edge over the market. After applying institutional friction (5bps), the system maintains a 4% outperformance vs benchmark. However, realistic retail costs (15bps slippage + taxes) erode this to a flat return unless top-k confidence filtering is used.",
-        "COST_ASSUMPTIONS.md": "# Cost Assumptions\n\n- **Optimistic**: 5bps slippage, 2bps brokerage\n- **Institutional**: 10bps slippage, 5bps brokerage\n- **Realistic Retail**: 15bps slippage, 10bps brokerage\n- **Conservative**: 30bps slippage, 20bps brokerage\n\nAll scenarios include STT (10bps), Exchange charges (0.32bps), SEBI (0.1bps) and 18% GST on brokerage.",
-        "STRATEGY_SWEEP.md": "# Strategy Sweep\n\nOptimal configuration found: `top_k_confidence` with `k=10`, `holding_period=30D`, and `confidence_threshold=65.0`. This configuration survives the 'Realistic Retail' cost profile.",
-        "REGIME_BREAKDOWN.md": "# Regime Breakdown\n\n- **Bull Regimes**: Nivesh captures 110% of upside.\n- **Bear Regimes**: Performance deteriorates. The ML engine fails to confidently identify shorts, remaining trapped in value traps.",
-        "STATISTICAL_SIGNIFICANCE.md": "# Statistical Significance\n\nUsing a block bootstrap test (10,000 iterations), the p-value for `top_k=10, 65% conf` outperforming the equal-weight market baseline is 0.038, which is statistically significant at the 5% level.",
-        "FAILURE_CASES.md": "# Failure Cases\n\n- **Microcaps**: Liquidity penalties completely wipe out gross alpha.\n- **High Turnover**: Holding periods < 20 days fail to cover round-trip transaction costs in 92% of simulations.",
-        "FINAL_VERDICT.md": "# Final Verdict\n\n1. Does Nivesh generate positive alpha before costs? Yes.\n2. Does alpha survive realistic retail costs? Yes, with sufficient confidence thresholds.\n3. Does alpha survive conservative costs? Marginally.\n4. Which strategy works best? top_k_confidence.\n5. Which confidence threshold works best? 65%.\n6. Which holding period works best? 30D.\n7. Does confidence actually improve position sizing? Yes.\n8. Does performance survive regime shifts? Degradation in bear regimes.\n9. Is the result statistically significant? Yes (p < 0.05).\n10. Should this be deployed? PAPER_TRADE.\n"
-    }
-    
-    for filename, content in reports.items():
-        with open(os.path.join(reports_dir, filename), "w") as f:
-            f.write(content)
-            
-    logging.info(f"Generated reports in {reports_dir}")
