@@ -159,20 +159,9 @@ struct PortfolioScreen: View {
     @State private var snapshots: [PortfolioValuationSnapshot] = []
     @State private var selectedRange: TimeRange = .year
 
-    /// Snapshots filtered to the selected time range (tail of the 90-day series).
+    /// Snapshots filtered to the selected time range (date-based slice of the 730-day series).
     private var rangedSnapshots: [PortfolioValuationSnapshot] {
-        guard !snapshots.isEmpty else { return [] }
-        let n: Int
-        switch selectedRange {
-        case .day:         n = 2
-        case .week:        n = 7
-        case .month:       n = 30
-        case .threeMonths: n = 90
-        case .sixMonths:   n = 180
-        case .year:        n = snapshots.count
-        case .all:         n = snapshots.count
-        }
-        return Array(snapshots.suffix(max(n, 2)))
+        snapshots.ranged(selectedRange)
     }
 
     var body: some View {
@@ -375,10 +364,20 @@ struct PortfolioScreen: View {
                     .refreshable {
                         HapticManager.impact(.medium)
                         if let user = authManager.currentUser {
-                            await viewModel.fetchData(userId: user.userId)
-                            await viewModel.fetchWatchlist(userId: user.userId)
-                            let ws = await NetworkManager.shared.getSignalWarnings(userId: user.userId)
+                            let uid = user.userId
+                            // .task(id:) guards these loads so tab revisits stay cheap;
+                            // pull-to-refresh is their only reload path, so force them here.
+                            async let risk = try? NetworkManager.shared.fetchRiskAnalysis(userId: uid)
+                            async let flags = try? NetworkManager.shared.fetchRedFlags(userId: uid)
+                            async let history = try? NetworkManager.shared.fetchValuationHistory(userId: uid, days: 730)
+                            await viewModel.fetchData(userId: uid)
+                            await viewModel.fetchWatchlist(userId: uid)
+                            let ws = await NetworkManager.shared.getSignalWarnings(userId: uid)
                             signalWarnings = Dictionary(ws.map { ($0.ticker, $0) }, uniquingKeysWith: { _, last in last })
+                            // Keep the last good value if a refresh call fails.
+                            if let r = await risk { riskAnalysis = r }
+                            if let f = await flags { redFlags = f }
+                            if let resp = await history { snapshots = resp.snapshots }
                         }
                         HapticManager.success()
                     }
@@ -443,26 +442,35 @@ struct PortfolioScreen: View {
                 showStockTapAction = false
             }
         }
-        .onAppear {
-            guard let user = authManager.currentUser else { return }
-            if viewModel.holdings.isEmpty && !viewModel.isLoading {
-                Task { await viewModel.fetchData(userId: user.userId) }
-            }
-            if viewModel.watchlistItems.isEmpty && !viewModel.watchlistLoading {
-                Task { await viewModel.fetchWatchlist(userId: user.userId) }
-            }
-            Task {
-                let ws = await NetworkManager.shared.getSignalWarnings(userId: user.userId)
-                signalWarnings = Dictionary(ws.map { ($0.ticker, $0) }, uniquingKeysWith: { _, last in last })
-            }
-            Task {
-                let uid = user.userId
-                riskAnalysis = try? await NetworkManager.shared.fetchRiskAnalysis(userId: uid)
-                redFlags = try? await NetworkManager.shared.fetchRedFlags(userId: uid)
-            }
-            Task {
-                if let resp = try? await NetworkManager.shared.fetchValuationHistory(userId: user.userId, days: 730) {
-                    snapshots = resp.snapshots
+        // Structured, cancellable loads; guards stop tab revisits from re-issuing calls
+        // (pull-to-refresh still forces a reload).
+        .task(id: authManager.currentUser?.userId) {
+            guard let uid = authManager.currentUser?.userId else { return }
+            await withTaskGroup(of: Void.self) { group in
+                if viewModel.holdings.isEmpty && !viewModel.isLoading {
+                    group.addTask { @MainActor in await viewModel.fetchData(userId: uid) }
+                }
+                if viewModel.watchlistItems.isEmpty && !viewModel.watchlistLoading {
+                    group.addTask { @MainActor in await viewModel.fetchWatchlist(userId: uid) }
+                }
+                if signalWarnings.isEmpty {
+                    group.addTask { @MainActor in
+                        let ws = await NetworkManager.shared.getSignalWarnings(userId: uid)
+                        signalWarnings = Dictionary(ws.map { ($0.ticker, $0) }, uniquingKeysWith: { _, last in last })
+                    }
+                }
+                if riskAnalysis == nil {
+                    group.addTask { @MainActor in
+                        riskAnalysis = try? await NetworkManager.shared.fetchRiskAnalysis(userId: uid)
+                        redFlags = try? await NetworkManager.shared.fetchRedFlags(userId: uid)
+                    }
+                }
+                if snapshots.isEmpty {
+                    group.addTask { @MainActor in
+                        if let resp = try? await NetworkManager.shared.fetchValuationHistory(userId: uid, days: 730) {
+                            snapshots = resp.snapshots
+                        }
+                    }
                 }
             }
         }

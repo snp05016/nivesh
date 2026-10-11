@@ -108,9 +108,18 @@ struct ValuationHistoryResponse: Codable {
         case userId = "user_id"
         case days, snapshots, summary
     }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        userId = try c.decode(Int.self, forKey: .userId)
+        days = try c.decode(Int.self, forKey: .days)
+        // Unparseable rows are dropped rather than plotted at a bogus date.
+        snapshots = try c.decode([PortfolioValuationSnapshot].self, forKey: .snapshots).droppingUndated
+        summary = try c.decode(ValuationSummary.self, forKey: .summary)
+    }
 }
 
-struct PortfolioValuationSnapshot: Codable, Identifiable {
+struct PortfolioValuationSnapshot: Codable, Identifiable, WireDated {
     var id: String { date }
     let date: String
     let totalValue: Double
@@ -118,6 +127,8 @@ struct PortfolioValuationSnapshot: Codable, Identifiable {
     let totalPnl: Double
     let pnlPercent: Double
     let niftyClose: Double?
+    /// Parsed once at decode; `.distantPast` when `date` is unparseable.
+    let parsedDate: Date
 
     enum CodingKeys: String, CodingKey {
         case date
@@ -128,10 +139,15 @@ struct PortfolioValuationSnapshot: Codable, Identifiable {
         case niftyClose = "nifty_close"
     }
 
-    var parsedDate: Date {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f.date(from: date) ?? Date()
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        date = try c.decode(String.self, forKey: .date)
+        totalValue = try c.decode(Double.self, forKey: .totalValue)
+        totalInvested = try c.decode(Double.self, forKey: .totalInvested)
+        totalPnl = try c.decode(Double.self, forKey: .totalPnl)
+        pnlPercent = try c.decode(Double.self, forKey: .pnlPercent)
+        niftyClose = try c.decodeIfPresent(Double.self, forKey: .niftyClose)
+        parsedDate = WireDate.day(date) ?? .distantPast
     }
 }
 

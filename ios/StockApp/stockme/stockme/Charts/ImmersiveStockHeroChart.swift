@@ -8,7 +8,6 @@ import SwiftUI
 
 struct ImmersiveStockHeroChart: View {
     let prices: [Double]
-    let changePercent: Double
     let currentPrice: Double
     let dates: [Date]
 
@@ -18,7 +17,13 @@ struct ImmersiveStockHeroChart: View {
 
     private let chartHeight: CGFloat = UIScreen.main.bounds.height * 0.26
 
-    private var isPositive: Bool { changePercent >= 0 }
+    /// Change across the plotted series (selected period), not the one-day move.
+    private var periodChangePct: Double {
+        guard let first = prices.first, let last = prices.last, first > 0 else { return 0 }
+        let pct = (last - first) / first * 100
+        return pct.isFinite ? pct : 0
+    }
+    private var isPositive: Bool { periodChangePct >= 0 }
     private var lineColor: Color { isPositive ? Theme.bullGreen : Theme.bearRed }
     private var fillGradient: LinearGradient {
         isPositive ? Theme.chartBullGradient : Theme.chartBearGradient
@@ -33,11 +38,11 @@ struct ImmersiveStockHeroChart: View {
         return dates.last
     }
     private var displayChangePct: Double {
-        guard let first = prices.first, first > 0 else { return changePercent }
+        guard let first = prices.first, first > 0 else { return periodChangePct }
         if let i = scrubIndex, prices.indices.contains(i) {
             return ((prices[i] - first) / first) * 100
         }
-        return changePercent
+        return periodChangePct
     }
 
     var body: some View {
@@ -183,9 +188,13 @@ struct ImmersiveStockHeroChart: View {
         }
     }
 
-    private func dateString(from date: Date) -> String {
+    private static let headerDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "d MMM ''yy"
-        return f.string(from: date)
+        return f
+    }()
+
+    private func dateString(from date: Date) -> String {
+        Self.headerDateFormatter.string(from: date)
     }
 }

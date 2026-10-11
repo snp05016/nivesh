@@ -5,32 +5,48 @@ import SwiftUI
 
 // MARK: - Price & History Points
 
-struct PricePoint: Codable, Identifiable {
+struct PricePoint: Codable, Identifiable, WireDated {
     var id: String { date }
     let date: String
     let close: Double
     let volume: Double?
+    /// Parsed once at decode; `.distantPast` when `date` is unparseable.
+    let parsedDate: Date
 
-    var parsedDate: Date {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f.date(from: date) ?? Date()
+    enum CodingKeys: String, CodingKey { case date, close, volume }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        date = try c.decode(String.self, forKey: .date)
+        close = try c.decode(Double.self, forKey: .close)
+        volume = try c.decodeIfPresent(Double.self, forKey: .volume)
+        parsedDate = WireDate.day(date) ?? .distantPast
     }
 }
 
-struct NiftyPricePoint: Codable, Identifiable {
+struct NiftyPricePoint: Codable, Identifiable, WireDated {
     var id: String { date }
     let date: String
     let close: Double
+    /// Parsed once at decode; `.distantPast` when `date` is unparseable.
+    let parsedDate: Date
 
-    var parsedDate: Date {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f.date(from: date) ?? Date()
+    enum CodingKeys: String, CodingKey { case date, close }
+
+    init(date: String, close: Double) {
+        self.date = date
+        self.close = close
+        parsedDate = WireDate.day(date) ?? .distantPast
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(date: try c.decode(String.self, forKey: .date),
+                  close: try c.decode(Double.self, forKey: .close))
     }
 }
 
-struct OHLCVPoint: Codable, Identifiable {
+struct OHLCVPoint: Codable, Identifiable, WireDated {
     var id: String { date }
     let date: String
     let open: Double
@@ -38,11 +54,20 @@ struct OHLCVPoint: Codable, Identifiable {
     let low: Double
     let close: Double
     let volume: Double
+    /// Parsed once at decode; `.distantPast` when `date` is unparseable.
+    let parsedDate: Date
 
-    var parsedDate: Date {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f.date(from: date) ?? Date()
+    enum CodingKeys: String, CodingKey { case date, open, high, low, close, volume }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        date = try c.decode(String.self, forKey: .date)
+        open = try c.decode(Double.self, forKey: .open)
+        high = try c.decode(Double.self, forKey: .high)
+        low = try c.decode(Double.self, forKey: .low)
+        close = try c.decode(Double.self, forKey: .close)
+        volume = try c.decode(Double.self, forKey: .volume)
+        parsedDate = WireDate.day(date) ?? .distantPast
     }
 }
 
@@ -51,6 +76,24 @@ struct StockHistoryResponse: Codable {
     let exchange: String
     let period: String
     let prices: [OHLCVPoint]
+
+    enum CodingKeys: String, CodingKey { case ticker, exchange, period, prices }
+
+    /// Every construction path (decode, bare-array fallback, unified profile) drops undated rows.
+    init(ticker: String, exchange: String, period: String, prices: [OHLCVPoint]) {
+        self.ticker = ticker
+        self.exchange = exchange
+        self.period = period
+        self.prices = prices.droppingUndated
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(ticker: try c.decode(String.self, forKey: .ticker),
+                  exchange: try c.decode(String.self, forKey: .exchange),
+                  period: try c.decode(String.self, forKey: .period),
+                  prices: try c.decode([OHLCVPoint].self, forKey: .prices))
+    }
 }
 
 // MARK: - Quarterly Financials

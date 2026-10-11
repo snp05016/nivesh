@@ -104,10 +104,8 @@ struct AnalysisFullView: View {
     private var heroChartSectionView: some View {
         if !heroPrices.isEmpty {
             let price = livePrice ?? viewModel.quickInfo?.price ?? heroPrices.last ?? 0
-            let changePct = viewModel.quickInfo?.changePercent ?? 0
             ImmersiveStockHeroChart(
                 prices: heroPrices,
-                changePercent: changePct,
                 currentPrice: price,
                 dates: heroDates
             )

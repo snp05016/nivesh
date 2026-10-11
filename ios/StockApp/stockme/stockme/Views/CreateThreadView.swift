@@ -176,9 +176,10 @@ private struct PollComposerSection: View {
                     .padding(Theme.Spacing.card)
                     .banknoteCard()
 
-                ForEach(vm.pollOptions.indices, id: \.self) { index in
+                ForEach($vm.pollOptions) { $option in
+                    let number = (vm.pollOptions.firstIndex { $0.id == option.id } ?? 0) + 1
                     HStack(spacing: Theme.Spacing.standard) {
-                        TextField("Option \(index + 1)", text: $vm.pollOptions[index])
+                        TextField("Option \(number)", text: $option.text)
                             .font(Theme.engravedSerif(size: 14, relativeTo: .body))
                             .foregroundColor(Theme.inkPrimary)
                             .padding(Theme.Spacing.card)
@@ -187,7 +188,7 @@ private struct PollComposerSection: View {
                         if vm.pollOptions.count > 2 {
                             Button {
                                 HapticManager.selection()
-                                vm.removePollOption(at: index)
+                                vm.removePollOption(id: option.id)
                             } label: {
                                 Image(systemName: "minus.circle.fill")
                                     .foregroundColor(Theme.bearRed)

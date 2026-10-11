@@ -500,39 +500,38 @@ class HomeViewModel: ObservableObject {
 
     func fetchData(userId: Int) async {
         isLoading = true
+        defer { isLoading = false }
+        // Independent requests run concurrently; one failing no longer blocks the others.
+        async let holdings = NetworkManager.shared.getPortfolio(userId: userId)
+        async let brief = NetworkManager.shared.getMorningSummary(userId: userId)
+        async let watch: Void = fetchWatchlist(userId: userId)
+        var unauthorized = false
+
         do {
-            let holdings = try await NetworkManager.shared.getPortfolio(userId: userId)
-
-            stockCount = holdings.count
-
-            do {
-                morningBriefData = try await NetworkManager.shared.getMorningSummary(userId: userId)
-            } catch NetworkError.unauthorized {
-                sessionExpired = true
-                isLoading = false
-                return
-            } catch {
-                morningBriefData = nil
-            }
-
-            do {
-                try await fetchWatchlist(userId: userId)
-            } catch NetworkError.unauthorized {
-                sessionExpired = true
-                isLoading = false
-                return
-            } catch {
-                // watchlist unavailable — non-fatal
-            }
-
+            stockCount = try await holdings.count
         } catch NetworkError.unauthorized {
-            sessionExpired = true
-            isLoading = false
-            return
+            unauthorized = true
         } catch {
             print("Home fetch error: \(error)")
         }
-        isLoading = false
+
+        do {
+            morningBriefData = try await brief
+        } catch NetworkError.unauthorized {
+            unauthorized = true
+        } catch {
+            morningBriefData = nil
+        }
+
+        do {
+            try await watch
+        } catch NetworkError.unauthorized {
+            unauthorized = true
+        } catch {
+            // watchlist unavailable — non-fatal
+        }
+
+        if unauthorized { sessionExpired = true }
     }
 
     func fetchWatchlist(userId: Int) async throws {
@@ -594,7 +593,6 @@ class HomeViewModel: ObservableObject {
 struct HomeScreen: View {
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = HomeViewModel()
-    @StateObject private var consensusVM = AdvisoryConsensusViewModel()
     @StateObject private var feedVM = HomeFeedViewModel()
     @State private var timeframeConflicts: [TimeframeConflict] = []
     @State private var dailyAction: DailyActionResponse? = nil
@@ -628,18 +626,7 @@ struct HomeScreen: View {
     @State private var portfolioRange: TimeRange = .month
 
     private var rangedValuationHistory: [PortfolioValuationSnapshot] {
-        guard !valuationHistory.isEmpty else { return [] }
-        let n: Int
-        switch portfolioRange {
-        case .day:         n = 2
-        case .week:        n = 7
-        case .month:       n = 30
-        case .threeMonths: n = 90
-        case .sixMonths:   n = 180
-        case .year:        n = valuationHistory.count
-        case .all:         n = valuationHistory.count
-        }
-        return Array(valuationHistory.suffix(max(n, 2)))
+        valuationHistory.ranged(portfolioRange)
     }
 
     @AppStorage("homeAutoRefreshSeconds") private var homeAutoRefreshSeconds: String = "0"
@@ -651,10 +638,7 @@ struct HomeScreen: View {
     @AppStorage("morningBriefShownDate") private var morningBriefShownDate = ""
 
     private var shouldShowBriefToday: Bool {
-        let today = DateFormatter()
-        today.dateFormat = "yyyy-MM-dd"
-        let todayStr = today.string(from: Date())
-        return morningBriefShownDate != todayStr && viewModel.morningBriefData != nil
+        return morningBriefShownDate != WireDate.dayKey(Date()) && viewModel.morningBriefData != nil
     }
     @State private var showGlossary = false
 
@@ -735,9 +719,12 @@ struct HomeScreen: View {
             .navigationDestination(for: AnalysisDest.self) { dest in
                 AnalysisScreen(ticker: dest.ticker, launchMode: dest.mode)
             }
-            .onReceive(Timer.publish(every: (Double(homeAutoRefreshSeconds) ?? 0) > 0 ? (Double(homeAutoRefreshSeconds) ?? 60) : 999999, on: .main, in: .common).autoconnect()) { _ in
-                guard (Double(homeAutoRefreshSeconds) ?? 0) > 0, let user = authManager.currentUser else { return }
-                Task {
+            // Auto-refresh loop: restarts only when the setting changes, not on every re-render.
+            .task(id: homeAutoRefreshSeconds) {
+                guard let seconds = Double(homeAutoRefreshSeconds), seconds > 0 else { return }
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(seconds))
+                    guard !Task.isCancelled, let user = authManager.currentUser else { continue }
                     await viewModel.fetchData(userId: user.userId)
                     await viewModel.fetchIndices()
                     viewModel.fetchSectors()
@@ -766,11 +753,7 @@ struct HomeScreen: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     if viewModel.morningBriefData != nil {
-                        let todayStr: String = {
-                            let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
-                            return df.string(from: Date())
-                        }()
-                        let isDismissedToday = morningBriefShownDate == todayStr
+                        let isDismissedToday = morningBriefShownDate == WireDate.dayKey(Date())
                         Button { HapticManager.selection(); 
                             HapticManager.selection()
                             if isDismissedToday {
@@ -827,58 +810,39 @@ struct HomeScreen: View {
             }
         }
         .task {
-            // Fire indices and all background fetches in parallel — don't block portfolio on indices
-            let indicesTask = Task { await viewModel.fetchIndices() }
+            // Market-wide fetches; run alongside the user-keyed task below.
             viewModel.fetchSectors()
             viewModel.fetchEarnings()
             viewModel.fetchDashboard()
             viewModel.startIndicesTimer()
-
-            if let user = authManager.currentUser {
-                if viewModel.stockCount == 0 && !viewModel.isLoading {
-                    await viewModel.fetchData(userId: user.userId)
-                }
-                consensusVM.fetch(userId: user.userId)
-                feedVM.fetch(userId: user.userId)
-                // Retry indices after portfolio loads — backend may need warmup on cold start
-                if viewModel.indicesFetchFailed || viewModel.indices.isEmpty {
-                    await viewModel.fetchIndices()
-                }
-                if let resp = try? await NetworkManager.shared.fetchTimeframeConflicts(userId: user.userId) {
-                    timeframeConflicts = resp.conflicts
-                }
-                dailyAction = await NetworkManager.shared.fetchDailyAction(userId: user.userId)
-
-                // Portfolio valuation history for the immersive hero chart
+            await viewModel.fetchIndices()
+        }
+        // Single user-data entry point. Keyed on userId so it also covers the late-auth case
+        // (token restores from keychain AFTER the view appears); guards keep revisits cheap.
+        .task(id: authManager.currentUser?.userId) {
+            guard let uid = authManager.currentUser?.userId else { return }
+            if viewModel.stockCount == 0 && !viewModel.isLoading {
+                await viewModel.fetchData(userId: uid)
+            }
+            feedVM.fetch(userId: uid)
+            // Retry indices after portfolio loads — backend may need warmup on cold start
+            if viewModel.indicesFetchFailed || viewModel.indices.isEmpty {
+                await viewModel.fetchIndices()
+            }
+            if timeframeConflicts.isEmpty,
+               let resp = try? await NetworkManager.shared.fetchTimeframeConflicts(userId: uid) {
+                timeframeConflicts = resp.conflicts
+            }
+            if dailyAction == nil {
+                dailyAction = await NetworkManager.shared.fetchDailyAction(userId: uid)
+            }
+            // Portfolio valuation history for the immersive hero chart
+            if valuationHistory.isEmpty {
                 valuationLoading = true
-                if let data = try? await HomeFeedService.shared.fetchValuationHistory(userId: user.userId, days: 365) {
+                if let data = try? await HomeFeedService.shared.fetchValuationHistory(userId: uid, days: 365) {
                     valuationHistory = data.snapshots.sorted { $0.parsedDate < $1.parsedDate }
                 }
                 valuationLoading = false
-
-
-            }
-            await indicesTask.value
-        }
-        // Late-auth guard: token restores from keychain AFTER view appears.
-        .onChange(of: authManager.currentUser?.userId) { _, uid in
-            guard let uid = uid else { return }
-            Task {
-                if viewModel.stockCount == 0 && !viewModel.isLoading {
-                    await viewModel.fetchData(userId: uid)
-                }
-                // Retry indices — initial fetch may have fired before backend was ready
-                if viewModel.indicesFetchFailed || viewModel.indices.isEmpty {
-                    await viewModel.fetchIndices()
-                }
-            }
-            consensusVM.fetch(userId: uid)
-            feedVM.fetch(userId: uid)
-            Task {
-                if let resp = try? await NetworkManager.shared.fetchTimeframeConflicts(userId: uid) {
-                    timeframeConflicts = resp.conflicts
-                }
-                dailyAction = await NetworkManager.shared.fetchDailyAction(userId: uid)
             }
         }
         .onDisappear {
@@ -2331,11 +2295,7 @@ extension HomeScreen {
                             }
                             Spacer()
                             if viewModel.morningBriefData != nil {
-                                let todayStr: String = {
-                                    let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
-                                    return df.string(from: Date())
-                                }()
-                                let isDismissedToday = morningBriefShownDate == todayStr
+                                let isDismissedToday = morningBriefShownDate == WireDate.dayKey(Date())
                                 Button {
                                     HapticManager.selection()
                                     if isDismissedToday {
@@ -2708,10 +2668,8 @@ extension HomeScreen {
                                 Button { HapticManager.selection(); 
     HapticManager.selection()
                                     HapticManager.selection()
-                                    let df = DateFormatter()
-                                    df.dateFormat = "yyyy-MM-dd"
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                        morningBriefShownDate = df.string(from: Date())
+                                        morningBriefShownDate = WireDate.dayKey(Date())
                                     }
                                 } label: {
                                     Text("READ FULL BRIEF")
@@ -2729,9 +2687,7 @@ extension HomeScreen {
     HapticManager.selection()
                                     HapticManager.selection()
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                        let df = DateFormatter()
-                                        df.dateFormat = "yyyy-MM-dd"
-                                        morningBriefShownDate = df.string(from: Date())
+                                        morningBriefShownDate = WireDate.dayKey(Date())
                                     }
                                 } label: {
                                     Text("DISMISS")

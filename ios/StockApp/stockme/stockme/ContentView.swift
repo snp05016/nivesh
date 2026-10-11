@@ -442,7 +442,6 @@ enum MarketSection: String, Hashable, CaseIterable {
 struct MarketsView: View {
     @EnvironmentObject var authManager: AuthManager
 
-    @State private var livePulse = false
     @State private var indices: [LiveMarketIndex] = []
     @State private var isLoadingIndices = false
     @State private var showScreener = false
@@ -474,12 +473,6 @@ struct MarketsView: View {
             }
         }
         .task { await loadIndices() }
-        .onAppear {
-            guard !MotionPolicy.isReduced() else { return }
-            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
-                livePulse = true
-            }
-        }
     }
 
     // MARK: - Overview (chunked categories)

@@ -313,7 +313,6 @@ struct StockProfileView: View {
     @StateObject private var vm: StockProfileViewModel
     @State private var activeTab = 0
     @State private var chartPeriod = "1y"
-    @State private var showQuantLab = false
 
     init(ticker: String, exchange: String = "NSE") {
         self.ticker = ticker
@@ -334,10 +333,8 @@ struct StockProfileView: View {
                         let closes = hist.prices.map(\.close)
                         let dates = hist.prices.map(\.parsedDate)
                         let price = vm.quickInfo?.price ?? closes.last ?? 0
-                        let changePct = vm.quickInfo?.changePercent ?? 0
                         ImmersiveStockHeroChart(
                             prices: closes,
-                            changePercent: changePct,
                             currentPrice: price,
                             dates: dates
                         )
@@ -510,7 +507,7 @@ struct StockProfileView: View {
                                         error: nil,
                                         onOpenQuantLab: {
                                             HapticManager.selection()
-                                            showQuantLab = true
+                                            activeTab = 11  // Quant Lab tab (single mount point)
                                         }
                                     )
                                     .padding(.horizontal, Theme.screenPadding)
@@ -631,9 +628,6 @@ struct StockProfileView: View {
             }
             .toolbarBackground(Theme.canvas, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-        .navigationDestination(isPresented: $showQuantLab) {
-            QuantLabView(symbol: ticker)
-        }
         .task { await vm.fetchStockProfile() }
     }
 

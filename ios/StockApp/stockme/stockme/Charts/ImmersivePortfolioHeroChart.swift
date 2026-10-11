@@ -16,13 +16,17 @@ enum ImmersiveChartGeometry {
             return [CGPoint(x: rect.minX, y: rect.midY),
                     CGPoint(x: rect.maxX, y: rect.midY)]
         }
-        let mn = values.min() ?? 0
-        let mx = values.max() ?? 1
-        let rng = max(mx - mn, 0.0001)
+        // Non-finite values sit on the midline (indices stay aligned with the scrubbed data);
+        // a flat series is centred instead of hugging the bottom edge.
+        let finite = values.filter(\.isFinite)
+        let mn = finite.min() ?? 0
+        let mx = finite.max() ?? 0
+        let rng = mx - mn
         let usableH = rect.height - verticalInset * 2
         let step = rect.width / CGFloat(values.count - 1)
         return values.enumerated().map { i, v in
             let x = rect.minX + CGFloat(i) * step
+            guard v.isFinite, rng > 1e-9 else { return CGPoint(x: x, y: rect.midY) }
             let y = rect.minY + verticalInset + (1 - CGFloat((v - mn) / rng)) * usableH
             return CGPoint(x: x, y: y)
         }
@@ -90,7 +94,8 @@ struct ImmersivePortfolioHeroChart: View {
     // MARK: Derived data
 
     private var values: [Double] { snapshots.map(\.totalValue) }
-    private var isPositive: Bool { (snapshots.last?.totalPnl ?? 0) >= 0 }
+    /// P&L change over the shown range (not lifetime P&L), so the colour matches the curve.
+    private var isPositive: Bool { snapshots.pnlChangeIsPositive }
     private var lineColor: Color { isPositive ? Theme.bullGreen : Theme.bearRed }
     private var fillGradient: LinearGradient {
         isPositive ? Theme.chartBullGradient : Theme.chartBearGradient
@@ -261,10 +266,44 @@ struct ImmersivePortfolioHeroChart: View {
         }
     }
 
-    private func dateString(from date: Date) -> String {
+    private static let headerDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "d MMM ''yy"
-        return f.string(from: date)
+        return f
+    }()
+
+    private func dateString(from date: Date) -> String {
+        Self.headerDateFormatter.string(from: date)
+    }
+}
+
+// MARK: - Range slicing
+
+extension Array where Element == PortfolioValuationSnapshot {
+    /// Date-based slice (ascending snapshots) so "1Y" is one year even when two years are fetched.
+    /// Always keeps at least two points so the chart can draw.
+    func ranged(_ range: TimeRange) -> [PortfolioValuationSnapshot] {
+        guard let lastDate = last?.parsedDate else { return [] }
+        let cal = Calendar.current
+        let cutoff: Date?
+        switch range {
+        case .day:         cutoff = cal.date(byAdding: .day, value: -1, to: lastDate)
+        case .week:        cutoff = cal.date(byAdding: .day, value: -7, to: lastDate)
+        case .month:       cutoff = cal.date(byAdding: .month, value: -1, to: lastDate)
+        case .threeMonths: cutoff = cal.date(byAdding: .month, value: -3, to: lastDate)
+        case .sixMonths:   cutoff = cal.date(byAdding: .month, value: -6, to: lastDate)
+        case .year:        cutoff = cal.date(byAdding: .year, value: -1, to: lastDate)
+        case .all:         cutoff = nil
+        }
+        guard let cutoff else { return self }
+        let slice = filter { $0.parsedDate >= cutoff }
+        return slice.count >= 2 ? slice : Array(suffix(2))
+    }
+
+    /// True when P&L ended the range at or above where it started.
+    var pnlChangeIsPositive: Bool {
+        guard let first = first, let last = last else { return true }
+        return last.totalPnl - first.totalPnl >= 0
     }
 }
 

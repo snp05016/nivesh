@@ -162,6 +162,13 @@ class ThreadDetailViewModel: ObservableObject {
     }
 }
 
+/// One editable poll option. Identity is stable across inserts/removals so the
+/// row bindings in CreateThreadView never index into a shrunken array.
+struct PollOptionDraft: Identifiable, Equatable {
+    let id = UUID()
+    var text = ""
+}
+
 /// Drives CreateThreadView — board picker, title/body, optional poll, and submission.
 @MainActor
 class CreateThreadViewModel: ObservableObject {
@@ -171,17 +178,24 @@ class CreateThreadViewModel: ObservableObject {
     @Published var body: String = ""
     @Published var includesPoll: Bool = false
     @Published var pollQuestion: String = ""
-    @Published var pollOptions: [String] = ["", ""]
+    @Published var pollOptions: [PollOptionDraft] = [PollOptionDraft(), PollOptionDraft()]
     @Published var isSubmitting: Bool = false
     @Published var errorMessage: String? = nil
     @Published var createdThread: ForumThreadDetail? = nil
 
-    init(preselectedBoard: ForumBoard? = nil) {
+    init(preselectedBoard: ForumBoard? = nil, loadBoards: Bool = true) {
         if let preselectedBoard {
             self.boards = [preselectedBoard]
             self.selectedBoardId = preselectedBoard.id
         }
-        fetchBoards()
+        if loadBoards { fetchBoards() }
+    }
+
+    /// Trimmed, non-empty option texts — what gets validated and submitted.
+    var validPollOptions: [String] {
+        pollOptions
+            .map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
     }
 
     var isValid: Bool {
@@ -189,8 +203,7 @@ class CreateThreadViewModel: ObservableObject {
         guard title.trimmingCharacters(in: .whitespacesAndNewlines).count >= 3 else { return false }
         guard !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         if includesPoll {
-            let validOptions = pollOptions.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-            guard !pollQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, validOptions.count >= 2 else {
+            guard !pollQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, validPollOptions.count >= 2 else {
                 return false
             }
         }
@@ -211,12 +224,12 @@ class CreateThreadViewModel: ObservableObject {
 
     func addPollOption() {
         guard pollOptions.count < 6 else { return }
-        pollOptions.append("")
+        pollOptions.append(PollOptionDraft())
     }
 
-    func removePollOption(at index: Int) {
-        guard pollOptions.count > 2, pollOptions.indices.contains(index) else { return }
-        pollOptions.remove(at: index)
+    func removePollOption(id: PollOptionDraft.ID) {
+        guard pollOptions.count > 2 else { return }
+        pollOptions.removeAll { $0.id == id }
     }
 
     func submit(completion: @escaping (Bool) -> Void) {
@@ -230,7 +243,7 @@ class CreateThreadViewModel: ObservableObject {
                     title: title.trimmingCharacters(in: .whitespacesAndNewlines),
                     body: body.trimmingCharacters(in: .whitespacesAndNewlines),
                     pollQuestion: includesPoll ? pollQuestion.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
-                    pollOptions: includesPoll ? pollOptions.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } : nil
+                    pollOptions: includesPoll ? validPollOptions : nil
                 )
                 self.createdThread = thread
                 self.isSubmitting = false

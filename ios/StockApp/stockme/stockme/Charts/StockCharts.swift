@@ -92,18 +92,23 @@ struct PriceHistoryChart: View {
     @State private var scrubDate = Date()
     @State private var scrubPrice: Double = 0
 
-    private var filtered: [PricePoint] {
-        let cutoff: Date
+    private var displayCutoff: Date {
         let cal = Calendar.current
         switch range {
-        case 0: cutoff = cal.date(byAdding: .month, value: -3, to: Date()) ?? Date()
-        case 1: cutoff = cal.date(byAdding: .month, value: -6, to: Date()) ?? Date()
-        default: cutoff = Date.distantPast
+        case 0: return cal.date(byAdding: .month, value: -3, to: Date()) ?? Date()
+        case 1: return cal.date(byAdding: .month, value: -6, to: Date()) ?? Date()
+        default: return Date.distantPast
         }
-        return prices.filter { $0.parsedDate >= cutoff }
     }
 
-    private func sma(_ points: [PricePoint], period: Int) -> [(date: Date, value: Double)] {
+    private var filtered: [PricePoint] {
+        let cutoff = displayCutoff
+        return prices.droppingUndated.filter { $0.parsedDate >= cutoff }
+    }
+
+    /// Simple moving average with the true period; empty when there are fewer points than `period`.
+    static func sma(_ points: [PricePoint], period: Int) -> [(date: Date, value: Double)] {
+        guard period > 0 else { return [] }
         guard points.count >= period else { return [] }
         var result: [(date: Date, value: Double)] = []
         for i in (period - 1)..<points.count {
@@ -131,9 +136,12 @@ struct PriceHistoryChart: View {
                     .foregroundStyle(Theme.inkTertiary)
                     .frame(maxWidth: .infinity, minHeight: 160)
             } else {
-                let sma50 = sma(filtered, period: min(50, filtered.count))
-                // 200 DMA only meaningful when we have enough history
-                let sma200 = filtered.count >= 100 ? sma(filtered, period: min(200, filtered.count)) : []
+                // SMAs use the full history and the true period, then crop to the visible window,
+                // so "200 DMA" only appears when 200 points exist.
+                let full = prices.droppingUndated
+                let cutoff = displayCutoff
+                let sma50 = Self.sma(full, period: 50).filter { $0.date >= cutoff }
+                let sma200 = Self.sma(full, period: 200).filter { $0.date >= cutoff }
                 let closes = filtered.map { $0.close }
                 let minClose = closes.min() ?? 0
                 let maxClose = closes.max() ?? 1

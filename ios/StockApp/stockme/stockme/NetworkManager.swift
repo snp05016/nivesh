@@ -456,11 +456,9 @@ class NetworkManager: ObservableObject {
         var request = authRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let formatter = DateFormatter()
-        formatter.dateFormat = "dd-MMM-yyyy"
         let body = Req(
             user_id: userId, ticker: ticker, exchange: "NSE", company_name: companyName, shares: shares, buy_price: buyPrice,
-            group_name: "holdings", purchase_date: formatter.string(from: purchaseDate), notes: notes, target_price: targetPrice,
+            group_name: "holdings", purchase_date: WireDate.ddMMMyyyy.string(from: purchaseDate), notes: notes, target_price: targetPrice,
             transaction_type: transactionType.uppercased()
         )
         request.httpBody = try JSONEncoder().encode(body)
@@ -698,7 +696,7 @@ class NetworkManager: ObservableObject {
         guard let (data, resp) = try? await session.data(for: request),
               let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
         struct Resp: Decodable { let prices: [NiftyPricePoint] }
-        return (try? JSONDecoder().decode(Resp.self, from: data))?.prices ?? []
+        return (try? JSONDecoder().decode(Resp.self, from: data))?.prices.droppingUndated ?? []
     }
 
     // MARK: - Quarterly Financials
