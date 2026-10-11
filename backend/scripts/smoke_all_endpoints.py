@@ -1,75 +1,68 @@
-import logging
 #!/usr/bin/env python3
 """
-Smoke test all safe GET endpoints by importing the FastAPI app and using
-the TestClient. Skips auth-protected and mutation endpoints.
+Smoke test hermetic GET endpoints by importing the FastAPI app and using
+the TestClient. Only routes that make no network calls are listed; auth-
+protected routes are hit without a token and must reject with 401.
 Never touches production DB.
 
-Exit 0 = all tested endpoints responded (even if 404/422 — checks for 500s).
-Exit 1 = unexpected 500s found.
+Exit 0 = every endpoint returned its expected status.
+Exit 1 = any status mismatch (including 404/422) or exception.
 """
 
 import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-os.environ.setdefault("DATABASE_URL", "sqlite:///./stockapp_health_check_test.db")
-os.environ.setdefault("ENABLE_SCHEDULER", "false")
-os.environ.setdefault("JWT_SECRET", "health-check-test")
-
-# Create a minimal DB for the smoke test
-try:
-    from database import init_db
-    init_db()
-except Exception as _e:
-    pass
-
-try:
-    from fastapi.testclient import TestClient
-    import main as app_module
-    app = app_module.app
-    client = TestClient(app, raise_server_exceptions=False)
-except Exception as e:
-    logging.info(f"[FAIL] Cannot create TestClient: {e}")
-    sys.exit(1)
-
-# Safe GET endpoints to smoke — no auth required, no path params that need real data
-SAFE_ENDPOINTS = [
-    "/ping",
-    "/health",
-    "/favicon.ico",
-    "/api/v1/watchlist?user_id=999999",        # non-existent user → empty list or 404
-    "/api/v1/morning-brief?user_id=999999",     # non-existent user → handled gracefully
-    "/api/v1/market/pulse",                     # market data endpoint
-    "/api/v1/market/earnings-calendar",
-    "/api/v1/market/block-deals",
-    "/api/v1/market/macro-events",
+# (path, expected status). Keep this list hermetic: no yfinance, scraping or LLM.
+ENDPOINTS: list[tuple[str, int]] = [
+    ("/ping", 200),
+    ("/health", 200),
+    ("/health/live", 200),
+    ("/favicon.ico", 200),
+    ("/watchlist/999999", 401),
+    ("/morning-summary/999999", 401),
+    ("/portfolio/999999", 401),
+    ("/trade-journal/999999", 401),
 ]
 
-failures: list[str] = []
-tested = 0
 
-for endpoint in SAFE_ENDPOINTS:
+def main() -> int:
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    os.environ.setdefault("DATABASE_URL", "sqlite:///./stockapp_health_check_test.db")
+    os.environ.setdefault("ENABLE_SCHEDULER", "false")
+    os.environ.setdefault("JWT_SECRET", "health-check-test")
+
     try:
-        resp = client.get(endpoint)
-        tested += 1
-        if resp.status_code == 500:
-            failures.append(f"GET {endpoint} → 500: {resp.text[:200]}")
-            logging.info(f"  [FAIL] GET {endpoint} → 500")
-        else:
-            logging.info(f"  [OK]   GET {endpoint} → {resp.status_code}")
+        from database import init_db
+        init_db()
     except Exception as e:
-        failures.append(f"GET {endpoint} → exception: {e}")
-        logging.info(f"  [FAIL] GET {endpoint} → exception: {e}")
+        print(f"[WARN] init_db failed: {e}", file=sys.stderr)
 
-logging.info(f"\n[OK] Tested {tested} endpoints")
+    try:
+        from fastapi.testclient import TestClient
+        import main as app_module
+        client = TestClient(app_module.app, raise_server_exceptions=False)
+    except Exception as e:
+        print(f"[FAIL] Cannot create TestClient: {e}", file=sys.stderr)
+        return 1
 
-if failures:
-    logging.info(f"[FAIL] {len(failures)} endpoints returned 500:")
+    failures: list[str] = []
+    for path, expected in ENDPOINTS:
+        try:
+            status = client.get(path).status_code
+        except Exception as e:
+            failures.append(f"GET {path} -> exception: {e}")
+            continue
+        if status == expected:
+            print(f"  [OK]   GET {path} -> {status}")
+        else:
+            failures.append(f"GET {path} -> {status} (expected {expected})")
+
     for f in failures:
-        logging.info(f"  {f}")
-    sys.exit(1)
+        print(f"  [FAIL] {f}", file=sys.stderr)
+    print(f"\nTested {len(ENDPOINTS)} endpoints, {len(failures)} failed")
+    return 1 if failures else 0
 
-logging.info("[OK] No unexpected 500s found")
-sys.exit(0)
+
+if __name__ == "__main__":
+    sys.exit(main())
