@@ -103,5 +103,13 @@ def test_strategy_sweep_trade_count_reflects_selected_trades(patched_session):
 
     result = svc.run_strategy_sweep()
 
-    # One prediction per day, all at 70% confidence: every iteration selects all 40.
-    assert all(it.trade_count == 40 for it in result.all_results)
+    assert result.configurations_tested == len(result.all_results) == 7 * 4 * 3 * 4
+    # Seeded rows only carry 30-day outcomes, so 7D/90D configurations trade nothing.
+    assert all(it.trade_count == 0 for it in result.all_results if it.holding_period != "30D")
+    # 40 signal dates: the holdout starts at the 33rd (day 32) and in-sample keeps only signals whose
+    # 30-day outcome matures before it (days 0-2), one 70%-confidence prediction per day.
+    eligible = [it for it in result.all_results if it.holding_period == "30D" and it.confidence_threshold <= 70]
+    assert eligible and all(it.trade_count == 3 for it in eligible)
+    assert all(it.trade_count == 0 for it in result.all_results if it.confidence_threshold > 70)
+    assert result.best_cagr.holding_period == "30D"
+    assert result.best_holdout_metrics is not None

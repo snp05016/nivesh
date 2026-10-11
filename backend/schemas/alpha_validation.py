@@ -13,20 +13,21 @@ class CostAssumptions(BaseModel):
     slippage_bps: float = Field(0.0, description="Assumed execution slippage in bps")
     liquidity_penalty_bps: float = Field(0.0, description="Penalty for illiquid stocks in bps")
     turnover_penalty_bps: float = Field(0.0, description="Penalty for high portfolio turnover in bps")
+    dp_charge_bps: float = Field(default=0.0, description="Depository (DP) charge on the sell leg in bps, GST included")
+    stcg_tax_pct: float = Field(default=0.0, description="Short-term capital gains tax on profitable trades, percent")
 
 
 class BacktestParams(BaseModel):
     """Parameters defining a backtest scenario. Accepts both backend and iOS naming conventions."""
-    horizon: str = Field("30D", description="Holding period horizon (7D/7d, 20D/20d, 30D/30d, 60D/60d, 90D/90d)")
+    horizon: str = Field("30D", description="Holding period horizon (7D, 30D or 90D, case-insensitive)")
 
     @field_validator("horizon", mode="before")
     @classmethod
     def normalize_horizon(cls, v: str) -> str:
-        """Accept both '30d' and '30D' — normalize to uppercase. Reject invalid."""
-        VALID = {"7D", "7d", "20D", "20d", "30D", "30d", "60D", "60d", "90D", "90d"}
-        if isinstance(v, str) and v not in VALID:
-            raise ValueError(f"Invalid horizon '{v}'. Must be one of: {sorted(VALID)}")
-        return v.upper() if isinstance(v, str) else v
+        """Accept '30d' or '30D' and normalize to uppercase. Only horizons with a tracked outcome column are allowed."""
+        if not isinstance(v, str) or v.strip().upper() not in {"7D", "30D", "90D"}:
+            raise ValueError("Unsupported horizon: outcomes are tracked at 7/30/90 days")
+        return v.strip().upper()
 
     strategy_type: str = Field("confidence_weighted", description="Type of strategy to test")
 
@@ -87,7 +88,10 @@ class BacktestResult(BaseModel):
     metrics: PortfolioMetrics = Field(..., description="Resulting portfolio metrics")
     benchmark_metrics: Dict[str, Any] = Field(..., description="Metrics of the benchmark")
     statistical_significance: Dict[str, Any] = Field(..., description="Statistical significance metrics")
-    trade_count: int = Field(0, description="Number of prediction positions used")
+    trade_count: int = Field(0, description="Number of matured prediction positions selected by the strategy")
+    status: str = Field("ok", description="'ok', or 'insufficient_data' when no matured outcomes exist")
+    matured_trades: int = Field(0, description="Matured predictions matching the filters, before top-k selection")
+    cohorts_used: int = Field(0, description="Non-overlapping holding-period cohorts behind the return statistics")
 
 
 class RegimePerformance(BaseModel):
@@ -124,7 +128,9 @@ class StrategySweepResult(BaseModel):
     """Results from a multi-parameter strategy sweep."""
     best_cagr: SweepIteration = Field(..., description="Iteration with best CAGR")
     best_sharpe: SweepIteration = Field(..., description="Iteration with best Sharpe ratio")
-    all_results: List[SweepIteration] = Field(..., description="All sweep iterations")
+    all_results: List[SweepIteration] = Field(..., description="All sweep iterations (in-sample window)")
+    configurations_tested: Optional[int] = Field(None, description="Number of configurations tried (multiple-testing disclosure)")
+    best_holdout_metrics: Optional[PortfolioMetrics] = Field(None, description="Out-of-sample metrics of best_cagr on the last 20% of cohort dates")
 
 
 class CostPresetResult(BaseModel):

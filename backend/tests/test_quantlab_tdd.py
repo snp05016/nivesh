@@ -32,9 +32,9 @@ def test_alpha_validation_accepts_lowercase_horizon(auth_headers):
         assert body["params"]["horizon"] == "30D"
 
 
-@pytest.mark.parametrize("horizon", ["7d", "20d", "30d", "60d", "90d", "7D", "20D", "30D", "60D", "90D"])
+@pytest.mark.parametrize("horizon", ["7d", "30d", "90d", "7D", "30D", "90D"])
 def test_all_horizon_formats_accepted(horizon, auth_headers):
-    """All horizon variants (lowercase and uppercase) are accepted."""
+    """Tracked horizons (7/30/90 days) are accepted in lowercase and uppercase."""
     from main import app
     client = TestClient(app)
 
@@ -48,14 +48,15 @@ def test_all_horizon_formats_accepted(horizon, auth_headers):
         assert resp.status_code == 200, f"Failed for horizon='{horizon}': {resp.text}"
 
 
-def test_invalid_horizon_rejected(auth_headers):
-    """Invalid horizon like '15d' or 'invalid' is rejected with 422."""
+@pytest.mark.parametrize("horizon", ["15d", "20d", "60D"])
+def test_invalid_horizon_rejected(horizon, auth_headers):
+    """Horizons without a tracked outcome column (15d, 20d, 60d) are rejected with 422."""
     from main import app
     client = TestClient(app)
 
     resp = client.post(
         "/api/v1/backtests/alpha-validation",
-        json={"horizon": "15d", "strategy_type": "confidence_weighted", "tickers": ["RELIANCE.NS"]},
+        json={"horizon": horizon, "strategy_type": "confidence_weighted", "tickers": ["RELIANCE.NS"]},
         headers=auth_headers,
     )
     assert resp.status_code == 422, f"Expected 422 for invalid horizon, got {resp.status_code}"

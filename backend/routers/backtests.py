@@ -76,11 +76,13 @@ def backtest_cost_sensitivity():
         Any: The response.
     """
     results = {}
+    statuses = set()
     presets: list[str] = ["zero_cost", "optimistic", "realistic_retail", "conservative", "institutional"]
     for preset in presets:
         params = BacktestParams(cost_preset=preset, strategy_type="top_k_confidence", top_k=10)  # type: ignore[arg-type]
         try:
             res = run_alpha_validation(params)
+            statuses.add(res.status)
             results[preset] = CostPresetResult(
                 cagr=res.metrics.cagr,
                 sharpe=res.metrics.sharpe,
@@ -93,4 +95,9 @@ def backtest_cost_sensitivity():
             logger.exception("cost-sensitivity preset %s failed", preset)
             results[preset] = CostPresetResult(error="unavailable")
 
+    if statuses == {"insufficient_data"}:
+        return CostSensitivityResponse(
+            presets=results, status="insufficient_data",
+            warning="No predictions have a matured 30-day outcome yet.",
+        )
     return CostSensitivityResponse(presets=results)

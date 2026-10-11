@@ -17,6 +17,14 @@ from schemas.alpha_validation import (
 )
 
 # Phase 2: Costs + Slippage
+# DP charge: about Rs 16 (GST included) per scrip sold, i.e. ~1.6 bps of a Rs 1 lakh position.
+_DP_CHARGE_BPS = 1.6
+# Listed-equity STCG (Section 111A) after Budget 2024; every supported horizon is under 12 months.
+_STCG_TAX_PCT = 20.0
+
+# Holding horizons backed by an outcome column on AnalysisPrediction (actual_return_7d/30d/90d).
+HORIZON_DAYS = {"7D": 7, "30D": 30, "90D": 90}
+
 COST_PRESETS = {
     "zero_cost": CostAssumptions(
         brokerage_bps=0.0, stt_bps=0.0, exchange_charges_bps=0.0,
@@ -26,22 +34,26 @@ COST_PRESETS = {
     "optimistic": CostAssumptions(
         brokerage_bps=2.0, stt_bps=10.0, exchange_charges_bps=0.3,
         sebi_charges_bps=0.1, gst_pct=18.0, stamp_duty_bps=1.5,
-        slippage_bps=5.0, liquidity_penalty_bps=0.0, turnover_penalty_bps=5.0
+        slippage_bps=5.0, liquidity_penalty_bps=0.0, turnover_penalty_bps=5.0,
+        dp_charge_bps=_DP_CHARGE_BPS, stcg_tax_pct=_STCG_TAX_PCT
     ),
     "realistic_retail": CostAssumptions(
         brokerage_bps=10.0, stt_bps=10.0, exchange_charges_bps=0.32,
         sebi_charges_bps=0.1, gst_pct=18.0, stamp_duty_bps=1.5,
-        slippage_bps=15.0, liquidity_penalty_bps=5.0, turnover_penalty_bps=10.0
+        slippage_bps=15.0, liquidity_penalty_bps=5.0, turnover_penalty_bps=10.0,
+        dp_charge_bps=_DP_CHARGE_BPS, stcg_tax_pct=_STCG_TAX_PCT
     ),
     "conservative": CostAssumptions(
         brokerage_bps=20.0, stt_bps=10.0, exchange_charges_bps=0.32,
         sebi_charges_bps=0.1, gst_pct=18.0, stamp_duty_bps=1.5,
-        slippage_bps=30.0, liquidity_penalty_bps=15.0, turnover_penalty_bps=20.0
+        slippage_bps=30.0, liquidity_penalty_bps=15.0, turnover_penalty_bps=20.0,
+        dp_charge_bps=_DP_CHARGE_BPS, stcg_tax_pct=_STCG_TAX_PCT
     ),
     "institutional": CostAssumptions(
         brokerage_bps=5.0, stt_bps=10.0, exchange_charges_bps=0.32,
         sebi_charges_bps=0.1, gst_pct=18.0, stamp_duty_bps=1.5,
-        slippage_bps=10.0, liquidity_penalty_bps=5.0, turnover_penalty_bps=5.0
+        slippage_bps=10.0, liquidity_penalty_bps=5.0, turnover_penalty_bps=5.0,
+        dp_charge_bps=_DP_CHARGE_BPS, stcg_tax_pct=_STCG_TAX_PCT
     ),
 }
 
@@ -54,27 +66,26 @@ def _calculate_frictions_bps(cost: CostAssumptions) -> float:
     Returns:
         float: The total transaction friction in basis points.
     """
-    # Entry costs
-    entry_tax_bps = cost.stt_bps + cost.exchange_charges_bps + cost.sebi_charges_bps + cost.stamp_duty_bps
-    entry_brokerage_total = cost.brokerage_bps * (1 + cost.gst_pct / 100.0)
-    entry_frictions = entry_tax_bps + entry_brokerage_total + cost.slippage_bps
+    # GST applies to brokerage, exchange transaction charges and SEBI fees (not STT or stamp duty).
+    gst_bps = (cost.brokerage_bps + cost.exchange_charges_bps + cost.sebi_charges_bps) * cost.gst_pct / 100.0
+    side_bps = cost.brokerage_bps + cost.stt_bps + cost.exchange_charges_bps + cost.sebi_charges_bps + gst_bps + cost.slippage_bps
 
-    # Exit costs (no stamp duty on sell in India)
-    exit_tax_bps = cost.stt_bps + cost.exchange_charges_bps + cost.sebi_charges_bps
-    exit_brokerage_total = cost.brokerage_bps * (1 + cost.gst_pct / 100.0)
-    exit_frictions = exit_tax_bps + exit_brokerage_total + cost.slippage_bps
+    entry_frictions = side_bps + cost.stamp_duty_bps  # stamp duty on buy only
+    exit_frictions = side_bps + cost.dp_charge_bps     # DP charge on sell only
 
-    return entry_frictions + exit_frictions + cost.turnover_penalty_bps
+    return entry_frictions + exit_frictions + cost.liquidity_penalty_bps + cost.turnover_penalty_bps
 
 
 # Phase 1 & 3: Backtest Engine and Portfolio Metrics
-def _compute_metrics(gross_returns: List[float], frictions_bps: float, holding_days: int) -> PortfolioMetrics:
-    """Computes portfolio performance metrics from gross returns and frictions.
+def _compute_metrics(gross_returns: List[float], frictions_bps: float, holding_days: int,
+                     stcg_tax_pct: float = 0.0) -> PortfolioMetrics:
+    """Computes portfolio performance metrics from gross returns, frictions and tax.
 
     Args:
-        gross_returns (List[float]): A list of gross daily portfolio returns.
-        frictions_bps (float): The transaction friction to subtract per trade in basis points.
-        holding_days (int): The average holding period in days, used to annualize metrics.
+        gross_returns (List[float]): One gross portfolio return per non-overlapping holding-period cohort.
+        frictions_bps (float): The round-trip transaction friction to subtract per cohort in basis points.
+        holding_days (int): The holding period in calendar days, used to annualize metrics.
+        stcg_tax_pct (float): Short-term capital gains tax charged on profitable cohorts, in percent.
 
     Returns:
         PortfolioMetrics: The calculated performance metrics including CAGR, Sharpe, and Sortino.
@@ -88,39 +99,42 @@ def _compute_metrics(gross_returns: List[float], frictions_bps: float, holding_d
             cash_percentage=100.0, sector_concentration=0.0,
             drawdown_duration=0.0, benchmark_excess_return=0.0
         )
-        
-    net_returns = [r - (frictions_bps / 10000.0) for r in gross_returns]
-    
-    # Portfolio level aggregation (assuming non-compounding overlapping trades for simplicity of this metric)
+
+    # ponytail: tax is charged per profitable cohort with no loss set-off; add a yearly netting pass if it matters.
+    net_returns = []
+    for r in gross_returns:
+        after_costs = r - (frictions_bps / 10000.0)
+        net_returns.append(after_costs - (stcg_tax_pct / 100.0) * max(after_costs, 0.0))
+
     avg_net_return = sum(net_returns) / len(net_returns)
     avg_gross_return = sum(gross_returns) / len(gross_returns)
-    
-    # CAGR Approximation
-    # If holding period is 30 days, annualized return is (1+avg_ret)^(365/30) - 1
+
+    # Cohorts do not overlap, so compounding them covers len(net_returns) * holding_days calendar days.
     periods_per_year = 365.0 / float(holding_days) if holding_days > 0 else 1.0
-    cagr = ((1.0 + avg_net_return) ** periods_per_year) - 1.0 if avg_net_return > -1.0 else -1.0
-    
-    # Volatility
+    growth = math.prod(1.0 + r for r in net_returns)
+    years = len(net_returns) / periods_per_year
+    cagr = growth ** (1.0 / years) - 1.0 if growth > 0 else -1.0
+
+    # Volatility, Sharpe and Sortino are all annualized (risk-free rate = 0.05 annualized)
     mean_net = avg_net_return
     variance = sum((r - mean_net) ** 2 for r in net_returns) / len(net_returns)
     volatility = math.sqrt(variance) * math.sqrt(periods_per_year)
-    
-    # Sharpe & Sortino (assumes risk-free rate = 0.05 annualized)
+
     rf_per_period = 0.05 / periods_per_year
-    sharpe = (mean_net - rf_per_period) / math.sqrt(variance) if variance > 0 else 0.0
-    
+    sharpe = (mean_net - rf_per_period) / math.sqrt(variance) * math.sqrt(periods_per_year) if variance > 0 else 0.0
+
     downside_returns = [r for r in net_returns if r < rf_per_period]
     downside_variance = sum((r - rf_per_period) ** 2 for r in downside_returns) / len(downside_returns) if downside_returns else 0.0
-    sortino = (mean_net - rf_per_period) / math.sqrt(downside_variance) if downside_variance > 0 else 0.0
-    
+    sortino = (mean_net - rf_per_period) / math.sqrt(downside_variance) * math.sqrt(periods_per_year) if downside_variance > 0 else 0.0
+
     wins = [r for r in net_returns if r > 0]
     losses = [r for r in net_returns if r <= 0]
     hit_rate = len(wins) / len(net_returns)
     avg_win = sum(wins) / len(wins) if wins else 0.0
     avg_loss = sum(losses) / len(losses) if losses else 0.0
     profit_factor = abs(sum(wins) / sum(losses)) if sum(losses) != 0 else float('inf')
-    
-    # Simple max drawdown approximation from trade sequence
+
+    # Max drawdown over the compounded sequence of non-overlapping cohorts
     cumulative = 1.0
     peak = 1.0
     max_dd = 0.0
@@ -131,7 +145,7 @@ def _compute_metrics(gross_returns: List[float], frictions_bps: float, holding_d
         dd = (peak - cumulative) / peak
         if dd > max_dd:
             max_dd = dd
-            
+
     return PortfolioMetrics(
         gross_return=round(avg_gross_return, 4),
         net_return=round(avg_net_return, 4),
@@ -166,6 +180,35 @@ def run_alpha_validation(params: BacktestParams) -> BacktestResult:
         return _run_alpha_validation_internal(session, params)
 
 
+_BULLISH_STRATEGIES = {"equal_weight_bullish", "confidence_weighted", "top_k_confidence", "sector_neutral_top_k"}
+
+
+def _load_matured(session, horizon: str, min_confidence: float, bullish_only: bool,
+                  regime_id: Optional[str] = None) -> List[AnalysisPrediction]:
+    """Loads predictions whose outcome for `horizon` has been recorded (unmatured rows are excluded).
+
+    Args:
+        session: The SQLAlchemy database session.
+        horizon (str): A key of HORIZON_DAYS.
+        min_confidence (float): Minimum confidence_pct.
+        bullish_only (bool): Restrict to BULLISH recommendations.
+        regime_id (Optional[str]): Restrict to predictions persisted with this regime_id.
+
+    Returns:
+        List[AnalysisPrediction]: The matured predictions.
+    """
+    ret_col = getattr(AnalysisPrediction, f"actual_return_{horizon.lower()}")
+    query = session.query(AnalysisPrediction).filter(
+        ret_col.isnot(None),
+        AnalysisPrediction.confidence_pct >= min_confidence,
+    )
+    if bullish_only:
+        query = query.filter(AnalysisPrediction.recommendation == "BULLISH")
+    if regime_id is not None:
+        query = query.filter(AnalysisPrediction.regime_id == regime_id)
+    return query.all()
+
+
 def _run_alpha_validation_internal(session, params: BacktestParams, regime_id: Optional[str] = None) -> BacktestResult:
     """Internal implementation of the alpha validation backtest using a provided database session.
 
@@ -177,47 +220,64 @@ def _run_alpha_validation_internal(session, params: BacktestParams, regime_id: O
     Returns:
         BacktestResult: The results of the backtest.
     """
+    preds = _load_matured(session, params.horizon, params.confidence_threshold,
+                          params.strategy_type in _BULLISH_STRATEGIES, regime_id)
+    return _backtest(preds, params)
+
+
+def _backtest(preds: List[Any], params: BacktestParams) -> BacktestResult:
+    """Backtests a strategy over already-loaded predictions.
+
+    Positions opened on one signal date form a cohort held for the horizon. Signal dates that fall
+    inside the previous cohort's holding window are skipped, so the cohorts behind the return
+    statistics never overlap.
+
+    Args:
+        preds (List[Any]): Candidate AnalysisPrediction rows (filtered again here, so a superset is fine).
+        params (BacktestParams): The parameters defining the backtest strategy.
+
+    Returns:
+        BacktestResult: The results of the backtest.
+    """
     cost_assumptions = COST_PRESETS.get(params.cost_preset, COST_PRESETS["realistic_retail"])
     frictions_bps = _calculate_frictions_bps(cost_assumptions)
-    
-    horizon_map = {"7D": 7, "20D": 20, "30D": 30, "60D": 60, "90D": 90}
-    days = horizon_map.get(params.horizon, 30)
-    
-    # Fetch relevant predictions
-    query = session.query(AnalysisPrediction).filter(
-        AnalysisPrediction.horizon_days == days,
-        AnalysisPrediction.confidence_pct >= params.confidence_threshold
-    )
-    
-    if params.strategy_type in ["equal_weight_bullish", "confidence_weighted", "top_k_confidence", "sector_neutral_top_k"]:
-        query = query.filter(AnalysisPrediction.recommendation == "BULLISH")
+    days = HORIZON_DAYS[params.horizon]
+    ret_attr = f"actual_return_{params.horizon.lower()}"
+    bullish_only = params.strategy_type in _BULLISH_STRATEGIES
 
-    if regime_id is not None:
-        query = query.filter(AnalysisPrediction.regime_id == regime_id)
-
-    preds = query.all()
-    
-    # Group by date for cross-sectional sizing
-    by_date: Dict[str, List[AnalysisPrediction]] = {}
+    # Group by date for cross-sectional sizing. One position per symbol per date: repeated
+    # analyses of the same stock on one day (cache hits) are not independent bets.
+    by_date: Dict[Any, Dict[str, Any]] = {}
     for p in preds:
-        d = p.created_at.strftime("%Y-%m-%d")
-        if d not in by_date:
-            by_date[d] = []
-        by_date[d].append(p)
-        
+        if getattr(p, ret_attr) is None or p.confidence_pct < params.confidence_threshold:
+            continue
+        if bullish_only and p.recommendation != "BULLISH":
+            continue
+        day = by_date.setdefault(p.created_at.date(), {})
+        kept = day.get(p.symbol)
+        if kept is None or p.confidence_pct > kept.confidence_pct:
+            day[p.symbol] = p
+    matured = sum(len(day) for day in by_date.values())
+
     gross_returns = []
     trades = 0
+    last_cohort = None
 
-    for d, daily_preds in by_date.items():
+    for d in sorted(by_date):
+        daily_preds = list(by_date[d].values())
         if params.strategy_type == "top_k_confidence":
             daily_preds = sorted(daily_preds, key=lambda x: x.confidence_pct, reverse=True)[:params.top_k]
         elif params.strategy_type == "sector_neutral_top_k":
             # For simplicity, fallback to top_k if sector not fully populated
             daily_preds = sorted(daily_preds, key=lambda x: x.confidence_pct, reverse=True)[:params.top_k]
-            
+
         if not daily_preds:
             continue
         trades += len(daily_preds)
+
+        if last_cohort is not None and (d - last_cohort).days < days:
+            continue  # still holding the previous cohort
+        last_cohort = d
 
         weights = []
         if params.position_sizing == "equal_weight":
@@ -236,48 +296,59 @@ def _run_alpha_validation_internal(session, params: BacktestParams, regime_id: O
             weights = [w / w_sum if w_sum > 0 else 0 for w in weights]
         else:
             weights = [1.0 / len(daily_preds)] * len(daily_preds)
-            
-        daily_portfolio_return = 0.0
-        for p, w in zip(daily_preds, weights):
-            ret = getattr(p, f"actual_return_{params.horizon.lower()}", 0.0)
-            if ret is None:
-                ret = 0.0
-            daily_portfolio_return += ret * w
-            
-        gross_returns.append(daily_portfolio_return)
-        
-    metrics = _compute_metrics(gross_returns, frictions_bps, days)
-    
+
+        gross_returns.append(sum(getattr(p, ret_attr) * w for p, w in zip(daily_preds, weights)))
+
+    metrics = _compute_metrics(gross_returns, frictions_bps, days, cost_assumptions.stcg_tax_pct)
+
     return BacktestResult(
         params=params,
         metrics=metrics,
         benchmark_metrics={},
         statistical_significance={},
-        trade_count=trades
+        trade_count=trades,
+        status="ok" if gross_returns else "insufficient_data",
+        matured_trades=matured,
+        cohorts_used=len(gross_returns),
     )
 
 
 # Phase 5: Threshold Sweep
+HOLDOUT_FRACTION = 0.2
+
+
 def run_strategy_sweep() -> StrategySweepResult:
-    """Runs a parameter sweep across multiple confidence thresholds and sizing strategies.
+    """Runs the full parameter grid walk-forward: configurations are ranked on the first 80% of
+    signal dates and the CAGR winner is scored once on the untouched last 20%.
 
     Returns:
-        StrategySweepResult: The results of the sweep, identifying the best configurations by CAGR and Sharpe.
+        StrategySweepResult: In-sample results for every configuration, the best configurations by
+            CAGR and Sharpe, the number of configurations tried and the winner's holdout metrics.
     """
     thresholds = [50.0, 55.0, 60.0, 65.0, 70.0, 75.0, 80.0]
     top_ks = [3, 5, 10, 20]
-    horizons = ["7D", "20D", "30D", "60D", "90D"]
     sizings = ["equal_weight", "confidence_weighted", "confidence_squared", "capped_confidence_weighted"]
-    
+
     results = []
     best_cagr = None
     best_sharpe = None
-    
+    best_cagr_params = None
+    best_holdout_metrics = None
+    holdout_by_horizon: Dict[str, List[AnalysisPrediction]] = {}
+
     with get_session() as session:
-        for h in ["30D"]: # Trim sweep for performance in testing
-            for t in [60.0, 70.0]:
-                for k in [5, 10]:
-                    for s in ["equal_weight", "confidence_weighted"]:
+        for h, days in HORIZON_DAYS.items():
+            # One query per horizon; every configuration is evaluated in memory.
+            preds = _load_matured(session, h, min(thresholds), bullish_only=True)
+            dates = sorted({p.created_at.date() for p in preds})
+            cutoff = dates[int(len(dates) * (1 - HOLDOUT_FRACTION))] if dates else None
+            # In-sample cohorts must also mature before the holdout starts (purge `days` before the cutoff).
+            in_sample = [p for p in preds if cutoff is not None and (cutoff - p.created_at.date()).days >= days]
+            holdout_by_horizon[h] = [p for p in preds if cutoff is not None and p.created_at.date() >= cutoff]
+
+            for t in thresholds:
+                for k in top_ks:
+                    for s in sizings:
                         params = BacktestParams(
                             horizon=h,
                             strategy_type="top_k_confidence",
@@ -286,7 +357,7 @@ def run_strategy_sweep() -> StrategySweepResult:
                             position_sizing=s,
                             cost_preset="realistic_retail"
                         )
-                        res = _run_alpha_validation_internal(session, params)
+                        res = _backtest(in_sample, params)
                         iteration = SweepIteration(
                             confidence_threshold=t,
                             top_k=k,
@@ -299,21 +370,31 @@ def run_strategy_sweep() -> StrategySweepResult:
                             trade_count=res.trade_count
                         )
                         results.append(iteration)
-                        
+
+                        if res.cohorts_used == 0:
+                            continue  # nothing was traded: not a candidate for "best"
                         if best_cagr is None or iteration.net_cagr > best_cagr.net_cagr:
                             best_cagr = iteration
+                            best_cagr_params = params
                         if best_sharpe is None or iteration.sharpe > best_sharpe.sharpe:
                             best_sharpe = iteration
-                            
+
+        if best_cagr_params is not None:
+            holdout = _backtest(holdout_by_horizon[best_cagr_params.horizon], best_cagr_params)
+            if holdout.cohorts_used:
+                best_holdout_metrics = holdout.metrics
+
     if not best_cagr:
         dummy = SweepIteration(confidence_threshold=0, top_k=0, holding_period="", position_sizing="", net_cagr=0, sharpe=0, max_drawdown=0, turnover=0, trade_count=0)
         best_cagr = dummy
         best_sharpe = dummy
-        
+
     return StrategySweepResult(
         best_cagr=best_cagr,
-        best_sharpe=best_sharpe,
-        all_results=results
+        best_sharpe=best_sharpe or best_cagr,
+        all_results=results,
+        configurations_tested=len(results),
+        best_holdout_metrics=best_holdout_metrics,
     )
 
 
@@ -333,15 +414,14 @@ def run_regime_breakdown(params: BacktestParams) -> RegimeBreakdownResult:
     Returns:
         RegimeBreakdownResult: The breakdown of strategy performance per persisted regime.
     """
-    horizon_map = {"7D": 7, "20D": 20, "30D": 30, "60D": 60, "90D": 90}
-    days = horizon_map.get(params.horizon, 30)
+    ret_col = getattr(AnalysisPrediction, f"actual_return_{params.horizon.lower()}")
 
     with get_session() as session:
         overall = _run_alpha_validation_internal(session, params)
 
         regime_ids = [
             row[0] for row in session.query(AnalysisPrediction.regime_id).filter(
-                AnalysisPrediction.horizon_days == days,
+                ret_col.isnot(None),
                 AnalysisPrediction.confidence_pct >= params.confidence_threshold,
                 AnalysisPrediction.regime_id.isnot(None),
             ).distinct().all()
