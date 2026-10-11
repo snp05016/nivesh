@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # ===========================================================================
-# ML Microservice & Backend Deployment Script (Milestone 3)
+# ML Microservice Deployment Script (Milestone 3)
+# Runs on the server. Builds the new image first, swaps the container, and
+# rolls back to the previous image if the health check fails. It never stops
+# or restarts the backend API.
 # ===========================================================================
 set -euo pipefail
 
@@ -9,6 +12,8 @@ CONTAINER_NAME="ml-engine"
 IMAGE_NAME="ml-engine"
 PORT="8001"
 BACKEND_PORT="8000"
+ML_MEMORY="${ML_MEMORY:-2g}"
+ML_CPUS="${ML_CPUS:-2}"
 
 # Dynamically determine project root relative to the script location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,8 +26,8 @@ echo "📂 Project root: ${PROJECT_ROOT}"
 if command -v docker &> /dev/null; then
     if docker info &> /dev/null; then
         DOCKER_CMD=(docker)
-    elif sudo docker info &> /dev/null; then
-        DOCKER_CMD=(sudo docker)
+    elif sudo -n docker info &> /dev/null; then
+        DOCKER_CMD=(sudo -n docker)
     else
         echo "❌ Error: Docker daemon is not running or accessible." >&2
         exit 1
@@ -40,7 +45,39 @@ fi
 
 echo "✅ Docker command verified: Using '${DOCKER_CMD[*]}'"
 
-# 2. Stop and remove existing container named ml-engine
+run_container() {
+    "${DOCKER_CMD[@]}" run -d \
+        --name "${CONTAINER_NAME}" \
+        -p "127.0.0.1:${PORT}:${PORT}" \
+        --memory "${ML_MEMORY}" \
+        --cpus "${ML_CPUS}" \
+        --restart unless-stopped \
+        "$1"
+}
+
+wait_healthy() {
+    for _ in {1..30}; do
+        if curl -fsS --max-time 2 "http://localhost:${PORT}/health" 2>/dev/null \
+            | grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'; then
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
+}
+
+# 2. Remember the image the running container uses, for rollback
+if PREV_IMAGE_ID=$("${DOCKER_CMD[@]}" container inspect --format '{{.Image}}' "${CONTAINER_NAME}" 2>/dev/null); then
+    "${DOCKER_CMD[@]}" tag "${PREV_IMAGE_ID}" "${IMAGE_NAME}:previous"
+    echo "📌 Tagged current image as ${IMAGE_NAME}:previous for rollback"
+fi
+
+# 3. Build the new image BEFORE stopping anything: a failed build (set -e)
+#    leaves the old container serving.
+echo "🔨 Building Docker image: ${IMAGE_NAME}:latest..."
+"${DOCKER_CMD[@]}" build -t "${IMAGE_NAME}:latest" -f "${PROJECT_ROOT}/ml-engine/Dockerfile" "${PROJECT_ROOT}/ml-engine"
+
+# 4. Stop and remove existing container named ml-engine
 if "${DOCKER_CMD[@]}" ps -a --format '{{.Names}}' | grep -Eq "^${CONTAINER_NAME}$"; then
     echo "🛑 Stopping existing container: ${CONTAINER_NAME}..."
     "${DOCKER_CMD[@]}" stop "${CONTAINER_NAME}" || true
@@ -48,7 +85,7 @@ if "${DOCKER_CMD[@]}" ps -a --format '{{.Names}}' | grep -Eq "^${CONTAINER_NAME}
     "${DOCKER_CMD[@]}" rm "${CONTAINER_NAME}" || true
 fi
 
-# 3. Stop and remove any conflicting container using port 8001
+# 5. Stop and remove any conflicting container using port 8001
 CONFLICTING_CONTAINERS=$("${DOCKER_CMD[@]}" ps -a --filter "publish=${PORT}" --format '{{.ID}}')
 if [ -n "${CONFLICTING_CONTAINERS}" ]; then
     # shellcheck disable=SC2086
@@ -60,58 +97,32 @@ if [ -n "${CONFLICTING_CONTAINERS}" ]; then
     done
 fi
 
-# 4. Build the ML Engine Docker Image
-echo "🔨 Building Docker image: ${IMAGE_NAME}:latest..."
-"${DOCKER_CMD[@]}" build -t "${IMAGE_NAME}:latest" -f "${PROJECT_ROOT}/ml-engine/Dockerfile" "${PROJECT_ROOT}/ml-engine"
-
-# 5. Run the new container
-echo "🚀 Starting new container ${CONTAINER_NAME} on port ${PORT}..."
-"${DOCKER_CMD[@]}" run -d \
-    --name "${CONTAINER_NAME}" \
-    -p "${PORT}:${PORT}" \
-    --restart unless-stopped \
-    "${IMAGE_NAME}:latest"
-
-# 6. Verify health check
+# 6. Run the new container (loopback only: the backend reaches it on localhost)
+#    and wait for its health check. A failed `docker run` (bad ML_CPUS/ML_MEMORY,
+#    port held by a non-docker process) takes the same rollback path as a failed
+#    health check, since the old container is already gone at this point.
+echo "🚀 Starting new container ${CONTAINER_NAME} on 127.0.0.1:${PORT} (memory ${ML_MEMORY}, cpus ${ML_CPUS})..."
 echo "⏳ Waiting for health check to pass..."
-HEALTHY=false
-for _ in {1..30}; do
-    if RESPONSE=$(curl -s "http://localhost:${PORT}/health"); then
-        # Check if the response contains status: ok or "status":"ok"
-        if echo "${RESPONSE}" | grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'; then
-            echo "✅ ml-engine is healthy and running!"
-            HEALTHY=true
-            break
+if ! run_container "${IMAGE_NAME}:latest" || ! wait_healthy; then
+    echo "❌ Error: ml-engine start or health check failed." >&2
+    echo "📋 Showing last 20 lines of container logs:"
+    "${DOCKER_CMD[@]}" logs --tail 20 "${CONTAINER_NAME}" 2>&1 || true
+    "${DOCKER_CMD[@]}" rm -f "${CONTAINER_NAME}" || true
+    if "${DOCKER_CMD[@]}" image inspect "${IMAGE_NAME}:previous" > /dev/null 2>&1; then
+        if run_container "${IMAGE_NAME}:previous" && wait_healthy; then
+            echo "↩️ Rolled back to previous image (${IMAGE_NAME}:previous)." >&2
+        else
+            echo "❌ Rolled back to previous image, but it is not healthy either." >&2
         fi
     fi
-    sleep 1
-done
-
-if [ "${HEALTHY}" = false ]; then
-    echo "❌ Error: ml-engine health check failed or timed out." >&2
-    echo "📋 Showing last 20 lines of container logs:"
-    "${DOCKER_CMD[@]}" logs "${CONTAINER_NAME}" | tail -n 20
     exit 1
 fi
+echo "✅ ml-engine is healthy and running!"
 
-# 7. Restart Nivesh Uvicorn Backend Processes
-echo "🔄 Restarting main Nivesh Uvicorn processes manually (AGENTS.md §6.5)..."
-
-echo "  Killing stale uvicorn/python main processes..."
-pkill -f 'uvicorn' || true
-pkill -f 'python.*main' || true
-sleep 2
-
-echo "  Starting backend server on port ${BACKEND_PORT}..."
-cd "${PROJECT_ROOT}/backend"
-nohup ../venv/bin/uvicorn main:app --host 0.0.0.0 --port "${BACKEND_PORT}" --reload > /tmp/uvicorn.log 2>&1 &
-
-sleep 2
-if pgrep -f 'uvicorn' > /dev/null; then
-    echo "✅ Nivesh backend restarted successfully (PID: $(pgrep -f 'uvicorn' | tr '\n' ' '))"
-else
-    echo "❌ Error: Failed to restart Nivesh backend server. Check /tmp/uvicorn.log" >&2
-    exit 1
+# The backend is deliberately not touched: it calls ml-engine over HTTP and
+# keeps serving during the rollout. This is only an informational check.
+if ! curl -fsS --max-time 5 "http://localhost:${BACKEND_PORT}/ping" > /dev/null 2>&1; then
+    echo "⚠️ WARN: backend not responding on :${BACKEND_PORT} (not touched by this script)." >&2
 fi
 
 echo "🎉 Deployment successfully completed!"

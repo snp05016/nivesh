@@ -2,16 +2,23 @@
 # =============================================================================
 # deploy_ml_engine.sh — Production Deployment: Nivesh ML Engine
 # =============================================================================
-# Deploys the ml-engine Docker container and restarts the Uvicorn backend
-# on the remote server saumyapatel@192.168.1.122 non-interactively.
+# Deploys the ml-engine Docker container on the remote server
+# saumyapatel@192.168.1.122 non-interactively. The server checkout is
+# fast-forwarded to exactly DEPLOY_SHA (default: local HEAD, which must already
+# be pushed to origin), then scripts/deploy_ml_microservice.sh runs there:
+# it builds first, swaps the container, and rolls back on a failed health
+# check. The backend API is never stopped or restarted.
 #
 # Usage:
 #   chmod +x scripts/deploy_ml_engine.sh
 #   ./scripts/deploy_ml_engine.sh
+#   DEPLOY_SHA=<commit> ML_MEMORY=2g ML_CPUS=2 ./scripts/deploy_ml_engine.sh
 #
 # Prerequisites (local machine):
 #   • SSH key-based auth configured for saumyapatel@192.168.1.122
 #   • Git remote 'origin' points to the canonical repository
+#   • The server's host key in ~/.ssh/known_hosts has been verified once
+#     (StrictHostKeyChecking=accept-new refuses a changed key)
 # =============================================================================
 set -euo pipefail
 
@@ -22,15 +29,14 @@ REMOTE_USER="saumyapatel"
 REMOTE_HOST="192.168.1.122"
 REMOTE="$REMOTE_USER@$REMOTE_HOST"
 REMOTE_PROJECT="/home/$REMOTE_USER/Desktop/nivesh"
-REMOTE_BACKEND="$REMOTE_PROJECT/backend"
-REMOTE_VENV="$REMOTE_PROJECT/venv"
+DEPLOY_SHA="${DEPLOY_SHA:-$(git rev-parse HEAD)}"
+ML_MEMORY="${ML_MEMORY:-2g}"
+ML_CPUS="${ML_CPUS:-2}"
 
-IMAGE_NAME="ml-engine"
-CONTAINER_NAME="ml-engine"
 ML_PORT="8001"
 BACKEND_PORT="8000"
 
-SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=no)
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new)
 
 # ---------------------------------------------------------------------------
 # Helper — run a command on the remote server non-interactively
@@ -47,6 +53,17 @@ remote() {
 log_info()    { printf '\033[0;32m[INFO]\033[0m  %s\n' "$*"; }
 log_warn()    { printf '\033[0;33m[WARN]\033[0m  %s\n' "$*"; }
 log_error()   { printf '\033[0;31m[ERROR]\033[0m %s\n' "$*" >&2; }
+
+# ---------------------------------------------------------------------------
+# Pre-flight — the commit to deploy must exist on origin
+# ---------------------------------------------------------------------------
+DEPLOY_SHA="$(git rev-parse --verify "${DEPLOY_SHA}^{commit}")"
+git fetch origin --quiet
+if [ -z "$(git branch -r --contains "$DEPLOY_SHA")" ]; then
+    log_error "$DEPLOY_SHA is not on any origin branch; push it first."
+    exit 1
+fi
+log_info "Deploying commit $DEPLOY_SHA"
 
 # ---------------------------------------------------------------------------
 # Step 0 — Verify SSH connectivity
@@ -95,132 +112,32 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Step 2 — Pull latest code on the remote server
+# Step 2 — Fast-forward the server checkout to exactly DEPLOY_SHA
 # ---------------------------------------------------------------------------
-log_info "Pulling latest code on $REMOTE ..."
+# --ff-only plus the SHA check aborts on a diverged or wrong checkout instead
+# of deploying something else.
+log_info "Updating code on $REMOTE to $DEPLOY_SHA ..."
 remote "
     set -euo pipefail
     cd '$REMOTE_PROJECT'
-    git fetch --all
-    git pull
+    git fetch origin
+    git merge --ff-only '$DEPLOY_SHA'
+    test \"\$(git rev-parse HEAD)\" = '$DEPLOY_SHA' || { echo 'server HEAD != $DEPLOY_SHA (older commit or diverged checkout; only descendants of the server HEAD can be deployed)' >&2; exit 1; }
 "
-log_info "Code updated."
+log_info "Code updated to $DEPLOY_SHA."
 
 # ---------------------------------------------------------------------------
-# Step 3 — Kill stale uvicorn / python main processes (AGENTS.md §6.5)
+# Step 3 — Build, swap and health-check the ml-engine container on the server
 # ---------------------------------------------------------------------------
-log_info "Killing stale uvicorn and python-main processes on $REMOTE ..."
-remote "
-    pkill -f 'uvicorn' || true
-    pkill -f 'python.*main' || true
-    sleep 2
-    echo 'Stale processes cleared.'
-"
-
-# ---------------------------------------------------------------------------
-# Step 4 — Stop and remove any existing ml-engine container
-# ---------------------------------------------------------------------------
-log_info "Removing any existing '$CONTAINER_NAME' container on $REMOTE ..."
-remote "
-    set -euo pipefail
-    if docker ps -a --format '{{.Names}}' | grep -Eq '^${CONTAINER_NAME}$'; then
-        docker stop '$CONTAINER_NAME'  || true
-        docker rm   '$CONTAINER_NAME'  || true
-        echo 'Old container removed.'
-    else
-        echo 'No existing container found — skipping removal.'
-    fi
-"
-
-# Stop any container already occupying port 8001
-remote "
-    CONFLICT=\$(docker ps -a --filter 'publish=$ML_PORT' --format '{{.ID}}')
-    if [ -n \"\$CONFLICT\" ]; then
-        echo \"Stopping conflicting container on port $ML_PORT: \$CONFLICT\"
-        docker stop \"\$CONFLICT\" || true
-        docker rm   \"\$CONFLICT\" || true
-    fi
-"
-
-# ---------------------------------------------------------------------------
-# Step 5 — Build the ml-engine Docker image on the remote server
-# ---------------------------------------------------------------------------
-log_info "Building Docker image '$IMAGE_NAME:latest' on $REMOTE ..."
-remote "
-    set -euo pipefail
-    cd '$REMOTE_PROJECT'
-    docker build \
-        -t '$IMAGE_NAME:latest' \
-        -f ml-engine/Dockerfile \
-        ml-engine/
-"
-log_info "Image built successfully."
-
-# ---------------------------------------------------------------------------
-# Step 6 — Run the ml-engine container (detached, restart=unless-stopped)
-# ---------------------------------------------------------------------------
-log_info "Starting '$CONTAINER_NAME' on port $ML_PORT ..."
-remote "
-    set -euo pipefail
-    docker run -d \
-        --name '$CONTAINER_NAME' \
-        -p '$ML_PORT:$ML_PORT' \
-        --restart unless-stopped \
-        '$IMAGE_NAME:latest'
-"
-log_info "Container '$CONTAINER_NAME' started."
-
-# ---------------------------------------------------------------------------
-# Step 7 — Health-check the ml-engine container (up to 30 s)
-# ---------------------------------------------------------------------------
-log_info "Waiting for ml-engine health check on $REMOTE:$ML_PORT ..."
-ML_HEALTHY=false
-for i in $(seq 1 30); do
-    RESPONSE=$(remote "curl -s http://localhost:$ML_PORT/health || true")
-    if echo "$RESPONSE" | grep -q '"status"'; then
-        ML_HEALTHY=true
-        log_info "ml-engine is healthy (attempt $i/30)."
-        break
-    fi
-    log_info "  attempt $i/30 — not ready yet, retrying in 1 s ..."
-    sleep 1
-done
-
-if [ "$ML_HEALTHY" = false ]; then
-    log_error "ml-engine health check failed after 30 s. Showing container logs:"
-    remote "docker logs --tail 30 '$CONTAINER_NAME'" || true
-    exit 1
-fi
-
-# ---------------------------------------------------------------------------
-# Step 8 — Restart Uvicorn backend in background (AGENTS.md §6.5)
-# ---------------------------------------------------------------------------
-log_info "Restarting Uvicorn backend on $REMOTE:$BACKEND_PORT ..."
-remote "
-    set -euo pipefail
-    cd '$REMOTE_BACKEND'
-    nohup '$REMOTE_VENV/bin/uvicorn' main:app \
-        --host 0.0.0.0 \
-        --port '$BACKEND_PORT' \
-        --reload \
-        > /tmp/uvicorn.log 2>&1 &
-    echo \"Uvicorn started (PID: \$!)\"
-"
-
-# Brief pause then confirm uvicorn is alive
-sleep 3
-if remote "pgrep -f uvicorn > /dev/null 2>&1"; then
-    log_info "Uvicorn backend running on $REMOTE:$BACKEND_PORT."
-else
-    log_warn "Uvicorn may not have started. Check /tmp/uvicorn.log on $REMOTE."
-fi
+log_info "Running deploy_ml_microservice.sh on $REMOTE ..."
+remote "ML_MEMORY='$ML_MEMORY' ML_CPUS='$ML_CPUS' bash '$REMOTE_PROJECT/scripts/deploy_ml_microservice.sh'"
 
 # ---------------------------------------------------------------------------
 # Done
 # ---------------------------------------------------------------------------
 log_info "============================================================"
 log_info " Deployment complete!"
-log_info "  ML engine  → http://$REMOTE_HOST:$ML_PORT"
-log_info "  Backend    → http://$REMOTE_HOST:$BACKEND_PORT"
-log_info "  Uvicorn log: ssh $REMOTE 'tail -f /tmp/uvicorn.log'"
+log_info "  Commit     → $DEPLOY_SHA"
+log_info "  ML engine  → http://127.0.0.1:$ML_PORT (loopback on $REMOTE_HOST)"
+log_info "  Backend    → http://$REMOTE_HOST:$BACKEND_PORT (not restarted)"
 log_info "============================================================"
