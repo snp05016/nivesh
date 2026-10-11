@@ -6,9 +6,18 @@ struct ThreadDetailView: View {
     @StateObject private var vm: ThreadDetailViewModel
     @State private var replyText: String = ""
     @FocusState private var isComposerFocused: Bool
+    @State private var reportTarget: ForumPost? = nil
+    @State private var blockTarget: ForumPost? = nil
+    @State private var showGuidelines = false
+    @AppStorage(ForumModeration.guidelinesKey) private var acceptedGuidelines = false
+    @Environment(\.dismiss) private var dismiss
 
-    init(threadId: Int) {
+    /// Called when a report / block hides this whole thread, so the list can refresh.
+    private let onHidden: (() -> Void)?
+
+    init(threadId: Int, onHidden: (() -> Void)? = nil) {
         _vm = StateObject(wrappedValue: ThreadDetailViewModel(threadId: threadId))
+        self.onHidden = onHidden
     }
 
     var body: some View {
@@ -20,7 +29,7 @@ struct ThreadDetailView: View {
                             .padding(.horizontal, Theme.screenPadding)
 
                         if let openingPost = thread.openingPost {
-                            ThreadPostCard(post: openingPost, vm: vm)
+                            ThreadPostCard(post: openingPost, vm: vm, onReport: { reportTarget = $0 }, onBlock: { blockTarget = $0 })
                                 .padding(.horizontal, Theme.screenPadding)
                         }
 
@@ -31,7 +40,12 @@ struct ThreadDetailView: View {
 
                         GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
-                        ThreadRepliesSection(replies: thread.replies, vm: vm)
+                        ThreadRepliesSection(
+                            replies: thread.replies,
+                            vm: vm,
+                            onReport: { reportTarget = $0 },
+                            onBlock: { blockTarget = $0 }
+                        )
                             .padding(.horizontal, Theme.screenPadding)
                     } else if vm.isLoading {
                         ProgressView()
@@ -46,16 +60,62 @@ struct ThreadDetailView: View {
             }
 
             ReplyComposer(text: $replyText, isFocused: $isComposerFocused, isSubmitting: vm.isSubmittingReply) {
-                let bodyToSend = replyText
-                replyText = ""
-                isComposerFocused = false
-                vm.submitReply(body: bodyToSend)
+                if acceptedGuidelines {
+                    sendReply()
+                } else {
+                    showGuidelines = true
+                }
             }
         }
         .background(Theme.canvas.ignoresSafeArea())
         .navigationTitle(vm.thread?.title ?? "Thread")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { vm.fetchThread() }
+        .sheet(item: $reportTarget) { post in
+            ForumReportSheet { reason, details in
+                vm.report(postId: post.id, reason: reason, details: details)
+            }
+        }
+        .sheet(isPresented: $showGuidelines) {
+            ForumGuidelinesSheet {
+                acceptedGuidelines = true
+                sendReply()
+            }
+        }
+        .banknoteDialog(
+            "Block this user?",
+            isPresented: Binding(get: { blockTarget != nil }, set: { if !$0 { blockTarget = nil } }),
+            message: "You won't see their threads or replies. You can unblock them from Community Forum > Blocked users.",
+            buttons: blockDialogButtons
+        )
+        .banknoteDialog(
+            vm.moderationNotice ?? "",
+            isPresented: Binding(get: { vm.moderationNotice != nil }, set: { if !$0 { vm.moderationNotice = nil } }),
+            buttons: [.cancel("OK")]
+        )
+        .onChange(of: vm.threadHidden) { _, hidden in
+            guard hidden else { return }
+            onHidden?()
+            dismiss()
+        }
+    }
+
+    private var blockDialogButtons: [BanknoteDialogButton] {
+        // Captured now: the dialog clears blockTarget before running the action.
+        let target = blockTarget
+        return [
+            .init("Block", role: .destructive) {
+                if let target { vm.blockAuthor(postId: target.id) }
+            },
+            .cancel()
+        ]
+    }
+
+    private func sendReply() {
+        let bodyToSend = replyText
+        replyText = ""
+        isComposerFocused = false
+        vm.submitReply(body: bodyToSend)
     }
 }
 
@@ -94,6 +154,11 @@ private struct ThreadHeaderSection: View {
 struct ThreadPostCard: View {
     let post: ForumPost
     @ObservedObject var vm: ThreadDetailViewModel
+    let onReport: (ForumPost) -> Void
+    let onBlock: (ForumPost) -> Void
+
+    /// No Report / Block on your own posts.
+    private var canModerate: Bool { post.isMine != true }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.card) {
@@ -112,6 +177,9 @@ struct ThreadPostCard: View {
                         .cornerRadius(Theme.CornerRadius.small)
                 }
                 Spacer()
+                if canModerate {
+                    ForumContentActionsMenu(onReport: { onReport(post) }, onBlock: { onBlock(post) })
+                }
             }
 
             Text(post.body)
@@ -124,6 +192,11 @@ struct ThreadPostCard: View {
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
+        .contextMenu {
+            if canModerate {
+                ForumContentActions(onReport: { onReport(post) }, onBlock: { onBlock(post) })
+            }
+        }
     }
 }
 
@@ -223,6 +296,8 @@ private struct PollOptionRow: View {
 private struct ThreadRepliesSection: View {
     let replies: [ForumPost]
     @ObservedObject var vm: ThreadDetailViewModel
+    let onReport: (ForumPost) -> Void
+    let onBlock: (ForumPost) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.card) {
@@ -239,7 +314,7 @@ private struct ThreadRepliesSection: View {
                     .padding(.vertical, Theme.Spacing.standard)
             } else {
                 ForEach(replies) { reply in
-                    ThreadPostCard(post: reply, vm: vm)
+                    ThreadPostCard(post: reply, vm: vm, onReport: onReport, onBlock: onBlock)
                 }
             }
         }

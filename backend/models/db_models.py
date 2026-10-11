@@ -1183,7 +1183,9 @@ class ForumPost(Base):
 
     # Moderation verdict from services/forum_moderation_service.py:moderate_post(),
     # applied at creation time in services/forum_service.py:create_post().
-    moderation_action = Column(String(10), nullable=False, default="allow", server_default="allow")  # allow|flag|block
+    # "hidden" is set by user reports (auto-hide threshold) or a moderator
+    # resolving a ForumReport — hidden posts are filtered out of every read.
+    moderation_action = Column(String(10), nullable=False, default="allow", server_default="allow")  # allow|flag|block|hidden
     spam_score = Column(Integer, nullable=True)
     sentiment = Column(String(10), nullable=True)  # bullish|bearish|neutral
 
@@ -1237,6 +1239,47 @@ class ForumVote(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "post_id", name="uq_forum_vote_user_post"),
         UniqueConstraint("user_id", "poll_id", name="uq_forum_vote_user_poll"),
+    )
+
+
+class ForumReport(Base):
+    """A user's report against a forum post (App Store 1.2 UGC report flow).
+
+    One report per reporter per post. The reporter stops seeing the post
+    immediately; enough distinct open reports auto-hide it for everyone
+    (services/forum_service.py:REPORT_AUTO_HIDE_THRESHOLD) and moderators
+    resolve reports via /api/forum/admin/reports.
+    """
+    __tablename__ = "forum_reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reporter_user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    post_id = Column(Integer, ForeignKey("forum_posts.id"), nullable=False, index=True)
+    reason = Column(String(20), nullable=False)  # spam|abuse|misleading|pump_and_dump|other
+    details = Column(Text, nullable=True)
+    status = Column(String(12), nullable=False, default="open", server_default="open", index=True)
+    # open|actioned|dismissed
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("reporter_user_id", "post_id", name="uq_forum_report_reporter_post"),
+    )
+
+
+class UserBlock(Base):
+    """One user blocking another — the blocker no longer sees the blocked
+    user's forum threads or posts."""
+    __tablename__ = "user_blocks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    blocker_user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    blocked_user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("blocker_user_id", "blocked_user_id", name="uq_user_block_pair"),
     )
 
 

@@ -1463,8 +1463,9 @@ class NetworkManager: ObservableObject {
 // GET /threads/{thread_id} (detail), POST /threads (create, auth),
 // POST /threads/{thread_id}/posts (reply, auth), POST /posts/{post_id}/vote
 // (auth), POST /polls/{poll_id}/vote (auth). The backend returns plain JSON
-// (no envelope). Mutating calls use `authRequest(_:)` so the Bearer token is
-// attached automatically.
+// (no envelope). Mutating calls and the thread reads use `authRequest(_:)` so
+// the Bearer token is attached automatically. Report / block calls live in
+// NetworkManager+Forum.swift.
 
 extension NetworkManager {
 
@@ -1494,7 +1495,8 @@ extension NetworkManager {
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
         }
-        var request = URLRequest(url: url)
+        // Bearer token (when signed in) lets the server filter this viewer's blocks/reports.
+        var request = authRequest(url)
         request.timeoutInterval = 20
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -1514,7 +1516,8 @@ extension NetworkManager {
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
         }
-        var request = URLRequest(url: url)
+        // Bearer token (when signed in) lets the server filter this viewer's blocks/reports.
+        var request = authRequest(url)
         request.timeoutInterval = 20
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {

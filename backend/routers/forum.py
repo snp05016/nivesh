@@ -3,21 +3,27 @@
 Controller-only: HTTP validation lives here, all DB access and business
 logic live in services/forum_service.py (Controller-Service-Repository).
 """
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from core.security import require_auth
+from core.security import get_current_user_id, require_admin, require_auth
 from services.forum_service import (
+    block_post_author,
     create_post,
     create_thread,
     get_board_by_id,
     get_thread_detail,
+    list_blocks,
     list_boards,
+    list_reports,
     list_threads,
+    report_post,
+    resolve_report,
     seed_mock_boards_if_empty,
     thread_count_for_board,
+    unblock,
     vote_poll,
     vote_post,
 )
@@ -53,6 +59,8 @@ class ForumThreadSummaryResponse(BaseModel):
     downvotes: int
     has_poll: bool
     created_at: Optional[str] = None
+    op_post_id: Optional[int] = None
+    is_mine: bool = False
 
 
 class ForumPostResponse(BaseModel):
@@ -65,6 +73,7 @@ class ForumPostResponse(BaseModel):
     upvotes: int
     downvotes: int
     created_at: Optional[str] = None
+    is_mine: bool = False
 
 
 class ForumPollOptionResponse(BaseModel):
@@ -121,6 +130,38 @@ class VotePollRequest(BaseModel):
     option_id: int
 
 
+class ReportPostRequest(BaseModel):
+    reason: Literal["spam", "abuse", "misleading", "pump_and_dump", "other"]
+    details: Optional[str] = Field(None, max_length=500)
+
+
+class ModerationStatusResponse(BaseModel):
+    status: str
+
+
+class ForumBlockResponse(BaseModel):
+    block_id: int
+    display_name: str
+
+
+class ForumReportAdminResponse(BaseModel):
+    report_id: int
+    post_id: int
+    thread_id: Optional[int] = None
+    post_author_user_id: Optional[int] = None
+    post_body: Optional[str] = None
+    post_moderation_action: Optional[str] = None
+    reporter_user_id: int
+    reason: str
+    details: Optional[str] = None
+    status: str
+    created_at: Optional[str] = None
+
+
+class ResolveReportRequest(BaseModel):
+    action: Literal["hide", "dismiss"]
+
+
 # ---------------------------------------------------------------------------
 # Boards
 # ---------------------------------------------------------------------------
@@ -149,18 +190,19 @@ def list_forum_boards():
 # ---------------------------------------------------------------------------
 
 @router.get("/boards/{board_id}/threads", response_model=List[ForumThreadSummaryResponse])
-def list_board_threads(board_id: int):
-    """List thread summaries for a board."""
+def list_board_threads(board_id: int, viewer_id: Optional[int] = Depends(get_current_user_id)):
+    """List thread summaries for a board. Public; a signed-in viewer's blocks
+    and reports are filtered out."""
     board = get_board_by_id(board_id)
     if board is None:
         raise HTTPException(status_code=404, detail="Board not found")
-    return list_threads(board_id)
+    return list_threads(board_id, viewer_id=viewer_id)
 
 
 @router.get("/threads/{thread_id}", response_model=ForumThreadDetailResponse)
-def get_forum_thread(thread_id: int):
-    """Get a thread with all its posts and poll (if any)."""
-    thread = get_thread_detail(thread_id)
+def get_forum_thread(thread_id: int, viewer_id: Optional[int] = Depends(get_current_user_id)):
+    """Get a thread with its visible posts and poll (if any)."""
+    thread = get_thread_detail(thread_id, viewer_id=viewer_id)
     if thread is None:
         raise HTTPException(status_code=404, detail="Thread not found")
     return thread
@@ -227,4 +269,61 @@ def vote_forum_poll(poll_id: int, payload: VotePollRequest, user_id: int = Depen
     result = vote_poll(user_id=user_id, poll_id=poll_id, option_id=payload.option_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Poll or option not found")
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Reports + blocks (App Store 1.2 user-generated-content controls)
+# ---------------------------------------------------------------------------
+
+@router.post("/posts/{post_id}/report", response_model=ModerationStatusResponse)
+def report_forum_post(post_id: int, payload: ReportPostRequest, user_id: int = Depends(require_auth)):
+    """Report a post. It disappears for the reporter immediately."""
+    try:
+        result = report_post(reporter_id=user_id, post_id=post_id, reason=payload.reason, details=payload.details)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="You cannot report your own post")
+    if result is None:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return result
+
+
+@router.post("/posts/{post_id}/block-author", response_model=ModerationStatusResponse)
+def block_forum_post_author(post_id: int, user_id: int = Depends(require_auth)):
+    """Block the author of a post — their threads and posts are hidden for the caller."""
+    try:
+        result = block_post_author(blocker_id=user_id, post_id=post_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="You cannot block yourself")
+    if result is None:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return result
+
+
+@router.get("/blocks", response_model=List[ForumBlockResponse])
+def list_forum_blocks(user_id: int = Depends(require_auth)):
+    """Users the caller has blocked."""
+    return list_blocks(user_id)
+
+
+@router.delete("/blocks/{block_id}", response_model=ModerationStatusResponse)
+def unblock_forum_user(block_id: int, user_id: int = Depends(require_auth)):
+    """Remove one of the caller's blocks."""
+    if not unblock(blocker_id=user_id, block_id=block_id):
+        raise HTTPException(status_code=404, detail="Block not found")
+    return {"status": "unblocked"}
+
+
+@router.get("/admin/reports", response_model=List[ForumReportAdminResponse])
+def list_forum_reports(status: Literal["open", "actioned", "dismissed"] = "open", _admin_id: int = Depends(require_admin)):
+    """Moderation queue (admin only)."""
+    return list_reports(status)
+
+
+@router.post("/admin/reports/{report_id}/resolve", response_model=ForumReportAdminResponse)
+def resolve_forum_report(report_id: int, payload: ResolveReportRequest, _admin_id: int = Depends(require_admin)):
+    """Hide the reported post for everyone, or dismiss the report (admin only)."""
+    result = resolve_report(report_id, payload.action)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Report not found")
     return result

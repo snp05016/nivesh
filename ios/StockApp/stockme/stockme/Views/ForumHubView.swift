@@ -5,6 +5,9 @@ import SwiftUI
 struct ForumHubView: View {
     @StateObject private var vm = ForumViewModel()
     @State private var showCreateThread = false
+    @State private var showGuidelines = false
+    @State private var showBlockedUsers = false
+    @AppStorage(ForumModeration.guidelinesKey) private var acceptedGuidelines = false
 
     var body: some View {
         ScrollView {
@@ -22,6 +25,25 @@ struct ForumHubView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
+                Menu {
+                    Button {
+                        showGuidelines = true
+                    } label: {
+                        Label("Community guidelines", systemImage: "checkmark.seal")
+                    }
+                    Button {
+                        showBlockedUsers = true
+                    } label: {
+                        Label("Blocked users", systemImage: "hand.raised")
+                    }
+                    ForumContactModeratorsLink()
+                } label: {
+                    Image(systemName: "shield.lefthalf.filled")
+                        .foregroundStyle(Theme.securityGold)
+                }
+                .accessibilityLabel("Community safety")
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
                     HapticManager.selection()
                     showCreateThread = true
@@ -34,6 +56,12 @@ struct ForumHubView: View {
         }
         .sheet(isPresented: $showCreateThread) {
             CreateThreadView(onCreated: { _ in vm.fetchBoards() })
+        }
+        .sheet(isPresented: $showGuidelines) {
+            ForumGuidelinesSheet { acceptedGuidelines = true }
+        }
+        .sheet(isPresented: $showBlockedUsers) {
+            BlockedUsersView()
         }
         .refreshable { vm.fetchBoards() }
     }
@@ -179,6 +207,8 @@ private struct ForumBoardCard: View {
 struct BoardThreadListView: View {
     @StateObject private var vm: BoardThreadListViewModel
     @State private var showCreateThread = false
+    @State private var reportTarget: ForumThreadSummary? = nil
+    @State private var blockTarget: ForumThreadSummary? = nil
 
     private let board: ForumBoard
 
@@ -201,11 +231,16 @@ struct BoardThreadListView: View {
                 } else {
                     ForEach(vm.threads) { thread in
                         NavigationLink {
-                            ThreadDetailView(threadId: thread.id)
+                            ThreadDetailView(threadId: thread.id, onHidden: { vm.fetchThreads() })
                         } label: {
                             ForumThreadRow(thread: thread)
                         }
                         .buttonStyle(EKPressStyle())
+                        .contextMenu {
+                            if thread.opPostId != nil && thread.isMine != true {
+                                ForumContentActions(onReport: { reportTarget = thread }, onBlock: { blockTarget = thread })
+                            }
+                        }
                     }
                 }
             }
@@ -229,7 +264,34 @@ struct BoardThreadListView: View {
         .sheet(isPresented: $showCreateThread) {
             CreateThreadView(preselectedBoard: board, onCreated: { _ in vm.fetchThreads() })
         }
+        .sheet(item: $reportTarget) { thread in
+            ForumReportSheet { reason, details in
+                vm.report(thread: thread, reason: reason, details: details)
+            }
+        }
+        .banknoteDialog(
+            "Block this user?",
+            isPresented: Binding(get: { blockTarget != nil }, set: { if !$0 { blockTarget = nil } }),
+            message: "You won't see their threads or replies. You can unblock them from Community Forum > Blocked users.",
+            buttons: blockDialogButtons
+        )
+        .banknoteDialog(
+            vm.moderationNotice ?? "",
+            isPresented: Binding(get: { vm.moderationNotice != nil }, set: { if !$0 { vm.moderationNotice = nil } }),
+            buttons: [.cancel("OK")]
+        )
         .refreshable { vm.fetchThreads() }
+    }
+
+    private var blockDialogButtons: [BanknoteDialogButton] {
+        // Captured now: the dialog clears blockTarget before running the action.
+        let target = blockTarget
+        return [
+            .init("Block", role: .destructive) {
+                if let target { vm.blockAuthor(of: target) }
+            },
+            .cancel()
+        ]
     }
 }
 

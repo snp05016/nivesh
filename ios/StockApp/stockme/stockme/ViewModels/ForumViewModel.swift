@@ -1,6 +1,26 @@
 import SwiftUI
 import Combine
 
+/// Copy for a failed report / block / unblock call: the server's 400 message
+/// (e.g. "You cannot report your own post") or a generic retry line.
+func forumModerationErrorMessage(_ error: Error) -> String {
+    if case let NetworkError.fetchFailed(_, status, body) = error {
+        if status == 400,
+           let data = body.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let detail = json["detail"] as? String {
+            return detail
+        }
+        if status == 401 { return "Sign in to report or block." }
+    }
+    return "Couldn't send. Try again."
+}
+
+enum ForumModerationNotice {
+    static let reported = "Thanks. Our team will review this post."
+    static let blocked = "You won't see posts from this user."
+}
+
 /// Drives ForumHubView — fetches the board list.
 @MainActor
 class ForumViewModel: ObservableObject {
@@ -34,6 +54,8 @@ class BoardThreadListViewModel: ObservableObject {
     @Published var threads: [ForumThreadSummary] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
+    /// One-shot confirmation / error after a report or block.
+    @Published var moderationNotice: String? = nil
 
     let board: ForumBoard
 
@@ -56,6 +78,36 @@ class BoardThreadListViewModel: ObservableObject {
             }
         }
     }
+
+    /// Reports a thread's opening post; the thread disappears for this viewer.
+    func report(thread: ForumThreadSummary, reason: ForumReportReason, details: String?) {
+        guard let postId = thread.opPostId else { return }
+        Task {
+            do {
+                try await NetworkManager.shared.reportForumPost(postId: postId, reason: reason, details: details)
+                threads.removeAll { $0.id == thread.id }
+                moderationNotice = ForumModerationNotice.reported
+                fetchThreads()
+            } catch {
+                moderationNotice = forumModerationErrorMessage(error)
+            }
+        }
+    }
+
+    /// Blocks a thread's author; all their threads disappear for this viewer.
+    func blockAuthor(of thread: ForumThreadSummary) {
+        guard let postId = thread.opPostId else { return }
+        Task {
+            do {
+                try await NetworkManager.shared.blockForumAuthor(postId: postId)
+                threads.removeAll { $0.id == thread.id }
+                moderationNotice = ForumModerationNotice.blocked
+                fetchThreads()
+            } catch {
+                moderationNotice = forumModerationErrorMessage(error)
+            }
+        }
+    }
 }
 
 /// Drives ThreadDetailView — fetches thread + posts + poll, and handles
@@ -66,6 +118,11 @@ class ThreadDetailViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
     @Published var isSubmittingReply: Bool = false
+    /// One-shot confirmation / error after a report or block.
+    @Published var moderationNotice: String? = nil
+    /// Set when a report / block hides the whole thread (its opening post or
+    /// author) — the view pops back to the list.
+    @Published var threadHidden: Bool = false
 
     let threadId: Int
 
@@ -74,7 +131,7 @@ class ThreadDetailViewModel: ObservableObject {
         fetchThread()
     }
 
-    func fetchThread() {
+    func fetchThread(afterModeration: Bool = false) {
         isLoading = true
         errorMessage = nil
         Task {
@@ -83,8 +140,37 @@ class ThreadDetailViewModel: ObservableObject {
                 self.thread = detail
                 self.isLoading = false
             } catch {
-                self.errorMessage = "Couldn't load thread. Pull to retry."
+                if afterModeration, case let NetworkError.fetchFailed(_, status, _) = error, status == 404 {
+                    self.thread = nil
+                    self.threadHidden = true
+                } else {
+                    self.errorMessage = "Couldn't load thread. Pull to retry."
+                }
                 self.isLoading = false
+            }
+        }
+    }
+
+    func report(postId: Int, reason: ForumReportReason, details: String?) {
+        Task {
+            do {
+                try await NetworkManager.shared.reportForumPost(postId: postId, reason: reason, details: details)
+                moderationNotice = ForumModerationNotice.reported
+                fetchThread(afterModeration: true)
+            } catch {
+                moderationNotice = forumModerationErrorMessage(error)
+            }
+        }
+    }
+
+    func blockAuthor(postId: Int) {
+        Task {
+            do {
+                try await NetworkManager.shared.blockForumAuthor(postId: postId)
+                moderationNotice = ForumModerationNotice.blocked
+                fetchThread(afterModeration: true)
+            } catch {
+                moderationNotice = forumModerationErrorMessage(error)
             }
         }
     }
@@ -139,7 +225,8 @@ class ThreadDetailViewModel: ObservableObject {
                 authorDisplayName: post.authorDisplayName,
                 upvotes: result.upvotes,
                 downvotes: result.downvotes,
-                createdAt: post.createdAt
+                createdAt: post.createdAt,
+                isMine: post.isMine
             )
         }
         current = ForumThreadDetail(
@@ -256,6 +343,38 @@ class CreateThreadViewModel: ObservableObject {
                 }
                 self.isSubmitting = false
                 completion(false)
+            }
+        }
+    }
+}
+
+/// Drives BlockedUsersView — list + unblock.
+@MainActor
+class BlockedUsersViewModel: ObservableObject {
+    @Published var blocks: [ForumBlock] = []
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String? = nil
+
+    func fetchBlocks() {
+        isLoading = true
+        errorMessage = nil
+        Task {
+            do {
+                self.blocks = try await NetworkManager.shared.getForumBlocks()
+            } catch {
+                self.errorMessage = "Couldn't load blocked users. Pull to retry."
+            }
+            self.isLoading = false
+        }
+    }
+
+    func unblock(_ block: ForumBlock) {
+        Task {
+            do {
+                try await NetworkManager.shared.unblockForumUser(blockId: block.blockId)
+                blocks.removeAll { $0.blockId == block.blockId }
+            } catch {
+                errorMessage = forumModerationErrorMessage(error)
             }
         }
     }

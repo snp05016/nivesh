@@ -40,6 +40,9 @@ struct ForumThreadSummary: Codable, Identifiable, Equatable {
     let downvotes: Int
     let hasPoll: Bool
     let createdAt: String?
+    /// Opening post id — the target for Report / Block from the thread list.
+    let opPostId: Int?
+    let isMine: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -51,6 +54,8 @@ struct ForumThreadSummary: Codable, Identifiable, Equatable {
         case upvotes, downvotes
         case hasPoll = "has_poll"
         case createdAt = "created_at"
+        case opPostId = "op_post_id"
+        case isMine = "is_mine"
     }
 }
 
@@ -66,6 +71,8 @@ struct ForumPost: Codable, Identifiable, Equatable {
     let upvotes: Int
     let downvotes: Int
     let createdAt: String?
+    /// True when the signed-in viewer wrote this post (no Report / Block on it).
+    let isMine: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -76,6 +83,7 @@ struct ForumPost: Codable, Identifiable, Equatable {
         case authorDisplayName = "author_display_name"
         case upvotes, downvotes
         case createdAt = "created_at"
+        case isMine = "is_mine"
     }
 }
 
@@ -157,5 +165,40 @@ struct ForumVoteResult: Codable, Equatable {
         case postId = "post_id"
         case upvotes, downvotes
         case userVote = "user_vote"
+    }
+}
+
+/// A user the viewer has blocked. Mirrors backend/routers/forum.py:ForumBlockResponse.
+struct ForumBlock: Codable, Identifiable, Equatable {
+    let blockId: Int
+    let displayName: String
+
+    var id: Int { blockId }
+
+    enum CodingKeys: String, CodingKey {
+        case blockId = "block_id"
+        case displayName = "display_name"
+    }
+}
+
+/// Report reasons accepted by POST /api/forum/posts/{id}/report.
+/// Raw values mirror backend/routers/forum.py:ReportPostRequest.reason.
+enum ForumReportReason: String, CaseIterable, Identifiable {
+    case spam
+    case abuse
+    case misleading
+    case pumpAndDump = "pump_and_dump"
+    case other
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .spam: return "Spam or advertising"
+        case .abuse: return "Abuse or harassment"
+        case .misleading: return "Misleading information"
+        case .pumpAndDump: return "Pump-and-dump or stock tip"
+        case .other: return "Something else"
+        }
     }
 }

@@ -5,6 +5,8 @@ import SwiftUI
 struct CreateThreadView: View {
     @StateObject private var vm: CreateThreadViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var showGuidelines = false
+    @AppStorage(ForumModeration.guidelinesKey) private var acceptedGuidelines = false
 
     /// Invoked with the newly created thread right before the sheet dismisses,
     /// so the caller (board thread list, forum hub) can refresh in place.
@@ -55,16 +57,10 @@ struct CreateThreadView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         HapticManager.selection()
-                        vm.submit { success in
-                            if success {
-                                HapticManager.success()
-                                if let created = vm.createdThread {
-                                    onCreated?(created)
-                                }
-                                dismiss()
-                            } else {
-                                HapticManager.error()
-                            }
+                        if acceptedGuidelines {
+                            submit()
+                        } else {
+                            showGuidelines = true
                         }
                     } label: {
                         if vm.isSubmitting {
@@ -77,6 +73,26 @@ struct CreateThreadView: View {
                     .disabled(!vm.isValid || vm.isSubmitting)
                     .foregroundColor(vm.isValid ? Theme.securityGold : Theme.inkTertiary)
                 }
+            }
+            .sheet(isPresented: $showGuidelines) {
+                ForumGuidelinesSheet {
+                    acceptedGuidelines = true
+                    submit()
+                }
+            }
+        }
+    }
+
+    private func submit() {
+        vm.submit { success in
+            if success {
+                HapticManager.success()
+                if let created = vm.createdThread {
+                    onCreated?(created)
+                }
+                dismiss()
+            } else {
+                HapticManager.error()
             }
         }
     }
