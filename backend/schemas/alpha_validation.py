@@ -4,22 +4,22 @@ from typing import List, Dict, Optional, Literal, Any
 
 class CostAssumptions(BaseModel):
     """Cost assumptions for backtesting alpha strategies."""
-    brokerage_bps: float = Field(0.0, description="Brokerage in basis points")
-    stt_bps: float = Field(0.0, description="Securities Transaction Tax in bps")
-    exchange_charges_bps: float = Field(0.0, description="Exchange charges in bps")
-    sebi_charges_bps: float = Field(0.0, description="SEBI turnover fees in bps")
-    gst_pct: float = Field(0.0, description="GST percentage on charges")
-    stamp_duty_bps: float = Field(0.0, description="Stamp duty in bps")
-    slippage_bps: float = Field(0.0, description="Assumed execution slippage in bps")
-    liquidity_penalty_bps: float = Field(0.0, description="Penalty for illiquid stocks in bps")
-    turnover_penalty_bps: float = Field(0.0, description="Penalty for high portfolio turnover in bps")
+    brokerage_bps: float = Field(default=0.0, description="Brokerage in basis points")
+    stt_bps: float = Field(default=0.0, description="Securities Transaction Tax in bps")
+    exchange_charges_bps: float = Field(default=0.0, description="Exchange charges in bps")
+    sebi_charges_bps: float = Field(default=0.0, description="SEBI turnover fees in bps")
+    gst_pct: float = Field(default=0.0, description="GST percentage on charges")
+    stamp_duty_bps: float = Field(default=0.0, description="Stamp duty in bps")
+    slippage_bps: float = Field(default=0.0, description="Assumed execution slippage in bps")
+    liquidity_penalty_bps: float = Field(default=0.0, description="Penalty for illiquid stocks in bps")
+    turnover_penalty_bps: float = Field(default=0.0, description="Penalty for high portfolio turnover in bps")
     dp_charge_bps: float = Field(default=0.0, description="Depository (DP) charge on the sell leg in bps, GST included")
     stcg_tax_pct: float = Field(default=0.0, description="Short-term capital gains tax on profitable trades, percent")
 
 
 class BacktestParams(BaseModel):
     """Parameters defining a backtest scenario. Accepts both backend and iOS naming conventions."""
-    horizon: str = Field("30D", description="Holding period horizon (7D, 30D or 90D, case-insensitive)")
+    horizon: str = Field(default="30D", description="Holding period horizon (7D, 30D or 90D, case-insensitive)")
 
     @field_validator("horizon", mode="before")
     @classmethod
@@ -29,7 +29,7 @@ class BacktestParams(BaseModel):
             raise ValueError("Unsupported horizon: outcomes are tracked at 7/30/90 days")
         return v.strip().upper()
 
-    strategy_type: str = Field("confidence_weighted", description="Type of strategy to test")
+    strategy_type: str = Field(default="confidence_weighted", description="Type of strategy to test")
 
     @field_validator("strategy_type", mode="before")
     @classmethod
@@ -38,10 +38,10 @@ class BacktestParams(BaseModel):
         ios_map = {"momentum": "confidence_weighted"}
         return ios_map.get(v.lower().strip() if isinstance(v, str) else "", v)
 
-    top_k: int = Field(10, description="Top K stocks to hold")
-    confidence_threshold: float = Field(50.0, description="Minimum confidence threshold")
+    top_k: int = Field(default=10, description="Top K stocks to hold")
+    confidence_threshold: float = Field(default=50.0, description="Minimum confidence threshold")
 
-    position_sizing: str = Field("confidence_weighted", description="Position sizing method")
+    position_sizing: str = Field(default="confidence_weighted", description="Position sizing method")
 
     @field_validator("position_sizing", mode="before")
     @classmethod
@@ -50,7 +50,7 @@ class BacktestParams(BaseModel):
         ios_map = {"equal": "equal_weight"}
         return ios_map.get(v.lower().strip() if isinstance(v, str) else "", v)
 
-    cost_preset: str = Field("realistic_retail", description="Cost assumption preset")
+    cost_preset: str = Field(default="realistic_retail", description="Cost assumption preset")
 
     @field_validator("cost_preset", mode="before")
     @classmethod
