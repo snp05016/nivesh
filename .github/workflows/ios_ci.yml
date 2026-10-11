@@ -18,6 +18,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+# TEST-16: read-only token by default; no job here needs write access.
+permissions:
+  contents: read
+
 jobs:
   static-checks:
     runs-on: ubuntu-latest
@@ -25,7 +29,7 @@ jobs:
       ios: ${{ steps.changes.outputs.ios }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       with:
         fetch-depth: 0
 
@@ -63,10 +67,11 @@ jobs:
   build-ios:
     needs: static-checks
     if: needs.static-checks.outputs.ios == 'true'
-    runs-on: macos-latest
+    # TEST-15: pinned image and Xcode (schemes' LastUpgradeVersion is 2650 = Xcode 26.5).
+    runs-on: macos-26
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
     - name: Check for unreferenced Swift files
       run: python3 scripts/find_unreferenced_swift.py ios/StockApp/stockme/stockme
@@ -75,15 +80,15 @@ jobs:
       run: bash scripts/ios_release_checks.sh
 
     - name: Set up Xcode
-      uses: maxim-lobanov/setup-xcode@v1
+      uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
       with:
-        xcode-version: latest-stable
+        xcode-version: '26.5'
 
     - name: Build iOS App
       run: |
         cd ios/StockApp/stockme || exit 1
         set -o pipefail
-        xcodebuild -project stockme.xcodeproj -scheme stockme -destination 'platform=iOS Simulator,name=iPhone 17' build 2>&1 | tail -20
+        xcodebuild -project stockme.xcodeproj -scheme stockme -destination 'generic/platform=iOS Simulator' build 2>&1 | tail -20
 
     # The stockme scheme's TestAction lists stockmeTests (unit) and skips the UI tests.
     - name: Unit tests

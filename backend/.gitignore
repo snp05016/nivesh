@@ -26,3 +26,6 @@ token_log.jsonl
 
 # Misc
 ~/.tradingagents/
+
+# Integrity runner output (run_all.py); not committed (TEST-19)
+tests/*_integrity_tests/logs/

@@ -13,6 +13,10 @@ import sys
 import os
 from unittest.mock import MagicMock, AsyncMock
 
+# TEST-19: the *_integrity_tests dirs are run_all.py runner scripts with no pytest
+# tests; importing them only mutates sys.modules. Run them via their run_all.py.
+collect_ignore_glob = ["*_integrity_tests/*"]
+
 # ---------------------------------------------------------------------------
 # STEP 1: Patch all heavy / external modules BEFORE importing the app
 # ---------------------------------------------------------------------------

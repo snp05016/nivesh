@@ -144,50 +144,25 @@ def log_diagnostic_error(
         payload["exception"]["cleaned_traceback"] = cleaned
 
     payload_json = json.dumps(payload, ensure_ascii=False, indent=2)
+    # Compact form for the 2000-char DB columns so more of the payload fits.
+    payload_db = json.dumps(payload, ensure_ascii=False)
+    ticker = context.get("target_ticker") if isinstance(context, dict) else None
 
     # ------------------------------------------------------------------
-    # Write to market_error_logs (always)
+    # Write to market_error_logs (always) and earnings_error_logs (EARNINGS*).
+    # The database helpers never raise and log their own write failures to
+    # the "nivesh.telemetry" logger, so telemetry cannot cascade.
     # ------------------------------------------------------------------
     try:
-        from database import get_session, MarketErrorLog
-
-        with get_session() as session:
-            entry = MarketErrorLog(
-                component=subsystem,
-                error_message=payload_json[:2000],
-                context_ticker=(
-                    context.get("target_ticker")
-                    if isinstance(context, dict)
-                    else None
-                ),
-            )
-            session.add(entry)
-            session.commit()
-    except Exception as _e:
-        # telemetry itself must never cascade
-        pass
-
-    # ------------------------------------------------------------------
-    # Write to earnings_error_logs (only when EARNINGS subsystem)
-    # ------------------------------------------------------------------
-    if subsystem.upper().startswith("EARNINGS"):
-        try:
-            from database import get_session, EarningsErrorLog
-
-            with get_session() as session:
-                entry = EarningsErrorLog(
-                    module=subsystem,
-                    error_trace=payload_json[:2000],
-                    failed_ticker=(
-                        context.get("target_ticker")
-                        if isinstance(context, dict)
-                        else None
-                    ),
-                )
-                session.add(entry)
-                session.commit()
-        except Exception as _e:
-            pass
+        from database import log_market_error, log_earnings_error
+    except Exception:
+        logging.getLogger("nivesh.telemetry").warning(
+            "[telemetry] DB write failed for %s", subsystem, exc_info=True
+        )
+    else:
+        log_market_error(subsystem, payload_db, context_ticker=ticker)
+        if subsystem.upper().startswith("EARNINGS"):
+            log_earnings_error(subsystem, payload_db, failed_ticker=ticker)
 
     # ------------------------------------------------------------------
     # Print to stdout for server console
@@ -217,6 +192,7 @@ def generate_daily_digest() -> str:
     from collections import Counter
 
     digest_lines: list[str] = []
+    query_ok = False
     # Use naive UTC datetime since SQLite drops timezone info, avoiding TypeError
     since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=24)
 
@@ -259,21 +235,25 @@ def generate_daily_digest() -> str:
             for r in rows_earnings:
                 all_errors.append(UnifiedError(r.timestamp, r.module, r.failed_ticker, r.error_trace))
             for r in rows_notif:
-                all_errors.append(UnifiedError(r.timestamp, "notification", r.recipient_id, r.error_trace))
+                all_errors.append(UnifiedError(r.timestamp, "notification", r.target_device, r.error_trace))
             for r in rows_ideas:
-                all_errors.append(UnifiedError(r.timestamp, "ideas", r.idea_id, r.error_message))
+                all_errors.append(UnifiedError(r.timestamp, "ideas", r.context_ticker, r.error_trace))
             
             # Sort descending
             all_errors.sort(key=lambda x: x.timestamp or since, reverse=True)
             rows = all_errors
-            
+            query_ok = True
+
     except Exception as e:
         rows = []
         digest_lines.append(f"[DIGEST] Could not query error logs: {e}")
+        logging.getLogger("nivesh.telemetry").warning("[DIGEST] error-log query failed", exc_info=True)
 
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     digest_lines.append(f"╔══ NIVESH NIGHTLY DIGEST — {now_str} ══╗")
-    digest_lines.append(f"  Errors in last 24h: {len(rows)}")
+    digest_lines.append(
+        f"  Errors in last 24h: {len(rows)}" if query_ok else "  Errors in last 24h: UNKNOWN - query failed"
+    )
 
     if rows:
         # Count by component
@@ -289,11 +269,10 @@ def generate_daily_digest() -> str:
             ticker = f" [{r.context_ticker}]" if r.context_ticker else ""
             msg_preview = (r.error_message or "")[:120].replace("\n", " ")
             digest_lines.append(f"    {ts}  {r.component}{ticker}: {msg_preview}")
-    else:
+    elif query_ok:
         digest_lines.append("  ✅ No errors logged — clean run!")
 
     digest_lines.append("╚══════════════════════════════════════════╝")
-    digest_text = "\n".join(digest_lines)
 
     # Write to logs dir
     try:
@@ -301,11 +280,13 @@ def generate_daily_digest() -> str:
         logs_dir.mkdir(parents=True, exist_ok=True)
         date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         digest_path = logs_dir / f"nightly_digest_{date_str}.txt"
-        digest_path.write_text(digest_text, encoding="utf-8")
+        digest_path.write_text("\n".join(digest_lines), encoding="utf-8")
     except Exception as e:
         digest_lines.append(f"  [WARN] Could not write digest file: {e}")
+        logging.warning("[DIGEST] Could not write digest file: %s", e)
+    digest_text = "\n".join(digest_lines)
 
-    logging.info(digest_text)
+    logging.log(logging.WARNING if rows or not query_ok else logging.INFO, digest_text)
 
     # Deliver to the operator (OPS-14): plain-text POST, ntfy.sh compatible.
     webhook_url = os.getenv("OPS_ALERT_WEBHOOK_URL", "").strip()

@@ -12,15 +12,17 @@
 
 | Path | Purpose | Notes |
 |---|---|---|
-| `backend/tests/backend_integrity_tests/` | Import/syntax/exception/runtime warning catalog integrity suite. | Run only in allowed target runtime. |
-| `backend/tests/database_integrity_tests/` | Schema, relationships, migration drift, CRUD, concurrency, constraints. | Run only in allowed target runtime. |
-| `backend/tests/cache_integrity_tests/` | Cache gates and concurrency dedup behavior. | Run only in allowed target runtime. |
-| `backend/tests/llm_integrity_tests/` | JSON normalization, Indian formatting, prompt integrity. | Run only in allowed target runtime. |
+| `backend/tests/backend_integrity_tests/` | Import/syntax/exception/runtime warning catalog integrity suite. | Runner scripts (`python run_all.py` / `tests/run_integrity_tests.sh`). Not collected by pytest or run in CI. |
+| `backend/tests/database_integrity_tests/` | Schema, relationships, migration drift, CRUD, concurrency, constraints. | Runner scripts (`python run_all.py` / `tests/run_integrity_tests.sh`). Not collected by pytest or run in CI. |
+| `backend/tests/cache_integrity_tests/` | Cache gates and concurrency dedup behavior. | Runner scripts (`python run_all.py` / `tests/run_integrity_tests.sh`). Not collected by pytest or run in CI. |
+| `backend/tests/llm_integrity_tests/` | JSON normalization, Indian formatting, prompt integrity. | Runner scripts (`python run_all.py` / `tests/run_integrity_tests.sh`). Not collected by pytest or run in CI. |
 | `backend/tests/morning_briefing/` | Morning briefing cache, scheduler, endpoint, regression tests. | Run only in allowed target runtime. |
 | `backend/tests/api/` | Endpoint contract tests. | Run only in allowed target runtime. |
 | `backend/tests/feature_tests/` | Feature-specific workflows such as alerts, analysis, earnings, screener, news. | Run only in allowed target runtime. |
 | `backend/tests/smoke/` | Startup/ping smoke tests. | Run only in allowed target runtime. |
 | `ml-engine/tests/` | Alpha158/ML pipeline tests for the microservice. | Run only in allowed target runtime. |
+
+The four `*_integrity_tests/` directories are excluded from pytest collection (`collect_ignore_glob` in `backend/tests/conftest.py`, TEST-19). Schema and constraint gating in pytest lives in `backend/tests/test_backend_contract_database.py` (for example `test_unique_snapshot_constraints_for_ledgers`).
 
 ## Test Inventory
 
