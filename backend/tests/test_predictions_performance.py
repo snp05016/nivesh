@@ -107,9 +107,9 @@ class TestEmptyPerformance:
 
 class TestPopulatedPerformance:
     @pytest.fixture(autouse=True)
-    def seed_and_cleanup(self, client):
+    def seed_and_cleanup(self, client, pro_headers):
         # The DB is shared with other modules, so assert on the delta our seed adds.
-        self.before = client.get("/api/v1/predictions/performance", headers=AUTH).json()
+        self.before = client.get("/api/v1/predictions/performance", headers=pro_headers).json()
         with get_session() as session:
             self.pred_ids, tickers = _seed(session)
         yield

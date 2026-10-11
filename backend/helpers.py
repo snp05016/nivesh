@@ -6,8 +6,6 @@ from datetime import datetime
 from typing import Optional
 from collections import deque
 
-from fastapi import HTTPException, Header
-
 from database import (
     get_session, get_user_by_credentials, User, Portfolio, AnalysisHistory,
     SignalEvent, PriceTarget, TradeJournal, DeviceToken, AdvisorInsight,
