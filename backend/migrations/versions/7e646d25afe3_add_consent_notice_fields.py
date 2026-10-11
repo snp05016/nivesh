@@ -7,7 +7,7 @@ upgrade: adds each column only if missing; skipped if the table is missing.
 downgrade: drops each column only if present.
 
 Revision ID: 7e646d25afe3
-Revises: 25342fdfb06f
+Revises: 7b766cb99b86
 Create Date: 2026-10-11
 """
 from typing import Sequence, Union
@@ -18,7 +18,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "7e646d25afe3"
-down_revision: Union[str, Sequence[str], None] = "25342fdfb06f"
+down_revision: Union[str, Sequence[str], None] = "7b766cb99b86"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
