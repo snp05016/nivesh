@@ -86,7 +86,7 @@ def stubbed_orchestrator(orch, monkeypatch):
     monkeypatch.setattr(orchestrator, "get_analysis_for_date", _cache_lookup)
     monkeypatch.setattr(orchestrator, "get_all_ticker_history", lambda *args, **kwargs: [])
     monkeypatch.setattr(orchestrator, "run_trading_agents", lambda *args, **kwargs: ("RAW", [], {}))
-    monkeypatch.setattr(orchestrator, "_run_calibration_pipeline", lambda ticker, fs, raw: raw)
+    monkeypatch.setattr(orchestrator, "_run_calibration_pipeline", lambda ticker, fs, raw, *_a: raw)
     monkeypatch.setattr(orchestrator, "_yf_fetch_info", lambda *args, **kwargs: {})
     monkeypatch.setattr(orchestrator.yf, "Ticker", lambda *args, **kwargs: type("T", (), {"major_holders": ""})())
     monkeypatch.setattr("services.quant_engine.QuantitativeEngine", _FailingQuantEngine)

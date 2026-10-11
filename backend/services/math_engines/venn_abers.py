@@ -99,7 +99,10 @@ class VennAbersEngine(InferenceEngine):
                     ),
                 )
 
-            X = np.array([float(r[0]) for r in rows], dtype=np.float64)
+            # ML-V1: history mixes the 0-1 scale with percent values (e.g. the 40.0
+            # governance cap); train on the same 0-1 scale the orchestrator feeds in.
+            X = np.array([float(r[0]) / 100.0 if float(r[0]) > 1 else float(r[0]) for r in rows],
+                         dtype=np.float64)
             y = np.array([1.0 if r[1] else 0.0 for r in rows], dtype=np.float64)
 
             # Primary isotonic fit: calibrated point estimate

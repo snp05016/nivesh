@@ -1452,7 +1452,28 @@ def _run_engine_with_session(engine_cls, ticker: str, data: dict, get_session_fn
         return engine_cls().compute(ticker, data, session=session)
 
 
-def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -> str:
+def _engine_output(res) -> dict:
+    """ML-V1: the `output` of a math-engine result (pydantic model or dict), or {} unless status is ok."""
+    if hasattr(res, "model_dump"):
+        res = res.model_dump()
+    if not isinstance(res, dict) or res.get("status") != "ok":
+        return {}
+    out = res.get("output")
+    return out if isinstance(out, dict) else {}
+
+
+def _venn_abers_input(quant_payload) -> float | None:
+    """ML-V1: the pre-fusion quant confidence on a 0-1 scale (VA is trained on it), or None."""
+    raw = quant_payload.get("calibrated_confidence") if isinstance(quant_payload, dict) else None
+    if not isinstance(raw, (int, float)) or isinstance(raw, bool):
+        return None
+    raw = float(raw)
+    if raw > 1:
+        raw /= 100.0
+    return raw if 0 < raw <= 1 else None
+
+
+def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str, quant_payload: dict | None = None) -> str:
     """Phase 9: Confidence Calibration Pipeline with 8 parallel tasks.
     Prepends calibration_block to raw_output. Returns raw_output unchanged on error.
     """
@@ -1478,6 +1499,7 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
             current_price_raw = float(price_df["Close"].iloc[-1])
         regime_state = regime_indicators.get("regime_state_label", "Unknown")
         regime_mult = regime_indicators.get("regime_confidence_multiplier", 1.0)
+        va_raw = _venn_abers_input(quant_payload)
 
         agent_reports = {
             "governance": final_state.get("governance_report", ""),
@@ -1516,10 +1538,6 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
             # --- Tier A: Statistical calibration ---
             "cal_metrics": lambda: _run_engine_with_session(
                 CalibrationMetricsEngine, base_symbol, {}, _cal_get_session),
-            "venn_abers": lambda: _run_engine_with_session(
-                VennAbersEngine, base_symbol,
-                {"raw_confidence": regime_indicators.get("regime_confidence_multiplier", 0.5)},
-                _cal_get_session),
             "rank_ic": lambda: _run_engine_with_session(
                 InformationCoefficientEngine, base_symbol, {}, _cal_get_session),
             # --- Tier B: Deterministic modifiers ---
@@ -1529,6 +1547,9 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
             "ml_cross_section": lambda: predict_cross_section_sync(
                 base_symbol, _cal_ohlcv) if _cal_ohlcv else None,
         }
+        if va_raw is not None:
+            _cal_tasks["venn_abers"] = lambda: _run_engine_with_session(
+                VennAbersEngine, base_symbol, {"raw_confidence": va_raw}, _cal_get_session)
         _cal_results: dict = {}
         with ThreadPoolExecutor(max_workers=8) as _cal_executor:
             _cal_futures = {_cal_executor.submit(fn): name for name, fn in _cal_tasks.items()}
@@ -1556,11 +1577,11 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
         currency_raw      = _cal_results.get("currency_commodity", {})
         ml_cross_raw      = _cal_results.get("ml_cross_section")
 
-        # Extract outputs from engine results (each returns {status, output})
-        cal_metrics_out = cal_metrics_raw.get("output", {}) if isinstance(cal_metrics_raw, dict) else {}
-        venn_abers_out  = venn_abers_raw.get("output", {}) if isinstance(venn_abers_raw, dict) else {}
-        rank_ic_out     = rank_ic_raw.get("output", {}) if isinstance(rank_ic_raw, dict) else {}
-        currency_out    = currency_raw.get("output", {}) if isinstance(currency_raw, dict) else {}
+        # Engines return pydantic {status, output} models; only status "ok" outputs count
+        cal_metrics_out = _engine_output(cal_metrics_raw)
+        venn_abers_out  = _engine_output(venn_abers_raw)
+        rank_ic_out     = _engine_output(rank_ic_raw)
+        currency_out    = _engine_output(currency_raw)
 
         # Store calibration results in final_state for _normalize_response to pick up
         if isinstance(final_state, dict):
@@ -1569,12 +1590,13 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
                 "ece": cal_metrics_out.get("ece"),
                 "rank_ic": rank_ic_out.get("rank_ic"),
                 "sample_size": cal_metrics_out.get("sample_size", 0),
-                "interpretation": cal_metrics_out.get("interpretation", "Calibration data not yet available."),
+                "interpretation": cal_metrics_out.get("interpretation") or "Calibration data not yet available.",
             }
-            final_state["_confidence_interval"] = venn_abers_out.get("confidence_interval", [None, None])
+            if venn_abers_out.get("confidence_interval"):
+                final_state["_confidence_interval"] = venn_abers_out["confidence_interval"]
             final_state["_currency_commodity_spillover"] = {
                 "modifier": currency_out.get("modifier", 0.0),
-                "description": currency_out.get("description", "Not computed."),
+                "description": currency_out.get("description") or "Not computed.",
             }
             # Venn-Abers calibrated confidence (for quant_engine override)
             if venn_abers_out.get("calibrated_confidence") is not None:
@@ -2178,7 +2200,7 @@ def analyze(
         pk_signal = None
         deep_scan_used = False
 
-    raw_output = _run_calibration_pipeline(ticker, final_state, raw_output)
+    raw_output = _run_calibration_pipeline(ticker, final_state, raw_output, quant_payload)
 
     # Wait for background prefetch to complete (started at top of analyze())
     _prefetch_done.wait(timeout=30)

@@ -48,7 +48,7 @@ def test_analyze_cache_miss_runs_without_nameerror(orchestrator, monkeypatch):
     monkeypatch.setattr(orchestrator, "_yf_fetch_info", lambda *a, **k: {})
     monkeypatch.setattr(orchestrator.yf, "Ticker", lambda *a, **k: types.SimpleNamespace(major_holders=""))
     monkeypatch.setattr(orchestrator, "run_trading_agents", lambda *a, **k: ("RAW", [], {}))
-    monkeypatch.setattr(orchestrator, "_run_calibration_pipeline", lambda ticker, final_state, raw: raw)
+    monkeypatch.setattr(orchestrator, "_run_calibration_pipeline", lambda ticker, final_state, raw, *_a: raw)
     monkeypatch.setattr(orchestrator, "reformat_with_deepseek", lambda *a, **k: {"signal": "HOLD", "confidence_pct": 50})
 
     class _FailingQuantEngine:  # its except handler logs as well
