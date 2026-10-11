@@ -137,11 +137,11 @@ def test_earnings_calendar_one_bad_ticker(monkeypatch):
                 raise RuntimeError("yahoo rate limited")
             return {"Earnings Date": [upcoming]}
 
-    monkeypatch.setattr(earnings_router, "_holding_tickers", lambda: list(holdings))
+    monkeypatch.setattr(earnings_router, "_holding_tickers", lambda _uid: list(holdings))
     monkeypatch.setattr(earnings_router, "_resolve_ticker", lambda t, _ex: t)
     monkeypatch.setattr(earnings_router.yf, "Ticker", _Ticker)
 
-    results = _hammer(earnings_router.earnings_calendar_endpoint)
+    results = _hammer(lambda: earnings_router.earnings_calendar_endpoint(1))
 
     assert sorted(calls) == sorted(holdings)  # 10 concurrent callers, one upstream pass
     for body in results:

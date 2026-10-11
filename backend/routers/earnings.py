@@ -38,8 +38,8 @@ def _latest_rows_since(session, cutoff: str) -> list:
 router = APIRouter(tags=["Market Data"])
 
 
-def _ticker_earnings_events(ticker_raw: str, today) -> list:
-    """Upcoming/recent earnings events for one holding. Logs and returns [] on
+def _ticker_earnings_events(ticker_raw: str, today) -> _Optional[list]:
+    """Upcoming/recent earnings events for one holding. Logs and returns None on
     any failure, so one bad ticker never discards the batch (PERF-10)."""
     try:
         full_ticker = _resolve_ticker(ticker_raw, "NSE")
@@ -66,40 +66,49 @@ def _ticker_earnings_events(ticker_raw: str, today) -> list:
         return events
     except Exception as e:
         logging.warning(f"[earnings-calendar] skipping {ticker_raw}: {e}")
-        return []
+        return None
 
 
-def _holding_tickers() -> list:
+def _holding_tickers(user_id: int) -> list:
     from database import get_session, Portfolio
     with get_session() as session:
         return [t[0] for t in session.query(Portfolio.ticker).filter(
-            Portfolio.group_name == "holdings"
+            Portfolio.user_id == user_id,
+            Portfolio.group_name == "holdings",
         ).distinct().all()]
 
 
-def _compute_earnings_calendar() -> dict:
-    tickers = _holding_tickers()
+def _compute_earnings_calendar(user_id: int) -> _Optional[dict]:
+    """None when every holding's lookup failed, so the outage is not cached."""
+    tickers = _holding_tickers(user_id)
+    if not tickers:
+        return {"events": []}
     today = datetime.now().date()
     with ThreadPoolExecutor(max_workers=8) as ex:
         per_ticker = list(ex.map(lambda t: _ticker_earnings_events(t, today), tickers))
-    results = [e for events in per_ticker for e in events]
+    if all(events is None for events in per_ticker):
+        return None
+    results = [e for events in per_ticker if events for e in events]
     results.sort(key=lambda x: x["days_away"])
     return {"events": results}
 
 
 @router.get("/earnings-calendar")
-def earnings_calendar_endpoint():
+def earnings_calendar_endpoint(user_id: int = Depends(require_auth)):
     """
-    Returns upcoming earnings dates for NSE portfolio stocks.
+    Returns upcoming earnings dates for the caller's NSE holdings (CMKT-12:
+    scoped to the token's user, never the union of every user's holdings).
 
-    Single-flight cached for 15 min: concurrent misses compute once (PERF-10).
+    Single-flight cached per user for 15 min: concurrent misses compute once (PERF-10).
 
     Returns:
         Any: The response.
     """
     try:
-        return cached_call("market", "earnings_calendar", _compute_earnings_calendar,
-                           ttl=900, cache_if=lambda p: p is not None)
+        payload = cached_call("market", f"earnings_calendar_{user_id}",
+                              lambda: _compute_earnings_calendar(user_id),
+                              ttl=900, cache_if=lambda p: p is not None)
+        return payload if payload is not None else {"events": []}
     except Exception as e:
         logging.error(f"[earnings-calendar] failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")

@@ -807,7 +807,8 @@ class NetworkManager: ObservableObject {
 
     func getEarningsCalendar() async -> [EarningsEvent] {
         guard let url = URL(string: "\(baseURL)/earnings-calendar") else { return [] }
-        var request = URLRequest(url: url)
+        // CMKT-12: the backend lists the token user's holdings, so send the bearer.
+        var request = authRequest(url)
         request.timeoutInterval = 30
         guard let (data, resp) = try? await session.data(for: request),
               let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }

@@ -54,7 +54,7 @@ PUBLIC_ROUTES = {
     ("GET", "/api/v1/market/stock-history"), ("GET", "/api/v1/market/top-movers"),
     ("GET", "/api/v1/options/chain/{ticker}"), ("GET", "/api/v1/stock-profile"),
     ("GET", "/api/v1/technical-signals"), ("GET", "/block-deals/{ticker}"),
-    ("GET", "/dividends/{ticker}"), ("GET", "/earnings-calendar"), ("GET", "/fii-dii-flow"),
+    ("GET", "/dividends/{ticker}"), ("GET", "/fii-dii-flow"),
     ("GET", "/ipo-calendar"), ("GET", "/macro-context/{ticker}"), ("GET", "/macro-strip"),
     ("GET", "/market-indices"), ("GET", "/market/screener"),
     ("GET", "/market/sentiment-trend/{ticker}"), ("GET", "/mf/{scheme_code}"),

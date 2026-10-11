@@ -227,9 +227,9 @@ class TestMarketEndpoints:
         assert response.status_code == 200
     
     def test_earnings_calendar(self):
-        """Test earnings calendar endpoint."""
+        """Earnings calendar lists the caller's holdings, so it needs a token (CMKT-12)."""
         response = client.get("/earnings-calendar")
-        assert response.status_code == 200
+        assert response.status_code == 401
     
     def test_analyst_ratings(self):
         """Test analyst ratings endpoint."""
