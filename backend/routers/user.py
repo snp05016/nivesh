@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, HTTPException, Header, Depends
+from fastapi import APIRouter, HTTPException, Header, Depends, Query
 from datetime import datetime, timezone
 import time
 from pydantic import BaseModel
@@ -117,7 +117,7 @@ def get_experts():
 
 
 @router.get("/api/v1/expert-posts")
-def get_expert_posts(limit: int = 30):
+def get_expert_posts(limit: int = Query(30, ge=1, le=100)):
     return user_service.get_expert_posts_service(limit)
 
 

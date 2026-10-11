@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from collections import defaultdict
 from types import SimpleNamespace
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from fastapi.responses import FileResponse
 from core.security import require_user_match, require_admin
 import yfinance as yf
@@ -185,7 +185,7 @@ def portfolio_signal_warnings(user_id: int, _caller: int = Depends(require_user_
 # 13. GET /api/v1/portfolio/valuation-history
 # ---------------------------------------------------------------------------
 @router.get("/api/v1/portfolio/valuation-history")
-def get_valuation_history(user_id: int, days: int = 90, _caller: int = Depends(require_user_match)):
+def get_valuation_history(user_id: int, days: int = Query(90, ge=1, le=3650), _caller: int = Depends(require_user_match)):
     with get_session() as session:
         cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
 

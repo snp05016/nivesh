@@ -22,7 +22,7 @@ import asyncio
 import random
 import math
 from datetime import datetime, date, timedelta, timezone
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 import yfinance as yf
 from services.scraper import (
     fetch_market_pulse, fetch_momentum, fetch_macro_alternatives, fetch_institutional_flow,
@@ -40,12 +40,23 @@ def market_indices_endpoint():
     return _get_indices_data()
 
 
+_NIFTY_HISTORY_BUCKETS = (30, 90, 180, 365, 730, 1825, 3650)
+
+
+def _trim_nifty_prices(payload: dict, days: int) -> dict:
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+    return {**payload, "prices": [p for p in payload.get("prices", []) if p.get("date", "") >= cutoff]}
+
+
 @router.get("/nifty-history")
-def nifty_history_endpoint(days: int = 365):
-    cache_key = f"nifty_history_{days}"
+def nifty_history_endpoint(days: int = Query(365, ge=1, le=3650)):
+    # Fetch and cache per bucket, not per raw `days`, so callers cannot mint
+    # unbounded cache keys and Yahoo downloads (REL-23).
+    bucket = next(b for b in _NIFTY_HISTORY_BUCKETS if b >= days)
+    cache_key = f"nifty_history_{bucket}"
     cached = _dcache_get("market", cache_key)
     if cached is not None:
-        return cached
+        return _trim_nifty_prices(cached, days)
     try:
         import time
         import random
@@ -53,7 +64,7 @@ def nifty_history_endpoint(days: int = 365):
         for attempt in range(3):
             try:
                 t = yf.Ticker("^NSEI")
-                hist = t.history(period=f"{days}d")
+                hist = t.history(period=f"{bucket}d")
                 if not hist.empty:
                     break
             except Exception as e:
@@ -72,7 +83,7 @@ def nifty_history_endpoint(days: int = 365):
             })
         payload = {"prices": result}
         _dcache_set("market", cache_key, payload, ttl=1800)
-        return payload
+        return _trim_nifty_prices(payload, days)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -635,7 +646,7 @@ _NSE_DIR_INDEX = [
 
 
 @router.get("/search")
-def search_endpoint(q: str = "", limit: int = 20):
+def search_endpoint(q: str = "", limit: int = Query(20, ge=1, le=100)):
     """
     Fast in-memory NSE stock search. No yfinance, no DB. Returns in <5ms.
 
@@ -1562,7 +1573,7 @@ Response: {
         raise HTTPException(status_code=500, detail=f"Top movers fetch failed: {exc}")
 
 @router.get("/market/sentiment-trend/{ticker}")
-def sentiment_trend(ticker: str, days: int = 30):
+def sentiment_trend(ticker: str, days: int = Query(30, ge=1, le=365)):
     """
     30-Day Rolling News Sentiment Chart per Ticker.
 

@@ -169,6 +169,9 @@ class _RequestLogMiddleware(BaseHTTPMiddleware):
 app.add_middleware(_RequestLogMiddleware)
 
 
+_MAX_BODY_BYTES = int(os.getenv("MAX_REQUEST_BODY_BYTES", str(1_048_576)))
+
+
 class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
     Middleware to inject security headers and enforce basic rate limits.
@@ -180,7 +183,13 @@ class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
         from core import rate_limiter as _rate_limiter
         from fastapi import HTTPException
         from fastapi.responses import JSONResponse
-        
+
+        # REL-23: reject oversized bodies before any route parses them.
+        # ponytail: Content-Length only; chunked bodies need a proxy limit
+        cl = request.headers.get("content-length")
+        if cl and cl.isdigit() and int(cl) > _MAX_BODY_BYTES:
+            return JSONResponse(status_code=413, content={"detail": "Request body too large"})
+
         try:
             _rate_limiter._check_rate_limit(client_ip, endpoint, request.method)
         except HTTPException as e:

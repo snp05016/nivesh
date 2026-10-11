@@ -385,13 +385,15 @@ async def pregen_morning_briefs_all_users() -> dict:
                 if start != -1 and end > start:
                     brief = json.loads(clean[start:end])
             except Exception as _e:
-                pass
+                logger.warning("[morning_brief] Unparseable pre-generated brief for user_id=%s: %s", user_id_val, _e)
 
             # FAKE-22: never cache canned text with an uncomputed mood for the full
             # TTL; leaving the cache empty lets the route build a real brief on demand.
-            if not brief:
+            # SILENT-14: never cache a placeholder or count it as generated; the
+            # on-demand endpoint builds the brief when the user opens the app.
+            if not isinstance(brief, dict) or not brief.get("summary"):
                 errors += 1
-                logger.warning("[morning_brief] Unparseable pre-generated brief for user_id=%s", user_id_val)
+                logger.warning("[morning_brief] No usable pre-generated brief for user_id=%s", user_id_val)
                 continue
             if contains_devanagari(brief.get("summary", "")):
                 errors += 1

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import logging
 from services.strategy_engine import run_backtest
 from core.entitlement_gate import require_entitlement
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class BacktestRequest(BaseModel):
     ticker: str
     strategy_id: str
-    years: int = 5
+    years: int = Field(default=5, ge=1, le=20)
 
 def _run_backtest(req: BacktestRequest):
     try:

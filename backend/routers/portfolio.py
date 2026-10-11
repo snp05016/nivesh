@@ -8,7 +8,7 @@ import threading
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request
 
 from services.disk_cache import invalidate as _cache_invalidate
 from services.ledger_service import record_transaction, get_or_create_default_group, adjust_position, close_position, LedgerError, parse_trade_date
@@ -155,7 +155,7 @@ def portfolio_endpoint(user_id: int, _caller: int = Depends(require_user_match),
 # 2. GET /portfolio/history/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/history/{user_id}")
-def portfolio_history_endpoint(user_id: int, days: int = 30, _caller: int = Depends(require_user_match)):
+def portfolio_history_endpoint(user_id: int, days: int = Query(30, ge=1, le=3650), _caller: int = Depends(require_user_match)):
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
     with get_session() as session:
         rows = session.query(PortfolioValuationHistory).filter(

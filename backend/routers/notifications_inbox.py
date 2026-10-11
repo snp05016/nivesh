@@ -1,5 +1,5 @@
 """Notification Inbox API — GET /api/v1/notifications, PUT mark read."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Optional
 
@@ -20,7 +20,7 @@ class NotificationItem(BaseModel):
 
 
 @router.get("", response_model=List[NotificationItem])
-def list_notifications(limit: int = 50, user_id: int = Depends(require_auth)):
+def list_notifications(limit: int = Query(50, ge=1, le=200), user_id: int = Depends(require_auth)):
     return get_notifications(user_id, limit=limit)
 
 

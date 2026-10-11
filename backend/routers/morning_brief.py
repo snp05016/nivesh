@@ -57,7 +57,9 @@ def build_morning_summary(user_id: int) -> dict:
     # Check in-memory cache first
     # Redis-backed shared cache (works across all 12 workers)
     cached = _dcache_get("morning_brief", str(user_id))
-    if cached and isinstance(cached, dict):
+    # SILENT-14: a degraded (canned) brief is never served from cache, so the
+    # next request regenerates once the cause is fixed.
+    if cached and isinstance(cached, dict) and not cached.get("degraded"):
         if not contains_devanagari(cached.get("summary", "")):
             return cached
 
@@ -70,6 +72,7 @@ def build_morning_summary(user_id: int) -> dict:
         "movers": [],
         "mood": MOOD_UNAVAILABLE,
         "generated_at": generated_at,
+        "degraded": True,
     }
 
     try:
@@ -163,7 +166,8 @@ mood must be exactly: "positive", "cautious", or "negative"
         from services.llm_utils import claude_messages, HAIKU_MODEL
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key or api_key == "placeholder":
-            return fallback
+            logging.warning("[morning-summary] ANTHROPIC_API_KEY missing - serving degraded brief")
+            return fallback  # not cached: SILENT-14
         try:
             llm_budget.guard(user_id, "morning_summary")
         except Exception:
@@ -180,14 +184,13 @@ mood must be exactly: "positive", "cautious", or "negative"
         try:
             parsed = json.loads(raw)
         except json.JSONDecodeError as e:
-            logging.info(f"[ERROR] Failed to parse morning summary JSON: {e}")
-            parsed = fallback
+            logging.warning(f"[morning-summary] Failed to parse brief JSON for user {user_id}: {e}")
+            return fallback  # not cached: SILENT-14
 
         raw_summary = parsed.get("summary", fallback["summary"])
         if contains_devanagari(raw_summary):
-            logging.info("[MORNING] Rejected Hindi morning brief output; using English fallback.")
-            parsed = fallback
-            raw_summary = fallback["summary"]
+            logging.warning(f"[morning-summary] Rejected Hindi brief output for user {user_id}")
+            return fallback  # not cached: SILENT-14
         degraded = raw_summary == FALLBACK_SUMMARY  # never cache the canned brief
 
         # Normalize inline bullets ("• A • B • C") to newline-separated ("• A\n• B\n• C")
@@ -264,5 +267,5 @@ mood must be exactly: "positive", "cautious", or "negative"
     except HTTPException:
         raise
     except Exception as e:
-        logging.info(f"[morning-summary] Error: {e}")
-        return fallback
+        logging.warning(f"[morning-summary] Brief generation failed for user {user_id}: {e}", exc_info=True)
+        return fallback  # not cached: SILENT-14
