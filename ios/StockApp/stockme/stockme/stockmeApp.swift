@@ -61,6 +61,7 @@ struct stockmeApp: App {
 
     @State private var isBiometricLocked = false
     @State private var isAuthenticating = false
+    @State private var lockMessage: String? = nil
     @State private var wentToBackground = false
     @Environment(\.scenePhase) private var scenePhase
 
@@ -85,15 +86,6 @@ struct stockmeApp: App {
         biometricTimeout != .never
     }
 
-    /// True when the timeout has elapsed since last active timestamp
-    private var timeoutHasElapsed: Bool {
-        guard biometricsEnabled else { return false }
-        guard let secs = biometricTimeout.seconds else { return false }
-        if secs == 0 { return true }   // "immediately" → always re-lock on background
-        let elapsed = Date().timeIntervalSince1970 - lastActiveTimestamp
-        return elapsed >= secs
-    }
-
     var body: some Scene {
         WindowGroup {
             ZStack {
@@ -105,7 +97,7 @@ struct stockmeApp: App {
                         OnboardingScreen { hasCompletedOnboarding = true }
                     } else if !hasAcceptedDisclaimer {
                         DisclaimerScreen { hasAcceptedDisclaimer = true }
-                    } else if biometricsEnabled && isBiometricLocked {
+                    } else if biometricsEnabled && isBiometricLocked && authManager.isLoggedIn {
                         biometricLockScreen
                     } else {
                         ContentView(bypassLaunch: true)
@@ -160,13 +152,16 @@ struct stockmeApp: App {
                 await performAsyncBoot()
             }
             .onAppear {
-                Task { await notificationManager.requestAuthorization() }
+                // Permission prompts wait for a signed-in session (UX-19).
+                if authManager.isLoggedIn {
+                    Task { await notificationManager.requestAuthorization() }
+                }
                 let currentCrashes = CrashLog.shared.count()
                 if currentCrashes > crashCountSeen {
                     newCrashesSinceLastBoot = currentCrashes - crashCountSeen
                 }
-                // Initial lock on cold launch — only if biometrics enabled
-                if biometricsEnabled && !isAuthenticating {
+                // Initial lock on cold launch — only when a session exists to protect
+                if AppLockPolicy.shouldLockOnLaunch(isLoggedIn: authManager.isLoggedIn, timeout: biometricTimeout) && !isAuthenticating {
                     isBiometricLocked = true
                     authenticateWithBiometrics()
                 }
@@ -185,20 +180,27 @@ struct stockmeApp: App {
                     tutorialManager.isShowingTutorial = true
                 }
             }
+            .onChange(of: authManager.currentUser?.userId) { _, newUserId in
+                if newUserId != nil {
+                    Task { await notificationManager.requestAuthorization() }
+                }
+            }
             // Item 5 + 28: Scene phase tracking for timeout-based lock.
             // Only .background (not .inactive) counts as "left the app" —
             // .inactive fires during Face ID itself, which would cause an infinite re-auth loop.
             .onChange(of: scenePhase) { _, newPhase in
                 switch newPhase {
                 case .background:
-                    if biometricsEnabled {
+                    if biometricsEnabled && authManager.isLoggedIn {
                         lastActiveTimestamp = Date().timeIntervalSince1970
                         wentToBackground = true
                     }
                 case .inactive:
                     break  // Face ID causes .inactive — ignore to avoid loop
                 case .active:
-                    if biometricsEnabled && wentToBackground && timeoutHasElapsed && !isAuthenticating {
+                    let elapsed = Date().timeIntervalSince1970 - lastActiveTimestamp
+                    if wentToBackground && !isAuthenticating
+                        && AppLockPolicy.shouldRelock(isLoggedIn: authManager.isLoggedIn, timeout: biometricTimeout, elapsed: elapsed) {
                         wentToBackground = false
                         isBiometricLocked = true
                         authenticateWithBiometrics()
@@ -275,7 +277,7 @@ struct stockmeApp: App {
 
     private var biometricLockScreen: some View {
         VStack(spacing: Theme.Spacing.large) {
-            Image(systemName: "faceid")
+            Image(systemName: "lock.fill")
                 .font(.largeTitle)
                 .foregroundStyle(Theme.securityGold)
             Text("NIVESH")
@@ -284,14 +286,20 @@ struct stockmeApp: App {
             Text("Authenticate to continue")
                 .font(.subheadline)
                 .foregroundStyle(Theme.inkSecondary)
-            Button { HapticManager.selection(); 
-    HapticManager.selection()
+            if let lockMessage {
+                Text(lockMessage)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.inkSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, Theme.Spacing.xLarge)
+            }
+            Button {
                 HapticManager.selection()
                 authenticateWithBiometrics()
             } label: {
                 HStack(spacing: Theme.Spacing.medium) {
-                    Image(systemName: "faceid")
-                    Text("Unlock with Face ID")
+                    Image(systemName: "lock.fill")
+                    Text("Unlock")
                 }
                 .font(.body.weight(.medium))
                 .foregroundStyle(Theme.canvas)
@@ -300,6 +308,15 @@ struct stockmeApp: App {
                 .cornerRadius(Theme.CornerRadius.large)
             }
             .buttonStyle(EKPressStyle())
+            Button {
+                authManager.logout()
+                lockMessage = nil
+                isBiometricLocked = false
+            } label: {
+                Text("Sign out")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Theme.inkSecondary)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.canvas)
@@ -311,22 +328,25 @@ struct stockmeApp: App {
 
         let context = LAContext()
         var error: NSError?
-        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
+        guard context.canEvaluatePolicy(AppLockPolicy.policy, error: &error) else {
             print("[Nivesh/Biometrics] Not available: \(error?.localizedDescription ?? "unknown")")
             isAuthenticating = false
-            isBiometricLocked = false  // fallback — skip biometrics if not available
+            // Never fail open: stay locked and offer Sign out.
+            lockMessage = AppLockPolicy.unavailableMessage(error)
             return
         }
-        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics,
-                               localizedReason: "Unlock Nivesh to access your portfolio") { success, authError in
+        context.evaluatePolicy(AppLockPolicy.policy,
+                               localizedReason: "Unlock Nivesh") { success, authError in
             DispatchQueue.main.async {
                 self.isAuthenticating = false
                 if success {
+                    self.lockMessage = nil
                     self.isBiometricLocked = false
                     self.lastActiveTimestamp = Date().timeIntervalSince1970
                     print("[Nivesh/Biometrics] Authenticated successfully")
                 } else {
                     print("[Nivesh/Biometrics] Failed: \(authError?.localizedDescription ?? "unknown")")
+                    self.lockMessage = "Authentication failed. Try again."
                     // Stay locked — user can tap the button to retry
                 }
             }
