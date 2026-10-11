@@ -27,7 +27,7 @@ _AUTH_ROUTES = [
     ("get", "/api/v1/compliance/audit-trail"),
 ]
 
-_GATED_FEATURE = "advanced_analysis"
+_GATED_FEATURE = "swot_analysis"
 
 
 def _new_user_headers() -> dict:

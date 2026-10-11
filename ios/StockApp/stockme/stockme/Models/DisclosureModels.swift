@@ -201,9 +201,8 @@ struct FeatureCatalogEntryDTO: Codable, Equatable, Identifiable {
 
 /// Feature keys gated server-side — mirrors
 /// backend/services/entitlement_service.py FEATURE_MIN_TIER exactly (the
-/// six keys routers enforce via require_entitlement()).
+/// five keys routers enforce via require_entitlement()).
 enum EntitlementFeatureKey: String {
-    case advancedAnalysis = "advanced_analysis"
     case sectorRotation = "sector_rotation"
     case comprehensiveStockInsights = "comprehensive_stock_insights"
     case swotAnalysis = "swot_analysis"

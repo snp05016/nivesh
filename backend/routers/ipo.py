@@ -32,7 +32,6 @@ class IPOResponse(BaseModel):
     close_date: Optional[str] = None
     listing_date: Optional[str] = None
     status: Optional[str] = None
-    gmp: Optional[float] = None
     is_sample: bool = False
 
     @model_validator(mode="after")

@@ -35,7 +35,6 @@ _MOCK_IPOS = [
         "subscription_qib": None,
         "subscription_nii": None,
         "subscription_retail": None,
-        "gmp": 45.0,
     },
     {
         "company_name": "Sunrise Logistics Ltd",
@@ -51,7 +50,6 @@ _MOCK_IPOS = [
         "subscription_qib": 3.2,
         "subscription_nii": 5.8,
         "subscription_retail": 2.1,
-        "gmp": 12.0,
     },
     {
         "company_name": "Bharat Precision Engineering Ltd",
@@ -67,7 +65,6 @@ _MOCK_IPOS = [
         "subscription_qib": 18.4,
         "subscription_nii": 22.1,
         "subscription_retail": 9.6,
-        "gmp": 95.0,
     },
 ]
 
@@ -143,7 +140,6 @@ def seed_mock_ipos_if_empty() -> int:
                 subscription_qib=row["subscription_qib"],
                 subscription_nii=row["subscription_nii"],
                 subscription_retail=row["subscription_retail"],
-                gmp=row["gmp"],
             )
             session.add(ipo)
             inserted += 1

@@ -603,7 +603,10 @@ struct HomeScreen: View {
     @AppStorage("homeSectionOrderData") private var sectionOrderData: Data = Data()
     @State private var showingEditLayout = false
 
-    private var activeSectionOrder: [HomeSectionID] {
+    /// Decoded once per layout change, not on every body evaluation (PERF-24).
+    @State private var activeSectionOrder: [HomeSectionID] = HomeSectionID.allCases
+
+    private static func sectionOrder(from sectionOrderData: Data) -> [HomeSectionID] {
         let base: [HomeSectionID]
         if !sectionOrderData.isEmpty, let saved = try? JSONDecoder().decode([HomeSectionID].self, from: sectionOrderData) {
             var merged = saved
@@ -660,7 +663,8 @@ struct HomeScreen: View {
 
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: false) {
-                        VStack(spacing: Theme.Spacing.card) {
+                        // Lazy: off-screen sections are built when scrolled to (PERF-24).
+                        LazyVStack(spacing: Theme.Spacing.card) {
 
 
                             ForEach(activeSectionOrder, id: \.self) { sectionId in
@@ -840,6 +844,12 @@ struct HomeScreen: View {
                 }
                 valuationLoading = false
             }
+        }
+        .onAppear {
+            activeSectionOrder = Self.sectionOrder(from: sectionOrderData)
+        }
+        .onChange(of: sectionOrderData) { _, data in
+            activeSectionOrder = Self.sectionOrder(from: data)
         }
         .onDisappear {
             viewModel.stopIndicesTimer()

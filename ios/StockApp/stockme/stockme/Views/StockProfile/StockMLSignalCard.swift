@@ -89,19 +89,14 @@ private struct MLSignalLoadedContent: View {
                     .foregroundStyle(directionColor)
             }
 
-            // Row 2: Confidence + Model + Hit Rate
+            // Row 2: Confidence + Model. No hit rate: unverified accuracy claims
+            // about the app's own calls stay out of user views (REG-11, PaRRVA).
             HStack(spacing: Theme.Spacing.standard) {
                 // Confidence
                 MLSignalConfidenceView(confidencePct: signal.confidencePct)
 
                 // Model badge
                 MLSignalModelBadge(label: engineLabel, isHeuristic: isHeuristic)
-
-                // Hit rate (if available)
-                if let reliability = signal.reliability,
-                   let hitRate = reliability.hitRate30d {
-                    MLSignalHitRateView(hitRate: hitRate)
-                }
 
                 Spacer()
             }
@@ -175,24 +170,6 @@ private struct MLSignalModelBadge: View {
         .padding(.vertical, Theme.Spacing.xSmall)
         .background(badgeColor.opacity(0.10))
         .clipShape(Capsule())
-    }
-}
-
-// MARK: - Hit Rate View
-
-private struct MLSignalHitRateView: View {
-    let hitRate: Double
-
-    var body: some View {
-        HStack(spacing: Theme.Spacing.small) {
-            Text("30d Hit")
-                .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
-                .tracking(0.5)
-                .foregroundStyle(Theme.inkTertiary)
-            Text(String(format: "%.1f%%", hitRate * 100))
-                .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
-                .foregroundStyle(Theme.inkSecondary)
-        }
     }
 }
 

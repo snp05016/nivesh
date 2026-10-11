@@ -20,7 +20,7 @@ import pytest
 import config.settings
 
 IOS_MODELS = Path(__file__).resolve().parents[2] / "ios" / "StockApp" / "stockme" / "stockme" / "Models"
-PERFORMANCE = "/api/v1/predictions/performance"  # gated on advanced_analysis (pro)
+GATED_ROUTE = "/fundamentals/TCS/risk-signals"  # gated on swot_analysis (pro)
 
 
 def _swift_keys(file_name: str, struct: str) -> set[str]:
@@ -202,18 +202,18 @@ def test_entitlement_lifecycle_on_gated_route(client):
     user_id, headers = _new_user()
 
     ent = client.get("/api/v1/subscription/entitlements", headers=headers).json()
-    assert ent["tier"] == "free" and ent["features"]["advanced_analysis"] is False
-    assert client.get(PERFORMANCE, headers=headers).status_code == 402
+    assert ent["tier"] == "free" and ent["features"]["swot_analysis"] is False
+    assert client.get(GATED_ROUTE, headers=headers).status_code == 402
 
     # Service call, not POST /upgrade: the mock purchase route is being put behind
     # an environment switch (#666), and this test is about the gate, not the purchase.
     subscription_service.mock_upgrade(user_id, "pro", "monthly")
-    assert client.get(PERFORMANCE, headers=headers).status_code == 200
+    assert client.get(GATED_ROUTE, headers=headers).status_code == 200
 
     cancelled = client.post("/api/v1/subscription/cancel", headers=headers)
     assert cancelled.status_code == 200, cancelled.text
     assert cancelled.json()["is_active"] is False
-    assert client.get(PERFORMANCE, headers=headers).status_code == 200  # paid period still running
+    assert client.get(GATED_ROUTE, headers=headers).status_code == 200  # paid period still running
 
     with get_session() as session:
         session.query(UserSubscription).filter(UserSubscription.user_id == user_id).update(
@@ -221,7 +221,7 @@ def test_entitlement_lifecycle_on_gated_route(client):
         )
         session.commit()
 
-    lapsed = client.get(PERFORMANCE, headers=headers)
+    lapsed = client.get(GATED_ROUTE, headers=headers)
     assert lapsed.status_code == 402, lapsed.text
     assert lapsed.json()["detail"]["current_tier"] == "free"
 

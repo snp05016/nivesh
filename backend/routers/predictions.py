@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, List
 
 from helpers import require_auth
-from core.entitlement_gate import require_entitlement
+from core.security import require_admin
 from services.predictions_performance import get_performance_metrics
 from services.prediction_calibration_service import (
     get_calibration_metrics,
@@ -87,12 +87,12 @@ class PredictionsPerformanceResponse(BaseModel):
     "hit rates by horizon, confidence calibration, and breakdowns by scan type, "
     "sector, market regime, ML engine mode, and recommendation direction.",
 )
-def get_predictions_performance(user_id: int = Depends(require_entitlement("advanced_analysis"))):
+def get_predictions_performance(user_id: int = Depends(require_admin)):
     """
     Comprehensive performance analytics for all predictions in the system.
 
-    Gated behind the "advanced_analysis" entitlement (pro tier or higher) —
-    see services/entitlement_service.py / core/entitlement_gate.py.
+    Admin only (REG-11): hit rates of the app's own calls are an internal QA metric,
+    not a sold feature or a user-facing performance claim (no PaRRVA verification).
 
     Args:
         user_id (int): The user_id.

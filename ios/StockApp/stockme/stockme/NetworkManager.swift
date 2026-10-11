@@ -292,6 +292,30 @@ class NetworkManager: ObservableObject {
         return try JSONDecoder().decode(LoggedInUser.self, from: data)
     }
 
+    // MARK: - Off-main JSON decoding (PERF-24)
+
+    /// Decodes on a background queue so large payloads (the analysis result, quick-info,
+    /// price history) never parse on the main thread. Use for the heavy paths only.
+    /// ponytail: app models are MainActor by default isolation; their synthesized init(from:)
+    /// only builds the new value, so running it here is safe in Swift 5 mode. Before moving to
+    /// Swift 6 mode (dynamic isolation checks), mark the decoded models `nonisolated`.
+    nonisolated static func decodeOffMain<T: Decodable>(_ type: T.Type, from data: Data) async throws -> T {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                continuation.resume(with: Result { try JSONDecoder().decode(T.self, from: data) })
+            }
+        }
+    }
+
+    /// JSONSerialization counterpart of ``decodeOffMain(_:from:)``.
+    nonisolated static func jsonObjectOffMain(_ data: Data) async throws -> Any {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                continuation.resume(with: Result { try JSONSerialization.jsonObject(with: data) })
+            }
+        }
+    }
+
     // MARK: - v2 Analysis Engine (background job model)
 
     func startAnalysisJob(ticker: String, exchange: String, userId: Int?, deepScan: Bool = false, scanType: String, language: String? = nil, debateRounds: Int? = nil, riskTolerance: String? = nil) async throws -> StartJobResponse {
@@ -304,12 +328,13 @@ class NetworkManager: ObservableObject {
         guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         if http.statusCode == 409 {
             // Already running — decode and return the existing job ID
-            return try JSONDecoder().decode(StartJobResponse.self, from: data)
+            return try await Self.decodeOffMain(StartJobResponse.self, from: data)
         }
         guard (200...299).contains(http.statusCode) else {
             throw NetworkError.serverError(http.statusCode, NetworkError.serverDetail(from: data))
         }
-        return try JSONDecoder().decode(StartJobResponse.self, from: data)
+        // A cache hit carries the full analysis.
+        return try await Self.decodeOffMain(StartJobResponse.self, from: data)
     }
 
     func pollJob(jobId: String, userId: Int?) async throws -> JobStatus {
@@ -323,7 +348,7 @@ class NetworkManager: ObservableObject {
         guard (200...299).contains(http.statusCode) else {
             throw NetworkError.serverError(http.statusCode, NetworkError.serverDetail(from: data))
         }
-        return try JSONDecoder().decode(JobStatus.self, from: data)
+        return try await Self.decodeOffMain(JobStatus.self, from: data)
     }
 
     /// Poll a job but return raw dict — no StockAnalysis decode. Resilient to schema changes.
@@ -340,7 +365,7 @@ class NetworkManager: ObservableObject {
         guard (200...299).contains(http.statusCode) else {
             throw NetworkError.serverError(http.statusCode, NetworkError.serverDetail(from: data))
         }
-        guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        guard let obj = try await Self.jsonObjectOffMain(data) as? [String: Any] else {
             throw NetworkError.decodingError("job response is not a JSON object")
         }
         return obj
@@ -446,7 +471,7 @@ class NetworkManager: ObservableObject {
         }
         
         do {
-            let resp = try JSONDecoder().decode(PortfolioResponse.self, from: data)
+            let resp = try await Self.decodeOffMain(PortfolioResponse.self, from: data)
             let holdings: [PortfolioHolding] = resp.holdings.map { dto in
                 let stock = Stock(
                     ticker: dto.ticker,
@@ -807,7 +832,7 @@ class NetworkManager: ObservableObject {
         request.timeoutInterval = 10
         guard let (data, resp) = try? await session.data(for: request),
               let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
-        return try? JSONDecoder().decode(QuickInfo.self, from: data)
+        return try? await Self.decodeOffMain(QuickInfo.self, from: data)
     }
 
     // MARK: - Stock OHLCV History
@@ -831,10 +856,10 @@ class NetworkManager: ObservableObject {
                 return nil
             }
             do {
-                if let array = try? JSONDecoder().decode([OHLCVPoint].self, from: data) {
+                if let array = try? await Self.decodeOffMain([OHLCVPoint].self, from: data) {
                     return StockHistoryResponse(ticker: ticker, exchange: exchange, period: period, prices: array)
                 }
-                return try JSONDecoder().decode(StockHistoryResponse.self, from: data)
+                return try await Self.decodeOffMain(StockHistoryResponse.self, from: data)
             } catch {
                 let body = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
                 print("[fetchStockHistory] Decode error for \(ticker): \(error.localizedDescription) — body: \(body)")
@@ -1302,7 +1327,7 @@ class NetworkManager: ObservableObject {
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw NetworkError.invalidResponse
         }
-        do { return try JSONDecoder().decode(ValuationHistoryResponse.self, from: data) }
+        do { return try await Self.decodeOffMain(ValuationHistoryResponse.self, from: data) }
         catch { throw NetworkError.decodingError(error.localizedDescription) }
     }
 

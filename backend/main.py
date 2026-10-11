@@ -205,6 +205,11 @@ class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(_SecurityHeadersMiddleware)
 app.add_middleware(CorrelationIDMiddleware)
+# PERF-23: added last, so outermost: compresses the final body (>= 1 KB) when the
+# client sends Accept-Encoding: gzip. Starlette >= 0.46 never compresses
+# text/event-stream, so the SSE dashboard stream is unaffected.
+from starlette.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 # ---------------------------------------------------------------------------
 # Financial Error Boundary Handlers

@@ -60,7 +60,7 @@ PUBLIC_ROUTES = {
     ("GET", "/market/sentiment-trend/{ticker}"), ("GET", "/mf/{scheme_code}"),
     ("GET", "/nifty-history"), ("GET", "/quarterly-financials"), ("GET", "/quick-info"),
     ("GET", "/screener"), ("GET", "/search"), ("GET", "/sector-performance"),
-    ("GET", "/sector-weekly"), ("GET", "/signal-accuracy"),
+    ("GET", "/sector-weekly"),
     # Regulatory documents.
     ("GET", "/api/v1/compliance/disclosures/{key}"), ("GET", "/api/v1/compliance/key-fact-statement"),
     # Stateless calculators and DEMO_MODE-only illustrative catalogs (404 outside demo).

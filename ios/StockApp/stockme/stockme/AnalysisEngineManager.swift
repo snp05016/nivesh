@@ -19,6 +19,10 @@ final class AnalysisEngineManager: ObservableObject {
     @Published var error: String? = nil
     @Published var result: StockAnalysis? = nil  // full result when SUCCEEDED
 
+    /// The job AnalysisScreen polls itself. The watcher skips its own polls for it and takes
+    /// the screen's updates via screenPolled(_:), so one job has one poll channel (PERF-22).
+    var screenOwnedJobId: String? = nil
+
     private var pollTask: Task<Void, Never>? = nil
     private var lastTerminalNotified: String? = nil
 
@@ -47,7 +51,15 @@ final class AnalysisEngineManager: ObservableObject {
         pollTask = Task {
             var jobId: String? = nil
             var failures = 0
+            var screenFollowed = false
             while !Task.isCancelled {
+                if let jid = jobId, jid == screenOwnedJobId {
+                    screenFollowed = true
+                    try? await Task.sleep(nanoseconds: AnalysisViewModel.pollDelay(consecutiveFailures: 0))
+                    continue
+                }
+                // The screen followed this job to its end before handing it back.
+                if screenFollowed, let jid = jobId, activeJobId == jid, !isRunning { return }
                 do {
                     let job: JobStatus?
                     if let jid = jobId {
@@ -83,6 +95,17 @@ final class AnalysisEngineManager: ObservableObject {
 
     func stopWatching() {
         pollTask?.cancel(); pollTask = nil
+    }
+
+    /// A status AnalysisScreen polled for the job it owns.
+    func screenPolled(_ job: JobStatus) {
+        guard job.jobId == screenOwnedJobId else { return }
+        apply(job)
+    }
+
+    /// AnalysisScreen stopped polling `jobId`; the watcher follows it again if it still runs.
+    func releaseScreenJob(_ jobId: String) {
+        if screenOwnedJobId == jobId { screenOwnedJobId = nil }
     }
 
     private func apply(_ job: JobStatus?) {

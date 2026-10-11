@@ -7,24 +7,9 @@ across sessions so test seeding and the API handler can see the same data).
 """
 import pytest
 from datetime import datetime, timezone, timedelta
-from uuid import uuid4
 
-from database import get_session, create_access_token, User
+from database import get_session
 from models.db_models import AnalysisPrediction, StockUniverse
-from services import subscription_service
-
-
-@pytest.fixture(scope="module")
-def pro_headers():
-    """JWT of a throwaway pro-tier user: the endpoint is gated on advanced_analysis and
-    there is no admin token bypass (AUTH-02). Throwaway, so the tier never leaks."""
-    with get_session() as session:
-        user = User(username=f"perf_pro_{uuid4().hex[:12]}", password_hash="x", display_name="Perf Pro")
-        session.add(user)
-        session.commit()
-        user_id = int(user.id)  # type: ignore[arg-type]
-    subscription_service.mock_upgrade(user_id, "pro", "monthly")
-    return {"Authorization": f"Bearer {create_access_token(user_id)}"}
 
 
 def _seed(session):
@@ -91,9 +76,9 @@ def _cleanup(session, pred_ids, tickers):
 
 
 class TestEmptyPerformance:
-    def test_empty_db_returns_zeros(self, client, pro_headers):
+    def test_empty_db_returns_zeros(self, client, admin_headers):
         """When no predictions exist for our test tickers, totals should reflect system state."""
-        resp = client.get("/api/v1/predictions/performance", headers=pro_headers)
+        resp = client.get("/api/v1/predictions/performance", headers=admin_headers)
         assert resp.status_code == 200
         body = resp.json()
         assert "total_predictions" in body
@@ -107,9 +92,9 @@ class TestEmptyPerformance:
 
 class TestPopulatedPerformance:
     @pytest.fixture(autouse=True)
-    def seed_and_cleanup(self, client, pro_headers):
+    def seed_and_cleanup(self, client, admin_headers):
         # The DB is shared with other modules, so assert on the delta our seed adds.
-        self.before = client.get("/api/v1/predictions/performance", headers=pro_headers).json()
+        self.before = client.get("/api/v1/predictions/performance", headers=admin_headers).json()
         with get_session() as session:
             self.pred_ids, tickers = _seed(session)
         yield
@@ -117,8 +102,8 @@ class TestPopulatedPerformance:
             _cleanup(session, self.pred_ids, tickers)
 
     @pytest.fixture
-    def response(self, client, pro_headers):
-        return client.get("/api/v1/predictions/performance", headers=pro_headers)
+    def response(self, client, admin_headers):
+        return client.get("/api/v1/predictions/performance", headers=admin_headers)
 
     def test_total_predictions_includes_seeded(self, response):
         assert response.status_code == 200
@@ -196,7 +181,7 @@ class TestPopulatedPerformance:
 
 
 class TestEdgeCases:
-    def test_prediction_no_outcome_yet(self, client, pro_headers):
+    def test_prediction_no_outcome_yet(self, client, admin_headers):
         """A prediction with no outcome should appear in totals but hit_rate is None."""
         with get_session() as session:
             session.add(AnalysisPrediction(
@@ -205,7 +190,7 @@ class TestEdgeCases:
             ))
             session.commit()
 
-        resp = client.get("/api/v1/predictions/performance", headers=pro_headers)
+        resp = client.get("/api/v1/predictions/performance", headers=admin_headers)
         assert resp.status_code == 200
         body = resp.json()
         assert body["total_predictions"] >= 1

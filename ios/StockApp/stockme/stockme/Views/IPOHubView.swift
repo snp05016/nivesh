@@ -59,7 +59,7 @@ struct IPOHubHeader: View {
                 }
             }
 
-            Text("Track, analyze, and apply for the latest Initial Public Offerings.")
+            Text("Track and analyze the latest Initial Public Offerings. Apply through your broker or bank (ASBA/UPI).")
                 .font(Theme.engravedSerif(size: 16, weight: .regular, relativeTo: .body))
                 .foregroundColor(Theme.inkSecondary)
         }
@@ -255,7 +255,7 @@ private struct IPOStatusBadge: View {
     var body: some View {
         switch ipo.status {
         case .open:
-            Text("Apply Now")
+            Text("Open")
                 .font(Theme.labelStyle)
                 .padding(.horizontal, Theme.Spacing.medium)
                 .padding(.vertical, Theme.Spacing.small)

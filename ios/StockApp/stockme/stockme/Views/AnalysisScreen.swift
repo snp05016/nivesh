@@ -139,31 +139,38 @@ class AnalysisViewModel: ObservableObject {
         let polledStatus = raw["status"] as? String ?? ""
         let polledStage  = raw["stage"] as? String
         let polledPct    = raw["progress_pct"] as? Int
-        let polledCheckpoints = raw["checkpoints"] as? [[String: Any]]
+        let polledCheckpoints: [CheckpointEvent]? = (raw["checkpoints"] as? [[String: Any]])?.compactMap { cp in
+            guard let stage = cp["stage"] as? String,
+                  let agent = cp["agent"] as? String,
+                  let msg = cp["message"] as? String else { return nil }
+            return CheckpointEvent(ts: cp["ts"] as? String ?? "", stage: stage, agent: agent, message: msg, state: cp["state"] as? String ?? "running")
+        }
         let polledError  = raw["error"] as? String
 
-        jobStatus = JobStatus(
+        let polled = JobStatus(
             jobId: ctx.jobId, userId: ctx.userId, ticker: ctx.ticker,
             scanType: ctx.scanType, status: polledStatus,
             stage: polledStage, progressPct: polledPct,
-            checkpoints: nil, tokensUsed: nil, error: polledError, result: nil
+            checkpoints: polledCheckpoints, tokensUsed: nil, error: polledError, result: nil
         )
-        if let cps = polledCheckpoints {
-            engineCheckpoints = cps.compactMap { cp in
-                guard let stage = cp["stage"] as? String,
-                      let agent = cp["agent"] as? String,
-                      let msg = cp["message"] as? String else { return nil }
-                return CheckpointEvent(ts: cp["ts"] as? String ?? "", stage: stage, agent: agent, message: msg, state: cp["state"] as? String ?? "running")
-            }
+        jobStatus = polled
+        // One poll channel per job: the engine watcher takes this status instead of polling (PERF-22).
+        AnalysisEngineManager.shared.screenPolled(polled)
+        if let cps = polledCheckpoints { engineCheckpoints = cps }
+        // A SUCCEEDED result is decoded asynchronously below; isLoading stays true until it is
+        // assigned, or the idle state (with a live Run button) flashes in between (PERF-24).
+        if !(polledStatus == "SUCCEEDED" && raw["result"] != nil) {
+            isLoading = polledStatus != "SUCCEEDED" && polledStatus != "FAILED" && polledStatus != "TIMEOUT" && polledStatus != "CANCELLED"
         }
-        isLoading = polledStatus != "SUCCEEDED" && polledStatus != "FAILED" && polledStatus != "TIMEOUT" && polledStatus != "CANCELLED"
 
         if polledStatus == "SUCCEEDED" {
             // Try StockAnalysis decode
             if let resultData = raw["result"] {
                 do {
                     let jsonData = try JSONSerialization.data(withJSONObject: resultData)
-                    let decoded = try JSONDecoder().decode(StockAnalysis.self, from: jsonData)
+                    // The full result is 100-300 KB: decode it off the main thread (PERF-24).
+                    let decoded = try await NetworkManager.decodeOffMain(StockAnalysis.self, from: jsonData)
+                    guard !Task.isCancelled, jobId == ctx.jobId else { return nil }
                     analysis = decoded
                     ctx.reportManager.saveReport(decoded)
                     isLoading = false
@@ -274,6 +281,8 @@ class AnalysisViewModel: ObservableObject {
                 case .cached:
                     cachedResult = start.analysis  // shown once the supplementary data is in
                 case .attach(let attachJobId):
+                    // This screen polls the job; the engine watcher only learns about it (PERF-22).
+                    AnalysisEngineManager.shared.screenOwnedJobId = attachJobId
                     AnalysisEngineManager.shared.jobStarted()
                     jobId = attachJobId
                     pollFailures = 0
@@ -287,6 +296,8 @@ class AnalysisViewModel: ObservableObject {
                             guard let delay = await self?.pollOnce(ctx) else { break }
                             try? await Task.sleep(nanoseconds: delay)
                         }
+                        // Leaving, cancelling or finishing hands the job back to the watcher.
+                        AnalysisEngineManager.shared.releaseScreenJob(ctx.jobId)
                     }
                 case .conflict(let otherTicker):
                     errorInfo = AnalysisErrorInfo(
@@ -404,8 +415,10 @@ struct AnalysisScreen: View {
     // Extreme result: 0 = AI report, 1 = full stock profile (embedded verbatim).
     @State private var extremeViewMode = 0
 
+    @Environment(\.scenePhase) private var scenePhase
     @State private var livePrice: Double? = nil
     @State private var pricePollingTask: Task<Void, Never>? = nil
+    @State private var pricePollPausedInBackground = false
     @State private var previousAnalysis: StockAnalysis? = nil
 
     // Immersive hero chart (1y price history, fetched once on appear)
@@ -550,6 +563,16 @@ struct AnalysisScreen: View {
             fetchHeroHistory(period: heroPeriod)
         }
         .onChange(of: activeTab) { _, val in savedLastTab = val }
+        // No price polling while the app is in the background (PERF-22).
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background, pricePollingTask != nil {
+                pricePollingTask?.cancel(); pricePollingTask = nil
+                pricePollPausedInBackground = true
+            } else if phase == .active, pricePollPausedInBackground {
+                pricePollPausedInBackground = false
+                startPricePolling()
+            }
+        }
         .onReceive(viewModel.$analysis) { newValue in
             retainedAnalysis = newValue
         }
@@ -635,7 +658,9 @@ struct AnalysisScreen: View {
         let exchange = "NSE"
         pricePollingTask = Task {
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 30_000_000_000) // 30s
+                // The server caches quick-info for 15 min, so a 30 s poll mostly re-downloaded
+                // identical data (PERF-22).
+                try? await Task.sleep(nanoseconds: 300_000_000_000) // 5 min
                 guard !Task.isCancelled else { return }
                 if let info = await NetworkManager.shared.quickInfo(ticker: ticker, exchange: exchange) {
                     livePrice = info.price

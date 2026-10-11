@@ -11,7 +11,7 @@
 # Web framework
 fastapi>=0.115.5
 uvicorn[standard]>=0.32.1
-starlette>=0.41.3
+starlette>=0.46.0  # GZipMiddleware skips text/event-stream (PERF-23)
 python-multipart>=0.0.18
 
 # Database

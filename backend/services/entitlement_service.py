@@ -24,7 +24,8 @@ TIER_RANK = {"free": 0, "pro": 1, "super_pro": 2}
 # (tests/test_entitlement_catalog.py checks this): the paywall is generated
 # from this table, so it never advertises a perk the server does not gate.
 FEATURE_MIN_TIER = {
-    "advanced_analysis": "pro",       # routers/predictions.py performance/calibration dashboards
+    # No "advanced_analysis": the prediction-performance dashboard is admin-only QA, not a
+    # sold perk (REG-11: unverified hit-rate claims about our own calls, no PaRRVA).
     "sector_rotation": "pro",         # routers/sector_rotation.py market rotation analytics
     "comprehensive_stock_insights": "pro",  # routers/fundamentals.py valuation endpoints (real DB-backed CompanyValuation)
     "swot_analysis": "pro",           # routers/fundamentals.py risk-signals endpoints (real DB-backed RiskSignal)
@@ -70,7 +71,6 @@ def enforce_quota(user_id: int, feature: str, current_count: int) -> None:
 
 # User-facing paywall titles for FEATURE_MIN_TIER keys.
 FEATURE_TITLES = {
-    "advanced_analysis": "Prediction performance dashboards",
     "sector_rotation": "Sector rotation analytics",
     "comprehensive_stock_insights": "Valuation insights",
     "swot_analysis": "Risk signals",

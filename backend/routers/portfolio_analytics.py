@@ -17,7 +17,7 @@ from collections import defaultdict
 from types import SimpleNamespace
 from fastapi import APIRouter, Depends, HTTPException, Header
 from fastapi.responses import FileResponse
-from core.security import require_user_match
+from core.security import require_user_match, require_admin
 import yfinance as yf
 from helpers import (
     get_session, _resolve_ticker, _to_ns, _yf_price, _yf_fetch_info,
@@ -1010,9 +1010,10 @@ def portfolio_attribution_endpoint(
 
 
 @router.get("/signal-accuracy")
-def get_signal_accuracy():
+def get_signal_accuracy(_admin: int = Depends(require_admin)):
     """
-    Returns accuracy % by signal type.
+    Returns accuracy % by signal type. Admin only (REG-11): accuracy of the app's own
+    BUY/SELL calls is an internal QA metric, not a user-facing (PaRRVA-unverified) claim.
 
     Args:
 
