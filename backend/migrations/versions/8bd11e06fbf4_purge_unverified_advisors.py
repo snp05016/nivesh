@@ -11,7 +11,7 @@ re-run deletes nothing. downgrade() is a no-op because deleted rows cannot be
 restored; take the database backup before upgrading.
 
 Revision ID: 8bd11e06fbf4
-Revises: t4u5v6w7x8y9
+Revises: 117b4057d650
 Create Date: 2026-10-11
 """
 from typing import Sequence, Union
@@ -22,7 +22,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "8bd11e06fbf4"
-down_revision: Union[str, Sequence[str], None] = "t4u5v6w7x8y9"
+down_revision: Union[str, Sequence[str], None] = "117b4057d650"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
