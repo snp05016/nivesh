@@ -7,11 +7,14 @@ struct ChatMessage: Identifiable {
     let content: String
     let contextCards: [[String: Any]]?
     let isWelcome: Bool
-    init(role: String, content: String, contextCards: [[String: Any]]? = nil, isWelcome: Bool = false) {
+    /// Client-side failure bubble: shown with Retry, never sent back to the model.
+    let isError: Bool
+    init(role: String, content: String, contextCards: [[String: Any]]? = nil, isWelcome: Bool = false, isError: Bool = false) {
         self.role = role
         self.content = content
         self.contextCards = contextCards
         self.isWelcome = isWelcome
+        self.isError = isError
     }
 }
 
@@ -40,12 +43,13 @@ struct CopilotScreen: View {
     ]
     @State private var isTyping: Bool = false
     @State private var dotOffset: CGFloat = 0
+    @State private var sendTask: Task<Void, Never>?
 
     let currentContext: [String: Any]?
 
     /// App navigation map so the copilot can guide users to any feature.
     /// The Markets list is generated from MarketSection so it never goes stale.
-    private static let appNavigationContext: [String: Any] = [
+    static let appNavigationContext: [String: Any] = [
         "app_navigation": """
         TAB BAR (5 tabs at bottom):
         Tab 1 - Home: Main dashboard, market indices, morning brief, quick analysis access.
@@ -59,6 +63,7 @@ struct CopilotScreen: View {
         - AI Copilot (floating sparkles button): Available everywhere via the gold sparkles icon in bottom-right corner.
         - Stock Analysis: Tap any stock to open its action hub, which runs a Standard, Deep Scan or Extreme Scan AI report, or opens the cached report.
         - Settings (profile avatar in the Home screen header): trading preferences, notifications, AI preferences, theme (dark/light), biometric lock, data & privacy, account.
+        - Calculators (EMI, SIP, Gratuity): Settings > Tools > Calculators.
         - Glossary: Tap underlined terms anywhere to see definitions. Full glossary via the book icon in the Home screen header.
         - AI How It Works: Pipeline explainer accessible from the stock action hub info button.
         - Morning Brief: Daily AI-generated portfolio summary card on Home screen.
@@ -134,18 +139,22 @@ struct CopilotScreen: View {
                                         .stroke(Theme.borderFine, lineWidth: 0.5)
                                 )
 
-                            Button(action: { HapticManager.selection(); sendMessage() }) { ZStack {
+                            // While a reply is pending this is a Stop button that cancels the request.
+                            Button(action: {
+                                HapticManager.selection()
+                                if isTyping { sendTask?.cancel() } else { sendMessage() }
+                            }) { ZStack {
                                     Circle()
-                                        .fill(messageText.isEmpty ? Theme.inkTertiary.opacity(0.2) : Theme.securityGold)
+                                        .fill(sendButtonActive ? Theme.securityGold : Theme.inkTertiary.opacity(0.2))
                                         .frame(width: 44, height: 44)
-                                    Image(systemName: "arrow.up")
+                                    Image(systemName: isTyping ? "xmark" : "arrow.up")
                                         .font(Theme.engravedSerif(size: 16, weight: .bold))
-                                        .foregroundColor(messageText.isEmpty ? Theme.inkTertiary : Theme.canvas)
+                                        .foregroundColor(sendButtonActive ? Theme.canvas : Theme.inkTertiary)
                                 }
                             }
-                            .disabled(messageText.isEmpty || isTyping)
+                            .disabled(!sendButtonActive)
                             .buttonStyle(EKPressStyle())
-                            .accessibilityLabel("Send message")
+                            .accessibilityLabel(isTyping ? "Stop" : "Send message")
                         }
                         .padding(.horizontal, Theme.screenPadding)
                         .padding(.vertical, Theme.Spacing.standard)
@@ -168,7 +177,7 @@ struct CopilotScreen: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { HapticManager.selection();  HapticManager.selection()
+                    Button(action: {
                         HapticManager.selection()
                         dismiss()
                     }) {
@@ -350,6 +359,21 @@ struct CopilotScreen: View {
                         }
                     }
                 }
+
+                if msg.isError {
+                    if msg.id == messages.last?.id {
+                        Button(action: { HapticManager.selection(); retry(msg) }) {
+                            Label("Retry", systemImage: "arrow.clockwise")
+                                .font(Theme.officialStampFont(size: 11, relativeTo: .caption))
+                                .foregroundColor(Theme.securityGold)
+                        }
+                        .buttonStyle(EKPressStyle())
+                        .disabled(isTyping)
+                        .accessibilityLabel("Retry last question")
+                    }
+                } else {
+                    CopilotDisclaimerCaption()
+                }
             }
             .padding(Theme.Spacing.card)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -394,46 +418,81 @@ struct CopilotScreen: View {
 
     // MARK: - Actions
 
-    private func sendMessage() {
-        guard !messageText.isEmpty else { return }
-        HapticManager.heavy()
-        let userMsg = ChatMessage(role: "user", content: messageText)
-        messages.append(userMsg)
+    private var sendButtonActive: Bool { isTyping || !messageText.isEmpty }
 
-        let msgToSend = messageText
+    private func sendMessage() {
+        let text = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !isTyping else { return }
         messageText = ""
+        send(text)
+    }
+
+    /// Resends the question whose reply failed (drops the failed pair first so it is not duplicated).
+    private func retry(_ failed: ChatMessage) {
+        guard !isTyping, let i = messages.firstIndex(where: { $0.id == failed.id }), i > 0,
+              messages[i - 1].role == "user" else { return }
+        let text = messages[i - 1].content
+        messages.removeSubrange((i - 1)...i)
+        if messageText == text { messageText = "" }
+        send(text)
+    }
+
+    /// History is captured before the new question is appended, so the question is sent once
+    /// (as user_message). On failure the draft is restored; Stop undoes the send.
+    private func send(_ text: String) {
+        let history = Self.historyPayload(from: messages)
+        let userMsg = ChatMessage(role: "user", content: text)
+        let userID = userMsg.id
+        messages.append(userMsg)
         isTyping = true
 
-        Task {
+        sendTask = Task {
             do {
-                let response = try await fetchCopilotResponse(userMessage: msgToSend)
-                await MainActor.run {
-                    HapticManager.success()
-                    messages.append(ChatMessage(
-                        role: "assistant",
-                        content: response.reply,
-                        contextCards: response.context_cards
-                    ))
-                    isTyping = false
-                    A11y.announce(stripEmoji(response.reply))
-                }
+                let response = try await fetchCopilotResponse(userMessage: text, history: history)
+                try Task.checkCancellation()
+                HapticManager.success()
+                messages.append(ChatMessage(
+                    role: "assistant",
+                    content: response.reply,
+                    contextCards: response.context_cards
+                ))
+                A11y.announce(stripEmoji(response.reply))
             } catch {
-                await MainActor.run {
+                if messageText.isEmpty { messageText = text }
+                if Task.isCancelled || error is CancellationError || (error as? URLError)?.code == .cancelled {
+                    messages.removeAll { $0.id == userID }
+                } else {
                     HapticManager.error()
-                    messages.append(ChatMessage(
-                        role: "assistant",
-                        content: "Sorry, I encountered an error: \(error.localizedDescription)"
-                    ))
-                    isTyping = false
-                    A11y.announce("Sorry, I encountered an error: \(error.localizedDescription)")
+                    let copy = Self.friendlyError(error)
+                    messages.append(ChatMessage(role: "assistant", content: copy, isError: true))
+                    A11y.announce(copy)
                 }
             }
+            isTyping = false
+            sendTask = nil
         }
     }
 
-    private func fetchCopilotResponse(userMessage: String) async throws -> CopilotResponse {
-        let history = messages.map { ["role": $0.role, "content": $0.content] }
+    /// LLM conversation history: real user/assistant turns only (no welcome stub, error bubbles,
+    /// blank entries or questions whose reply failed), capped to the last 20.
+    static func historyPayload(from messages: [ChatMessage]) -> [[String: String]] {
+        let kept = messages.indices.filter { i in
+            let m = messages[i]
+            guard !m.isWelcome, !m.isError, m.role == "user" || m.role == "assistant",
+                  !m.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+            return !(m.role == "user" && i + 1 < messages.count && messages[i + 1].isError)
+        }
+        return kept.suffix(20).map { ["role": messages[$0].role, "content": messages[$0].content] }
+    }
 
+    /// User-facing copy for a failed request; never the raw localizedDescription.
+    static func friendlyError(_ error: Error) -> String {
+        if let net = error as? NetworkError, let copy = net.errorDescription { return copy }
+        if error is URLError { return NetworkError.userMessage(status: -1, serverDetail: nil) }
+        return "Copilot couldn't answer that. Please try again."
+    }
+
+    private func fetchCopilotResponse(userMessage: String, history: [[String: String]]) async throws -> CopilotResponse {
         let requestBody: [String: Any] = [
             "user_message": userMessage,
             "conversation_history": history,
@@ -452,12 +511,24 @@ struct CopilotScreen: View {
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody, options: [])
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw URLError(.badServerResponse)
+        // Shared session: 30s request timeout instead of URLSession.shared's 60s.
+        let (data, response) = try await NetworkManager.shared.session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard httpResponse.statusCode == 200 else {
+            throw NetworkError.fromHTTP(status: httpResponse.statusCode, data: data, endpoint: "/api/v1/copilot/chat")
         }
 
         return try JSONDecoder().decode(CopilotResponse.self, from: data)
+    }
+}
+
+/// Shown under every assistant reply (SEBI: AI output is not investment advice).
+struct CopilotDisclaimerCaption: View {
+    var body: some View {
+        Text("AI-generated. Not investment advice.")
+            .font(Theme.engravedSerif(size: 10, weight: .regular, relativeTo: .caption2))
+            .foregroundColor(Theme.inkTertiary)
+            .accessibilityIdentifier("copilot.disclaimer")
     }
 }
 
@@ -519,7 +590,7 @@ struct CopilotFloatingButtonModifier: ViewModifier {
                 Spacer()
                 HStack {
                     Spacer()
-                    Button(action: { HapticManager.selection();  HapticManager.selection()
+                    Button(action: {
                         HapticManager.selection()
                         isShowingCopilot = true
                     }) {

@@ -54,6 +54,7 @@ struct SettingsScreen: View {
     @State private var devToolsTapCount = 0
     #endif
     @State private var showClearHistoryAlert = false
+    @State private var showCalculators = false
     @StateObject private var notificationManager = NotificationManager.shared
 
     private var morningBriefDate: Binding<Date> {
@@ -77,6 +78,7 @@ struct SettingsScreen: View {
                         notificationsSection
                         aiSection
                         appearanceSection
+                        toolsSection
                         dataSection
                         accountSection
                         #if DEBUG
@@ -98,6 +100,8 @@ struct SettingsScreen: View {
                     .cancel()
                 ]
             )
+            // Sheet, not NavRow: CalculatorsView owns a NavigationStack (no nesting).
+            .sheet(isPresented: $showCalculators) { CalculatorsView() }
         }
     }
 
@@ -225,6 +229,20 @@ struct SettingsScreen: View {
             PickerRow(icon: "chart.xyaxis.line", color: Theme.securityGold, title: "Default Chart Range", selection: $defaultChartRange, options: ["1M", "3M", "6M", "1Y"])
             ToggleRow(icon: "hare", color: Theme.inkSecondary, title: "Reduce Animations", isOn: $reduceAnimations)
             ToggleRow(icon: "character.bubble", color: Theme.inkSecondary, title: "Show Hindi Labels", isOn: $showHindiLabels)
+        }
+    }
+
+    // MARK: - Tools
+
+    private var toolsSection: some View {
+        SettingsGroup(title: "TOOLS", hindi: "उपकरण") {
+            Button {
+                HapticManager.selection()
+                showCalculators = true
+            } label: {
+                RowLabel(icon: "function", color: Theme.securityGold, title: "CALCULATORS")
+            }
+            .buttonStyle(EKPressStyle())
         }
     }
 

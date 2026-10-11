@@ -274,6 +274,9 @@ struct IndexChip: View {
         }, perform: {
             HapticManager.impact(.medium)
         })
+        // One VoiceOver element; direction spoken, not only coloured.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(name) \(value), \(isPositive ? "up" : "down") \(change.trimmingCharacters(in: CharacterSet(charactersIn: "+-")))")
     }
 }
 

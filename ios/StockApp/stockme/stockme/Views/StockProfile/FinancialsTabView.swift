@@ -129,16 +129,20 @@ struct PiotroskiCardView: View {
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Theme.Spacing.tight) {
                     ForEach(Array(checks.keys.sorted()), id: \.self) { key in
+                        let pass = checks[key] == "PASS"
+                        // Shape (check / cross) carries pass/fail, not colour alone.
                         HStack(spacing: Theme.Spacing.small) {
-                            Circle()
-                                .fill(checks[key] == "PASS" ? Theme.bullGreen : Theme.bearRed)
-                                .frame(width: 6, height: 6)
+                            Image(systemName: pass ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .font(.caption2)
+                                .foregroundStyle(pass ? Theme.bullGreen : Theme.bearRed)
                             Text(formatCheckLabel(key))
                                 .font(Theme.serialNumberFont(size: 10, relativeTo: .caption2))
                                 .foregroundStyle(Theme.inkSecondary)
                                 .lineLimit(1)
                             Spacer()
                         }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(formatCheckLabel(key)): \(pass ? "pass" : "fail")")
                     }
                 }
             }

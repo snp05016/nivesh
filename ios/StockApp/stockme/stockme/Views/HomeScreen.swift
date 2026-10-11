@@ -767,22 +767,14 @@ struct HomeScreen: View {
                                     .frame(width: 28, height: 28)
 
                                 if isDismissedToday {
-                                    let moodColor: Color = {
-                                        switch viewModel.morningBriefData?.mood {
-                                        case "positive": return Theme.bullGreen
-                                        case "negative": return Theme.bearRed
-                                        default: return Theme.holdAmber
-                                        }
-                                    }()
-                                    Circle()
-                                        .fill(moodColor)
-                                        .frame(width: 7, height: 7)
+                                    MorningBriefMoodBadge(mood: viewModel.morningBriefData?.mood, size: 9)
                                         .offset(x: 4, y: -4)
                                 }
                             }
                         }
                         .buttonStyle(EKPressStyle())
                         .accessibilityLabel("Morning brief")
+                        .accessibilityValue(MorningBriefMoodBadge.accessibilityValue(mood: viewModel.morningBriefData?.mood, hiddenToday: isDismissedToday))
                     }
                 }
             }
@@ -2328,16 +2320,7 @@ extension HomeScreen {
                                             .overlay(Circle().stroke(Theme.securityGold.opacity(isDismissedToday ? 0.1 : 0.3), lineWidth: 0.5))
 
                                         if isDismissedToday {
-                                            let moodColor: Color = {
-                                                switch viewModel.morningBriefData?.mood {
-                                                case "positive": return Theme.bullGreen
-                                                case "negative": return Theme.bearRed
-                                                default: return Theme.holdAmber
-                                                }
-                                            }()
-                                            Circle()
-                                                .fill(moodColor)
-                                                .frame(width: 10, height: 10)
+                                            MorningBriefMoodBadge(mood: viewModel.morningBriefData?.mood, size: 12)
                                                 .overlay(Circle().stroke(Theme.canvasDeep, lineWidth: 2))
                                                 .offset(x: 2, y: -2)
                                         }
@@ -2345,6 +2328,7 @@ extension HomeScreen {
                                 }
                                 .buttonStyle(EKPressStyle())
                                 .accessibilityLabel("Morning brief")
+                                .accessibilityValue(MorningBriefMoodBadge.accessibilityValue(mood: viewModel.morningBriefData?.mood, hiddenToday: isDismissedToday))
                             }
                             
                             Button {
@@ -3032,5 +3016,40 @@ struct HomeLayoutEditorSheet: View {
                 }
             }
         }
+    }
+}
+
+/// Morning-brief mood marker: the arrow/dash shape carries the mood alongside the colour,
+/// so it is not conveyed by colour alone (UX-25). VoiceOver reads it via the button's value.
+struct MorningBriefMoodBadge: View {
+    let mood: String?
+    let size: CGFloat
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: size, weight: .bold))
+            .foregroundStyle(color)
+            .background(Circle().fill(Theme.canvasDeep))
+            .accessibilityHidden(true)
+    }
+
+    private var symbol: String {
+        switch mood {
+        case "positive": return "arrowtriangle.up.circle.fill"
+        case "negative": return "arrowtriangle.down.circle.fill"
+        default: return "minus.circle.fill"
+        }
+    }
+
+    private var color: Color {
+        switch mood {
+        case "positive": return Theme.bullGreen
+        case "negative": return Theme.bearRed
+        default: return Theme.holdAmber
+        }
+    }
+
+    static func accessibilityValue(mood: String?, hiddenToday: Bool) -> String {
+        hiddenToday ? "Hidden today, mood \(mood ?? "neutral")" : "Shown"
     }
 }

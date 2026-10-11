@@ -49,6 +49,36 @@ enum ImmersiveChartGeometry {
     }
 }
 
+// MARK: - Accessibility
+//
+// The hero charts are hand-drawn Shapes, so VoiceOver gets a text summary and an
+// adjustable action (swipe up/down) to step through dates without dragging (UX-25).
+
+enum ImmersiveChartAccessibility {
+    /// "From ₹1.20 L on 1 Jan '26 to ₹1.35 L on 1 Jul '26, up 12.50%, high ₹1.40 L, low ₹1.10 L".
+    static func summary(values: [Double], dates: [Date],
+                        format: (Double) -> String, dateText: (Date) -> String) -> String {
+        let finite = values.filter(\.isFinite)
+        guard let first = finite.first, let last = finite.last,
+              let high = finite.max(), let low = finite.min() else { return "No data" }
+        let from = dates.first.map { " on \(dateText($0))" } ?? ""
+        let to = dates.last.map { " on \(dateText($0))" } ?? ""
+        var text = "From \(format(first))\(from) to \(format(last))\(to)"
+        if first != 0 {
+            let pct = (last - first) / abs(first) * 100
+            text += ", \(pct >= 0 ? "up" : "down") \(String(format: "%.2f", abs(pct)))%"
+        }
+        return text + ", high \(format(high)), low \(format(low))"
+    }
+
+    /// Next scrub index for a VoiceOver adjust; starts from the latest point when nothing is selected.
+    static func step(from index: Int?, count: Int, direction: AccessibilityAdjustmentDirection) -> Int? {
+        guard count > 0 else { return nil }
+        let current = min(max(index ?? count - 1, 0), count - 1)
+        return direction == .increment ? min(current + 1, count - 1) : max(current - 1, 0)
+    }
+}
+
 // MARK: - Shapes
 
 /// The glowing price curve. Trimmable so it can draw itself in on appear.
@@ -200,6 +230,22 @@ struct ImmersivePortfolioHeroChart: View {
             .contentShape(Rectangle())
             .gesture(scrubGesture(in: geo.size))
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Portfolio value chart")
+        .accessibilityValue(accessibilityValueText)
+        .accessibilityHint("Swipe up or down to step through dates.")
+        .accessibilityAdjustableAction { direction in
+            scrubIndex = ImmersiveChartAccessibility.step(from: scrubIndex, count: snapshots.count, direction: direction)
+        }
+    }
+
+    private var accessibilityValueText: String {
+        if let i = scrubIndex, snapshots.indices.contains(i) {
+            let s = snapshots[i]
+            return "\(dateString(from: s.parsedDate)), \(IndianFormatter.formatLakhsCrores(s.totalValue)), P&L \(IndianFormatter.delta(s.pnlPercent))"
+        }
+        return ImmersiveChartAccessibility.summary(values: values, dates: snapshots.map(\.parsedDate),
+                                                   format: IndianFormatter.formatLakhsCrores, dateText: dateString(from:))
     }
 
     // MARK: Scrub overlay

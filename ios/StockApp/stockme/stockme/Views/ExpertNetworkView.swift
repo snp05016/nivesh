@@ -161,9 +161,11 @@ struct ExpertNetworkView: View {
                     VStack(spacing: Theme.Spacing.medium) {
                         ForEach(harvesterSources) { source in
                             HStack(spacing: Theme.Spacing.standard) {
-                                Circle()
-                                    .fill(source.isHealthy ? Theme.bullGreen : Theme.bearRed)
-                                    .frame(width: 8, height: 8)
+                                // Shape + colour: health is not conveyed by colour alone.
+                                Image(systemName: source.isHealthy ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(source.isHealthy ? Theme.bullGreen : Theme.bearRed)
+                                    .accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                     Text(source.sourceName)
                                         .font(Theme.officialStampFont(size: 12))
@@ -181,6 +183,8 @@ struct ExpertNetworkView: View {
                             }
                             .padding(Theme.Spacing.card)
                             .banknoteCard()
+                            .accessibilityElement(children: .combine)
+                            .accessibilityValue(source.isHealthy ? "Healthy" : "Failing")
                             .padding(.horizontal, Theme.screenPadding)
                         }
                         if harvesterSources.isEmpty {

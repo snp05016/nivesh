@@ -11,41 +11,9 @@ import SwiftUI
 // Gratuity = (Last Drawn Monthly Salary × 15 × Years of Service) / 26
 // Statutory ceiling (current): ₹20,00,000 — amounts above this are capped.
 
-struct GratuityCalculatorView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.sectionSpacing) {
-                    Text("Estimate your gratuity payout under the Payment of Gratuity Act, 1972.")
-                        .font(Theme.engravedSerif(size: 13, relativeTo: .footnote))
-                        .foregroundColor(Theme.inkTertiary)
-
-                    GratuityCalculatorContent()
-                }
-                .padding(Theme.screenPadding)
-            }
-            .background(Theme.canvas.ignoresSafeArea())
-            .navigationTitle("Gratuity Calculator")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        HapticManager.selection()
-                        dismiss()
-                    }
-                    .foregroundStyle(Theme.securityGold)
-                }
-            }
-        }
-    }
-}
-
 /// Inline, self-contained gratuity calculator body (sliders + result card)
-/// with no NavigationStack of its own — reusable both inside
-/// GratuityCalculatorView's sheet and inside CalculatorsView's tabbed
-/// container.
+/// with no NavigationStack of its own, embedded in CalculatorsView's tabbed
+/// container (Settings > Tools > Calculators).
 struct GratuityCalculatorContent: View {
     @State private var lastDrawnSalary: Double = 50_000
     @State private var yearsOfService: Double = 10

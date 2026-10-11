@@ -42,6 +42,20 @@ fi
 
 grep -q "CODE_SIGN_ENTITLEMENTS" "$PBXPROJ" || fail "project.pbxproj does not set CODE_SIGN_ENTITLEMENTS"
 
+# Export-compliance answer lives in Info.plist so every upload does not stop at the prompt.
+has_key "$INFO" "ITSAppUsesNonExemptEncryption" || fail "Info.plist missing ITSAppUsesNonExemptEncryption"
+
+# Documented minimum: the app must install on iOS 18 (target pinned to the latest point
+# release excluded every device not yet updated). Current target is 17.0, matching the widget.
+MAX_DEPLOYMENT_TARGET=18.0
+targets=$(grep -oE "IPHONEOS_DEPLOYMENT_TARGET = [0-9.]+" "$PBXPROJ" | awk '{print $3}')
+[ -n "$targets" ] || fail "project.pbxproj sets no IPHONEOS_DEPLOYMENT_TARGET"
+for t in $targets; do
+    if awk -v t="$t" -v max="$MAX_DEPLOYMENT_TARGET" 'BEGIN { exit !(t + 0 > max + 0) }'; then
+        fail "IPHONEOS_DEPLOYMENT_TARGET $t is above the documented minimum $MAX_DEPLOYMENT_TARGET"
+    fi
+done
+
 if [ "$failures" -gt 0 ]; then
     echo "$failures iOS release check(s) failed" >&2
     exit 1

@@ -4,52 +4,18 @@ import SwiftUI
 //
 // MOCK/DEMO — purely a local, offline projection tool. No loan application,
 // disbursement, or backend call is involved; this only estimates a monthly
-// instalment using the standard reducing-balance EMI formula so users can
-// plan before applying via LoanMarketplaceView/LoanApplicationView.
+// instalment using the standard reducing-balance EMI formula.
 //
 // EMI = P * r * (1+r)^n / ((1+r)^n - 1)
 //   P = principal (loan amount)
 //   r = monthly interest rate = annual rate / 12 / 100
 //   n = tenure in months
 //
-// Mirrors FixedDepositCalculatorView's shape (FDInputSlider + result card)
-// so it's presentable as a standalone sheet (this file) and embeddable
-// inline inside CalculatorsView via EMICalculatorContent.
-
-struct EMICalculatorView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.sectionSpacing) {
-                    Text("Estimate your monthly instalment before applying for a loan.")
-                        .font(Theme.engravedSerif(size: 13, relativeTo: .footnote))
-                        .foregroundColor(Theme.inkTertiary)
-
-                    EMICalculatorContent()
-                }
-                .padding(Theme.screenPadding)
-            }
-            .background(Theme.canvas.ignoresSafeArea())
-            .navigationTitle("EMI Calculator")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        HapticManager.selection()
-                        dismiss()
-                    }
-                    .foregroundStyle(Theme.securityGold)
-                }
-            }
-        }
-    }
-}
+// Mirrors FixedDepositCalculatorView's shape (FDInputSlider + result card).
+// Embedded only in CalculatorsView (Settings > Tools > Calculators).
 
 /// Inline, self-contained EMI calculator body (sliders + result card) with
-/// no NavigationStack of its own — reusable both inside EMICalculatorView's
-/// sheet and inside CalculatorsView's tabbed container.
+/// no NavigationStack of its own, embedded in CalculatorsView's tabbed container.
 struct EMICalculatorContent: View {
     @State private var loanAmount: Double = 10_00_000
     @State private var interestRatePct: Double = 9.5

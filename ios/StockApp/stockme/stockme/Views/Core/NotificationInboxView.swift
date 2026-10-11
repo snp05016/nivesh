@@ -127,11 +127,14 @@ struct NotificationCard: View {
                         .fill(Theme.securityGold)
                         .frame(width: 8, height: 8)
                         .padding(Theme.Spacing.standard)
+                        .accessibilityHidden(true)
                 }
             }
         }
         .buttonStyle(EKPressStyle())
         .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
+        // The unread dot is visual only; VoiceOver hears the state.
+        .accessibilityValue(isRead ? "" : "Unread")
     }
 
     private var typeColor: Color {

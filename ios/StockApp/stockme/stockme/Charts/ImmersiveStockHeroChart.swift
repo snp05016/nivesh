@@ -125,6 +125,22 @@ struct ImmersiveStockHeroChart: View {
             .contentShape(Rectangle())
             .gesture(scrubGesture(in: geo.size))
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Price chart")
+        .accessibilityValue(accessibilityValueText)
+        .accessibilityHint("Swipe up or down to step through dates.")
+        .accessibilityAdjustableAction { direction in
+            scrubIndex = ImmersiveChartAccessibility.step(from: scrubIndex, count: prices.count, direction: direction)
+        }
+    }
+
+    private var accessibilityValueText: String {
+        if let i = scrubIndex, prices.indices.contains(i) {
+            let date = dates.indices.contains(i) ? "\(dateString(from: dates[i])), " : ""
+            return "\(date)\(IndianFormatter.price(prices[i])), \(IndianFormatter.delta(displayChangePct)) since start"
+        }
+        return ImmersiveChartAccessibility.summary(values: prices, dates: dates,
+                                                   format: IndianFormatter.price, dateText: dateString(from:))
     }
 
     // MARK: Scrub overlay
