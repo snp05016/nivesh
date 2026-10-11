@@ -285,7 +285,7 @@ class TestMarketEndpoints:
     def test_earnings_sync_ratio(self):
         """Test earnings sync ratio endpoint."""
         response = client.get("/api/v1/earnings/sync-ratio")
-        assert response.status_code in [200, 502]
+        assert response.status_code in [200, 502, 503]  # 503 when no honest declared count
     
     def test_earnings_yoy_aggregate(self):
         """Test earnings YoY aggregate endpoint."""
@@ -295,7 +295,7 @@ class TestMarketEndpoints:
     def test_earnings_progress(self):
         """Test earnings progress endpoint."""
         response = client.get("/api/v1/earnings/progress")
-        assert response.status_code == 200
+        assert response.status_code == 503  # FAKE-08: no exchange-wide filing source
     
     def test_earnings_feed(self):
         """Test earnings feed endpoint."""

@@ -79,6 +79,23 @@ def _yf_fetch_info(full_ticker: str) -> dict:
         return {}
 
 
+def get_rbi_policy() -> dict:
+    """RBI policy reference values from config (no live feed exists).
+
+    Returns rbi_repo_rate_pct / rbi_repo_rate_as_of / rbi_stance / rbi_source.
+    Values are None and rbi_source is 'unavailable' when the operator has not
+    set RBI_REPO_RATE_PCT, so callers never show a stale hardcoded rate.
+    """
+    from config import settings as _settings
+
+    rate = _settings.RBI_REPO_RATE_PCT
+    if rate is None:
+        return {"rbi_repo_rate_pct": None, "rbi_repo_rate_as_of": None,
+                "rbi_stance": None, "rbi_source": "unavailable"}
+    return {"rbi_repo_rate_pct": rate, "rbi_repo_rate_as_of": _settings.RBI_REPO_RATE_AS_OF,
+            "rbi_stance": _settings.RBI_POLICY_STANCE, "rbi_source": "config"}
+
+
 # ---------------------------------------------------------------------------
 # Formatting & utility helpers
 # ---------------------------------------------------------------------------

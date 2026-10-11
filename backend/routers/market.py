@@ -14,6 +14,7 @@ from helpers import (
 from services.market_service import (
     _get_quarterly_fin, _yf_fetch_info, _fmt_inr_crores,
     _safe_float, _earnings_result_from_row, _scan_upcoming_earnings,
+    get_rbi_policy,
 )
 
 import json
@@ -33,7 +34,6 @@ from services.scraper import (
 )
 from services.options_scraper import fetch_option_chain, compute_derivatives_metrics
 from services.nse_data_provider import get_price_history, get_fundamentals
-from services.filings_extractor import harvest_filings, get_cached_filings
 from services.sebi_registry import REGISTERED_CHANNELS
 
 router = APIRouter(tags=["Market Data"])
@@ -370,9 +370,10 @@ def macro_strip_endpoint():
             logging.warning(f"Caught exception: {e}")
             result["brent_oil_usd"] = None
 
-        # India VIX — fear gauge for Indian retail markets
-        # Fix 2.16: fallback to historical average (~16) when scraper fails
-        INDIA_VIX_HISTORICAL_AVG = 16.0
+        # India VIX — fear gauge for Indian retail markets. No invented
+        # fallback: a failed fetch is reported as unavailable (null).
+        result["india_vix"] = None
+        result["india_vix_source"] = "unavailable"
         try:
             t = yf.Ticker("^INDIAVIX")
             info = t.info
@@ -380,18 +381,12 @@ def macro_strip_endpoint():
             if vix and not math.isnan(float(vix)):
                 result["india_vix"] = round(float(vix), 2)
                 result["india_vix_source"] = "live"
-            else:
-                result["india_vix"] = INDIA_VIX_HISTORICAL_AVG
-                result["india_vix_source"] = "historical_avg_fallback"
         except Exception as e:
             import logging
             logging.warning(f"Caught exception: {e}")
-            result["india_vix"] = INDIA_VIX_HISTORICAL_AVG
-            result["india_vix_source"] = "historical_avg_fallback"
 
-        # RBI repo rate — hardcoded (changes rarely, update manually)
-        result["rbi_repo_rate_pct"] = 6.50
-        result["rbi_stance"] = "Neutral"
+        # RBI repo rate — operator-maintained config value with as-of date
+        result.update(get_rbi_policy())
 
         return result
     except Exception as e:
@@ -449,13 +444,12 @@ AI-generated analysis if a cached analysis exists.
             vix = vix_info.get("regularMarketPrice") or vix_info.get("currentPrice")
             if vix and not _m_ctx.isnan(float(vix)):
                 result["macro_strip"]["india_vix"] = round(float(vix), 2)
-            else:
-                result["macro_strip"]["india_vix"] = 16.0
-
-            result["macro_strip"]["rbi_repo_rate_pct"] = 6.50
-            result["macro_strip"]["rbi_stance"] = "Neutral"
+                result["macro_strip"]["india_vix_source"] = "live"
         except Exception as e:
             result["macro_strip"]["_error"] = str(e)
+        result["macro_strip"].setdefault("india_vix", None)
+        result["macro_strip"].setdefault("india_vix_source", "unavailable")
+        result["macro_strip"].update(get_rbi_policy())
 
         # -- 2. FII/DII trend -------------------------------------------------
         try:
@@ -502,9 +496,11 @@ AI-generated analysis if a cached analysis exists.
             result["sector_performance"] = {"_error": str(e)}
 
         # -- 4. Market Mood Index ---------------------------------------------
-        vix_val = result["macro_strip"].get("india_vix", 16)
+        vix_val = result["macro_strip"].get("india_vix")
         fii_bias = result["fii_dii_trend"].get("bias", "NEUTRAL")
-        if vix_val > 25 and fii_bias == "FII_SELLING":
+        if vix_val is None:
+            zone = None; score = None
+        elif vix_val > 25 and fii_bias == "FII_SELLING":
             zone = "EXTREME_FEAR"; score = 20
         elif vix_val > 20:
             zone = "FEAR"; score = 35
@@ -523,7 +519,7 @@ AI-generated analysis if a cached analysis exists.
         }
         result["market_mood"] = {
             "zone": zone, "score": score, "india_vix": vix_val,
-            "interpretation": interp_map.get(zone, ""),
+            "interpretation": interp_map.get(zone, "") if zone else "Unavailable: India VIX feed down",
         }
 
         # -- 5. Deterministic impact mapping ----------------------------------
@@ -563,8 +559,8 @@ AI-generated analysis if a cached analysis exists.
                     "impact": "MONITOR",
                     "detail": "Indirect impact. FII sentiment turns cautious above Rs.85/USD as dollar returns shrink in rupee terms."})
 
-        repo = result["macro_strip"].get("rbi_repo_rate_pct", 6.5)
-        if repo:
+        repo = result["macro_strip"].get("rbi_repo_rate_pct")
+        if repo is not None:
             if any(kw in sector_lower for kw in ("bank", "finance", "nbfc", "housing")):
                 if repo < 7:
                     impacts.append({"factor": "RBI Repo Rate", "value": f"{repo}%",
@@ -1408,8 +1404,8 @@ class EarningsSyncRatioResponseLocal(_BaseModel):
     source: str
 
 class YoYAggregateResponseLocal(_BaseModel):
-    revenue_yoy_pct: float
-    net_profit_yoy_pct: float
+    revenue_yoy_pct: _Optional[float] = None
+    net_profit_yoy_pct: _Optional[float] = None
     companies_reported: int
     fetched_at: str
     source: str
@@ -1436,7 +1432,9 @@ Backed by 15-min in-memory TTL cache.
     except Exception as exc:
         raise DataHarvestingError(str(exc)) from exc
 
-    declared = raw.get("declared_count", 0)
+    declared = raw.get("declared_count")
+    if declared is None:
+        raise HTTPException(status_code=503, detail="Results-declared count unavailable")
     total = raw.get("total_expected", 5042)
     ratio = round((declared / total) * 100, 1) if total > 0 else 0.0
 
@@ -1470,8 +1468,8 @@ Backed by 15-min in-memory TTL cache.
         raise DataHarvestingError(str(exc)) from exc
 
     return YoYAggregateResponseLocal(
-        revenue_yoy_pct=raw.get("revenue_yoy_pct", 0.0),
-        net_profit_yoy_pct=raw.get("net_profit_yoy_pct", 0.0),
+        revenue_yoy_pct=raw.get("revenue_yoy_pct"),
+        net_profit_yoy_pct=raw.get("net_profit_yoy_pct"),
         companies_reported=raw.get("companies_reported", 0),
         fetched_at=raw.get("fetched_at", ""),
         source=raw.get("source", "unknown"),
@@ -1631,46 +1629,22 @@ Errors are caught, logged to market_error_logs, and fallback values served.
     # No hardcoded fallback — if no real crossover signals exist, return empty lists
 
     # ── SECTION 1: Live Reporting Sync ───────────────────────────────────────
-    live_sync: dict = {"declared_count": 0, "total_expected": 5042,
-                        "sync_ratio_pct": 0.0, "source": "fallback", "fetched_at": now_iso}
-    try:
-        # Primary: filings_extractor counts from NSE corporate filings
-        filings_data = await asyncio.get_event_loop().run_in_executor(None, harvest_filings)
-        if filings_data:
-            declared = filings_data.get("earnings_filings_count", 0)
-            live_sync = {
-                "declared_count": declared,
-                "total_expected": 5042,
-                "sync_ratio_pct": round((declared / 5042) * 100, 1) if declared > 0 else 0.0,
-                "source": filings_data.get("source", "nse"),
-                "fetched_at": now_iso,
-            }
-    except Exception as exc:
-        log_market_error("filings_extractor", str(exc))
-        # Fallback: scraper's firecrawl-based sync ratio
-        try:
-            sync_raw = await asyncio.get_event_loop().run_in_executor(None, fetch_earnings_sync_ratio)
-            if sync_raw:
-                live_sync = {
-                    "declared_count": sync_raw.get("declared_count", 0),
-                    "total_expected": sync_raw.get("total_expected", 5042),
-                    "sync_ratio_pct": round((sync_raw.get("declared_count", 0) / max(sync_raw.get("total_expected", 5042), 1)) * 100, 1),
-                    "source": sync_raw.get("source", "fallback"),
-                    "fetched_at": now_iso,
-                }
-        except Exception as exc2:
-            log_market_error("earnings_sync_ratio", str(exc2))
+    # No exchange-wide results-filing source exists (filings_extractor only sees
+    # the latest ~100 filings), so this is reported as unavailable, never as a
+    # count over an invented denominator.
 
     # ── SECTION 2: YoY Market Health ─────────────────────────────────────────
-    yoy_health: dict = {"revenue_yoy_pct": 0.0, "net_profit_yoy_pct": 0.0,
-                         "companies_reported": 0, "source": "fallback", "fetched_at": now_iso}
+    # Null unless both YoY figures were actually computed; source and sample
+    # size travel with the numbers so the UI can label them honestly.
+    yoy_health: dict | None = None
     try:
         yoy_raw = await asyncio.get_event_loop().run_in_executor(None, fetch_yoy_aggregate_indicators)
-        if yoy_raw:
+        if yoy_raw and yoy_raw.get("revenue_yoy_pct") is not None and yoy_raw.get("net_profit_yoy_pct") is not None:
             yoy_health = {
-                "revenue_yoy_pct": round(float(yoy_raw.get("revenue_yoy_pct", 0.0)), 2),
-                "net_profit_yoy_pct": round(float(yoy_raw.get("net_profit_yoy_pct", 0.0)), 2),
-                "companies_reported": int(yoy_raw.get("companies_reported", 0)),
+                "revenue_yoy_pct": round(float(yoy_raw["revenue_yoy_pct"]), 2),
+                "net_profit_yoy_pct": round(float(yoy_raw["net_profit_yoy_pct"]), 2),
+                "companies_reported": int(yoy_raw.get("companies_reported") or 0),
+                "sample_size": yoy_raw.get("sample_size"),
                 "source": yoy_raw.get("source", "unknown"),
                 "fetched_at": now_iso,
             }
@@ -1689,7 +1663,7 @@ Errors are caught, logged to market_error_logs, and fallback values served.
     return {
         "pulse": pulse_section,
         "momentum": {"bullish": bullish, "bearish": bearish, "fetched_at": now_iso},
-        "live_reporting_sync": live_sync,
+        "live_reporting_sync": None,
         "yoy_market_health": yoy_health,
         "cap_index_aggregator": cap_grid,
         "fetched_at": now_iso,
@@ -1937,40 +1911,12 @@ Raises 503 on DataHarvestingError.
 
 @router.get("/api/v1/earnings/progress")
 async def earnings_progress_endpoint():
-    now_iso = datetime.now(timezone.utc).isoformat()
-    try:
-        with get_session() as session:
-            from datetime import timedelta
-            cutoff = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%d")
-            rows = session.query(AnalysisHistory).filter(
-                AnalysisHistory.analysis_date >= cutoff
-            ).all()
-            reported = len(set(r.ticker for r in rows))
-            rev_vals, prof_vals = [], []
-            for r in rows:
-                try:
-                    fj = json.loads(r.full_json or "{}")
-                    fs = fj.get("fundamentals_snapshot", {})
-                    rev_g = fs.get("revenue_growth_yoy")
-                    prof_g = fs.get("net_profit_growth_yoy")
-                    if rev_g is not None and -200 < rev_g < 500:
-                        rev_vals.append(rev_g)
-                    if prof_g is not None and -200 < prof_g < 500:
-                        prof_vals.append(prof_g)
-                except Exception as e:
-                    logging.warning(f"Caught exception: {e}")
-                    continue
-        return {
-            "reported": reported,
-            "total": max(reported, 50),
-            "yoy_revenue_growth_pct": round(sum(rev_vals) / len(rev_vals), 2) if rev_vals else None,
-            "yoy_net_profit_growth_pct": round(sum(prof_vals) / len(prof_vals), 2) if prof_vals else None,
-            "fetched_at": now_iso,
-        }
-    except Exception:
-        logging.exception("[EARNINGS/PROGRESS] failed")
-        return {"reported": 0, "total": 50, "yoy_revenue_growth_pct": None, "yoy_net_profit_growth_pct": None,
-                "fetched_at": now_iso, "degraded": True}
+    # There is no exchange-wide results-filing source. Counting the app's own
+    # analyses over a fixed denominator was fabricated progress (FAKE-08).
+    raise HTTPException(
+        status_code=503,
+        detail="Earnings reporting progress unavailable: no exchange-wide results-filing source",
+    )
 
 
 def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple[list[dict], str]:
@@ -2320,37 +2266,22 @@ Each result includes:
 
 @router.get("/api/v1/earnings/estimates")
 async def earnings_estimates_endpoint(ticker: str):
-    now_iso = datetime.now(timezone.utc).isoformat()
+    # Only a genuine quarterly consensus figure counts as an estimate (FAKE-10):
+    # no TTM-actual (totalRevenue) or 12-month-forward EPS stand-ins, and no
+    # actuals from LLM analysis snapshots (period never matched the estimate).
     ticker = ticker.upper()
     try:
-        ns = _to_ns(ticker)
-        info = _yf_fetch_info(ns)
-        rev_est = info.get("revenueEstimate") or info.get("totalRevenue")
-        eps_est = info.get("forwardEps")
-        revenue_actual = net_profit_actual = eps_actual = None
-        with get_session() as session:
-            latest = session.query(AnalysisHistory).filter(
-                AnalysisHistory.ticker == ticker
-            ).order_by(AnalysisHistory.created_at.desc()).first()
-            if latest:
-                try:
-                    fj = json.loads(latest.full_json or "{}")
-                    fs = fj.get("fundamentals_snapshot", {})
-                    revenue_actual = fs.get("revenue_crores")
-                    net_profit_actual = fs.get("net_profit_crores")
-                    eps_actual = fs.get("eps")
-                except Exception as e:
-                    logging.error(f"Error occurred: {e}", exc_info=True)
-                    raise HTTPException(status_code=500, detail="Internal server error")
+        info = _yf_fetch_info(_to_ns(ticker))
+        rev_est = info.get("revenueEstimate")
         return {
             "ticker": ticker,
             "company_name": info.get("longName") or info.get("shortName") or ticker,
             "revenue_estimate": float(rev_est) / 1e7 if rev_est else None,
-            "revenue_actual": float(revenue_actual) if revenue_actual else None,
+            "revenue_actual": None,
             "net_profit_estimate": None,
-            "net_profit_actual": float(net_profit_actual) if net_profit_actual else None,
-            "eps_estimate": float(eps_est) if eps_est else None,
-            "eps_actual": float(eps_actual) if eps_actual else None,
+            "net_profit_actual": None,
+            "eps_estimate": None,
+            "eps_actual": None,
         }
     except Exception:
         logging.exception("[EARNINGS/ESTIMATES] %s failed", ticker)

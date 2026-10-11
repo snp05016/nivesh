@@ -42,7 +42,8 @@ CHART_COLORS = [
     "#8899AA", "#556677", "#1E2540", "#00D4AA", "#5B90F6",
 ]
 
-# Approximate Nifty 50 sector weights for comparison chart
+# Approximate, static Nifty 50 sector weights (not live index data). Every
+# chart label says "approx." so users never read these as current weights.
 NIFTY_SECTOR_WEIGHTS = {
     "Banking": 33.0, "IT": 14.0, "Oil & Gas": 12.0,
     "Auto": 6.5, "FMCG": 6.0, "Pharma": 4.5,
@@ -553,13 +554,13 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
 
                 bars1 = ax.bar(x - width / 2, pf_vals, width, label="Your Portfolio",
                                color=ACCENT_GREEN, alpha=0.85)
-                bars2 = ax.bar(x + width / 2, nifty_vals, width, label="Nifty 50",
+                bars2 = ax.bar(x + width / 2, nifty_vals, width, label="Nifty 50 (approx.)",
                                color=ACCENT_BLUE, alpha=0.55)
 
                 ax.set_xticks(x)
                 ax.set_xticklabels(common_sectors, rotation=30, ha="right", fontsize=8)
                 ax.set_ylabel("Weight (%)")
-                ax.set_title("Sector Weight vs Nifty 50", fontweight="bold")
+                ax.set_title("Sector Weight vs Nifty 50 (approx. static weights)", fontweight="bold")
                 ax.legend(loc="upper right", fontsize=8, facecolor=BG_COLOR,
                           edgecolor=GRID_COLOR, labelcolor=TEXT_COLOR)
                 ax.grid(axis="y", alpha=0.2)
@@ -570,7 +571,7 @@ def generate_portfolio_charts(user_id: int, output_dir: str) -> list[dict]:
                 charts.append({
                     "filename": fname,
                     "title": "Sector vs Nifty",
-                    "description": "Your sector allocation compared to Nifty 50 benchmark",
+                    "description": "Your sector allocation compared to approximate, static Nifty 50 sector weights",
                 })
                 n += 1
     except Exception as exc:

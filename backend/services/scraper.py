@@ -749,9 +749,12 @@ def _fetch_yoy_fallback() -> dict:
         "TATASTEEL.NS", "JSWSTEEL.NS", "TECHM.NS", "DRREDDY.NS", "CIPLA.NS",
     ]
 
+    # Average only tickers with a valid same-quarter-prior-year comparison;
+    # tickers with <5 quarters must not dilute the average toward zero.
     total_rev_growth = 0.0
     total_profit_growth = 0.0
-    count = 0
+    rev_n = 0
+    profit_n = 0
 
     for ticker in sample_tickers:
         try:
@@ -783,24 +786,22 @@ def _fetch_yoy_fallback() -> dict:
                 prev = rev_data.iloc[4] if len(rev_data) > 4 else None
                 if prev and not math.isnan(cur) and not math.isnan(prev) and prev != 0:
                     total_rev_growth += ((cur - prev) / abs(prev)) * 100
+                    rev_n += 1
 
             if profit_data is not None and len(profit_data) >= 5:
                 cur_p = profit_data.iloc[0]
                 prev_p = profit_data.iloc[4] if len(profit_data) > 4 else None
                 if prev_p and not math.isnan(cur_p) and not math.isnan(prev_p) and prev_p != 0:
                     total_profit_growth += ((cur_p - prev_p) / abs(prev_p)) * 100
-
-            count += 1
+                    profit_n += 1
         except Exception as _e:
             continue
 
-    avg_rev = round(total_rev_growth / count, 1) if count > 0 else 0.0
-    avg_profit = round(total_profit_growth / count, 1) if count > 0 else 0.0
-
     return {
-        "revenue_yoy_pct": avg_rev,
-        "net_profit_yoy_pct": avg_profit,
-        "companies_reported": count,
+        "revenue_yoy_pct": round(total_rev_growth / rev_n, 1) if rev_n else None,
+        "net_profit_yoy_pct": round(total_profit_growth / profit_n, 1) if profit_n else None,
+        "companies_reported": rev_n,
+        "sample_size": len(sample_tickers),
         "source": "yfinance_sample",
     }
 
@@ -822,7 +823,7 @@ def fetch_yoy_aggregate_indicators() -> dict:
     if extracted and extracted.get("revenue_yoy_pct") is not None:
         result = {
             "revenue_yoy_pct": extracted["revenue_yoy_pct"],
-            "net_profit_yoy_pct": extracted.get("net_profit_yoy_pct", 0.0),
+            "net_profit_yoy_pct": extracted.get("net_profit_yoy_pct"),
             "companies_reported": extracted.get("companies_reported", 0),
             "source": "firecrawl",
             "fetched_at": datetime.now(timezone.utc).isoformat(),

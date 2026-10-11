@@ -100,3 +100,52 @@ class TestQuantEngineMath:
         prices = np.array([100.0 - i for i in range(20)])
         rsi = engine._compute_rsi(prices, 14)
         assert rsi == 0.0
+
+
+class TestQuantEngineUnknownInputs:
+    """FAKE-16: missing inputs are reported as unavailable, never imputed."""
+
+    def test_fundamentals_failure_marked_unavailable(self, monkeypatch):
+        from services.quant_engine import QuantitativeEngine
+
+        async def _boom(self):
+            raise RuntimeError("NSE fundamentals timeout")
+
+        async def _market(self):
+            return {"current_price": 1000.0, "daily_volatility": 0.01,
+                    "annualized_volatility_30d": 0.16, "rsi_14": 55.0, "fallback": False}
+
+        async def _macro(self):
+            return {"nifty_50": 24000.0, "vix": None, "fallback": False}
+
+        monkeypatch.setattr(QuantitativeEngine, "_fetch_fundamentals", _boom)
+        monkeypatch.setattr(QuantitativeEngine, "_fetch_market_volatility", _market)
+        monkeypatch.setattr(QuantitativeEngine, "_fetch_macro_indicators", _macro)
+
+        payload = asyncio.run(QuantitativeEngine("TCS").run_full_pipeline())
+        assert payload["data_quality"] == {"fundamentals": "unavailable", "market": "ok"}
+        assert "Fundamental Health (F-Score)" not in payload["quantitative_drivers"]
+        assert "Promoter Pledge Risk" not in payload["quantitative_drivers"]
+        assert "high_pledge_danger" not in payload["tail_risk_flags"]
+        assert "distressed_fundamentals" not in payload["tail_risk_flags"]
+
+    def test_market_fallback_has_no_rsi(self):
+        from services.quant_engine import QuantitativeEngine
+        fb = QuantitativeEngine._fallback_market_data()
+        assert fb["rsi_14"] is None and fb["fallback"] is True
+        drivers, tails = QuantitativeEngine._compute_feature_importance(
+            {"piotroski_score": None, "promoter_pledge_pct": None}, fb
+        )
+        assert drivers == {} and tails == {}
+
+    def test_known_inputs_still_flag_risk(self):
+        from services.quant_engine import QuantitativeEngine
+        drivers, tails = QuantitativeEngine._compute_feature_importance(
+            {"piotroski_score": 2, "promoter_pledge_pct": 45.0}, {"rsi_14": 25.0}
+        )
+        assert tails == {"high_pledge_danger": True, "distressed_fundamentals": True}
+        assert drivers["Technical Reversion (Oversold)"] == 0.25
+
+    def test_no_zero_input_minskyan(self):
+        src = open(os.path.join(os.path.dirname(__file__), "..", "services", "orchestrator.py")).read()
+        assert "compute_minskyan_risk(dii_ytd=0, fii_ytd=0)" not in src

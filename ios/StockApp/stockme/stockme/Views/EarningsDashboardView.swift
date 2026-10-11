@@ -7,7 +7,6 @@ import EventKit
 
 @MainActor
 class EarningsDashboardViewModel: ObservableObject {
-    @Published var progress: EarningsProgressResponse? = nil
     @Published var feed: [EarningsResult] = []
     @Published var calendarDayResults: [EarningsCalendarItem] = []
     @Published var calendarSparklines: [String: [Double]] = [:]  // ticker → sparkline
@@ -24,7 +23,6 @@ class EarningsDashboardViewModel: ObservableObject {
     @Published var capIndexAggregator: [CapIndexGridEntry] = []
 
     /// Per-section error diagnostics — shown inline when a section fails
-    @Published var progressError: String? = nil
     @Published var feedError: String? = nil
     @Published var calendarError: String? = nil
     @Published var moversError: String? = nil
@@ -41,8 +39,8 @@ class EarningsDashboardViewModel: ObservableObject {
 
     /// True if ALL sections failed — triggers full-page error canvas
     var isTotalFailure: Bool {
-        progress == nil && feed.isEmpty && postResultMovers.isEmpty
-            && (progressError != nil || feedError != nil || moversError != nil)
+        feed.isEmpty && postResultMovers.isEmpty
+            && (feedError != nil || moversError != nil)
     }
 
     private var refreshTask: Task<Void, Never>?
@@ -51,16 +49,12 @@ class EarningsDashboardViewModel: ObservableObject {
         refreshTask?.cancel()
         refreshTask = Task {
             isLoading = true
-            progressError = nil; feedError = nil; moversError = nil; dashboardError = nil
+            feedError = nil; moversError = nil; dashboardError = nil
 
             // Pre-computed aggregates from dashboard-pulse (yoy_health + cap_grid)
             let dash = await NetworkManager.shared.fetchExtendedMarketDashboard()
             self.yoyMarketHealth = dash?.yoyMarketHealth
             self.capIndexAggregator = dash?.capIndexAggregator ?? []
-
-            // Progress
-            do { self.progress = try await NetworkManager.shared.fetchEarningsProgress() }
-            catch { self.progressError = (error as? NetworkError)?.displayDetail ?? error.localizedDescription }
 
             // Feed — use ranked endpoint for diagnostic info
             if let rankedResp = await NetworkManager.shared.fetchRankedEarningsFeed(sort: selectedSort) {
@@ -154,18 +148,6 @@ class EarningsDashboardViewModel: ObservableObject {
     static func filter(_ results: [EarningsResult], marketCap: String) -> [EarningsResult] {
         marketCap == "all" ? results : results.filter { $0.marketCap == marketCap }
     }
-
-    var aggregateRevGrowth: Double {
-        guard !feed.isEmpty else { return 0 }
-        let vals = feed.map { $0.revenueGrowthPct }
-        return vals.reduce(0, +) / Double(vals.count)
-    }
-
-    var aggregateProfitGrowth: Double {
-        guard !feed.isEmpty else { return 0 }
-        let vals = feed.map { $0.netProfitGrowthPct }
-        return vals.reduce(0, +) / Double(vals.count)
-    }
 }
 
 // MARK: - Main Earnings Dashboard
@@ -202,16 +184,6 @@ struct EarningsDashboardView: View {
                     .font(.caption.weight(.bold).monospaced())
                     .tracking(2)
                     .foregroundStyle(Theme.securityGold)
-                if let p = vm.progress {
-                    Text("\(p.reported)/\(p.total) results declared")
-                        .font(.footnote)
-                        .foregroundStyle(Theme.inkSecondary)
-                } else if let err = vm.progressError {
-                    Text("⚠ \(err.prefix(60))")
-                        .font(.caption.weight(.medium).monospaced())
-                        .foregroundStyle(Theme.bearRed)
-                        .lineLimit(1)
-                }
             }
             Spacer()
         }
@@ -278,7 +250,6 @@ struct EarningsProgressView: View {
                 if vm.isTotalFailure {
                     ErrorDiagnoserView(
                         error: [
-                            vm.progressError.map { "Progress: \($0)" },
                             vm.feedError.map { "Feed: \($0)" },
                             vm.moversError.map { "Movers: \($0)" },
                         ].compactMap { $0 }.joined(separator: "\n\n"),
@@ -287,21 +258,8 @@ struct EarningsProgressView: View {
                     )
                 }
 
-                // Live Reporting Sync Ratio
-                if let p = vm.progress {
-                    progressCard(p)
-                } else if let err = vm.progressError {
-                    MarketSectionErrorRow(sectionLabel: "LIVE REPORTING SYNC", errorMessage: err)
-                } else {
-                    progressCardPlaceholder
-                }
-
-                // YoY Aggregate Indicators
-                if vm.feedError != nil && vm.feed.isEmpty {
-                    MarketSectionErrorRow(sectionLabel: "YoY AGGREGATE INDICATORS", errorMessage: vm.feedError!)
-                } else {
-                    aggregateCard
-                }
+                // YoY Aggregate Indicators (backend sample only; no feed-derived stand-in)
+                aggregateCard
 
                 // 1.3 Market Cap Index Aggregator
                 marketCapIndexCard
@@ -311,61 +269,6 @@ struct EarningsProgressView: View {
         .background(Theme.canvas)
     }
 
-    private func progressCard(_ p: EarningsProgressResponse) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-            Text("LIVE REPORTING SYNC")
-                .font(.caption2.weight(.bold).monospaced())
-                .tracking(2)
-                .foregroundStyle(Theme.inkSecondary)
-
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.tight) {
-                Text("\(p.reported)")
-                    .font(Theme.engravedSerif(size: 36, weight: .bold, relativeTo: .largeTitle))
-                    .foregroundStyle(Theme.inkPrimary)
-                Text("/\(p.total)")
-                    .font(Theme.engravedSerif(size: 20, relativeTo: .title3))
-                    .foregroundStyle(Theme.inkTertiary)
-                Spacer()
-                let pct = p.total > 0 ? Double(p.reported) / Double(p.total) : 0
-                Text("\(Int(pct * 100))% filed")
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(Theme.bullGreen)
-            }
-
-            // Progress bar
-            let w = UIScreen.main.bounds.width
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                    .fill(Theme.inkTertiary.opacity(0.15))
-                let pct = p.total > 0 ? CGFloat(p.reported) / CGFloat(p.total) : 0
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                    .fill(LinearGradient(
-                        colors: [Theme.bullGreen, Theme.securityGold],
-                        startPoint: .leading, endPoint: .trailing))
-                    .frame(width: w * pct)
-            }
-            .frame(height: 6)
-
-            Text("companies have declared results against total statutory listed exchange obligations")
-                .font(.caption)
-                .foregroundStyle(Theme.inkTertiary)
-        }
-        .padding(Theme.Spacing.card)
-        .banknoteCard()
-    }
-
-    private var progressCardPlaceholder: some View {
-        let w = UIScreen.main.bounds.width
-        return VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.12)).frame(height: 14).frame(width: w * 0.35)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.12)).frame(height: 36).frame(width: w * 0.45)
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.12)).frame(height: 6)
-        }
-        .padding(Theme.Spacing.card)
-        .banknoteCard()
-        .shimmerPlaceholder(isLoading: true)
-    }
-
     private var aggregateCard: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             Text("YoY AGGREGATE MARKET HEALTH")
@@ -373,27 +276,24 @@ struct EarningsProgressView: View {
                 .tracking(2)
                 .foregroundStyle(Theme.inkSecondary)
 
-            // Prefer backend pre-computed data, fall back to local feed aggregation
-            let revGrowth: Double = vm.yoyMarketHealth?.revenueYoYPct ?? vm.aggregateRevGrowth
-            let profitGrowth: Double = vm.yoyMarketHealth?.netProfitYoYPct ?? vm.aggregateProfitGrowth
-            let sourceLabel: String = vm.yoyMarketHealth != nil ? "NSE AGGREGATE" : "FEED ESTIMATE"
+            let health = vm.yoyMarketHealth
 
             HStack(spacing: Theme.Spacing.none) {
                 aggregateMetric(
                     label: "AVG REVENUE GROWTH",
-                    value: revGrowth,
-                    isLoading: vm.isLoading && vm.yoyMarketHealth == nil && vm.feed.isEmpty
+                    value: health?.revenueYoYPct,
+                    isLoading: vm.isLoading && health == nil
                 )
                 Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(width: 0.5, height: 40).padding(.horizontal, Theme.Spacing.card)
                 aggregateMetric(
                     label: "AVG NET PROFIT GROWTH",
-                    value: profitGrowth,
-                    isLoading: vm.isLoading && vm.yoyMarketHealth == nil && vm.feed.isEmpty
+                    value: health?.netProfitYoYPct,
+                    isLoading: vm.isLoading && health == nil
                 )
             }
 
-            // Source label
-            Text(sourceLabel)
+            // Source label: what the numbers actually are, never "NSE AGGREGATE"
+            Text(Self.aggregateSourceLabel(for: health))
                 .font(.caption2.weight(.medium).monospaced())
                 .foregroundStyle(Theme.inkTertiary)
         }
@@ -401,7 +301,18 @@ struct EarningsProgressView: View {
         .banknoteCard()
     }
 
-    private func aggregateMetric(label: String, value: Double, isLoading: Bool) -> some View {
+    /// Honest provenance label for the YoY card (FAKE-09).
+    static func aggregateSourceLabel(for health: YoYMarketHealth?) -> String {
+        guard let health else { return "UNAVAILABLE" }
+        switch health.source {
+        case "firecrawl": return "MONEYCONTROL AGGREGATE"
+        case "yfinance_sample": return "LARGE-CAP SAMPLE · n=\(health.companiesReported)"
+        case "fallback": return "UNAVAILABLE"
+        default: return health.source.uppercased()
+        }
+    }
+
+    private func aggregateMetric(label: String, value: Double?, isLoading: Bool) -> some View {
         let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
         return VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
             Text(label)
@@ -410,12 +321,16 @@ struct EarningsProgressView: View {
                 .foregroundStyle(Theme.inkTertiary)
             if isLoading {
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.small).fill(Theme.inkTertiary.opacity(0.12)).frame(width: colW * 0.17, height: 22)
-            } else {
+            } else if let value {
                 Text(IndianFormatter.delta(value))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
                     .font(.title3.weight(.bold).monospaced())
                     .foregroundStyle(value >= 0 ? Theme.bullGreen : Theme.bearRed)
+            } else {
+                Text("—")
+                    .font(.title3.weight(.bold).monospaced())
+                    .foregroundStyle(Theme.inkTertiary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

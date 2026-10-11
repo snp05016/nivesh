@@ -1426,7 +1426,6 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
             compute_signal_agreement, compute_conformal_bounds,
             find_historical_analogues, apply_bear_asymmetry,
         )
-        from services.macro_modifiers import compute_minskyan_risk
         from services.microstructure_engine import compute_pcr_gex
         from services.sector_rotation import compute_rrg_quadrant
         from services.filings_extractor import extract_auditor_info
@@ -1470,7 +1469,6 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
             "delivery":  lambda: get_delivery_data(base_symbol),
             "microstructure": lambda: compute_pcr_gex(base_symbol),
             "rrg":       lambda: compute_rrg_quadrant(base_symbol),
-            "minskyan":  lambda: compute_minskyan_risk(dii_ytd=0, fii_ytd=0),
             "bear":      lambda: apply_bear_asymmetry(raw_output),
             "auditor":   lambda: extract_auditor_info(ns_ticker_for_cal),
             "analogues": lambda: find_historical_analogues(ns_ticker_for_cal, {
@@ -1511,7 +1509,6 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
         delivery_data     = _cal_results.get("delivery", {})
         microstructure_data = _cal_results.get("microstructure", {})
         rrg_data          = _cal_results.get("rrg", {})
-        minskyan_data     = _cal_results.get("minskyan", {})
         bear_data         = _cal_results.get("bear", {})
         auditor_data      = _cal_results.get("auditor", {})
         analogue_data     = _cal_results.get("analogues", {})
@@ -1621,7 +1618,6 @@ Regime: {regime_state} (x{_nf(regime_mult, 1.0):.2f})
 Delivery: {_nf(delivery_data.get('delivery_signal'), 'NEUTRAL')} ({_nf(delivery_data.get('delivery_pct_latest'), 0):.1f}% #)
 Dealer: {_nf(microstructure_data.get('dealer_regime'), 'NEUTRAL')} PCR: {_nf(microstructure_data.get('oi_pcr'), 0):.2f}
 RRG: {_nf(rrg_data.get('rrg_quadrant'), 'Unknown')}
-Minskyan: {_nf(minskyan_data.get('minskyan_flag'), False)} ({_nf(minskyan_data.get('minskyan_score'), 0):.2f})
 Bear Adj: {_nf(bear_data.get('adjustment'), 0):+.3f}
 Auditor: {_nf(auditor_data.get('auditor_name'), '')} ({_nf(auditor_data.get('tenure_years'), 0)}y Big-4:{_nf(auditor_data.get('is_big4'), False)})
 Analogues: {_nf(analogue_data.get('k_found'), 0)} WR:{_nf(analogue_data.get('historical_win_rate_pct'), 'N/A')}%
@@ -2091,7 +2087,8 @@ def analyze(
         "\n\nQUANTITATIVE ENGINE OUTPUT (AUTHORITATIVE):\n"
         f"{_json_dumps(quant_payload, sort_keys=True)}\n"
         "Use these exact target bounds, confidence, regime, drivers, and tail-risk flags. "
-        "Do not invent or override quantitative values.\n"
+        "Do not invent or override quantitative values. "
+        "Fields listed as unavailable in data_quality are unknown; do not state or infer them.\n"
     )
     raw_output += f"\n\nADDITIONAL DATA (MANDATORY TO INCLUDE IN fundamentals_snapshot):\nPromoter Pledging: {pledging_data}\n"
 

@@ -46,6 +46,22 @@ else:
 DEMO_MODE: bool = os.getenv("DEMO_MODE", "false").strip().lower() in ("1", "true", "yes")
 
 # ---------------------------------------------------------------------------
+# RBI policy reference values (FAKE-07). There is no live feed for the policy
+# repo rate, so the operator sets these after each MPC meeting. Unset or
+# invalid means "unavailable": endpoints return null instead of a stale literal.
+# ---------------------------------------------------------------------------
+def _env_float(name: str):
+    try:
+        return float(os.getenv(name, "").strip())
+    except ValueError:
+        return None
+
+
+RBI_REPO_RATE_PCT = _env_float("RBI_REPO_RATE_PCT")
+RBI_REPO_RATE_AS_OF = os.getenv("RBI_REPO_RATE_AS_OF", "").strip() or None  # ISO date, e.g. 2026-08-06
+RBI_POLICY_STANCE = os.getenv("RBI_POLICY_STANCE", "").strip() or None
+
+# ---------------------------------------------------------------------------
 # Task 32: AdvisorInsights lookback window
 # ---------------------------------------------------------------------------
 ADVISOR_INSIGHTS_LOOKBACK_DAYS: int = int(os.getenv("ADVISOR_INSIGHTS_LOOKBACK_DAYS", 14))

@@ -64,11 +64,10 @@ def test_earnings_calendar_failure_degraded_no_leak(client, monkeypatch):
     assert "secret-path" not in resp.text
 
 
-def test_earnings_progress_failure_degraded(client, monkeypatch):
-    monkeypatch.setattr(market_router, "get_session", _boom)
+def test_earnings_progress_unavailable_503(client):
+    # FAKE-08: no honest results-filing source, so the endpoint never invents progress.
     resp = client.get("/api/v1/earnings/progress")
-    assert resp.status_code == 200
-    assert resp.json()["degraded"] is True
+    assert resp.status_code == 503
 
 
 def test_notifications_test_failure_503(client, monkeypatch):

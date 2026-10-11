@@ -51,7 +51,7 @@ class QuantitativeEngine:
         fundamental_data = (
             results[1]
             if not isinstance(results[1], BaseException)
-            else {"piotroski_score": 5, "promoter_pledge_pct": 0.0, "fallback": True}
+            else {"piotroski_score": None, "promoter_pledge_pct": None, "fallback": True}
         )
         _macro_data = (  # noqa: F841 — reserved for future regime enrichment (Nifty VIX)
             results[2]
@@ -77,6 +77,11 @@ class QuantitativeEngine:
             "conformal_target_lower_3m": targets["lower_3m"],
             "quantitative_drivers": shap_drivers,
             "tail_risk_flags": tail_risks,
+            # Unknown inputs are reported, never imputed with neutral constants.
+            "data_quality": {
+                "fundamentals": "unavailable" if fundamental_data.get("fallback") else "ok",
+                "market": "unavailable" if market_data.get("fallback") else "ok",
+            },
         }
 
     # ── Data Fetching (concurrent I/O) ──────────────────────────────────────
@@ -155,7 +160,7 @@ class QuantitativeEngine:
             "current_price": 0.0,
             "daily_volatility": _NIFTY_LONG_RUN_DAILY_VOL,
             "annualized_volatility_30d": _NIFTY_LONG_RUN_ANNUAL_VOL,
-            "rsi_14": 50.0,
+            "rsi_14": None,
             "fallback": True,
         }
 
@@ -173,20 +178,20 @@ class QuantitativeEngine:
             fund = get_fundamentals(self.ticker)
             f_score_result = compute_piotroski(self.ticker)
 
-            piotroski_score = 5  # default neutral
+            piotroski_score = None  # unknown unless computed
             if isinstance(f_score_result, dict):
-                raw = f_score_result.get("f_score", 5)
-                piotroski_score = int(raw) if raw is not None else 5
+                raw = f_score_result.get("f_score")
+                piotroski_score = int(raw) if raw is not None else None
             elif isinstance(f_score_result, (int, float)) and not math.isnan(float(f_score_result)):
                 piotroski_score = int(f_score_result)
 
-            promoter_pledge = fund.get("promoter_pledging_pct") or 0.0
+            promoter_pledge = fund.get("promoter_pledging_pct")
             if isinstance(promoter_pledge, (int, float)) and not math.isnan(
                 promoter_pledge
             ):
                 promoter_pledge = float(promoter_pledge)
             else:
-                promoter_pledge = 0.0
+                promoter_pledge = None  # missing pledge data is unknown, not 0%
 
             return {
                 "piotroski_score": piotroski_score,
@@ -198,8 +203,8 @@ class QuantitativeEngine:
         except Exception as e:
             _LOG.warning("[QuantEngine] Fundamentals fetch failed for %s: %s", self.ticker, e)
             return {
-                "piotroski_score": 5,
-                "promoter_pledge_pct": 0.0,
+                "piotroski_score": None,
+                "promoter_pledge_pct": None,
                 "fallback": True,
             }
 
@@ -307,32 +312,31 @@ class QuantitativeEngine:
             Tuple[Dict[str, float], Dict[str, bool]]: A tuple containing the SHAP-style
                 quantitative drivers and tail risk flags.
         """
-        f_score = fundamental_data.get("piotroski_score", 5)
-        if f_score is None or (isinstance(f_score, float) and math.isnan(f_score)):
-            f_score = 5
-        f_score = int(f_score)
-        promoter_pledge = fundamental_data.get("promoter_pledge_pct", 0.0)
-        if promoter_pledge is None or (isinstance(promoter_pledge, float) and math.isnan(promoter_pledge)):
-            promoter_pledge = 0.0
-        rsi_14 = market_data.get("rsi_14", 50.0)
-        if rsi_14 is None or (isinstance(rsi_14, float) and math.isnan(rsi_14)):
-            rsi_14 = 50.0
+        def _known(v):
+            return None if v is None or (isinstance(v, float) and math.isnan(v)) else v
+
+        # Unknown inputs (None/NaN) contribute no driver and no tail-risk key.
+        f_score = _known(fundamental_data.get("piotroski_score"))
+        promoter_pledge = _known(fundamental_data.get("promoter_pledge_pct"))
+        rsi_14 = _known(market_data.get("rsi_14"))
 
         shap_drivers: Dict[str, float] = {}
 
         # F-Score contribution (normalized around 5 as neutral)
-        shap_drivers["Fundamental Health (F-Score)"] = round(
-            (f_score - 5) / 4.0 * 0.40, 3
-        )
+        if f_score is not None:
+            f_score = int(f_score)
+            shap_drivers["Fundamental Health (F-Score)"] = round(
+                (f_score - 5) / 4.0 * 0.40, 3
+            )
 
         # RSI-based technical drivers
-        if rsi_14 < 30:
+        if rsi_14 is not None and rsi_14 < 30:
             shap_drivers["Technical Reversion (Oversold)"] = 0.25
-        elif rsi_14 > 70:
+        elif rsi_14 is not None and rsi_14 > 70:
             shap_drivers["Technical Overextension"] = -0.25
 
         # Promoter pledge risk (linear penalty)
-        if promoter_pledge > 0:
+        if promoter_pledge is not None and promoter_pledge > 0:
             shap_drivers["Promoter Pledge Risk"] = round(
                 -1.0 * (promoter_pledge / 100.0) * 0.50, 3
             )
@@ -342,10 +346,11 @@ class QuantitativeEngine:
             k: v for k, v in shap_drivers.items() if abs(v) > 0.05
         }
 
-        tail_risks = {
-            "high_pledge_danger": promoter_pledge > 30.0,
-            "distressed_fundamentals": f_score < 3,
-        }
+        tail_risks: Dict[str, bool] = {}
+        if promoter_pledge is not None:
+            tail_risks["high_pledge_danger"] = promoter_pledge > 30.0
+        if f_score is not None:
+            tail_risks["distressed_fundamentals"] = f_score < 3
 
         return shap_drivers, tail_risks
 

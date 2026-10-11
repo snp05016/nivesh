@@ -44,14 +44,14 @@ struct MacroMoodGaugeView: View {
     let mood: MarketMoodData?
 
     var body: some View {
-        if let mood = mood {
+        if let mood = mood, let rawScore = mood.score {
             VStack(spacing: Theme.Spacing.standard) {
                 Text("MARKET MOOD INDEX")
                     .font(Theme.officialStampFont(size: 9))
                     .tracking(1.5)
                     .foregroundStyle(Theme.inkTertiary)
 
-                let score = Double(mood.score ?? 50)
+                let score = Double(rawScore)
                 let zoneColor: Color = {
                     switch mood.zone ?? "" {
                     case "EXTREME_FEAR": return Theme.bearRed
@@ -143,6 +143,14 @@ struct MacroMoodGaugeView: View {
             .padding(Theme.Spacing.card)
             .banknoteCard()
             .explainableTerm("MMI")
+        } else if let mood = mood {
+            // No live India VIX: never draw a neutral needle as if it were real.
+            Text("MARKET MOOD INDEX · \(mood.interpretation ?? "Unavailable")")
+                .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
+                .foregroundStyle(Theme.inkSecondary)
+                .frame(maxWidth: .infinity)
+                .padding(Theme.Spacing.card)
+                .banknoteCard()
         }
     }
 }
@@ -189,6 +197,11 @@ struct MacroStripCardView: View {
                         icon: "building.columns.fill",
                         color: Theme.avatarBlue
                     )
+                }
+                if strip.rbiRepoRatePct != nil, let asOf = strip.rbiRepoRateAsOf {
+                    Text("RBI repo rate as of \(asOf)")
+                        .font(Theme.microLabel(size: 8))
+                        .foregroundStyle(Theme.inkTertiary)
                 }
             }
             .padding(Theme.Spacing.card)

@@ -55,6 +55,7 @@ from decimal import Decimal
 from services.staleness import compute_staleness
 from services.piotroski import compute_piotroski
 from services.llm_utils import contains_devanagari
+from services.market_service import get_rbi_policy
 
 
 # _adjust_for_splits, _adjust_for_bonus, _apply_corporate_actions
@@ -1677,14 +1678,20 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
                 import logging
                 logging.warning(f"Caught exception: {e}")
                 macro[key] = None
-        macro["rbi_repo_rate_pct"] = 6.50
+        rbi = get_rbi_policy()
+        macro["rbi_repo_rate_pct"] = rbi["rbi_repo_rate_pct"]
+        macro["rbi_repo_rate_as_of"] = rbi["rbi_repo_rate_as_of"]
+        if rbi["rbi_repo_rate_pct"] is None:
+            repo_str = "unavailable"
+        else:
+            repo_str = f"{rbi['rbi_repo_rate_pct']}% (as of {rbi['rbi_repo_rate_as_of'] or 'unknown date'})"
 
         holdings_list = "\n".join(f"- {t}: {c}" for t, c in holdings_data)
         macro_str = (
-            f"Brent crude: ${macro.get('brent_oil_usd', 'N/A')}/bbl, "
-            f"India VIX: {macro.get('india_vix', 'N/A')}, "
-            f"USD/INR: {macro.get('usd_inr', 'N/A')}, "
-            f"RBI repo rate: {macro.get('rbi_repo_rate_pct')}%"
+            f"Brent crude: ${macro.get('brent_oil_usd') or 'N/A'}/bbl, "
+            f"India VIX: {macro.get('india_vix') or 'unavailable'}, "
+            f"USD/INR: {macro.get('usd_inr') or 'N/A'}, "
+            f"RBI repo rate: {repo_str}"
         )
         prompt = (
             f"Current Indian macro environment: {macro_str}\n\n"

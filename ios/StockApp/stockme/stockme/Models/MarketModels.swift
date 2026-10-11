@@ -243,7 +243,9 @@ struct MacroStrip: Codable {
     let crudeOilUsd: Double?
     let brentOilUsd: Double?
     let indiaVix: Double?
+    let indiaVixSource: String?
     let rbiRepoRatePct: Double?
+    let rbiRepoRateAsOf: String?
     let rbiStance: String?
 
     enum CodingKeys: String, CodingKey {
@@ -251,7 +253,9 @@ struct MacroStrip: Codable {
         case crudeOilUsd = "crude_oil_usd"
         case brentOilUsd = "brent_oil_usd"
         case indiaVix = "india_vix"
+        case indiaVixSource = "india_vix_source"
         case rbiRepoRatePct = "rbi_repo_rate_pct"
+        case rbiRepoRateAsOf = "rbi_repo_rate_as_of"
         case rbiStance = "rbi_stance"
     }
 }
