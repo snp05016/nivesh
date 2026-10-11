@@ -54,10 +54,16 @@ _CONFORMAL_HORIZONS: dict[str, int] = {
 }
 _CONFORMAL_COVERAGE_PCT = 90
 _CONFORMAL_MIN_ROWS = 10
+_BOUNDS_METHOD = "empirical_rolling_quantile"
 
 # KNN analogue search
 _KNN_DEFAULT_K = 10
 _KNN_MAX_RECORDS = 500
+# A stored row needs this many of the 8 features present (not defaulted) to be
+# compared at all; below it the "similarity" would be computed on defaults.
+_KNN_MIN_REAL_FEATURES = 4
+# Below this many labelled analogues a hit rate carries no information.
+_KNN_MIN_OUTCOMES = 10
 
 # Governance hard cap
 _GOVERNANCE_CAP_THRESHOLD = 40
@@ -194,11 +200,12 @@ def compute_conformal_bounds(
     hist_df: Optional[pd.DataFrame],
 ) -> dict:
     """
-    Compute conformal prediction intervals using historical return percentiles.
+    Compute empirical return ranges from historical rolling-return percentiles.
 
-    For each horizon (63/252/756 trading days), computes the distribution of
-    past rolling returns and takes the 5th/95th percentiles as the 90% coverage
-    conformal interval. The current price serves as the mid-point.
+    For each horizon (63/252/756 trading days), takes the 5th/95th percentiles
+    of past overlapping rolling returns around the current price. This is an
+    empirical quantile range, NOT a conformal interval (no calibration split
+    and no coverage backtest); the function name is kept for callers.
 
     Args:
         ticker: NSE/BSE ticker (for logging).
@@ -207,13 +214,19 @@ def compute_conformal_bounds(
                  63 rows for short-term bounds.
 
     Returns:
-        dict mapping each horizon to {lower, mid, upper, coverage_pct: 90}.
-        On insufficient data, bounds default to 0.0/current_price/0.0.
+        dict mapping each horizon to {lower, mid, upper, coverage_pct, method}.
+        On insufficient data, lower/upper are None (unknown, never 0.0).
     """
-    defaults: dict[str, dict[str, Any]] = {
-        h: {"lower": 0.0, "mid": current_price, "upper": 0.0, "coverage_pct": _CONFORMAL_COVERAGE_PCT}
-        for h in _CONFORMAL_HORIZONS
-    }
+    def _unavailable() -> dict[str, Any]:
+        return {
+            "lower": None,
+            "mid": current_price,
+            "upper": None,
+            "coverage_pct": _CONFORMAL_COVERAGE_PCT,
+            "method": _BOUNDS_METHOD,
+        }
+
+    defaults: dict[str, dict[str, Any]] = {h: _unavailable() for h in _CONFORMAL_HORIZONS}
 
     if hist_df is None or not isinstance(hist_df, pd.DataFrame):
         logger.warning(
@@ -233,22 +246,12 @@ def compute_conformal_bounds(
                     "(need %d rows, have %d).",
                     ticker, horizon_label, window, row_count,
                 )
-                result[horizon_label] = {
-                    "lower": 0.0,
-                    "mid": current_price,
-                    "upper": 0.0,
-                    "coverage_pct": _CONFORMAL_COVERAGE_PCT,
-                }
+                result[horizon_label] = _unavailable()
                 continue
 
             rolling_returns = close.pct_change(periods=window).dropna()
             if len(rolling_returns) < _CONFORMAL_MIN_ROWS:
-                result[horizon_label] = {
-                    "lower": 0.0,
-                    "mid": current_price,
-                    "upper": 0.0,
-                    "coverage_pct": _CONFORMAL_COVERAGE_PCT,
-                }
+                result[horizon_label] = _unavailable()
                 continue
 
             p5 = float(rolling_returns.quantile(0.05))
@@ -259,17 +262,13 @@ def compute_conformal_bounds(
                 "mid": round(current_price, 2),
                 "upper": round(current_price * (1.0 + p95), 2),
                 "coverage_pct": _CONFORMAL_COVERAGE_PCT,
+                "method": _BOUNDS_METHOD,
             }
 
         # Guarantee all horizon keys exist
         for h in _CONFORMAL_HORIZONS:
             if h not in result:
-                result[h] = {
-                    "lower": 0.0,
-                    "mid": current_price,
-                    "upper": 0.0,
-                    "coverage_pct": _CONFORMAL_COVERAGE_PCT,
-                }
+                result[h] = _unavailable()
 
         return result
 
@@ -286,22 +285,29 @@ def compute_conformal_bounds(
 def _extract_feature_row(full_json_str: str) -> Optional[np.ndarray]:
     """Build an 8-dimensional feature vector from a historical analysis JSON row.
 
-    Returns None if the JSON cannot be parsed or required keys are missing.
+    Returns None if the JSON cannot be parsed, or if fewer than
+    _KNN_MIN_REAL_FEATURES of the 8 features are present in the row (the rest
+    would be defaults, so the row would match on constants, not on its setup).
     """
     try:
         data = json.loads(full_json_str) if isinstance(full_json_str, str) else full_json_str
         if not isinstance(data, dict):
             return None
         fund = data.get("fundamentals_snapshot") or {}
+        raw = {
+            "rsi_14": data.get("rsi_14") if data.get("rsi_14") is not None else data.get("rsi"),
+            "price_vs_sma50_pct": data.get("price_vs_sma50_pct"),
+            "hist_vol_21_annualized": data.get("hist_vol_21_annualized"),
+            "momentum_score": data.get("momentum_score"),
+            "promoter_pledged_pct": fund.get("promoter_pledged_pct"),
+            "delivery_pct": data.get("delivery_pct"),
+            "oi_pcr": data.get("oi_pcr"),
+            "pe_ratio": fund.get("pe_ratio"),
+        }
+        if sum(v is not None for v in raw.values()) < _KNN_MIN_REAL_FEATURES:
+            return None
         features = [
-            float(data.get("rsi_14") or data.get("rsi", _FEATURE_DEFAULTS["rsi_14"])),
-            float(data.get("price_vs_sma50_pct") or _FEATURE_DEFAULTS["price_vs_sma50_pct"]),
-            float(data.get("hist_vol_21_annualized") or _FEATURE_DEFAULTS["hist_vol_21_annualized"]),
-            float(data.get("momentum_score") or _FEATURE_DEFAULTS["momentum_score"]),
-            float(fund.get("promoter_pledged_pct") or _FEATURE_DEFAULTS["promoter_pledged_pct"]),
-            float(data.get("delivery_pct") or _FEATURE_DEFAULTS["delivery_pct"]),
-            float(data.get("oi_pcr") or _FEATURE_DEFAULTS["oi_pcr"]),
-            float(fund.get("pe_ratio") or _FEATURE_DEFAULTS["pe_ratio"]),
+            float(v) if v is not None else _FEATURE_DEFAULTS[k] for k, v in raw.items()
         ]
         return np.array(features, dtype=np.float64)
     except (ValueError, TypeError, json.JSONDecodeError) as e:
@@ -349,10 +355,11 @@ def find_historical_analogues(
     Returns:
         dict with:
             k_found: int — number of analogues actually found.
-            historical_win_rate_pct: float or None — % of analogues with
-                correct directional prediction.
-            avg_return_on_wins_pct: float or None — average return % of
-                winning analogues.
+            historical_win_rate_pct: float or None — % of labelled analogues
+                whose call was directionally correct; None below
+                _KNN_MIN_OUTCOMES labelled analogues.
+            avg_return_on_wins_pct: always None (kept for the API contract:
+                summing raw deltas of correct calls mixes signs for bearish calls).
             analogue_summary: str — human-readable summary.
     """
     try:
@@ -396,7 +403,6 @@ def find_historical_analogues(
 
         k_found = len(top_k)
         wins = 0
-        total_return = 0.0
         outcome_count = 0
 
         for _, row in top_k:
@@ -406,23 +412,26 @@ def find_historical_analogues(
                 outcome_count += 1
                 if correct:
                     wins += 1
-                    total_return += delta
 
-        win_rate = round((wins / outcome_count) * 100, 1) if outcome_count > 0 else None
-        avg_wins = round(total_return / wins, 2) if wins > 0 else None
-
-        if win_rate is not None:
+        win_rate = None
+        if outcome_count == 0:
+            summary = f"{k_found} analogues found but no outcome data yet."
+        elif outcome_count < _KNN_MIN_OUTCOMES:
             summary = (
-                f"{wins} of {outcome_count} similar setups produced positive returns "
-                f"({win_rate}% win rate)"
+                f"{k_found} analogues found; insufficient outcome history "
+                f"({outcome_count} labelled, need {_KNN_MIN_OUTCOMES})."
             )
         else:
-            summary = f"{k_found} analogues found but no outcome data yet."
+            win_rate = round((wins / outcome_count) * 100, 1)
+            summary = (
+                f"{wins} of {outcome_count} similar past calls were directionally correct "
+                f"({win_rate}% hit rate)"
+            )
 
         return {
             "k_found": k_found,
             "historical_win_rate_pct": win_rate,
-            "avg_return_on_wins_pct": avg_wins,
+            "avg_return_on_wins_pct": None,
             "analogue_summary": summary,
         }
 

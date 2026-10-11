@@ -72,7 +72,7 @@ private struct QuantLedgerCard: View {
                 value: probability("base_probability")
             )
             QuantLedgerRow(
-                label: "SHAP Drivers Adjustment",
+                label: "Rule-based factor adjustment",
                 value: signedProbability("net_shap_adjustment")
             )
             QuantLedgerRow(
@@ -87,7 +87,7 @@ private struct QuantLedgerCard: View {
             GuillocheDivider()
 
             QuantLedgerRow(
-                label: "Calibrated Confidence",
+                label: "Heuristic confidence",
                 value: probability("final_calibrated_confidence"),
                 isTotal: true
             )
@@ -189,8 +189,8 @@ private struct QuantGlossaryCard: View {
             "The mathematical starting point before any market conditions are applied."
         ),
         (
-            "SHAP Adjustments",
-            "How much specific indicators like P/E ratio or RSI pushed the score up or down."
+            "Rule-based adjustments",
+            "Fixed rule scores for the F-Score, RSI and promoter pledging that push the number up or down. Hand-set rules, not a trained model."
         ),
         (
             "Regime Multiplier",

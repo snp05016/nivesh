@@ -140,10 +140,10 @@ struct AnalysisCoreSections: View {
             }
 
             HStack(spacing: Theme.Spacing.small) {
-                Text("CALIBRATED PROBABILITY")
+                Text("HEURISTIC CONFIDENCE")
                     .font(Theme.microLabel())
                     .foregroundStyle(Theme.inkTertiary)
-                    .explainableTerm("Mathematically Calibrated Confidence")
+                    .explainableTerm("Heuristic Confidence")
                 if analysis.confidenceMathBreakdown != nil {
                     QuantInspectorInfoButton { HapticManager.selection(); 
     HapticManager.selection()

@@ -1,17 +1,20 @@
 """
-QuantitativeEngine — Deterministic ML proxy for mathematically provable predictions.
+QuantitativeEngine — rule-based heuristic scores.
 
 Runs BEFORE the LangGraph multi-agent pipeline (teacher-student flow).
-Provides: market regime detection, conformal target bounds, SHAP-style
-feature importance drivers, and calibrated confidence scoring.
+Provides: a volatility-regime label, an approximate 3-month volatility range,
+fixed-rule factor scores and a heuristic confidence number.
 
-All math is deterministic — no black-box ML.
+These are hand-set rules, not a trained model: the factor scores are not SHAP
+values, the range is not a conformal interval and the confidence is not
+calibrated against outcomes. Payload key names (``conformal_target_*``,
+``calibrated_confidence``) are kept only for the API contract.
 """
 
 import asyncio
 import logging
 import math
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Optional, Tuple
 
 import numpy as np
 
@@ -22,25 +25,27 @@ _NIFTY_LONG_RUN_ANNUAL_VOL = 0.16
 
 
 class QuantitativeEngine:
-    """Deterministic ML proxy — provides mathematically provable predictions."""
+    """Rule-based heuristic scores; not a trained model, not SHAP, not conformal, not calibrated."""
 
     def __init__(self, ticker: str) -> None:
         self.ticker = ticker.upper()
 
     async def run_full_pipeline(self) -> Dict[str, Any]:
-        """Execute the full quant pipeline: fetch data, compute regime,
-        conformal targets, SHAP drivers, and calibrated confidence.
-        
+        """Fetch inputs and compute the regime label, volatility range,
+        rule-based factor scores and heuristic confidence.
+
+        When any input is unavailable the heuristic confidence is None (never a
+        number built from partial inputs) and ``data_quality`` names the gap.
+
         Returns:
-            Dict[str, Any]: A dictionary containing the detected market regime,
-                calibrated confidence metrics, conformal target bounds, quantitative
-                drivers, and tail risk flags.
+            Dict[str, Any]: Regime, heuristic confidence and its breakdown,
+                volatility range, rule-based factors, tail risk flags,
+                ``method`` and ``data_quality``.
         """
         # Fetch data concurrently — return_exceptions so one failure doesn't abort all
         results = await asyncio.gather(
             self._fetch_market_volatility(),
             self._fetch_fundamentals(),
-            self._fetch_macro_indicators(),
             return_exceptions=True,
         )
         market_data = (
@@ -53,11 +58,6 @@ class QuantitativeEngine:
             if not isinstance(results[1], BaseException)
             else {"piotroski_score": None, "promoter_pledge_pct": None, "fallback": True}
         )
-        _macro_data = (  # noqa: F841 — reserved for future regime enrichment (Nifty VIX)
-            results[2]
-            if not isinstance(results[2], BaseException)
-            else {"nifty_50": 23600.0, "vix": None, "fallback": True}
-        )
 
         # Sequential math (order matters — each step depends on prior)
         regime = self._detect_market_regime(market_data)
@@ -65,9 +65,19 @@ class QuantitativeEngine:
         shap_drivers, tail_risks = self._compute_feature_importance(
             fundamental_data, market_data
         )
-        confidence, confidence_breakdown = self._compute_calibrated_confidence(
-            regime, shap_drivers, tail_risks
-        )
+        data_quality = {
+            "fundamentals": "unavailable" if fundamental_data.get("fallback") else "ok",
+            "market": "unavailable" if market_data.get("fallback") else "ok",
+        }
+        if data_quality["market"] != "ok":
+            # The fallback volatility is a long-run constant, not this stock's regime.
+            regime = "Data Unavailable"
+        confidence: Optional[float] = None
+        confidence_breakdown: Dict[str, float] = {}
+        if all(v == "ok" for v in data_quality.values()):
+            confidence, confidence_breakdown = self._compute_calibrated_confidence(
+                regime, shap_drivers, tail_risks
+            )
 
         return {
             "market_regime": regime,
@@ -77,11 +87,9 @@ class QuantitativeEngine:
             "conformal_target_lower_3m": targets["lower_3m"],
             "quantitative_drivers": shap_drivers,
             "tail_risk_flags": tail_risks,
+            "method": "rule_based_heuristic",
             # Unknown inputs are reported, never imputed with neutral constants.
-            "data_quality": {
-                "fundamentals": "unavailable" if fundamental_data.get("fallback") else "ok",
-                "market": "unavailable" if market_data.get("fallback") else "ok",
-            },
+            "data_quality": data_quality,
         }
 
     # ── Data Fetching (concurrent I/O) ──────────────────────────────────────
@@ -208,34 +216,6 @@ class QuantitativeEngine:
                 "fallback": True,
             }
 
-    async def _fetch_macro_indicators(self) -> dict:
-        """Fetch macro indicators (Nifty 50 level) for regime context.
-        
-        Returns:
-            dict: Macro data containing the Nifty 50 level and a fallback flag.
-        """
-        try:
-            import yfinance as yf
-
-            nifty = yf.Ticker("^NSEI")
-            info = nifty.fast_info
-            nifty_price = getattr(info, "last_price", None)
-            if nifty_price is None or (
-                isinstance(nifty_price, float) and math.isnan(nifty_price)
-            ):
-                hist = nifty.history(period="5d")
-                nifty_price = (
-                    float(hist["Close"].iloc[-1])
-                    if not hist.empty
-                    else 23600.0
-                )
-            else:
-                nifty_price = float(nifty_price)
-            return {"nifty_50": nifty_price, "vix": None, "fallback": False}
-        except Exception as e:
-            _LOG.warning("[QuantEngine] Macro data fetch failed: %s", e)
-            return {"nifty_50": 23600.0, "vix": None, "fallback": True}
-
     # ── Core Math ───────────────────────────────────────────────────────────
 
     @staticmethod
@@ -264,7 +244,7 @@ class QuantitativeEngine:
         return "Transition / Macro-Driven"
 
     @staticmethod
-    def _compute_conformal_targets(market_data: dict) -> Dict[str, float]:
+    def _compute_conformal_targets(market_data: dict) -> Dict[str, Optional[float]]:
         """Compute an approximate 3-month volatility range.
 
         Bounds are current_price * (1 +/- daily_vol * sqrt(63) * 1.645): a
@@ -277,13 +257,14 @@ class QuantitativeEngine:
             market_data (dict): Dictionary containing current price and daily volatility.
 
         Returns:
-            Dict[str, float]: Upper and lower price target bounds for a 3-month horizon.
+            Dict[str, Optional[float]]: Upper and lower 3-month range bounds, None
+                when there is no current price.
         """
         current_price = market_data.get("current_price", 0.0)
         daily_vol = market_data.get("daily_volatility", 0.02)
 
         if current_price <= 0:
-            return {"upper_3m": 0.0, "lower_3m": 0.0}
+            return {"upper_3m": None, "lower_3m": None}
 
         # 63 trading days in 3 months; 1.645 = two-sided 90% normal z-score
         projected_vol_3m = daily_vol * math.sqrt(63) * 1.645
@@ -300,7 +281,9 @@ class QuantitativeEngine:
     def _compute_feature_importance(
         fundamental_data: dict, market_data: dict
     ) -> Tuple[Dict[str, float], Dict[str, bool]]:
-        """Compute SHAP-style feature importance drivers and tail risk flags.
+        """Compute fixed-rule factor scores and tail risk flags.
+
+        The scores are hand-set constants and linear rules (not SHAP values).
 
         Drivers with |contribution| <= 0.05 are filtered out as noise.
 
@@ -309,8 +292,8 @@ class QuantitativeEngine:
             market_data (dict): Dictionary containing technical market data (e.g., RSI).
 
         Returns:
-            Tuple[Dict[str, float], Dict[str, bool]]: A tuple containing the SHAP-style
-                quantitative drivers and tail risk flags.
+            Tuple[Dict[str, float], Dict[str, bool]]: A tuple containing the rule-based
+                factor scores and tail risk flags.
         """
         def _known(v):
             return None if v is None or (isinstance(v, float) and math.isnan(v)) else v
@@ -359,11 +342,12 @@ class QuantitativeEngine:
         regime: str, shap_drivers: Dict[str, float], tail_risks: Dict[str, bool],
         venn_abers_base: float = None,
     ) -> Tuple[float, Dict[str, float]]:
-        """Compute calibrated confidence score (0.05–0.95).
+        """Compute a heuristic confidence score (0.05–0.95).
 
-        Base confidence from Venn-Abers isotonic calibration when available,
-        otherwise defaults to 0.50. Adjusted by SHAP driver sum,
-        multiplied by regime factor, then penalized for tail risks.
+        Not calibrated: 0.50 (or a supplied base) plus the sum of the rule-based
+        factor scores, multiplied by a fixed regime factor, minus a fixed
+        tail-risk penalty. Key names keep the legacy "calibrated"/"shap" wording
+        only for the API contract.
 
         Args:
             regime (str): The current market volatility regime.

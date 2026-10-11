@@ -1455,7 +1455,6 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
         from services.math_engines.venn_abers import VennAbersEngine
         from services.math_engines.information_coefficient import InformationCoefficientEngine
         from services.math_engines.currency_commodity import CurrencyCommodityEngine
-        from services.math_engines.monte_carlo_bootstrap import MonteCarloBootstrapEngine
         from database import get_session as _cal_get_session
         # --- ML Engine cross-section client ---
         from services.qlib_engine.ml_client import build_ml_ohlcv_payload, predict_cross_section_sync
@@ -1526,17 +1525,6 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
         rank_ic_out     = rank_ic_raw.get("output", {}) if isinstance(rank_ic_raw, dict) else {}
         currency_out    = currency_raw.get("output", {}) if isinstance(currency_raw, dict) else {}
 
-        # --- Tier B: Monte-Carlo bootstrap (depends on analogue_data) ---
-        mc_out = {}
-        try:
-            analogue_returns = analogue_data.get("analogue_returns", []) if isinstance(analogue_data, dict) else []
-            if analogue_returns and len(analogue_returns) >= 5:
-                mc_result = MonteCarloBootstrapEngine().compute(
-                    base_symbol, {"analogue_returns": analogue_returns})
-                mc_out = mc_result.get("output", {}) if isinstance(mc_result, dict) else {}
-        except Exception as _mc_err:
-            logging.info(f"[CALIBRATION] Monte-Carlo bootstrap failed: {_mc_err}")
-
         # Store calibration results in final_state for _normalize_response to pick up
         if isinstance(final_state, dict):
             final_state["_calibration_diagnostics"] = {
@@ -1547,11 +1535,6 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
                 "interpretation": cal_metrics_out.get("interpretation", "Calibration data not yet available."),
             }
             final_state["_confidence_interval"] = venn_abers_out.get("confidence_interval", [None, None])
-            final_state["_monte_carlo"] = {
-                "cvar_99": mc_out.get("monte_carlo_cvar_99"),
-                "expected_return": mc_out.get("expected_return"),
-                "prob_positive": mc_out.get("prob_positive"),
-            }
             final_state["_currency_commodity_spillover"] = {
                 "modifier": currency_out.get("modifier", 0.0),
                 "description": currency_out.get("description", "Not computed."),
@@ -1604,14 +1587,11 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
                 ml_cross_raw.get("direction"), "UNKNOWN")
             _cal_summary_lines.append(
                 f"ML X-Section: {_ml_dir_label} (conf={ml_cross_raw.get('confidence', 0):.3f})")
-        if mc_out.get("monte_carlo_cvar_99") is not None:
-            _cal_summary_lines.append(
-                f"MC CVaR-99: {mc_out['monte_carlo_cvar_99']:.2%} | P(+): {_nf(mc_out.get('prob_positive'), 0):.0%}")
 
         _cal_extra = "\n".join(_cal_summary_lines)
 
         calibration_block = f"""
-=== CALIBRATION ENGINE OUTPUT (AUTHORITATIVE) ===
+=== CALIBRATION HEURISTICS (rule-based, unvalidated) ===
 Signal Agreement: {_nf(agreement_data.get('agreement_ratio'), 0.5):.2f}
 Regime: {regime_state} (x{_nf(regime_mult, 1.0):.2f})
 Delivery: {_nf(delivery_data.get('delivery_signal'), 'NEUTRAL')} ({_nf(delivery_data.get('delivery_pct_latest'), 0):.1f}% #)
@@ -2061,18 +2041,14 @@ def analyze(
         logging.info(f"[Orchestrator] QuantEngine failed for {ticker}: {e}")
         quant_payload = {
             "market_regime": "Data Unavailable",
-            "calibrated_confidence": 0.0,
-            "confidence_math_breakdown": {
-                "base_probability": 0.50,
-                "net_shap_adjustment": 0.0,
-                "regime_multiplier": 1.0,
-                "tail_risk_deduction": 0.0,
-                "final_calibrated_confidence": 0.0,
-            },
+            "calibrated_confidence": None,
+            "confidence_math_breakdown": {},
             "conformal_target_upper_3m": None,
             "conformal_target_lower_3m": None,
             "quantitative_drivers": {},
             "tail_risk_flags": {},
+            "method": "rule_based_heuristic",
+            "data_quality": {"fundamentals": "unavailable", "market": "unavailable"},
         }
 
     emitter.emit("agents", "Multi-Agent Engine",
@@ -2083,10 +2059,10 @@ def analyze(
     emitter.emit("synthesis", "Research & Portfolio Managers",
                  "Weighing the dialectical debate (bear 1.5x) into a final call", pct=60)
     raw_output += (
-        "\n\nQUANTITATIVE ENGINE OUTPUT (AUTHORITATIVE):\n"
+        "\n\nRULE-BASED QUANT HEURISTICS (not a trained model; a null value means the input was unavailable):\n"
         f"{_json_dumps(quant_payload, sort_keys=True)}\n"
-        "Use these exact target bounds, confidence, regime, drivers, and tail-risk flags. "
-        "Do not invent or override quantitative values. "
+        "Quote these only as rule-based estimates; if a value is null say it is unavailable; "
+        "do not invent replacements. "
         "Fields listed as unavailable in data_quality are unknown; do not state or infer them.\n"
     )
     raw_output += f"\n\nADDITIONAL DATA (MANDATORY TO INCLUDE IN fundamentals_snapshot):\nPromoter Pledging: {pledging_data}\n"
@@ -2144,8 +2120,6 @@ def analyze(
             result["calibration_diagnostics"] = final_state["_calibration_diagnostics"]
         if final_state.get("_confidence_interval"):
             result["confidence_interval"] = final_state["_confidence_interval"]
-        if final_state.get("_monte_carlo"):
-            result["monte_carlo"] = final_state["_monte_carlo"]
         if final_state.get("_currency_commodity_spillover"):
             result["currency_commodity_spillover"] = final_state["_currency_commodity_spillover"]
         if final_state.get("_ml_direction") is not None:

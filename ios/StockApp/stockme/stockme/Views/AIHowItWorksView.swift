@@ -11,17 +11,17 @@ struct AIHowItWorksView: View {
          "Computes staleness to save time",
          "Before engaging the heavy pipeline, the Smart Cache Gate computes a Staleness Score (0–100) based on Time Elapsed, Price Volatility, and News Sentiment Shifts. If the score is below 20, Nivesh instantly serves the cached report. If it exceeds 45, the deep-scan pipeline runs."),
         ("function", "The Quantitative Engine",
-         "Deterministic mathematical modeling",
-         "Before any AI reads text, Nivesh's Machine Learning engine crunches the numbers. It computes the broader market volatility regime, mathematically bounds the target prices using historical standard deviation, and isolates exactly which financial features (like P/E or RSI) are driving the stock. This strict statistical layer entirely eliminates AI hallucination."),
+         "Fixed rule-based scores",
+         "Before any AI reads text, Nivesh applies a set of fixed, hand-set rules. It labels the volatility regime from 30-day volatility, draws an approximate 3-month range from recent volatility, and scores a few factors (Piotroski F-Score, RSI, promoter pledging) with fixed weights. These are heuristics, not a trained model; when an input is unavailable the score is left blank rather than guessed."),
         ("brain.head.profile", "The Analyst Committee",
          "Parallel execution of 5 specialized agents",
-         "Once the mathematical probability is locked in, Nivesh deploys a LangGraph-based AI framework. Five specialized agents—Market, Sentiment, News, Fundamentals, and Governance—concurrently read through earnings calls, news, and SEBI filings to provide human-readable context explaining the 'why' behind the Quantitative Engine's math."),
+         "Once the rule-based scores are computed, Nivesh deploys a LangGraph-based AI framework. Five specialized agents—Market, Sentiment, News, Fundamentals, and Governance—concurrently read through earnings calls, news, and SEBI filings to provide human-readable context explaining the 'why' behind the Quantitative Engine's math."),
         ("arrow.triangle.branch", "Dialectical Debate (Bull vs Bear)",
          "Adversarial testing of the investment thesis",
          "A Bullish Researcher and a Bearish Researcher engage in a rigorous debate. The Bear is deliberately given a 1.5× weight advantage and aggressively weaponizes any tail-risks flagged by the Quantitative Engine (like auditor resignations or excessive pledging). The burden of proof strictly lies with the Bull."),
         ("person.text.rectangle.fill", "The Portfolio Manager",
-         "Final synthesis & Calibration",
-         "A senior AI Portfolio Manager reviews the math and the debate transcript. It synthesizes the final report and outputs a 'Mathematically Calibrated Confidence' score. Unlike standard AI apps that simply guess, this confidence percentage is rigorously calibrated using Venn-Abers probabilities against historical backtests.")
+         "Final synthesis",
+         "A senior AI Portfolio Manager reviews the scores and the debate transcript and writes the final report. The confidence shown blends the AI's view, the rule-based heuristic score and other signals. It is not yet calibrated against historical outcomes, so treat it as a rough guide, not a probability.")
     ]
 
     private let factors: [(category: String, items: [String])] = [
@@ -34,9 +34,9 @@ struct AIHowItWorksView: View {
 
     private let mathFormulas: [(title: String, formula: String, explanation: String)] = [
         ("Regime Volatility (HMM Proxy)", "σ_annual = StdDev(R_30d) × √252", "Calculates the 30-day trailing volatility. If σ > 22%, the backend triggers a 'Crisis Regime', automatically slashing fundamental confidence multipliers and pivoting to momentum features."),
-        ("Conformal Price Bounds", "P_target = P_current × (1 ± (σ_daily × √63 × 1.645))", "Computes the 3-month (63 trading days) target price boundaries. It uses the 90% confidence Z-score (1.645) to guarantee targets are strictly bounded by historical variance, destroying LLM hallucination."),
-        ("SHAP Base Score", "S_base = Σ (w_i × f_i) / n", "Aggregates structural features (Piotroski F-Score, RSI, Debt/Equity). Each feature f_i is mapped to a strictly bounded [-1.0, 1.0] modifier depending on historical correlation w_i."),
-        ("Venn-Abers Calibration", "C_final = max(0.05, min(0.95, (S_base × R_mult) - T_penalty))", "The final calibrated probability. It takes the base SHAP score, multiplies it by the Regime Multiplier (R_mult), and subtracts absolute Tail Risk Penalties (T_penalty) like excessive promoter pledging.")
+        ("Approx. 3M Volatility Range", "P_range = P_current × (1 ± (σ_daily × √63 × 1.645))", "An approximate 3-month (63 trading days) range from recent daily volatility, assuming normally distributed returns. It is not a forecast and carries no coverage guarantee; real prices can and do move outside it."),
+        ("Rule-Based Factor Scores", "S = Σ fixed rule scores", "Fixed rules, not a trained model: F-Score adds (F − 5) / 4 × 0.40, RSI below 30 adds 0.25 and above 70 subtracts 0.25, and promoter pledging subtracts 0.50 × the pledged share. Scores of 0.05 or less are dropped."),
+        ("Heuristic Confidence", "C = max(0.05, min(0.95, (0.50 + S) × R_mult − T_penalty))", "A heuristic score, not a calibrated probability. It starts at 0.50, adds the rule-based factor scores, multiplies by the Regime Multiplier (R_mult) and subtracts a fixed 0.30 Tail Risk Penalty (T_penalty) when pledging is above 30% or the F-Score is below 3. It is blank when an input is unavailable.")
     ]
 
     var body: some View {

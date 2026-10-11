@@ -130,7 +130,7 @@ def test_quant_payload_is_passed_to_reformatter(monkeypatch):
 
     result = orchestrator.analyze("PIPEQ", "NSE", user_id=992102, scan_type="standard")
 
-    assert "QUANTITATIVE ENGINE OUTPUT (AUTHORITATIVE)" in captured["raw_output"]
+    assert "RULE-BASED QUANT HEURISTICS" in captured["raw_output"]
     assert "High Volatility / Crisis" in captured["raw_output"]
     assert result["calibrated_confidence"] == 0.33
     assert result["confidence_math_breakdown"]["final_calibrated_confidence"] == 0.33

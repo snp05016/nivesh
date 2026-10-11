@@ -23,7 +23,7 @@ struct QuantitativeDriversCard: View {
     // Extracted to separate View to prevent chkstk_darwin
     private var headerView: some View {
         HStack {
-            Text("STATISTICAL DRIVERS (SHAP)")
+            Text("RULE-BASED FACTORS")
                 .font(Theme.officialStampFont(size: 12))
                 .foregroundStyle(Theme.inkTertiary)
                 .tracking(1.5)
