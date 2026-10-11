@@ -1845,3 +1845,17 @@ class LlmUsage(Base):
     __table_args__ = (
         Index("ix_llm_usage_user_created", "user_id", "created_at"),
     )
+
+
+class SchedulerJobStatus(Base):
+    """Last run of each scheduled job (SILENT-13). Written by the scheduler worker via
+    core.dashboard_state._dash_update_harvest so every worker's dashboard can read it."""
+    __tablename__ = "scheduler_job_status"
+
+    job_name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    last_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    last_result_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)

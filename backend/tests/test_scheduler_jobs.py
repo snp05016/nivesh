@@ -136,3 +136,61 @@ def test_dash_update_creates_unknown_key():
     finally:
         with ds._dash_lock:
             ds._harvest_status.pop(key, None)
+
+
+# ── SILENT-13: job status is persisted so every worker's dashboard sees it ───────
+
+def test_unknown_key_recorded_and_persisted():
+    from core import dashboard_state as ds
+    from database import get_session
+    from models.db_models import SchedulerJobStatus
+
+    key = "silent13_bhavcopy_test"
+    try:
+        ds._dash_update_harvest(key, "running")
+        ds._dash_update_harvest(key, "error", {"error": "x"})
+        assert ds._harvest_status[key]["status"] == "error"
+
+        with get_session() as session:
+            row = session.get(SchedulerJobStatus, key)
+            assert row is not None
+            assert (row.status, row.last_error) == ("error", "x")
+            assert row.last_started_at is not None and row.last_finished_at is not None
+
+        persisted = ds.persisted_harvest_status()[key]
+        assert persisted["status"] == "error"
+        assert persisted["last_result"] == {"error": "x"}
+    finally:
+        with ds._dash_lock:
+            ds._harvest_status.pop(key, None)
+        with get_session() as session:
+            session.query(SchedulerJobStatus).filter_by(job_name=key).delete()
+            session.commit()
+
+
+def test_persist_failure_never_raises(monkeypatch):
+    import database
+    from core import dashboard_state as ds
+
+    def _broken_session():
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(database, "get_session", _broken_session)
+    key = "silent13_db_down_test"
+    try:
+        ds._dash_update_harvest(key, "error", {"error": "boom"})  # must not raise
+        assert ds._harvest_status[key]["status"] == "error"
+        assert ds.persisted_harvest_status() == {}
+    finally:
+        with ds._dash_lock:
+            ds._harvest_status.pop(key, None)
+
+
+def test_dashboard_snapshot_reads_persisted_rows(monkeypatch):
+    import routers.dashboard as dashboard_router
+
+    monkeypatch.setattr(dashboard_router, "persisted_harvest_status",
+                        lambda: {"bhavcopy": {"status": "error", "last_run": None, "last_result": None}})
+    monkeypatch.setattr(dashboard_router, "build_ai_engine_monitor", lambda **_k: {})
+    snap = dashboard_router.get_dashboard_snapshot()
+    assert snap["harvest_status"]["bhavcopy"]["status"] == "error"

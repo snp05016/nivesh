@@ -54,6 +54,7 @@ logger = logging.getLogger(__name__)
 _REDIS_BACKOFF_S = 30.0  # after a connection error, skip Redis for this long
 _DEFAULT_TTL = 600       # namespaces missing from ttl_map
 _now = time.monotonic    # indirection so tests can control the clock
+_critical_logged = False  # REDIS_URL-set-but-down CRITICAL fires once per process
 
 
 class CacheService:
@@ -102,8 +103,14 @@ class CacheService:
         return None if _now() < self._down_until else self._client
 
     def _redis_failed(self, op: str, exc: Exception) -> None:
+        global _critical_logged
         if isinstance(exc, redis.RedisError):
             self._down_until = _now() + _REDIS_BACKOFF_S
+            # SILENT-11: an explicitly configured Redis that is down means every
+            # worker silently keeps its own cache; say so loudly, once per process.
+            if os.getenv("REDIS_URL") and not _critical_logged:
+                _critical_logged = True
+                logger.critical("REDIS_URL configured but Redis unreachable - using per-process memory cache")
         logger.warning(f"Redis {op} error, falling back to memory: {exc}")
 
     # ── Sync API (used by services.disk_cache) ────────────────────────────

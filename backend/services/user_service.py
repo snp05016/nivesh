@@ -142,7 +142,9 @@ def get_watchlist(user_id: int) -> Optional[dict]:
             "asm_gsm_status": asm_gsm_status,
         })
 
-    _watchlist_price_cache[user_id] = {"data": result, "ts": now}
+    # SILENT-11: a missing price is a transient failure; don't pin it for the TTL.
+    if all(r["price_status"] != "unavailable" for r in result):
+        _watchlist_price_cache[user_id] = {"data": result, "ts": now}
     return {"watchlist": result}
 
 

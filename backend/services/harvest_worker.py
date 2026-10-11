@@ -53,6 +53,7 @@ def _run_youtube_harvest_bg():
         _dash_update_harvest("youtube", "idle", {"channels": res1, "portfolio": res2})
     except Exception as e:
         _dash_update_harvest("youtube", "error", {"error": str(e)})
+        logger.exception("[youtube] harvest failed")
 
 
 def _run_advisor_harvest_bg():
@@ -63,6 +64,7 @@ def _run_advisor_harvest_bg():
         _dash_update_harvest("advisor", "idle", {"result": res})
     except Exception as e:
         _dash_update_harvest("advisor", "error", {"error": str(e)})
+        logger.exception("[advisor] harvest failed")
 
 
 def _run_news_harvest_bg():
@@ -73,6 +75,7 @@ def _run_news_harvest_bg():
         _dash_update_harvest("news", "idle", {"added": res})
     except Exception as e:
         _dash_update_harvest("news", "error", {"error": str(e)})
+        logger.exception("[news] harvest failed")
 
 
 # ── Admin trigger endpoints ────────────────────────────────────────────────────
@@ -163,6 +166,7 @@ def start_scheduler() -> bool:
             _dash_update_harvest("advisor", "idle", {"result": res})
         except Exception as e:
             _dash_update_harvest("advisor", "error", {"error": str(e)})
+            logger.exception("[advisor] harvest failed")
 
     def _run_harvest_news():
         _dash_update_harvest("news", "running")
@@ -171,6 +175,7 @@ def start_scheduler() -> bool:
             _dash_update_harvest("news", "idle", {"added": res})
         except Exception as e:
             _dash_update_harvest("news", "error", {"error": str(e)})
+            logger.exception("[news] harvest failed")
 
     def _run_harvest_youtube_metadata():
         _dash_update_harvest("youtube", "running")
@@ -179,6 +184,7 @@ def start_scheduler() -> bool:
             _dash_update_harvest("youtube", "idle", {"metadata": res})
         except Exception as e:
             _dash_update_harvest("youtube", "error", {"error": str(e)})
+            logger.exception("[youtube] harvest failed")
 
     def _run_harvest_portfolio_videos():
         _dash_update_harvest("youtube", "running")
@@ -187,6 +193,7 @@ def start_scheduler() -> bool:
             _dash_update_harvest("youtube", "idle", {"portfolio": res})
         except Exception as e:
             _dash_update_harvest("youtube", "error", {"error": str(e)})
+            logger.exception("[youtube] harvest failed")
 
     def _run_evaluate_analysis_outcomes():
         with get_session() as db:
@@ -204,7 +211,7 @@ def start_scheduler() -> bool:
             logging.info(f"[bhavcopy] Downloaded {result.get('rows', 0)} EQ rows (source={result.get('source')})")
         except Exception as e:
             _dash_update_harvest("bhavcopy", "error", {"error": str(e)})
-            logging.error(f"[bhavcopy] Download error: {e}")
+            logger.exception("[bhavcopy] Download error")
 
     # ── NEW JOB 3: Morning brief pre-generation — 6:30 AM IST (1:00 UTC) ────
     def _run_pregen_morning_briefs():
@@ -215,7 +222,7 @@ def start_scheduler() -> bool:
             logging.info(f"[morning_brief] Pre-gen done: {result}")
         except Exception as e:
             _dash_update_harvest("morning_brief", "error", {"error": str(e)})
-            logging.error(f"[morning_brief] Pre-gen error: {e}")
+            logger.exception("[morning_brief] Pre-gen error")
 
     # ── NEW JOB 4: Piotroski weekly refresh — Sunday 11:00 PM IST (17:30 UTC)
     def _run_piotroski_batch():
@@ -226,7 +233,7 @@ def start_scheduler() -> bool:
             logging.info(f"[piotroski_batch] Weekly refresh done: {result}")
         except Exception as e:
             _dash_update_harvest("piotroski_batch", "error", {"error": str(e)})
-            logging.error(f"[piotroski_batch] Error: {e}")
+            logger.exception("[piotroski_batch] Error")
 
     # No pre-market cache warm: the disk cache is gone and Redis/TTLCache
     # entries expire on their own (OPS-18).
@@ -240,7 +247,7 @@ def start_scheduler() -> bool:
             logging.info("[error_digest] Daily digest written")
         except Exception as e:
             _dash_update_harvest("error_digest", "error", {"error": str(e)})
-            logging.error(f"[error_digest] Error: {e}")
+            logger.exception("[error_digest] Error")
 
     # ── NEW JOB 7: Market Anomaly Scanner ────────────────────────────────────
     def _run_anomaly_scan():
@@ -252,7 +259,7 @@ def start_scheduler() -> bool:
             logging.info("[anomaly_scan] Scan complete.")
         except Exception as e:
             _dash_update_harvest("anomaly_scan", "error", {"error": str(e)})
-            logging.error(f"[anomaly_scan] Error: {e}")
+            logger.exception("[anomaly_scan] Error")
 
     # ── DB backup — 2:30 AM IST (21:00 UTC); see docs/codebase/BACKUP_RESTORE.md ─
     def _run_db_backup():
@@ -264,7 +271,7 @@ def start_scheduler() -> bool:
             logging.info(f"[db_backup] Complete: {sorted(written)}")
         except Exception as e:
             _dash_update_harvest("db_backup", "error", {"error": str(e)})
-            logging.error(f"[db_backup] Error: {e}")
+            logger.exception("[db_backup] Error")
 
     # ── Wire all jobs ─────────────────────────────────────────────────────────
 

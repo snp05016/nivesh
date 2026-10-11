@@ -92,6 +92,67 @@ def _dash_update_harvest(key: str, status: str, result: dict | None = None) -> N
                 "status": status,
                 "result": result
             })
+    _persist_job_status(key, status, result)
+
+
+_JOB_RESULT_MAX = 4000
+
+
+def _persist_job_status(key: str, status: str, result: dict | None) -> None:
+    """Upsert the job's row in scheduler_job_status so every worker's dashboard sees
+    the scheduler worker's runs (SILENT-13). Never raises: a status write must not
+    fail the job it describes."""
+    try:
+        from database import get_session  # lazy: database imports the app's models
+        from models.db_models import SchedulerJobStatus
+        now = datetime.now(timezone.utc)
+        with get_session() as session:
+            row = session.get(SchedulerJobStatus, key)
+            if row is None:
+                row = SchedulerJobStatus(job_name=key)
+                session.add(row)
+            row.status = status
+            row.updated_at = now
+            if status == "running":
+                row.last_started_at = now
+            else:
+                row.last_finished_at = now
+            if status == "error":
+                row.last_error = str((result or {}).get("error") or "")[:_JOB_RESULT_MAX]
+            if result is not None:
+                row.last_result_json = json.dumps(result, default=str)[:_JOB_RESULT_MAX]
+            session.commit()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"[dashboard] job status persist failed for {key}: {e}")
+
+
+def persisted_harvest_status() -> dict:
+    """Job status rows from the DB in the in-memory _harvest_status shape, or {} when
+    the table cannot be read."""
+    try:
+        from database import get_session
+        from models.db_models import SchedulerJobStatus
+        with get_session() as session:
+            rows = session.query(SchedulerJobStatus).all()
+            out = {}
+            for r in rows:
+                try:
+                    last_result = json.loads(r.last_result_json) if r.last_result_json else None
+                except ValueError:
+                    last_result = r.last_result_json  # truncated JSON: show the raw text
+                out[r.job_name] = {
+                    "status": r.status,
+                    "last_run": r.last_started_at.isoformat() if r.last_started_at else None,
+                    "last_result": last_result,
+                    "last_finished_at": r.last_finished_at.isoformat() if r.last_finished_at else None,
+                    "last_error": r.last_error,
+                }
+            return out
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"[dashboard] job status read failed: {e}")
+        return {}
 
 def _dash_start_job(job_id: str, ticker: str, exchange: str, user_id) -> None:
     with _dash_lock:

@@ -76,6 +76,13 @@ final class GlobalErrorDiagnoser: ObservableObject {
         """
         os_log(.error, "%{public}@", log)
         print(log)
+        // SILENT-12: operators see client failures too (anonymised, capped per session).
+        NetworkManager.shared.reportClientError(
+            endpoint: diagnostic.endpoint,
+            status: diagnostic.httpStatus,
+            errorKind: diagnostic.classification,
+            message: message
+        )
     }
 
     func trackNetworkError(_ error: Error, endpoint: String, swiftFile: String = #fileID) {

@@ -262,17 +262,56 @@ class NetworkManager: ObservableObject {
         return corrId
     }
 
+    /// SILENT-12: retries a GET once, after 0.5 s, on a transient transport error
+    /// (timeout, dropped or refused connection). Writes and everything else,
+    /// cancellation (-999) included, are rethrown at once.
     private func dataWithRetry(for request: URLRequest, retries: Int = 1) async throws -> (Data, URLResponse) {
         do {
             return try await session.data(for: request)
-        } catch {
-            if (error as NSError).code == -999 && retries > 0 {
-                // If it was just a tab-switch cancellation, we still want to finish if possible, 
-                // but usually the caller handles the retry logic via .onAppear
-                throw error
-            }
-            throw error
+        } catch let error as URLError
+                    where retries > 0
+                    && (request.httpMethod ?? "GET") == "GET"
+                    && [URLError.Code.timedOut, .networkConnectionLost, .cannotConnectToHost].contains(error.code) {
+            try await Task.sleep(nanoseconds: 500_000_000)
+            return try await dataWithRetry(for: request, retries: retries - 1)
         }
+    }
+
+    // MARK: - Client error reports (SILENT-12)
+
+    private struct ClientErrorReport: Encodable {
+        let endpoint: String
+        let status: Int?
+        let error_kind: String
+        let message: String
+        let app_version: String
+    }
+
+    private static var clientErrorReportsSent = 0
+    private static let clientErrorReportLimit = 20
+
+    /// Fire-and-forget: one anonymised error line in the backend log ('nivesh.client').
+    /// No PII: the path without host or query, the status, the error class and a
+    /// 500-character message. Skipped when signed out and after 20 reports per app
+    /// session; a failed report is dropped, never tracked (no feedback loop).
+    func reportClientError(endpoint: String, status: Int?, errorKind: String, message: String) {
+        guard authToken != nil, Self.clientErrorReportsSent < Self.clientErrorReportLimit,
+              let url = URL(string: "\(baseURL)/api/v1/telemetry/client-error") else { return }
+        Self.clientErrorReportsSent += 1
+        let report = ClientErrorReport(
+            endpoint: String((URLComponents(string: endpoint)?.path ?? "").prefix(200)),
+            status: status,
+            error_kind: String(errorKind.prefix(50)),
+            message: String(message.prefix(500)),
+            app_version: String((Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "").prefix(20))
+        )
+        var req = authRequest(url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        guard let body = try? JSONEncoder().encode(report) else { return }
+        req.httpBody = body
+        let session = self.session
+        Task { _ = try? await session.data(for: req) }
     }
 
     // MARK: - Auth

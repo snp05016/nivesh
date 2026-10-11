@@ -222,8 +222,8 @@ def quarterly_financials_endpoint(ticker: str, exchange: str = "NSE"):
                                 promoter_history.append({
                                     "period": row.analysis_date,
                                     "promoter": promoter,
-                                    "fii": fii or 0,
-                                    "dii": dii or 0,
+                                    "fii": fii,  # None when unknown, not a fake 0
+                                    "dii": dii,
                                 })
                         except Exception as e:
                             logging.warning("[quarterly-financials] skipping malformed history row for %s: %s", ticker, e)
@@ -233,7 +233,8 @@ def quarterly_financials_endpoint(ticker: str, exchange: str = "NSE"):
             promoter_history = []
 
         payload = {"quarters": result, "promoter_history": promoter_history}
-        _dcache_set("market", cache_key, payload, ttl=3600)
+        if result:  # SILENT-11: an empty (failed) fetch must not be cached for an hour
+            _dcache_set("market", cache_key, payload, ttl=3600)
         return payload
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
