@@ -95,8 +95,7 @@ class AuthManager: ObservableObject {
     /// DB-26: a device token belongs to whoever is signed in on this phone, so
     /// re-register it for the new account (the backend re-binds it).
     private func rebindDeviceToken() {
-        guard let token = UserDefaults.standard.string(forKey: Self.apnsTokenKey) else { return }
-        Task { try? await NetworkManager.shared.registerDeviceToken(token: token) }
+        Task { await NotificationManager.shared.syncTokenIfLoggedIn() }
     }
 
     /// FINSEC-09: the disclaimer is accepted before sign-in (device-local

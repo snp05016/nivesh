@@ -101,28 +101,36 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
     func handleDeviceToken(_ token: Data) {
         let tokenString = token.map { String(format: "%02x", $0) }.joined()
         self.deviceToken = tokenString
-        os_log(.info, "[Nivesh/APNs] Token received")
+        os_log(.info, "[Nivesh/APNs] Token received (...%{public}@)", String(tokenString.suffix(6)))
 
-        // Persist to UserDefaults for legacy access
+        // Kept so a sign-in after launch can still bind it (AuthManager -> syncTokenIfLoggedIn).
         UserDefaults.standard.set(tokenString, forKey: "apns_device_token")
 
-        // Send to backend
-        Task {
-            await syncTokenToBackend(tokenString)
-        }
+        Task { await syncTokenIfLoggedIn() }
     }
 
     func handleRegistrationError(_ error: Error) {
         self.registrationError = error.localizedDescription
-        print("[Nivesh/APNs] Registration failed: \(error.localizedDescription)")
+        self.isTokenRegistrationFailed = true
+        os_log(.error, "[Nivesh/APNs] Registration failed: %{public}@", error.localizedDescription)
     }
 
-    private func syncTokenToBackend(_ token: String) async {
+    /// Binds the stored APNs token to the signed-in account. Signed out, it waits:
+    /// AuthManager calls this again after login/register.
+    func syncTokenIfLoggedIn() async {
+        guard let token = deviceToken ?? UserDefaults.standard.string(forKey: "apns_device_token") else { return }
+        guard NetworkManager.shared.authToken != nil else {
+            os_log(.info, "[Nivesh/APNs] Push token sync deferred until login")
+            return
+        }
         do {
             try await NetworkManager.shared.registerDeviceToken(token: token)
-            print("[Nivesh/APNs] Token synced to backend")
+            isTokenRegistrationFailed = false
+            registrationError = nil
+            os_log(.info, "[Nivesh/APNs] Token synced to backend")
         } catch {
-            self.registrationError = "Token sync failed: \(error.localizedDescription)"
+            isTokenRegistrationFailed = true
+            registrationError = "Token sync failed: \(error.localizedDescription)"
             GlobalErrorDiagnoser.shared.trackNetworkError(error, endpoint: "/api/v1/notifications/register")
         }
     }

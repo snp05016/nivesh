@@ -189,7 +189,7 @@ async def send_apns(user_id: int, title: str, body: str, data: Optional[dict] = 
         else "https://api.sandbox.push.apple.com"
     )
     headers = {
-        "apns-topic": os.getenv("APNS_TOPIC", "com.nivesh.app"),
+        "apns-topic": os.getenv("APNS_TOPIC", "saumypatel.stockme"),  # app bundle id (pbxproj)
         "apns-push-type": "alert",
         "apns-priority": "10",
         "authorization": f"bearer {apns_token}",

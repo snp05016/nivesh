@@ -7,15 +7,29 @@ class AlertsViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var triggeredBanner: [TriggeredAlert] = []
     @Published var showTriggeredBanner = false
+    /// IOSCORE-06: a failed load is shown as an error, never as "NO ALERTS SET".
+    @Published var loadError: String? = nil
+    @Published var actionError: String? = nil
 
+    /// Keeps the last loaded alerts when a refresh fails.
     func fetchAlerts(userId: Int) async {
         isLoading = true
-        alerts = (try? await NetworkManager.shared.getAlerts(userId: userId)) ?? []
+        do {
+            alerts = try await NetworkManager.shared.getAlerts(userId: userId)
+            loadError = nil
+        } catch {
+            loadError = error.localizedDescription
+            GlobalErrorDiagnoser.shared.trackNetworkError(error, endpoint: "/alerts/{user_id}")
+        }
         isLoading = false
     }
 
     func removeAlert(alertId: Int, userId: Int) async {
-        try? await NetworkManager.shared.removeAlert(userId: userId, alertId: alertId)
+        do {
+            try await NetworkManager.shared.removeAlert(userId: userId, alertId: alertId)
+        } catch {
+            actionError = "The alert wasn't removed. \(error.localizedDescription)"
+        }
         await fetchAlerts(userId: userId)
     }
 
@@ -63,6 +77,12 @@ struct AlertsScreen: View {
                     if viewModel.isLoading {
                         Spacer()
                         ProgressView().tint(Theme.securityGold)
+                        Spacer()
+                    } else if viewModel.alerts.isEmpty, let loadError = viewModel.loadError {
+                        Spacer()
+                        BanknoteErrorCanvas(title: "Couldn't load your alerts", detail: loadError, retryAction: {
+                            if let user = authManager.currentUser { await viewModel.fetchAlerts(userId: user.userId) }
+                        })
                         Spacer()
                     } else if viewModel.alerts.isEmpty {
                         // Empty state
@@ -196,6 +216,12 @@ struct AlertsScreen: View {
                 }
             }
         }
+        .banknoteDialog(
+            "Couldn't remove alert",
+            isPresented: Binding(get: { viewModel.actionError != nil }, set: { if !$0 { viewModel.actionError = nil } }),
+            message: viewModel.actionError,
+            buttons: [.init("OK")]
+        )
         .sheet(isPresented: $showAddAlert) {
             AddAlertSheet(authManager: authManager) {
                 if let user = authManager.currentUser {

@@ -175,15 +175,20 @@ private struct GlobalOverlayModifier: ViewModifier {
     @Binding var selectedTab: Int
     @ObservedObject var tutorialManager: TutorialManager
     @EnvironmentObject var engineManager: AnalysisEngineManager
+    @ObservedObject private var connectivity = ConnectivityMonitor.shared
     @State private var showEngineActivity = false
 
     func body(content: Content) -> some View {
         content
             .overlay(
                 Group {
-                    // v2 engine — global running pill
-                    if engineManager.isRunning {
-                        VStack { globalRunningPill; Spacer() }
+                    // Offline banner (IOSCORE-06) above the v2 engine running pill
+                    if engineManager.isRunning || !connectivity.isOnline {
+                        VStack(spacing: Theme.Spacing.small) {
+                            if !connectivity.isOnline { OfflineBanner() }
+                            if engineManager.isRunning { globalRunningPill }
+                            Spacer()
+                        }
                     }
                     if tutorialManager.isShowingTutorial {
                         TutorialOverlayView()
@@ -256,6 +261,30 @@ private struct GlobalOverlayModifier: ViewModifier {
             .padding(.top, Theme.Spacing.tight)
         }
         .buttonStyle(EKPressStyle())
+    }
+}
+
+/// Slim top banner while the device has no network path (ConnectivityMonitor).
+private struct OfflineBanner: View {
+    var body: some View {
+        HStack(spacing: Theme.Spacing.tight) {
+            Image(systemName: "wifi.slash")
+                .foregroundStyle(Theme.bearRed)
+            Text("Offline - showing last loaded data")
+                .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote))
+                .foregroundStyle(Theme.inkPrimary)
+        }
+        .padding(.vertical, Theme.Spacing.tight)
+        .padding(.horizontal, Theme.Spacing.standard)
+        .background(Theme.canvas)
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
+                .stroke(Theme.bearRed.opacity(0.4), lineWidth: 0.5)
+        )
+        .cornerRadius(Theme.CornerRadius.large)
+        .padding(.top, Theme.Spacing.tight)
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -445,6 +474,7 @@ struct MarketsView: View {
 
     @State private var indices: [LiveMarketIndex] = []
     @State private var isLoadingIndices = false
+    @State private var indicesError: String? = nil
     @State private var showScreener = false
 
     var body: some View {
@@ -488,7 +518,10 @@ struct MarketsView: View {
                         .foregroundStyle(Theme.inkTertiary)
                         .padding(.horizontal, Theme.screenPadding)
 
-                    if isLoadingIndices || indices.isEmpty {
+                    if let indicesError, indices.isEmpty, !isLoadingIndices {
+                        BanknoteErrorCanvas(title: "Indices unavailable", detail: indicesError,
+                                            retryAction: { await loadIndices() })
+                    } else if isLoadingIndices || indices.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: Theme.Spacing.standard) {
                                 ForEach(["NIFTY 50", "SENSEX", "BANK NIFTY"], id: \.self) { name in
@@ -695,8 +728,12 @@ struct MarketsView: View {
 
     private func loadIndices() async {
         isLoadingIndices = true
-        if let result = try? await NetworkManager.shared.getMarketIndices() {
-            indices = result.indices
+        do {
+            indices = try await NetworkManager.shared.getMarketIndices().indices
+            indicesError = nil
+        } catch {
+            // Keep any previously loaded indices; the error shows only when there are none.
+            indicesError = error.localizedDescription
         }
         isLoadingIndices = false
     }

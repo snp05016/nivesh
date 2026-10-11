@@ -504,10 +504,19 @@ struct SearchScreen: View {
                     isSearching = true
                     try? await Task.sleep(nanoseconds: 350_000_000)
                     guard !Task.isCancelled else { return }
-                    let backendResults = await NetworkManager.shared.searchStocks(q: new)
+                    let backendResults: [StockEntry]
+                    do {
+                        backendResults = try await NetworkManager.shared.searchStocks(q: new)
+                    } catch {
+                        guard !Task.isCancelled else { return }
+                        // Backend unavailable or contract drift: keep local results, but record it.
+                        GlobalErrorDiagnoser.shared.trackNetworkError(error, endpoint: "/api/v1/search")
+                        isSearching = false
+                        return
+                    }
                     guard !Task.isCancelled else { return }
                     if backendResults.isEmpty {
-                        // Backend unavailable — keep local results
+                        // No backend matches: keep local results
                         isSearching = false
                         return
                     }

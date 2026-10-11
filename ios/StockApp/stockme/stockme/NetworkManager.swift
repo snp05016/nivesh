@@ -500,7 +500,8 @@ class NetworkManager: ObservableObject {
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw NetworkError.invalidResponse
         }
-        return (try? JSONDecoder().decode([TransactionItem].self, from: data)) ?? []
+        do { return try JSONDecoder().decode([TransactionItem].self, from: data) }
+        catch { throw NetworkError.decodingError("/portfolio/transactions: \(error)") }
     }
 
     private struct PortfolioResponse: Decodable {
@@ -530,7 +531,8 @@ class NetworkManager: ObservableObject {
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw NetworkError.invalidResponse
         }
-        return (try? JSONDecoder().decode([MutualFundDTO].self, from: data)) ?? []
+        do { return try JSONDecoder().decode([MutualFundDTO].self, from: data) }
+        catch { throw NetworkError.decodingError("/api/mutual-funds/: \(error)") }
     }
 
     func getPortfolio(userId: Int) async throws -> [PortfolioHolding] {
@@ -717,7 +719,8 @@ class NetworkManager: ObservableObject {
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, target_price: targetPrice, direction: direction, company_name: companyName))
         let (data, response) = try await session.data(for: request)
         try NetworkError.ensureOK(data: data, response: response)  // 402 = plan cap reached (upsell)
-        return (try? JSONDecoder().decode(Resp.self, from: data))?.alert_id ?? 0
+        do { return try JSONDecoder().decode(Resp.self, from: data).alert_id }
+        catch { throw NetworkError.decodingError("/alerts/add: \(error)") }
     }
 
     func getAlerts(userId: Int) async throws -> [PriceAlert] {
@@ -760,7 +763,8 @@ class NetworkManager: ObservableObject {
             throw NetworkError.invalidResponse
         }
         struct Resp: Decodable { let sectors: [SectorPerformance] }
-        return (try? JSONDecoder().decode(Resp.self, from: data))?.sectors ?? []
+        do { return try JSONDecoder().decode(Resp.self, from: data).sectors }
+        catch { throw NetworkError.decodingError("/sector-performance: \(error)") }
     }
 
     // MARK: - Excel Export
@@ -1052,20 +1056,36 @@ class NetworkManager: ObservableObject {
 
     // MARK: - Search
 
-    func searchStocks(q: String) async -> [StockEntry] {
-        guard !q.isEmpty,
-              let url = URL(string: "\(baseURL)/api/v1/search?query=\(q.urlQueryValue)") else { return [] }
+    /// Throws on transport, non-200 and contract drift so callers can tell "no
+    /// matches" from "search is down" (GH-639).
+    func searchStocks(q: String) async throws -> [StockEntry] {
+        guard !q.isEmpty else { return [] }
+        guard let url = URL(string: "\(baseURL)/api/v1/search?query=\(q.urlQueryValue)") else { throw NetworkError.invalidURL }
         var request = authRequest(url)
         request.timeoutInterval = 5
-        guard let (data, resp) = try? await session.data(for: request),
-              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+        let (data, response) = try await session.data(for: request)
+        try NetworkError.ensureOK(data: data, response: response)
+        return try Self.decodeSearchResults(data)
+    }
+
+    /// Accepts the bare `[{ticker, company_name, sector, exchange}]` list the backend
+    /// returns, or a `{"results": [...]}` envelope; anything else is a decodingError.
+    static func decodeSearchResults(_ data: Data) throws -> [StockEntry] {
         struct SearchResult: Decodable {
             let ticker: String
             let company_name: String
             let sector: String
             let exchange: String
         }
-        guard let results = try? JSONDecoder().decode([SearchResult].self, from: data) else { return [] }
+        struct Envelope: Decodable { let results: [SearchResult] }
+        let decoder = JSONDecoder()
+        let results: [SearchResult]
+        if let bare = try? decoder.decode([SearchResult].self, from: data) {
+            results = bare
+        } else {
+            do { results = try decoder.decode(Envelope.self, from: data).results }
+            catch { throw NetworkError.decodingError("/api/v1/search: \(error)") }
+        }
         return results.map { StockEntry(ticker: $0.ticker, companyName: $0.company_name, exchange: $0.exchange, sector: $0.sector) }
     }
 
@@ -1119,16 +1139,19 @@ class NetworkManager: ObservableObject {
 
     // MARK: - Push Notifications
 
+    /// Binds the APNs token to the signed-in user via the authenticated v1 route (the
+    /// server takes the user from the JWT). Throws when signed out instead of returning
+    /// silently, so callers never log a sync that did not happen.
     func registerDeviceToken(token: String) async throws {
-        guard let userId = currentUserId else { return }
+        guard authToken != nil else { throw NetworkError.unauthorized }
         struct Req: Encodable { let user_id: Int; let device_token: String; let platform: String }
-        guard let url = URL(string: "\(baseURL)/notifications/register-device") else { throw NetworkError.invalidURL }
+        guard let url = URL(string: "\(baseURL)/api/v1/notifications/register") else { throw NetworkError.invalidURL }
         var request = authRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(Req(user_id: userId, device_token: token, platform: "ios"))
-        let (_, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        request.httpBody = try JSONEncoder().encode(Req(user_id: currentUserId ?? 0, device_token: token, platform: "ios"))
+        let (data, response) = try await session.data(for: request)
+        try NetworkError.ensureOK(data: data, response: response)
     }
 
     /// DB-26: drop this device's push binding on logout. `bearer` is captured before

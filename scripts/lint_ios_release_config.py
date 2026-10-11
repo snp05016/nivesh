@@ -44,7 +44,38 @@ def check_purpose_strings(info, sources):
     return problems
 
 
-CHECKS = [check_purpose_strings]
+ENTITLEMENTS = APP / "stockme.entitlements"
+PBXPROJ = APP / "stockme.xcodeproj" / "project.pbxproj"
+APP_BUNDLE_ID = "saumypatel.stockme"
+
+
+def check_push_entitlement(info, sources):
+    """registerForRemoteNotifications needs aps-environment, or APNs never issues a
+    token (IOSCORE-10). Every app-target build configuration must point at the file."""
+    if not any("registerForRemoteNotifications" in text for _, text in sources):
+        return []
+    rel = ENTITLEMENTS.relative_to(ROOT)
+    if not ENTITLEMENTS.is_file():
+        return [f"{rel} is missing but the app calls registerForRemoteNotifications"]
+    with ENTITLEMENTS.open("rb") as f:
+        entitlements = plistlib.load(f)
+    problems = []
+    if entitlements.get("aps-environment") not in ("development", "production"):
+        problems.append(f"{rel} has no aps-environment entitlement")
+    # Build-settings blocks of the app target: the ones whose bundle id is exactly the app's.
+    blocks = re.findall(r"buildSettings = \{(.*?)\n\t\t\t\};", PBXPROJ.read_text(encoding="utf-8"), re.S)
+    app_blocks = [b for b in blocks if re.search(rf"PRODUCT_BUNDLE_IDENTIFIER = {re.escape(APP_BUNDLE_ID)};", b)]
+    if not app_blocks:
+        problems.append(f"{PBXPROJ.relative_to(ROOT)}: no build configuration for {APP_BUNDLE_ID}")
+    for block in app_blocks:
+        if not re.search(r'"CODE_SIGN_ENTITLEMENTS\[sdk=iphoneos\*\]" = stockme\.entitlements;', block):
+            problems.append(f"{PBXPROJ.relative_to(ROOT)}: a {APP_BUNDLE_ID} build configuration "
+                            "does not set CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*] = stockme.entitlements")
+            break
+    return problems
+
+
+CHECKS = [check_purpose_strings, check_push_entitlement]
 
 
 def main():

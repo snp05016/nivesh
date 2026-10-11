@@ -65,7 +65,13 @@ class PortfolioScreenViewModel: ObservableObject {
     @Published var watchlistItems: [WatchlistItem] = []
     @Published var watchlistLoading = false
     @Published var watchlistError: String? = nil
+    /// IOSCORE-06: a failed load is shown as an error, never as an empty portfolio or Rs 0.
+    @Published var loadError: String? = nil
+    /// True once holdings loaded successfully at least once; until then totals are unknown, not zero.
+    @Published private(set) var hasLoaded = false
+    @Published var watchlistLoadError: String? = nil
 
+    /// A failed refresh keeps the last loaded holdings and totals.
     func fetchData(userId: Int) async {
         isLoading = true
         do {
@@ -74,8 +80,11 @@ class PortfolioScreenViewModel: ObservableObject {
             totalValue = holdings.reduce(0) { $0 + $1.currentValue }
             investedValue = holdings.reduce(0) { $0 + $1.investedValue }
             todayPnL = holdings.reduce(0) { $0 + $1.dayPnL }
+            loadError = nil
+            hasLoaded = true
         } catch {
-            print("Portfolio fetch error: \(error)")
+            loadError = error.localizedDescription
+            GlobalErrorDiagnoser.shared.trackNetworkError(error, endpoint: "/portfolio/{user_id}")
         }
         isLoading = false
     }
@@ -84,8 +93,10 @@ class PortfolioScreenViewModel: ObservableObject {
         watchlistLoading = true
         do {
             watchlistItems = try await NetworkManager.shared.getWatchlist(userId: userId)
+            watchlistLoadError = nil
         } catch {
-            print("Watchlist fetch error: \(error)")
+            watchlistLoadError = error.localizedDescription
+            GlobalErrorDiagnoser.shared.trackNetworkError(error, endpoint: "/watchlist/{user_id}")
         }
         watchlistLoading = false
     }
@@ -215,17 +226,30 @@ struct PortfolioScreen: View {
 
                     ScrollView {
                         VStack(spacing: Theme.sectionSpacing) {
-                            // Screen B — hero value block (price + two pills + brand chip)
-                            PortfolioHeroBlock(
-                                value: viewModel.totalValue,
-                                totalPnL: viewModel.totalValue - viewModel.investedValue,
-                                totalPnLPercent: viewModel.investedValue > 0
-                                    ? (viewModel.totalValue - viewModel.investedValue) / viewModel.investedValue * 100
-                                    : 0,
-                                isLoading: viewModel.isLoading,
-                                hideValues: hidePortfolioValues
-                            )
-                            .padding(.horizontal, Theme.screenPadding)
+                            if let loadError = viewModel.loadError {
+                                BanknoteErrorCanvas(
+                                    title: viewModel.hasLoaded ? "Couldn't refresh your portfolio" : "Couldn't load your portfolio",
+                                    detail: loadError,
+                                    retryAction: {
+                                        if let uid = authManager.currentUser?.userId { await viewModel.fetchData(userId: uid) }
+                                    }
+                                )
+                            }
+
+                            // Screen B — hero value block (price + two pills + brand chip).
+                            // Hidden after a failed first load: unknown is not Rs 0.
+                            if viewModel.hasLoaded || viewModel.loadError == nil {
+                                PortfolioHeroBlock(
+                                    value: viewModel.totalValue,
+                                    totalPnL: viewModel.totalValue - viewModel.investedValue,
+                                    totalPnLPercent: viewModel.investedValue > 0
+                                        ? (viewModel.totalValue - viewModel.investedValue) / viewModel.investedValue * 100
+                                        : 0,
+                                    isLoading: viewModel.isLoading,
+                                    hideValues: hidePortfolioValues
+                                )
+                                .padding(.horizontal, Theme.screenPadding)
+                            }
 
                             // Screen B — full-bleed immersive valuation chart + underline selector
                             if !rangedSnapshots.isEmpty {
@@ -273,7 +297,10 @@ struct PortfolioScreen: View {
                             .banknoteCard()
                             .padding(.horizontal, Theme.screenPadding)
 
-                            if selectedTab == 0 && viewModel.holdings.isEmpty && !viewModel.isLoading {
+                            if selectedTab == 0 && viewModel.holdings.isEmpty && viewModel.loadError != nil {
+                                // The error card above explains it; don't invite adding a "first" holding.
+                                EmptyView()
+                            } else if selectedTab == 0 && viewModel.holdings.isEmpty && !viewModel.isLoading {
                                 EmptyHoldingsView { HapticManager.selection(); showAddHoldingSheet = true }
                                     .padding(.horizontal, Theme.screenPadding)
                             } else if selectedTab == 0 {
@@ -490,7 +517,11 @@ struct PortfolioScreen: View {
                 NoteEditorSheet(holding: holding, noteText: $noteEditorText) { savedNote in
                     if let user = authManager.currentUser {
                         Task {
-                            try? await NetworkManager.shared.saveNote(userId: user.userId, ticker: holding.stock.ticker, note: savedNote)
+                            do {
+                                try await NetworkManager.shared.saveNote(userId: user.userId, ticker: holding.stock.ticker, note: savedNote)
+                            } catch {
+                                holdingActionError = "Your note for \(holding.stock.ticker) wasn't saved. \(error.localizedDescription)"
+                            }
                             await viewModel.fetchData(userId: user.userId)
                         }
                     }
@@ -527,7 +558,7 @@ struct PortfolioScreen: View {
             buttons: [.init("OK")]
         )
         .banknoteDialog(
-            "Couldn't update holding",
+            "Action failed",
             isPresented: Binding(get: { holdingActionError != nil }, set: { if !$0 { holdingActionError = nil } }),
             message: holdingActionError,
             buttons: [.init("OK")]
@@ -580,7 +611,7 @@ struct PortfolioScreen: View {
             exportedFileURL = tempURL
             showShareSheet = true
         } catch {
-            print("Excel export error: \(error)")
+            holdingActionError = "Couldn't export your portfolio. \(error.localizedDescription)"
         }
     }
 
@@ -621,6 +652,10 @@ struct PortfolioScreen: View {
                 }
             }
             .padding(.horizontal, Theme.screenPadding)
+        } else if viewModel.watchlistItems.isEmpty, let loadError = viewModel.watchlistLoadError {
+            BanknoteErrorCanvas(title: "Couldn't load your watchlist", detail: loadError, retryAction: {
+                if let uid = authManager.currentUser?.userId { await viewModel.fetchWatchlist(userId: uid) }
+            })
         } else if viewModel.watchlistItems.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                 BanknoteSignalBadge(text: "EMPTY", color: Theme.inkSecondary.opacity(0.4))
@@ -1636,9 +1671,15 @@ private struct AddHoldingSheet: View {
                 guard selectedEntry == nil, !q.isEmpty else { return }
                 try? await Task.sleep(nanoseconds: 350_000_000)
                 guard !Task.isCancelled else { return }
-                let hits = await NetworkManager.shared.searchStocks(q: q)
-                guard !Task.isCancelled else { return }
-                backendHits = hits
+                do {
+                    let hits = try await NetworkManager.shared.searchStocks(q: q)
+                    guard !Task.isCancelled else { return }
+                    backendHits = hits
+                } catch {
+                    // Local StockDatabase matches stay; record the failure instead of hiding it.
+                    guard !Task.isCancelled else { return }
+                    GlobalErrorDiagnoser.shared.trackNetworkError(error, endpoint: "/api/v1/search")
+                }
             }
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {

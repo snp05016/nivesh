@@ -612,8 +612,6 @@ struct HomeScreen: View {
         return base.filter { seen.insert($0).inserted }
     }
 
-    // Fix 3.3: Offline guard — block destructive watchlist ops when disconnected
-    @State private var isOnline = true
     // Item 7: YouTube channel filter
     @State private var selectedChannel: String? = nil
 
