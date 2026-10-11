@@ -1,8 +1,8 @@
 """ARCH-10 regression: one stock universe (backend/data/nse_bse_symbols.json).
 
-Advisor-consensus and stock-financials resolve sectors from the full JSON via
-services.stock_universe, the inline copies are gone, and the iOS bundled copy
-is byte-identical to the backend file.
+Advisor-consensus resolves sectors from the full JSON via services.stock_universe,
+the inline copies are gone, and the iOS bundled copy is byte-identical to the
+backend file.
 """
 import filecmp
 import json
@@ -48,14 +48,6 @@ def test_inline_directories_removed():
     assert not hasattr(portfolio, "_NSE_DIRECTORY")
     # /search keeps its index, now built from the shared loader
     assert len(market._NSE_DIR_INDEX) == len(stock_universe.entries())
-
-
-def test_stock_financials_sector_lookup_uses_json():
-    import routers.stock_financials as sf
-
-    expected = next(e for e in _raw() if e["ticker"] == "AIAENG")["sector"]
-    assert sf._sector_for_symbol("AIAENG") == expected
-    assert sf._sector_for_symbol("NOT_A_TICKER_XYZ") == "Diversified"
 
 
 def test_ios_copy_in_sync():

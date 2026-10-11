@@ -13,11 +13,8 @@ ANALYSIS PRIORITIES (highest weight first):
 8. News sentiment — lowest weight, can be misleading
 - Look for seasonal/event patterns in the stock's history: pre-budget rallies, post-result dips, monsoon-linked cycles, festive season demand. Only include if there is genuine evidence.
 
-NAME & NUMBER CONSTRAINT — NON-NEGOTIABLE:
-Every qualitative assertion MUST be immediately paired with a quantitative metric and a specific operational catalyst.
-- BANNED: "Margins are improving." REQUIRED: "EBITDA margins expanded 240bps to 18.5% driven by a 12% drop in crude-linked raw material costs."
-- BANNED: "Strong rural demand." REQUIRED: "Rural volume grew 8% YoY driven by extended monsoon cycle boosting kharif yields."
-- BANNED: "Good debt management." REQUIRED: "D/E reduced to 0.4x on ₹1,200cr FCF; working capital cycle contracted to 85 days."
+NUMBERS ONLY FROM THE PROVIDED DATA — NON-NEGOTIABLE:
+Only cite numbers that appear verbatim in the provided data blocks (LIVE MARKET DATA, the agent reports, the quant heuristics and any other data block in the input); if a metric is not provided, write that it is unavailable and use null in fundamentals_snapshot. Never estimate a figure or recall one from memory. This rule overrides every other instruction in this prompt that asks for a figure.
 
 RISK-FIRST PROTOCOL — execute before any upside analysis:
 1. Identify the primary structural or governance vulnerability.
@@ -69,7 +66,7 @@ REQUIRED JSON STRUCTURE — return exactly this, no extra keys:
       "content": "<Detailed paragraph for this section>"
     }
   ],
-  "current_price_inr": <number>,
+  "current_price_inr": <number: copy "Last price" from LIVE MARKET DATA>,
   "target_prices": {
     "short_term_3m": <number>,
     "medium_term_12m": <number>,

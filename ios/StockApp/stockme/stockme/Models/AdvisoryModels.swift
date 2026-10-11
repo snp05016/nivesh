@@ -202,15 +202,3 @@ struct HarvesterSourceStatus: Codable, Identifiable {
         case errorMessage = "error_message"
     }
 }
-
-// MARK: - OTC Advisory
-
-struct OTCAdvisory: Identifiable {
-    let id: String
-    let companyName: String
-    let entryPrice: Double
-    let targetPrice: Double
-    let stopLoss: Double
-    let rationale: String
-    let isPremium: Bool
-}

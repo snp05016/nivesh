@@ -264,7 +264,6 @@ private struct GlobalOverlayModifier: ViewModifier {
 enum MarketSection: String, Hashable, CaseIterable {
     case earnings  = "earnings"
     case technical = "technical"
-    case unlisted  = "unlisted"
     case screener  = "screener"
     case alerts    = "alerts"
     case strategy  = "strategy"
@@ -286,7 +285,6 @@ enum MarketSection: String, Hashable, CaseIterable {
         switch self {
         case .earnings:  return "chart.bar.doc.horizontal.fill"
         case .technical: return "waveform.path.ecg"
-        case .unlisted:  return "building.2.fill"
         case .screener:  return "magnifyingglass.circle.fill"
         case .alerts:    return "bell.badge.fill"
         case .strategy:  return "flask.fill"
@@ -309,7 +307,6 @@ enum MarketSection: String, Hashable, CaseIterable {
         switch self {
         case .earnings:  return "आय परिणाम"
         case .technical: return "तकनीकी गति"
-        case .unlisted:  return "असूचीबद्ध"
         case .screener:  return "शेयर खोज"
         case .alerts:    return "मूल्य चेतावनी"
         case .strategy:  return "रणनीति प्रयोगशाला"
@@ -332,7 +329,6 @@ enum MarketSection: String, Hashable, CaseIterable {
         switch self {
         case .earnings:  return "EARNINGS"
         case .technical: return "TECHNICAL"
-        case .unlisted:  return "UNLISTED"
         case .screener:  return "SCREENER"
         case .alerts:    return "ALERTS"
         case .strategy:  return "STRATEGY LAB"
@@ -355,7 +351,6 @@ enum MarketSection: String, Hashable, CaseIterable {
         switch self {
         case .earnings:  return "Quarterly Results"
         case .technical: return "Momentum Scanner"
-        case .unlisted:  return "Pre-IPO Marketplace"
         case .screener:  return "Stock Discovery"
         case .alerts:    return "Price Watch"
         case .strategy:  return "Backtest Strategies"
@@ -378,7 +373,6 @@ enum MarketSection: String, Hashable, CaseIterable {
         switch self {
         case .earnings:  return "YoY growth tracking, earnings calendar, beat/miss analysis and post-result movers"
         case .technical: return "Moving-average crossover signals, sector moves, top gainers/losers and most-active stocks"
-        case .unlisted:  return "OTC price discovery for pre-IPO, SME board and upcoming listing advisory"
         case .screener:  return "Search any NSE or BSE stock by name or ticker, preset screens, quick compare"
         case .alerts:    return "Target price triggers and surveillance flags for your entire watchlist"
         case .strategy:  return "Backtest pre-built and custom trading strategies against historical data"
@@ -401,7 +395,6 @@ enum MarketSection: String, Hashable, CaseIterable {
         switch self {
         case .earnings:  return Theme.securityGold
         case .technical: return Theme.bullGreen
-        case .unlisted:  return Theme.holdAmber
         case .screener:  return Theme.inkSecondary
         case .alerts:    return Theme.bearRed
         case .strategy:  return Theme.avatarBlue
@@ -547,14 +540,6 @@ struct MarketsView: View {
                         }
                     }
                 }
-
-                if ReleaseGate.isVisible(.unlisted) {
-                    NavigationLink(value: MarketSection.unlisted) {
-                        sectionCardContent(.unlisted)
-                    }
-                    .buttonStyle(EKPressStyle())
-                    .padding(.horizontal, Theme.screenPadding)
-                }
             }
             .padding(.bottom, Theme.sectionSpacing)
         }
@@ -687,7 +672,6 @@ struct MarketsView: View {
         switch section {
         case .earnings:  EarningsDashboardView()
         case .technical: TechnicalMomentumView()
-        case .unlisted:  PreIPOMarketplaceView()
         case .screener:  SearchScreen()
         case .alerts:    AlertsScreen()
         case .strategy:  StrategyLabScreen()

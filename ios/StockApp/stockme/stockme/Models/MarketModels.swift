@@ -446,19 +446,3 @@ struct EarningsEvent: Codable, Identifiable {
         case daysAway = "days_away"
     }
 }
-
-// MARK: - Pre-IPO / Unlisted Shares
-
-struct UnlistedCompany: Identifiable {
-    let id: String
-    let name: String
-    let sector: String
-    let ltp: Double
-    let prevLtp: Double
-    let description: String
-    let keyMetrics: [String: String]
-    var isBookmarked: Bool = false
-
-    var changeAbs: Double { ltp - prevLtp }
-    var changePct: Double { prevLtp > 0 ? ((ltp - prevLtp) / prevLtp) * 100 : 0 }
-}

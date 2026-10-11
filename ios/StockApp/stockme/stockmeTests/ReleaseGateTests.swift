@@ -6,7 +6,7 @@ import XCTest
 final class ReleaseGateTests: XCTestCase {
 
     func test_hidden_sections_in_release() {
-        for section in [MarketSection.unlisted, .financeTracker, .loanMarketplace, .fixedDeposits] {
+        for section in [MarketSection.financeTracker, .loanMarketplace, .fixedDeposits] {
             XCTAssertFalse(ReleaseGate.isVisible(section, demoFeatures: false), "\(section) must be hidden in Release")
         }
     }

@@ -272,7 +272,7 @@ async def _global_exception_handler(_req: _FRequest, exc: Exception):
 # ---------------------------------------------------------------------------
 # Import and register routers
 # ---------------------------------------------------------------------------
-from routers import auth, portfolio, market, analysis, portfolio_analytics, morning_brief, advisor_consensus, portfolio_exports, trade_journal, earnings, institutional, ideas, admin_errors, alerts, user, dashboard, notifications, brainstorming, strategy, copilot, anomalies, correlation, nl_screener, stress_test, sector_rotation, earnings_surprise, options_strategy, predictions, fundamentals, backtests, stock_financials, preferences, notifications_inbox, search, ipo, mutual_funds, forum, finance, compliance, subscription, kyc, fixed_deposits, account
+from routers import auth, portfolio, market, analysis, portfolio_analytics, morning_brief, advisor_consensus, portfolio_exports, trade_journal, earnings, institutional, ideas, admin_errors, alerts, user, dashboard, notifications, brainstorming, strategy, copilot, anomalies, correlation, nl_screener, stress_test, sector_rotation, earnings_surprise, options_strategy, predictions, fundamentals, backtests, ml_signal, preferences, notifications_inbox, search, ipo, mutual_funds, forum, finance, compliance, subscription, kyc, fixed_deposits, account
 from routers import harvester as harvester_router
 from routers.health import router as health_router  # Task 56
 from routers import youtube_summary as youtube_summary_router
@@ -314,7 +314,7 @@ app.include_router(predictions.router)
 app.include_router(fundamentals.router)
 app.include_router(fundamentals.router_v1)
 app.include_router(backtests.router, prefix="/api/v1/backtests")
-app.include_router(stock_financials.router)
+app.include_router(ml_signal.router)  # FAKE-04: the mock stock_financials router is gone
 app.include_router(preferences.router)
 app.include_router(subscription.router)
 app.include_router(notifications_inbox.router)

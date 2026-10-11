@@ -18,7 +18,6 @@ struct AnalysisCoreSections: View {
             if let prev = previousAnalysis, prev.analysisDate != analysis.analysisDate {
                 whatChangedSectionView(previous: prev)
             }
-            signalTimelineSectionView
             dialecticDebateSectionView
             timeHorizonSectionView
             riskFactorsSectionView
@@ -206,17 +205,6 @@ struct AnalysisCoreSections: View {
         .background(Theme.surfaceElevated)
         .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderSubtle, lineWidth: 0.5))
         .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
-    }
-
-    private var signalTimelineSectionView: some View {
-        Group {
-            if let prices = viewModel.quickInfo?.priceHistory90d, !prices.isEmpty {
-                VStack(spacing: Theme.Spacing.standard) {
-                    SectionHeaderView(title: "SIGNAL ACCURACY TIMELINE")
-                    AnalysisHistoryTimelineView(ticker: ticker, priceHistory: prices)
-                }
-            }
-        }
     }
 
     private var dialecticDebateSectionView: some View {

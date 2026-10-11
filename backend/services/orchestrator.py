@@ -14,6 +14,7 @@ import os
 import logging
 import copy
 import math
+import numbers
 import time
 import threading
 import asyncio
@@ -83,6 +84,7 @@ from helpers import (
     _yf_fetch_info,
     _log_token_usage,
     TOKEN_LOG_PATH,
+    format_indian_currency,
 )
 
 from database import (
@@ -600,6 +602,25 @@ def _log_graph_usage(usage_by_model: dict, scan_type: str) -> None:
         )
 
 
+# LLM-04: final_state sections handed to the reformatter after the decision and rating,
+# each clipped to a character budget. ta.propagate's decision alone is one word.
+_AGENT_REPORT_SECTIONS = (
+    ("INVESTMENT PLAN", "investment_plan", 2000),
+    ("TRADER PLAN", "trader_investment_plan", 1500),
+    ("MARKET REPORT", "market_report", 1500),
+    ("FUNDAMENTALS REPORT", "fundamentals_report", 1500),
+    ("NEWS REPORT", "news_report", 1500),
+    ("SENTIMENT REPORT", "sentiment_report", 1500),
+    ("GOVERNANCE FORENSICS REPORT", "governance_report", 1500),
+)
+
+
+def _clip(text, n: int) -> str:
+    """Return text stripped and cut to n characters, marking a cut."""
+    text = str(text or "").strip()
+    return text if len(text) <= n else text[:n].rstrip() + " [truncated]"
+
+
 def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "standard",
                        debate_rounds: int | None = None, language: str | None = None) -> tuple:
     logging.info(f"\n[AI] Initializing Analysis for {full_ticker}...")
@@ -620,10 +641,15 @@ def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "s
     finally:
         _log_graph_usage(usage_cb.usage_metadata, scan_type)
     logging.info(f"[AI] Thinking: Analysis complete. Formatting output...")
-    governance_report = final_state.get("governance_report", "")
-    output = str(decision)
-    if governance_report:
-        output = f"GOVERNANCE FORENSICS REPORT:\n{governance_report}\n\n---\n\n{output}"
+    fs = final_state if isinstance(final_state, dict) else {}
+    sections = [("FINAL TRADE DECISION", fs.get("final_trade_decision"), 3000), ("RATING", decision, 200)]
+    sections += [(title, fs.get(key), budget) for title, key, budget in _AGENT_REPORT_SECTIONS]
+    parts = []
+    for title, body, budget in sections:
+        text = _clip(body, budget)
+        if text:  # empty sections are skipped
+            parts.append(f"{title}:\n{text}")
+    output = "\n\n---\n\n".join(parts)
 
     # Collect checkpoint progress events from agent nodes
     from tradingagents.graph.setup import get_progress_events as _get_prog
@@ -639,28 +665,10 @@ def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "s
 # ═════════════════════════════════════════════════════════════════════════════
 
 
-def _extract_final_conclusion(raw_output: str, max_chars: int = 2000) -> str:
-    """Extract the most decision-relevant section of raw agent output.
-
-    Prefers the Portfolio Manager final decision block (last paragraph after
-    'FINAL TRANSACTION PROPOSAL') or falls back to the last max_chars characters.
-    This reduces DeepSeek reformatter input from ~8000 chars to ~2000 chars.
-    """
-    import re as _re
-    # Try to find the Portfolio Manager / final proposal section
-    _pm_patterns = [
-        r"FINAL TRANSACTION PROPOSAL.*",
-        r"Portfolio Manager.*",
-        r"PORTFOLIO MANAGER.*",
-        r"FINAL DECISION.*",
-    ]
-    for pat in _pm_patterns:
-        m = _re.search(pat, raw_output, _re.DOTALL | _re.IGNORECASE)
-        if m:
-            extracted = m.group(0)
-            return extracted[:max_chars]
-    # Fallback: last max_chars of output (richest signal is always at the end)
-    return raw_output[-max_chars:]
+# LLM-04: runaway guard on the reformatter input. Every block is already bounded (agent
+# sections ~13K, live data, quant, calibration, deep-scan and extreme enricher blocks);
+# extreme reports reach ~22K, so a lower cap would cut the authoritative enricher block.
+_REFORMAT_INPUT_CAP = 24_000
 
 
 def reformat_with_deepseek(
@@ -675,8 +683,8 @@ def reformat_with_deepseek(
     Falls back to Claude Sonnet only on parse failure."""
 
     is_extreme = scan_type == "extreme"
-    # Task 06: Use only the final conclusion block instead of full 8000-char dump
-    reformatter_input = _extract_final_conclusion(raw_output, max_chars=2000)
+    # LLM-04: the whole input (live data, agent reports, quant blocks), never a tail slice.
+    reformatter_input = raw_output[:_REFORMAT_INPUT_CAP]
 
     # Task 47: Robust error handling with exponential backoff and dead-letter logging
     _dlq_log = Path("logs/deepseek_failures.jsonl")
@@ -1291,6 +1299,83 @@ def _inject_piotroski(result: dict, ticker: str):
         result["piotroski_flags"] = {}
 
 
+def _live_market_data(fast_info, ticker: str) -> tuple[float | None, str]:
+    """LLM-04: (live price, LIVE MARKET DATA block) for the reformatter.
+
+    Price, 52-week range and market cap come from the prefetched yfinance fast_info, the
+    price falling back to _yf_price. A missing value is written as unavailable, never guessed.
+    """
+    def _num(name: str) -> float | None:
+        try:
+            v = getattr(fast_info, name, None)  # fast_info fields are lazy network reads
+        except Exception:
+            return None
+        f = float(v) if isinstance(v, numbers.Real) else math.nan
+        return f if math.isfinite(f) and f > 0 else None
+
+    price = _num("last_price")
+    if price is None:
+        try:
+            price = _yf_price(_to_ns(ticker))[0] or None
+        except Exception as e:
+            logging.info(f"[LIVE_DATA] Price fetch failed for {ticker}: {e}")
+    high, low, mcap = _num("year_high"), _num("year_low"), _num("market_cap")
+
+    def _fmt(v: float | None) -> str:
+        return f"{v:.2f}" if v else "unavailable"
+
+    block = (
+        "LIVE MARKET DATA (AUTHORITATIVE, fetched by Nivesh at analysis time):\n"
+        f"Last price (INR): {_fmt(price)}\n"
+        f"52-week high (INR): {_fmt(high)}\n"
+        f"52-week low (INR): {_fmt(low)}\n"
+        f"Market cap: {format_indian_currency(mcap) if mcap else 'unavailable'}\n"
+        "current_price_inr is the last price above. A value marked unavailable is unknown: "
+        "say so, never estimate it.\n"
+    )
+    return price, block
+
+
+_BULLISH_SIGNALS = ("BULLISH", "CAUTIOUSLY BULLISH")
+_BEARISH_SIGNALS = ("BEARISH", "CAUTIOUSLY BEARISH")
+_TARGET_UPSIDE_KEYS = (
+    ("short_term_3m", "short_term"),
+    ("medium_term_12m", "medium_term"),
+    ("long_term_36m", "long_term"),
+)
+_TARGET_WITHHELD_NOTE = "Target withheld: inconsistent with signal"
+
+
+def _ground_numbers(result: dict, live_price: float | None) -> dict:
+    """LLM-04: replace the LLM's price with the live quote and check its targets against it.
+
+    current_price_inr becomes the live price (current_price_source "live_quote"), or 0.0
+    with source "unavailable". Each upside is recomputed from its target and the live price
+    (0.0 without one). A target on the wrong side of the price for the signal is withheld
+    (target and upside 0.0) with a note in what_to_watch. Nested containers are replaced,
+    never mutated in place. Returns result.
+    """
+    price = float(live_price) if live_price and live_price > 0 else 0.0
+    targets = dict(result.get("target_prices") or {})
+    upside = dict(result.get("upside_downside_pct") or {})
+    watch = list(result.get("what_to_watch") or [])
+    signal = result.get("signal")
+    for t_key, u_key in _TARGET_UPSIDE_KEYS:
+        target = targets.get(t_key)
+        if not price or not isinstance(target, (int, float)) or target <= 0:
+            upside[u_key] = 0.0
+        elif (signal in _BULLISH_SIGNALS and target < price) or (signal in _BEARISH_SIGNALS and target > price):
+            targets[t_key] = upside[u_key] = 0.0
+            if _TARGET_WITHHELD_NOTE not in watch:
+                watch.append(_TARGET_WITHHELD_NOTE)
+        else:
+            upside[u_key] = round((target / price - 1) * 100, 2)
+    result["current_price_inr"] = price
+    result["current_price_source"] = "live_quote" if price else "unavailable"
+    result["target_prices"], result["upside_downside_pct"], result["what_to_watch"] = targets, upside, watch
+    return result
+
+
 def _inject_live_data(result: dict, ticker: str) -> dict:
     """Refresh current price, recent news, and 3M/6M/12M price performance.
     Called on every return path so cached reports never show stale market data.
@@ -1299,11 +1384,11 @@ def _inject_live_data(result: dict, ticker: str) -> dict:
     result = dict(result)  # shallow copy — never mutate caller's dict
     ns_ticker = _to_ns(ticker)
 
-    # 1. Current price — always fetch live
+    # 1. Current price — always fetch live; upside and targets are re-checked against it (LLM-04)
     try:
         curr_p, _ = _yf_price(ns_ticker)
         if curr_p:
-            result["current_price_inr"] = float(curr_p)
+            result = _ground_numbers(result, float(curr_p))
     except Exception as e:
         logging.info(f"[LIVE_DATA] Price refresh failed for {ticker}: {e}")
 
@@ -1738,7 +1823,9 @@ def _log_prediction(
                 horizon_days=_PREDICTION_HORIZON_DAYS,
                 scan_type=scan_type,
                 regime_id=result.get("market_regime", "Unknown"),
-                entry_price=result.get("current_price_inr"),
+                # LLM-04: the market quote at generation time, never an LLM number.
+                entry_price=(result.get("current_price_inr")
+                             if result.get("current_price_source") == "live_quote" else None),
                 target_price=(result.get("target_prices") or {}).get("medium_term_12m"),
                 ml_direction=fs.get("_ml_direction"),
                 ml_p_up=fs.get("_ml_p_up"),
@@ -2213,6 +2300,10 @@ def analyze(
     # Wait for background prefetch to complete (started at top of analyze())
     _prefetch_done.wait(timeout=30)
 
+    # LLM-04: authoritative live facts go first, so the input cap can never drop them.
+    live_price, live_block = _live_market_data(_prefetch_data.get("fast_info"), ticker)
+    raw_output = f"{live_block}\n{raw_output}"
+
     extreme_bundles = {}
     if scan_type == "extreme":
         emitter.emit("enrich", "Graph Engine",
@@ -2244,6 +2335,8 @@ def analyze(
         # is never stored or served from cache as a real report.
         raise RuntimeError("AI report could not be generated right now. Please retry in a few minutes.")
     result = _normalize_response(result, scan_type, quant_payload)
+    # LLM-04: live quote and checked targets before the history row and prediction log are written.
+    result = _ground_numbers(result, live_price)
     result["analysis_date"] = analysis_date  # fresh report: server IST date, never the LLM's
 
     # Inject statistical calibration results from the calibration pipeline

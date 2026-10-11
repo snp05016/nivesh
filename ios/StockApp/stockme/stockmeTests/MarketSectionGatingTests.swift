@@ -6,7 +6,7 @@ import XCTest
 @MainActor
 final class MarketSectionGatingTests: XCTestCase {
 
-    private let demoHubs: Set<MarketSection> = [.unlisted, .financeTracker, .loanMarketplace, .fixedDeposits]
+    private let demoHubs: Set<MarketSection> = [.financeTracker, .loanMarketplace, .fixedDeposits]
 
     func test_demo_hub_set_is_exactly_the_mock_backed_hubs() {
         XCTAssertEqual(ReleaseGate.hiddenInRelease, demoHubs)
