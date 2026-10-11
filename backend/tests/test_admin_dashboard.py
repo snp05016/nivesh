@@ -53,7 +53,10 @@ def test_log_token_usage_without_model_is_unknown(tmp_path, monkeypatch):
     assert json.loads(log.read_text().strip())["model"] == "unknown"
 
 
-def test_estimate_cost():
+def test_estimate_cost(monkeypatch):
+    # The default DeepSeek rates apply only while the LLM-02 env overrides are unset.
+    monkeypatch.delenv("LLM_PRICE_DEEPSEEK_IN", raising=False)
+    monkeypatch.delenv("LLM_PRICE_DEEPSEEK_OUT", raising=False)
     assert ds.estimate_cost_usd("deepseek-chat", 1_000_000, 0) == pytest.approx(0.14)
     assert ds.estimate_cost_usd("deepseek-reasoner", 1_000_000, 0) == pytest.approx(0.55)
     assert ds.estimate_cost_usd("claude-haiku-4-5", 0, 1_000_000) == pytest.approx(5.0)
@@ -64,6 +67,8 @@ def test_estimate_cost():
 
 
 def test_dashboard_cost_buckets_deepseek(client, as_admin, tmp_path, monkeypatch):
+    monkeypatch.delenv("LLM_PRICE_DEEPSEEK_IN", raising=False)
+    monkeypatch.delenv("LLM_PRICE_DEEPSEEK_OUT", raising=False)
     log = tmp_path / "t.jsonl"
     log.write_text(
         json.dumps({"endpoint": "a", "model": "deepseek-chat", "input_tokens": 1000, "output_tokens": 500}) + "\n"

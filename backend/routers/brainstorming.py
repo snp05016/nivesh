@@ -1,13 +1,14 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from services.brainstorming import generate_brainstorming_ideas
+from services.llm_budget import require_llm_budget
 
 router = APIRouter(tags=["Brainstorming"])
 
 class BrainstormingRequest(BaseModel):
-    topic: str
-    risk_tolerance: str
+    topic: str = Field(max_length=500)
+    risk_tolerance: str = Field(max_length=20)
 
 class BrainstormIdea(BaseModel):
     title: str
@@ -18,7 +19,7 @@ class BrainstormingResponse(BaseModel):
     ideas: List[BrainstormIdea]
 
 @router.post("/brainstorm", response_model=BrainstormingResponse)
-def brainstorming_endpoint(req: BrainstormingRequest):
+def brainstorming_endpoint(req: BrainstormingRequest, user_id: int = Depends(require_llm_budget("brainstorm"))):
     if not req.topic or not req.risk_tolerance:
         raise HTTPException(status_code=400, detail="topic and risk_tolerance are required")
     

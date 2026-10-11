@@ -69,6 +69,12 @@ def run_job(job_id: str, ticker: str, exchange: str,
         pass
 
     import database
+    from services import llm_budget
+    # Job spend counts toward the global cap but is not charged to a user: on POST /analyze the
+    # user_id is still the client-supplied req.user_id, so charging it would let anyone drain a
+    # victim's daily AI budget. Phase B (analyze_endpoint passes the Bearer-token uid) restores
+    # bind(user_id, ...) here.
+    llm_budget.bind(None, f"analysis_{scan_type}")
     if not database.update_job(job_id, status="RUNNING", pid=os.getpid(),
                                stage="starting", progress_pct=1):
         return  # cancelled (or swept) before the worker started: no paid work

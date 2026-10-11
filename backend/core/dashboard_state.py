@@ -36,7 +36,8 @@ _token_log_lock = threading.Lock()
 TOKEN_LOG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "token_log.jsonl")
 
 # USD per 1M tokens (input, output). First substring match on the lower-cased model wins,
-# so the more specific 'deepseek-reasoner' must precede 'deepseek'.
+# so the more specific 'deepseek-reasoner' must precede 'deepseek'. Env
+# LLM_PRICE_DEEPSEEK_IN/OUT, when set, override both DeepSeek rows (budget decisions use these).
 _PRICING_PER_M: list[tuple[str, float, float]] = [
     ("deepseek-reasoner", 0.55, 2.19),
     ("deepseek", 0.14, 0.28),
@@ -57,6 +58,9 @@ def estimate_cost_usd(model: str | None, input_tokens: int, output_tokens: int,
     m = (model or "").lower()
     for needle, in_rate, out_rate in _PRICING_PER_M:
         if needle in m:
+            if needle.startswith("deepseek"):
+                in_rate = float(os.getenv("LLM_PRICE_DEEPSEEK_IN") or in_rate)
+                out_rate = float(os.getenv("LLM_PRICE_DEEPSEEK_OUT") or out_rate)
             billed_input = (input_tokens + cache_read_tokens * _CACHE_READ_MULT
                             + cache_write_tokens * _CACHE_WRITE_MULT)
             return (billed_input * in_rate + output_tokens * out_rate) / 1_000_000
@@ -148,12 +152,18 @@ def _usage_int(usage, *names: str) -> int:
     return 0
 
 
+def usage_tokens(usage) -> tuple[int, int, int, int]:
+    """(input, output, cache_read, cache_write) from an Anthropic or OpenAI-style usage object."""
+    return (_usage_int(usage, "input_tokens", "prompt_tokens"),
+            _usage_int(usage, "output_tokens", "completion_tokens"),
+            _usage_int(usage, "cache_read_input_tokens"),
+            _usage_int(usage, "cache_creation_input_tokens"))
+
+
 def _log_token_usage(endpoint: str, usage, model: str | None = None) -> None:
-    """Record one LLM call. Pass `model` so the dashboard can price it by vendor."""
-    inp = _usage_int(usage, "input_tokens", "prompt_tokens")
-    out = _usage_int(usage, "output_tokens", "completion_tokens")
-    cr = _usage_int(usage, "cache_read_input_tokens")
-    cw = _usage_int(usage, "cache_creation_input_tokens")
+    """Record one LLM call in the token log, the dashboard counters and the LlmUsage
+    spend ledger. Pass `model` so the call can be priced. Never raises."""
+    inp, out, cr, cw = usage_tokens(usage)
     try:
         entry = {
             "ts": datetime.now(timezone.utc).isoformat(),
@@ -185,6 +195,12 @@ def _log_token_usage(endpoint: str, usage, model: str | None = None) -> None:
             "cache_read": cr,
             "cache_write": cw,
         })
+    try:
+        from services.llm_budget import record_usage  # lazy: llm_budget imports this module and the DB layer
+        record_usage(endpoint, model, usage)
+    except Exception as e:  # the call is already paid for; a ledger failure must not fail or retry it
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to record LLM usage: {e}")
 
 
 def token_usage_summary() -> dict:

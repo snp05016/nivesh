@@ -29,6 +29,7 @@ import os
 from services.market_service import get_rbi_policy
 from services.llm_utils import deepseek_chat as _deepseek_chat
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
+from services import llm_budget
 from services.portfolio_service import (
     _get_asm_gsm_lists, _risk_label, compute_sip, compute_pearson_correlation,
 )
@@ -671,6 +672,7 @@ def portfolio_red_flags_endpoint(user_id: int, _caller: int = Depends(require_us
             try:
                 # Red flags summary → DeepSeek V4 Flash (Tier 1 bulk task), consented users only
                 if os.getenv("DEEPSEEK_API_KEY") and has_active_consent(user_id, AI_PROCESSING_CONSENT):
+                    llm_budget.guard(user_id, "red_flags_summary")  # over budget -> default summary
                     flags_text = "\n".join(
                         f"- [{f['severity']}] {f['ticker']}: {f['detail']}" for f in flags
                     )
@@ -761,6 +763,7 @@ def macro_impact_endpoint(user_id: int, _caller: int = Depends(require_user_matc
         impacts = []
         if os.getenv("DEEPSEEK_API_KEY") and consent_ok:
             try:
+                llm_budget.guard(user_id, "macro_impact")  # over budget -> "assessment unavailable"
                 raw_text = _deepseek_chat(
                     [{"role": "user", "content": prompt}],
                     max_tokens=1500,

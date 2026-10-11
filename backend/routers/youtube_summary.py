@@ -11,9 +11,10 @@ from __future__ import annotations
 import logging
 import re
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 
 from helpers import require_auth
+from services.llm_budget import require_llm_budget
 from services.youtube_summary.schemas import YouTubeVideoSummaryResponse
 
 logger = logging.getLogger("youtube_summary.router")
@@ -84,7 +85,7 @@ def _extract_video_id(url: str) -> str:
 @router.post("/summary", response_model=YouTubeVideoSummaryResponse)
 async def post_summary(
     req: SummaryRequest,
-    authorization: str = Header(None),
+    user_id: int = Depends(require_llm_budget("youtube_summary")),
 ):
     """
     Generate or return a cached AI summary for a YouTube video URL.
@@ -96,7 +97,7 @@ async def post_summary(
     Args:
         req (SummaryRequest): JSON body containing ``url`` and optional
             ``force_refresh`` flag.
-        authorization (str): Bearer JWT issued by /auth/login.
+        user_id (int): Caller from the Bearer JWT; the daily AI budget applies.
 
     Returns:
         YouTubeVideoSummaryResponse: Structured summary with timestamps and
@@ -105,11 +106,10 @@ async def post_summary(
     Raises:
         HTTPException 400: URL does not contain a valid YouTube video ID.
         HTTPException 401: Missing or invalid authorisation header.
-        HTTPException 503: Summary service is not available.
+        HTTPException 429: The caller's daily AI budget is spent.
+        HTTPException 503: Summary service is not available, or AI is paused.
         HTTPException 500: Unexpected error during summarisation.
     """
-    require_auth(authorization)
-
     video_id = _extract_video_id(req.url)
     service = _get_service()
 

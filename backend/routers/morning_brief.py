@@ -15,6 +15,7 @@ from helpers import (
 import os
 from services.llm_utils import contains_devanagari
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
+from services import llm_budget
 from services.portfolio_service import _get_indices_data
 from config.settings import MORNING_BRIEF_TTL as _MORNING_CACHE_TTL
 
@@ -157,6 +158,10 @@ mood must be exactly: "positive", "cautious", or "negative"
         if not api_key or api_key == "placeholder":
             _dcache_set("morning_brief", str(user_id), fallback, ttl=_MORNING_CACHE_TTL)
             return fallback
+        try:
+            llm_budget.guard(user_id, "morning_summary")
+        except Exception:
+            return fallback  # over budget: plain brief, not cached, so it regenerates once allowed
 
         response = claude_messages(
             model=HAIKU_MODEL,

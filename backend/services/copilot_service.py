@@ -1,6 +1,6 @@
 import json
 import re
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 from database import get_session
 from services.llm_utils import deepseek_chat, claude_messages, HAIKU_MODEL
@@ -21,6 +21,7 @@ def claude_haiku(messages: List[Dict[str, Any]]) -> str:
     if not filtered_messages:
         filtered_messages.append({"role": "user", "content": "Hello"})
         
+    # claude_messages enforces the global budget and logs usage (LLM-02).
     response = claude_messages(
         model=HAIKU_MODEL,
         system=system_prompt,
@@ -54,9 +55,8 @@ def _manage_tokens(conversation_history: List[Dict[str, Any]]) -> List[Dict[str,
         return managed_history
     return conversation_history
 
-def process_copilot_request(user_message: str, conversation_history: List[Dict[str, Any]], current_context: Dict[str, Any], user_id: Optional[int]) -> Dict[str, Any]:
+def process_copilot_request(user_message: str, conversation_history: List[Dict[str, Any]], current_context: Dict[str, Any], user_id: int) -> Dict[str, Any]:
     """Process the chat request using LangGraph-like flow."""
-    user_id = user_id or 0  # Default for unauthenticated users
     managed_history = _manage_tokens(conversation_history)
     
     # Inject system prompt with app navigation knowledge (kept outside token management)

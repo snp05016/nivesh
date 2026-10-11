@@ -43,6 +43,7 @@ router = APIRouter(tags=["Analysis"])
 from services.llm_utils import deepseek_chat, SONNET_MODEL, DEEPSEEK_MODEL
 _deepseek_chat = deepseek_chat  # backward-compat alias
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
+from services import llm_budget
 
 # Task 31: import SECTOR_PE_MAP from central config
 from config.settings import (
@@ -532,6 +533,10 @@ kills the run. One running job per user (guarded by the DB job state).
         import logging
         logging.error(f"Error occurred: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
+
+    # Anonymous callers still reach here (auth waits for the token-sending app build), so
+    # stop new paid jobs once today's global AI budget is spent: 503.
+    llm_budget.check_global_budget()
 
     if req.user_id is not None:
         active = database.get_active_job_for_user_and_type(req.user_id, req.scan_type)
@@ -1403,6 +1408,7 @@ def daily_action_endpoint(user_id: int, _caller: int = Depends(require_user_matc
         # Holdings go to the LLM processor only with the opt-in consent (FINSEC-04).
         if os.getenv("DEEPSEEK_API_KEY") and has_active_consent(user_id, AI_PROCESSING_CONSENT):
             try:
+                llm_budget.guard(user_id, "daily_action")  # over budget -> the static action
                 context_parts = []
                 if triggered:
                     context_parts.append(f"Triggered alerts: {', '.join(t['ticker'] for t in triggered)}")

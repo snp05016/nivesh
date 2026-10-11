@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import multiprocessing
 
-from core.security import get_current_user_id, require_auth
+from services.llm_budget import require_llm_budget
 from services.copilot_service import process_copilot_request
 
 router = APIRouter(tags=["Copilot"])
@@ -25,7 +25,7 @@ class CopilotResponse(BaseModel):
 def copilot_chat(
     req: CopilotRequest,
     background_tasks: BackgroundTasks,
-    user_id: Optional[int] = Depends(get_current_user_id)
+    user_id: int = Depends(require_llm_budget("copilot"))
 ):
     """
     Handle chat request. For fast intent resolution, we run it directly.

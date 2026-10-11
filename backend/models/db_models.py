@@ -1814,3 +1814,25 @@ class ResearchLiveMetric(Base):
             name="ck_research_live_metrics_live_status",
         ),
     )
+
+
+class LlmUsage(Base):
+    """One paid LLM call: the ledger behind the per-user and global daily AI budgets
+    (services/llm_budget.py). user_id has no FK so rows outlive deleted users; NULL means
+    a system job or an anonymous route."""
+    __tablename__ = "llm_usage"
+
+    id                 = Column(Integer, primary_key=True, autoincrement=True)
+    created_at         = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    user_id            = Column(Integer, nullable=True)
+    feature            = Column(String(64), nullable=False)
+    model              = Column(String(80), nullable=False)
+    input_tokens       = Column(Integer, nullable=False, default=0)
+    output_tokens      = Column(Integer, nullable=False, default=0)
+    cache_read_tokens  = Column(Integer, nullable=False, default=0)
+    cache_write_tokens = Column(Integer, nullable=False, default=0)
+    cost_usd           = Column(Float, nullable=False, default=0.0)
+
+    __table_args__ = (
+        Index("ix_llm_usage_user_created", "user_id", "created_at"),
+    )

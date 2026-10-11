@@ -14,6 +14,7 @@ from helpers import (
 import os
 from services.llm_utils import deepseek_chat as _deepseek_chat
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
+from services import llm_budget
 from services.portfolio_service import compute_trade_journal_stats
 
 router = APIRouter(tags=["Portfolio"])
@@ -230,6 +231,7 @@ def trade_journal_stats_endpoint(user_id: int, auth_user_id: int = Depends(requi
         try:
             all_reasons = " | ".join(e["reason_text"] for e in entries_data if e["reason_text"])
             if all_reasons and os.getenv("DEEPSEEK_API_KEY") and has_active_consent(auth_user_id, AI_PROCESSING_CONSENT):
+                llm_budget.guard(auth_user_id, "trade_journal_stats")  # over budget -> no patterns
                 prompt = (
                     f'Find 2 patterns in these trade journal reasons: {all_reasons[:2000]}. '
                     'Return JSON: [{"pattern": str}]'

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from services.nl_screener import NLQueryNotUnderstood, NLQueryUnavailable, process_nl_query
 
 from typing import Dict, List, Optional
@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 router = APIRouter(tags=["Market"])
 
 class NLScreenerRequest(BaseModel):
-    query: str
+    query: str = Field(max_length=500)
 
 class NLScreenerResult(BaseModel):
     ticker: str

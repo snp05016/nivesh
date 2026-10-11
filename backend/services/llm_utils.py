@@ -87,6 +87,11 @@ def deepseek_chat(
     Retries up to 3 times with exponential backoff (2 s, 4 s, 8 s).
     """
     from helpers import _log_token_usage  # local import avoids circular deps
+    from services import llm_budget
+
+    # Raises LlmBudgetExceeded before any spend once today's global cap is reached;
+    # callers already treat a failed call as "AI unavailable".
+    llm_budget.assert_global_budget()
 
     selected_model = model or DEEPSEEK_MODEL
     is_pro = selected_model == DEEPSEEK_REASONER_MODEL
@@ -114,9 +119,10 @@ def deepseek_chat(
 
             response = client.chat.completions.create(**kwargs)
 
-            # Every call is logged (LLM-09, ARCH-03); unlabelled callers still show up in spend.
+            # Every call is logged and metered (LLM-09, ARCH-03, LLM-02); unlabelled callers still show up in spend.
             if getattr(response, "usage", None) is not None:
-                _log_token_usage(log_endpoint or "deepseek_unlabelled", response.usage, selected_model)
+                _log_token_usage(log_endpoint or llm_budget.current_feature() or "deepseek_unlabelled",
+                                 response.usage, selected_model)
 
             choice = response.choices[0]
             content = choice.message.content or ""
@@ -194,7 +200,9 @@ def claude_messages(*, model: str, messages: list[Any], max_tokens: int, feature
     kwargs pass straight through (system, temperature, ...). Re-raises the last error.
     """
     from helpers import _log_token_usage  # local import avoids circular deps
+    from services import llm_budget
 
+    llm_budget.assert_global_budget()  # LlmBudgetExceeded before any spend past the daily cap
     client = get_anthropic_client()
     for attempt in range(3):
         try:

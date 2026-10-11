@@ -67,6 +67,7 @@ from services.llm_utils import (
 # backward-compat aliases for internal callers
 _get_deepseek_client = get_deepseek_client
 _deepseek_chat = deepseek_chat
+from services import llm_budget
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -797,6 +798,7 @@ def reformat_with_claude(
     claude_api_key = os.getenv("ANTHROPIC_API_KEY")
     claude_succeeded = False
     if claude_api_key:
+        llm_budget.assert_global_budget()  # LlmBudgetExceeded: no Sonnet spend past the daily cap
         claude_client = get_anthropic_client()
         system_array: list = [
             {

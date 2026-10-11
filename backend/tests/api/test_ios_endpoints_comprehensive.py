@@ -241,7 +241,7 @@ def test_ideas_feed_endpoint(client):
     assert "insights" in data
 
 
-def test_brainstorm_endpoint(client, monkeypatch):
+def test_brainstorm_endpoint(client, monkeypatch, auth_headers):
     # Mock LLM generation in brainstorming service
     import services.brainstorming as bs
     monkeypatch.setattr(bs, "generate_brainstorming_ideas", lambda *args, **kwargs: {
@@ -254,7 +254,8 @@ def test_brainstorm_endpoint(client, monkeypatch):
             }
         ]
     })
-    resp = client.post("/brainstorm", json={"topic": "growth", "risk_tolerance": "moderate"})
+    resp = client.post("/brainstorm", json={"topic": "growth", "risk_tolerance": "moderate"},
+                       headers=auth_headers)  # paid route: login required (LLM-02)
     assert resp.status_code == 200
     data = resp.json()
     assert "ideas" in data
