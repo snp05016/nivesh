@@ -81,10 +81,6 @@ PUBLIC_ROUTES |= {
 # Unauthenticated today; each entry names the audit item that adds auth.
 KNOWN_GAPS = {
     ("POST", "/analyze"): "IOSCORE-04/AUTH-08: user_id comes from the request body",
-    ("GET", "/analyze/job/{job_id}"): "AUTH-08: opt-in ownership check",
-    ("GET", "/analyze/active"): "AUTH-08: client-supplied user_id",
-    ("POST", "/analyze/{job_id}/cancel"): "AUTH-08: opt-in ownership check",
-    ("POST", "/batch"): "AUTH-08/LLM-02",
     ("POST", "/brainstorm"): "LLM-02: paid LLM, anonymous",
     ("POST", "/api/v1/copilot/chat"): "LLM-02: paid LLM, optional auth",
     ("POST", "/api/v1/screener/natural-language"): "LLM-02/IOSCORE-04",

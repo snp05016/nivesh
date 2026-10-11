@@ -39,7 +39,7 @@ def test_spawn_job_uses_ctx(monkeypatch, real_spawn_job):
         return made[-1]
 
     monkeypatch.setattr(jm, "MP_CTX", SimpleNamespace(Process=_process))
-    monkeypatch.setattr(jm, "_active_job_count", lambda _job_id: 0)
+    monkeypatch.setattr(jm, "_active_jobs", lambda _job_id: [])
     monkeypatch.setattr(jm, "_job_registry", {})
 
     jm.spawn_job("job-spawn-ctx", "TCS", "NSE", 1, False, "standard")
