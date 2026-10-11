@@ -4,12 +4,14 @@ set -o pipefail
 
 # ──────────────────────────────────────────────────────────────
 # Nivesh OpenCode Scanner — cron wrapper
-# Invoked by crontab every 2 hours.
+# Never run this on the production host: the agent reads untrusted text
+# (issues, commits) with permissions skipped. See scripts/CRON_SETUP.md.
 # Uses flock(1) to prevent overlapping executions.
 # ──────────────────────────────────────────────────────────────
 
-REPO_DIR="/home/saumyapatel/Desktop/nivesh"
-OPENCODE_BIN="/home/saumyapatel/.opencode/bin/opencode"
+DEPLOY_DIR="/home/saumyapatel/Desktop/nivesh"   # production checkout (backend/nivesh.service)
+REPO_DIR="${NIVESH_SCANNER_REPO:?set NIVESH_SCANNER_REPO to a dedicated, secret-free clone (see scripts/CRON_SETUP.md)}"
+OPENCODE_BIN="${OPENCODE_BIN:-${HOME}/.opencode/bin/opencode}"
 LOCKFILE="/tmp/nivesh-scanner.lock"
 LOGDIR="${REPO_DIR}/logs"
 
@@ -19,6 +21,27 @@ if [ ! -d "${REPO_DIR}" ]; then
     exit 1
 fi
 
+# Refuse the production checkout or any clone holding secrets / live DBs.
+REAL_REPO="$(cd "${REPO_DIR}" && pwd -P)"
+SVC_DIR="$(systemctl show -p WorkingDirectory --value nivesh 2>/dev/null || true)"
+for prod in "${DEPLOY_DIR}" "${SVC_DIR%/backend}"; do
+    if [ -n "${prod}" ] && [ -d "${prod}" ] && [ "${REAL_REPO}" = "$(cd "${prod}" && pwd -P)" ]; then
+        echo "FATAL: ${REPO_DIR} is the production checkout. Use a separate clone on a non-production user/machine." >&2
+        exit 2
+    fi
+done
+if [ -e "${REAL_REPO}/backend/.env" ] || compgen -G "${REAL_REPO}/backend/*.db" >/dev/null; then
+    echo "FATAL: ${REPO_DIR} contains backend/.env or backend/*.db. The scanner must run from a clone with no secrets or databases." >&2
+    exit 2
+fi
+
+# --dangerously-skip-permissions is only acceptable inside a disposable sandbox.
+if [ "${NIVESH_AGENT_SANDBOXED:-0}" != "1" ]; then
+    echo "FATAL: the scanner runs opencode with --dangerously-skip-permissions." >&2
+    echo "       Run it only inside a container/VM with no secrets and set NIVESH_AGENT_SANDBOXED=1." >&2
+    exit 2
+fi
+
 if [ ! -x "${OPENCODE_BIN}" ]; then
     echo "FATAL: OpenCode binary ${OPENCODE_BIN} not found or not executable." >&2
     exit 1
@@ -26,6 +49,7 @@ fi
 
 
 mkdir -p "${LOGDIR}"
+find "${LOGDIR}" -name 'scanner-*.log' -mtime +14 -delete 2>/dev/null || true
 
 # Lock — exit immediately if another instance holds the lock
 exec 200>"${LOCKFILE}"

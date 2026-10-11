@@ -1,69 +1,82 @@
-# Nivesh OpenCode Scanner — Cron Job
+# Nivesh Agent Loops (OpenCode scanner, Codex issue loop)
 
-Runs the GitHub issue scanner every 2 hours using OpenCode.
+`scripts/run-opencode-scanner.sh` runs the GitHub issue scanner with OpenCode;
+`scripts/codex_issue_loop.sh` runs Codex against open issues in a loop.
 
-## Schedule
+Both agents read untrusted text (issue bodies, commit messages, scraped
+documents). A prompt injection in any of it can run shell commands with the
+agent's permissions, so:
 
-`0 */2 * * *` — at minute 0 of every 2nd hour (00:00, 02:00, 04:00, …).
+## Never run them on the production host
+
+Do **not** install these on the server (192.168.1.122) or in the checkout that
+`backend/nivesh.service` serves from (`/home/saumyapatel/Desktop/nivesh`). That
+checkout holds `backend/.env` (live API keys) and the live SQLite databases, and
+uvicorn hot-reloads anything written under `backend/`.
+
+Both scripts enforce this and exit with status 2 when:
+
+- the repository is the production checkout (the hard-coded deploy path or the
+  `WorkingDirectory` of the `nivesh` systemd unit), or
+- `backend/.env` or any `backend/*.db` exists in the repository, or
+- the agent would run with approvals/permissions disabled
+  (`--dangerously-*`) and `NIVESH_AGENT_SANDBOXED=1` is not set.
+
+## Required environment
+
+Run from a dedicated clone on a non-production machine or user:
+
+- a fresh `git clone` with **no** `backend/.env` and **no** database files;
+- a fine-grained GitHub token scoped to this repository's issues only
+  (`gh auth login --with-token`);
+- egress limited to `github.com` (and the model provider) where possible;
+- for the OpenCode scanner, which always passes `--dangerously-skip-permissions`:
+  a disposable container or VM with no secrets mounted, with
+  `NIVESH_AGENT_SANDBOXED=1` set inside it.
+
+The Codex loop defaults to `codex exec --full-auto` (workspace-write sandbox,
+network enabled for `gh`). Overriding `CODEX_CMD` with a `--dangerously-*` flag
+also requires `NIVESH_AGENT_SANDBOXED=1`.
+
+| Variable | Used by | Purpose |
+|----------|---------|---------|
+| `NIVESH_SCANNER_REPO` | scanner | Path to the dedicated clone (required) |
+| `OPENCODE_BIN` | scanner | OpenCode binary (default `~/.opencode/bin/opencode`) |
+| `NIVESH_AGENT_SANDBOXED` | both | Set to `1` only inside a secret-free container/VM |
+| `CODEX_CMD` | Codex loop | Codex invocation (default sandboxed `--full-auto`) |
+
+## Schedule (scanner)
+
+On the sandbox host only:
+
+```cron
+0 */2 * * * NIVESH_SCANNER_REPO=/path/to/scanner-clone NIVESH_AGENT_SANDBOXED=1 /path/to/scanner-clone/scripts/run-opencode-scanner.sh
+```
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `scripts/run-opencode-scanner.sh` | Wrapper script with locking and logging |
-| `opencoderunner.txt` | Instructions fed to the `opencode run` command |
-| `logs/scanner-<timestamp>.log` | Per-run output (stdout + stderr) |
+| `scripts/run-opencode-scanner.sh` | Scanner wrapper with guards, locking and logging (prompt is inline) |
+| `logs/scanner-<timestamp>.log` | Per-run output; files older than 14 days are deleted each run |
 | `logs/scanner-error.log` | Lock-contention messages |
 | `/tmp/nivesh-scanner.lock` | `flock(1)` lock file |
 
-## Manual Run
-
-```bash
-/home/saumyapatel/Desktop/nivesh/scripts/run-opencode-scanner.sh
-```
-
-If another instance is running, it will exit immediately and log the conflict.
-
-## Disable the Cron Job
+## Remove the cron job from the production server
 
 ```bash
 crontab -l | grep -v run-opencode-scanner | crontab -
+crontab -l    # confirm no run-opencode-scanner entry remains
+pkill -f codex_issue_loop.sh || true
 ```
 
-Or comment out the line:
+If a scanner run on the server may have processed a malicious issue, rotate
+the API keys that were in `backend/.env` there.
+
+## View logs
 
 ```bash
-crontab -e
-# Add a # at the start of the scanner line, then save.
-```
-
-## Modify the Schedule
-
-```bash
-crontab -e
-```
-
-Change `0 */2 * * *` to the desired schedule (standard cron syntax).
-
-## View Logs
-
-```bash
-# Latest run
 ls -t logs/scanner-*.log | head -1 | xargs cat
-
-# Lock conflicts
 cat logs/scanner-error.log
-
-# Tail live (if a run is in progress)
 tail -f "$(ls -t logs/scanner-*.log | head -1)"
 ```
-
-## What It Does
-
-1. Locks `/tmp/nivesh-scanner.lock` (non-blocking `flock`).
-2. If the lock cannot be acquired → logs a message and exits.
-3. Creates a timestamped log file under `logs/`.
-4. `cd`s to the repository root.
-5. Runs: `opencode run "using the gh-issue scanner please run $(cat opencoderunner.txt)"`
-6. Appends stdout + stderr to the log file.
-7. Records the exit code and completion timestamp.
