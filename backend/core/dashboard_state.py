@@ -18,6 +18,7 @@ _harvest_status = {
     "youtube":  {"status": "idle", "last_run": None, "last_result": None},
     "news":     {"status": "idle", "last_run": None, "last_result": None},
     "filings":  {"status": "idle", "last_run": None, "last_result": None},
+    "research_nightly": {"status": "idle", "last_run": None, "last_result": None},
 }
 _active_analyses: dict = {}
 _completed_analyses: deque = deque(maxlen=200)
