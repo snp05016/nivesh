@@ -74,14 +74,18 @@ def spawn_job(job_id: str, ticker: str, exchange: str,
 
 
 def cancel_job(job_id: str) -> bool:
-    """Mark the job CANCELLED and terminate its subprocess if we own it locally."""
+    """Mark the job CANCELLED and terminate its subprocess if we own it locally.
+
+    A worker owned by another uvicorn process sees the terminal status on its
+    next heartbeat and exits itself (services.job_worker).
+    """
     import database
-    database.update_job(job_id, status="CANCELLED", error="Cancelled by user")
-    try:
+    try:  # before the status: append_checkpoint ignores terminal jobs
         database.append_checkpoint(job_id, stage="cancelled", agent="Engine",
                                    message="Cancelled by user", state="error", pct=0)
     except Exception as _e:
         pass
+    database.update_job(job_id, status="CANCELLED", error="Cancelled by user")
     with _registry_lock:
         p = _job_registry.pop(job_id, None)
     if p is not None and p.is_alive():

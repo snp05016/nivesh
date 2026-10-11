@@ -1,9 +1,12 @@
 """AnalysisJob DAO — query functions extracted from database.py."""
 
 import json
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+from sqlalchemy.exc import IntegrityError
 
 from models.db_models import AnalysisJob
 
@@ -15,10 +18,21 @@ def _get_session():
 
 
 _JOB_TERMINAL = {"SUCCEEDED", "FAILED", "CANCELLED", "TIMEOUT"}
+# Only these rows may still change; uq_analysis_jobs_active_user_scan allows one
+# per (user_id, scan_type).
+_JOB_ACTIVE = ("QUEUED", "RUNNING")
 
 # Wall-clock limits mirror services.job_worker._WALLCLOCK_LIMITS so a crashed
 # worker never permanently blocks new runs of the same scan_type.
-_STALE_LIMITS: dict[str, int] = {"extreme": 600, "deep": 420, "standard": 300}
+_STALE_LIMITS: dict[str, int] = {"extreme": 600, "deep": 420, "standard": 420}
+
+
+class JobAlreadyActive(Exception):
+    """create_job lost to an active job of the same user and scan_type (`job`)."""
+
+    def __init__(self, job: dict):
+        super().__init__(f"active job {job['job_id']} already exists")
+        self.job = job
 
 
 def _parse_checkpoints(raw: str | None) -> list[dict]:
@@ -62,14 +76,43 @@ def create_job(user_id: Optional[int], ticker: str, exchange: str, scan_type: st
 
     Returns:
         dict: A dictionary representation of the created AnalysisJob.
+
+    Raises:
+        JobAlreadyActive: the user already has a QUEUED/RUNNING job of this
+            scan_type (enforced by the partial unique index, so concurrent
+            requests cannot both insert).
     """
-    jid = str(uuid.uuid4())[:12]
+    jid = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
     with _get_session() as s:
+        if user_id is not None:
+            # A row past its wall-clock limit belongs to a dead worker; fail it in
+            # this transaction so it cannot hold the unique index forever.
+            stale_before = now - timedelta(seconds=_STALE_LIMITS.get(scan_type, 300))
+            (s.query(AnalysisJob)
+               .filter(AnalysisJob.user_id == user_id,
+                       AnalysisJob.scan_type == scan_type,
+                       AnalysisJob.status.in_(_JOB_ACTIVE),
+                       AnalysisJob.created_at < stale_before)
+               .update({"status": "FAILED", "finished_at": now,
+                        "error": "Stale: exceeded wall-clock limit"},
+                       synchronize_session=False))
         j = AnalysisJob(job_id=jid, user_id=user_id, ticker=ticker.upper(),
                         exchange=exchange, scan_type=scan_type, status="QUEUED",
-                        heartbeat_at=datetime.now(timezone.utc))
+                        heartbeat_at=now)
         s.add(j)
-        s.commit()
+        try:
+            s.commit()
+        except IntegrityError:
+            s.rollback()
+            active = (s.query(AnalysisJob)
+                        .filter(AnalysisJob.user_id == user_id,
+                                AnalysisJob.scan_type == scan_type,
+                                AnalysisJob.status.in_(_JOB_ACTIVE))
+                        .order_by(AnalysisJob.created_at.desc()).first())
+            if active is None:
+                raise
+            raise JobAlreadyActive(_job_to_dict(active)) from None
         return _job_to_dict(j)
 
 
@@ -95,14 +138,19 @@ def get_job(job_id: str) -> Optional[dict]:
         return d
 
 
-def update_job(job_id: str, **fields) -> None:
-    """Update fields of an existing analysis job.
+def update_job(job_id: str, **fields) -> bool:
+    """Update fields of an active (QUEUED/RUNNING) analysis job.
 
-    Automatically handles timestamps for terminal states and running status.
+    Compare-and-set: a terminal job is never overwritten, so a cancelled job
+    cannot later become SUCCEEDED. Automatically handles timestamps for terminal
+    states and running status; with no fields it only refreshes the heartbeat.
 
     Args:
         job_id (str): The unique identifier of the job.
         **fields: Keyword arguments representing the fields to update.
+
+    Returns:
+        bool: True if the job was still active and got updated.
     """
     if fields.get("status") in _JOB_TERMINAL:
         fields.setdefault("finished_at", datetime.now(timezone.utc))
@@ -110,17 +158,19 @@ def update_job(job_id: str, **fields) -> None:
         fields.setdefault("started_at", datetime.now(timezone.utc))
     fields.setdefault("heartbeat_at", datetime.now(timezone.utc))
     with _get_session() as s:
-        j = s.get(AnalysisJob, job_id)
-        if not j:
-            return
-        for k, v in fields.items():
-            setattr(j, k, v)
+        n = (s.query(AnalysisJob)
+               .filter(AnalysisJob.job_id == job_id, AnalysisJob.status.in_(_JOB_ACTIVE))
+               .update({k: v for k, v in fields.items()}, synchronize_session=False))
         s.commit()
+        return n > 0
 
 
 def append_checkpoint(job_id: str, *, stage: str, agent: str,
                       message: str, state: str, pct: int) -> None:
-    """Append a progress checkpoint to a job's checkpoint log.
+    """Append a progress checkpoint to an active job's checkpoint log.
+
+    Terminal jobs are left untouched, so write a final checkpoint before the
+    terminal status.
 
     Args:
         job_id (str): The unique identifier of the job.
@@ -130,9 +180,12 @@ def append_checkpoint(job_id: str, *, stage: str, agent: str,
         state (str): The state of the checkpoint.
         pct (int): The current progress percentage (0-100).
     """
+    # ponytail: row lock (no-op on SQLite) around a JSON read-modify-write; move to
+    # a child table if checkpoint volume grows.
     with _get_session() as s:
-        j = s.get(AnalysisJob, job_id)
-        if not j:
+        j = (s.query(AnalysisJob).filter(AnalysisJob.job_id == job_id)
+               .with_for_update().first())
+        if not j or j.status not in _JOB_ACTIVE:
             return
         cps = json.loads(j.checkpoints or "[]")
         cps.append({"ts": datetime.now(timezone.utc).isoformat(), "stage": stage,
@@ -294,16 +347,40 @@ def get_latest_successful_monitor_job(ticker: str) -> Optional[dict]:
         return _job_to_monitor_dict(j) if j else None
 
 
+def _pid_alive(pid: Optional[int]) -> bool:
+    if not pid:
+        return False
+    try:
+        os.kill(pid, 0)
+    except PermissionError:
+        return True  # exists, owned by another user
+    except OSError:
+        return False
+    return True
+
+
+# ponytail: a reused pid keeps a dead row RUNNING; create_job's stale check still
+# frees the user's slot after the wall-clock limit.
 def sweep_stale_jobs(max_heartbeat_age_sec: int = 90) -> int:
-    """Crash recovery: mark QUEUED/RUNNING jobs with a stale heartbeat as FAILED."""
-    cutoff = datetime.now(timezone.utc) - timedelta(seconds=max_heartbeat_age_sec)
+    """Crash recovery: mark QUEUED/RUNNING jobs with a stale heartbeat as FAILED.
+
+    Skips jobs whose worker pid is still alive on this host.
+    """
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(seconds=max_heartbeat_age_sec)
     with _get_session() as s:
-        stale = (s.query(AnalysisJob)
-                   .filter(AnalysisJob.status.in_(["QUEUED", "RUNNING"]),
-                            AnalysisJob.heartbeat_at < cutoff).all())
-        for j in stale:
-            j.status = "FAILED"
-            j.error = "Worker died (stale heartbeat / server restart)"
-            j.finished_at = datetime.now(timezone.utc)
+        stale = (s.query(AnalysisJob.job_id, AnalysisJob.pid)
+                   .filter(AnalysisJob.status.in_(_JOB_ACTIVE),
+                           AnalysisJob.heartbeat_at < cutoff).all())
+        dead = [jid for jid, pid in stale if not _pid_alive(pid)]
+        if not dead:
+            return 0
+        n = (s.query(AnalysisJob)
+               .filter(AnalysisJob.job_id.in_(dead),
+                       AnalysisJob.status.in_(_JOB_ACTIVE),
+                       AnalysisJob.heartbeat_at < cutoff)
+               .update({"status": "FAILED", "finished_at": now,
+                        "error": "Worker died (stale heartbeat / server restart)"},
+                       synchronize_session=False))
         s.commit()
-        return len(stale)
+        return n

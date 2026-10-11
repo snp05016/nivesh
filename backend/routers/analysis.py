@@ -493,6 +493,22 @@ def _save_analysis_result(user_id: int | None, ticker: str, result: dict) -> Non
         logging.info(f"[dash] Failed to persist analysis for {ticker}: {e}")
 
 
+def _already_running_response(active: dict):
+    return _JSONResponse(status_code=409, content={
+        "error_code": "ALREADY_RUNNING",
+        "error_title": "Analysis Already Running",
+        "error_detail": (
+            f"You already have an analysis in progress "
+            f"({active['ticker']}, status {active['status']}). "
+            f"Cancel it or wait for it to finish before starting another."
+        ),
+        "error_type": "rate_limit",
+        "job_id": active["job_id"],
+        "ticker": active["ticker"],
+        "suggested_action": "ATTACH_OR_CANCEL",
+    })
+
+
 @router.post("/analyze", status_code=202)
 async def analyze_endpoint(req: AnalyzeRequest):
     """
@@ -509,6 +525,7 @@ kills the run. One running job per user (guarded by the DB job state).
         Any: The response.
     """
     import database
+    from repositories.job_repo import JobAlreadyActive
     from services.job_manager import spawn_job
 
     ticker = req.ticker.upper()
@@ -543,22 +560,13 @@ kills the run. One running job per user (guarded by the DB job state).
     if req.user_id is not None:
         active = database.get_active_job_for_user_and_type(req.user_id, req.scan_type)
         if active:
-            return _JSONResponse(status_code=409, content={
-                "error_code": "ALREADY_RUNNING",
-                "error_title": "Analysis Already Running",
-                "error_detail": (
-                    f"You already have an analysis in progress "
-                    f"({active['ticker']}, status {active['status']}). "
-                    f"Cancel it or wait for it to finish before starting another."
-                ),
-                "error_type": "rate_limit",
-                "job_id": active["job_id"],
-                "ticker": active["ticker"],
-                "suggested_action": "ATTACH_OR_CANCEL",
-            })
+            return _already_running_response(active)
 
     deep_scan = req.deep_scan or req.scan_type == "deep"
-    job = database.create_job(req.user_id, ticker, req.exchange, req.scan_type)
+    try:
+        job = database.create_job(req.user_id, ticker, req.exchange, req.scan_type)
+    except JobAlreadyActive as e:  # lost the race to a concurrent request
+        return _already_running_response(e.job)
     try:
         spawn_job(job["job_id"], ticker, req.exchange,
                   req.user_id, deep_scan, req.scan_type,

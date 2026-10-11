@@ -99,20 +99,24 @@ async def admin_harvest_news(bg_tasks: BackgroundTasks, authorization: str = Hea
 
 _scheduler_lock_file = None
 
-def start_scheduler():
-    """Start APScheduler with all nightly cron jobs. Called from main.py startup."""
+def start_scheduler() -> bool:
+    """Start APScheduler with all nightly cron jobs. Called from main.py startup.
+
+    Returns True when this process is the leader (holds the scheduler lock), so
+    main.py runs one-time startup tasks only there.
+    """
     global _scheduler, _scheduler_lock_file
     if _scheduler is not None and _scheduler.running:
         logging.getLogger(__name__).info("Scheduler already running, skipping re-init")
-        return
-        
+        return True
+
     try:
         import fcntl
         _scheduler_lock_file = open("/tmp/nivesh_scheduler.lock", "w")
         fcntl.lockf(_scheduler_lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except IOError:
         logging.getLogger(__name__).info("Another worker is running the scheduler. Skipping.")
-        return
+        return False
         
     _scheduler = AsyncIOScheduler(timezone="UTC")
 
@@ -345,6 +349,11 @@ def start_scheduler():
         next_run_time=datetime.now(timezone.utc) + timedelta(minutes=5),
     )
 
+    # Crash recovery for analysis/stress-test jobs whose worker died (pid-aware).
+    from repositories.job_repo import sweep_stale_jobs
+    _scheduler.add_job(sweep_stale_jobs, "interval", minutes=2, id="job_sweep",
+                       max_instances=1, coalesce=True, replace_existing=True)
+
     _scheduler.start()
     logging.info(
         "All schedulers started — existing: (advisor 1:30, news 12:30, yt-channel 1:00, "
@@ -353,6 +362,7 @@ def start_scheduler():
         "piotroski-weekly Sun 11 PM, premarket-warm 9:00 AM, error-digest 7:00 AM, db-backup 2:30 AM) | "
         "harvesters: (expert 120min, sebi 120min, yt-expert 120min) [all IST]"
     )
+    return True
 
 
 async def _run_expert_harvest_bg():

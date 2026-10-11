@@ -111,7 +111,7 @@ def test_analyze_valid_request_returns_async_job_contract(client, monkeypatch):
     assert response.status_code == 202
     body = response.json()
     assert set(body) == {"job_id", "status", "ticker", "scan_type"}
-    assert len(body["job_id"]) == 12
+    assert len(body["job_id"]) == 36
     assert body["status"] == "QUEUED"
     assert body["ticker"] == "RELIANCE"
 

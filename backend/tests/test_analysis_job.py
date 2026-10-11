@@ -29,7 +29,7 @@ def test_job_lifecycle():
     import database
     job = database.create_job(_uid(), "RELIANCE", "NSE", "extreme")
     assert job["status"] == "QUEUED"
-    assert len(job["job_id"]) == 12
+    assert len(job["job_id"]) == 36
 
     database.update_job(job["job_id"], status="RUNNING", pid=4242,
                         progress_pct=10, stage="market")

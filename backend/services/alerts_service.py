@@ -154,6 +154,7 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
         return False
 
     any_success = False
+    dead_tokens = []
     for (device_token,) in tokens:
         url = f"{apns_host}/3/device/{_url_quote(device_token)}"
         try:
@@ -162,6 +163,8 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
                 if response.status_code == 200:
                     logger.info("APNs push sent to user %d for %s", user_id, ticker)
                     any_success = True
+                elif _is_dead_token(response):
+                    dead_tokens.append(device_token)
                 else:
                     logger.warning("APNs push rejected %d for user %d: %s",
                                    response.status_code, user_id, response.text[:200])
@@ -169,62 +172,103 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
             logger.warning("APNs HTTP transport error for user %d", user_id)
         except Exception as e:
             logger.warning("APNs dispatch error for user %d (%s)", user_id, type(e).__name__)
+    if dead_tokens:
+        with get_session() as session:
+            session.query(DeviceToken).filter(
+                DeviceToken.user_id == user_id,
+                DeviceToken.device_token.in_(dead_tokens),
+            ).delete(synchronize_session=False)
+            session.commit()
+        logger.info("Pruned %d unregistered APNs token(s) for user %d", len(dead_tokens), user_id)
     return any_success or not tokens
 
-async def _poll_once() -> None:
-    """One poller pass: trigger crossed alerts, write the inbox row, push best-effort."""
+
+def _is_dead_token(response) -> bool:
+    """APNs says the device token will never work again (410, or 400 bad token)."""
+    if response.status_code == 410:
+        return True
+    if response.status_code != 400:
+        return False
+    try:
+        reason = response.json().get("reason")
+    except Exception:
+        return False
+    return reason in ("BadDeviceToken", "Unregistered")
+
+
+def _claim_alert(alert_id: int, user_id: int, ticker: str, direction: str,
+                 target_price: float, current_price: float) -> bool:
+    """Atomically flip triggered False->True and write the inbox row in one
+    transaction. False if another poller (uvicorn worker) claimed it first."""
     with get_session() as session:
-        pending = session.query(PriceTarget).filter_by(triggered=False).all()
-        if not pending:
-            return
+        claimed = (
+            session.query(PriceTarget)
+            .filter(PriceTarget.id == alert_id, PriceTarget.triggered.is_(False))
+            .update({"triggered": True}, synchronize_session=False)
+        )
+        if not claimed:
+            session.rollback()
+            return False
+        # The inbox row is the durable delivery; APNs is best-effort on top.
+        create_notification(
+            user_id,
+            "price_alert",
+            f"{ticker} alert triggered",
+            f"{ticker} is now {direction} ₹{target_price:,.2f} "
+            f"(current ₹{current_price:,.2f})",
+            action_url=f"nivesh://analyze/{ticker}",
+            session=session,
+        )
+        session.commit()
+        return True
 
-        unique_tickers = {a.ticker for a in pending}
-        prices = {}
-        for t in unique_tickers:
-            ns_ticker = _to_ns(t)
-            price, _ = await asyncio.to_thread(_yf_price, ns_ticker)
-            if price is not None:
-                prices[t] = price
 
-        for alert in pending:
-            current_price = prices.get(alert.ticker)
-            if current_price is None:
-                continue
+async def _poll_once() -> None:
+    """One poller pass: trigger crossed alerts, write the inbox row, push best-effort.
 
-            triggered = False
-            if alert.direction == "above" and current_price >= alert.target_price:
-                triggered = True
-            elif alert.direction == "below" and current_price <= alert.target_price:
-                triggered = True
+    No session is held across network awaits: read, fetch prices, then claim
+    each crossed alert in its own short transaction before pushing.
+    """
+    with get_session() as session:
+        pending = (
+            session.query(PriceTarget.id, PriceTarget.user_id, PriceTarget.ticker,
+                          PriceTarget.target_price, PriceTarget.direction)
+            .filter_by(triggered=False).all()
+        )
+    if not pending:
+        return
 
-            if not triggered:
-                continue
+    prices = {}
+    for t in {row[2] for row in pending}:
+        price, _ = await asyncio.to_thread(_yf_price, _to_ns(t))
+        if price is not None:
+            prices[t] = price
 
-            # The inbox row is the durable delivery; APNs is best-effort on top.
-            create_notification(
-                alert.user_id,
-                "price_alert",
-                f"{alert.ticker} alert triggered",
-                f"{alert.ticker} is now {alert.direction} ₹{alert.target_price:,.2f} "
-                f"(current ₹{current_price:,.2f})",
-                action_url=f"nivesh://analyze/{alert.ticker}",
-                session=session,
-            )
-            alert.triggered = True
-            session.commit()
+    for alert_id, user_id, ticker, target_price, direction in pending:
+        current_price = prices.get(ticker)
+        if current_price is None:
+            continue
+        crossed = (
+            (direction == "above" and current_price >= target_price)
+            or (direction == "below" and current_price <= target_price)
+        )
+        if not crossed:
+            continue
+        if not _claim_alert(alert_id, user_id, ticker, direction, target_price, current_price):
+            continue
 
-            prefs = get_preferences(alert.user_id)
-            if prefs is not None and prefs.get("alerts_enabled") is False:
-                continue
-            push_ok = await _send_apns_push(
-                user_id=alert.user_id,
-                ticker=alert.ticker,
-                target_price=alert.target_price,
-                current_price=current_price,
-                direction=alert.direction
-            )
-            if not push_ok:
-                logger.warning("APNs push failed for alert %d (inbox row written)", alert.id)
+        prefs = get_preferences(user_id)
+        if prefs is not None and prefs.get("alerts_enabled") is False:
+            continue
+        push_ok = await _send_apns_push(
+            user_id=user_id,
+            ticker=ticker,
+            target_price=target_price,
+            current_price=current_price,
+            direction=direction
+        )
+        if not push_ok:
+            logger.warning("APNs push failed for alert %d (inbox row written)", alert_id)
 
 
 async def price_alert_poller():

@@ -348,15 +348,22 @@ async def _on_startup():
     """
     Execute application startup routines.
 
-    Initializes structured logging, the scheduler, database tables, and kicks off
-    background syncs. Also sweeps any stale or abandoned jobs left in the database.
+    Initializes structured logging in every worker. Only the leader (the worker
+    holding the scheduler lock) runs the one-time tasks: database tables, the
+    stale-job sweep, harvester/catalog seeding, the price-alert poller and the
+    preference backfill (DB-13).
     """
     # Wire up structured JSON logging (fixes #83)
     from core.logging_config import configure_logging
     configure_logging()
-    # Init DB and seed on startup (fixes #87 — moved from module level)
+    # Tests are always leader: the fcntl lock is machine-wide, and another local
+    # process (dev server, a parallel pytest run) holding it must not skip seeding.
+    is_leader = start_scheduler() or os.environ.get("NIVESH_TESTING") == "1"
+    if not is_leader:
+        logging.info("[startup] follower worker: skipping one-time tasks")
+        return
+    # Init DB on startup (fixes #87 — moved from module level)
     init_db()
-    start_scheduler()
     # v2 engine crash recovery: any analysis job left RUNNING/QUEUED by a previous
     # process (deploy/crash) has a dead worker → mark it FAILED so the app shows an
     # honest error and the user can re-run.

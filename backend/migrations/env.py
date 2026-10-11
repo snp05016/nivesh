@@ -1,17 +1,34 @@
 from logging.config import fileConfig
 import os
+import sys
+from pathlib import Path
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
 
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BACKEND_DIR))
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-database_url = os.getenv("DATABASE_URL")
-if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+
+# Same configuration as the app (DB-14): backend/.env, except that an explicitly
+# exported DATABASE_URL still wins. load_backend_env is a no-op under pytest.
+from core.env import load_backend_env  # noqa: E402
+
+_explicit_url = os.environ.get("DATABASE_URL")
+load_backend_env()
+database_url = _explicit_url or os.getenv("DATABASE_URL")
+if not database_url:
+    if os.getenv("ENVIRONMENT") == "production":
+        raise RuntimeError("DATABASE_URL must be set for migrations in production")
+    # The app's own default (database.py), not alembic.ini's cwd-relative file.
+    database_url = f"sqlite:///{BACKEND_DIR / 'stockapp.db'}"
+# Escape "%" (URL-encoded passwords) for the ConfigParser behind set_main_option.
+config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -20,10 +37,7 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from models.db_models import Base
+from models.db_models import Base  # noqa: E402
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

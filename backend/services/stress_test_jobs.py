@@ -158,6 +158,16 @@ def _ticker_count(job: dict) -> int:
     return 0
 
 
+def _existing_job_launch(job_id: str, scenarios: list[str]) -> StressTestLaunch:
+    """Launch result pointing at an already-active stress test job."""
+    return StressTestLaunch(
+        job_id=job_id,
+        holdings=[],
+        scenarios=list(scenarios),
+        completed_response={"job_id": job_id, "status": "running"},
+    )
+
+
 def prepare_stress_test_job(
     user_id: int,
     portfolio_id: str,
@@ -175,23 +185,23 @@ def prepare_stress_test_job(
         StressTestLaunch: An object containing the created job_id and payload.
         If the user already has an active stress test, its job_id is returned
         instead of starting a second worker.
+        The active-job check is backed by a unique index, so a concurrent
+        request that loses the race also gets the existing job_id.
     """
     existing = job_repo.get_active_job_for_user_and_type(user_id, STRESS_TEST_SCAN_TYPE)
     if existing:
-        return StressTestLaunch(
-            job_id=existing["job_id"],
-            holdings=[],
-            scenarios=list(scenarios),
-            completed_response={"job_id": existing["job_id"], "status": "running"},
-        )
+        return _existing_job_launch(existing["job_id"], scenarios)
 
     holdings = stress_test_repo.list_portfolio_holdings(user_id, portfolio_id)
-    job = job_repo.create_job(
-        user_id,
-        _STRESS_TEST_TICKER,
-        _STRESS_TEST_EXCHANGE,
-        STRESS_TEST_SCAN_TYPE,
-    )
+    try:
+        job = job_repo.create_job(
+            user_id,
+            _STRESS_TEST_TICKER,
+            _STRESS_TEST_EXCHANGE,
+            STRESS_TEST_SCAN_TYPE,
+        )
+    except job_repo.JobAlreadyActive as e:
+        return _existing_job_launch(e.job["job_id"], scenarios)
     job_id = job["job_id"]
     job_repo.append_checkpoint(
         job_id,
@@ -203,13 +213,6 @@ def prepare_stress_test_job(
     )
 
     if not holdings:
-        job_repo.update_job(
-            job_id,
-            status="SUCCEEDED",
-            progress_pct=100,
-            stage="done",
-            result_json="[]",
-        )
         job_repo.append_checkpoint(
             job_id,
             stage="done",
@@ -217,6 +220,13 @@ def prepare_stress_test_job(
             message="No portfolio holdings to stress test",
             state="ok",
             pct=100,
+        )
+        job_repo.update_job(
+            job_id,
+            status="SUCCEEDED",
+            progress_pct=100,
+            stage="done",
+            result_json="[]",
         )
         return StressTestLaunch(
             job_id=job_id,
@@ -256,7 +266,6 @@ def mark_stress_test_start_failed(job_id: str, error: Exception) -> None:
         error (Exception): The exception that caused the startup failure.
     """
     message = f"Failed to start stress-test worker: {error}"
-    job_repo.update_job(job_id, status="FAILED", stage="failed", error=message)
     job_repo.append_checkpoint(
         job_id,
         stage="failed",
@@ -265,6 +274,7 @@ def mark_stress_test_start_failed(job_id: str, error: Exception) -> None:
         state="error",
         pct=0,
     )
+    job_repo.update_job(job_id, status="FAILED", stage="failed", error=message)
 
 
 def run_stress_test_job(
@@ -327,13 +337,6 @@ def run_stress_test_job(
             progress_callback=on_holding_progress,
             phase_callback=emit,
         )
-        job_repo.update_job(
-            job_id,
-            status="SUCCEEDED",
-            progress_pct=100,
-            stage="done",
-            result_json=json.dumps(results, default=str),
-        )
         job_repo.append_checkpoint(
             job_id,
             stage="done",
@@ -342,13 +345,14 @@ def run_stress_test_job(
             state="ok",
             pct=100,
         )
-    except Exception as exc:
         job_repo.update_job(
             job_id,
-            status="FAILED",
-            stage="failed",
-            error=str(exc),
+            status="SUCCEEDED",
+            progress_pct=100,
+            stage="done",
+            result_json=json.dumps(results, default=str),
         )
+    except Exception as exc:
         job_repo.append_checkpoint(
             job_id,
             stage="failed",
@@ -356,4 +360,10 @@ def run_stress_test_job(
             message=f"Stress test failed: {exc}",
             state="error",
             pct=0,
+        )
+        job_repo.update_job(
+            job_id,
+            status="FAILED",
+            stage="failed",
+            error=str(exc),
         )

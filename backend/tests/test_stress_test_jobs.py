@@ -259,6 +259,8 @@ def test_running_job_is_visible_from_any_api_worker(client, auth_headers, test_u
         "stage": "Building historical covariance matrix",
         "checkpoint": "covariance",
     }
+    # Free the user's single active stress_test slot for the next test.
+    database.update_job(job["job_id"], status="SUCCEEDED")
 
 
 def test_dashboard_lists_db_backed_stress_jobs(client, auth_headers, test_user_id):
@@ -291,6 +293,7 @@ def test_dashboard_lists_db_backed_stress_jobs(client, auth_headers, test_user_i
         and row["stage"] == "scenarios"
         for row in payload["jobs"]
     )
+    database.update_job(job["job_id"], status="SUCCEEDED")
 
 
 def test_engine_emits_real_phase_progress(monkeypatch):

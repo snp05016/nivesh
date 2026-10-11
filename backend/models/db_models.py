@@ -233,7 +233,7 @@ class AnalysisJob(Base):
     'is an analysis running?'. Decoupled from the HTTP connection (v2 engine)."""
     __tablename__ = "analysis_jobs"
 
-    job_id       = Column(String(12), primary_key=True)
+    job_id       = Column(String(36), primary_key=True)                  # full uuid4
     user_id      = Column(Integer, ForeignKey("users.id"), nullable=True)
     ticker       = Column(String(30), nullable=False)
     exchange     = Column(String(10), nullable=False, default="NSE")
@@ -256,6 +256,13 @@ class AnalysisJob(Base):
     __table_args__ = (
         Index("ix_analysis_jobs_user_id", "user_id"),
         Index("ix_analysis_jobs_ticker", "ticker"),
+        # One active job per user and scan_type, enforced atomically (DB-11).
+        Index(
+            "uq_analysis_jobs_active_user_scan", "user_id", "scan_type",
+            unique=True,
+            sqlite_where=text("status IN ('QUEUED', 'RUNNING')"),
+            postgresql_where=text("status IN ('QUEUED', 'RUNNING')"),
+        ),
     )
 
 
