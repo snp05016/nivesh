@@ -33,6 +33,7 @@ struct BanknoteBackButton: View {
                 .overlay(
                     Circle().stroke(Theme.borderFine, lineWidth: 0.5)
                 )
+                .minTapTarget()
         }
         .buttonStyle(EKPressStyle())
         .accessibilityLabel("Back")

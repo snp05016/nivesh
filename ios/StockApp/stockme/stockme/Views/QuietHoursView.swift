@@ -43,7 +43,7 @@ struct QuietHoursView: View {
                 }
 
                 Section {
-                    HStack(spacing: Theme.Spacing.small) {
+                    HStack(spacing: Theme.Spacing.none) {
                         ForEach(0..<7, id: \.self) { day in
                             Button {
                                 HapticManager.selection()
@@ -62,6 +62,10 @@ struct QuietHoursView: View {
                                         Circle()
                                             .fill(activeDays.contains(day) ? Theme.securityGold : Theme.surfaceElevated)
                                     )
+                                    // 7 x 44pt does not fit an inset list row on a 375pt phone,
+                                    // so the chips share the row width (no gaps) at 44pt tall.
+                                    .frame(maxWidth: .infinity, minHeight: 44)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(EKPressStyle())
                         }

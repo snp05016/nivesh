@@ -146,7 +146,10 @@ struct AlertsScreen: View {
                                     .foregroundStyle(Theme.inkPrimary)
                             }
                             Spacer()
-                            Button("Dismiss") { viewModel.showTriggeredBanner = false }.buttonStyle(EKPressStyle())
+                            Button { viewModel.showTriggeredBanner = false } label: {
+                                Text("Dismiss").minTapTarget()
+                            }
+                            .buttonStyle(EKPressStyle())
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.securityGold)
                         }

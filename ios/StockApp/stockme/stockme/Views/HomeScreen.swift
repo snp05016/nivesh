@@ -173,7 +173,9 @@ struct IndexRow: View {
 
             Text(changeText)
                 .contentTransition(.numericText())
-                .sensoryFeedback(change >= 0 ? .increase : .decrease, trigger: change)
+                .sensoryFeedback(trigger: change) { _, _ in
+                    HapticManager.isEnabled() ? (change >= 0 ? SensoryFeedback.increase : SensoryFeedback.decrease) : nil
+                }
                 .font(.caption.weight(.semibold)).monospaced()
                 .foregroundStyle(changeColor)
                 .frame(minWidth: 60, alignment: .trailing)
@@ -771,6 +773,7 @@ struct HomeScreen: View {
                                         .offset(x: 4, y: -4)
                                 }
                             }
+                            .minTapTarget()
                         }
                         .buttonStyle(EKPressStyle())
                         .accessibilityLabel("Morning brief")
@@ -1586,7 +1589,9 @@ struct IndexCardView: View {
                     .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
                 Text(changeStr)
                     .contentTransition(.numericText())
-                    .sensoryFeedback(isPositive ? .increase : .decrease, trigger: index.changePct)
+                    .sensoryFeedback(trigger: index.changePct) { _, _ in
+                        HapticManager.isEnabled() ? (isPositive ? SensoryFeedback.increase : SensoryFeedback.decrease) : nil
+                    }
                     .font(.caption.weight(.bold)).monospaced()
                     .foregroundStyle(isPositive ? Theme.bullGreen : Theme.bearRed)
             }
@@ -2312,7 +2317,7 @@ extension HomeScreen {
                                         Image(systemName: "newspaper")
                                             .font(.title3.weight(.medium))
                                             .foregroundStyle(isDismissedToday ? Theme.inkTertiary : Theme.securityGold)
-                                            .frame(width: 40, height: 40)
+                                            .frame(width: 44, height: 44)
                                             .background(Theme.securityGold.opacity(isDismissedToday ? 0.05 : 0.12))
                                             .clipShape(Circle())
                                             .overlay(Circle().stroke(Theme.securityGold.opacity(isDismissedToday ? 0.1 : 0.3), lineWidth: 0.5))
@@ -2339,7 +2344,7 @@ extension HomeScreen {
                                 Image(systemName: "magnifyingglass")
                                     .font(.title3.weight(.medium))
                                     .foregroundStyle(Theme.securityGold)
-                                    .frame(width: 40, height: 40)
+                                    .frame(width: 44, height: 44)
                                     .background(Theme.securityGold.opacity(0.12))
                                     .clipShape(Circle())
                                     .overlay(Circle().stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
@@ -2353,7 +2358,7 @@ extension HomeScreen {
                                 Image(systemName: "book.pages")
                                     .font(.title3.weight(.medium))
                                     .foregroundStyle(Theme.securityGold)
-                                    .frame(width: 40, height: 40)
+                                    .frame(width: 44, height: 44)
                                     .background(Theme.securityGold.opacity(0.12))
                                     .clipShape(Circle())
                                     .overlay(Circle().stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
@@ -2364,7 +2369,7 @@ extension HomeScreen {
                                 ZStack {
                                     Circle()
                                         .fill(Theme.securityGold)
-                                        .frame(width: 40, height: 40)
+                                        .frame(width: 44, height: 44)
                                     Text(String(user.displayName.prefix(1)).uppercased())
                                         .font(Theme.serialNumberFont(size: 16, relativeTo: .body).weight(.semibold))
                                         .foregroundStyle(Theme.canvas)

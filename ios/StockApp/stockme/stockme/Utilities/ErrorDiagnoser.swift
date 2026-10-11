@@ -172,6 +172,7 @@ struct ErrorDiagnoserView: View {
                                 .background(Theme.securityGold.opacity(0.06))
                                 .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                                     .stroke(Theme.securityGold.opacity(0.25), lineWidth: 1))
+                                .minTapTarget()
                             }
                             .buttonStyle(EKPressStyle())
                             .disabled(isRetrying)

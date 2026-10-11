@@ -30,6 +30,7 @@ struct SettingsScreen: View {
     @AppStorage("nivesh_layoutDensity") private var layoutDensity = "Standard"
     @AppStorage("nivesh_defaultChartRange") private var defaultChartRange = "1M"
     @AppStorage("nivesh_reduceAnimations") private var reduceAnimations = false
+    @AppStorage(HapticManager.enabledKey) private var hapticsEnabled = true
     @AppStorage("nivesh_showHindiLabels") private var showHindiLabels = true
 
     // Data & Privacy
@@ -62,7 +63,8 @@ struct SettingsScreen: View {
     }
 
     var body: some View {
-        NavigationStack {
+        // Group, not NavigationStack: Settings is pushed onto HomeScreen's stack (no nesting).
+        Group {
             ZStack {
                 Theme.canvasDeep.ignoresSafeArea()
                 ScrollView {
@@ -96,6 +98,11 @@ struct SettingsScreen: View {
             )
             // Sheet, not NavRow: CalculatorsView owns a NavigationStack (no nesting).
             .sheet(isPresented: $showCalculators) { CalculatorsView() }
+            .onAppear {
+                // Older builds stored display text ("Ask Every Time", "Deep"); StockActionHubView reads lowercase keys.
+                let normalized = defaultScanType == "Ask Every Time" ? "ask" : defaultScanType.lowercased()
+                if normalized != defaultScanType { defaultScanType = normalized }
+            }
         }
     }
 
@@ -151,7 +158,8 @@ struct SettingsScreen: View {
 
     private var tradingSection: some View {
         SettingsGroup(title: "TRADING PREFERENCES", hindi: "व्यापार प्राथमिकताएं") {
-            PickerRow(icon: "sparkles", color: Theme.securityGold, title: "Default Scan Type", selection: $defaultScanType, options: ["Ask Every Time", "Standard", "Deep", "Extreme"])
+            PickerRow(icon: "sparkles", color: Theme.securityGold, title: "Default Scan Type", selection: $defaultScanType, options: ["ask", "standard", "deep", "extreme"],
+                      labels: ["ask": "Ask Every Time", "standard": "Standard", "deep": "Deep", "extreme": "Extreme"])
             ToggleRow(icon: "bolt.fill", color: Theme.bullGreen, title: "Auto-run on Stock Tap", isOn: $autoRunOnTap)
             PickerRow(icon: "shield.checkered", color: Theme.securityGold, title: "Risk Tolerance", selection: $riskTolerance, options: ["Conservative", "Moderate", "Aggressive"])
             PickerRow(icon: "building.2", color: Theme.inkSecondary, title: "Default Exchange", selection: $defaultExchange, options: ["Auto", "NSE", "BSE"])
@@ -164,7 +172,8 @@ struct SettingsScreen: View {
     private var notificationsSection: some View {
         SettingsGroup(title: "NOTIFICATIONS", hindi: "सूचनाएं") {
             DateRow(icon: "clock.fill", color: Theme.securityGold, title: "Morning Brief Time", selection: morningBriefDate)
-            PickerRow(icon: "speaker.wave.2", color: Theme.bearRed, title: "Notification Sound", selection: $notificationSound, options: ["Default", "rupee_rustle.mp3"])
+            PickerRow(icon: "speaker.wave.2", color: Theme.bearRed, title: "Notification Sound", selection: $notificationSound, options: ["Default", "rupee_rustle.mp3"],
+                      labels: ["rupee_rustle.mp3": "Rupee Rustle"])
             NavRow(icon: "moon.zzz", color: Theme.inkSecondary, title: "Quiet Hours", destination: QuietHoursView())
             NavRow(icon: "bell.badge.circle", color: Theme.securityGold, title: "Notification Preferences", destination: NotificationPreferencesView())
         }
@@ -210,11 +219,12 @@ struct SettingsScreen: View {
                 .accessibilityAddTraits(theme.rawValue == selectedThemeRaw ? .isSelected : [])
                 Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
             }
-            ToggleRow(icon: "moon.fill", color: .indigo, title: "Dark Inks", isOn: $darkMode)
+            ToggleRow(icon: "moon.fill", color: .indigo, title: "Always Dark", isOn: $darkMode)
             PickerRow(icon: "textformat.size", color: Theme.inkSecondary, title: "Font Size", selection: $fontSize, options: ["Small", "Standard", "Large"])
             PickerRow(icon: "rectangle.3.group", color: Theme.inkSecondary, title: "Layout Density", selection: $layoutDensity, options: ["Compact", "Standard", "Spacious"])
             PickerRow(icon: "chart.xyaxis.line", color: Theme.securityGold, title: "Default Chart Range", selection: $defaultChartRange, options: ["1M", "3M", "6M", "1Y"])
             ToggleRow(icon: "hare", color: Theme.inkSecondary, title: "Reduce Animations", isOn: $reduceAnimations)
+            ToggleRow(icon: "hand.tap", color: Theme.inkSecondary, title: "Haptic Feedback", isOn: $hapticsEnabled)
             ToggleRow(icon: "character.bubble", color: Theme.inkSecondary, title: "Show Hindi Labels", isOn: $showHindiLabels)
         }
     }
@@ -258,7 +268,8 @@ struct SettingsScreen: View {
             }
             .buttonStyle(EKPressStyle())
             Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
-            PickerRow(icon: "lock.shield", color: Theme.securityGold, title: "Biometric Lock", selection: $biometricTimeoutRaw, options: ["immediately", "1min", "5min", "15min", "never"])
+            PickerRow(icon: "lock.shield", color: Theme.securityGold, title: "Biometric Lock", selection: $biometricTimeoutRaw, options: BiometricTimeout.allCases.map(\.rawValue),
+                      labels: Dictionary(uniqueKeysWithValues: BiometricTimeout.allCases.map { ($0.rawValue, $0.label) }))
             ToggleRow(icon: "eye.slash", color: Theme.inkSecondary, title: "Hide Portfolio Values", isOn: $hidePortfolioValues)
             ToggleRow(icon: "touchid", color: Theme.securityGold, title: "Biometric for Trades", isOn: $biometricTradeLock)
         }
@@ -274,7 +285,8 @@ struct SettingsScreen: View {
                 NavRow(icon: "lock.shield.fill", color: Theme.securityGold, title: "Account Security", destination: AccountSecurityView().demoDataRibbon())
             }
             PickerRow(icon: "indianrupeesign", color: Theme.securityGold, title: "Currency Format", selection: $currencyDisplay, options: ["Lakhs/Crores", "Absolute"])
-            PickerRow(icon: "arrow.triangle.2.circlepath", color: Theme.inkSecondary, title: "Home Auto-refresh", selection: $homeAutoRefreshSeconds, options: ["0", "30", "60", "120"])
+            PickerRow(icon: "arrow.triangle.2.circlepath", color: Theme.inkSecondary, title: "Home Auto-refresh", selection: $homeAutoRefreshSeconds, options: ["0", "30", "60", "120"],
+                      labels: ["0": "Off", "30": "30 sec", "60": "1 min", "120": "2 min"])
             ToggleRow(icon: "newspaper", color: Theme.securityGold, title: "IPO Alerts", isOn: $ipoAlerts)
             Button(role: .destructive) { HapticManager.selection();  showClearHistoryAlert = true } label: {
                 RowLabel(icon: "trash", color: Theme.bearRed, title: "VOID ALL RECORDS", tint: Theme.bearRed)
@@ -282,7 +294,7 @@ struct SettingsScreen: View {
             .buttonStyle(EKPressStyle())
             Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
             Button(role: .destructive) { HapticManager.selection();  authManager.logout() } label: {
-                RowLabel(icon: "door.right.hand.open", color: Theme.bearRed, title: "VOID SESSION", tint: Theme.bearRed)
+                RowLabel(icon: "door.right.hand.open", color: Theme.bearRed, title: "SIGN OUT", tint: Theme.bearRed)
             }
             .buttonStyle(EKPressStyle())
         }
@@ -367,6 +379,8 @@ private struct ToggleRow: View {
 
 private struct PickerRow: View {
     let icon: String; let color: Color; let title: String; @Binding var selection: String; let options: [String]
+    /// Human-readable text per stored option; options without an entry show as-is.
+    var labels: [String: String] = [:]
     var body: some View {
         HStack {
             RowIcon(icon: icon, color: color)
@@ -374,7 +388,7 @@ private struct PickerRow: View {
                 .accessibilityHidden(true) // the Picker below carries the title
             Spacer()
             Picker(title, selection: $selection) {
-                ForEach(options, id: \.self) { Text($0).tag($0) }
+                ForEach(options, id: \.self) { Text(labels[$0] ?? $0).tag($0) }
             }.labelsHidden().tint(Theme.inkSecondary)
         }
         .padding(.vertical, Theme.Spacing.standard)

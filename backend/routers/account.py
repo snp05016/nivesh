@@ -39,7 +39,8 @@ def delete_my_account(request: Request, user_id: int = Depends(require_auth)):
     scheduled_erasure_after_days old; until then
     POST /api/v1/compliance/deletion-requests/cancel withdraws it. If a
     request is already pending, the service reports that instead of creating
-    a duplicate."""
+    a duplicate. Records the client IP on the audit entry, same as
+    POST /api/v1/compliance/deletion-requests."""
     result = compliance_service.request_account_deletion(
         user_id, reason=None, ip_address=request.client.host if request.client else None
     )

@@ -482,6 +482,7 @@ struct StockProfileView: View {
                                     }
                                     .padding(.horizontal, Theme.Spacing.card)
                                     .padding(.vertical, Theme.Spacing.standard)
+                                    .minTapTarget()
                                 }
                                 .buttonStyle(EKPressStyle())
                             }

@@ -121,7 +121,6 @@ struct stockmeApp: App {
                 .preferredColorScheme(darkMode ? .dark : nil)
                 .buttonStyle(PlainButtonStyle())
                 .pickerStyle(.menu)
-                .controlSize(.small)
                 .opacity(launchPhase == .mainInterface ? 1 : 0)
                 .scaleEffect(launchPhase == .mainInterface ? 1 : 1.02)
 

@@ -4,10 +4,19 @@ import SwiftUI
 // Extensions to the HapticManager defined in Extensions.swift
 
 extension HapticManager {
+    /// Settings > Haptic Feedback. Every helper routes through selection(),
+    /// impact(_:) or notification(_:), which all check this first.
+    static let enabledKey = "nivesh_hapticsEnabled"
+
+    static func isEnabled(_ defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: enabledKey) as? Bool ?? true
+    }
+
     static func selection() {
         #if targetEnvironment(simulator)
         return
         #else
+        guard isEnabled() else { return }
         UISelectionFeedbackGenerator().selectionChanged()
         #endif
     }

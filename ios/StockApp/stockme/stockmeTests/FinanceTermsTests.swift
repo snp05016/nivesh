@@ -43,6 +43,24 @@ final class FinanceTermsTests: XCTestCase {
         XCTAssertEqual(term?.term, "NIFTY 50")
     }
 
+    /// UX-34: glossary examples must not carry dated forecasts that go stale.
+    private func assertUndated(_ name: String, file: StaticString = #filePath, line: UInt = #line) {
+        guard let example = FinanceTerms.shared.lookup(name)?.example else {
+            return XCTFail("\(name) missing", file: file, line: line)
+        }
+        XCTAssertFalse(example.localizedCaseInsensitiveContains("expected"), example, file: file, line: line)
+        XCTAssertNil(example.range(of: #"20[0-9]{2}"#, options: .regularExpression), example, file: file, line: line)
+    }
+
+    func testRepoRateExampleHasNoDatedForecast() {
+        assertUndated("Repo Rate")
+    }
+
+    func testFIIDIIExamplesUndated() {
+        assertUndated("FII")
+        assertUndated("DII")
+    }
+
     func testUnknownTerm() {
         let term = FinanceTerms.shared.lookup("SomeUnknownTermXYZ")
         XCTAssertNil(term)

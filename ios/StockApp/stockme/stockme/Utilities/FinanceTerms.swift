@@ -101,8 +101,8 @@ final class FinanceTerms {
         add("DII",
             "Domestic Institutional Investor — Indian institutions (LIC, mutual funds, banks) "
             + "investing in Indian equities.",
-            "When FIIs sell, DIIs often absorb the selling. In Oct 2023, DIIs bought ₹12,000 Cr "
-            + "net while FIIs sold ₹8,000 Cr — markets stayed stable.", .ownership)
+            "When FIIs sell, DIIs often absorb the selling. Say in one month FIIs sell ₹8,000 Cr "
+            + "net while DIIs buy ₹12,000 Cr — markets can stay stable.", .ownership)
 
         // ── Risk & Volatility ──────────────────────────────────────────
         add("Beta",
@@ -411,8 +411,8 @@ final class FinanceTerms {
         add("Repo Rate",
             "The rate at which RBI lends to banks. Higher repo = higher loan EMIs, "
             + "slower economy. Lower repo = cheaper loans, faster growth.",
-            "RBI repo rate at 6.5% is restrictive. Rate cuts (expected late 2025) would "
-            + "boost rate-sensitive sectors: banks, auto, real estate.",
+            "When RBI cuts the repo rate, bank loans usually get cheaper; rate-sensitive "
+            + "sectors such as banks, autos and real estate often benefit.",
             .macro, ["Brent Crude", "MMI"])
 
         add("IIP",

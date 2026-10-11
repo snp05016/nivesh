@@ -131,6 +131,7 @@ struct HapticManager {
         #if targetEnvironment(simulator)
         return 
         #else
+        guard isEnabled() else { return }
         let generator = UIImpactFeedbackGenerator(style: style)
         generator.prepare()
         generator.impactOccurred()
@@ -141,6 +142,7 @@ struct HapticManager {
         #if targetEnvironment(simulator)
         return
         #else
+        guard isEnabled() else { return }
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
         generator.notificationOccurred(type)
