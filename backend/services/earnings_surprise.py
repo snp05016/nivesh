@@ -1,69 +1,84 @@
 import logging
-from datetime import datetime, timedelta
-import json
-import yfinance as yf
-from sqlalchemy import Column, Integer, String, Float, DateTime
-from database import Base, ENGINE, get_session, AnalysisHistory
+from datetime import date
+from database import get_session
 from models.db_models import EarningsSurpriseHistory
-from routers.market import earnings_estimates_endpoint, _to_ns
-# Ideally, move EarningsSurpriseHistory class definition into database.py to keep schema central.
+from routers.market import earnings_estimates_endpoint
+
+
+def _fy_quarter_label(period_end: date) -> str:
+    """Indian fiscal quarter of a period end date: Apr-Jun 2026 -> 'Q1 FY27'."""
+    q = (period_end.month - 4) % 12 // 3 + 1
+    fy = period_end.year + 1 if period_end.month >= 4 else period_end.year
+    return f"Q{q} FY{fy % 100:02d}"
+
+
+def _serial_pattern(ticker: str, quarter: str, classification: str):
+    """Consecutive identical BEAT/MISS over distinct stored quarters, incl. this one."""
+    if classification not in ("BEAT", "MISS"):
+        return None
+    with get_session() as session:
+        rows = (session.query(EarningsSurpriseHistory)
+                .filter(EarningsSurpriseHistory.ticker == ticker,
+                        EarningsSurpriseHistory.quarter != quarter)
+                .order_by(EarningsSurpriseHistory.created_at.desc())
+                .with_entities(EarningsSurpriseHistory.quarter,
+                               EarningsSurpriseHistory.classification).all())
+    n, seen = 1, {quarter}
+    for row_quarter, row_class in rows:
+        if row_quarter in seen:
+            continue
+        seen.add(row_quarter)
+        if row_class != classification:
+            break
+        n += 1
+    return f"{n}x consecutive {classification.lower()}" if n >= 2 else None
+
 
 async def compute_surprise_for_ticker(ticker: str):
-    # 1. Fetch estimates
-    est_data = await earnings_estimates_endpoint(ticker)
-    estimated_eps = est_data.get("eps_estimate")
-    
-    # 2. Fetch actuals
+    """A surprise exists only for a real estimate/actual pair of one fiscal quarter.
+
+    The estimates source must supply eps_estimate, eps_actual and period_end
+    (ISO date of the quarter both refer to); otherwise there is nothing honest
+    to report and this returns None (FAKE-11). Today no consensus feed exists,
+    so eps_estimate is always None and this always returns None.
+    """
     try:
-        ns = _to_ns(ticker)
-        tkr = yf.Ticker(ns)
-        
-        # We can try to use yfinance quarterly_earnings or income_stmt
-        # yfinance doesn't easily expose EPS history for Indian stocks reliably in one call, 
-        # but let's use the actual_eps from the endpoint if available, else fallback
+        est_data = await earnings_estimates_endpoint(ticker)
+        estimated_eps = est_data.get("eps_estimate")
         actual_eps = est_data.get("eps_actual")
-        
-        # 3. Compute surprise
-        surprise_pct = None
+        period_end = est_data.get("period_end")
+        if estimated_eps is None or actual_eps is None or not period_end or estimated_eps == 0:
+            return None
+        quarter = _fy_quarter_label(date.fromisoformat(str(period_end)[:10]))
+
+        surprise_pct = ((actual_eps - estimated_eps) / abs(estimated_eps)) * 100
         classification = "INLINE"
-        if actual_eps is not None and estimated_eps is not None and estimated_eps != 0:
-            surprise_pct = ((actual_eps - estimated_eps) / abs(estimated_eps)) * 100
-            if surprise_pct > 10:
-                classification = "BEAT"
-            elif surprise_pct < -10:
-                classification = "MISS"
-                
-        # 5. Fetch post-earnings price reaction
-        # Since we don't have the exact earnings date easily for all historical, 
-        # let's assume earnings was 1 week ago for demo purposes or fetch recent 5 days
-        hist = tkr.history(period="1mo")
-        post_price_1d = None
-        post_price_5d = None
-        if len(hist) > 5:
-            # mock post earnings price reaction based on last 5 days
-            base_price = hist['Close'].iloc[-6]
-            post_price_1d = ((hist['Close'].iloc[-5] - base_price) / base_price) * 100
-            post_price_5d = ((hist['Close'].iloc[-1] - base_price) / base_price) * 100
-            
+        if surprise_pct > 10:
+            classification = "BEAT"
+        elif surprise_pct < -10:
+            classification = "MISS"
+
         return {
             "ticker": ticker,
             "company_name": est_data.get("company_name", ticker),
-            "quarter": "Q4 FY24", # Mocked current quarter
+            "quarter": quarter,
             "estimated_eps": estimated_eps,
             "actual_eps": actual_eps,
             "surprise_pct": surprise_pct,
             "classification": classification,
-            "post_price_1d": post_price_1d,
-            "post_price_5d": post_price_5d,
-            "historical_score": 75.0 if classification == "BEAT" else 45.0, # Mock score
-            "serial_pattern": "4x consecutive beat" if classification == "BEAT" else ("3x miss" if classification == "MISS" else None)
+            # ponytail: no announcement-date source, so no post-result reaction;
+            # compute 1D/5D from the announcement close once a feed provides the date.
+            "post_price_1d": None,
+            "post_price_5d": None,
+            "historical_score": None,
+            "serial_pattern": _serial_pattern(ticker, quarter, classification),
         }
     except Exception as e:
         logging.info(f"Error computing surprise for {ticker}: {e}")
         return None
 
 async def get_all_surprises(period="current_quarter"):
-    # We will pick a few top tickers to mock the tracker list to avoid taking forever
+    # Fixed large-cap tracker list; only verified surprises are returned and persisted.
     tickers = ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "SBIN", "BHARTIARTL", "ITC"]
     results = []
     for t in tickers:
@@ -103,14 +118,10 @@ async def get_all_surprises(period="current_quarter"):
     return results
 
 async def get_surprise_history(ticker: str):
-    # Mocking history by taking current and adding some past mock data
+    # Stored verified surprises only; nothing is computed or invented on a miss.
     with get_session() as session:
         records = session.query(EarningsSurpriseHistory).filter_by(ticker=ticker).order_by(EarningsSurpriseHistory.created_at.desc()).all()
-        if not records:
-            # If not in DB, compute one
-            await compute_surprise_for_ticker(ticker)
-            records = session.query(EarningsSurpriseHistory).filter_by(ticker=ticker).order_by(EarningsSurpriseHistory.created_at.desc()).all()
-            
+
     history = []
     for r in records:
         history.append({

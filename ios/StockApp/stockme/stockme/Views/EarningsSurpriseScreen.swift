@@ -112,6 +112,13 @@ struct EarningsSurpriseScreen: View {
                         
                         if vm.isCalendarView {
                             calendarSection
+                        } else if vm.surprises.isEmpty && !vm.isLoading {
+                            Text("No verified earnings surprises: consensus estimates are not available.")
+                                .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
+                                .foregroundColor(Theme.inkSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, Theme.screenPadding)
+                                .padding(.vertical, Theme.Spacing.xLarge)
                         } else {
                             LazyVStack(spacing: Theme.Spacing.card) {
                                 ForEach(vm.surprises) { s in
@@ -432,8 +439,6 @@ struct EarningsSurpriseHelpView: View {
          "A 'BEAT STREAK' indicates the company has BEAT estimates for multiple consecutive quarters — a positive signal. A 'MISS STREAK' suggests structural issues. Watch for pattern breaks."),
         ("chart.line.uptrend.xyaxis", "Post-Earnings Reaction",
          "The 5D reaction shows how the stock moved in the 5 trading days after the announcement. A BEAT with negative 5D reaction may mean 'buy the rumor, sell the news' or higher expectations were already priced in."),
-        ("bolt.fill", "Historical Score",
-         "The decoder score (0–100) reflects how reliable the estimate was. Higher scores mean the analyst consensus was more accurate historically for this company. Use this to gauge estimate quality."),
     ]
     
     var body: some View {
