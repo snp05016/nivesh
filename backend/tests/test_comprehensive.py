@@ -76,7 +76,7 @@ class TestPortfolioEndpoints:
             token = login_response.json().get("access_token")
             headers = {"Authorization": f"Bearer {token}"}
             response = client.get("/portfolio/1", headers=headers)
-            assert response.status_code in [200, 401, 404]
+            assert response.status_code in [200, 401, 403, 404]
     
     def test_add_to_portfolio(self):
         """Test adding to portfolio."""
@@ -445,7 +445,7 @@ class TestUserEndpoints:
             "device_token": "test_device_token_123",
             "platform": "ios"
         })
-        assert response.status_code in [200, 500]
+        assert response.status_code == 401  # AUTH-09: bearer required
     
     def test_notifications_test(self):
         """Test sending test notification."""
@@ -454,7 +454,7 @@ class TestUserEndpoints:
             "ticker": "RELIANCE",
             "exchange": "NSE"
         })
-        assert response.status_code in [200, 500]
+        assert response.status_code == 401  # AUTH-09: bearer required
     
     def test_notifications_morning_summary_push(self):
         """Morning summary push requires the caller's own token (401 without, 403 for another user)."""
@@ -602,7 +602,7 @@ class TestIntegration:
             
             # 4. Get portfolio
             get_response = client.get("/portfolio/1", headers=headers)
-            assert get_response.status_code in [200, 401, 404]
+            assert get_response.status_code in [200, 401, 403, 404]
     
     def test_market_data_workflow(self):
         """Test market data workflow."""

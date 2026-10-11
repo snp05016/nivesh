@@ -162,7 +162,7 @@ def test_macro_impact_userId_unauthenticated(client):
 def test_macro_impact_userId_not_found(client, auth_headers):
     dummy_path = "/macro-impact/9999999"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 401)
+    assert response.status_code == 403  # another user\'s id (ARCH-02)
 
 def test_macro_impact_userId_validation_error(client, auth_headers):
     bad_path = "/macro-impact/invalid_id"
@@ -182,7 +182,7 @@ def test_daily_action_userId_unauthenticated(client):
 def test_daily_action_userId_not_found(client, auth_headers):
     dummy_path = "/daily-action/9999999"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 401)
+    assert response.status_code == 403  # another user\'s id (ARCH-02)
 
 def test_daily_action_userId_validation_error(client, auth_headers):
     bad_path = "/daily-action/invalid_id"
@@ -217,7 +217,7 @@ def test_morning_summary_userId_unauthenticated(client):
 def test_morning_summary_userId_not_found(client, auth_headers):
     dummy_path = "/morning-summary/9999999"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 401)
+    assert response.status_code == 403  # another user\'s id (ARCH-02)
 
 def test_morning_summary_userId_validation_error(client, auth_headers):
     bad_path = "/morning-summary/invalid_id"
@@ -237,7 +237,7 @@ def test_portfolio_userId_unauthenticated(client):
 def test_portfolio_userId_not_found(client, auth_headers):
     dummy_path = "/portfolio/9999999"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 401)
+    assert response.status_code == 403  # another user\'s id (ARCH-02)
 
 def test_portfolio_userId_validation_error(client, auth_headers):
     bad_path = "/portfolio/invalid_id"
@@ -257,7 +257,7 @@ def test_portfolio_export_excel_userId_unauthenticated(client):
 def test_portfolio_export_excel_userId_not_found(client, auth_headers):
     dummy_path = "/portfolio/export/excel/9999999"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 401)
+    assert response.status_code == 403  # another user\'s id (ARCH-02)
 
 def test_portfolio_export_excel_userId_validation_error(client, auth_headers):
     bad_path = "/portfolio/export/excel/invalid_id"
@@ -277,7 +277,7 @@ def test_portfolio_export_pdf_userId_unauthenticated(client):
 def test_portfolio_export_pdf_userId_not_found(client, auth_headers):
     dummy_path = "/portfolio/export/pdf/9999999"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 401)
+    assert response.status_code == 403  # another user\'s id (ARCH-02)
 
 def test_portfolio_export_pdf_userId_validation_error(client, auth_headers):
     bad_path = "/portfolio/export/pdf/invalid_id"
@@ -297,7 +297,7 @@ def test_portfolio_risk_analysis_userId_unauthenticated(client):
 def test_portfolio_risk_analysis_userId_not_found(client, auth_headers):
     dummy_path = "/portfolio/risk-analysis/9999999"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 401)
+    assert response.status_code == 403  # another user\'s id (ARCH-02)
 
 def test_portfolio_risk_analysis_userId_validation_error(client, auth_headers):
     bad_path = "/portfolio/risk-analysis/invalid_id"
@@ -317,7 +317,7 @@ def test_portfolio_red_flags_userId_unauthenticated(client):
 def test_portfolio_red_flags_userId_not_found(client, auth_headers):
     dummy_path = "/portfolio/red-flags/9999999"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 401)
+    assert response.status_code == 403  # another user\'s id (ARCH-02)
 
 def test_portfolio_red_flags_userId_validation_error(client, auth_headers):
     bad_path = "/portfolio/red-flags/invalid_id"
@@ -337,7 +337,7 @@ def test_portfolio_timeframe_conflicts_userId_unauthenticated(client):
 def test_portfolio_timeframe_conflicts_userId_not_found(client, auth_headers):
     dummy_path = "/portfolio/timeframe-conflicts/9999999"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 401)
+    assert response.status_code == 403  # another user\'s id (ARCH-02)
 
 def test_portfolio_timeframe_conflicts_userId_validation_error(client, auth_headers):
     bad_path = "/portfolio/timeframe-conflicts/invalid_id"
@@ -377,7 +377,7 @@ def test_api_v1_portfolio_charts_userId_unauthenticated(client):
 def test_api_v1_portfolio_charts_userId_not_found(client, auth_headers):
     dummy_path = "/api/v1/portfolio/charts/9999999"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 401)
+    assert response.status_code == 403  # another user\'s id (ARCH-02)
 
 def test_api_v1_portfolio_charts_userId_validation_error(client, auth_headers):
     bad_path = "/api/v1/portfolio/charts/invalid_id"
@@ -397,7 +397,7 @@ def test_alerts_userId_unauthenticated(client):
 def test_alerts_userId_not_found(client, auth_headers):
     dummy_path = "/alerts/9999999"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 401)
+    assert response.status_code == 403  # another user\'s id (ARCH-02)
 
 def test_alerts_userId_validation_error(client, auth_headers):
     bad_path = "/alerts/invalid_id"
@@ -417,7 +417,7 @@ def test_alerts_check_userId_unauthenticated(client):
 def test_alerts_check_userId_not_found(client, auth_headers):
     dummy_path = "/alerts/check/9999999"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 401)
+    assert response.status_code == 403  # another user\'s id (ARCH-02)
 
 def test_alerts_check_userId_validation_error(client, auth_headers):
     bad_path = "/alerts/check/invalid_id"
@@ -482,7 +482,7 @@ def test_trade_journal_userId_unauthenticated(client):
 def test_trade_journal_userId_not_found(client, auth_headers):
     dummy_path = "/trade-journal/9999999"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 401)
+    assert response.status_code == 403  # another user\'s id (ARCH-02)
 
 def test_trade_journal_userId_validation_error(client, auth_headers):
     bad_path = "/trade-journal/invalid_id"
@@ -562,7 +562,7 @@ def test_watchlist_userId_unauthenticated(client):
 def test_watchlist_userId_not_found(client, auth_headers):
     dummy_path = "/watchlist/9999999"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 401)
+    assert response.status_code == 403  # another user\'s id (ARCH-02)
 
 def test_watchlist_userId_validation_error(client, auth_headers):
     bad_path = "/watchlist/invalid_id"

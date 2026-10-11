@@ -54,8 +54,8 @@ load_backend_env()
 # Third-party
 # ---------------------------------------------------------------------------
 import yfinance as yf
-import anthropic
 from services.llm_utils import (
+    get_anthropic_client,
     get_deepseek_client,
     deepseek_chat,
     HAIKU_MODEL,
@@ -807,7 +807,7 @@ def reformat_with_claude(
     claude_api_key = os.getenv("ANTHROPIC_API_KEY")
     claude_succeeded = False
     if claude_api_key:
-        claude_client = anthropic.Anthropic(api_key=claude_api_key)
+        claude_client = get_anthropic_client()
         system_array = [
             {
                 "type": "text",

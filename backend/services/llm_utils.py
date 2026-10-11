@@ -2,18 +2,19 @@ from __future__ import annotations
 
 import logging
 """
-Canonical LLM utilities for the Nivesh backend.
-Single source of truth for DeepSeek client construction, chat completion,
-and model constants.  Previously triplicated across orchestrator.py,
-analysis.py, portfolio.py, and advisor_harvester.py.
+Canonical LLM utilities for the Nivesh backend (ARCH-03 gateway).
+The only place that constructs DeepSeek (OpenAI-compatible) and Anthropic
+clients; every call made through deepseek_chat / claude_messages is written to
+the token log. tests/test_llm_gateway.py fails if a client is built elsewhere.
 
 Usage:
-    from services.llm_utils import deepseek_chat, get_deepseek_client, DEEPSEEK_MODEL
+    from services.llm_utils import deepseek_chat, claude_messages, DEEPSEEK_MODEL
 """
 
 import os
 import re
 import time as _time
+from typing import Any
 
 import openai as _openai_lib
 
@@ -99,9 +100,9 @@ def deepseek_chat(
 
             response = client.chat.completions.create(**kwargs)
 
-            # Every call is logged (LLM-09); unlabelled callers still show up in spend.
+            # Every call is logged (LLM-09, ARCH-03); unlabelled callers still show up in spend.
             if getattr(response, "usage", None) is not None:
-                _log_token_usage(log_endpoint or "unlabelled", response.usage, selected_model)
+                _log_token_usage(log_endpoint or "deepseek_unlabelled", response.usage, selected_model)
 
             choice = response.choices[0]
             content = choice.message.content or ""
@@ -124,6 +125,38 @@ def deepseek_chat(
     raise RuntimeError(
         f"DeepSeek call failed after 3 retries: {last_exc}"
     ) from last_exc
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Anthropic (Claude) client + logged messages call
+# ═════════════════════════════════════════════════════════════════════════════
+
+def get_anthropic_client():
+    """Return an Anthropic client. The only `anthropic.Anthropic(` call site."""
+    import anthropic  # lazy: only paths that actually call Claude need the SDK
+
+    return anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+
+def claude_messages(*, model: str, messages: list[Any], max_tokens: int, feature: str, **kwargs):
+    """client.messages.create with 3 attempts (1 s, 2 s backoff); logs usage under `feature`.
+
+    kwargs pass straight through (system, temperature, ...). Re-raises the last error.
+    """
+    from helpers import _log_token_usage  # local import avoids circular deps
+
+    client = get_anthropic_client()
+    for attempt in range(3):
+        try:
+            response = client.messages.create(model=model, max_tokens=max_tokens, messages=messages, **kwargs)
+            break
+        except Exception as exc:
+            logging.info(f"[Anthropic] {feature} attempt {attempt + 1}/3 failed: {exc}")
+            if attempt == 2:
+                raise
+            _time.sleep(1.0 * (2 ** attempt))
+    _log_token_usage(feature, response.usage, model)
+    return response
 
 
 # ═════════════════════════════════════════════════════════════════════════════

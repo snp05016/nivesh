@@ -269,9 +269,9 @@ def test_home_feed_endpoint(client, auth_headers):
 
 def test_morning_summary_endpoint(client, auth_headers, test_user_id, monkeypatch):
     """Test morning summary endpoint and ensure it uses Auth header correctly."""
-    # 1. Unauthenticated or incorrect user -> 401 Unauthorized
+    # 1. Another user's id -> 403 Forbidden (ARCH-02)
     resp = client.get("/morning-summary/99999", headers=auth_headers)
-    assert resp.status_code == 401
+    assert resp.status_code == 403
 
     # Mock Anthropic client response
     import anthropic

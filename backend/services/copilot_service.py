@@ -3,15 +3,10 @@ import re
 from typing import List, Dict, Any, Optional
 
 from database import get_session
-from services.llm_utils import deepseek_chat, HAIKU_MODEL
-from core.dashboard_state import _log_token_usage
+from services.llm_utils import deepseek_chat, claude_messages, HAIKU_MODEL
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
-import anthropic
-import os
 
 def claude_haiku(messages: List[Dict[str, Any]]) -> str:
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
-    client = anthropic.Anthropic(api_key=api_key)
     # Anthropic doesn't allow 'system' in the messages array, we have to extract it
     system_prompt = ""
     filtered_messages = []
@@ -24,13 +19,13 @@ def claude_haiku(messages: List[Dict[str, Any]]) -> str:
     if not filtered_messages:
         filtered_messages.append({"role": "user", "content": "Hello"})
         
-    response = client.messages.create(
+    response = claude_messages(
         model=HAIKU_MODEL,
         system=system_prompt,
         max_tokens=2000,
-        messages=filtered_messages
+        messages=filtered_messages,
+        feature="copilot_haiku",
     )
-    _log_token_usage("copilot_haiku", getattr(response, "usage", None), HAIKU_MODEL)
     return response.content[0].text
 
 def strip_emoji(text: str) -> str:

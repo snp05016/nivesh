@@ -136,7 +136,7 @@ def test_portfolio_add_validates_ownership_and_positive_numbers(client):
         headers=other_headers,
     )
     assert other_user_id != user_id
-    assert cross_user.status_code == 401
+    assert cross_user.status_code == 403
 
 
 def test_portfolio_holding_crud_and_duplicate_prevention(client):
@@ -238,7 +238,7 @@ def test_alert_and_trade_journal_auth_failure_paths(client):
         headers=other_headers,
     )
     assert other_user_id != user_id
-    assert cross_user_journal.status_code == 401
+    assert cross_user_journal.status_code == 403
 
 
 def test_trade_journal_crud_contract(client):

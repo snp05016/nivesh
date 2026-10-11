@@ -5,8 +5,8 @@ import time
 from pydantic import BaseModel
 from typing import Optional
 
-from helpers import verify_access_token, WatchlistAddRequest, WatchlistRemoveRequest, upsert_device_token
-from core.security import require_admin, require_auth
+from helpers import WatchlistAddRequest, WatchlistRemoveRequest, upsert_device_token
+from core.security import require_admin, require_auth, require_user_match, assert_same_user
 import services.user_service as user_service
 
 router = APIRouter(tags=["User"])
@@ -32,10 +32,8 @@ def list_users(authorization: str = Header(None)):
 
 
 @router.post("/watchlist/add")
-def watchlist_add_endpoint(req: WatchlistAddRequest, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != req.user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def watchlist_add_endpoint(req: WatchlistAddRequest, token_user: int = Depends(require_auth)):
+    assert_same_user(req.user_id, token_user)
     try:
         return user_service.add_to_watchlist(req.user_id, req.ticker, req.company_name)
     except Exception as e:
@@ -43,10 +41,8 @@ def watchlist_add_endpoint(req: WatchlistAddRequest, authorization: str = Header
 
 
 @router.delete("/watchlist/remove")
-def watchlist_remove_endpoint(req: WatchlistRemoveRequest, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != req.user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def watchlist_remove_endpoint(req: WatchlistRemoveRequest, token_user: int = Depends(require_auth)):
+    assert_same_user(req.user_id, token_user)
     try:
         return user_service.remove_from_watchlist(req.user_id, req.ticker)
     except Exception as e:
@@ -54,10 +50,7 @@ def watchlist_remove_endpoint(req: WatchlistRemoveRequest, authorization: str = 
 
 
 @router.get("/watchlist/{user_id}")
-def watchlist_get_endpoint(user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def watchlist_get_endpoint(user_id: int, _caller: int = Depends(require_user_match)):
     try:
         result = user_service.get_watchlist(user_id)
         if result is None:
@@ -70,20 +63,27 @@ def watchlist_get_endpoint(user_id: int, authorization: str = Header(None)):
 
 
 @router.post("/notifications/register-device")
-def notifications_register_device(req: DeviceTokenRegisterRequest):
+def notifications_register_device(req: DeviceTokenRegisterRequest, token_user: int = Depends(require_auth)):
     """
-    Register or update a device token. Delegates to shared upsert helper.
+    Register or update a device token for the token's user (AUTH-09: the body
+    user_id must match it). Delegates to shared upsert helper.
     """
+    assert_same_user(req.user_id, token_user)
     try:
-        return upsert_device_token(req.user_id, req.device_token, req.platform or "ios")
+        return upsert_device_token(token_user, req.device_token, req.platform or "ios")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError:
+        raise HTTPException(status_code=409, detail="Device token already registered")
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/notifications/test")
-def notifications_test(req: TestNotificationRequest):
+def notifications_test(req: TestNotificationRequest, token_user: int = Depends(require_auth)):
+    assert_same_user(req.user_id, token_user)
     try:
-        return user_service.test_notification(req.user_id, req.ticker, req.exchange)
+        return user_service.test_notification(token_user, req.ticker, req.exchange)
     except Exception:
         logging.exception("[NOTIFICATIONS/TEST] failed for user %s", req.user_id)
         raise HTTPException(status_code=503, detail="Could not build test notification")

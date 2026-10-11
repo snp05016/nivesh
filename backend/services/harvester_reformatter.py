@@ -4,9 +4,8 @@ Nivesh Harvester — DeepSeek V4 Flash reformatter.
 Turns raw scraped text (a filing, a rating action, an expert column, a
 transcript) into a clean, structured, credibility-scored card.
 
-Mirrors the main backend's `services/llm_utils.py` DeepSeek pattern
-(OpenAI-compatible client at api.deepseek.com) but is fully self-contained —
-the harvester shares NO code with the backend.
+LLM calls go through the backend gateway `services/llm_utils.deepseek_chat`
+(ARCH-03), so they are token-logged under 'harvester_reformat'.
 
 Contract used by the scheduler and every harvester:
   make_external_id(url, text)                         -> str   (dedup hash)
@@ -26,14 +25,10 @@ import hashlib
 import json
 import os
 import re
-import time as _time
+from services.llm_utils import deepseek_chat
 
-import openai as _openai_lib
-
-DEEPSEEK_MODEL = "deepseek-chat"
 MIN_CREDIBILITY = 5
 
-_THINK_TAG_RE = re.compile(r"</?think(?:ing)?>", re.IGNORECASE)
 _FENCE_RE = re.compile(r"^```(?:json)?|```$", re.MULTILINE)
 # Emoji / pictographs (AGENTS.md §5.3 — all AI text must be emoji-stripped).
 _EMOJI_RE = re.compile(
@@ -126,45 +121,6 @@ def strip_emoji(text: str) -> str:
     if not text:
         return text
     return _EMOJI_RE.sub("", text).strip()
-
-
-# ═════════════════════════════════════════════════════════════════════════════
-# DeepSeek client
-# ═════════════════════════════════════════════════════════════════════════════
-
-def get_deepseek_client() -> "_openai_lib.OpenAI":
-    return _openai_lib.OpenAI(
-        api_key=os.environ.get("DEEPSEEK_API_KEY", ""),
-        base_url="https://api.deepseek.com/v1",
-        timeout=60.0,
-    )
-
-
-def deepseek_chat(messages: list[dict], *, max_tokens: int = 700, temperature: float = 0.2) -> str:
-    """Call DeepSeek (OpenAI-compatible). Retries 3x with backoff. May raise."""
-    client = get_deepseek_client()
-    last_exc: Exception | None = None
-    effective_max = max(max_tokens * 4, 700)
-
-    for attempt in range(3):
-        try:
-            resp = client.chat.completions.create(
-                model=DEEPSEEK_MODEL,
-                messages=messages,
-                max_tokens=effective_max,
-                temperature=temperature,
-            )
-            choice = resp.choices[0]
-            content = choice.message.content or ""
-            if not content.strip():
-                content = getattr(choice.message, "reasoning_content", None) or ""
-            return _THINK_TAG_RE.sub("", content).strip()
-        except Exception as exc:  # noqa: BLE001 — retried, then surfaced
-            last_exc = exc
-            if attempt < 2:
-                _time.sleep(2.0 * (2 ** attempt))
-
-    raise RuntimeError(f"DeepSeek call failed after 3 retries: {last_exc}") from last_exc
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -277,6 +233,7 @@ def reformat_single(
             ],
             max_tokens=700,
             temperature=0.2,
+            log_endpoint="harvester_reformat",
         )
         parsed = _safe_json(out)
     except Exception as _e:

@@ -6,7 +6,7 @@ these, so there is one implementation. There is no operator/admin token bypass
 """
 
 from typing import Optional
-from fastapi import HTTPException, Header
+from fastapi import Depends, HTTPException, Header
 from database import verify_access_token, is_admin
 
 
@@ -35,3 +35,18 @@ def require_admin(authorization: str = Header(None)) -> int:
     if not is_admin(user_id):
         raise HTTPException(status_code=403, detail="Admin access required")
     return user_id
+
+
+def assert_same_user(user_id: int, uid: int) -> None:
+    """Raise 403 when an authenticated caller (uid) acts on another user's data."""
+    if user_id != uid:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+def require_user_match(user_id: int, uid: int = Depends(require_auth)) -> int:
+    """Require a valid JWT whose user is the route's `user_id` (path or query param).
+
+    401 when the token is missing/invalid, 403 when it belongs to someone else.
+    """
+    assert_same_user(user_id, uid)
+    return uid

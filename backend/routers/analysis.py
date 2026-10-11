@@ -14,8 +14,9 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 
 import yfinance as yf
-from fastapi import APIRouter, HTTPException, Request, Header
+from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from fastapi.responses import JSONResponse as _JSONResponse
+from core.security import require_user_match
 
 
 from helpers import (
@@ -30,7 +31,7 @@ from helpers import (
     AnalysisHistory, Portfolio, SignalEvent, PriceTarget,
     NewsArticle, YouTubeVideo, PKScreenerSignal,
     get_analysis_for_date, get_all_ticker_history, save_analysis,
-    verify_access_token, require_admin,
+    require_admin, get_current_user_id,
     _check_rate_limit,
 )
 
@@ -787,13 +788,11 @@ async def get_technical_signals(ticker: str):
 # GET /api/v1/home-feed
 # ---------------------------------------------------------------------------
 @router.get("/api/v1/home-feed")
-async def get_home_feed(user_id: int, ticker: str = None, authorization: str = Header(None)):
+async def get_home_feed(user_id: int, ticker: str = None, caller: int | None = Depends(get_current_user_id)):
     # Degrade gracefully on missing/invalid token — serve anonymous feed (no portfolio
     # personalisation) rather than hard-failing with 401. Home feed content is public.
-    if user_id != 0:
-        token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-        if token_user != user_id:
-            user_id = 0  # anonymous mode: no red flags, no portfolio video matching
+    if caller != user_id:
+        user_id = 0  # anonymous mode: no red flags, no portfolio video matching
     with get_session() as session:
         news_query = session.query(NewsArticle).order_by(NewsArticle.published_at.desc())
         if ticker:
@@ -1301,10 +1300,7 @@ def screener_endpoint(preset: str):
 # GET /daily-action/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/daily-action/{user_id}")
-def daily_action_endpoint(user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def daily_action_endpoint(user_id: int, _caller: int = Depends(require_user_match)):
     try:
         from datetime import timedelta
 

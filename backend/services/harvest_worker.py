@@ -102,8 +102,9 @@ _scheduler_lock_file = None
 def start_scheduler() -> bool:
     """Start APScheduler with all nightly cron jobs. Called from main.py startup.
 
-    Returns True when this process is the leader (holds the scheduler lock), so
-    main.py runs one-time startup tasks only there.
+    Returns True when this process holds the scheduler lock (it is the leader and
+    runs the scheduler), False when another worker already does (ARCH-07), so
+    main.py runs one-time startup tasks only on the leader.
     """
     global _scheduler, _scheduler_lock_file
     if _scheduler is not None and _scheduler.running:

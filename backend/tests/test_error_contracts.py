@@ -71,8 +71,10 @@ def test_earnings_progress_unavailable_503(client):
 
 
 def test_notifications_test_failure_503(client, monkeypatch):
+    from database import create_access_token
     monkeypatch.setattr(user_router.user_service, "test_notification", _boom)
-    resp = client.post("/notifications/test", json={"user_id": 1, "ticker": "TCS", "exchange": "NSE"})
+    resp = client.post("/notifications/test", json={"user_id": 1, "ticker": "TCS", "exchange": "NSE"},
+                       headers={"Authorization": f"Bearer {create_access_token(1)}"})
     assert resp.status_code == 503
     assert "secret-path" not in resp.text
 

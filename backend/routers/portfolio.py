@@ -23,7 +23,7 @@ from services.ledger_service import record_transaction, get_or_create_default_gr
 from services.yfinance_client import _yf_price_with_status
 
 from helpers import (
-    get_session, verify_access_token, EXCHANGE_SUFFIX, _resolve_ticker,
+    get_session, EXCHANGE_SUFFIX, _resolve_ticker,
     _to_ns, _yf_price, _yf_fetch_info, _dcache_get, _dcache_set,
     _quick_info_cache, _QUICK_INFO_TTL, DataHarvestingError,
     User, Portfolio, AnalysisHistory, SignalEvent, PriceTarget,
@@ -36,6 +36,7 @@ from helpers import (
     _extract_json_from_text, _log_token_usage,
     require_auth, format_indian_currency,
 )
+from core.security import require_user_match, assert_same_user
 
 import importlib.util as _importlib_util
 FPDF2_AVAILABLE = _importlib_util.find_spec("fpdf") is not None  # fpdf2 installs the `fpdf` package
@@ -123,10 +124,7 @@ def sip_calculator(req: SIPCalculatorRequest):
 
 # ── Item 44: Portfolio vs Nifty CAGR ──────────────────────────────────
 @router.get("/portfolio/benchmark")
-def portfolio_benchmark(user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def portfolio_benchmark(user_id: int, _caller: int = Depends(require_user_match)):
     with get_session() as db:
         holdings = db.query(Portfolio).filter(
             Portfolio.user_id == user_id,
@@ -200,10 +198,7 @@ def portfolio_benchmark(user_id: int, authorization: str = Header(None)):
 
 # ── Item 50: Portfolio Stress Test ────────────────────────────────────
 @router.get("/portfolio/stress-test")
-def portfolio_stress_test(user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def portfolio_stress_test(user_id: int, _caller: int = Depends(require_user_match)):
     with get_session() as db:
         holdings = db.query(Portfolio).filter(
             Portfolio.user_id == user_id, Portfolio.group_name != "watchlist"
@@ -243,10 +238,7 @@ _MACRO_IMPACT_TTL = 7200  # 2 hours
 # 0. GET /portfolio/signal-warnings  (MUST be before /portfolio/{user_id})
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/signal-warnings")
-def portfolio_signal_warnings(user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def portfolio_signal_warnings(user_id: int, _caller: int = Depends(require_user_match)):
     warnings = []
     with get_session() as session:
         holdings = session.query(Portfolio).filter(Portfolio.user_id == user_id, Portfolio.group_name == "holdings").all()
@@ -266,10 +258,7 @@ def portfolio_signal_warnings(user_id: int, authorization: str = Header(None)):
 # 1. GET /portfolio/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/{user_id}")
-async def portfolio_endpoint(user_id: int, authorization: str = Header(None), is_virtual: bool = False):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+async def portfolio_endpoint(user_id: int, _caller: int = Depends(require_user_match), is_virtual: bool = False):
     try:
         with get_session() as session:
             user = session.get(User, user_id)
@@ -376,10 +365,7 @@ async def portfolio_endpoint(user_id: int, authorization: str = Header(None), is
 # 2. GET /portfolio/history/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/history/{user_id}")
-def portfolio_history_endpoint(user_id: int, days: int = 30, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def portfolio_history_endpoint(user_id: int, days: int = 30, _caller: int = Depends(require_user_match)):
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
     with get_session() as session:
         rows = session.query(PortfolioValuationHistory).filter(
@@ -422,10 +408,7 @@ def piotroski_endpoint(ticker: str):
 # 4. GET /morning-summary/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/morning-summary/{user_id}")
-def morning_summary_endpoint(user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def morning_summary_endpoint(user_id: int, _caller: int = Depends(require_user_match)):
     # FINSEC-04: holdings go to the LLM processor only with the opt-in consent.
     # Not cached, so granting consent takes effect on the next request.
     if not has_active_consent(user_id, AI_PROCESSING_CONSENT):
@@ -552,27 +535,18 @@ Return ONLY a JSON object (no markdown):
 
 mood must be exactly: "positive", "cautious", or "negative"
 """
-        import anthropic
+        from services.llm_utils import claude_messages, HAIKU_MODEL
         api_key = os.getenv("ANTHROPIC_API_KEY")
-        HAIKU_MODEL = "claude-haiku-4-5-20251001"
         if not api_key or api_key == "placeholder":
             _dcache_set("morning_brief", str(user_id), fallback, ttl=_MORNING_CACHE_TTL)
             return fallback
 
-        client = anthropic.Anthropic(api_key=api_key)
-        for attempt in range(3):
-            try:
-                response = client.messages.create(
-                    model=HAIKU_MODEL,
-                    max_tokens=400,
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                break
-            except Exception as e:
-                logging.info(f"[Anthropic] Morning summary attempt {attempt+1} failed: {e}")
-                if attempt == 2: raise
-                time.sleep(1.0 * (2 ** attempt))
-        _log_token_usage("morning_summary", response.usage, HAIKU_MODEL)
+        response = claude_messages(
+            model=HAIKU_MODEL,
+            max_tokens=400,
+            messages=[{"role": "user", "content": prompt}],
+            feature="morning_summary",
+        )
 
         raw = _extract_json_from_text(response.content[0].text)
         try:
@@ -693,12 +667,10 @@ def _parse_trade_date(s: Optional[str]) -> Optional[datetime]:
 @router.post("/portfolio/add")
 def portfolio_add_endpoint(
     req: PortfolioAddRequest,
-    authorization: str = Header(None),
+    token_user: int = Depends(require_auth),
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key", max_length=64),
 ):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != req.user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    assert_same_user(req.user_id, token_user)
     if not req.ticker or not req.ticker.strip():
         raise HTTPException(status_code=400, detail="Ticker cannot be empty.")
     if req.shares <= 0:
@@ -756,10 +728,8 @@ def portfolio_add_endpoint(
 # 7. DELETE /portfolio/remove
 # ---------------------------------------------------------------------------
 @router.delete("/portfolio/remove")
-def portfolio_remove_endpoint(req: PortfolioRemoveRequest, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != req.user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def portfolio_remove_endpoint(req: PortfolioRemoveRequest, token_user: int = Depends(require_auth)):
+    assert_same_user(req.user_id, token_user)
     ticker = req.ticker.upper().strip()
     try:
         # Through the ledger, so a later BUY cannot resurrect the removed lots.
@@ -777,10 +747,8 @@ def portfolio_remove_endpoint(req: PortfolioRemoveRequest, authorization: str = 
 # 8. PUT /portfolio/update
 # ---------------------------------------------------------------------------
 @router.put("/portfolio/update")
-def portfolio_update_endpoint(req: PortfolioUpdateRequest, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != req.user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def portfolio_update_endpoint(req: PortfolioUpdateRequest, token_user: int = Depends(require_auth)):
+    assert_same_user(req.user_id, token_user)
     if req.shares <= 0:
         raise HTTPException(status_code=400, detail="Shares must be greater than 0.")
     if req.buy_price <= 0:
@@ -821,10 +789,7 @@ def portfolio_update_endpoint(req: PortfolioUpdateRequest, authorization: str = 
 # 9. GET /portfolio/transactions/{ticker}
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/transactions/{ticker}")
-def portfolio_transactions_endpoint(ticker: str, user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def portfolio_transactions_endpoint(ticker: str, user_id: int, _caller: int = Depends(require_user_match)):
     ticker = ticker.upper().strip()
     try:
         from services.ledger_service import get_transactions_for_ticker
@@ -839,10 +804,8 @@ def portfolio_transactions_endpoint(ticker: str, user_id: int, authorization: st
 # 10. PUT /portfolio/note
 # ---------------------------------------------------------------------------
 @router.put("/portfolio/note")
-def portfolio_note_endpoint(req: PortfolioNoteRequest, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != req.user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def portfolio_note_endpoint(req: PortfolioNoteRequest, token_user: int = Depends(require_auth)):
+    assert_same_user(req.user_id, token_user)
     ticker = req.ticker.upper().strip()
     try:
         with get_session() as session:
@@ -1009,10 +972,7 @@ def portfolio_advisor_consensus(
 # 12. GET /portfolio/export/excel/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/export/excel/{user_id}")
-def export_portfolio_excel(user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def export_portfolio_excel(user_id: int, _caller: int = Depends(require_user_match)):
     if not OPENPYXL_AVAILABLE:
         raise HTTPException(status_code=501, detail="openpyxl not installed on server")
     try:
@@ -1132,10 +1092,7 @@ def export_portfolio_excel(user_id: int, authorization: str = Header(None)):
 # 13. GET /api/v1/portfolio/valuation-history
 # ---------------------------------------------------------------------------
 @router.get("/api/v1/portfolio/valuation-history")
-async def get_valuation_history(user_id: int, days: int = 90, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+async def get_valuation_history(user_id: int, days: int = 90, _caller: int = Depends(require_user_match)):
     with get_session() as session:
         cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
 
@@ -1268,7 +1225,7 @@ def portfolio_chart_image(user_id: int, filename: str, caller: int = Depends(req
 @router.get("/api/v1/portfolio/charts/{user_id}")
 async def portfolio_charts_endpoint(
     user_id: int,
-    authorization: str = Header(None),
+    _caller: int = Depends(require_user_match),
     regenerate: bool = False,
 ):
     """
@@ -1278,20 +1235,12 @@ Charts are cached on disk per user. Set ?regenerate=true to force re‑generatio
 Uses a thread-pool executor so the event loop is never blocked.
 
     Args:
-        user_id (int): The user_id.
-        authorization (str): The authorization.
+        user_id (int): The user_id (must be the bearer's own id).
         regenerate (bool): The regenerate.
 
     Returns:
         Any: The response.
     """
-    token_user = verify_access_token(
-        authorization.split(" ", 1)[1]
-        if authorization and authorization.startswith("Bearer ")
-        else ""
-    )
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
     try:
         from portfolio_charts import generate_portfolio_charts
         import asyncio
@@ -1387,10 +1336,7 @@ Uses a thread-pool executor so the event loop is never blocked.
 # 14. GET /portfolio/risk-analysis/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/risk-analysis/{user_id}")
-def portfolio_risk_analysis_endpoint(user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def portfolio_risk_analysis_endpoint(user_id: int, _caller: int = Depends(require_user_match)):
     try:
         with get_session() as session:
             user = session.get(User, user_id)
@@ -1517,10 +1463,7 @@ def portfolio_risk_analysis_endpoint(user_id: int, authorization: str = Header(N
 # 15. GET /portfolio/red-flags/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/red-flags/{user_id}")
-def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def portfolio_red_flags_endpoint(user_id: int, _caller: int = Depends(require_user_match)):
     try:
         with get_session() as session:
             user = session.get(User, user_id)
@@ -1679,10 +1622,7 @@ def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)
 # 16. GET /macro-impact/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/macro-impact/{user_id}")
-def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def macro_impact_endpoint(user_id: int, _caller: int = Depends(require_user_match)):
     try:
         now = time.time()
         cached = _dcache_get("macro_impact", str(user_id))
@@ -1776,10 +1716,7 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
 # 17. GET /portfolio/timeframe-conflicts/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/timeframe-conflicts/{user_id}")
-def portfolio_timeframe_conflicts_endpoint(user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def portfolio_timeframe_conflicts_endpoint(user_id: int, _caller: int = Depends(require_user_match)):
     try:
         with get_session() as session:
             user = session.get(User, user_id)
@@ -1858,10 +1795,8 @@ def portfolio_timeframe_conflicts_endpoint(user_id: int, authorization: str = He
 # 18. POST /trade-journal
 # ---------------------------------------------------------------------------
 @router.post("/trade-journal")
-def trade_journal_add_endpoint(req: TradeJournalAddRequest, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != req.user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def trade_journal_add_endpoint(req: TradeJournalAddRequest, token_user: int = Depends(require_auth)):
+    assert_same_user(req.user_id, token_user)
     action = req.action.upper()
     if action not in ("BUY", "SELL", "HOLD", "WATCH"):
         raise HTTPException(status_code=400, detail="action must be BUY, SELL, HOLD, or WATCH")
@@ -1906,10 +1841,7 @@ def trade_journal_add_endpoint(req: TradeJournalAddRequest, authorization: str =
 # 19. GET /trade-journal/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/trade-journal/{user_id}")
-def trade_journal_get_endpoint(user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def trade_journal_get_endpoint(user_id: int, _caller: int = Depends(require_user_match)):
     try:
         with get_session() as session:
             user = session.get(User, user_id)
@@ -1961,10 +1893,7 @@ def trade_journal_get_endpoint(user_id: int, authorization: str = Header(None)):
 # 20. PUT /trade-journal/{entry_id}
 # ---------------------------------------------------------------------------
 @router.put("/trade-journal/{entry_id}")
-def trade_journal_update_endpoint(entry_id: int, req: TradeJournalUpdateRequest, user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def trade_journal_update_endpoint(entry_id: int, req: TradeJournalUpdateRequest, user_id: int, _caller: int = Depends(require_user_match)):
     """Update outcome_text and mood on a trade journal entry. user_id passed as query param."""
     try:
         with get_session() as session:
@@ -2017,10 +1946,7 @@ def trade_journal_update_endpoint(entry_id: int, req: TradeJournalUpdateRequest,
 # 21. DELETE /trade-journal/{entry_id}
 # ---------------------------------------------------------------------------
 @router.delete("/trade-journal/{entry_id}")
-def trade_journal_delete_endpoint(entry_id: int, user_id: int, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def trade_journal_delete_endpoint(entry_id: int, user_id: int, _caller: int = Depends(require_user_match)):
     """Delete a trade journal entry. user_id passed as query param."""
     try:
         with get_session() as session:
@@ -2108,11 +2034,8 @@ def trade_journal_stats_endpoint(user_id: int, auth_user_id: int = Depends(requi
 # 23. GET /portfolio/export/pdf/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/export/pdf/{user_id}")
-def export_portfolio_pdf(user_id: int, authorization: str = Header(None)):
+def export_portfolio_pdf(user_id: int, _caller: int = Depends(require_user_match)):
     """Generate a deterministic, factual portfolio summary PDF (no LLM call, no advice)."""
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
     if not FPDF2_AVAILABLE:
         raise HTTPException(status_code=503, detail="PDF export unavailable")
     try:
@@ -2426,10 +2349,8 @@ class MultiAssetTransactionRequest(_BaseModel):
         return v.strip().upper() if isinstance(v, str) else v
 
 @router.post("/portfolio/multi-asset/transaction")
-def multi_asset_transaction_entry(req: MultiAssetTransactionRequest, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != req.user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def multi_asset_transaction_entry(req: MultiAssetTransactionRequest, token_user: int = Depends(require_auth)):
+    assert_same_user(req.user_id, token_user)
         
     try:
         with get_session() as session:
@@ -2452,10 +2373,7 @@ def multi_asset_transaction_entry(req: MultiAssetTransactionRequest, authorizati
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/portfolio/multi-asset/transactions/{user_id}")
-def multi_asset_transactions_history(user_id: int, asset_type: _Optional[str] = None, authorization: str = Header(None)):
-    token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
-    if token_user != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def multi_asset_transactions_history(user_id: int, asset_type: _Optional[str] = None, _caller: int = Depends(require_user_match)):
         
     try:
         with get_session() as session:

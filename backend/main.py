@@ -344,6 +344,28 @@ def _seed_catalogs():
             logging.warning("[startup] %s failed: %s", seed.__name__, e)
 
 
+# Handle of the leader's price-alert poller task, cancelled on shutdown.
+_price_alert_task = None
+
+
+def _backfill_preferences():
+    """Backfill UserPreferences for existing users without one."""
+    try:
+        from database import get_session, User
+        from models.db_models import UserPreference
+        with get_session() as s:
+            existing = s.query(UserPreference.user_id).distinct().all()
+            existing_ids = {r[0] for r in existing}
+            users = s.query(User.id).filter(~User.id.in_(existing_ids)).all() if existing_ids else s.query(User.id).all()
+            for (uid,) in users:
+                s.add(UserPreference(user_id=uid))
+            s.commit()
+            if users:
+                logging.info(f"Backfilled preferences for {len(users)} users")
+    except Exception as e:
+        logging.warning(f"Preference backfill skipped: {e}")
+
+
 async def _on_startup():
     """
     Execute application startup routines.
@@ -351,8 +373,10 @@ async def _on_startup():
     Initializes structured logging in every worker. Only the leader (the worker
     holding the scheduler lock) runs the one-time tasks: database tables, the
     stale-job sweep, harvester/catalog seeding, the price-alert poller and the
-    preference backfill (DB-13).
+    preference backfill (DB-13, ARCH-07). Even with `--workers N` there is one
+    alert poller (no duplicate pushes), one job sweep and one backfill.
     """
+    global _price_alert_task
     # Wire up structured JSON logging (fixes #83)
     from core.logging_config import configure_logging
     configure_logging()
@@ -384,28 +408,12 @@ async def _on_startup():
     _seed_catalogs()
     from routers.alerts import _price_alert_poller
     import asyncio
-    asyncio.create_task(_price_alert_poller())
+    _price_alert_task = asyncio.create_task(_price_alert_poller())
 
     # FinBERT loading is deferred to first request (lazy). Pre-warming at startup
     # causes memory spikes during model load, cascading worker death with uvicorn
     # --workers > 1. The 3-5s cost on first sentiment request is acceptable.
 
-    # Backfill UserPreferences for existing users without one
-    def _backfill_preferences():
-        try:
-            from database import get_session, User
-            from models.db_models import UserPreference
-            with get_session() as s:
-                existing = s.query(UserPreference.user_id).distinct().all()
-                existing_ids = {r[0] for r in existing}
-                users = s.query(User.id).filter(~User.id.in_(existing_ids)).all() if existing_ids else s.query(User.id).all()
-                for (uid,) in users:
-                    s.add(UserPreference(user_id=uid))
-                s.commit()
-                if users:
-                    logging.info(f"Backfilled preferences for {len(users)} users")
-        except Exception as e:
-            logging.warning(f"Preference backfill skipped: {e}")
     threading.Thread(target=_backfill_preferences, daemon=True).start()
 
     # RAG ingestion is incremental and runs only in the leader scheduler
@@ -419,6 +427,8 @@ async def _on_startup():
 
 async def _on_shutdown():
     # Each step runs even if an earlier one fails, so worker processes are always reaped.
+    if _price_alert_task is not None:
+        _price_alert_task.cancel()
     try:
         stop_scheduler()
     except Exception:
