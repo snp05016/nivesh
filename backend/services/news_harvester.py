@@ -4,6 +4,7 @@ Scrapes Moneycontrol + ET for financial news articles.
 Run nightly. Never called from request handlers.
 """
 import feedparser
+import requests
 from newspaper import Article
 from datetime import datetime, timedelta, timezone
 import logging
@@ -161,6 +162,9 @@ def scrape_article_body(url: str) -> tuple[str, str | None]:
         logger.warning(f"Body scrape failed for {url}: {e}")
         return "", None
 
+_FEED_TIMEOUT_SEC = 15
+
+
 async def harvest_news(lookback_hours: int = 26):
     """Main harvest entry point. Called by nightly CRON."""
     from database import get_session
@@ -171,7 +175,11 @@ async def harvest_news(lookback_hours: int = 26):
 
         for feed_config in RSS_FEEDS:
             try:
-                feed = feedparser.parse(feed_config["url"])
+                # feedparser.parse(url) has no timeout: a hung feed server stalled the job forever.
+                resp = requests.get(feed_config["url"], timeout=_FEED_TIMEOUT_SEC,
+                                    headers={"User-Agent": "Mozilla/5.0 (Nivesh RSS)"})
+                resp.raise_for_status()
+                feed = feedparser.parse(resp.content)
                 for entry in feed.entries[:20]:  # Max 20 per feed
                     try:
                         # Skip if already in DB (unique constraint on article_url)

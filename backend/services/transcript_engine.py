@@ -6,6 +6,7 @@ Two-layer transcript fetching strategy:
   Layer 2: Local Whisper fallback (faster-whisper large-v3)
 """
 
+import functools
 import logging
 import os
 import tempfile
@@ -264,6 +265,13 @@ def _fetch_youtube_api(video_id: str, duration_seconds: float) -> Optional[dict]
 # Layer 2 — Local Whisper (faster-whisper)
 # ---------------------------------------------------------------------------
 
+@functools.lru_cache(maxsize=1)
+def _whisper_model():
+    """Load Whisper large-v3 once per process (~3 GB) instead of on every call."""
+    from faster_whisper import WhisperModel
+    return WhisperModel("large-v3", device="cpu", compute_type="int8")
+
+
 def _fetch_whisper(video_id: str, duration_seconds: float) -> dict:
     """Downloads audio with yt-dlp, then transcribes with faster-whisper.
 
@@ -276,10 +284,20 @@ def _fetch_whisper(video_id: str, duration_seconds: float) -> dict:
 
     Raises:
         TranscriptError: If the yt-dlp download produces no file, or if the Whisper
-            transcription fails for any reason.
+            transcription fails for any reason, or when the Whisper fallback is
+            disabled (default) or the video exceeds WHISPER_MAX_DURATION_SEC.
     """
+    # CPU Whisper on a long video takes minutes of CPU and GBs of RAM in the API
+    # process: opt-in only, and capped by duration (REL-03).
+    if os.getenv("WHISPER_FALLBACK_ENABLED", "false").lower() != "true":
+        raise TranscriptError(f"Whisper fallback disabled; no captions for video {video_id}")
+    max_duration = int(os.getenv("WHISPER_MAX_DURATION_SEC", "1800"))
+    if duration_seconds > max_duration:
+        raise TranscriptError(
+            f"Video {video_id} is {duration_seconds:.0f}s, over the {max_duration}s Whisper cap"
+        )
+
     import yt_dlp
-    from faster_whisper import WhisperModel
 
     # Create a temp file for audio download
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".%(ext)s")
@@ -325,7 +343,7 @@ def _fetch_whisper(video_id: str, duration_seconds: float) -> dict:
             "Layer 1 failed for %s; transcribing with Whisper large-v3.", video_id
         )
 
-        model = WhisperModel("large-v3", device="cpu", compute_type="int8")
+        model = _whisper_model()
 
         segments_iter, info_obj = model.transcribe(
             downloaded_file,

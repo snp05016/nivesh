@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import threading
@@ -77,7 +78,8 @@ class YouTubeSummaryService:
         video_url = _VIDEO_URL_TEMPLATE.format(video_id)
 
         # ── Step 1: transcript extraction ──────────────────────────────────
-        transcript = self._extractor.extract(video_id)
+        # Blocking network/yt-dlp work runs off the event loop (REL-01).
+        transcript = await asyncio.to_thread(self._extractor.extract, video_id)
         if not transcript:
             logger.warning("Transcript unavailable for video_id=%s", video_id)
             raise HTTPException(
@@ -91,7 +93,7 @@ class YouTubeSummaryService:
 
         # ── Step 2: cache lookup ───────────────────────────────────────────
         if not force_refresh:
-            cached_data = self._cache.get(video_id, transcript_hash)
+            cached_data = await asyncio.to_thread(self._cache.get, video_id, transcript_hash)
             # Empty rows written before GH-634 are treated as a miss and regenerated.
             if cached_data is not None and _has_content(cached_data):
                 logger.debug("Cache hit for video_id=%s", video_id)
@@ -137,7 +139,7 @@ class YouTubeSummaryService:
             )
 
         # ── Step 5: cache write ────────────────────────────────────────────
-        self._cache.set(video_id, summary_dict, transcript_hash)
+        await asyncio.to_thread(self._cache.set, video_id, summary_dict, transcript_hash)
 
         return self._build_response(
             video_id=video_id,

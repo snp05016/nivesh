@@ -226,7 +226,7 @@ def portfolio_signal_warnings(user_id: int, _caller: int = Depends(require_user_
 # 1. GET /portfolio/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/{user_id}")
-async def portfolio_endpoint(user_id: int, _caller: int = Depends(require_user_match), is_virtual: bool = False):
+def portfolio_endpoint(user_id: int, _caller: int = Depends(require_user_match), is_virtual: bool = False):
     try:
         with get_session() as session:
             user = session.get(User, user_id)
@@ -252,19 +252,19 @@ async def portfolio_endpoint(user_id: int, _caller: int = Depends(require_user_m
                     last_analyses[row.ticker] = row.created_at
                     last_signals[row.ticker] = row.signal or "HOLD"
 
-        # Fetch all prices in parallel — 10x faster than sequential yfinance calls
-        import asyncio
+        # Fetch all prices in parallel — 10x faster than sequential yfinance calls.
+        # Sync handler (threadpool), so the _to_ns probe stays off the event loop too.
         from concurrent.futures import ThreadPoolExecutor
-        loop = asyncio.get_event_loop()
+
+        def _safe_price(ticker):
+            try:
+                return _yf_price_with_status(_to_ns(ticker))
+            except Exception:
+                return (None, None, "unavailable", None)
+
         with ThreadPoolExecutor(max_workers=min(len(holdings), 10)) as pool:
-            price_results = await asyncio.gather(
-                *[loop.run_in_executor(pool, _yf_price_with_status, _to_ns(h.ticker)) for h in holdings],
-                return_exceptions=True
-            )
-        prices = {
-            h.ticker: (r if not isinstance(r, Exception) else (None, None, "unavailable", None))
-            for h, r in zip(holdings, price_results)
-        }
+            price_results = list(pool.map(_safe_price, tickers))
+        prices = dict(zip(tickers, price_results))
 
         rows = []
         unpriced: list[str] = []
@@ -1062,7 +1062,7 @@ def export_portfolio_excel(user_id: int, _caller: int = Depends(require_user_mat
 # 13. GET /api/v1/portfolio/valuation-history
 # ---------------------------------------------------------------------------
 @router.get("/api/v1/portfolio/valuation-history")
-async def get_valuation_history(user_id: int, days: int = 90, _caller: int = Depends(require_user_match)):
+def get_valuation_history(user_id: int, days: int = 90, _caller: int = Depends(require_user_match)):
     with get_session() as session:
         cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
 
@@ -2136,7 +2136,7 @@ def export_portfolio_pdf(user_id: int, _caller: int = Depends(require_user_match
 
 
 @router.get("/api/v1/market/net-worth-ledger/{user_id}", response_model=NetWorthSnapshotResponse)
-async def net_worth_ledger_endpoint(
+def net_worth_ledger_endpoint(
     user_id: int,
     authorization: str = Header(None),
 ):
@@ -2188,7 +2188,7 @@ Requires valid JWT. Returns 404 if no snapshot exists yet.
     )
 
 @router.get("/attribution/{user_id}")
-async def portfolio_attribution_endpoint(
+def portfolio_attribution_endpoint(
     user_id: int,
     authorization: str = Header(None)
 ):

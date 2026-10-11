@@ -1898,7 +1898,7 @@ Raises 503 on DataHarvestingError.
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/api/v1/earnings/progress")
-async def earnings_progress_endpoint():
+def earnings_progress_endpoint():
     # There is no exchange-wide results-filing source. Counting the app's own
     # analyses over a fixed denominator was fabricated progress (FAKE-08).
     raise HTTPException(
@@ -2089,7 +2089,7 @@ def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple
 
 
 @router.get("/api/v1/earnings/feed")
-async def earnings_feed_endpoint(market_cap: str = "all", sort: str = "latest"):
+def earnings_feed_endpoint(market_cap: str = "all", sort: str = "latest"):
     """
     Ranked earnings feed — returns results categorized by sort parameter:
   - "latest":      most recently reported (default)
@@ -2181,7 +2181,7 @@ Adds data_source and diagnostic fields for transparency.
 
 
 @router.get("/api/v1/earnings/calendar")
-async def earnings_calendar_day_endpoint(date: str = None, ticker: str = None):
+def earnings_calendar_day_endpoint(date: str = None, ticker: str = None):
     """
     Historical earnings calendar — returns results for a date with 7-day
 price-action sparkline data per ticker. Pass ?ticker=SYM to filter.
@@ -2253,7 +2253,7 @@ Each result includes:
 
 
 @router.get("/api/v1/earnings/estimates")
-async def earnings_estimates_endpoint(ticker: str):
+def earnings_estimates_endpoint(ticker: str):
     # Only a genuine quarterly consensus figure counts as an estimate (FAKE-10):
     # no TTM-actual (totalRevenue) or 12-month-forward EPS stand-ins, and no
     # actuals from LLM analysis snapshots (period never matched the estimate).
@@ -2279,7 +2279,7 @@ async def earnings_estimates_endpoint(ticker: str):
 
 
 @router.get("/api/v1/earnings/post-result-movers")
-async def post_result_movers_endpoint():
+def post_result_movers_endpoint():
     now_iso = datetime.now(timezone.utc).isoformat()
     movers = []
     try:
@@ -2679,7 +2679,7 @@ _NIFTY50_TICKERS = [
 
 
 @router.get("/api/v1/market/top-movers")
-async def top_movers_endpoint():
+def top_movers_endpoint():
     """
     Returns top gainers, losers, active-by-value, active-by-volume from NIFTY 50.
 Each list is capped at 10 entries. Uses yfinance batch download (fast).
@@ -2702,17 +2702,14 @@ Response: {
 
     try:
         symbols = [f"{t}.NS" for t in _NIFTY50_TICKERS]
-        raw = await asyncio.get_event_loop().run_in_executor(
-            None,
-            lambda: yf.download(
-                symbols,
-                period="2d",
-                interval="1d",
-                group_by="ticker",
-                auto_adjust=True,
-                progress=False,
-                threads=True,
-            ),
+        raw = yf.download(
+            symbols,
+            period="2d",
+            interval="1d",
+            group_by="ticker",
+            auto_adjust=True,
+            progress=False,
+            threads=True,
         )
 
         movers = []

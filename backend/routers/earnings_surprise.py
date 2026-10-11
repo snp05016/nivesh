@@ -19,18 +19,18 @@ class EarningsSurpriseResponse(BaseModel):
     serial_pattern: Optional[str] = None
 
 @router.get("/api/v1/earnings/surprises", response_model=List[EarningsSurpriseResponse])
-async def api_get_earnings_surprises(period: str = "current_quarter"):
+def api_get_earnings_surprises(period: str = "current_quarter"):
     try:
-        results = await get_all_surprises(period)
+        results = get_all_surprises(period)
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/api/v1/earnings/surprise-history/{ticker}", response_model=List[EarningsSurpriseResponse])
-async def api_get_earnings_surprise_history(ticker: str):
+def api_get_earnings_surprise_history(ticker: str):
     try:
         ticker = ticker.upper()
-        results = await get_surprise_history(ticker)
+        results = get_surprise_history(ticker)
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")

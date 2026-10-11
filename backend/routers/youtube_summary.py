@@ -127,7 +127,7 @@ async def post_summary(
 
 
 @router.get("/summary/{video_id}", response_model=YouTubeVideoSummaryResponse)
-async def get_summary(
+def get_summary(
     video_id: str,
     authorization: str = Header(None),
 ):

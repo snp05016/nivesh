@@ -2,7 +2,6 @@
 
 Hermetic: temp SQLite files only, Postgres targets disabled, heartbeat HTTP mocked.
 """
-import asyncio
 import io
 import sqlite3
 from unittest.mock import MagicMock
@@ -111,5 +110,5 @@ def test_scheduler_registers_nightly_backup(monkeypatch):
 
     run = MagicMock(return_value={})
     monkeypatch.setattr(bs, "run_backup", run)
-    asyncio.run(job.args[0]())
+    job.args[0]()  # sync job: APScheduler runs it in a worker thread (REL-03)
     run.assert_called_once()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -95,7 +96,9 @@ class DeepSeekProvider(SummaryProvider):
                 {"role": "user", "content": prompt},
             ]
             try:
-                raw = deepseek_chat(
+                # Sync LLM client: run in a worker thread so the loop stays free.
+                raw = await asyncio.to_thread(
+                    deepseek_chat,
                     messages,
                     max_tokens=self._MAX_CHUNK_TOKENS,
                     temperature=0.2,
@@ -112,7 +115,7 @@ class DeepSeekProvider(SummaryProvider):
         if len(partials) == 1:
             return _sanitize(partials[0])
 
-        return _merge_partials(partials, deepseek_chat)
+        return await asyncio.to_thread(_merge_partials, partials, deepseek_chat)
 
 
 # ---------------------------------------------------------------------------

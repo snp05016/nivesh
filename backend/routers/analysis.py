@@ -485,7 +485,7 @@ def _already_running_response(active: dict):
 
 
 @router.post("/analyze", status_code=202)
-async def analyze_endpoint(req: AnalyzeRequest):
+def analyze_endpoint(req: AnalyzeRequest):
     """
     Start a background analysis job and return immediately (202).
 
@@ -563,7 +563,7 @@ kills the run. One running job per user (guarded by the DB job state).
 
 
 @router.get("/analyze/job/{job_id}")
-async def get_job_status(job_id: str, user_id: int | None = None):
+def get_job_status(job_id: str, user_id: int | None = None):
     """
     Poll a job: status, stage, progress_pct, checkpoints, and result when done.
 When user_id is provided, verifies the job belongs to that user (IDOR guard).
@@ -585,7 +585,7 @@ When user_id is provided, verifies the job belongs to that user (IDOR guard).
 
 
 @router.get("/analyze/active")
-async def get_active_job(user_id: int | None = None):
+def get_active_job(user_id: int | None = None):
     """
     The user's current running/queued job — drives the app's global running indicator.
 Requires user_id parameter; returns NONE when user_id is null/absent (IDOR guard).
@@ -604,7 +604,7 @@ Requires user_id parameter; returns NONE when user_id is null/absent (IDOR guard
 
 
 @router.post("/analyze/{job_id}/cancel")
-async def cancel_job_endpoint(job_id: str, user_id: int | None = None):
+def cancel_job_endpoint(job_id: str, user_id: int | None = None):
     """
     Cancel a running job (terminates the worker subprocess to stop credit spend).
 When user_id is provided, verifies the job belongs to that user before cancelling (IDOR guard).
@@ -631,7 +631,7 @@ When user_id is provided, verifies the job belongs to that user before cancellin
 # GET /analyze/cache-status/{ticker} — what's cached for a ticker
 # ---------------------------------------------------------------------------
 @router.get("/analyze/cache-status/{ticker}")
-async def cache_status(ticker: str, user_id: int | None = None):
+def cache_status(ticker: str, user_id: int | None = None):
     """
     Return all cached analysis entries for a ticker with staleness info.
 Does NOT trigger any analysis — read-only cache introspection.
@@ -678,7 +678,7 @@ Does NOT trigger any analysis — read-only cache introspection.
 # POST /analyze/cache/{ticker}/invalidate — admin only cache invalidation
 # ---------------------------------------------------------------------------
 @router.post("/analyze/cache/{ticker}/invalidate")
-async def invalidate_cache(ticker: str, scan_type: str = "all", authorization: str = Header(None)):
+def invalidate_cache(ticker: str, scan_type: str = "all", authorization: str = Header(None)):
     """
     Admin endpoint to delete cached analyses for a ticker.
 scan_type: 'all' (delete everything) or 'extreme'/'deep'/'standard'.
@@ -714,7 +714,7 @@ scan_type: 'all' (delete everything) or 'extreme'/'deep'/'standard'.
 # GET /analyze/slots — admin endpoint to inspect/clear stuck analysis slots
 # ---------------------------------------------------------------------------
 @router.get("/analyze/slots")
-async def inspect_analysis_slots(authorization: str = Header(None)):
+def inspect_analysis_slots(authorization: str = Header(None)):
     require_admin(authorization)
     from helpers import _get_stuck_analyses, _force_clear_analysis_slot
     stuck = _get_stuck_analyses()
@@ -729,7 +729,7 @@ async def inspect_analysis_slots(authorization: str = Header(None)):
 # DELETE /analyze/slots — admin endpoint to force-clear stuck slots
 # ---------------------------------------------------------------------------
 @router.delete("/analyze/slots")
-async def clear_analysis_slots(
+def clear_analysis_slots(
     user_id: int | None = None,
     authorization: str = Header(None),
 ):
@@ -761,7 +761,7 @@ async def clear_analysis_slots(
 # GET /api/v1/technical-signals
 # ---------------------------------------------------------------------------
 @router.get("/api/v1/technical-signals")
-async def get_technical_signals(ticker: str):
+def get_technical_signals(ticker: str):
     with get_session() as session:
         signal = session.query(PKScreenerSignal).filter(
             PKScreenerSignal.ticker == ticker.upper()
@@ -788,7 +788,7 @@ async def get_technical_signals(ticker: str):
 # GET /api/v1/home-feed
 # ---------------------------------------------------------------------------
 @router.get("/api/v1/home-feed")
-async def get_home_feed(user_id: int, ticker: str = None, caller: int | None = Depends(get_current_user_id)):
+def get_home_feed(user_id: int, ticker: str = None, caller: int | None = Depends(get_current_user_id)):
     # Degrade gracefully on missing/invalid token — serve anonymous feed (no portfolio
     # personalisation) rather than hard-failing with 401. Home feed content is public.
     if caller != user_id:

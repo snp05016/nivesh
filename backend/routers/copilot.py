@@ -22,7 +22,7 @@ class CopilotResponse(BaseModel):
     context_cards: Optional[List[Dict[str, Any]]] = None
 
 @router.post("/api/v1/copilot/chat", response_model=CopilotResponse)
-async def copilot_chat(
+def copilot_chat(
     req: CopilotRequest,
     background_tasks: BackgroundTasks,
     user_id: Optional[int] = Depends(get_current_user_id)

@@ -9,6 +9,7 @@ Contains:
 """
 
 import asyncio
+import functools
 from datetime import datetime, timedelta, timezone
 import logging
 from fastapi import APIRouter, BackgroundTasks, Header
@@ -27,34 +28,47 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin-harvest"])
 _scheduler: AsyncIOScheduler | None = None
 
 
+def _sync(coro_fn):
+    """Wrap a coroutine function as a plain callable that runs it on a private loop.
+
+    AsyncIOScheduler (and BackgroundTasks) run coroutine jobs ON the API event loop
+    but send plain callables to a thread pool, so registering only sync callables
+    keeps blocking yfinance/feedparser/yt-dlp/subprocess bodies off the loop (REL-03).
+    """
+    @functools.wraps(coro_fn)
+    def run(*args, **kwargs):
+        return asyncio.run(coro_fn(*args, **kwargs))
+    return run
+
+
 # ── Background runners ─────────────────────────────────────────────────────────
 
-async def _run_youtube_harvest_bg():
+def _run_youtube_harvest_bg():
     _dash_update_harvest("youtube", "running")
     try:
         from services.youtube_harvester import harvest_youtube_metadata, harvest_portfolio_videos
-        res1 = await harvest_youtube_metadata()
-        res2 = await harvest_portfolio_videos()
+        res1 = asyncio.run(harvest_youtube_metadata())
+        res2 = asyncio.run(harvest_portfolio_videos())
         _dash_update_harvest("youtube", "idle", {"channels": res1, "portfolio": res2})
     except Exception as e:
         _dash_update_harvest("youtube", "error", {"error": str(e)})
 
 
-async def _run_advisor_harvest_bg():
+def _run_advisor_harvest_bg():
     _dash_update_harvest("advisor", "running")
     try:
         from services.advisor_harvester import harvest_all_advisors
-        res = await harvest_all_advisors()
+        res = asyncio.run(harvest_all_advisors())
         _dash_update_harvest("advisor", "idle", {"result": res})
     except Exception as e:
         _dash_update_harvest("advisor", "error", {"error": str(e)})
 
 
-async def _run_news_harvest_bg():
+def _run_news_harvest_bg():
     _dash_update_harvest("news", "running")
     try:
         from services.news_harvester import harvest_news
-        res = await harvest_news()
+        res = asyncio.run(harvest_news())
         _dash_update_harvest("news", "idle", {"added": res})
     except Exception as e:
         _dash_update_harvest("news", "error", {"error": str(e)})
@@ -63,7 +77,7 @@ async def _run_news_harvest_bg():
 # ── Admin trigger endpoints ────────────────────────────────────────────────────
 
 @router.post("/harvest-youtube")
-async def admin_harvest_youtube(bg_tasks: BackgroundTasks, authorization: str = Header(None)):
+def admin_harvest_youtube(bg_tasks: BackgroundTasks, authorization: str = Header(None)):
     """Trigger both YouTube harvests on demand. Admin-only."""
     require_admin(authorization)
     with _dash_lock:
@@ -74,7 +88,7 @@ async def admin_harvest_youtube(bg_tasks: BackgroundTasks, authorization: str = 
 
 
 @router.post("/harvest-advisors")
-async def admin_harvest_advisors(bg_tasks: BackgroundTasks, authorization: str = Header(None)):
+def admin_harvest_advisors(bg_tasks: BackgroundTasks, authorization: str = Header(None)):
     """Trigger advisor harvest on demand. Admin-only."""
     require_admin(authorization)
     with _dash_lock:
@@ -85,7 +99,7 @@ async def admin_harvest_advisors(bg_tasks: BackgroundTasks, authorization: str =
 
 
 @router.post("/harvest-news")
-async def admin_harvest_news(bg_tasks: BackgroundTasks, authorization: str = Header(None)):
+def admin_harvest_news(bg_tasks: BackgroundTasks, authorization: str = Header(None)):
     """Trigger news harvest on demand. Admin-only."""
     require_admin(authorization)
     with _dash_lock:
@@ -119,7 +133,11 @@ def start_scheduler() -> bool:
         logging.getLogger(__name__).info("Another worker is running the scheduler. Skipping.")
         return False
         
-    _scheduler = AsyncIOScheduler(timezone="UTC")
+    # misfire_grace_time: a job that comes due while the process is busy still runs
+    # (APScheduler's default of 1 s silently skipped it).
+    _scheduler = AsyncIOScheduler(timezone="UTC", job_defaults={
+        "coalesce": True, "max_instances": 1, "misfire_grace_time": 3600,
+    })
 
     from services.advisor_harvester import harvest_all_advisors, evaluate_analysis_outcomes
     from services.news_harvester import harvest_news
@@ -131,39 +149,41 @@ def start_scheduler() -> bool:
     from services.piotroski import batch_refresh_piotroski
     from services.error_telemetry import generate_daily_digest
 
-    async def _run_harvest_all_advisors():
+    # Every job below is a plain def: APScheduler runs those in a worker thread,
+    # async harvesters get a private loop via asyncio.run (REL-03).
+    def _run_harvest_all_advisors():
         _dash_update_harvest("advisor", "running")
         try:
-            res = await harvest_all_advisors()
+            res = asyncio.run(harvest_all_advisors())
             _dash_update_harvest("advisor", "idle", {"result": res})
         except Exception as e:
             _dash_update_harvest("advisor", "error", {"error": str(e)})
 
-    async def _run_harvest_news():
+    def _run_harvest_news():
         _dash_update_harvest("news", "running")
         try:
-            res = await harvest_news()
+            res = asyncio.run(harvest_news())
             _dash_update_harvest("news", "idle", {"added": res})
         except Exception as e:
             _dash_update_harvest("news", "error", {"error": str(e)})
 
-    async def _run_harvest_youtube_metadata():
+    def _run_harvest_youtube_metadata():
         _dash_update_harvest("youtube", "running")
         try:
-            res = await harvest_youtube_metadata()
+            res = asyncio.run(harvest_youtube_metadata())
             _dash_update_harvest("youtube", "idle", {"metadata": res})
         except Exception as e:
             _dash_update_harvest("youtube", "error", {"error": str(e)})
 
-    async def _run_harvest_portfolio_videos():
+    def _run_harvest_portfolio_videos():
         _dash_update_harvest("youtube", "running")
         try:
-            res = await harvest_portfolio_videos()
+            res = asyncio.run(harvest_portfolio_videos())
             _dash_update_harvest("youtube", "idle", {"portfolio": res})
         except Exception as e:
             _dash_update_harvest("youtube", "error", {"error": str(e)})
 
-    async def _run_harvest_filings():
+    def _run_harvest_filings():
         _dash_update_harvest("filings", "running")
         try:
             res = harvest_filings()
@@ -179,7 +199,7 @@ def start_scheduler() -> bool:
     # entries on their own (ARCH-09).
 
     # ── NEW JOB 2: Bhavcopy download — 7:00 PM IST (13:30 UTC) ──────────────
-    async def _run_bhavcopy_download():
+    def _run_bhavcopy_download():
         _dash_update_harvest("bhavcopy", "running")
         try:
             result = download_bhavcopy()
@@ -190,10 +210,10 @@ def start_scheduler() -> bool:
             logging.error(f"[bhavcopy] Download error: {e}")
 
     # ── NEW JOB 3: Morning brief pre-generation — 6:30 AM IST (1:00 UTC) ────
-    async def _run_pregen_morning_briefs():
+    def _run_pregen_morning_briefs():
         _dash_update_harvest("morning_brief", "running")
         try:
-            result = await pregen_morning_briefs_all_users()
+            result = asyncio.run(pregen_morning_briefs_all_users())
             _dash_update_harvest("morning_brief", "idle", result)
             logging.info(f"[morning_brief] Pre-gen done: {result}")
         except Exception as e:
@@ -212,7 +232,7 @@ def start_scheduler() -> bool:
             logging.error(f"[piotroski_batch] Error: {e}")
 
     # ── NEW JOB 5: Pre-market cache warm — 9:00 AM IST (3:30 UTC) ───────────
-    async def _run_premarket_cache_warm():
+    def _run_premarket_cache_warm():
         """Invalidate yesterday's stale analyses so users get fresh data at open."""
         _dash_update_harvest("premarket_warm", "running")
         try:
@@ -261,11 +281,11 @@ def start_scheduler() -> bool:
             logging.error(f"[anomaly_scan] Error: {e}")
 
     # ── DB backup — 2:30 AM IST (21:00 UTC); see docs/codebase/BACKUP_RESTORE.md ─
-    async def _run_db_backup():
+    def _run_db_backup():
         _dash_update_harvest("db_backup", "running")
         try:
             from services.backup_service import run_backup
-            written = await asyncio.to_thread(run_backup)
+            written = run_backup()
             _dash_update_harvest("db_backup", "idle", {k: str(v) for k, v in written.items()})
             logging.info(f"[db_backup] Complete: {sorted(written)}")
         except Exception as e:
@@ -274,12 +294,22 @@ def start_scheduler() -> bool:
 
     # ── Wire all jobs ─────────────────────────────────────────────────────────
 
+    # The six 2-hourly jobs are staggered 20 min apart (+ jitter) instead of all
+    # firing at the same instant.
+    _t0 = datetime.now(timezone.utc)
+
+    def _stagger(minutes: int) -> dict:
+        return {"next_run_time": _t0 + timedelta(minutes=minutes), "jitter": 300}
+
+    _snapshot_all_users_job = _sync(snapshot_all_users)
+    _run_nightly_screen_job = _sync(run_nightly_screen)
+
     _scheduler.add_job(_run_harvest_all_advisors,     "cron", hour=1,  minute=30)  # 1:30 AM IST
-    _scheduler.add_job(_run_harvest_news,             "interval", hours=2)
-    _scheduler.add_job(_run_harvest_youtube_metadata, "interval", hours=2)
-    _scheduler.add_job(_run_harvest_portfolio_videos, "interval", hours=2)
-    _scheduler.add_job(snapshot_all_users,            "cron", hour=11, minute=0)   # 4:30 PM IST (11:00 UTC)
-    _scheduler.add_job(run_nightly_screen,            "cron", hour=11, minute=15)  # 4:45 PM IST (11:15 UTC)
+    _scheduler.add_job(_run_harvest_news,             "interval", hours=2, **_stagger(5))
+    _scheduler.add_job(_run_harvest_youtube_metadata, "interval", hours=2, **_stagger(25))
+    _scheduler.add_job(_run_harvest_portfolio_videos, "interval", hours=2, **_stagger(45))
+    _scheduler.add_job(_snapshot_all_users_job,       "cron", hour=11, minute=0)   # 4:30 PM IST (11:00 UTC)
+    _scheduler.add_job(_run_nightly_screen_job,       "cron", hour=11, minute=15)  # 4:45 PM IST (11:15 UTC)
     _scheduler.add_job(_run_evaluate_analysis_outcomes,"cron", hour=20, minute=30)  # 2:00 AM IST (20:30 UTC)
 
     # ── Notification TTL sweeper (daily, 3:00 AM IST) ───────────────────────
@@ -324,13 +354,13 @@ def start_scheduler() -> bool:
     _scheduler.add_job(_run_db_backup,            "cron", hour=21, minute=0, id="db_backup", replace_existing=True)  # 2:30 AM IST
 
     # ── Harvester jobs (ScraperAPI-backed, rate-limited for free tier) ─────────
-    _scheduler.add_job(_run_expert_harvest_bg, "interval", minutes=120, id="expert_harvest", replace_existing=True)
-    _scheduler.add_job(_run_sebi_harvest_bg,   "interval", minutes=120, id="sebi_harvest",   replace_existing=True)
-    _scheduler.add_job(_run_youtube_expert_bg, "interval", minutes=120, id="youtube_expert_harvest", replace_existing=True)
+    _scheduler.add_job(_run_expert_harvest_bg, "interval", minutes=120, id="expert_harvest", replace_existing=True, **_stagger(65))
+    _scheduler.add_job(_run_sebi_harvest_bg,   "interval", minutes=120, id="sebi_harvest",   replace_existing=True, **_stagger(85))
+    _scheduler.add_job(_run_youtube_expert_bg, "interval", minutes=120, id="youtube_expert_harvest", replace_existing=True, **_stagger(105))
 
     # ── RAG ingestion — incremental, leader-only (this scheduler holds the fcntl lock).
     # Replaces the old per-worker full re-embed at startup. First run 5 min after boot.
-    async def _run_rag_ingest():
+    def _run_rag_ingest():
         _dash_update_harvest("rag_ingest", "running")
         try:
             from services.vector_store import init_store
@@ -338,7 +368,7 @@ def start_scheduler() -> bool:
                 _dash_update_harvest("rag_ingest", "idle", {"skipped": "vector store unavailable"})
                 return
             from services.rag_ingestion import ingest_new
-            n = await asyncio.to_thread(ingest_new)  # CPU-bound embedding off the event loop
+            n = ingest_new()  # sync job: already in a worker thread, off the event loop
             _dash_update_harvest("rag_ingest", "idle", {"chunks": n})
         except Exception as e:
             logging.exception("[rag_ingest] failed")
@@ -366,7 +396,7 @@ def start_scheduler() -> bool:
     return True
 
 
-async def _run_expert_harvest_bg():
+def _run_expert_harvest_bg():
     try:
         from services.harvester_expert import scrape_all_expert_sources
         from services.harvester_db import get_session as h_get_session, upsert_card
@@ -381,7 +411,7 @@ async def _run_expert_harvest_bg():
         logging.exception("Expert harvest failed: %s", e)
 
 
-async def _run_sebi_harvest_bg():
+def _run_sebi_harvest_bg():
     try:
         from services.harvester_sebi import harvest_sebi_filings
         n = harvest_sebi_filings()
@@ -390,7 +420,7 @@ async def _run_sebi_harvest_bg():
         logging.exception("SEBI harvest failed: %s", e)
 
 
-async def _run_youtube_expert_bg():
+def _run_youtube_expert_bg():
     try:
         from services.expert_youtube_harvester import harvest_youtube_transcripts
         n = harvest_youtube_transcripts()

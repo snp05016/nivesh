@@ -3,6 +3,14 @@ from datetime import date
 from database import get_session
 from models.db_models import EarningsSurpriseHistory
 from routers.market import earnings_estimates_endpoint
+from services.disk_cache import get as _dc_get, set as _dc_set
+
+# Public, unauthenticated route: serve one computed result for an hour instead
+# of 8 serial yfinance lookups + DB writes per request (REL-01). The key is a
+# constant: `period` is untrusted query input and does not change the result,
+# so keying on it would let callers bypass the cache with random values.
+_SURPRISES_TTL_SEC = 3600
+_SURPRISES_CACHE_KEY = "current_quarter"
 
 
 def _fy_quarter_label(period_end: date) -> str:
@@ -34,7 +42,7 @@ def _serial_pattern(ticker: str, quarter: str, classification: str):
     return f"{n}x consecutive {classification.lower()}" if n >= 2 else None
 
 
-async def compute_surprise_for_ticker(ticker: str):
+def compute_surprise_for_ticker(ticker: str):
     """A surprise exists only for a real estimate/actual pair of one fiscal quarter.
 
     The estimates source must supply eps_estimate, eps_actual and period_end
@@ -43,7 +51,7 @@ async def compute_surprise_for_ticker(ticker: str):
     so eps_estimate is always None and this always returns None.
     """
     try:
-        est_data = await earnings_estimates_endpoint(ticker)
+        est_data = earnings_estimates_endpoint(ticker)
         estimated_eps = est_data.get("eps_estimate")
         actual_eps = est_data.get("eps_actual")
         period_end = est_data.get("period_end")
@@ -77,12 +85,16 @@ async def compute_surprise_for_ticker(ticker: str):
         logging.info(f"Error computing surprise for {ticker}: {e}")
         return None
 
-async def get_all_surprises(period="current_quarter"):
+def get_all_surprises(period="current_quarter"):
+    # `period` is accepted for API compatibility only; it is ignored.
+    cached = _dc_get("earnings_surprise", _SURPRISES_CACHE_KEY)
+    if cached is not None:
+        return cached
     # Fixed large-cap tracker list; only verified surprises are returned and persisted.
     tickers = ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "SBIN", "BHARTIARTL", "ITC"]
     results = []
     for t in tickers:
-        data = await compute_surprise_for_ticker(t)
+        data = compute_surprise_for_ticker(t)
         if data:
             results.append(data)
             
@@ -115,9 +127,10 @@ async def get_all_surprises(period="current_quarter"):
                 )
                 session.add(new_rec)
         session.commit()
+    _dc_set("earnings_surprise", _SURPRISES_CACHE_KEY, results, ttl=_SURPRISES_TTL_SEC)
     return results
 
-async def get_surprise_history(ticker: str):
+def get_surprise_history(ticker: str):
     # Stored verified surprises only; nothing is computed or invented on a miss.
     with get_session() as session:
         records = session.query(EarningsSurpriseHistory).filter_by(ticker=ticker).order_by(EarningsSurpriseHistory.created_at.desc()).all()
