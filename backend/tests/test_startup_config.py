@@ -31,6 +31,21 @@ def test_prod_valid_passes():
     })
 
 
+def test_unset_environment_is_production():
+    assert config_guard.is_production({}) is True
+    with pytest.raises(RuntimeError):
+        config_guard.validate_startup_config({"JWT_SECRET": "change_this_to_a_random_64_hex_string"})
+
+
+def test_prod_stale_admin_token_logs_critical(caplog):
+    with caplog.at_level("CRITICAL", logger="nivesh.config"):
+        config_guard.validate_startup_config({
+            "ENVIRONMENT": "production", "JWT_SECRET": _STRONG, "ADMIN_TOKEN": "x",
+            "ALERTS_PUSH_DISABLED": "true",
+        })
+    assert any("ADMIN_TOKEN" in r.getMessage() for r in caplog.records)
+
+
 def test_dev_does_not_raise():
     config_guard.validate_startup_config({"ENVIRONMENT": "development"})
     config_guard.validate_startup_config({"ENVIRONMENT": "test"})

@@ -6,6 +6,7 @@ and basic CRUD operations that don't belong to a specific domain repository.
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import logging
@@ -20,6 +21,7 @@ from contextlib import contextmanager
 from sqlalchemy import (
     create_engine, event, text,
 )
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 # ---------------------------------------------------------------------------
@@ -251,6 +253,12 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
+@functools.cache
+def _dummy_hash() -> str:
+    """A cost-12 bcrypt hash checked for unknown usernames, so login time does not reveal them (AUTH-23)."""
+    return _hash_password(secrets.token_hex(16))
+
+
 def init_db() -> None:
     """Create any missing tables (development/test only). Seeds nothing (AUTH-01).
 
@@ -283,9 +291,16 @@ def get_user_by_credentials(session: Session, username: str, password: str) -> O
         Optional[User]: The matching user if credentials are valid, None otherwise.
     """
     user = session.query(User).filter_by(username=username.lower().strip()).first()
-    if user and verify_password(password, user.password_hash):
-        return user
-    return None
+    if user is None:
+        verify_password(password, _dummy_hash())  # same bcrypt work as a real account
+        return None
+    if not verify_password(password, user.password_hash):
+        return None
+    if not str(user.password_hash).startswith("$2"):
+        # AUTH-23: upgrade a legacy SHA-256 hash to bcrypt on its first good login.
+        session.query(User).filter_by(id=user.id).update({"password_hash": _hash_password(password)})
+        session.commit()
+    return user
 
 
 def get_last_analysis_any_type(session: Session, ticker: str) -> Optional[dict]:
@@ -347,10 +362,14 @@ def create_user(session: Session, username: str, password: str, display_name: st
     """
     try:
         password_hash = _hash_password(password)
-        user = User(username=username.lower(), password_hash=password_hash, display_name=display_name)
+        # Same normalisation as get_user_by_credentials, or the account can never log in (AUTH-23).
+        user = User(username=username.strip().lower(), password_hash=password_hash, display_name=display_name)
         session.add(user)
         session.commit()
         return user
+    except IntegrityError:
+        session.rollback()
+        raise ValueError("Username already exists")
     except Exception as _e:
         session.rollback()
         return None

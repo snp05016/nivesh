@@ -102,6 +102,12 @@ struct LoginScreen: View {
                                 }
                                 .padding(Theme.Spacing.card)
                                 .banknoteCard()
+
+                                if isRegistering {
+                                    Text("3-32 letters, digits, . _ or -")
+                                        .font(.caption)
+                                        .foregroundStyle(username.isEmpty || usernameValid ? Theme.inkSecondary : Theme.bearRed)
+                                }
                             }
 
                             // Password
@@ -207,10 +213,15 @@ struct LoginScreen: View {
         }
     }
 
+    private var usernameValid: Bool {
+        username.trimmingCharacters(in: .whitespaces).lowercased()
+            .range(of: "^[a-z0-9_.-]{3,32}$", options: .regularExpression) != nil
+    }
+
     private var canProceed: Bool {
         if isRegistering {
-            // Mirrors the server's password policy (auth_service.register_user).
-            return !username.isEmpty && password.count >= 8 && !displayName.isEmpty && acceptedPolicy && ageConfirmed
+            // Mirrors the server's username rule (schemas/auth.py) and password policy (auth_service.register_user).
+            return usernameValid && password.count >= 8 && !displayName.isEmpty && acceptedPolicy && ageConfirmed
         }
         return !username.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
     }

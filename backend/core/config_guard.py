@@ -69,6 +69,9 @@ def validate_startup_config(env: Mapping[str, str] = os.environ) -> None:
         problems.append("ALLOWED_ORIGINS must not contain '*' in production")
     if problems:
         raise RuntimeError("Unsafe production configuration: " + "; ".join(problems))
+    if env.get("ADMIN_TOKEN"):
+        # AUTH-22: the static-token bypass is gone (AUTH-02); a leftover value is a stale secret.
+        logger.critical("ADMIN_TOKEN is set but ignored - remove it from the environment")
     if not apns_configured(env):
         if env.get("ALERTS_PUSH_DISABLED", "false").lower() != "true":
             logger.critical(

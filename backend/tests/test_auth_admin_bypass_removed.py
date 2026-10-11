@@ -13,6 +13,8 @@ _BACKEND = Path(__file__).resolve().parent.parent
 _SKIP_DIRS = {"tests", "tests_suite", "venv", ".venv", "__pycache__", "node_modules", "cache", "charts", "logs", "data"}
 # A bearer token written out as a string literal ('Bearer admin'); built headers ('Bearer '+t) do not match.
 _LITERAL_BEARER = re.compile(r"Bearer [A-Za-z0-9_.-]{3,}['\"`]")
+# The startup guard is the one place allowed to name the variable: it warns about a stale value (AUTH-22).
+_ADMIN_TOKEN_ALLOWED = {os.path.join("core", "config_guard.py")}
 
 
 @pytest.mark.parametrize("environment", ["production", "development"])
@@ -38,8 +40,9 @@ def test_no_hardcoded_bearer_or_admin_token_in_backend_source():
         for name in files:
             if name.endswith((".py", ".html")) and not name.startswith("test_"):
                 text = Path(root, name).read_text(encoding="utf-8", errors="ignore")
-                if _LITERAL_BEARER.search(text) or "ADMIN_TOKEN" in text:
-                    offenders.append(os.path.relpath(os.path.join(root, name), _BACKEND))
+                rel = os.path.relpath(os.path.join(root, name), _BACKEND)
+                if _LITERAL_BEARER.search(text) or ("ADMIN_TOKEN" in text and rel not in _ADMIN_TOKEN_ALLOWED):
+                    offenders.append(rel)
     assert offenders == []
 
 

@@ -9,6 +9,8 @@ router = APIRouter(tags=["Authentication"])
 
 @router.post("/login")
 def login_endpoint(req: LoginRequest):
+    # Per-account limit on top of the per-IP one, so spraying one account from many IPs is capped (AUTH-23).
+    _check_rate_limit(f"login:{req.username}", "/login", "POST")
     try:
         return login_user(req.username, req.password)
     except PermissionError as e:

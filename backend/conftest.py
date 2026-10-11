@@ -35,7 +35,6 @@ os.environ.update({
     "ANTHROPIC_API_KEY": "test_key",
     # "placeholder" is the sentinel tradingagents-core's live-API skipif gate recognises.
     "DEEPSEEK_API_KEY": "placeholder",
-    "ADMIN_TOKEN": "admin",
     "ENABLE_SCHEDULER": "false",
     "ENVIRONMENT": "test",  # unset now means production (OPS-13)
 })
