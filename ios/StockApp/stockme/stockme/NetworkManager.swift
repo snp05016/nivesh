@@ -707,8 +707,31 @@ class NetworkManager: ObservableObject {
         guard let url = URL(string: "\(baseURL)/portfolio/export/pdf/\(userId)") else { throw NetworkError.invalidURL }
         var request = authRequest(url)
         request.timeoutInterval = 30
-        let (tempURL, _) = try await session.download(for: request)
-        return tempURL
+        let (tempURL, response) = try await session.download(for: request)
+        do {
+            try Self.requirePDFResponse(response)
+        } catch {
+            try? FileManager.default.removeItem(at: tempURL)
+            throw error
+        }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        let pdfURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("portfolio_summary_\(formatter.string(from: Date())).pdf")
+        try? FileManager.default.removeItem(at: pdfURL)
+        try FileManager.default.moveItem(at: tempURL, to: pdfURL)
+        return pdfURL
+    }
+
+    /// Throws unless the response is HTTP 2xx with a PDF body.
+    nonisolated static func requirePDFResponse(_ response: URLResponse) throws {
+        guard let http = response as? HTTPURLResponse,
+              (200...299).contains(http.statusCode),
+              http.mimeType == "application/pdf" else {
+            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+            throw NetworkError.serverError(status, "Couldn't create the PDF. Please try again.")
+        }
     }
 
     func fetchBenchmark(userId: Int) async throws -> BenchmarkData {

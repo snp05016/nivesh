@@ -35,7 +35,7 @@ from helpers import (
 )
 
 import importlib.util as _importlib_util
-FPDF2_AVAILABLE = _importlib_util.find_spec("fpdf2") is not None
+FPDF2_AVAILABLE = _importlib_util.find_spec("fpdf") is not None  # fpdf2 installs the `fpdf` package
 if FPDF2_AVAILABLE:
     from fpdf import FPDF
 
@@ -2351,163 +2351,131 @@ def trade_journal_stats_endpoint(user_id: int, auth_user_id: int = Depends(requi
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/export/pdf/{user_id}")
 def export_portfolio_pdf(user_id: int, authorization: str = Header(None)):
+    """Generate a deterministic, factual portfolio summary PDF (no LLM call, no advice)."""
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
     if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    """Generate a one-page portfolio review PDF (or plain text if fpdf2 not installed)."""
+    if not FPDF2_AVAILABLE:
+        raise HTTPException(status_code=503, detail="PDF export unavailable")
     try:
         import io
 
-        # Step 1: Fetch holdings with P&L (same logic as /portfolio/{user_id})
         with get_session() as session:
             user = session.get(User, user_id)
             if not user:
                 raise HTTPException(status_code=404, detail=f"User {user_id} not found")
             holdings = session.query(Portfolio).filter_by(user_id=user_id, group_name="holdings").all()
             holdings_snap = [(h.ticker, h.company_name, h.shares, h.buy_price) for h in holdings]
+            tickers = [t for t, _, _, _ in holdings_snap]
 
-            # Step 2: Get latest signal per ticker
-            ticker_signals: dict[str, dict] = {}
-            for ticker, _, _, _ in holdings_snap:
-                row = session.query(AnalysisHistory).filter(
-                    AnalysisHistory.ticker == ticker
-                ).order_by(AnalysisHistory.created_at.desc()).first()
-                if row:
-                    ticker_signals[ticker] = {"signal": row.signal, "conf": row.confidence_pct}
-
-            # Step 3: Red flags (inline — no HTTP call)
+            # Watch items: factual flags only (pledging is a company-level fact).
             red_flag_list = []
             cutoff30 = datetime.now(timezone.utc) - timedelta(days=30)
-            bearish_flips_pdf = session.query(SignalEvent).filter(
-                SignalEvent.created_at >= cutoff30,
-                SignalEvent.ticker.in_([t for t, _, _, _ in holdings_snap]),
-                SignalEvent.to_signal.in_(["BEARISH", "CAUTIOUSLY BEARISH"]),
-            ).all()
-            bf_map = {f.ticker for f in bearish_flips_pdf}
-            for ticker, _, _, _ in holdings_snap:
-                row = session.query(AnalysisHistory).filter(
-                    AnalysisHistory.ticker == ticker
+            bf_map = {
+                f.ticker for f in session.query(SignalEvent).filter(
+                    SignalEvent.created_at >= cutoff30,
+                    SignalEvent.ticker.in_(tickers),
+                    SignalEvent.to_signal.in_(["BEARISH", "CAUTIOUSLY BEARISH"]),
+                ).all()
+            }
+            for ticker in tickers:
+                pledged_row = session.query(AnalysisHistory.promoter_pledged_pct).filter(
+                    AnalysisHistory.ticker == ticker,
+                    AnalysisHistory.promoter_pledged_pct.isnot(None),
                 ).order_by(AnalysisHistory.created_at.desc()).first()
-                if row and row.full_json:
-                    try:
-                        d = json.loads(row.full_json)
-                        pledged = (d.get("fundamentals_snapshot") or {}).get("promoter_pledged_pct") or row.promoter_pledged_pct
-                        if pledged and pledged > 30:
-                            red_flag_list.append(f"{ticker}: High pledging {pledged:.1f}%")
-                    except Exception as e:
-                        import logging
-                        logging.error(f"Error occurred: {e}", exc_info=True)
-                        raise HTTPException(status_code=500, detail="Internal server error")
+                pledged = pledged_row[0] if pledged_row else None
+                if pledged is not None and pledged > 30:
+                    red_flag_list.append(f"{ticker}: Promoter pledging {pledged:.1f}%")
                 if ticker in bf_map:
-                    red_flag_list.append(f"{ticker}: Bearish signal flip in last 30 days")
+                    red_flag_list.append(f"{ticker}: Signal turned bearish in the last 30 days")
 
-        # Build P&L summary
-        holdings_summary = []
-        for ticker, company, shares, buy_price in holdings_snap:
-            ns = _to_ns(ticker)
-            current_price, _ = _yf_price(ns)
+        # Holdings with no live price show N/A and are left out of BOTH totals,
+        # so a failed fetch never reads as a loss.
+        rows = []
+        total_invested = 0.0
+        total_current = 0.0
+        unpriced = 0
+        for ticker, _company, shares, buy_price in holdings_snap:
+            current_price, _ = _yf_price(_to_ns(ticker))
             invested = shares * buy_price
-            current_val = shares * current_price if current_price else 0.0
-            pnl_pct = round((current_val - invested) / invested * 100, 1) if invested > 0 and current_val > 0 else 0.0
-            sig_info = ticker_signals.get(ticker, {})
-            holdings_summary.append({
-                "ticker": ticker,
-                "company": company,
-                "signal": sig_info.get("signal", "N/A"),
-                "pnl_pct": pnl_pct,
-                "current_price": round(current_price, 2) if current_price else 0.0,
-            })
+            if not (current_price and current_price > 0):  # None, 0 or NaN
+                unpriced += 1
+                rows.append((ticker, shares, invested, None, None))
+                continue
+            current_val = shares * current_price
+            pnl_pct = (current_val - invested) / invested * 100 if invested > 0 else None
+            total_invested += invested
+            total_current += current_val
+            rows.append((ticker, shares, invested, current_val, pnl_pct))
 
-        holdings_json = json.dumps(holdings_summary, indent=2)
-        flags_text = "\n".join(red_flag_list) if red_flag_list else "None detected"
+        def _rs(value):
+            # Core Helvetica font is latin-1 only, so no rupee glyph.
+            return format_indian_currency(value, symbol="Rs. ")
 
-        # Step 4: One Sonnet call for review markdown
-        markdown_text = "# Portfolio Review\n\nUnable to generate AI review.\n"
         try:
-            import anthropic
-            SONNET_MODEL = "claude-sonnet-4-6"
-            api_key = os.getenv("ANTHROPIC_API_KEY")
-            if api_key and api_key != "placeholder":
-                client = anthropic.Anthropic(api_key=api_key)
-                for attempt in range(3):
-                    try:
-                        resp = client.messages.create(
-                            model=SONNET_MODEL,
-                            max_tokens=1200,
-                            system="You are a private wealth advisor. Write a one-page portfolio review for a long-term Indian equity investor. Use bullet points. Format as clean markdown.",
-                            messages=[{
-                                "role": "user",
-                                "content": (
-                                    f"Holdings: {holdings_json}\n"
-                                    f"Red flags: {flags_text}\n\n"
-                                    "Write: Executive Summary (3 bullets), Holdings Review (one line per stock with signal and P&L%), Risk Watch, Overall Recommendation."
-                                )
-                            }],
-                        )
-                        break
-                    except Exception as _pe:
-                        if attempt == 2:
-                            raise
-                        time.sleep(1.0 * (2 ** attempt))
-                _log_token_usage("pdf_export", resp.usage)
-                markdown_text = resp.content[0].text.strip()
-        except Exception as _ae:
-            logging.info(f"[PDF-EXPORT] AI call failed: {_ae}")
+            pdf = FPDF()
+            pdf.set_auto_page_break(auto=True, margin=15)
+            pdf.add_page()
+            pdf.set_font("Helvetica", style="B", size=16)
+            pdf.cell(0, 10, "Portfolio Summary", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Helvetica", size=9)
+            pdf.cell(0, 6, f"Generated on {date.today().strftime('%d %b %Y')}", new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(4)
 
-        # Step 5/6: Return PDF or plain text
-        if FPDF2_AVAILABLE:
-            try:
-                pdf = FPDF()
-                pdf.add_page()
-                pdf.set_auto_page_break(auto=True, margin=15)
-
-                for line in markdown_text.split("\n"):
-                    if line.startswith("# "):
-                        pdf.set_font("Arial", style="B", size=16)
-                        pdf.cell(0, 10, line[2:], ln=True)
-                    elif line.startswith("## "):
-                        pdf.set_font("Arial", style="B", size=13)
-                        pdf.cell(0, 8, line[3:], ln=True)
-                    elif line.startswith("### "):
-                        pdf.set_font("Arial", style="B", size=11)
-                        pdf.cell(0, 7, line[4:], ln=True)
-                    else:
-                        # Strip bold markers
-                        clean = line.replace("**", "").replace("__", "")
-                        pdf.set_font("Arial", size=10)
-                        pdf.multi_cell(0, 6, clean)
-
-                pdf_bytes = pdf.output(dest="S")
-                if isinstance(pdf_bytes, str):
-                    pdf_bytes = pdf_bytes.encode("latin-1")
-
-                today_str = date.today().strftime("%Y%m%d")
-                return StreamingResponse(
-                    io.BytesIO(pdf_bytes),
-                    media_type="application/pdf",
-                    headers={"Content-Disposition": f"attachment; filename=portfolio_review_{user_id}_{today_str}.pdf"},
+            widths = (40, 25, 42, 42, 31)
+            pdf.set_font("Helvetica", style="B", size=10)
+            for w, head in zip(widths, ("Ticker", "Shares", "Invested", "Current value", "P&L %")):
+                pdf.cell(w, 8, head, border=1)
+            pdf.ln(8)
+            pdf.set_font("Helvetica", size=10)
+            for ticker, shares, invested, current_val, pnl_pct in rows:
+                cells = (
+                    ticker, f"{shares:.4f}".rstrip("0").rstrip("."), _rs(invested),
+                    "N/A" if current_val is None else _rs(current_val),
+                    "N/A" if pnl_pct is None else f"{pnl_pct:+.1f}%",
                 )
-            except Exception as _pdfe:
-                logging.info(f"[PDF-EXPORT] fpdf2 render failed: {_pdfe}")
-                # Fall through to plain text
+                for w, text in zip(widths, cells):
+                    pdf.cell(w, 7, text, border=1)
+                pdf.ln(7)
+            if not rows:
+                pdf.cell(0, 7, "No holdings found.", new_x="LMARGIN", new_y="NEXT")
 
-        # Plain text fallback
+            pdf.ln(4)
+            pdf.set_font("Helvetica", style="B", size=11)
+            pdf.cell(0, 7, f"Total invested: {_rs(total_invested)}", new_x="LMARGIN", new_y="NEXT")
+            pnl_txt = f"  ({(total_current - total_invested) / total_invested * 100:+.1f}%)" if total_invested > 0 else ""
+            pdf.cell(0, 7, f"Current value: {_rs(total_current)}{pnl_txt}", new_x="LMARGIN", new_y="NEXT")
+            if unpriced:
+                pdf.set_font("Helvetica", style="I", size=9)
+                pdf.cell(0, 6, f"Totals exclude {unpriced} holding(s) with no live price.", new_x="LMARGIN", new_y="NEXT")
+                pdf.set_font("Helvetica", style="B", size=11)
+
+            pdf.ln(4)
+            pdf.cell(0, 7, "Watch items", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Helvetica", size=10)
+            for flag in red_flag_list or ["None detected"]:
+                pdf.cell(0, 6, f"- {flag}", new_x="LMARGIN", new_y="NEXT")
+
+            pdf.ln(6)
+            pdf.set_font("Helvetica", style="I", size=8)
+            pdf.multi_cell(0, 5, "Informational summary only. Not investment advice.")
+            pdf_bytes = bytes(pdf.output())
+        except Exception as _pdfe:
+            logging.error(f"[PDF-EXPORT] fpdf2 render failed: {_pdfe}", exc_info=True)
+            raise HTTPException(status_code=500, detail="PDF export failed")
+
         today_str = date.today().strftime("%Y%m%d")
         return StreamingResponse(
-            io.BytesIO(markdown_text.encode("utf-8")),
-            media_type="text/plain",
-            headers={"Content-Disposition": f"attachment; filename=portfolio_review_{user_id}_{today_str}.txt"},
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=portfolio_summary_{today_str}.pdf"},
         )
 
     except HTTPException:
         raise
     except Exception as e:
-        logging.info(f"[PDF-EXPORT] Top-level error: {e}")
-        fallback_text = f"Portfolio review unavailable. Error: {str(e)}"
-        return StreamingResponse(
-            io.BytesIO(fallback_text.encode("utf-8")),
-            media_type="text/plain",
-        )
+        logging.error(f"[PDF-EXPORT] Top-level error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------

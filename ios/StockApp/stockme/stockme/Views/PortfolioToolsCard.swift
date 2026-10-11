@@ -37,6 +37,7 @@ struct PortfolioToolsCard: View {
     @State private var isLoadingBenchmark = false
     @State private var exportedPDFURL: URL? = nil
     @State private var showShareSheet = false
+    @State private var exportError: String? = nil
     @State private var benchmarkData: BenchmarkData? = nil
     @State private var benchmarkError: String? = nil
 
@@ -77,6 +78,15 @@ struct PortfolioToolsCard: View {
                 ) {
                     HapticManager.selection()
                     exportPDF()
+                }
+
+                if let exportError {
+                    Text(exportError)
+                        .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .footnote))
+                        .foregroundStyle(Theme.bearRed)
+                        .padding(.horizontal, Theme.Spacing.card)
+                        .padding(.bottom, Theme.Spacing.standard)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 GuillocheDivider()
@@ -143,6 +153,7 @@ struct PortfolioToolsCard: View {
     private func exportPDF() {
         guard !isExportingPDF else { return }
         isExportingPDF = true
+        exportError = nil
         Task {
             do {
                 let url = try await NetworkManager.shared.exportPortfolioPDF(userId: userId)
@@ -154,6 +165,7 @@ struct PortfolioToolsCard: View {
                 }
             } catch {
                 await MainActor.run {
+                    exportError = (error as? LocalizedError)?.errorDescription ?? "Couldn't create the PDF. Please try again."
                     isExportingPDF = false
                     HapticManager.error()
                 }
