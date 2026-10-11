@@ -26,7 +26,35 @@ CONFIDENCE_BUCKETS: List[Tuple[int, int, str]] = [
     (70, 80, "70-80%"),
     (80, 90, "80-90%"),
     (90, 100, "90-100%"),
-]
+]  # half-open [lo, hi) via bucket_filter; the top bucket also takes 100. Shared with predictions_performance.
+
+MIN_BUCKET_N = 10  # matured rows below this: accuracy, overconfidence and CI are suppressed
+
+
+def bucket_filter(col, lo: int, hi: int) -> list:
+    """Filters putting col in the half-open bucket [lo, hi); the top bucket includes 100."""
+    return [col >= lo, col <= hi] if hi >= 100 else [col >= lo, col < hi]
+
+
+def _wilson(hits: int, n: int, z: float = 1.96) -> Tuple[Optional[float], Optional[float]]:
+    """95% Wilson score interval for a hit rate of hits/n, or (None, None) if n == 0."""
+    if n <= 0:
+        return None, None
+    p = hits / n
+    denom = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / denom
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
+    return round(max(0.0, centre - half), 4), round(min(1.0, centre + half), 4)
+
+
+def _horizon_cols(horizon: str):
+    """(hit, brier) columns for '7d' / '30d' / '90d'."""
+    if horizon not in ("7d", "30d", "90d"):
+        raise ValueError(f"Unsupported horizon: {horizon!r}")
+    return (
+        getattr(AnalysisPrediction, f"hit_direction_{horizon}"),
+        getattr(AnalysisPrediction, f"brier_score_{horizon}"),
+    )
 
 PILLAR_COLUMNS = [
     "llm_confidence",
@@ -144,14 +172,18 @@ def _bucket_equal_width(values: List[float], n_buckets: int = 5) -> List[Tuple[f
 # 1. get_calibration_metrics
 # ---------------------------------------------------------------------------
 
-def get_calibration_metrics() -> Dict[str, Any]:
+def get_calibration_metrics(horizon: str = "30d") -> Dict[str, Any]:
     """
     Compute confidence calibration metrics across buckets, horizons,
     and categorical groupings.
 
+    Bucket, group and error metrics are scored on the given horizon ('7d', '30d'
+    or '90d'); the "_30d" key names are kept for response compatibility.
+
     Returns:
         Dict[str, Any]: A comprehensive set of calibration statistics.
     """
+    hit_col, brier_col = _horizon_cols(horizon)
     with get_session() as session:
         total = session.query(func.count(AnalysisPrediction.id)).scalar() or 0
 
@@ -171,20 +203,20 @@ def get_calibration_metrics() -> Dict[str, Any]:
             }
 
         # ── Confidence buckets ──
-        buckets = _build_calibration_buckets(session)
+        buckets = _build_calibration_buckets(session, horizon)
 
         # ── Global calibration error metrics ──
-        cal_error, ece, mce = _compute_calibration_errors(buckets, total)
+        cal_error, ece, mce = _compute_calibration_errors(buckets)
 
         # ── Hit rate by horizon ──
         hit_by_horizon = _compute_hit_rate_by_horizon(session)
 
         # ── Group calibrations ──
-        by_scan_type = _build_group_calibration(session, AnalysisPrediction.scan_type)
-        by_regime = _build_group_calibration(session, AnalysisPrediction.regime_id)
-        by_sector = _build_sector_calibration(session)
-        by_ml_mode = _build_group_calibration(session, AnalysisPrediction.ml_engine_mode)
-        by_rec = _build_group_calibration(session, AnalysisPrediction.recommendation)
+        by_scan_type = _build_group_calibration(session, AnalysisPrediction.scan_type, hit_col, brier_col)
+        by_regime = _build_group_calibration(session, AnalysisPrediction.regime_id, hit_col, brier_col)
+        by_sector = _build_sector_calibration(session, hit_col, brier_col)
+        by_ml_mode = _build_group_calibration(session, AnalysisPrediction.ml_engine_mode, hit_col, brier_col)
+        by_rec = _build_group_calibration(session, AnalysisPrediction.recommendation, hit_col, brier_col)
 
         return {
             "total_predictions": total,
@@ -201,50 +233,56 @@ def get_calibration_metrics() -> Dict[str, Any]:
         }
 
 
-def _build_calibration_buckets(session) -> List[Dict[str, Any]]:
+def _build_calibration_buckets(session, horizon: str = "30d") -> List[Dict[str, Any]]:
     """Compute per-bucket calibration stats.
+
+    count, accuracy, average confidence and Brier all come from the same matured
+    subset (hit label not null); total_count is every row in the bucket. Buckets
+    with fewer than MIN_BUCKET_N matured rows report accuracy, overconfidence and
+    the Wilson interval as None and suppressed=True.
 
     Args:
         session: The SQLAlchemy database session.
+        horizon: '7d', '30d' or '90d'.
 
     Returns:
         List[Dict[str, Any]]: A list of calibration statistics per bucket.
     """
+    hit_col, brier_col = _horizon_cols(horizon)
+    conf = AnalysisPrediction.confidence_pct
     results = []
     for lo, hi, label in CONFIDENCE_BUCKETS:
-        base_filter = [
-            AnalysisPrediction.confidence_pct >= lo,
-            AnalysisPrediction.confidence_pct <= hi,
-        ]
-
-        count_val = (
-            session.query(func.count(AnalysisPrediction.id))
-            .filter(*base_filter)
-            .scalar()
-        ) or 0
-
         stats = (
             session.query(
-                _safe_hit_rate(AnalysisPrediction.hit_direction_30d),
-                _safe_avg(AnalysisPrediction.brier_score_30d),
-                _safe_avg(AnalysisPrediction.confidence_pct),
+                func.count(AnalysisPrediction.id),
+                func.count(case((hit_col.isnot(None), 1))),
+                func.count(case((hit_col.is_(True), 1))),
+                _safe_avg(case((hit_col.isnot(None), brier_col))),
+                _safe_avg(case((hit_col.isnot(None), conf))),
             )
-            .filter(*base_filter)
+            .filter(*bucket_filter(conf, lo, hi))
             .first()
         )
+        total_count, count, hits = (stats[0] or 0, stats[1] or 0, stats[2] or 0) if stats else (0, 0, 0)
+        avg_brier = _safe_float(stats[3]) if stats else None
+        avg_conf = _safe_float(stats[4]) if stats else None
 
-        accuracy = _safe_float(stats[0]) if stats else None
-        avg_brier = _safe_float(stats[1]) if stats else None
-        avg_conf = _safe_float(stats[2]) if stats else None
-
-        overconfidence = None
-        if avg_conf is not None and accuracy is not None:
-            overconfidence = round(avg_conf / 100.0 - accuracy, 4)
+        suppressed = count < MIN_BUCKET_N
+        accuracy = overconfidence = ci_low = ci_high = None
+        if not suppressed:
+            accuracy = round(hits / count, 4)
+            ci_low, ci_high = _wilson(hits, count)
+            if avg_conf is not None:
+                overconfidence = round(avg_conf / 100.0 - accuracy, 4)
 
         results.append({
             "bucket_label": label,
-            "count": count_val,
+            "count": count,
+            "total_count": total_count,
             "accuracy": accuracy,
+            "ci_low": ci_low,
+            "ci_high": ci_high,
+            "suppressed": suppressed,
             "avg_brier_score_30d": avg_brier,
             "avg_confidence_pct": avg_conf,
             "overconfidence": overconfidence,
@@ -253,50 +291,35 @@ def _build_calibration_buckets(session) -> List[Dict[str, Any]]:
 
 
 def _compute_calibration_errors(
-    buckets: List[Dict[str, Any]], total: int
+    buckets: List[Dict[str, Any]],
 ) -> Tuple[Optional[float], Optional[float], Optional[float]]:
     """
     Compute weighted calibration error, ECE, and MCE from bucket stats.
 
+    Only buckets with an accuracy (matured and not suppressed) take part, and
+    each gap is weighted by its matured count over the sum of those counts, so
+    unmatured rows cannot change the result.
+
     Args:
         buckets (List[Dict[str, Any]]): A list of bucket statistics.
-        total (int): The total number of predictions.
 
     Returns:
         Tuple[Optional[float], Optional[float], Optional[float]]: A tuple containing
             the weighted calibration error, ECE, and MCE respectively.
     """
-    if total == 0:
+    scored = [
+        b for b in buckets
+        if b.get("accuracy") is not None and b.get("avg_confidence_pct") is not None and b.get("count", 0) > 0
+    ]
+    n = sum(b["count"] for b in scored)
+    if n == 0:
         return None, None, None
 
-    weighted_sum = 0.0
-    ece_sum = 0.0
-    mce_val = 0.0
-    total_counted = 0
-    has_data = False
-
-    for b in buckets:
-        accuracy = b.get("accuracy")
-        avg_conf = b.get("avg_confidence_pct")
-        count = b.get("count", 0)
-
-        if accuracy is None or avg_conf is None or count == 0:
-            continue
-
-        has_data = True
-        gap = abs(accuracy - avg_conf / 100.0)
-        weighted_sum += count * gap
-        total_counted += count
-        ece_sum += (count / total) * gap
-        mce_val = max(mce_val, gap)
-
-    if not has_data:
-        return None, None, None
-
-    cal_error = round(weighted_sum / total_counted, 4) if total_counted > 0 else None
-    ece = round(ece_sum, 4)
-    mce = round(mce_val, 4)
-    return cal_error, ece, mce
+    gaps = [(b["count"], abs(b["accuracy"] - b["avg_confidence_pct"] / 100.0)) for b in scored]
+    ece = round(sum(c / n * g for c, g in gaps), 4)
+    mce = round(max(g for _, g in gaps), 4)
+    # The count-weighted mean gap over matured rows is the ECE itself.
+    return ece, ece, mce
 
 
 def _compute_hit_rate_by_horizon(session) -> Dict[str, Dict[str, Any]]:
@@ -327,12 +350,16 @@ def _compute_hit_rate_by_horizon(session) -> Dict[str, Dict[str, Any]]:
     return result
 
 
-def _build_group_calibration(session, column) -> List[Dict[str, Any]]:
+def _build_group_calibration(session, column, hit_col, brier_col) -> List[Dict[str, Any]]:
     """Generic GROUP BY calibration for a categorical column.
+
+    count is every row in the group; accuracy, Brier and average confidence come
+    from the matured rows (hit label not null) only.
 
     Args:
         session: The SQLAlchemy database session.
         column: The categorical column to group by.
+        hit_col / brier_col: the horizon's hit and Brier columns.
 
     Returns:
         List[Dict[str, Any]]: Calibration statistics grouped by the column.
@@ -341,9 +368,9 @@ def _build_group_calibration(session, column) -> List[Dict[str, Any]]:
         session.query(
             column,
             func.count(AnalysisPrediction.id),
-            _safe_hit_rate(AnalysisPrediction.hit_direction_30d),
-            _safe_avg(AnalysisPrediction.brier_score_30d),
-            _safe_avg(AnalysisPrediction.confidence_pct),
+            _safe_hit_rate(hit_col),
+            _safe_avg(case((hit_col.isnot(None), brier_col))),
+            _safe_avg(case((hit_col.isnot(None), AnalysisPrediction.confidence_pct))),
         )
         .filter(column.isnot(None))
         .group_by(column)
@@ -371,11 +398,12 @@ def _build_group_calibration(session, column) -> List[Dict[str, Any]]:
     return results
 
 
-def _build_sector_calibration(session) -> List[Dict[str, Any]]:
-    """Sector calibration via JOIN with StockUniverse.
+def _build_sector_calibration(session, hit_col, brier_col) -> List[Dict[str, Any]]:
+    """Sector calibration via JOIN with StockUniverse (same subsets as groups).
 
     Args:
         session: The SQLAlchemy database session.
+        hit_col / brier_col: the horizon's hit and Brier columns.
 
     Returns:
         List[Dict[str, Any]]: Calibration statistics grouped by sector.
@@ -384,9 +412,9 @@ def _build_sector_calibration(session) -> List[Dict[str, Any]]:
         session.query(
             StockUniverse.sector,
             func.count(AnalysisPrediction.id),
-            _safe_hit_rate(AnalysisPrediction.hit_direction_30d),
-            _safe_avg(AnalysisPrediction.brier_score_30d),
-            _safe_avg(AnalysisPrediction.confidence_pct),
+            _safe_hit_rate(hit_col),
+            _safe_avg(case((hit_col.isnot(None), brier_col))),
+            _safe_avg(case((hit_col.isnot(None), AnalysisPrediction.confidence_pct))),
         )
         .join(StockUniverse, AnalysisPrediction.symbol == StockUniverse.ticker, isouter=True)
         .filter(AnalysisPrediction.symbol.isnot(None))

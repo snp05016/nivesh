@@ -8,7 +8,7 @@ Prediction Performance & Calibration Endpoints
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, Dict, List
 
@@ -52,6 +52,7 @@ class HorizonPerformance(BaseModel):
 class BucketPerformance(BaseModel):
     bucket_label: str
     count: int
+    matured_count: Optional[int] = None
     hit_rate_30d: Optional[float] = None
     avg_return_30d: Optional[float] = None
     avg_brier_score_30d: Optional[float] = None
@@ -126,18 +127,22 @@ def get_predictions_performance(user_id: int = Depends(require_entitlement("adva
     "error, and breakdowns by scan type, regime, sector, ML engine mode, and "
     "recommendation direction.",
 )
-def get_predictions_calibration(user_id: int = Depends(require_auth)):
+def get_predictions_calibration(
+    user_id: int = Depends(require_auth),
+    horizon: str = Query("30d", pattern="^(7|30|90)[dD]$"),
+):
     """
     Confidence calibration analytics for all predictions.
 
     Args:
         user_id (int): The user_id.
+        horizon (str): Outcome horizon to score against: 7d, 30d or 90d.
 
     Returns:
         Any: The response.
     """
     try:
-        data = get_calibration_metrics()
+        data = get_calibration_metrics(horizon=horizon.lower())
 
         def _to_bucket(b: dict) -> CalibrationBucket:
             return CalibrationBucket(
@@ -147,6 +152,10 @@ def get_predictions_calibration(user_id: int = Depends(require_auth)):
                 avg_brier_score=b.get("avg_brier_score_30d"),
                 avg_confidence=b.get("avg_confidence_pct"),
                 overconfidence=b.get("overconfidence"),
+                total_count=b.get("total_count"),
+                ci_low=b.get("ci_low"),
+                ci_high=b.get("ci_high"),
+                suppressed=b.get("suppressed"),
             )
 
         def _to_group(g: dict) -> GroupCalibration:

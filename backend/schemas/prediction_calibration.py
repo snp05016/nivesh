@@ -12,11 +12,15 @@ from pydantic import BaseModel, Field
 class CalibrationBucket(BaseModel):
     """Bucket for prediction calibration metrics."""
     bucket_label: str = Field(..., description="Label for the confidence bucket")
-    count: int = Field(..., description="Number of predictions in this bucket")
+    count: int = Field(..., description="Number of predictions in this bucket (matured n for calibration buckets)")
     accuracy: Optional[float] = Field(None, description="Actual realized accuracy")
     avg_brier_score: Optional[float] = Field(None, description="Average Brier score")
     avg_confidence: Optional[float] = Field(None, description="Average model confidence")
     overconfidence: Optional[float] = Field(None, description="Difference between confidence and accuracy")
+    total_count: Optional[int] = None    # all predictions in the bucket, matured or not
+    ci_low: Optional[float] = None       # 95% Wilson interval on accuracy
+    ci_high: Optional[float] = None
+    suppressed: Optional[bool] = None    # too few matured predictions to show accuracy
 
 
 class HorizonHitRate(BaseModel):

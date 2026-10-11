@@ -88,17 +88,9 @@ def get_feedback_block(ticker: str, db_session=None) -> str:
                     f"  Actual outcome: Stock moved {direction} {abs(delta_pct):.1f}% "
                     f"(₹{prev_price_f:.0f} → ₹{current_price:.0f})"
                 )
-
-                try:
-                    last_analysis.outcome_delta_pct  = delta_pct
-                    last_analysis.outcome_checked_at = datetime.now(timezone.utc)
-                    last_analysis.was_correct = (
-                        (prev_signal in ("BUY", "BULLISH") and delta_pct > 0) or
-                        (prev_signal in ("SELL", "BEARISH") and delta_pct < 0)
-                    )
-                    db_session.commit()
-                except Exception as _e:
-                    db_session.rollback()
+                # Prompt context only: the move between two analyses has an arbitrary
+                # horizon, so it is never stored as the row's outcome label (ML-15).
+                # advisor_harvester.evaluate_analysis_outcomes owns those columns.
             except Exception as _e:
                 pass
 

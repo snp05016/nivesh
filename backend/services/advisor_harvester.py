@@ -711,10 +711,15 @@ async def harvest_all_advisors(lookback_hours: int = 24) -> None:
 
 
 def evaluate_analysis_outcomes(db) -> int:
-    """Evaluates the outcomes of analyses older than 7 days.
+    """Scores AnalysisHistory signals at a fixed 30-calendar-day horizon (ML-15).
 
-    Computes the price outcome delta for pending analyses and updates the database.
-    Designed to run nightly, processing a maximum of 50 records to respect API rate limits.
+    Entry (close on or before the analysis date) and exit (first close on or after
+    analysis date + 30 days) both come from one auto-adjusted series, so the
+    horizon is the same for every row and splits/bonuses cancel out. The label is
+    services.outcome_labels.direction_hit: HOLD/NEUTRAL abstain (was_correct stays
+    None) but outcome_checked_at is set so the row is not reselected. Symbols with
+    no usable prices are given up on (checked, no label) once older than
+    UNRESOLVABLE_AGE_DAYS. Processes at most 50 rows per run (API rate limits).
 
     Args:
         db: The SQLAlchemy database session.
@@ -723,15 +728,19 @@ def evaluate_analysis_outcomes(db) -> int:
         int: The number of analysis outcomes successfully evaluated and updated.
     """
     from database import AnalysisHistory
-    import json
-    import gzip
-    from datetime import datetime, timedelta
+    import pandas as pd
+    from services.outcome_labels import (
+        UNRESOLVABLE_AGE_DAYS, direction_hit, fetch_adjusted_history, window_return,
+    )
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    horizon_days = 30
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=horizon_days)
     pending = (
         db.query(AnalysisHistory)
-        .filter(AnalysisHistory.outcome_delta_pct == None)  # noqa: E711
+        .filter(AnalysisHistory.outcome_checked_at == None)  # noqa: E711
         .filter(AnalysisHistory.created_at < cutoff)
+        .order_by(AnalysisHistory.created_at)
         .limit(50)
         .all()
     )
@@ -739,32 +748,24 @@ def evaluate_analysis_outcomes(db) -> int:
     evaluated = 0
     for analysis in pending:
         try:
-            import yfinance as yf
-            raw = analysis.full_json
-            if isinstance(raw, (bytes, memoryview)):
-                report = json.loads(gzip.decompress(bytes(raw)))
-            else:
-                report = json.loads(raw)
-
-            prev_price = report.get("current_price") or report.get("price")
-            signal     = report.get("signal", "")
-            ticker     = analysis.ticker
-
-            if not prev_price or not ticker:
+            ticker = analysis.ticker
+            if not ticker or analysis.created_at is None:
                 continue
-
-            hist = yf.download(f"{ticker}.NS", period="2d", auto_adjust=True, progress=False)
-            if hist is None or len(hist) == 0:
-                continue
-
-            current   = float(hist["Close"].iloc[-1])
-            delta     = ((current - float(prev_price)) / float(prev_price)) * 100
-            analysis.outcome_delta_pct  = round(delta, 2)
-            analysis.outcome_checked_at = datetime.now(timezone.utc)
-            analysis.was_correct = (
-                (signal in ("BUY", "BULLISH") and delta > 0) or
-                (signal in ("SELL", "BEARISH") and delta < 0)
+            anchor = pd.Timestamp(analysis.created_at.date())
+            exit_on = anchor + pd.Timedelta(days=horizon_days)
+            hist = fetch_adjusted_history(
+                ticker, start=anchor - pd.Timedelta(days=10), end=exit_on + pd.Timedelta(days=15),
             )
+            ret = window_return(hist, anchor, exit_on)
+            if ret is None:
+                if (pd.Timestamp(now.date()) - anchor).days > UNRESOLVABLE_AGE_DAYS:
+                    analysis.outcome_checked_at = now  # delisted / no prices: terminal, unlabelled
+                    db.commit()
+                continue
+
+            analysis.outcome_delta_pct = round(ret * 100, 2)
+            analysis.outcome_checked_at = now
+            analysis.was_correct = direction_hit(analysis.signal, ret)
             db.commit()
             evaluated += 1
         except Exception as e:

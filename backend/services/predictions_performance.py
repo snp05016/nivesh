@@ -10,14 +10,8 @@ from typing import Optional, Dict, List, Any
 from sqlalchemy import func, case, cast, Float, Numeric
 from database import get_session
 from models.db_models import AnalysisPrediction, StockUniverse
-
-CONFIDENCE_BUCKETS = [
-    (0,  20,  "0–20%"),
-    (21, 40,  "21–40%"),
-    (41, 60,  "41–60%"),
-    (61, 80,  "61–80%"),
-    (81, 100, "81–100%"),
-]
+# One bucket scheme for every dashboard (ML-14).
+from services.prediction_calibration_service import CONFIDENCE_BUCKETS, bucket_filter
 
 def _safe_avg(expr):
     """Wrap an aggregate expr so division by zero returns None instead of an error.
@@ -50,7 +44,10 @@ def _safe_hit_rate(hit_col):
     )
 
 def _build_bucket_queries(session) -> List[Dict[str, Any]]:
-    """Builds calibration buckets based on predefined confidence intervals.
+    """Builds calibration buckets on the shared half-open confidence bins.
+
+    count is every row in the bucket; hit rate, return and Brier use only the
+    rows whose 30d outcome has matured (matured_count).
 
     Args:
         session: The SQLAlchemy database session.
@@ -59,30 +56,28 @@ def _build_bucket_queries(session) -> List[Dict[str, Any]]:
         List[Dict[str, Any]]: A list of dictionaries, each containing statistics
             for a specific confidence bucket.
     """
+    hit_col = AnalysisPrediction.hit_direction_30d
+    matured = hit_col.isnot(None)
     rows = []
     for lo, hi, label in CONFIDENCE_BUCKETS:
-        count_q = (
-            session.query(func.count(AnalysisPrediction.id))
-            .filter(AnalysisPrediction.confidence_pct >= lo)
-            .filter(AnalysisPrediction.confidence_pct <= hi)
-        ).scalar() or 0
-
         stats = (
             session.query(
-                _safe_hit_rate(AnalysisPrediction.hit_direction_30d),
-                _safe_avg(AnalysisPrediction.actual_return_30d),
-                _safe_avg(AnalysisPrediction.brier_score_30d),
+                func.count(AnalysisPrediction.id),
+                func.count(case((matured, 1))),
+                _safe_hit_rate(hit_col),
+                _safe_avg(case((matured, AnalysisPrediction.actual_return_30d))),
+                _safe_avg(case((matured, AnalysisPrediction.brier_score_30d))),
             )
-            .filter(AnalysisPrediction.confidence_pct >= lo)
-            .filter(AnalysisPrediction.confidence_pct <= hi)
+            .filter(*bucket_filter(AnalysisPrediction.confidence_pct, lo, hi))
             .first()
         )
         rows.append({
             "bucket_label": label,
-            "count": count_q,
-            "hit_rate_30d": stats[0],
-            "avg_return_30d": stats[1],
-            "avg_brier_score_30d": stats[2],
+            "count": stats[0] or 0,
+            "matured_count": stats[1] or 0,
+            "hit_rate_30d": stats[2],
+            "avg_return_30d": stats[3],
+            "avg_brier_score_30d": stats[4],
         })
     return rows
 

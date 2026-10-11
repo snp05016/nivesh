@@ -57,7 +57,9 @@ def _patch_get_session(TestSession):
         finally:
             session.close()
 
-    with patch("services.prediction_calibration_service.get_session", _test_get_session):
+    # Seed buckets hold 2-5 rows; lift the small-n suppression so their stats are visible.
+    with patch("services.prediction_calibration_service.get_session", _test_get_session), \
+            patch("services.prediction_calibration_service.MIN_BUCKET_N", 1):
         yield _test_get_session
 
 
@@ -301,20 +303,19 @@ class TestBucketAssignment:
 
         bucket_map = {b["bucket_label"]: b["count"] for b in buckets}
 
-        # Buckets use >= lo AND <= hi, so boundary values (50, 60, 70, etc.)
-        # count in BOTH adjacent buckets.
+        # Half-open [lo, hi) buckets (top bucket includes 100): each prediction
+        # lands in exactly one bucket.
         #
         # 0-50%: underconfident 35, 38 = 2
         assert bucket_map["0-50%"] == 2, f"0-50% expected 2, got {bucket_map['0-50%']}"
 
-        # 50-60%: fallback conf=60 (60 <= 60) = 1
-        assert bucket_map["50-60%"] == 1, f"50-60% expected 1, got {bucket_map['50-60%']}"
+        # 50-60%: none (fallback conf=60 belongs to 60-70%)
+        assert bucket_map["50-60%"] == 0, f"50-60% expected 0, got {bucket_map['50-60%']}"
 
-        # 60-70%: conf 60 (>=60), 65, 68, 69, 70 (<=70) = 5
-        # (60 appears here too because >=60; 70 appears because <=70)
-        assert bucket_map["60-70%"] == 5, f"60-70% expected 5, got {bucket_map['60-70%']}"
+        # 60-70%: conf 60, 65, 68, 69 = 4
+        assert bucket_map["60-70%"] == 4, f"60-70% expected 4, got {bucket_map['60-70%']}"
 
-        # 70-80%: conf 70 (>=70), 71, 72, 75, 78 = 5
+        # 70-80%: conf 70, 71, 72, 75, 78 = 5
         assert bucket_map["70-80%"] == 5, f"70-80% expected 5, got {bucket_map['70-80%']}"
 
         # 80-90%: none
@@ -323,11 +324,8 @@ class TestBucketAssignment:
         # 90-100%: overconfident 91, 92, 93 = 3
         assert bucket_map["90-100%"] == 3, f"90-100% expected 3, got {bucket_map['90-100%']}"
 
-        # Note: total across buckets may exceed total_predictions due to
-        # boundary overlap (e.g., conf=60 counts in both 50-60% and 60-70%).
-        # Verify that each non-boundary prediction appears in exactly one bucket.
         total_in_buckets = sum(b["count"] for b in buckets)
-        assert total_in_buckets >= result["total_predictions"]
+        assert total_in_buckets == result["total_predictions"]
 
 
 # ===================================================================
@@ -335,13 +333,14 @@ class TestBucketAssignment:
 # ===================================================================
 
 class TestExpectedCalibrationError:
-    """Verify ECE computation: sum over buckets of (count/total) * |accuracy - avg_conf/100|."""
+    """Verify ECE: sum over buckets of (matured count / matured total) * |accuracy - avg_conf/100|."""
 
     def test_expected_calibration_error_math(self, seeded_session):
         result = get_calibration_metrics()
         buckets = result["confidence_buckets"]
-        total = result["total_predictions"]
-        assert total == 14
+        assert result["total_predictions"] == 14
+        total = sum(b["count"] for b in buckets if b["accuracy"] is not None)
+        assert total == 14  # every seeded row has a 30d outcome
 
         # Manual ECE computation
         ece_manual = 0.0

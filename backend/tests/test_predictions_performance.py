@@ -134,8 +134,12 @@ class TestPopulatedPerformance:
 
     def test_confidence_bucket_schema(self, response):
         body = response.json()
+        # Same bucket scheme as the calibration endpoint (ML-14).
+        from services.prediction_calibration_service import CONFIDENCE_BUCKETS
         labels = [b["bucket_label"] for b in body["confidence_buckets"]]
-        assert labels == ["0–20%", "21–40%", "41–60%", "61–80%", "81–100%"]
+        assert labels == [label for _, _, label in CONFIDENCE_BUCKETS]
+        for b in body["confidence_buckets"]:
+            assert b["matured_count"] <= b["count"]
 
     def test_by_scan_type_has_expected_keys(self, response):
         body = response.json()

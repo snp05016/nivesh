@@ -794,10 +794,20 @@ class AnalysisPrediction(Base):
     brier_score_7d        = Column(Float, nullable=True)          # (confidence - outcome)^2 for 7d
     brier_score_30d       = Column(Float, nullable=True)          # (confidence - outcome)^2 for 30d
     brier_score_90d       = Column(Float, nullable=True)          # (confidence - outcome)^2 for 90d
+    # Label at the model's own horizon: input_asof_date -> target_date (ML-15)
+    actual_return_target  = Column(Float, nullable=True)
+    hit_direction_target  = Column(Boolean, nullable=True)
+    brier_score_target    = Column(Float, nullable=True)
+    # Outcome lifecycle (ML-15): pending / abstain / scored / unresolvable
+    outcome_status        = Column(String(20), nullable=False, default="pending", server_default="pending")
+    outcome_attempts      = Column(Integer, nullable=False, default=0, server_default="0")  # empty-history fetches
+    benchmark_return_30d  = Column(Float, nullable=True)          # NIFTY 50 return over the same 30d window
+    hit_vs_benchmark_30d  = Column(Boolean, nullable=True)        # direction matched the excess return
 
     __table_args__ = (
         Index("ix_ap_symbol_created", "symbol", "created_at"),
         Index("ix_ap_model_version", "model_version"),
+        Index("ix_ap_outcome_status", "outcome_status"),
         # One prediction per symbol, input bar, scan type and model; legacy rows (no as-of date) are exempt.
         Index(
             "uq_ap_symbol_asof_scan_model",
