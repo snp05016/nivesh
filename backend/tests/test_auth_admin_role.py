@@ -70,15 +70,15 @@ def test_is_admin_flag_grants_and_revokes_access(client):
 def test_seed_accounts_and_name_based_promotion_removed(client):
     for name in ("SEED_USERS", "DAD_HOLDINGS", "promote_initial_admins", "set_admin"):
         assert not hasattr(database, name), name
-    # init_db ran on an empty test DB (conftest import and app startup) with ENVIRONMENT
-    # unset, which used to seed these accounts with the published password.
+    # init_db ran on an empty test DB (conftest import and app startup) in a non-production
+    # ENVIRONMENT, which used to seed these accounts with the published password.
     for username in ("saumya", "nirav", "ankur"):
         resp = client.post("/login", json={"username": username, "password": "123"})
         assert resp.status_code == 401, username
 
 
 def test_init_db_on_empty_db_creates_no_users(tmp_path, monkeypatch):
-    monkeypatch.delenv("ENVIRONMENT", raising=False)  # unset used to mean "seed dev accounts"
+    monkeypatch.setenv("ENVIRONMENT", "development")  # dev used to mean "seed dev accounts"
     engine = create_engine(f"sqlite:///{tmp_path / 'fresh.db'}")
     monkeypatch.setattr(database, "ENGINE", engine)
     monkeypatch.setattr(database, "SessionLocal", sessionmaker(bind=engine))

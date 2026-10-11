@@ -23,8 +23,11 @@ def configure_logging() -> None:
             structlog.processors.StackInfoRenderer(),
         ]
 
-        env = os.getenv("APP_ENV", "development")
-        if env == "production":
+        from core.config_guard import is_production
+        if is_production():
+            # JSONRenderer can't serialise exc_info, so render tracebacks to text first.
+            # ConsoleRenderer renders exceptions itself and warns if this is present.
+            shared_processors.append(structlog.processors.format_exc_info)
             renderer = structlog.processors.JSONRenderer()
         else:
             renderer = structlog.dev.ConsoleRenderer()

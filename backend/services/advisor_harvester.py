@@ -5,6 +5,7 @@ Called exclusively by the CRON scheduler. Never imported by request-handling cod
 
 import json
 import logging
+import logging.handlers
 import os
 import re
 import sys
@@ -654,6 +655,19 @@ async def harvest_single_advisor(advisor: dict, lookback_hours: int = 24) -> int
     return inserted_total
 
 
+def _ensure_file_handler() -> None:
+    """Attach one size-capped rotating log file to the harvester logger (OPS-14, #414)."""
+    if any(isinstance(h, logging.handlers.RotatingFileHandler) for h in logger.handlers):
+        return
+    fh = logging.handlers.RotatingFileHandler(
+        _LOGS_DIR / "advisor_harvester.log", maxBytes=5_000_000, backupCount=5
+    )
+    fh.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(name)s — %(message)s")
+    )
+    logger.addHandler(fh)
+
+
 async def harvest_all_advisors(lookback_hours: int = 24) -> None:
     """Harvests insights from all registered advisors sequentially.
 
@@ -666,14 +680,7 @@ async def harvest_all_advisors(lookback_hours: int = 24) -> None:
     _load_env()
     global YOUTUBE_API_KEY
     YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY", "").strip()
-    log_file = _LOGS_DIR / "advisor_harvester.log"
-    # Add a file handler for this run if not already attached
-    if not any(isinstance(h, logging.FileHandler) for h in logger.handlers):
-        fh = logging.FileHandler(log_file)
-        fh.setFormatter(
-            logging.Formatter("%(asctime)s %(levelname)s %(name)s — %(message)s")
-        )
-        logger.addHandler(fh)
+    _ensure_file_handler()
 
     logger.info(
         "=== harvest_all_advisors START | lookback=%dh | advisors=%d ===",

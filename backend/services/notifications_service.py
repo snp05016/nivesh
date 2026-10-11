@@ -2,6 +2,7 @@ import os
 import json
 import logging
 from datetime import datetime, timezone
+from core.config_guard import is_production
 from helpers import (
     get_session,
     NotificationErrorLog,
@@ -35,7 +36,7 @@ def register_user_device(authorization: str, user_id: int, device_token: str, pl
         raise RuntimeError("Internal server error")
 
 def dispatch_mock_push(device_token: str, title: str, body: str, user_id: int):
-    if os.getenv("ENVIRONMENT", "development") == "production":
+    if is_production():
         raise PermissionError("Not found")
         
     payload = {

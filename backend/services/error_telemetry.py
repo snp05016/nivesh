@@ -18,6 +18,8 @@ import contextvars
 import logging
 from datetime import datetime, timezone
 
+import httpx
+
 request_id_context_var = contextvars.ContextVar("request_id", default="-")
 
 class RequestIDLogFilter(logging.Filter):
@@ -304,6 +306,19 @@ def generate_daily_digest() -> str:
         digest_lines.append(f"  [WARN] Could not write digest file: {e}")
 
     logging.info(digest_text)
+
+    # Deliver to the operator (OPS-14): plain-text POST, ntfy.sh compatible.
+    webhook_url = os.getenv("OPS_ALERT_WEBHOOK_URL", "").strip()
+    if webhook_url:
+        try:
+            httpx.post(
+                webhook_url,
+                content=digest_text[:4000].encode("utf-8"),
+                headers={"Title": "Nivesh daily error digest"},
+                timeout=10,
+            ).raise_for_status()
+        except Exception as e:
+            logging.warning("Could not deliver error digest to OPS_ALERT_WEBHOOK_URL: %s", type(e).__name__)
     return digest_text
 
 

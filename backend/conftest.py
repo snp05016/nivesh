@@ -37,4 +37,5 @@ os.environ.update({
     "DEEPSEEK_API_KEY": "placeholder",
     "ADMIN_TOKEN": "admin",
     "ENABLE_SCHEDULER": "false",
+    "ENVIRONMENT": "test",  # unset now means production (OPS-13)
 })

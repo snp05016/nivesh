@@ -33,7 +33,7 @@ def test_prod_valid_passes():
 
 def test_dev_does_not_raise():
     config_guard.validate_startup_config({"ENVIRONMENT": "development"})
-    config_guard.validate_startup_config({})
+    config_guard.validate_startup_config({"ENVIRONMENT": "test"})
 
 
 def test_docs_disabled_by_default():

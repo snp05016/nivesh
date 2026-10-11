@@ -56,6 +56,7 @@ def main() -> int:
     sys.path.insert(0, str(Path(__file__).parent.parent))
     os.environ.setdefault("DATABASE_URL", "sqlite:///./stockapp_health_check_test.db")
     os.environ.setdefault("ENABLE_SCHEDULER", "false")
+    os.environ.setdefault("ENVIRONMENT", "test")  # unset counts as production (OPS-13)
     os.environ.setdefault("JWT_SECRET", "health-check-secret")
 
     try:

@@ -243,7 +243,8 @@ def init_db() -> None:
     `scripts/manage_users.py set-admin`. Dev data:
     `ENVIRONMENT=development scripts/reset_mock_user.py --yes`.
     """
-    if os.environ.get("ENVIRONMENT", "development") in ("development", "test"):
+    from core.config_guard import is_production
+    if not is_production():
         Base.metadata.create_all(ENGINE)
 
 
