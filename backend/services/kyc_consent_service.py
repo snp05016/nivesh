@@ -60,6 +60,24 @@ def _consent_to_dict(consent: KYCConsent) -> dict:
     }
 
 
+def _revoke_active(session, user_id: int, consent_type: str, now: datetime) -> int:
+    """Set revoked_at on EVERY active (granted, not-yet-revoked) row of
+    consent_type for user_id and return how many rows were revoked. Repeated
+    grants can leave several active rows, so revoking only the newest would
+    keep the consent active. Caller commits.
+    """
+    return (
+        session.query(KYCConsent)
+        .filter(
+            KYCConsent.user_id == user_id,
+            KYCConsent.consent_type == consent_type,
+            KYCConsent.granted.is_(True),
+            KYCConsent.revoked_at.is_(None),
+        )
+        .update({KYCConsent.revoked_at: now}, synchronize_session=False)
+    )
+
+
 def record_consent(
     user_id: int,
     consent_type: str,
@@ -70,14 +88,19 @@ def record_consent(
 
     Each call inserts a new row (audit trail) rather than updating an
     existing one, so the full grant/revoke history for a user + consent_type
-    is always reconstructable.
+    is always reconstructable. granted=False is a withdrawal: it also revokes
+    every active grant of consent_type in the same transaction, so the
+    consent stops counting as active (KYC gates, GET /api/kyc/consents).
     """
     with get_session() as session:
+        now = datetime.now(timezone.utc)
+        if not granted:
+            _revoke_active(session, user_id, consent_type, now)
         consent = KYCConsent(
             user_id=user_id,
             consent_type=consent_type,
             granted=granted,
-            granted_at=datetime.now(timezone.utc),
+            granted_at=now,
             ip_address=ip_address,
         )
         session.add(consent)
@@ -87,32 +110,30 @@ def record_consent(
 
 
 def revoke_consent(user_id: int, consent_type: str) -> dict:
-    """Revoke the most recent active (granted, not-yet-revoked) consent of
-    consent_type for user_id. Sets revoked_at — never deletes the row, so the
-    audit trail is preserved.
+    """Revoke every active (granted, not-yet-revoked) consent of consent_type
+    for user_id. Sets revoked_at — never deletes rows, so the audit trail is
+    preserved. Returns the newest revoked row plus revoked_count.
     """
     with get_session() as session:
-        consent = (
-            session.query(KYCConsent)
-            .filter(
-                KYCConsent.user_id == user_id,
-                KYCConsent.consent_type == consent_type,
-                KYCConsent.granted.is_(True),
-                KYCConsent.revoked_at.is_(None),
-            )
-            .order_by(KYCConsent.granted_at.desc())
-            .first()
-        )
-        if consent is None:
+        count = _revoke_active(session, user_id, consent_type, datetime.now(timezone.utc))
+        if count == 0:
             return {
                 "revoked": False,
                 "reason": f"no active '{consent_type}' consent found for user {user_id}",
             }
 
-        consent.revoked_at = datetime.now(timezone.utc)
         session.commit()
-        session.refresh(consent)
-        return {"revoked": True, **_consent_to_dict(consent)}
+        newest = (
+            session.query(KYCConsent)
+            .filter(
+                KYCConsent.user_id == user_id,
+                KYCConsent.consent_type == consent_type,
+                KYCConsent.granted.is_(True),
+            )
+            .order_by(KYCConsent.granted_at.desc(), KYCConsent.id.desc())
+            .first()
+        )
+        return {"revoked": True, "revoked_count": count, **_consent_to_dict(newest)}
 
 
 def get_active_consents(user_id: int) -> list[dict]:
