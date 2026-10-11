@@ -285,16 +285,38 @@ class CreateThreadViewModel: ObservableObject {
             .filter { !$0.isEmpty }
     }
 
+    /// Mirror CreateThreadRequest in backend/routers/forum.py so over-long input is
+    /// caught before the server answers with a validation 422. Counted in Unicode
+    /// scalars to match Python's len().
+    nonisolated static let maxTitleLength = 200
+    nonisolated static let maxPollQuestionLength = 300
+
     var isValid: Bool {
         guard selectedBoardId != nil else { return false }
-        guard title.trimmingCharacters(in: .whitespacesAndNewlines).count >= 3 else { return false }
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedTitle.count >= 3, trimmedTitle.unicodeScalars.count <= Self.maxTitleLength else { return false }
         guard !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         if includesPoll {
-            guard !pollQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, validPollOptions.count >= 2 else {
+            let trimmedQuestion = pollQuestion.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedQuestion.isEmpty,
+                  trimmedQuestion.unicodeScalars.count <= Self.maxPollQuestionLength,
+                  validPollOptions.count >= 2 else {
                 return false
             }
         }
         return true
+    }
+
+    /// A 422 means either the spam filter ("Post rejected by spam filter") or a
+    /// schema validation failure; only the former is a moderation block.
+    nonisolated static func submitErrorMessage(for error: Error) -> String {
+        guard case let NetworkError.fetchFailed(_, status, body) = error, status == 422 else {
+            return "Couldn't post your thread. Try again."
+        }
+        if body.localizedCaseInsensitiveContains("spam filter") {
+            return "Your post was flagged and blocked. Try rephrasing."
+        }
+        return "Please check your post: title 3-\(maxTitleLength) characters, poll question up to \(maxPollQuestionLength)."
     }
 
     func fetchBoards() {
@@ -336,11 +358,7 @@ class CreateThreadViewModel: ObservableObject {
                 self.isSubmitting = false
                 completion(true)
             } catch {
-                if case let NetworkError.fetchFailed(_, status, _) = error, status == 422 {
-                    self.errorMessage = "Your post was flagged and blocked. Try rephrasing."
-                } else {
-                    self.errorMessage = "Couldn't post your thread. Try again."
-                }
+                self.errorMessage = Self.submitErrorMessage(for: error)
                 self.isSubmitting = false
                 completion(false)
             }
