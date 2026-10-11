@@ -1,3 +1,5 @@
+# ml-engine runs in its own container, so it keeps its own Python minor (3.12,
+# chosen with the research pins) instead of the backend's /.python-version.
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -12,8 +14,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN useradd --create-home --shell /bin/bash mluser && \
     chown mluser:mluser /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# requirements.lock: exact pins frozen from the running image (OPS-16);
+# requirements.txt is only the fallback until that lock is committed.
+COPY requirements.txt requirements.lock* ./
+RUN if [ -f requirements.lock ]; then pip install --no-cache-dir -r requirements.lock; \
+    else pip install --no-cache-dir -r requirements.txt; fi
 
 COPY --chown=mluser:mluser . .
 

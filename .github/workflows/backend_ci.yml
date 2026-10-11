@@ -16,13 +16,18 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version-file: '.python-version'
         cache: 'pip'
+
+    - name: Check Python minor matches .python-version
+      run: |
+        python -c "import sys; want = tuple(map(int, open('.python-version').read().split('.')[:2])); assert sys.version_info[:2] == want, (sys.version_info[:2], want)"
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r backend/requirements.txt
+        # OPS-16: exact pins from requirements.lock; requirements.txt only until the lock exists.
+        if [ -f backend/requirements.lock ]; then pip install -r backend/requirements.lock; else pip install -r backend/requirements.txt; fi
         pip install ruff mypy pytest httpx
 
     - name: Lint with ruff
@@ -37,6 +42,44 @@ jobs:
         HF_TOKEN: mock
       run: |
         pytest backend/tests/test_ios_endpoints.py
+
+    - name: Validate OpenAPI schema
+      env:
+        PYTHONPATH: backend
+        FIRECRAWL_API_KEY: mock
+        FRED_API_KEY: mock
+        HF_TOKEN: mock
+      run: |
+        python backend/scripts/validate_openapi.py
+
+    - name: Check OpenAPI contract snapshot is current
+      # ARCH-04: backend/openapi.json is the API contract with the iOS app; any
+      # route or schema change must regenerate and commit it so the diff is reviewed.
+      id: openapi_contract
+      env:
+        PYTHONPATH: backend
+        FIRECRAWL_API_KEY: mock
+        FRED_API_KEY: mock
+        HF_TOKEN: mock
+      run: |
+        python backend/scripts/export_openapi.py --check
+
+    - name: Regenerate OpenAPI snapshot for review
+      if: failure() && steps.openapi_contract.outcome == 'failure'
+      env:
+        PYTHONPATH: backend
+        FIRECRAWL_API_KEY: mock
+        FRED_API_KEY: mock
+        HF_TOKEN: mock
+      run: |
+        python backend/scripts/export_openapi.py
+
+    - name: Upload regenerated OpenAPI snapshot
+      if: failure() && steps.openapi_contract.outcome == 'failure'
+      uses: actions/upload-artifact@v4
+      with:
+        name: openapi-json
+        path: backend/openapi.json
 
     - name: Check Alembic migrations
       working-directory: backend
@@ -73,13 +116,18 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version-file: '.python-version'
         cache: 'pip'
+
+    - name: Check Python minor matches .python-version
+      run: |
+        python -c "import sys; want = tuple(map(int, open('.python-version').read().split('.')[:2])); assert sys.version_info[:2] == want, (sys.version_info[:2], want)"
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r backend/requirements.txt
+        # OPS-16: exact pins from requirements.lock; requirements.txt only until the lock exists.
+        if [ -f backend/requirements.lock ]; then pip install -r backend/requirements.lock; else pip install -r backend/requirements.txt; fi
         pip install pytest
 
     - name: Upgrade and check migrations on Postgres

@@ -1,4 +1,3 @@
-import logging
 #!/usr/bin/env python3
 """
 Validate that the FastAPI OpenAPI schema generates without errors and has no
@@ -24,21 +23,21 @@ try:
     import main as app_module
     app = app_module.app
 except Exception as e:
-    logging.info(f"[FAIL] Cannot import main.py: {e}")
+    print(f"[FAIL] Cannot import main.py: {e}", file=sys.stderr)
     sys.exit(1)
 
 # Generate OpenAPI schema
 try:
     schema = app.openapi()
 except Exception as e:
-    logging.info(f"[FAIL] OpenAPI schema generation failed: {e}")
+    print(f"[FAIL] OpenAPI schema generation failed: {e}", file=sys.stderr)
     sys.exit(1)
 
 if not schema:
-    logging.info("[FAIL] OpenAPI schema is empty")
+    print("[FAIL] OpenAPI schema is empty", file=sys.stderr)
     sys.exit(1)
 
-logging.info(f"[OK] OpenAPI schema generated ({len(json.dumps(schema))} bytes)")
+print(f"[OK] OpenAPI schema generated ({len(json.dumps(schema))} bytes)")
 
 # Check for duplicate operation IDs
 op_ids: dict[str, list[str]] = {}
@@ -60,22 +59,22 @@ for op_id, locations in op_ids.items():
 # Check that schema is JSON-serializable
 try:
     json.dumps(schema)
-    logging.info("[OK] Schema is JSON-serializable")
+    print("[OK] Schema is JSON-serializable")
 except Exception as e:
     issues.append(f"Schema is not JSON-serializable: {e}")
 
 # Check component refs
 schema_str = json.dumps(schema)
 ref_count = schema_str.count('"$ref"')
-logging.info(f"[OK] {ref_count} $ref references in schema")
+print(f"[OK] {ref_count} $ref references in schema")
 
 # Count paths
-logging.info(f"[OK] {len(paths)} API paths in OpenAPI schema")
+print(f"[OK] {len(paths)} API paths in OpenAPI schema")
 
 if issues:
     for issue in issues:
-        logging.info(f"[FAIL] {issue}")
+        print(f"[FAIL] {issue}", file=sys.stderr)
     sys.exit(1)
 
-logging.info("[OK] OpenAPI schema is valid")
+print("[OK] OpenAPI schema is valid")
 sys.exit(0)

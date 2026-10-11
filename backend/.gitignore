@@ -24,8 +24,5 @@ __pycache__/
 *.log
 token_log.jsonl
 
-# Tradingagents core (installed separately)
-tradingagents-core/
-
 # Misc
 ~/.tradingagents/

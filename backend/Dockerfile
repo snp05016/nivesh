@@ -4,6 +4,8 @@
 # Stage 2: runtime  — slim image, copies venv, exposes :8000
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Python minor must match /.python-version (CI and the server venv use it too).
+
 # ── Stage 1: builder ─────────────────────────────────────────────────────────
 FROM python:3.11-slim AS builder
 
@@ -22,9 +24,12 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Upgrade pip first
 RUN pip install --upgrade pip setuptools wheel
 
-# Copy requirements and install — separate layer so cache reuse is maximal
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy requirements and install — separate layer so cache reuse is maximal.
+# requirements.lock holds the exact pins frozen from the server venv (OPS-16);
+# requirements.txt is only the fallback until that lock is committed.
+COPY requirements.txt requirements.lock* ./
+RUN if [ -f requirements.lock ]; then pip install --no-cache-dir -r requirements.lock; \
+    else pip install --no-cache-dir -r requirements.txt; fi
 
 # Install tradingagents-core as an editable local package if present
 COPY tradingagents-core ./tradingagents-core
