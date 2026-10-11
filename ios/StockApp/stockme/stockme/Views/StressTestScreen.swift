@@ -136,27 +136,20 @@ struct StressDiagnostic {
     let errorCode: Int?
     let rawBody: String?       // first 400 chars of response body
 
+    /// User-facing copy only; endpoint/status/body stay in the DEBUG diagnostic rows.
     var summary: String {
         if let status = httpStatus {
-            switch status {
-            case 401: return "HTTP 401 — Token invalid or expired. Log out and back in."
-            case 403: return "HTTP 403 — Access denied."
-            case 404: return "HTTP 404 — Endpoint not found. Server may need restart."
-            case 422: return "HTTP 422 — Request body rejected by server."
-            case 500: return "HTTP 500 — Server crash. Check server logs."
-            default:  return "HTTP \(status) — Unexpected response."
-            }
+            return NetworkError.userMessage(status: status, serverDetail: nil)
         }
-        if let code = errorCode {
-            switch code {
-            case NSURLErrorCannotConnectToHost:  return "Cannot connect to \(urlAttempted). Is the server running?"
-            case NSURLErrorTimedOut:             return "Connection timed out after 30s."
-            case NSURLErrorNetworkConnectionLost: return "Network connection lost mid-request."
-            case NSURLErrorNotConnectedToInternet: return "No internet connection."
-            default: return "Network error (code \(code))."
-            }
+        guard let code = errorCode else { return "Something went wrong. Please try again." }
+        switch code {
+        case NSURLErrorTimedOut:
+            return "The server took too long to respond. Please try again."
+        case NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost:
+            return "No internet connection. Check your connection and try again."
+        default:
+            return "Can't reach Nivesh right now. Please try again shortly."
         }
-        return "Unknown failure."
     }
 }
 
@@ -424,6 +417,7 @@ struct StressDiagnosticCard: View {
                     .foregroundColor(Theme.bearRed)
                     .multilineTextAlignment(.leading)
                 Spacer()
+                #if DEBUG
                 Button { HapticManager.selection(); 
     HapticManager.selection()
                     withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
@@ -433,9 +427,11 @@ struct StressDiagnosticCard: View {
                         .foregroundColor(Theme.inkTertiary)
                 }
                 .buttonStyle(EKPressStyle())
+                #endif
             }
 
-            // Debug rows (collapsed by default)
+            #if DEBUG
+            // Debug rows (collapsed by default; never shipped to release builds)
             if expanded {
                 GuillocheDivider()
 
@@ -456,11 +452,8 @@ struct StressDiagnosticCard: View {
                         }
                     }
                 }
-
-                Text("Change server URL in Settings → Server URL")
-                    .font(Theme.microLabel())
-                    .foregroundColor(Theme.inkTertiary)
             }
+            #endif
         }
         .padding(Theme.Spacing.card)
         .frame(maxWidth: .infinity, alignment: .leading)

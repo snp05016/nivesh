@@ -9,23 +9,94 @@ enum NetworkError: Error, LocalizedError {
     case serverError(Int, String?)
     case decodingError(String)
     case connectionFailed
+    /// An authenticated request was rejected: the session token is missing or expired.
     case unauthorized
+    /// POST /login returned 401: the username/password pair was wrong.
+    case invalidCredentials
     case analysisDiagnostic(AnalysisErrorInfo)
     /// Detailed fetch failure — endpoint, HTTP status, raw body prefix for diagnostics
     case fetchFailed(endpoint: String, status: Int, body: String)
 
+    /// User-facing copy. Never contains endpoints, HTTP codes or response bodies;
+    /// those live in `diagnosticDetail` for logs and DEBUG-only diagnostics.
     var errorDescription: String? {
         switch self {
-        case .invalidURL:        return "Invalid server URL."
-        case .invalidResponse:   return "Server did not respond correctly. Please try again."
-        case .serverError(let code, let msg): return msg ?? "Server error (code \(code)). Please try again."
+        case .invalidURL, .invalidResponse:
+            return "Something went wrong. Please try again."
+        case .serverError(let code, let msg):
+            return Self.userMessage(status: code, serverDetail: msg)
+        case .decodingError:
+            return "We couldn't read the latest data. Please try again shortly."
+        case .connectionFailed:
+            return Self.userMessage(status: -1, serverDetail: nil)
+        case .unauthorized:
+            return Self.userMessage(status: 401, serverDetail: nil)
+        case .invalidCredentials:
+            return "Incorrect username or password."
+        case .analysisDiagnostic(let info):
+            return "\(info.userMessage) \(info.suggestedActionText)"
+        case .fetchFailed(_, let status, _):
+            return Self.userMessage(status: status, serverDetail: nil)
+        }
+    }
+
+    /// Developer-facing detail (endpoint, status, body) for GlobalErrorDiagnoser and logs.
+    var diagnosticDetail: String {
+        switch self {
+        case .invalidURL:        return "Invalid server URL"
+        case .invalidResponse:   return "Response was not HTTP"
+        case .serverError(let code, let msg): return "HTTP \(code): \(msg ?? "<no detail>")"
         case .decodingError(let detail): return "JSON parse failed: \(detail)"
-        case .connectionFailed:  return "Could not connect to server. Make sure the app is running on your computer."
-        case .unauthorized:      return "Wrong username or password."
-        case .analysisDiagnostic(let info): return info.displayDetail
+        case .connectionFailed:  return "Connection failed"
+        case .unauthorized:      return "HTTP 401: session token missing or expired"
+        case .invalidCredentials: return "HTTP 401 on /login: invalid credentials"
+        case .analysisDiagnostic(let info):
+            return "[\(info.requestUrl)] HTTP \(info.httpStatusCode): \(info.displayDetail)"
         case .fetchFailed(let endpoint, let status, let body):
             return "[\(endpoint)] HTTP \(status): \(body.prefix(200))"
         }
+    }
+
+    /// Maps an HTTP status (negative = transport failure, 0 = no usable response)
+    /// to friendly copy. `serverDetail` is shown only for validation/conflict
+    /// statuses and only when it is short plain text.
+    static func userMessage(status: Int, serverDetail: String?) -> String {
+        let plainDetail = serverDetail.flatMap { detail -> String? in
+            let trimmed = detail.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, trimmed.count <= 200,
+                  !trimmed.contains("{"), !trimmed.contains("[") else { return nil }
+            return trimmed
+        }
+        switch status {
+        case ..<0:
+            return "Can't connect. Check your internet connection and try again."
+        case 400, 422:
+            return plainDetail ?? "Please check your input and try again."
+        case 401:
+            return "Your session has expired. Please sign in again."
+        case 403:
+            return "You don't have access to this."
+        case 404:
+            return "This information isn't available right now."
+        case 409:
+            return plainDetail ?? "That's already in progress."
+        case 429:
+            return "Too many requests. Please wait a minute and try again."
+        case 500...599:
+            return "Nivesh is having trouble right now. Please try again shortly."
+        default:
+            return "Something went wrong. Please try again."
+        }
+    }
+
+    /// Extracts a human-readable message from a FastAPI error body:
+    /// `{"detail": "..."}`, `{"detail": [{"msg": "..."}]}` or `{"detail": {"message": "..."}}`.
+    static func serverDetail(from data: Data) -> String? {
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        if let text = obj["detail"] as? String { return text.count <= 200 ? text : nil }
+        if let list = obj["detail"] as? [[String: Any]] { return list.first?["msg"] as? String }
+        if let dict = obj["detail"] as? [String: Any] { return dict["message"] as? String }
+        return nil
     }
 
     var diagnosticInfo: AnalysisErrorInfo? {
@@ -33,9 +104,9 @@ enum NetworkError: Error, LocalizedError {
         return nil
     }
 
-    /// User-facing display string — shows exact failure reason
+    /// User-facing display string (same as errorDescription).
     var displayDetail: String {
-        errorDescription ?? "Unknown error"
+        errorDescription ?? "Something went wrong. Please try again."
     }
 }
 
@@ -181,9 +252,9 @@ class NetworkManager: ObservableObject {
 
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
-        if http.statusCode == 401 { throw NetworkError.unauthorized }
+        if http.statusCode == 401 { throw NetworkError.invalidCredentials }
         guard (200...299).contains(http.statusCode) else {
-            throw NetworkError.serverError(http.statusCode, String(data: data, encoding: .utf8))
+            throw NetworkError.serverError(http.statusCode, NetworkError.serverDetail(from: data))
         }
         return try JSONDecoder().decode(LoggedInUser.self, from: data)
     }
@@ -203,9 +274,12 @@ class NetworkManager: ObservableObject {
 
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
-        if http.statusCode == 400 { throw NetworkError.serverError(400, "Username already exists") }
+        // 400 carries the server's reason (duplicate username, password policy).
+        if http.statusCode == 400 {
+            throw NetworkError.serverError(400, NetworkError.serverDetail(from: data) ?? "That username is taken. Try another.")
+        }
         guard (200...299).contains(http.statusCode) else {
-            throw NetworkError.serverError(http.statusCode, String(data: data, encoding: .utf8))
+            throw NetworkError.serverError(http.statusCode, NetworkError.serverDetail(from: data))
         }
         return try JSONDecoder().decode(LoggedInUser.self, from: data)
     }
@@ -225,7 +299,7 @@ class NetworkManager: ObservableObject {
             return try JSONDecoder().decode(StartJobResponse.self, from: data)
         }
         guard (200...299).contains(http.statusCode) else {
-            throw NetworkError.serverError(http.statusCode, String(data: data, encoding: .utf8))
+            throw NetworkError.serverError(http.statusCode, NetworkError.serverDetail(from: data))
         }
         return try JSONDecoder().decode(StartJobResponse.self, from: data)
     }
@@ -239,7 +313,7 @@ class NetworkManager: ObservableObject {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(http.statusCode) else {
-            throw NetworkError.serverError(http.statusCode, String(data: data, encoding: .utf8))
+            throw NetworkError.serverError(http.statusCode, NetworkError.serverDetail(from: data))
         }
         return try JSONDecoder().decode(JobStatus.self, from: data)
     }

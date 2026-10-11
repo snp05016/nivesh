@@ -40,7 +40,7 @@ struct FundamentalsTabView: View {
                     DetailedFinancialsTabView(financials: mapToFinancialMetrics(statement))
                         .transition(.opacity)
                 } else if let err = vm.financialsError {
-                    SPEmptyStateView(message: "Financials unavailable: \(err)")
+                    SPEmptyStateView(message: err)
                         .padding(.horizontal, Theme.screenPadding)
                 } else {
                     SPEmptyStateView(message: "No financial data available")
@@ -54,7 +54,7 @@ struct FundamentalsTabView: View {
                     ShareholdingTabView(shareholding: mapToShareholding(sh))
                         .transition(.opacity)
                 } else if let err = vm.shareholdingError {
-                    SPEmptyStateView(message: "Shareholding unavailable: \(err)")
+                    SPEmptyStateView(message: err)
                         .padding(.horizontal, Theme.screenPadding)
                 } else {
                     SPEmptyStateView(message: "No shareholding data available")

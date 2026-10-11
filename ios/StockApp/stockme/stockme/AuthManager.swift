@@ -33,10 +33,8 @@ class AuthManager: ObservableObject {
             if let data = try? JSONEncoder().encode(user) {
                 UserDefaults.standard.set(data, forKey: key)
             }
-        } catch let e as NetworkError {
-            loginError = e.errorDescription ?? "Login failed"
         } catch {
-            loginError = "Wrong username or password"
+            loginError = Self.message(for: error, registering: false)
         }
         isLoggingIn = false
     }
@@ -51,12 +49,36 @@ class AuthManager: ObservableObject {
             if let data = try? JSONEncoder().encode(user) {
                 UserDefaults.standard.set(data, forKey: key)
             }
-        } catch let e as NetworkError {
-            loginError = e.errorDescription ?? "Registration failed"
         } catch {
-            loginError = "Failed to create account"
+            loginError = Self.message(for: error, registering: true)
         }
         isLoggingIn = false
+    }
+
+    /// User-facing copy for a login/register failure. Only a 401 from /login
+    /// (`NetworkError.invalidCredentials`) ever blames the credentials; transport
+    /// failures (offline, timeout, TLS) get connectivity copy instead.
+    static func message(for error: Error, registering: Bool) -> String {
+        let generic = "Something went wrong. Please try again."
+        if let networkError = error as? NetworkError {
+            return networkError.errorDescription ?? generic
+        }
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed:
+                return "No internet connection. Check your connection and try again."
+            case .timedOut:
+                return "The server took too long to respond. Please try again."
+            case .cannotFindHost, .cannotConnectToHost, .secureConnectionFailed, .dnsLookupFailed:
+                return "Can't reach Nivesh right now. Please try again shortly."
+            default:
+                return generic
+            }
+        }
+        if error is DecodingError {
+            return registering ? "Your account may have been created. Try signing in." : generic
+        }
+        return generic
     }
 
     func logout() {

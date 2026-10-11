@@ -346,14 +346,21 @@ struct AnalysisErrorInfo {
         diagnostic?.errorDetail ?? rawError
     }
 
+    /// Plain-language description of the failure. No URLs, status codes or raw bodies.
+    var userMessage: String {
+        if isRateLimit { return "Too many analysis requests right now." }
+        if isConnectionError { return "Couldn't reach Nivesh. Check your internet connection." }
+        if isAIFailure { return "The AI analysis couldn't be completed this time." }
+        if isServerError { return "Nivesh is having trouble right now." }
+        return "The analysis couldn't be completed."
+    }
+
     var suggestedActionText: String {
-        guard let action = diagnostic?.suggestedAction else { return "RETRY" }
-        switch action {
-        case "WAIT": return "Please wait and try again shortly."
-        case "RETRY": return "Tap 'Retry' below to attempt the analysis again."
-        case "CHECK_CONFIG": return "Check your API keys and server configuration."
-        case "CONTACT_SUPPORT": return "Please contact support with the diagnostic info below."
-        default: return action
+        switch diagnostic?.suggestedAction {
+        case "WAIT": return "Please wait a minute and try again."
+        case "CHECK_CONFIG", "CONTACT_SUPPORT":
+            return "The analysis service is temporarily unavailable. Please try again later."
+        default: return "Tap Retry to run the analysis again."
         }
     }
 }

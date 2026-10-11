@@ -21,7 +21,18 @@ def login_user(username, password):
             raise PermissionError("Invalid username or password")
         return _auth_payload(user)
 
+PASSWORD_MIN_LENGTH = 8
+# bcrypt only accepts 72 bytes (bcrypt>=5 raises on longer input, which
+# create_user would swallow into a 500), so cap at 72 UTF-8 bytes.
+PASSWORD_MAX_BYTES = 72
+
+
 def register_user(username, password, display_name):
+    # Password policy; ValueError surfaces as HTTP 400 with this text as `detail`.
+    if not password or len(password) < PASSWORD_MIN_LENGTH:
+        raise ValueError(f"Password must be at least {PASSWORD_MIN_LENGTH} characters.")
+    if len(password.encode("utf-8")) > PASSWORD_MAX_BYTES:
+        raise ValueError(f"Password must be at most {PASSWORD_MAX_BYTES} characters.")
     with get_session() as session:
         existing = session.query(User).filter_by(username=username.lower()).first()
         if existing:

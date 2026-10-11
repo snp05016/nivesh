@@ -69,7 +69,7 @@ struct CopilotScreen: View {
         ADDITIONAL FEATURES:
         - AI Copilot (floating sparkles button): Available everywhere via the gold sparkles icon in bottom-right corner.
         - Stock Analysis: Tap any stock to open StockActionHubView with 5 analysis types (Quick Scan, Standard, Deep Dive, Technical Only, Fundamental Only).
-        - Settings (gear icon on Home screen): Server URL, theme (dark/light), biometric lock, dev tools (triple-tap profile card).
+        - Settings (gear icon on Home screen): theme (dark/light), biometric lock, dev tools (triple-tap profile card).
         - Glossary: Tap underlined terms anywhere to see definitions. Full glossary in Settings > Learn Financial Terms.
         - AI How It Works: Pipeline explainer accessible from StockActionHubView info button.
         - Morning Brief: Daily AI-generated portfolio summary card on Home screen.

@@ -74,12 +74,12 @@ class EarningsDashboardViewModel: ObservableObject {
                 if (rankedResp.dataSource ?? "") == "empty" || rankedResp.results.isEmpty {
                     if rankedResp.diagnostic == nil && rankedResp.error == nil {
                         // Old server — no diagnostic fields. Explain the situation.
-                        self.feedDiagnostic = "Server returned empty results without diagnostic info. The server may be running an older version without the yfinance fallback. Redeploy the backend to get real earnings data."
+                        self.feedDiagnostic = "No earnings results yet."
                     }
                     self.feedError = nil  // not a fetch error — just no data
                 }
             } else {
-                self.feedError = "Feed endpoint unreachable or JSON decode failed. Check: (1) Is the server running? (2) Is the backend URL correct in Settings? (3) Check iOS console for details."
+                self.feedError = "Couldn't load earnings right now. Please try again shortly."
             }
 
             // Movers

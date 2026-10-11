@@ -118,13 +118,6 @@ struct BanknoteErrorCanvas: View {
             )
             .cornerRadius(Theme.CornerRadius.small)
             .shadow(color: Theme.canvasShadow.opacity(0.12), radius: 4, y: 2)
-
-            // ── Serial number footer ────────────────────────────────────
-            Text("NIVESH APPAREL • RESERVE BANK OF INDIA • ERROR: \(title.prefix(18).uppercased())")
-                .font(.caption2.weight(.medium).monospaced())
-                .foregroundStyle(Theme.inkTertiary.opacity(0.5))
-                .tracking(1.5)
-                .padding(.top, Theme.Spacing.medium)
         }
         .padding(Theme.cardPadding)
     }

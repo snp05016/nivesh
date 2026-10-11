@@ -58,6 +58,7 @@ struct AnalysisErrorStateView: View {
                             BanknoteSignalBadge(text: info.badgeText, color: info.isRateLimit ? Theme.holdAmber : Theme.bearRed, rotation: -3)
                         }
                         Spacer()
+                        #if DEBUG
                         if let code = info.diagnostic?.errorCode {
                             Text(code)
                                 .font(Theme.officialStampFont(size: 8))
@@ -66,6 +67,7 @@ struct AnalysisErrorStateView: View {
                                 .background(Theme.inkTertiary.opacity(0.1))
                                 .clipShape(Capsule())
                         }
+                        #endif
                     }
 
                     GuillocheDivider()
@@ -82,7 +84,7 @@ struct AnalysisErrorStateView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                     Label {
                         Text("WHAT WENT WRONG")
-                            .font(Theme.officialStampFont(size: 9))
+                            .font(Theme.officialStampFont(size: 11))
                             .foregroundStyle(Theme.inkPrimary)
                     } icon: {
                         Image(systemName: "magnifyingglass")
@@ -90,10 +92,17 @@ struct AnalysisErrorStateView: View {
                             .font(.footnote)
                     }
 
-                    Text(info.displayDetail)
+                    Text(info.userMessage)
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(Theme.inkSecondary)
                         .lineSpacing(5)
+
+                    // Developer diagnostics (raw detail, phase, traces) are DEBUG-only.
+                    #if DEBUG
+                    Text(info.displayDetail)
+                        .font(Theme.serialNumberFont(size: 11))
+                        .foregroundStyle(Theme.inkTertiary)
+                        .lineSpacing(3)
 
                     if let phase = info.diagnostic?.phaseFailed {
                         HStack(spacing: Theme.Spacing.tight) {
@@ -105,10 +114,12 @@ struct AnalysisErrorStateView: View {
                                 .foregroundStyle(Theme.bearRed)
                         }
                     }
+                    #endif
                 }
                 .padding(Theme.Spacing.screen)
                 .banknoteCard()
 
+                #if DEBUG
                 VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                     Label {
                         Text("PERFORMANCE TRACE")
@@ -248,6 +259,7 @@ struct AnalysisErrorStateView: View {
                 }
                 .padding(Theme.Spacing.screen)
                 .banknoteCard()
+                #endif
 
                 VStack(spacing: Theme.Spacing.standard) {
                     Button(action: { HapticManager.selection(); onRetry() }) {
@@ -255,7 +267,7 @@ struct AnalysisErrorStateView: View {
                             Image(systemName: "arrow.clockwise")
                             Text("RETRY ANALYSIS")
                         }
-                        .font(Theme.officialStampFont(size: 10))
+                        .font(Theme.officialStampFont(size: 12))
                         .foregroundStyle(Theme.inkPrimary)
                         .padding(.vertical, Theme.Spacing.standard)
                         .frame(maxWidth: .infinity)

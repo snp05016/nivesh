@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct LoginScreen: View {
     @EnvironmentObject var authManager: AuthManager
@@ -7,6 +8,7 @@ struct LoginScreen: View {
     @State private var username = ""
     @State private var password = ""
     @State private var displayName = ""
+    @State private var showPassword = false
     @FocusState private var focusedField: Field?
 
     enum Field { case username, password, displayName }
@@ -63,6 +65,8 @@ struct LoginScreen: View {
                                             .font(.callout)
                                             .foregroundStyle(Theme.inkSecondary.opacity(0.5))
                                         TextField("official name...", text: $displayName)
+                                            .textContentType(.name)
+                                            .accessibilityLabel("Full name")
                                             .foregroundStyle(Theme.inkPrimary)
                                             .focused($focusedField, equals: .displayName)
                                             .submitLabel(.next)
@@ -85,6 +89,8 @@ struct LoginScreen: View {
                                         .font(.callout)
                                         .foregroundStyle(Theme.inkSecondary.opacity(0.5))
                                     TextField("identity entry...", text: $username)
+                                        .textContentType(.username)
+                                        .accessibilityLabel("Username")
                                         .autocorrectionDisabled()
                                         .autocapitalization(.none)
                                         .foregroundStyle(Theme.inkPrimary)
@@ -106,14 +112,37 @@ struct LoginScreen: View {
                                     Image(systemName: "lock.shield.fill")
                                         .font(.callout)
                                         .foregroundStyle(Theme.inkSecondary.opacity(0.5))
-                                    SecureField("••••••••", text: $password)
-                                        .foregroundStyle(Theme.inkPrimary)
-                                        .focused($focusedField, equals: .password)
-                                        .submitLabel(.go)
-                                        .onSubmit { attemptAction() }
+                                    Group {
+                                        if showPassword {
+                                            TextField("••••••••", text: $password)
+                                                .autocorrectionDisabled()
+                                                .autocapitalization(.none)
+                                        } else {
+                                            SecureField("••••••••", text: $password)
+                                        }
+                                    }
+                                    .textContentType(isRegistering ? .newPassword : .password)
+                                    .accessibilityLabel("Password")
+                                    .foregroundStyle(Theme.inkPrimary)
+                                    .focused($focusedField, equals: .password)
+                                    .submitLabel(.go)
+                                    .onSubmit { attemptAction() }
+                                    Button { showPassword.toggle() } label: {
+                                        Image(systemName: showPassword ? "eye.slash" : "eye")
+                                            .font(.callout)
+                                            .foregroundStyle(Theme.inkSecondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel(showPassword ? "Hide password" : "Show password")
                                 }
                                 .padding(Theme.Spacing.card)
                                 .banknoteCard()
+
+                                if isRegistering {
+                                    Text("At least 8 characters")
+                                        .font(.caption)
+                                        .foregroundStyle((1...7).contains(password.count) ? Theme.bearRed : Theme.inkSecondary)
+                                }
                             }
                         }
 
@@ -122,7 +151,7 @@ struct LoginScreen: View {
                             HStack(spacing: Theme.Spacing.medium) {
                                 BanknoteSignalBadge(text: "DENIED", color: Theme.bearRed, rotation: -8)
                                     .scaleEffect(0.8)
-                                Text(err.uppercased())
+                                Text(err)
                                     .font(.caption.weight(.bold))
                                     .foregroundStyle(Theme.bearRed)
                             }
@@ -195,11 +224,15 @@ struct LoginScreen: View {
             }
             .hideKeyboardOnTap()
         }
+        .onChange(of: authManager.loginError) { _, err in
+            if let err { UIAccessibility.post(notification: .announcement, argument: err) }
+        }
     }
 
     private var canProceed: Bool {
         if isRegistering {
-            return !username.isEmpty && !password.isEmpty && !displayName.isEmpty
+            // Mirrors the server's password policy (auth_service.register_user).
+            return !username.isEmpty && password.count >= 8 && !displayName.isEmpty
         }
         return !username.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
     }

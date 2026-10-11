@@ -86,7 +86,8 @@ final class GlobalErrorDiagnoser: ObservableObject {
             swiftFile: swiftFile,
             classification: classify(error)
         )
-        track(error.localizedDescription, diagnostic: diag, rawError: String(describing: error))
+        track(error.localizedDescription, diagnostic: diag,
+              rawError: (error as? NetworkError)?.diagnosticDetail ?? String(describing: error))
     }
 
     private func extractHTTPStatus(from error: Error) -> Int? {
@@ -109,7 +110,7 @@ final class GlobalErrorDiagnoser: ObservableObject {
             switch ne {
             case .connectionFailed, .fetchFailed: return "INFRASTRUCTURE_EXCEPTION"
             case .decodingError: return "SCHEMA_DRIFT"
-            case .unauthorized: return "AUTHENTICATION_FAILURE"
+            case .unauthorized, .invalidCredentials: return "AUTHENTICATION_FAILURE"
             default: return "INFRASTRUCTURE_EXCEPTION"
             }
         case is DecodingError: return "SCHEMA_DRIFT"
@@ -143,23 +144,17 @@ struct ErrorDiagnoserView: View {
                         Rectangle()
                             .fill(Theme.bearRed.opacity(0.15))
                             .frame(height: 1)
-                            .overlay(
-                                Text("ERROR VECTOR")
-                                    .font(Theme.officialStampFont(size: 7))
-                                    .tracking(2)
-                                    .foregroundStyle(Theme.bearRed.opacity(0.6))
-                                    .padding(.horizontal, Theme.Spacing.tight)
-                                    .background(Theme.canvasDeep)
-                            )
 
                         Text(error)
-                            .font(Theme.serialNumberFont(size: 11))
+                            .font(Theme.serialNumberFont(size: 13))
                             .foregroundStyle(Theme.inkSecondary)
                             .multilineTextAlignment(.leading)
                             .lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
 
+                        #if DEBUG
                         diagnosticExpander
+                        #endif
 
                         if let retry = retryAction {
                             Button { HapticManager.selection(); 
@@ -171,7 +166,7 @@ struct ErrorDiagnoserView: View {
                                 HStack(spacing: Theme.Spacing.tight) {
                                     if isRetrying { ProgressView().scaleEffect(0.7).tint(Theme.securityGold) }
                                     Text(isRetrying ? "RETRYING…" : "RETRY")
-                                        .font(Theme.officialStampFont(size: 9)).tracking(3)
+                                        .font(Theme.officialStampFont(size: 12)).tracking(3)
                                 }
                                 .foregroundStyle(Theme.securityGold)
                                 .padding(.horizontal, Theme.Spacing.card).padding(.vertical, Theme.Spacing.tight)
@@ -196,11 +191,6 @@ struct ErrorDiagnoserView: View {
                 .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.borderSage, lineWidth: 1))
                 .cornerRadius(2)
                 .shadow(color: Theme.canvasShadow.opacity(0.1), radius: 3, y: 2)
-
-                Text("NIVESH APPAREL • RBI • \(context.classification.prefix(20).uppercased())")
-                    .font(Theme.serialNumberFont(size: 6))
-                    .foregroundStyle(Theme.inkTertiary)
-                    .tracking(1.2).padding(.top, Theme.Spacing.tight)
             }
             .padding(Theme.cardPadding)
         }
@@ -214,7 +204,7 @@ struct ErrorDiagnoserView: View {
                 })
             VStack(spacing: Theme.Spacing.none) {
                 Rectangle().fill(Theme.bearRed.opacity(0.25)).frame(height: 1)
-                Text("DIAGNOSTIC").font(Theme.officialStampFont(size: 8))
+                Text("DIAGNOSTIC").font(Theme.officialStampFont(size: 11))
                     .tracking(3).foregroundStyle(Theme.bearRed.opacity(0.6))
                     .padding(.horizontal, Theme.Spacing.standard).padding(.vertical, Theme.Spacing.xSmall)
                 Rectangle().fill(Theme.bearRed.opacity(0.25)).frame(height: 1)

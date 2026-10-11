@@ -399,40 +399,45 @@ struct StockProfileView: View {
                                 ? Theme.bullGreen.opacity(0.06) : Theme.bearRed.opacity(0.06)
                         )
                     } else if let error = vm.stockProfileError {
-                        // Detailed error display — copy-paste ready
                         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                             HStack(spacing: Theme.Spacing.tight) {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundStyle(Theme.bearRed)
-                                Text("STOCK PROFILE ERROR")
-                                    .font(Theme.officialStampFont(size: 10))
-                                    .tracking(1.5)
-                                    .foregroundStyle(Theme.bearRed)
+                                    .accessibilityHidden(true)
+                                Text("Couldn't load this stock")
+                                    .font(Theme.engravedSerif(size: 15, weight: .bold))
+                                    .foregroundStyle(Theme.inkPrimary)
                             }
                             Text(error)
-                                .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
+                                .font(.subheadline)
                                 .foregroundStyle(Theme.inkSecondary)
-                                .textSelection(.enabled)
                                 .fixedSize(horizontal: false, vertical: true)
-                            Button { HapticManager.selection(); 
-    HapticManager.selection()
-                                UIPasteboard.general.string = error
-                                HapticManager.success()
-                            } label: {
-                                HStack(spacing: Theme.Spacing.small) {
-                                    Image(systemName: "doc.on.doc")
-                                        .font(.caption)
-                                    Text("COPY ERROR TO CLIPBOARD")
-                                        .font(Theme.officialStampFont(size: 9))
-                                        .tracking(0.8)
+                            HStack(spacing: Theme.Spacing.medium) {
+                                Button {
+                                    HapticManager.selection()
+                                    Task { await vm.fetchStockProfile() }
+                                } label: {
+                                    Label("Retry", systemImage: "arrow.clockwise")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(Theme.securityGold)
+                                        .padding(.horizontal, Theme.Spacing.card)
+                                        .padding(.vertical, Theme.Spacing.standard)
+                                        .background(Theme.securityGold.opacity(0.1))
+                                        .clipShape(Capsule())
                                 }
-                                .foregroundStyle(Theme.securityGold)
-                                .padding(.horizontal, Theme.Spacing.medium)
-                                .padding(.vertical, Theme.Spacing.tight)
-                                .background(Theme.securityGold.opacity(0.1))
-                                .clipShape(Capsule())
+                                .buttonStyle(EKPressStyle())
+                                #if DEBUG
+                                Button {
+                                    UIPasteboard.general.string = error
+                                    HapticManager.success()
+                                } label: {
+                                    Label("Copy", systemImage: "doc.on.doc")
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.inkTertiary)
+                                }
+                                .buttonStyle(EKPressStyle())
+                                #endif
                             }
-                            .buttonStyle(EKPressStyle())
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(Theme.Spacing.card)

@@ -99,7 +99,7 @@ class ExpertNetworkViewModel: ObservableObject {
             posts = p
 
             if advisors.isEmpty && insights.isEmpty {
-                fetchError = "No advisor data available. Check backend connection."
+                fetchError = "Couldn't load right now. Please try again."
             }
             isLoading = false
         }
@@ -365,7 +365,7 @@ struct ExpertNetworkView: View {
             Text("No advisory insights available.")
                 .font(Theme.officialStampFont(size: 12))
                 .foregroundStyle(Theme.inkTertiary)
-            Text("Check backend connection.")
+            Text("Couldn't load right now. Please try again.")
                 .font(Theme.officialStampFont(size: 10))
                 .foregroundStyle(Theme.inkTertiary)
         }
@@ -396,7 +396,7 @@ struct ExpertNetworkView: View {
             Text("No advisor data available.")
                 .font(Theme.officialStampFont(size: 12))
                 .foregroundStyle(Theme.inkTertiary)
-            Text("Check backend connection.")
+            Text("Couldn't load right now. Please try again.")
                 .font(Theme.officialStampFont(size: 10))
                 .foregroundStyle(Theme.inkTertiary)
         }
