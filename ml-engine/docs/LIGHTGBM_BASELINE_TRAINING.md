@@ -4,7 +4,7 @@
 
 ### What
 
-The LightGBM baseline is the first production classifier in the Nivesh ml-engine. It predicts the forward direction (up or down) of NSE equities over a configurable horizon (default: 20 trading days). The model is a binary LightGBM classifier trained on 158 Alpha158 features (from the Microsoft Qlib specification) plus 8 supplementary momentum, volatility, and volume features.
+The LightGBM baseline is the first production classifier in the Nivesh ml-engine. It predicts the forward direction (up or down) of NSE equities over a configurable horizon (default: 20 trading days). The model is a binary LightGBM classifier (`objective=binary`) trained on the 158 Alpha158 features (from the Microsoft Qlib specification). Its output is P(up) over the horizon, not a return forecast.
 
 ### Why
 
@@ -18,19 +18,22 @@ The end-to-end pipeline follows this sequence:
 OHLCV data (CSV/Parquet/yfinance)
   |
   v
-Feature Builder (Alpha158 + 8 extras + sector one-hot)
+Feature Pipeline (Alpha158 columns selected for training)
   |
   v
 Walk-Forward Temporal Validation (no future leakage)
   |
   v
+Calibrator selection (isotonic vs Platt, lower pooled Brier wins)
+  |
+  v
 Final Model Training (all available data, median best iteration)
   |
   v
-Versioned Artifact Registry (training/artifacts/<version>/)
+Versioned Artifact Registry (models/registry/candidate/<version>/)
   |
   v
-Production Deployment (models/lgb_model.txt + features.json)
+Gated Production Deployment (promotion gate + models/MANIFEST.json)
   |
   v
 Inference Endpoint (LightGBM P(up); a direction only for a gated model, else no_edge)
@@ -40,12 +43,14 @@ Key source files:
 
 | File | Role |
 |------|------|
-| `training/train_lightgbm_baseline.py` | CLI entry point, orchestrates the full pipeline |
-| `training/feature_builder.py` | Builds Alpha158 + extra features from OHLCV data |
-| `training/walk_forward.py` | Temporal split generation and per-fold training/evaluation |
-| `training/evaluation.py` | Aggregate metrics, calibration analysis, report generation |
+| `training/train_alpha158.py` | CLI entry point (the only supported trainer), orchestrates the full pipeline |
+| `training/dataset_builder.py` | Data loading and validation (CSV, Parquet, yfinance, synthetic) |
+| `training/feature_pipeline.py` | Builds the feature matrix (Alpha158, extras, optional sector one-hot) and targets |
+| `training/validation.py` | Temporal split generation and per-fold training/evaluation |
+| `training/metrics.py` | Aggregate fold metrics and the markdown training report |
+| `training/calibration.py` | Calibration report (buckets, ECE, MCE), isotonic and Platt calibrators |
 | `training/model_registry.py` | Versioned artifact storage and production deployment |
-| `training/data_adapter.py` | Data loading (CSV, Parquet, yfinance, synthetic) |
+| `training/provenance.py` | Git SHA, library versions and data sha256 for run metadata (ML-19) |
 | `pipeline/inference.py` | Production inference (booster P(up); no_edge unless the model passed the gate) |
 | `models/lgb_model.py` | LGBEnsembleModel wrapper around LightGBM Booster |
 | `models/model_loader.py` | Unified loader for LightGBM, TRA, and scaler artifacts |
@@ -99,24 +104,26 @@ All commands are run from the `ml-engine/` directory.
 ### Basic training with a local data file
 
 ```bash
-python -m training.train_lightgbm_baseline --data-path data/nse_ohlcv.csv
+python -m training.train_alpha158 --data-path data/nse_ohlcv.csv
 ```
 
-### Training with a specific target horizon and automatic deployment
+### Training with a specific target horizon and deployment
 
 ```bash
-python -m training.train_lightgbm_baseline \
+python -m training.train_alpha158 \
     --data-path data/nse_ohlcv.csv \
     --target direction_60d \
     --deploy
 ```
 
+`--deploy` is gated: a model reaches production only after it passes the promotion gate (audit item ML-05) and is registered with a verified `models/MANIFEST.json` (audit item ML-07). See section 5.
+
 ### Training with data fetched from yfinance (NIFTY 50)
 
-The data adapter can fetch NIFTY 50 constituent history directly. Use the `fetch_nifty50()` function in `training/data_adapter.py` to produce a Parquet file, then pass it to the training script:
+The dataset builder can fetch NIFTY 50 constituent history directly. Use the `fetch_nifty50()` function in `training/dataset_builder.py` to produce a Parquet file, then pass it to the training script:
 
 ```python
-from training.data_adapter import fetch_nifty50
+from training.dataset_builder import fetch_nifty50
 df = fetch_nifty50(start_date="2019-01-01")
 df.to_parquet("data/nse_ohlcv.parquet", index=False)
 ```
@@ -124,13 +131,15 @@ df.to_parquet("data/nse_ohlcv.parquet", index=False)
 Then:
 
 ```bash
-python -m training.train_lightgbm_baseline --data-path data/nse_ohlcv.parquet --deploy
+python -m training.train_alpha158 --data-path data/nse_ohlcv.parquet
 ```
+
+yfinance prices are fetched with `auto_adjust=True`, so history changes after every corporate action, and `*.csv` / `*.parquet` are git-ignored. For each released model, archive the exact training file in versioned storage with its `provenance.dataframe_sha256(df)` and record the hash in the artifact metadata (ML-19).
 
 ### Custom walk-forward folds
 
 ```bash
-python -m training.train_lightgbm_baseline \
+python -m training.train_alpha158 \
     --data-path data/nse_ohlcv.csv \
     --folds "2021:2022,2022:2023,2023:2024"
 ```
@@ -142,19 +151,19 @@ python -m training.train_lightgbm_baseline \
 | `--data-path` | `data/ohlcv.parquet` | Path to OHLCV CSV or Parquet file |
 | `--target` | `direction_20d` | Target column name. Available: `direction_20d`, `direction_60d` |
 | `--folds` | `2021:2022,2022:2023,2023:2024,2024:2025` | Walk-forward folds as `train_end:val_year` pairs |
-| `--deploy` | `false` | Copy trained model to production path after training |
+| `--deploy` | `false` | Deploy the trained model after training (gated, see section 5) |
 | `--min-train-samples` | `500` | Minimum samples required per fold (train and val) |
 
 ---
 
 ## 4. How to Inspect Metrics
 
-After a training run completes, all artifacts are saved to a versioned directory under `training/artifacts/`.
+After a training run completes, all artifacts are saved to a versioned directory under `models/registry/candidate/`.
 
 ### Per-fold validation results
 
 ```
-training/artifacts/<version>/validation_metrics.json
+models/registry/candidate/<version>/validation_metrics.json
 ```
 
 Contains a JSON array of per-fold result dictionaries. Each entry includes: `fold_id`, `train_end_year`, `val_year`, `hit_rate`, `precision`, `recall`, `roc_auc`, `brier_score`, `avg_return_when_bullish`, `avg_return_when_bearish`, `calibration_by_bucket`, `feature_importance`, `n_train`, `n_val`, `best_iteration`.
@@ -162,15 +171,15 @@ Contains a JSON array of per-fold result dictionaries. Each entry includes: `fol
 ### Calibration report
 
 ```
-training/artifacts/<version>/calibration_report.json
+models/registry/candidate/<version>/calibration_report.json
 ```
 
-Contains probability calibration analysis with four buckets (`[0.0, 0.3)`, `[0.3, 0.5)`, `[0.5, 0.7)`, `[0.7, 1.0]`), plus ECE (Expected Calibration Error) and MCE (Maximum Calibration Error). Each bucket reports `count`, `actual_hit_rate`, and `avg_predicted_prob`.
+Contains probability calibration analysis of the pooled walk-forward predictions after the selected calibrator, with four buckets (`[0.0, 0.3)`, `[0.3, 0.5)`, `[0.5, 0.7)`, `[0.7, 1.0]`), plus ECE (Expected Calibration Error), MCE (Maximum Calibration Error), `best_method` (`isotonic` or `platt`, whichever has the lower Brier score) and that method's `brier_score`. The fitted calibrator is saved next to it as `calibrator.joblib`.
 
 ### Feature importance and training metadata
 
 ```
-training/artifacts/<version>/metadata.json
+models/registry/candidate/<version>/metadata.json
 ```
 
 Contains: `model_version`, `target`, `folds`, `n_folds_completed`, `n_features`, `n_total_samples`, `final_num_boost_round`, `lightgbm_params`, `data_date_range`, `n_symbols`, `num_trees`, `saved_at`.
@@ -179,12 +188,12 @@ Feature importance is embedded in `validation_metrics.json` per fold as a ranked
 
 ### Training report (console)
 
-The pipeline prints a formatted markdown report to stdout at the end of training (Step 10). This report includes: training configuration, dataset summary, per-fold results table, aggregate metrics, calibration analysis, top 20 features, and automated recommendations (e.g., warnings if hit rate < 52%, ROC AUC < 0.55, or ECE > 0.05).
+The pipeline prints a formatted markdown report (`metrics.generate_training_report`) to stdout at the end of training (Step 10). This report includes: training configuration, dataset summary, per-fold results table, aggregate metrics, calibration analysis, top 20 features, and automated recommendations (e.g., warnings if hit rate < 52%, ROC AUC < 0.55, or ECE > 0.05).
 
 ### Feature list
 
 ```
-training/artifacts/<version>/features.json
+models/registry/candidate/<version>/features.json
 ```
 
 Ordered JSON array of all feature column names used during training.
@@ -196,37 +205,32 @@ Ordered JSON array of all feature column names used during training.
 ### Version Format
 
 ```
-lightgbm_baseline_alpha158_v1_YYYYMMDD
+lightgbm_alpha158_candidate_v1_YYYYMMDD
 ```
 
-Example: `lightgbm_baseline_alpha158_v1_20260624`
+Example: `lightgbm_alpha158_candidate_v1_20260624`
 
-The version string encodes: model family (`lightgbm_baseline`), feature set (`alpha158`), schema version (`v1`), and UTC training date.
+The version string encodes: model family (`lightgbm`), feature set (`alpha158`), registry status at save time (`candidate`), schema version (`v1`), and UTC training date. The date-only suffix means two runs on the same day share a version; ML-07 makes versions unique and artifacts immutable.
 
 ### Artifact Directory Structure
 
 ```
-training/artifacts/
-  lightgbm_baseline_alpha158_v1_20260624/
-    model.txt                  # LightGBM Booster in text format
+models/registry/candidate/
+  lightgbm_alpha158_candidate_v1_20260624/
+    model.txt                  # LightGBM Booster in text format (objective=binary)
     features.json              # Ordered feature column names
     metadata.json              # Training params, data stats, hyperparams
     validation_metrics.json    # Per-fold walk-forward results
     calibration_report.json    # Probability calibration analysis
+    calibrator.joblib          # Selected isotonic or Platt calibrator
     VERSION                    # Plain text file with version string
 ```
 
 ### Deployment
 
-When `--deploy` is passed (or `deploy_to_production()` is called programmatically), the registry copies three files to the production model directory:
+Deployment is gated. `--deploy` (or `deploy_to_production()`) must first pass the promotion gate (audit item ML-05): Brier skill score against the training base rate with a confidence interval above 0, AUC lower bound above 0.52 per fold, no single predicted class above 80%, net-of-cost lift over always-up and momentum, and an independent holdout. A failed gate stops the deploy before anything is copied; there is no override.
 
-| Source | Destination |
-|--------|-------------|
-| `training/artifacts/<version>/model.txt` | `models/lgb_model.txt` |
-| `training/artifacts/<version>/features.json` | `models/features.json` |
-| (generated) | `models/DEPLOYED_VERSION` (plain text with version string) |
-
-The `DEPLOYED_VERSION` file records which registry version is currently active in production.
+A model that passes is copied to `models/lgb_model.txt` together with `models/MANIFEST.json` (audit item ML-07), which records the model version, the sha256 of the model file, objective, feature list, git SHA, data sha256, the gate result, `base_rate` and `neutral_band`. `ml-engine` verifies the manifest at startup and serves `no_edge` for any booster without one whose gate passed (section 6). Do not copy a model into `models/` by hand.
 
 ### Listing and Loading Versions
 
@@ -234,13 +238,13 @@ The `DEPLOYED_VERSION` file records which registry version is currently active i
 from training.model_registry import list_model_versions, load_model_artifact
 
 # List all trained versions (sorted ascending by date)
-versions = list_model_versions()
+versions = list_model_versions("candidate")
 
 # Load the latest artifact
-artifact = load_model_artifact()  # returns {"model": Booster, "features": [...], "metadata": {...}}
+artifact = load_model_artifact()  # latest stable, else latest candidate; {"model": Booster, "features": [...], "metadata": {...}}
 
 # Load a specific version
-artifact = load_model_artifact("lightgbm_baseline_alpha158_v1_20260620")
+artifact = load_model_artifact("lightgbm_alpha158_candidate_v1_20260624", status="candidate")
 ```
 
 ---
@@ -303,9 +307,9 @@ The feature set follows the Microsoft Qlib Alpha158 specification. Features are 
 | Volume Volatility | 10 | VMA, VSTD | Volume moving average and std |
 | Price-Volume Weighted | 20 | WVMA, VSUMP, VSUMN, VSUMD | Volume-weighted directional moves |
 
-### Extra Features (8 total)
+### Extra Features (8 total, not used for training)
 
-Computed directly from raw OHLCV arrays in `training/feature_builder.py`:
+Computed directly from raw OHLCV arrays in `training/feature_pipeline.py`. They are present in the feature matrix, but `train_alpha158` trains on the Alpha158 columns only, because inference computes only those:
 
 | Feature | Computation |
 |---------|-------------|
@@ -320,11 +324,11 @@ Computed directly from raw OHLCV arrays in `training/feature_builder.py`:
 
 ### Sector One-Hot Encoding
 
-If the input data contains a `sector` column, the feature builder produces binary indicator columns (e.g., `sector_Energy`, `sector_IT`) encoded as `int8` for LightGBM compatibility. Missing sectors default to `"Unknown"`.
+If the input data contains a `sector` column, the feature pipeline produces binary indicator columns (e.g., `sector_Energy`, `sector_IT`) encoded as `int8` for LightGBM compatibility. Missing sectors default to `"Unknown"`. Like the extra features, they are not used for training.
 
 ### Target Columns
 
-The feature builder computes four targets from future price data (strictly after date T):
+The feature pipeline computes four targets from future price data (strictly after date T):
 
 | Column | Definition |
 |--------|------------|
