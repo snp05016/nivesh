@@ -10,7 +10,7 @@ exist. If existing rows violate the new rules the upgrade stops with an error
 instead of deleting data; clean those rows manually and re-run.
 
 Revision ID: 87e47e3f25d3
-Revises: t4u5v6w7x8y9
+Revises: 36e47c594dc7
 Create Date: 2026-10-11
 """
 from typing import Sequence, Union
@@ -21,7 +21,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "87e47e3f25d3"
-down_revision: Union[str, Sequence[str], None] = "t4u5v6w7x8y9"
+down_revision: Union[str, Sequence[str], None] = "36e47c594dc7"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
