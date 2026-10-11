@@ -330,21 +330,9 @@ struct AnalysisScreen: View {
                     )
                 }
             }
-            .navigationBarBackButtonHidden(true)
+            // App-owned back button that also restores the edge-swipe pop gesture.
+            .banknoteBackButton { dismiss() }
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { HapticManager.selection(); 
-    HapticManager.selection()
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .foregroundStyle(Theme.inkPrimary)
-                        .padding(Theme.Spacing.medium)
-                        .background(Theme.canvasDeep)
-                        .clipShape(Circle())
-                }
-                .accessibilityLabel("Back")
-            }
             ToolbarItem(placement: .principal) {
                 // Screen C — inline ticker title
                 Text(ticker)

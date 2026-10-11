@@ -10,17 +10,16 @@ import SwiftUI
 // Usage on any pushed screen:
 //   @Environment(\.dismiss) private var dismiss
 //   ...
-//   .banknoteBackButton { HapticManager.selection();  dismiss() }
+//   .banknoteBackButton { dismiss() }   // the button already plays the haptic
 //
 // Or, when navigating via a NavigationPath binding:
-//   .banknoteBackButton { HapticManager.selection();  path.removeLast() }
+//   .banknoteBackButton { path.removeLast() }
 
 struct BanknoteBackButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button { HapticManager.selection(); 
-    HapticManager.selection()
+        Button {
             HapticManager.selection()
             action()
         } label: {
@@ -51,5 +50,36 @@ extension View {
                     BanknoteBackButton(action: action)
                 }
             }
+            // Hiding the native back button also disables the edge-swipe pop
+            // gesture; re-enable it so one-handed users can still swipe back.
+            .background { PopGestureEnabler().frame(width: 0, height: 0).accessibilityHidden(true) }
+    }
+}
+
+/// Re-arms `interactivePopGestureRecognizer` for the enclosing navigation
+/// controller. UIKit's default delegate refuses to begin once the back button
+/// is hidden, so a shared delegate allows it whenever there is a screen to pop
+/// and no transition is already running (the root-swipe freeze guard).
+private struct PopGestureEnabler: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> Controller { Controller() }
+    func updateUIViewController(_ controller: Controller, context: Context) {}
+
+    final class Controller: UIViewController {
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+            navigationController?.interactivePopGestureRecognizer?.delegate = PopGestureDelegate.shared
+        }
+    }
+}
+
+private final class PopGestureDelegate: NSObject, UIGestureRecognizerDelegate {
+    static let shared = PopGestureDelegate()
+
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        // The pop recognizer lives on the navigation controller's root view,
+        // whose next responder is the navigation controller itself.
+        guard let nav = gestureRecognizer.view?.next as? UINavigationController else { return false }
+        return nav.viewControllers.count > 1 && nav.transitionCoordinator == nil
     }
 }

@@ -94,6 +94,7 @@ struct ProfileSettingsView: View {
         // Display name is only persisted locally in this demo — there is no
         // PATCH /user/profile endpoint on the backend to push it to yet.
         withAnimation { showSavedToast = true }
+        A11y.announce("Profile saved")
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
             withAnimation { showSavedToast = false }
         }

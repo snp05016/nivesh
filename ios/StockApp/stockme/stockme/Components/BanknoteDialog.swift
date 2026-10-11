@@ -44,12 +44,15 @@ private struct BanknoteDialogCard: View {
     let buttons: [BanknoteDialogButton]
     let onClose: () -> Void
 
+    @AccessibilityFocusState private var titleFocused: Bool
+
     var body: some View {
         ZStack {
             // Dimmed scrim — tapping it cancels, matching action-sheet behaviour.
             Theme.inkPrimary.opacity(0.5)
                 .ignoresSafeArea()
                 .onTapGesture { onClose() }
+                .accessibilityHidden(true)
 
             VStack(spacing: Theme.Spacing.card) {
                 VStack(spacing: Theme.Spacing.medium) {
@@ -59,6 +62,8 @@ private struct BanknoteDialogCard: View {
                         .foregroundStyle(Theme.securityGold)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                        .accessibilityFocused($titleFocused)
 
                     if let message, !message.isEmpty {
                         ScrollView {
@@ -92,6 +97,16 @@ private struct BanknoteDialogCard: View {
             .banknoteCard()
             .frame(maxWidth: min(UIScreen.main.bounds.width * 0.86, 460))
             .padding(.horizontal, Theme.screenPadding)
+            // Modal semantics the native alert gives for free: VoiceOver stays
+            // inside the card, two-finger scrub (escape) cancels, and focus
+            // moves to the title once the transition has settled.
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isModal)
+            .accessibilityAction(.escape) { onClose() }
+            .task {
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                titleFocused = true
+            }
         }
     }
 
@@ -137,20 +152,24 @@ private struct BanknoteDialogModifier: ViewModifier {
     let buttons: [BanknoteDialogButton]
 
     func body(content: Content) -> some View {
-        content.overlay {
-            if isPresented {
-                BanknoteDialogCard(
-                    title: title,
-                    message: message,
-                    accessory: accessory,
-                    buttons: buttons,
-                    onClose: { isPresented = false }
-                )
-                .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
-                .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isPresented)
-                .zIndex(1000)
+        content
+            // Background of the modified view must not be reachable by
+            // VoiceOver / Switch Control while the dialog is up.
+            .accessibilityHidden(isPresented)
+            .overlay {
+                if isPresented {
+                    BanknoteDialogCard(
+                        title: title,
+                        message: message,
+                        accessory: accessory,
+                        buttons: buttons,
+                        onClose: { isPresented = false }
+                    )
+                    .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
+                    .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isPresented)
+                    .zIndex(1000)
+                }
             }
-        }
     }
 }
 

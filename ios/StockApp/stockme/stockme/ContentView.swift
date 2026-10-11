@@ -475,6 +475,7 @@ struct MarketsView: View {
         }
         .task { await loadIndices() }
         .onAppear {
+            guard !MotionPolicy.isReduced() else { return }
             withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
                 livePulse = true
             }

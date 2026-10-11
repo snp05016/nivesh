@@ -380,6 +380,7 @@ struct CopilotScreen: View {
             .background(Theme.canvasDeep)
             .cornerRadius(Theme.CornerRadius.large)
             .onAppear {
+                guard !MotionPolicy.isReduced() else { return }
                 withAnimation(Animation.easeInOut(duration: 0.6).repeatForever()) {
                     dotOffset = 3
                 }

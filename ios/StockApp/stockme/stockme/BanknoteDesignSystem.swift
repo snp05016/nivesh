@@ -381,7 +381,7 @@ struct SeverityDot: View {
                 value: isPulsing
             )
             .onAppear {
-                if severity == .high { isPulsing = true }
+                if severity == .high && !MotionPolicy.isReduced() { isPulsing = true }
             }
     }
 }

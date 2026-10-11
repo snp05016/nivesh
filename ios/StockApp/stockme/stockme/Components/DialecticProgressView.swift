@@ -311,7 +311,7 @@ struct AgentEventRow: View {
             .padding(.bottom, Theme.Spacing.standard)
         }
         .onAppear {
-            if event.status == "thinking" {
+            if event.status == "thinking" && !MotionPolicy.isReduced() {
                 withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
                     pulse = true
                 }

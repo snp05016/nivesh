@@ -88,6 +88,7 @@ struct ShimmerModifier: ViewModifier {
                         .frame(width: geo.size.width * 2)
                         .offset(x: phase * geo.size.width)
                         .onAppear {
+                            guard !MotionPolicy.isReduced() else { return }
                             withAnimation(.linear(duration: 1.4).repeatForever(autoreverses: false)) {
                                 phase = 1
                             }

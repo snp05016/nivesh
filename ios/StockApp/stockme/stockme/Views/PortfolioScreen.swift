@@ -484,6 +484,7 @@ struct PortfolioScreen: View {
                             NotificationCenter.default.post(name: .watchlistUpdated, object: nil)
                             addedBannerTicker = entry.ticker
                             withAnimation { showAddedBanner = true }
+                            A11y.announce("\(entry.ticker) added to watchlist")
                             try? await Task.sleep(nanoseconds: 2_000_000_000)
                             withAnimation { showAddedBanner = false }
                         }

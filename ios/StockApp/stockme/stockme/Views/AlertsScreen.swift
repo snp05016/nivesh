@@ -24,6 +24,9 @@ class AlertsViewModel: ObservableObject {
         if !triggered.isEmpty {
             triggeredBanner = triggered
             showTriggeredBanner = true
+            if let first = triggered.first {
+                A11y.announce("Alert triggered. \(first.ticker) reached \(IndianFormatter.price(first.currentPrice))")
+            }
             await fetchAlerts(userId: userId)
         }
     }
