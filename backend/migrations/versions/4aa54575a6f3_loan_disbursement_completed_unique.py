@@ -12,7 +12,7 @@ hand, never auto-deleted.
 downgrade: drops the index if present.
 
 Revision ID: 4aa54575a6f3
-Revises: 117b4057d650
+Revises: 55ecd4916ce6
 Create Date: 2026-10-11
 """
 from typing import Sequence, Union
@@ -23,7 +23,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "4aa54575a6f3"
-down_revision: Union[str, Sequence[str], None] = "117b4057d650"
+down_revision: Union[str, Sequence[str], None] = "55ecd4916ce6"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
