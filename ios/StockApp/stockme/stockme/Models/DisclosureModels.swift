@@ -153,18 +153,34 @@ struct KeyFactStatementDTO: Codable, Equatable {
 /// is the caller's *effective* tier — derived from UserSubscription's
 /// is_active/renews_at rather than trusting the possibly-stale `tier`
 /// column directly (see entitlement_service.get_effective_tier). `features`
-/// maps every server-enforced feature key (entitlement_service.FEATURE_MIN_TIER,
-/// one key per require_entitlement() call site) to whether the caller's
-/// effective tier currently unlocks it.
+/// maps every server-enforced feature key (entitlement_service.FEATURE_MIN_TIER)
+/// to whether the caller's effective tier currently unlocks them. `catalog`
+/// lists the same keys with paywall titles and minimum tiers; it is nil from
+/// servers that predate it.
 struct EntitlementsDTO: Codable, Equatable {
     let tier: String
     let features: [String: Bool]
+    var catalog: [FeatureCatalogEntryDTO]? = nil
 
     var parsedTier: SubscriptionTier { SubscriptionTier(rawValue: tier) ?? .free }
 
     /// Fails closed: a key the server did not return is treated as locked.
     func isUnlocked(_ featureKey: String) -> Bool {
         features[featureKey] ?? false
+    }
+}
+
+/// One gated feature from entitlement_service.get_feature_catalog().
+struct FeatureCatalogEntryDTO: Codable, Equatable, Identifiable {
+    let key: String
+    let title: String
+    let minTier: String
+
+    var id: String { key }
+
+    enum CodingKeys: String, CodingKey {
+        case key, title
+        case minTier = "min_tier"
     }
 }
 

@@ -10,26 +10,10 @@ import json
 import sys
 import os
 
-sys.path.insert(0, '/Users/saumya/Desktop/nivesh/backend')
 from main import app
 
-# Mock rate limiter to avoid 429 errors during testing
-with patch('main._check_rate_limit', return_value=True):
-    client = TestClient(app)
-
-
-def reset_rate_limiter():
-    """Reset rate limiter state between tests."""
-    from helpers import _rate_limit_store
-    _rate_limit_store.clear()
-
-
-@pytest.fixture(autouse=True)
-def reset_rate_limit():
-    """Reset rate limiter before each test."""
-    reset_rate_limiter()
-    yield
-    reset_rate_limiter()
+# Rate-limiter state is reset per test by the autouse fixture in conftest.py.
+client = TestClient(app)
 
 
 # ==================== AUTH TESTS ====================

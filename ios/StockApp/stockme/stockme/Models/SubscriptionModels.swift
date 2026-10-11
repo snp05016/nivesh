@@ -69,18 +69,34 @@ enum BillingCycle: String, Codable, CaseIterable, Identifiable {
 
 /// A single row in the tier comparison feature matrix.
 struct SubscriptionFeatureRow: Identifiable {
-    let id = UUID()
     let title: String
     /// Value shown per tier — nil renders as a dash, otherwise a checkmark
     /// (for "true"/"yes") or the literal string (e.g. "5/day", "Unlimited").
     let values: [SubscriptionTier: String?]
+
+    var id: String { title }
+
+    /// Matrix rows generated from the server catalogue (GET
+    /// /api/v1/subscription/entitlements `catalog`): a checkmark from the
+    /// feature's minimum tier upward, a dash below it. An unknown tier
+    /// renders as unavailable everywhere.
+    static func rows(from catalog: [FeatureCatalogEntryDTO]) -> [SubscriptionFeatureRow] {
+        catalog.map { entry in
+            let minRank = SubscriptionTier(rawValue: entry.minTier)?.rank ?? Int.max
+            var values: [SubscriptionTier: String?] = [:]
+            for tier in SubscriptionTier.allCases {
+                let value: String? = tier.rank >= minRank ? "yes" : nil
+                values.updateValue(value, forKey: tier)
+            }
+            return SubscriptionFeatureRow(title: entry.title, values: values)
+        }
+    }
 }
 
 /// One pricing/plan entry shown in the paywall's tier comparison. The
 /// backend has no plan/pricing-catalog table or endpoint (only
 /// user_subscriptions, which stores the *current* plan — see
-/// backend/models/db_models.py UserSubscription) so, like
-/// SubscriptionFeatureCatalog in PaywallView.swift, this catalog is defined
+/// backend/models/db_models.py UserSubscription) so this catalog is defined
 /// client-side rather than fetched. MOCK DATA — prices are demo figures, not
 /// live App Store SKU prices.
 struct SubscriptionPlanDTO: Identifiable, Equatable {

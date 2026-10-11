@@ -183,20 +183,20 @@ from main import app
 from database import init_db
 init_db()
 
-# Bypass in-memory rate limiter — tests share one IP (127.0.0.1) and would
-# exhaust the 30-req/60-s window within a single test class.
-import main as _main_module
-_main_module._check_rate_limit = lambda _ip: True
-
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limiter():
-    """The security middleware calls core.rate_limiter directly (the main.py
-    bypass above does not reach it), so clear its store per test: tests share
-    one client IP and /login is capped at 5/minute."""
+    """Clear the live limiter's store around every test (TEST-21).
+
+    The security middleware calls core.rate_limiter._check_rate_limit (via helpers),
+    keyed per client IP and exact path; every TestClient shares one IP, so without
+    this /analyze (10/hour) and /login (5/minute) results depend on test order.
+    The limiter stays enabled, so tests can still assert 429 within one test.
+    """
     from core.rate_limiter import _rate_limit_store
     _rate_limit_store.clear()
     yield
+    _rate_limit_store.clear()
 
 
 import services.job_manager as _job_manager

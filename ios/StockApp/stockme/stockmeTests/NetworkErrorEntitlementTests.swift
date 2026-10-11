@@ -70,4 +70,20 @@ final class NetworkErrorEntitlementTests: XCTestCase {
         // Fail closed: a key the server did not return stays locked.
         XCTAssertFalse(vm.isFeatureUnlocked(.sectorRotation))
     }
+
+    /// UX-12: the paywall matrix is built from the server catalogue, not a client list.
+    func testPaywallRowsComeFromServerCatalog() throws {
+        let json = Data(#"{"tier":"free","features":{"sector_rotation":false},"catalog":[{"key":"sector_rotation","title":"Sector rotation analytics","min_tier":"pro"}]}"#.utf8)
+        let dto = try JSONDecoder().decode(EntitlementsDTO.self, from: json)
+        let rows = SubscriptionFeatureRow.rows(from: dto.catalog ?? [])
+        XCTAssertEqual(rows.map(\.title), ["Sector rotation analytics"])
+        XCTAssertNil(rows[0].values[.free] ?? nil)
+        XCTAssertEqual(rows[0].values[.pro] ?? nil, "yes")
+        XCTAssertEqual(rows[0].values[.superPro] ?? nil, "yes")
+    }
+
+    func testEntitlementsDecodeWithoutCatalog() throws {
+        let json = Data(#"{"tier":"pro","features":{}}"#.utf8)
+        XCTAssertNil(try JSONDecoder().decode(EntitlementsDTO.self, from: json).catalog)
+    }
 }

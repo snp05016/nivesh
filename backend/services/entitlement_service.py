@@ -19,10 +19,10 @@ from services import subscription_service
 # user's effective tier against a feature's minimum required tier.
 TIER_RANK = {"free": 0, "pro": 1, "super_pro": 2}
 
-# Feature keys mapped to their minimum required tier. Every key here maps
-# 1:1 to a require_entitlement("<key>") call site in routers/ (enforced by
-# tests/test_entitlement_catalog.py). Do not add a key until an endpoint
-# actually gates on it: the iOS paywall renders this map verbatim.
+# Feature keys mapped to their minimum required tier. Every key here must be
+# enforced by a require_entitlement("<key>") dependency on a real endpoint
+# (tests/test_entitlement_catalog.py checks this): the paywall is generated
+# from this table, so it never advertises a perk the server does not gate.
 FEATURE_MIN_TIER = {
     "advanced_analysis": "pro",       # routers/predictions.py performance/calibration dashboards
     "sector_rotation": "pro",         # routers/sector_rotation.py market rotation analytics
@@ -31,6 +31,26 @@ FEATURE_MIN_TIER = {
     "technical_picks": "pro",         # routers/strategy.py /backtest — real technical-rule backtest engine (services/strategy_engine.py)
     "ideas_for_profit": "pro",        # routers/options_strategy.py /options/payoff — real multi-leg options P&L/strategy builder
 }
+
+# User-facing paywall titles for FEATURE_MIN_TIER keys.
+FEATURE_TITLES = {
+    "advanced_analysis": "Prediction performance dashboards",
+    "sector_rotation": "Sector rotation analytics",
+    "comprehensive_stock_insights": "Valuation insights",
+    "swot_analysis": "Risk signals",
+    "technical_picks": "Strategy backtester",
+    "ideas_for_profit": "Options strategy builder",
+}
+
+
+def get_feature_catalog() -> list[dict]:
+    """Returns [{key, title, min_tier}] for every gated feature, cheapest tier first —
+    the single source the iOS paywall renders its feature list and matrix from."""
+    catalog = [
+        {"key": key, "title": FEATURE_TITLES.get(key, key), "min_tier": min_tier}
+        for key, min_tier in FEATURE_MIN_TIER.items()
+    ]
+    return sorted(catalog, key=lambda c: (TIER_RANK.get(c["min_tier"], 0), c["title"]))
 
 
 def get_effective_tier(user_id: int) -> str:
@@ -81,13 +101,13 @@ def has_entitlement(user_id: int, feature_key: str) -> bool:
 
 
 def get_all_entitlements(user_id: int) -> dict:
-    """Returns {tier, features: {feature_key: bool}} for the current user —
+    """Returns {tier, features: {feature_key: bool}, catalog} for the current user —
     consumed by GET /api/v1/subscription/entitlements for the iOS paywall
-    banner to decide what to show/gate client-side."""
+    to decide what to show/gate client-side."""
     effective_tier = get_effective_tier(user_id)
     tier_rank = TIER_RANK.get(effective_tier, 0)
     features = {
         feature_key: tier_rank >= TIER_RANK.get(min_tier, 0)
         for feature_key, min_tier in FEATURE_MIN_TIER.items()
     }
-    return {"tier": effective_tier, "features": features}
+    return {"tier": effective_tier, "features": features, "catalog": get_feature_catalog()}

@@ -84,7 +84,7 @@ struct PaywallView: View {
             Text("Unlock the Full Research Desk")
                 .font(Theme.engravedSerif(size: 22, weight: .bold))
                 .foregroundStyle(Theme.inkPrimary)
-            Text("Valuation insights, risk signals, strategy backtests and sector rotation analytics.")
+            Text("Prediction dashboards, valuation insights and strategy tools.")
                 .font(Theme.engravedSerif(size: 13, relativeTo: .subheadline))
                 .foregroundStyle(Theme.inkSecondary)
         }
@@ -148,28 +148,30 @@ struct PaywallView: View {
         }
     }
 
-    // MARK: - Server-Verified Entitlements
+    // MARK: - Included Features
     //
-    // Real gate check, not a static client-side assumption: sourced from
-    // GET /api/v1/subscription/entitlements (services/entitlement_service.py
-    // FEATURE_MIN_TIER), which is the exact set of feature keys real
-    // premium endpoints enforce server-side via core/entitlement_gate.py's
-    // require_entitlement() dependency. Only keys the server returns are
-    // rendered, so the server drives the list.
+    // Real gate check, not a static client-side assumption: both this list
+    // and the matrix below come from GET /api/v1/subscription/entitlements
+    // (`catalog`, services/entitlement_service.py FEATURE_MIN_TIER), the
+    // exact set of feature keys premium endpoints enforce server-side via
+    // core/entitlement_gate.py's require_entitlement() dependency. Hidden
+    // when the server sends no catalogue (older backend).
+
+    private var catalog: [FeatureCatalogEntryDTO] { vm.entitlements?.catalog ?? [] }
 
     @ViewBuilder
     private var serverEntitlementsSection: some View {
-        if let entitlements = vm.entitlements {
+        if let entitlements = vm.entitlements, !catalog.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                Text("SERVER-VERIFIED ENTITLEMENTS")
+                Text("INCLUDED FEATURES")
                     .font(Theme.officialStampFont(size: 10))
                     .tracking(1.5)
                     .foregroundStyle(Theme.inkSecondary)
                 VStack(spacing: Theme.Spacing.none) {
-                    ForEach(EntitlementFeatureKeyDisplay.all.filter { entitlements.features[$0.key.rawValue] != nil }, id: \.key.rawValue) { entry in
+                    ForEach(catalog) { entry in
                         EntitlementFeatureRow(
                             title: entry.title,
-                            isUnlocked: entitlements.isUnlocked(entry.key.rawValue)
+                            isUnlocked: entitlements.isUnlocked(entry.key)
                         )
                     }
                 }
@@ -180,20 +182,23 @@ struct PaywallView: View {
 
     // MARK: - Feature Matrix
 
+    @ViewBuilder
     private var featureMatrix: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-            Text("COMPARE FEATURES")
-                .font(Theme.officialStampFont(size: 10))
-                .tracking(1.5)
-                .foregroundStyle(Theme.inkSecondary)
+        if !catalog.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                Text("COMPARE FEATURES")
+                    .font(Theme.officialStampFont(size: 10))
+                    .tracking(1.5)
+                    .foregroundStyle(Theme.inkSecondary)
 
-            VStack(spacing: Theme.Spacing.none) {
-                matrixHeaderRow
-                ForEach(SubscriptionFeatureCatalog.rows) { row in
-                    FeatureMatrixRow(row: row)
+                VStack(spacing: Theme.Spacing.none) {
+                    matrixHeaderRow
+                    ForEach(SubscriptionFeatureRow.rows(from: catalog)) { row in
+                        FeatureMatrixRow(row: row)
+                    }
                 }
+                .banknoteCard()
             }
-            .banknoteCard()
         }
     }
 
@@ -343,20 +348,6 @@ private struct FeatureMatrixRow: View {
 
 // MARK: - Server Entitlement Row
 
-private struct EntitlementFeatureKeyDisplay {
-    let key: EntitlementFeatureKey
-    let title: String
-
-    static let all: [EntitlementFeatureKeyDisplay] = [
-        .init(key: .advancedAnalysis, title: "Prediction performance dashboards"),
-        .init(key: .sectorRotation, title: "Sector rotation analytics"),
-        .init(key: .comprehensiveStockInsights, title: "Valuation insights"),
-        .init(key: .swotAnalysis, title: "Risk signals"),
-        .init(key: .technicalPicks, title: "Strategy backtests"),
-        .init(key: .ideasForProfit, title: "Options payoff builder"),
-    ]
-}
-
 private struct EntitlementFeatureRow: View {
     let title: String
     let isUnlocked: Bool
@@ -406,25 +397,6 @@ private extension PaywallView {
         .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(Theme.bearRed.opacity(0.3), lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
     }
-}
-
-// MARK: - Feature Catalog (client-side matrix content, not fetched from backend)
-//
-// Only features the backend actually enforces (entitlement_service
-// FEATURE_MIN_TIER, all "pro" today). No tier quotas (watchlist size, alert
-// counts, scan limits) exist server-side, so none are advertised here.
-
-enum SubscriptionFeatureCatalog {
-    private static let proAndAbove: [SubscriptionTier: String?] = [.free: nil, .pro: "yes", .superPro: "yes"]
-
-    static let rows: [SubscriptionFeatureRow] = [
-        SubscriptionFeatureRow(title: "Prediction performance dashboards", values: proAndAbove),
-        SubscriptionFeatureRow(title: "Sector rotation analytics", values: proAndAbove),
-        SubscriptionFeatureRow(title: "Valuation insights", values: proAndAbove),
-        SubscriptionFeatureRow(title: "Risk signals", values: proAndAbove),
-        SubscriptionFeatureRow(title: "Strategy backtests", values: proAndAbove),
-        SubscriptionFeatureRow(title: "Options payoff builder", values: proAndAbove),
-    ]
 }
 
 #Preview {

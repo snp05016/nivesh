@@ -7,7 +7,7 @@ state via services/subscription_service.py.
 """
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from datetime import datetime
 
 from core.security import require_auth
@@ -16,9 +16,16 @@ from services import entitlement_service, subscription_service
 router = APIRouter(prefix="/api/v1/subscription", tags=["Subscription"])
 
 
+class FeatureCatalogEntry(BaseModel):
+    key: str
+    title: str
+    min_tier: str
+
+
 class EntitlementsResponse(BaseModel):
     tier: str
     features: Dict[str, bool]
+    catalog: List[FeatureCatalogEntry] = []
 
 
 class SubscriptionResponse(BaseModel):

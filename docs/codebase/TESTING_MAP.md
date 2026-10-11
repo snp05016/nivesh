@@ -20,7 +20,6 @@
 | `backend/tests/api/` | Endpoint contract tests. | Run only in allowed target runtime. |
 | `backend/tests/feature_tests/` | Feature-specific workflows such as alerts, analysis, earnings, screener, news. | Run only in allowed target runtime. |
 | `backend/tests/smoke/` | Startup/ping smoke tests. | Run only in allowed target runtime. |
-| `backend/tests_suite/` | Older comprehensive mock/api/database/scraper/staleness suites. | Run only in allowed target runtime. |
 | `ml-engine/tests/` | Alpha158/ML pipeline tests for the microservice. | Run only in allowed target runtime. |
 
 ## Test Inventory
@@ -114,12 +113,6 @@
 - `backend/tests/test_stress_test_engine.py`
 - `backend/tests/test_stress_test_jobs.py`
 - `backend/tests/test_worker.py`
-- `backend/tests_suite/test_ai_mock_comprehensive.py`
-- `backend/tests_suite/test_api_endpoints_comprehensive.py`
-- `backend/tests_suite/test_database_comprehensive.py`
-- `backend/tests_suite/test_scraper_mock_comprehensive.py`
-- `backend/tests_suite/test_staleness_comprehensive.py`
-- `backend/tests_suite/test_ticker_matcher_comprehensive.py`
 - `ml-engine/tests/test_alpha158_pipeline.py`
 
 ## Verification Matrix
