@@ -12,7 +12,7 @@ Base.metadata.create_all, so fresh databases already have them), and
 downgrade drops only columns that exist.
 
 Revision ID: 55ecd4916ce6
-Revises: t4u5v6w7x8y9
+Revises: 8bd11e06fbf4
 Create Date: 2026-10-11
 """
 from typing import Sequence, Union
@@ -23,7 +23,7 @@ from sqlalchemy import inspect
 from alembic import op
 
 revision: str = "55ecd4916ce6"
-down_revision: Union[str, Sequence[str], None] = "t4u5v6w7x8y9"
+down_revision: Union[str, Sequence[str], None] = "8bd11e06fbf4"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
