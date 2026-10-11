@@ -89,6 +89,21 @@ final class WireDateTests: XCTestCase {
         XCTAssertEqual(WireDate.istDayFormatter.calendar.identifier, .gregorian)
     }
 
+    /// IOSCORE-29: malformed day strings are rejected, never mapped to "today".
+    func testDayRejectsInvalidStrings() {
+        XCTAssertNil(WireDate.day("2026-13-01"))
+        XCTAssertNil(WireDate.day("05/01/2026"))
+        XCTAssertNil(WireDate.day(""))
+    }
+
+    /// IOSCORE-29: news timestamps go through the shared parser (naive = UTC).
+    func testNewsPublishedAtParsesNaiveMicroseconds() throws {
+        let json = #"{"id":1,"source":"s","ticker":null,"headline":"h","summary":null,"image_url":null,"article_url":"https://x","published_at":"2026-10-08T12:34:56.789012","is_red_flag":false,"sentiment":null}"#
+        let item = try JSONDecoder().decode(NewsArticleItem.self, from: Data(json.utf8))
+        let d = try XCTUnwrap(item.parsedDate)
+        XCTAssertEqual(d.timeIntervalSince1970, 1_791_462_896.789, accuracy: 0.001)
+    }
+
     func testLegacyPurchaseDateStillParses() {
         XCTAssertEqual(WireDate.ddMMMyyyy.date(from: "08-Oct-2026"), gregorianDay(2026, 10, 8))
     }

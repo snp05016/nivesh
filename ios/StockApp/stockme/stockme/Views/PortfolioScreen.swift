@@ -997,7 +997,7 @@ private struct HoldingNoteRow: View {
                 Text(holding.stock.ticker)
                     .font(Theme.serialNumberFont(size: 14, relativeTo: .body).weight(.bold))
                     .foregroundStyle(Theme.inkPrimary)
-                Text("\(Int(holding.shares)) shares")
+                Text("\(DecimalText.editable(holding.shares, maxFractionDigits: 4)) shares")
                     .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .footnote))
                     .foregroundStyle(Theme.inkTertiary)
                 if let note = holding.notes, !note.isEmpty {
@@ -1663,6 +1663,9 @@ private struct EditHoldingSheet: View {
         
         @State private var sharesText: String
         @State private var buyPriceText: String
+        // Seeded text: an untouched field sends the stored value byte-exact.
+        private let initialSharesText: String
+        private let initialBuyPriceText: String
         @State private var errorText: String? = nil
         @State private var isSaving = false
         
@@ -1670,12 +1673,20 @@ private struct EditHoldingSheet: View {
             self.holding = holding
             self.viewModel = viewModel
             self.authManager = authManager
-            _sharesText = State(initialValue: String(format: "%g", holding.shares))
-            _buyPriceText = State(initialValue: String(format: "%.2f", holding.buyPrice))
+            let sharesSeed = DecimalText.editable(holding.shares, maxFractionDigits: 4)
+            let priceSeed = DecimalText.editable(holding.buyPrice, maxFractionDigits: 4)
+            initialSharesText = sharesSeed
+            initialBuyPriceText = priceSeed
+            _sharesText = State(initialValue: sharesSeed)
+            _buyPriceText = State(initialValue: priceSeed)
         }
         
-        private var shares: Double { Double(sharesText) ?? 0 }
-        private var buyPrice: Double { Double(buyPriceText) ?? 0 }
+        private var shares: Double {
+            sharesText == initialSharesText ? holding.shares : DecimalText.parse(sharesText) ?? 0
+        }
+        private var buyPrice: Double {
+            buyPriceText == initialBuyPriceText ? holding.buyPrice : DecimalText.parse(buyPriceText) ?? 0
+        }
         private var canSave: Bool { shares > 0 && buyPrice > 0 && !isSaving }
         
         var body: some View {
@@ -1705,7 +1716,7 @@ private struct EditHoldingSheet: View {
                                     .font(Theme.officialStampFont(size: 9))
                                     .foregroundStyle(Theme.inkSecondary)
                                 TextField("Shares", text: $sharesText)
-                                    .keyboardType(.numberPad)
+                                    .keyboardType(holding.shares.rounded() == holding.shares ? .numberPad : .decimalPad)
                                     .font(Theme.serialNumberFont(size: 16))
                                     .foregroundStyle(Theme.inkPrimary)
                                     .padding(Theme.Spacing.standard)

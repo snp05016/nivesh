@@ -5,6 +5,7 @@ on:
     paths:
       - 'ios/**'
       - 'scripts/find_unreferenced_swift.py'
+      - 'scripts/ios_lint_gates.sh'
       - 'scripts/ios_release_checks.sh'
       - 'scripts/ios_static_checks.sh'
       - 'scripts/lint_ios_release_config.py'
@@ -40,7 +41,7 @@ jobs:
         ios=true
         if [ "$EVENT" = "pull_request" ]; then
           files=$(git -c core.quotePath=false diff --no-renames --name-only "origin/$BASE_REF...HEAD")
-          if ! printf '%s\n' "$files" | grep -E '^(ios/|scripts/find_unreferenced_swift\.py|scripts/ios_release_checks\.sh|scripts/ios_static_checks\.sh|scripts/lint_ios_release_config\.py|\.github/workflows/ios_ci\.yml)' >/dev/null; then
+          if ! printf '%s\n' "$files" | grep -E '^(ios/|scripts/find_unreferenced_swift\.py|scripts/ios_lint_gates\.sh|scripts/ios_release_checks\.sh|scripts/ios_static_checks\.sh|scripts/lint_ios_release_config\.py|\.github/workflows/ios_ci\.yml)' >/dev/null; then
             ios=false
           fi
         fi
@@ -48,6 +49,9 @@ jobs:
 
     - name: iOS static checks
       run: bash scripts/ios_static_checks.sh
+
+    - name: iOS lint gates
+      run: bash scripts/ios_lint_gates.sh
 
     - name: Info.plist purpose-string lint
       run: python3 scripts/lint_ios_release_config.py
@@ -76,3 +80,10 @@ jobs:
         cd ios/StockApp/stockme || exit 1
         set -o pipefail
         xcodebuild -project stockme.xcodeproj -scheme stockme -destination 'platform=iOS Simulator,name=iPhone 17' build 2>&1 | tail -20
+
+    # The stockme scheme's TestAction lists stockmeTests (unit) and skips the UI tests.
+    - name: Unit tests
+      run: |
+        cd ios/StockApp/stockme || exit 1
+        set -o pipefail
+        xcodebuild test -project stockme.xcodeproj -scheme stockme -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:stockmeTests 2>&1 | tail -80

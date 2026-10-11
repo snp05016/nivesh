@@ -37,21 +37,9 @@ struct NewsArticleItem: Codable, Identifiable {
         case sentiment
     }
 
-    // Backend returns dates without "Z" timezone ("2026-06-08T21:04:26").
-    // ISO8601DateFormatter requires timezone by default — use a fallback chain.
-    var parsedDate: Date? {
-        let iso = ISO8601DateFormatter()
-        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = iso.date(from: publishedAt) { return d }
-        iso.formatOptions = [.withInternetDateTime]
-        if let d = iso.date(from: publishedAt) { return d }
-        let f = DateFormatter()
-        f.timeZone = TimeZone(identifier: "UTC")
-        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
-        if let d = f.date(from: publishedAt) { return d }
-        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        return f.date(from: publishedAt)
-    }
+    // Backend returns naive UTC timestamps ("2026-06-08T21:04:26[.ffffff]");
+    // the shared parser handles that without allocating a formatter per access.
+    var parsedDate: Date? { WireDate.parseISO(publishedAt) }
 }
 
 struct YouTubeVideoItem: Codable, Identifiable {

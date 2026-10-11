@@ -114,14 +114,8 @@ struct EarningsResult: Codable, Identifiable {
         guard revenue > 0 else { return 0 }
         return (netProfit / revenue) * 100
     }
-    var parsedResultDate: Date {
-        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
-        return f.date(from: resultDate) ?? Date()
-    }
     var parsedReportedAt: Date? {
-        guard let s = reportedAt else { return nil }
-        let f = ISO8601DateFormatter()
-        return f.date(from: s)
+        reportedAt.flatMap(WireDate.parseISO)
     }
 }
 
