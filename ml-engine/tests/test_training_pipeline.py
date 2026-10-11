@@ -538,7 +538,6 @@ class TestModelStatusContract:
 
         status = ModelStatus(
             lightgbm_loaded=True,
-            tra_loaded=False,
             scaler_loaded=False,
             ml_engine_mode="trained_lightgbm_baseline",
             supported_horizons=[20],
