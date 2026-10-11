@@ -125,7 +125,6 @@ def start_scheduler():
     from services.nse_data_provider import download_bhavcopy
     from services.piotroski import batch_refresh_piotroski
     from services.error_telemetry import generate_daily_digest
-    from database import promote_initial_admins
 
     async def _run_harvest_all_advisors():
         _dash_update_harvest("advisor", "running")
@@ -338,7 +337,6 @@ def start_scheduler():
     )
 
     _scheduler.start()
-    promote_initial_admins()
     logging.info(
         "All schedulers started — existing: (advisor 1:30, news 12:30, yt-channel 1:00, "
         "yt-portfolio 1:15, snapshot 4:30 PM, pkscreener 4:45 PM, outcome-eval 2:00 AM) | "

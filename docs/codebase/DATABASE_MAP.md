@@ -8,7 +8,7 @@
 - PostgreSQL URLs use pooled SQLAlchemy engine settings (`pool_size=10`, `max_overflow=20`, `pool_pre_ping=True`, `pool_recycle=3600`) at `backend/database.py:27-36`.
 - SQLite enables WAL, normal sync, busy timeout, and foreign keys at `backend/database.py:45-51`.
 - `get_session()` is the context manager that yields a session, rolls back on exception, and closes in `finally` at `backend/database.py:56-65`.
-- `init_db()` calls `Base.metadata.create_all()` and seeds default users/portfolio when empty at `backend/database.py:175-209`; schema changes still require Alembic migrations under AGENTS.md.
+- `init_db()` only calls `Base.metadata.create_all()`; it seeds no accounts. Admin is the `users.is_admin` flag, set with `backend/scripts/manage_users.py set-admin` (never by username). Schema changes still require Alembic migrations under AGENTS.md.
 
 ```mermaid
 erDiagram

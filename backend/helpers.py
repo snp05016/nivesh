@@ -19,7 +19,7 @@ from database import (
     NotificationErrorLog, log_notification_error,
     AdvisorBiography, TextAdvisoryInsight, IdeasErrorLog, log_ideas_error,
     create_access_token, verify_access_token,
-    is_admin, promote_initial_admins, get_analysis_for_date, get_all_ticker_history,
+    is_admin, get_analysis_for_date, get_all_ticker_history,
     save_analysis, get_recent_analyses
 )
 

@@ -2,7 +2,8 @@ import logging
 """
 reset_mock_user.py — Delete all records for snp050106@gmail.com, then reinsert complete mock data.
 
-Usage: python backend/scripts/reset_mock_user.py
+Usage (dev databases only; prints a fresh random password once):
+    ALLOW_DEV_SEED=1 python backend/scripts/reset_mock_user.py
 
 Deletes in dependency order:
   PortfolioValuationHistory → TradeJournal → Portfolio → EarningsAlert
@@ -18,6 +19,7 @@ Then recreates:
 import sys
 import os
 import random
+import secrets
 from datetime import datetime, timedelta, date
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -43,7 +45,6 @@ from database import (
 USER_EMAIL = "snp050106@gmail.com"
 USER_NAME = "saumya"
 USER_DISPLAY = "Saumya Patel"
-USER_PASSWORD = "StrongPass@123"
 
 # 12 specified holdings
 HOLDINGS = [
@@ -177,7 +178,10 @@ def generate_valuation_trajectory():
 # ---------------------------------------------------------------------------
 
 def main():
+    if os.getenv("ALLOW_DEV_SEED") != "1":
+        sys.exit("refusing: set ALLOW_DEV_SEED=1 (dev only)")
     init_db()
+    password = secrets.token_urlsafe(12)  # CSPRNG; random.seed below does not affect it
     random.seed(42)  # Reproducible mock data
 
     with get_session() as session:
@@ -217,7 +221,7 @@ def main():
         created_at = TODAY - timedelta(days=90)
         user = User(
             username=USER_NAME,
-            password_hash=_hash_password(USER_PASSWORD),
+            password_hash=_hash_password(password),
             display_name=USER_DISPLAY,
             created_at=created_at,
         )
@@ -225,6 +229,7 @@ def main():
         session.commit()
         session.refresh(user)
         logging.info(f"[0.2] Created user: {user.username} (id={user.id})")
+        print(f"Created dev user '{USER_NAME}' with password: {password}")
 
         # ── 0.3: Insert holdings ────────────────────────────────────────────
         holdings_added = []
@@ -343,7 +348,6 @@ def main():
         logging.info(f"  Invested:            ₹{INVESTED_VALUE:,.2f}")
         logging.info(f"  Current value:       ₹{END_VALUE:,.2f}")
         logging.info(f"  Total P&L:           ₹{END_VALUE - INVESTED_VALUE:,.2f}")
-        logging.info(f"  Password:            {USER_PASSWORD}")
         logging.info("=" * 60)
 
         all_ok = True
@@ -368,7 +372,7 @@ def main():
         else:
             logging.info("\n⚠️  Some checks failed — review above")
 
-        logging.info(f"\nLogin: {USER_EMAIL} / {USER_PASSWORD}")
+        logging.info(f"\nLogin: {USER_NAME} with the password printed above")
 
 
 if __name__ == "__main__":

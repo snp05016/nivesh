@@ -50,7 +50,6 @@
 - `backend/tests/database_integrity_tests/test_11_check_constraints.py`
 - `backend/tests/database_integrity_tests/test_12_indexes.py`
 - `backend/tests/database_integrity_tests/test_13_telemetry_tables.py`
-- `backend/tests/database_integrity_tests/test_14_seed_data.py`
 - `backend/tests/database_integrity_tests/test_15_error_recovery.py`
 - `backend/tests/db/test_model_integrity.py`
 - `backend/tests/feature_tests/advisor_harvester/test_advisor_harvester.py`

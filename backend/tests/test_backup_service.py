@@ -102,7 +102,6 @@ def test_scheduler_registers_nightly_backup(monkeypatch):
     monkeypatch.setattr(hw, "_scheduler_lock_file", None)
     monkeypatch.setattr(hw, "open", lambda *_a, **_k: io.StringIO(), raising=False)  # no real lock file
     monkeypatch.setattr(fcntl, "lockf", lambda *_a, **_k: None)
-    monkeypatch.setattr("database.promote_initial_admins", lambda: None)
 
     hw.start_scheduler()
 

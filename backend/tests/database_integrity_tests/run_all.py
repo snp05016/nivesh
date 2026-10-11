@@ -40,7 +40,6 @@ MODULES = [
     "test_11_check_constraints.py",
     "test_12_indexes.py",
     "test_13_telemetry_tables.py",
-    "test_14_seed_data.py",
     "test_15_error_recovery.py",
 ]
 

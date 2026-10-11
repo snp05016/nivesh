@@ -186,35 +186,6 @@ struct LoginScreen: View {
                                 .font(Theme.labelStyle)
                                 .foregroundStyle(Theme.securityGold)
                         }
-
-                        if !isRegistering {
-                            // Quick-fill (Official Tokens)
-                            VStack(spacing: Theme.Spacing.standard) {
-                                Text("QUICK AUTHENTICATION")
-                                    .font(Theme.labelStyle)
-                                    .foregroundStyle(Theme.inkSecondary)
-                                
-                                HStack(spacing: Theme.Spacing.medium) {
-                                    ForEach(["saumya", "nirav", "ankur"], id: \.self) { name in
-                                        Button { HapticManager.selection(); 
-    HapticManager.selection()
-                                            username = name
-                                            password = "123"
-                                            focusedField = nil
-                                        } label: {
-                                            Text(name.uppercased())
-                                                .font(Theme.serialNumberFont(size: 11, relativeTo: .caption))
-                                                .padding(.horizontal, Theme.Spacing.card)
-                                                .padding(.vertical, Theme.Spacing.standard)
-                                                .background(username == name ? Theme.securityGold.opacity(0.1) : Color.clear)
-                                                .foregroundStyle(username == name ? Theme.securityGold : Theme.inkPrimary)
-                                                .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(username == name ? Theme.securityGold : Theme.inkPrimary.opacity(0.1), lineWidth: 1))
-                                        }
-                                    }
-                                }
-                            }
-                            .padding(.top, Theme.Spacing.medium)
-                        }
                     }
                     .padding(Theme.Spacing.xLarge)
                     .banknoteCard()

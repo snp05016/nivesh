@@ -183,7 +183,7 @@ flowchart LR
 
 - Intended rule: routers handle HTTP validation/process spawning, services hold business logic, repositories hold DB access. Current source still contains direct `session.query(...)` and business logic in several routers, especially `analysis.py`, `portfolio.py`, `market.py`, and dashboard code.
 - API naming is mixed: `/analyze`, `/portfolio/{user_id}`, `/market-indices`, `/search`, `/api/v1/market/*`, `/api/v1/portfolio/*`, and `/harvester/*` coexist.
-- `database.init_db()` still calls `Base.metadata.create_all()` for table creation/seed support; AGENTS.md requires Alembic for schema changes.
+- `database.init_db()` still calls `Base.metadata.create_all()` for table creation (no seed data); AGENTS.md requires Alembic for schema changes.
 - Background schedulers exist in multiple places (`harvest_worker.py`, `nightly_jobs.py`, `celery_tasks.py`, `nivesh-harvester/`), so operational ownership must be verified before changing schedules.
 
 ## Undocumented Components Identified During This Pass

@@ -26,6 +26,10 @@ class User(Base):
     password_hash = Column(String(64), nullable=False)
     display_name  = Column(String(100), nullable=False)
     created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    # AUTH-01: admin is this flag only (scripts/manage_users.py set-admin), never the username.
+    is_admin      = Column(Boolean, nullable=False, default=False, server_default="0")
+    # Bumped on password reset; JWT revocation check is AUTH-13.
+    token_version = Column(Integer, nullable=False, default=0, server_default="0")
 
     portfolio        = relationship("Portfolio",       back_populates="user", cascade="all, delete-orphan")
     analysis_history = relationship("AnalysisHistory", back_populates="user", cascade="all, delete-orphan")

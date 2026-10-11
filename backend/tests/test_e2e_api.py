@@ -13,6 +13,9 @@ from datetime import datetime
 
 BASE_URL = os.getenv("NIVESH_LIVE_E2E_BASE_URL")
 TIMEOUT = 30
+# A real account on the target server; there are no seeded accounts (AUTH-01).
+E2E_USERNAME = os.getenv("E2E_USERNAME")
+E2E_PASSWORD = os.getenv("E2E_PASSWORD")
 
 pytestmark = pytest.mark.skipif(
     not BASE_URL,
@@ -55,9 +58,11 @@ class TestHealth:
 
 class TestAuth:
     def test_login_valid_credentials(self):
+        if not (E2E_USERNAME and E2E_PASSWORD):
+            pytest.skip("login test requires E2E_USERNAME and E2E_PASSWORD")
         r = requests.post(f"{BASE_URL}/login", json={
-            "username": "saumya",
-            "password": "123"
+            "username": E2E_USERNAME,
+            "password": E2E_PASSWORD
         }, timeout=TIMEOUT)
         assert r.status_code == 200
         data = r.json()
@@ -65,7 +70,7 @@ class TestAuth:
 
     def test_login_invalid_password_returns_error(self):
         r = requests.post(f"{BASE_URL}/login", json={
-            "username": "saumya",
+            "username": E2E_USERNAME or "e2e_no_such_user",
             "password": "wrongpassword"
         }, timeout=TIMEOUT)
         assert r.status_code in (401, 422, 200)
@@ -356,18 +361,10 @@ class TestTechnicalSignals:
 # ---------------------------------------------------------------------------
 
 class TestDBState:
-    def test_users_table_has_seeded_data(self):
+    def test_users_list_requires_admin(self):
+        # No seeded accounts any more (AUTH-01), and the user list is admin-only.
         r = requests.get(f"{BASE_URL}/users", timeout=TIMEOUT)
-        assert r.status_code == 200
-        data = r.json()
-        assert len(data) >= 3
-
-    def test_portfolio_table_has_holdings(self):
-        r = requests.get(f"{BASE_URL}/portfolio/2", timeout=TIMEOUT)
-        assert r.status_code == 200
-        data = r.json()
-        if isinstance(data, list):
-            assert len(data) > 0
+        assert r.status_code in (401, 403)
 
 
 # ---------------------------------------------------------------------------

@@ -1,9 +1,10 @@
 import logging
 """
 Populate saumya's portfolio with 50 diverse NSE stocks + trade journal history.
-Run once: python backend/populate_portfolio.py
+Dev databases only (it wipes that user's portfolio):
+    ALLOW_DEV_SEED=1 python backend/populate_portfolio.py
 """
-import sys, os, random
+import sys, os, random, secrets
 sys.path.insert(0, os.path.dirname(__file__))
 
 from database import init_db, get_session, User, Portfolio, TradeJournal
@@ -64,13 +65,17 @@ STOCKS = [
 ]
 
 def main():
+    if os.getenv("ALLOW_DEV_SEED") != "1":
+        sys.exit("refusing: set ALLOW_DEV_SEED=1 (dev only)")
     init_db()
     with get_session() as session:
         saumya = session.query(User).filter(User.username == "saumya").first()
         if not saumya:
             from database import _hash_password
-            saumya = User(username="saumya", password_hash=_hash_password("123"), display_name="Saumya")
+            password = secrets.token_urlsafe(12)
+            saumya = User(username="saumya", password_hash=_hash_password(password), display_name="Saumya")
             session.add(saumya); session.commit(); session.refresh(saumya)
+            print(f"Created dev user 'saumya' with password: {password}")
         logging.info(f"User: {saumya.username} (id={saumya.id})")
 
         existing = session.query(Portfolio).filter(Portfolio.user_id == saumya.id).delete()

@@ -1,4 +1,4 @@
-"""SQLite / PostgreSQL database setup, session management, and seed data.
+"""SQLite / PostgreSQL database setup and session management.
 
 Handles database engine initialization, SQLAlchemy session dependency generation,
 and basic CRUD operations that don't belong to a specific domain repository.
@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import os
 import secrets
 import bcrypt
@@ -179,88 +178,19 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
-# ---------------------------------------------------------------------------
-# Seed data
-# ---------------------------------------------------------------------------
-
-# username -> (display_name, password)
-SEED_USERS = [
-    ("saumya", "Saumya",  "123"),
-    ("nirav",  "Nirav",   "123"),   # Dad — has the portfolio
-    ("ankur",  "Ankur",   "123"),
-]
-
-DAD_HOLDINGS = [
-    ("BGRENERGY",  "BGR Energy Systems Ltd",         6314,   162.00),
-    ("MCLEODRUSS", "McLeod Russel India Ltd",         7000,   48.52),
-    ("JITFINFRA",  "JITF Infralogistics Ltd",           496,    317.72),
-    ("CDSL",       "Central Depository Services",     300,    1530.00),
-    ("GAUDIUMIVF", "Gaudium IVF and Women Health Ltd",500,    120.00),
-    ("SBIN",       "State Bank of India",             290,    1063.00),
-    ("TATAELXSI",  "Tata Elxsi Ltd",                  25,     5533.00),
-    ("OMPOWER",    "OM Power Trans Ltd",              600,    186.00),
-    ("AVANTEL",    "Avantel Ltd",                     1400,   143.00),
-    ("ABBOTINDIA", "Abbott India Ltd",                5,      25982.00),
-    ("SUZLON",     "Suzlon Energy Ltd",               12000,  46.35),
-    ("POLYCAB",    "Polycab India Ltd",               33,     8097.00),
-    ("HAL",        "Hindustan Aeronautics Ltd",       100,    3922.00),
-    ("IDEA",       "Vodafone Idea Ltd",               65000,  12.00),
-    ("APOLLO",     "Apollo Microsystems Ltd",         1800,   232.00),
-    ("BSE",        "BSE Ltd",                         375,    1210.00),
-]
-
-
-
-
-
 def init_db() -> None:
-    """Initialize the database schema and seed initial data.
-    
+    """Create any missing tables (development/test only). Seeds nothing (AUTH-01).
+
     In development/test, creates all tables if they don't exist; any other
     environment gets its schema only from `alembic upgrade head` (DB-07), so
-    create_all can't paper over a missing migration. Seeds default users
-    and portfolio holdings if the database is empty.
+    create_all can't paper over a missing migration.
+
+    Accounts come only from /register; admin rights only from
+    `scripts/manage_users.py set-admin`. Dev data: populate_portfolio.py
+    with ALLOW_DEV_SEED=1.
     """
     if os.environ.get("ENVIRONMENT", "development") in ("development", "test"):
         Base.metadata.create_all(ENGINE)
-
-    with get_session() as session:
-        if session.query(User).count() > 0:
-            return  # already seeded
-
-        # Fixes #112: Only seed dev accounts in non-production environments
-        if os.environ.get("ENVIRONMENT", "development") == "production":
-            logging.info("[init_db] Skipping seed users in production environment")
-            return
-
-        users_created = []
-        for username, display_name, password in SEED_USERS:
-            u = User(
-                username=username,
-                password_hash=_hash_password(password),
-                display_name=display_name,
-            )
-            session.add(u)
-            users_created.append(u)
-        session.flush()
-
-        nirav = next(u for u in users_created if u.username == "nirav")
-
-        holdings = [
-            Portfolio(
-                user_id=nirav.id,
-                ticker=ticker,
-                company_name=company,
-                shares=shares,
-                buy_price=buy_price,
-                group_name="holdings",
-            )
-            for ticker, company, shares, buy_price in DAD_HOLDINGS
-        ]
-        session.add_all(holdings)
-        session.commit()
-        logging.info(f"[DB] Seeded users: {[u.username for u in users_created]}")
-        logging.info(f"[DB] Seeded {len(holdings)} holdings for nirav (user_id={nirav.id})")
 
 
 # ---------------------------------------------------------------------------
@@ -357,13 +287,10 @@ def create_user(session: Session, username: str, password: str, display_name: st
 # ---------------------------------------------------------------------------
 
 import jwt as pyjwt  # noqa: E402
-import threading
 
 _JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
 _JWT_ALGORITHM = "HS256"
 _JWT_EXPIRY_HOURS = 720  # 30 days — prevents silent 401s from expired tokens on mobile
-_admin_lock = threading.Lock()
-_admin_users: set[int] = set()
 
 
 def create_access_token(user_id: int) -> str:
@@ -400,35 +327,21 @@ def verify_access_token(token: str) -> Optional[int]:
         return None
 
 
-def set_admin(user_id: int) -> None:
-    """Grant admin privileges to a user in the current process.
-    
-    Args:
-        user_id (int): The ID of the user to promote.
-    """
-    with _admin_lock:
-        _admin_users.add(user_id)
-
-
 def is_admin(user_id: int) -> bool:
     """Check if a user has admin privileges.
-    
+
+    Reads the persisted users.is_admin flag on every call (set only by
+    scripts/manage_users.py), so every worker agrees and revocation is immediate.
+    Never derived from the username.
+
     Args:
         user_id (int): The user ID to check.
-        
+
     Returns:
-        bool: True if the user is an admin, False otherwise.
+        bool: True if the user exists and is an admin, False otherwise.
     """
-    with _admin_lock:
-        return user_id in _admin_users
-
-
-def promote_initial_admins() -> None:
-    """Promote the default seed users to admin status."""
     with get_session() as session:
-        admins = session.query(User).filter(User.username.in_(["saumya", "nirav"])).all()
-        with _admin_lock:
-            _admin_users.update(u.id for u in admins)
+        return bool(session.query(User.is_admin).filter(User.id == user_id).scalar())
 
 # ---------------------------------------------------------------------------
 # Repository re-exports (bottom of file to avoid circular imports)
