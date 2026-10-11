@@ -87,7 +87,7 @@ LLM_AGENT_MAX_TOKENS: int = int(os.getenv("LLM_AGENT_MAX_TOKENS", 1000))
 # ---------------------------------------------------------------------------
 # Task 38: yfinance circuit breaker
 # ---------------------------------------------------------------------------
-YF_CIRCUIT_THRESHOLD: int = int(os.getenv("YF_CIRCUIT_THRESHOLD", 3))
+YF_CIRCUIT_THRESHOLD: int = int(os.getenv("YF_CIRCUIT_THRESHOLD", 10))
 YF_CIRCUIT_TIMEOUT: int = int(os.getenv("YF_CIRCUIT_TIMEOUT", 300))  # seconds
 
 # ---------------------------------------------------------------------------

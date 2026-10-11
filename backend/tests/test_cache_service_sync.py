@@ -134,3 +134,14 @@ def test_stats_reports_memory_backend_when_redis_down(monkeypatch):
     _redis_down(svc, monkeypatch)
     svc.set_sync("ns", "k", 1, ttl=60)
     assert svc.stats() == {"backend": "memory", "entries": 1}
+
+
+def test_fallback_bounded_per_entry(monkeypatch):
+    """REL-13: the fallback evicts per entry, not per namespace."""
+    svc = CacheService(redis_url="redis://localhost:19999")
+    _redis_down(svc, monkeypatch)
+    maxsize = int(svc._fallback_cache.maxsize)
+    for i in range(maxsize + 500):
+        svc.set_sync("ns", f"k{i}", i, ttl=60)
+    assert len(svc._fallback_cache) <= maxsize
+    assert svc.get_sync("ns", f"k{maxsize + 499}") == maxsize + 499

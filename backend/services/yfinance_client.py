@@ -5,18 +5,23 @@ YFinance wrappers, ticker resolution, exchange suffixes, and L1 in-memory cache.
 Extracted from helpers.py.
 """
 import os
+import re
 import time
 import threading
 import random
 from datetime import datetime, timezone
 
 import yfinance as yf
+from cachetools import TTLCache
 
 from config.settings import (
     YF_BACKOFF_MULTIPLIER as _YF_BACKOFF_MULTIPLIER,
     QUICK_INFO_TTL as _QUICK_INFO_TTL,
     NSE_TICKER_OVERRIDES,
+    YF_CIRCUIT_THRESHOLD as _YF_CIRCUIT_THRESHOLD,
+    YF_CIRCUIT_TIMEOUT as _YF_CIRCUIT_TIMEOUT,
 )
+from services.rate_limiter import yf_acquire
 
 # ---------------------------------------------------------------------------
 # Exchange & Ticker Constants (Task 33: suffixes now env-overridable)
@@ -61,6 +66,46 @@ NSE_TICKERS = {t: f"{t}{EXCHANGE_SUFFIXES['NSE']}" for t in [
 ]}
 
 # ---------------------------------------------------------------------------
+# Shared circuit breaker + token bucket for the wrappers below (REL-14).
+# routers/analysis.py (/screener) uses the same breaker.
+# ---------------------------------------------------------------------------
+_cb_lock = threading.Lock()
+_cb_failures = 0
+_cb_open_until = 0.0
+
+
+def yf_circuit_is_open() -> bool:
+    global _cb_failures
+    with _cb_lock:
+        if _cb_failures >= _YF_CIRCUIT_THRESHOLD:
+            if time.time() < _cb_open_until:
+                return True
+            _cb_failures = 0
+        return False
+
+
+def yf_circuit_record_failure() -> None:
+    global _cb_failures, _cb_open_until
+    with _cb_lock:
+        _cb_failures += 1
+        if _cb_failures >= _YF_CIRCUIT_THRESHOLD:
+            _cb_open_until = time.time() + _YF_CIRCUIT_TIMEOUT
+
+
+def yf_circuit_record_success() -> None:
+    global _cb_failures
+    with _cb_lock:
+        _cb_failures = 0
+
+
+def _yf_guard() -> bool:
+    """False while the breaker is open; otherwise waits for a rate-limit token."""
+    if yf_circuit_is_open():
+        return False
+    yf_acquire()
+    return True
+
+# ---------------------------------------------------------------------------
 # YFinance wrappers (Task 34: tenacity exponential backoff)
 # ---------------------------------------------------------------------------
 
@@ -74,11 +119,15 @@ def _yf_fetch_info(sym: str) -> dict:
         dict: The information dictionary returned by yfinance, or an empty dict if it fails.
     """
     for attempt in range(3):
+        if not _yf_guard():
+            return {}
         try:
             info = yf.Ticker(sym).info
             if info and (info.get("currentPrice") or info.get("regularMarketPrice")):
+                yf_circuit_record_success()
                 return info
         except Exception as e:
+            yf_circuit_record_failure()
             logging.info(f"[YF] Attempt {attempt+1} failed for {sym}: {e}")
             if attempt < 2:
                 sleep_time = (_YF_BACKOFF_MULTIPLIER * (2 ** attempt)) + (random.random() * 0.5)
@@ -107,8 +156,9 @@ def _yf_price(ticker_sym: str) -> tuple[float | None, float | None]:
     """
     import pandas as pd
     def _fetch(sym: str):
+        if not _yf_guard():
+            return None, None
         try:
-            import yfinance as yf
             hist = yf.Ticker(sym).history(period="5d")
             if hist.empty:
                 return None, None
@@ -121,12 +171,16 @@ def _yf_price(ticker_sym: str) -> tuple[float | None, float | None]:
             
             current = float(closes[-1])
             prev = float(closes[-2]) if len(closes) >= 2 else current
+            yf_circuit_record_success()
             return current, prev
         except Exception as e:
+            yf_circuit_record_failure()
             logging.info(f"[YF Price Error] {sym}: {e}")
             return None, None
 
     current, prev = None, None
+    if yf_circuit_is_open():
+        return current, prev
     for attempt in range(2):  # one jittered retry: Yahoo 429s / empty frames are often transient
         if attempt:
             time.sleep(0.5 + random.random() * 0.5)
@@ -161,8 +215,14 @@ def _yf_price_with_status(ticker_sym: str) -> tuple[float | None, float | None, 
 # ---------------------------------------------------------------------------
 # Ticker resolution
 # ---------------------------------------------------------------------------
-_ticker_resolution_cache: dict[str, str] = {}
+# Positive resolutions live a day; failed ones are retried after 5 min, never
+# cached as resolved (REL-14). Both bounded.
+_ticker_resolution_cache: TTLCache = TTLCache(maxsize=5000, ttl=86400)
+_ticker_unresolved: TTLCache = TTLCache(maxsize=5000, ttl=300)
 _ticker_resolution_lock = threading.Lock()
+# Exchange symbols: letters/digits plus & and - (M&M, BAJAJ-AUTO). Anything else
+# never reaches Yahoo.
+_TICKER_RE = re.compile(r"^[A-Z0-9][A-Z0-9&\-]{0,19}$")
 
 def _resolve_with_fallback(base_ticker: str, preferred_suffix: str) -> str:
     """Resolves a ticker with a preferred exchange suffix, falling back to the other if needed.
@@ -172,39 +232,39 @@ def _resolve_with_fallback(base_ticker: str, preferred_suffix: str) -> str:
         preferred_suffix (str): The preferred suffix (e.g., '.NS' or '.BO').
 
     Returns:
-        str: The resolved ticker symbol with a valid suffix.
+        str: The resolved ticker symbol with a valid suffix. When neither
+        exchange answers, returns the preferred form without caching it as
+        resolved (it is retried after the short unresolved TTL).
     """
     cache_key = f"{base_ticker}{preferred_suffix}"
+    t1 = cache_key
+    if not _TICKER_RE.match(base_ticker):
+        return t1
     with _ticker_resolution_lock:
         if cache_key in _ticker_resolution_cache:
             return _ticker_resolution_cache[cache_key]
+        if cache_key in _ticker_unresolved:
+            return t1
 
-    t1 = f"{base_ticker}{preferred_suffix}"
     fallback_suffix = ".BO" if preferred_suffix == ".NS" else ".NS"
     t2 = f"{base_ticker}{fallback_suffix}"
-    
-    # Try preferred first
-    try:
-        fast = yf.Ticker(t1).fast_info
-        if getattr(fast, "last_price", None) is not None:
-            with _ticker_resolution_lock:
-                _ticker_resolution_cache[cache_key] = t1
-            return t1
-    except Exception as _e:
-        pass
-        
-    # Try fallback
-    try:
-        fast = yf.Ticker(t2).fast_info
-        if getattr(fast, "last_price", None) is not None:
-            with _ticker_resolution_lock:
-                _ticker_resolution_cache[cache_key] = t2
-            return t2
-    except Exception as _e:
-        pass
-        
+
+    # Preferred first, then the other exchange. Probe errors are not breaker
+    # failures: junk tickers raise here and must not black out real quotes.
+    for candidate in (t1, t2):
+        if not _yf_guard():
+            break
+        try:
+            fast = yf.Ticker(candidate).fast_info
+            if getattr(fast, "last_price", None) is not None:
+                with _ticker_resolution_lock:
+                    _ticker_resolution_cache[cache_key] = candidate
+                return candidate
+        except Exception as _e:
+            logging.debug(f"[YF Resolve] {candidate}: {_e}")
+
     with _ticker_resolution_lock:
-        _ticker_resolution_cache[cache_key] = t1
+        _ticker_unresolved[cache_key] = True
     return t1
 
 def _to_ns(ticker: str) -> str:

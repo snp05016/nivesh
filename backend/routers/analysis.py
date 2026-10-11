@@ -7,7 +7,6 @@ import os
 import json
 import time as _time
 import time
-import threading
 import asyncio
 import multiprocessing
 import math
@@ -48,45 +47,20 @@ from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_conse
 from config.settings import (
     SECTOR_PE_MAP,
     ADVISOR_INSIGHTS_LOOKBACK_DAYS,
-    YF_CIRCUIT_THRESHOLD as _YF_CIRCUIT_THRESHOLD,
-    YF_CIRCUIT_TIMEOUT as _YF_CIRCUIT_TIMEOUT,
+)
+# One locked yfinance circuit breaker, shared with the yfinance_client wrappers (REL-14).
+from services.yfinance_client import (
+    yf_circuit_is_open as _yf_circuit_is_open,
+    yf_circuit_record_failure as _yf_circuit_record_failure,
+    yf_circuit_record_success as _yf_circuit_record_success,
 )
 
 _BULLISH_SIGNALS = {"BULLISH", "CAUTIOUSLY BULLISH"}
 _BEARISH_SIGNALS = {"BEARISH", "CAUTIOUSLY BEARISH"}
 
-# Circuit breaker for yfinance-dependent endpoints (Task 38: values now from settings)
-_yf_circuit_failures = 0
-_yf_circuit_open_until = 0.0
-_yf_circuit_lock = threading.Lock()
-
 # ---------------------------------------------------------------------------
 # DeepSeek helpers — now imported from services.llm_utils (single source)
 # ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
-# yfinance circuit breaker
-# ---------------------------------------------------------------------------
-def _yf_circuit_is_open() -> bool:
-    global _yf_circuit_failures, _yf_circuit_open_until
-    with _yf_circuit_lock:
-        if _yf_circuit_failures >= _YF_CIRCUIT_THRESHOLD:
-            if time.time() < _yf_circuit_open_until:
-                return True
-            _yf_circuit_failures = 0
-        return False
-
-def _yf_circuit_record_failure():
-    global _yf_circuit_failures, _yf_circuit_open_until
-    with _yf_circuit_lock:
-        _yf_circuit_failures += 1
-        if _yf_circuit_failures >= _YF_CIRCUIT_THRESHOLD:
-            _yf_circuit_open_until = time.time() + _YF_CIRCUIT_TIMEOUT
-
-def _yf_circuit_record_success():
-    global _yf_circuit_failures
-    with _yf_circuit_lock:
-        _yf_circuit_failures = 0
 
 # ── Item 47: Batch Analysis ───────────────────────────────────────────
 @router.post("/batch")

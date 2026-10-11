@@ -201,6 +201,23 @@ def _reset_rate_limiter():
     _rate_limit_store.clear()
 
 
+@pytest.fixture(autouse=True)
+def _reset_yf_guards(monkeypatch):
+    """Isolate the shared yfinance breaker and token bucket per test (REL-14).
+
+    Without this, mocked Ticker exceptions in one test open the breaker for later
+    tests, and the 0.5 token/s bucket makes the suite sleep once 30 calls are spent.
+    """
+    import services.yfinance_client as _yfc
+    monkeypatch.setattr(_yfc, "yf_acquire", lambda: None)
+    monkeypatch.setattr(_yfc, "_cb_failures", 0)
+    monkeypatch.setattr(_yfc, "_cb_open_until", 0.0)
+    with _yfc._ticker_resolution_lock:
+        _yfc._ticker_resolution_cache.clear()
+        _yfc._ticker_unresolved.clear()
+    yield
+
+
 import services.job_manager as _job_manager
 _REAL_SPAWN_JOB = _job_manager.spawn_job
 
