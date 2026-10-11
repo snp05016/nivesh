@@ -573,10 +573,10 @@ curl https://api.nivesh.qzz.io/health  # DB-backed
 | Full deploy | `/nivesh-deploy` (skill) or `ssh saumyapatel@192.168.1.122 "sudo fuser -k 8000/tcp; ...; nohup uvicorn ..."` |
 | Run tests on server | `ssh saumyapatel@192.168.1.122 "cd ~/Desktop/nivesh/backend && ~/Desktop/nivesh/venv/bin/python3 -m pytest tests/ -q"` |
 | Health check | `curl https://api.nivesh.qzz.io/ping` |
-| Check git status | `git -C /Users/saumya/Desktop/nivesh status --short --branch` |
+| Check git status | `git -C /Users/saumya/Desktop/career/nivesh status --short --branch` |
 | Create issue | `gh issue create --title "..." --body "..." --label "..."` |
-| List worktrees | `git -C /Users/saumya/Desktop/nivesh worktree list` |
-| Prune worktrees | `git -C /Users/saumya/Desktop/nivesh worktree prune` |
+| List worktrees | `git -C /Users/saumya/Desktop/career/nivesh worktree list` |
+| Prune worktrees | `git -C /Users/saumya/Desktop/career/nivesh worktree prune` |
 
 ```
 📁 Backend:    378 Python files  │  21 routers  │  20 services

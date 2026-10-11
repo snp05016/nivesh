@@ -334,21 +334,17 @@ This workflow governs every agent and every change. Use GitHub Issues and pull r
 > **The root repository directory is SHARED.** Multiple agents (Claude Code, OpenCode, Antigravity)
 > may run simultaneously. `git checkout` mutates the shared `.git/HEAD` and breaks every other
 > agent that is mid-edit. **Never run `git checkout` or `git switch` in the root repo directory.**
-> **Never create new branches unless the user explicitly requests it** (e.g., "make a new branch",
-> "create a branch", "work on a branch"). In that case, create the branch and follow all existing
-> workflow rules in this document.
-> 
-> **Default for all work: use detached worktrees and merge directly into `main` after user approval.**
+> **Never create new branches.** You must use detached worktrees and merge directly into `main` after user approval.
 
 ##### Mandatory protocol — start of every task
 
 ```bash
 # 1. Generate a unique worktree path from the task slug
 SLUG="agy-<type>-<short-slug>"
-WORKTREE_PATH="/Users/saumya/Desktop/nivesh-${SLUG//\//-}"
+WORKTREE_PATH="/Users/saumya/Desktop/career/nivesh-${SLUG//\//-}"
 
 # 2. Create a new detached worktree (NO BRANCH CREATED)
-git -C /Users/saumya/Desktop/nivesh worktree add --detach "$WORKTREE_PATH"
+git -C /Users/saumya/Desktop/career/nivesh worktree add --detach "$WORKTREE_PATH"
 
 # 3. All work (reads, edits, git commands) happens INSIDE the worktree
 cd "$WORKTREE_PATH"
@@ -356,8 +352,8 @@ cd "$WORKTREE_PATH"
 
 Example for a backend fix task:
 ```bash
-git -C /Users/saumya/Desktop/nivesh worktree add --detach /Users/saumya/Desktop/nivesh-agy-fix-cache-race
-cd /Users/saumya/Desktop/nivesh-agy-fix-cache-race
+git -C /Users/saumya/Desktop/career/nivesh worktree add --detach /Users/saumya/Desktop/career/nivesh-agy-fix-cache-race
+cd /Users/saumya/Desktop/career/nivesh-agy-fix-cache-race
 ```
 
 ##### Inside the worktree
@@ -378,37 +374,37 @@ Once you have finished making and committing changes in the worktree:
 COMMIT_HASH=$(git -C "$WORKTREE_PATH" rev-parse HEAD)
 
 # 2. Merge it into main from the main repo
-git -C /Users/saumya/Desktop/nivesh merge --ff-only $COMMIT_HASH
-git -C /Users/saumya/Desktop/nivesh push origin main
+git -C /Users/saumya/Desktop/career/nivesh merge --ff-only $COMMIT_HASH
+git -C /Users/saumya/Desktop/career/nivesh push origin main
 
 # 3. Remove the worktree
-git -C /Users/saumya/Desktop/nivesh worktree remove "$WORKTREE_PATH" --force
+git -C /Users/saumya/Desktop/career/nivesh worktree remove "$WORKTREE_PATH" --force
 ```
 
 ##### Naming convention
 
 ```
-Worktree path: /Users/saumya/Desktop/nivesh-agy-<type>-<short-slug>
+Worktree path: /Users/saumya/Desktop/career/nivesh-agy-<type>-<short-slug>
 ```
 
 Examples:
 ```
-/Users/saumya/Desktop/nivesh-agy-fix-cache-race
-/Users/saumya/Desktop/nivesh-agy-feat-quantlab-tests
-/Users/saumya/Desktop/nivesh-agy-docs-state-update
+/Users/saumya/Desktop/career/nivesh-agy-fix-cache-race
+/Users/saumya/Desktop/career/nivesh-agy-feat-quantlab-tests
+/Users/saumya/Desktop/career/nivesh-agy-docs-state-update
 ```
 
 ##### Stale worktree detection
 
 At the start of every task, list worktrees and prune stale ones from crashed sessions:
 ```bash
-git -C /Users/saumya/Desktop/nivesh worktree list
-git -C /Users/saumya/Desktop/nivesh worktree prune
+git -C /Users/saumya/Desktop/career/nivesh worktree list
+git -C /Users/saumya/Desktop/career/nivesh worktree prune
 ```
 
 If a worktree for the same slug already exists (from a prior crash), remove it first:
 ```bash
-git -C /Users/saumya/Desktop/nivesh worktree remove "$WORKTREE_PATH" --force 2>/dev/null || true
+git -C /Users/saumya/Desktop/career/nivesh worktree remove "$WORKTREE_PATH" --force 2>/dev/null || true
 ```
 
 ##### PR rule
@@ -418,7 +414,7 @@ git -C /Users/saumya/Desktop/nivesh worktree remove "$WORKTREE_PATH" --force 2>/
 **Refusal template if caught about to run `git checkout` in the main repo:**
 ```
 Stopping — about to run `git checkout` in the shared root. Creating an isolated detached worktree instead:
-  git worktree add --detach /Users/saumya/Desktop/nivesh-agy-<type>-<slug>
+  git worktree add --detach /Users/saumya/Desktop/career/nivesh-agy-<type>-<slug>
 ```
 
 
