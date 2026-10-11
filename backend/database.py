@@ -186,8 +186,8 @@ def init_db() -> None:
     create_all can't paper over a missing migration.
 
     Accounts come only from /register; admin rights only from
-    `scripts/manage_users.py set-admin`. Dev data: populate_portfolio.py
-    with ALLOW_DEV_SEED=1.
+    `scripts/manage_users.py set-admin`. Dev data:
+    `ENVIRONMENT=development scripts/reset_mock_user.py --yes`.
     """
     if os.environ.get("ENVIRONMENT", "development") in ("development", "test"):
         Base.metadata.create_all(ENGINE)

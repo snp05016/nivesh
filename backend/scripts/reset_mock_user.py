@@ -1,21 +1,25 @@
-import logging
 """
-reset_mock_user.py — Delete all records for snp050106@gmail.com, then reinsert complete mock data.
+reset_mock_user.py — Delete all records for a demo user, then reinsert complete mock data.
 
 Usage (dev databases only; prints a fresh random password once):
-    ALLOW_DEV_SEED=1 python backend/scripts/reset_mock_user.py
+    ENVIRONMENT=development python backend/scripts/reset_mock_user.py --yes [--username NAME]
+
+Refuses to run unless ENVIRONMENT is development/test (unset counts as production)
+and --yes is passed. The default username is a demo account, never a real one.
 
 Deletes in dependency order:
   PortfolioValuationHistory → TradeJournal → Portfolio → EarningsAlert
   → PriceTarget → DeviceToken → AnalysisHistory → User
 
 Then recreates:
-  - 1 User (Saumya Patel, email: snp050106@gmail.com)
+  - 1 User (Demo Investor, username from --username, default saumya-demo)
   - 1 Portfolio with 12 holdings
   - 90 daily valuation snapshots
   - 28 transactions (24 BUY + 4 SELL)
 """
 
+import argparse
+import logging
 import sys
 import os
 import random
@@ -24,7 +28,10 @@ from datetime import datetime, timedelta, date
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from sqlalchemy.engine import make_url
+
 from database import (
+    DATABASE_URL,
     init_db,
     get_session,
     User,
@@ -42,9 +49,8 @@ from database import (
 # Constants
 # ---------------------------------------------------------------------------
 
-USER_EMAIL = "snp050106@gmail.com"
-USER_NAME = "saumya"
-USER_DISPLAY = "Saumya Patel"
+DEFAULT_USER_NAME = "saumya-demo"
+USER_DISPLAY = "Demo Investor"
 
 # 12 specified holdings
 HOLDINGS = [
@@ -177,9 +183,27 @@ def generate_valuation_trajectory():
 # Main
 # ---------------------------------------------------------------------------
 
+def require_dev_env(argv) -> None:
+    """Exit unless ENVIRONMENT is development/test and --yes was passed (DB-29).
+
+    Unset ENVIRONMENT counts as production. Echoes the target DB (password hidden).
+    """
+    env = os.getenv("ENVIRONMENT")
+    if env not in ("development", "test"):
+        print(f"refusing: ENVIRONMENT={env!r}; set ENVIRONMENT=development (dev only)", file=sys.stderr)
+        raise SystemExit(2)
+    if "--yes" not in argv:
+        print("refusing: pass --yes to confirm wiping the demo user", file=sys.stderr)
+        raise SystemExit(2)
+    print(f"Target DB: {make_url(DATABASE_URL).render_as_string(hide_password=True)}")
+
+
 def main():
-    if os.getenv("ALLOW_DEV_SEED") != "1":
-        sys.exit("refusing: set ALLOW_DEV_SEED=1 (dev only)")
+    require_dev_env(sys.argv)
+    parser = argparse.ArgumentParser(description="Reset a demo user with mock data (dev only).")
+    parser.add_argument("--yes", action="store_true", help="confirm the wipe")
+    parser.add_argument("--username", default=DEFAULT_USER_NAME)
+    user_name = parser.parse_args().username.lower().strip()
     init_db()
     password = secrets.token_urlsafe(12)  # CSPRNG; random.seed below does not affect it
     random.seed(42)  # Reproducible mock data
@@ -187,7 +211,7 @@ def main():
     with get_session() as session:
         # ── 0.1: Delete existing records ────────────────────────────────────
         existing_user = session.query(User).filter(
-            User.username == USER_NAME
+            User.username == user_name
         ).first()
 
         if existing_user:
@@ -220,7 +244,7 @@ def main():
         # ── 0.2: Recreate user ──────────────────────────────────────────────
         created_at = TODAY - timedelta(days=90)
         user = User(
-            username=USER_NAME,
+            username=user_name,
             password_hash=_hash_password(password),
             display_name=USER_DISPLAY,
             created_at=created_at,
@@ -229,7 +253,7 @@ def main():
         session.commit()
         session.refresh(user)
         logging.info(f"[0.2] Created user: {user.username} (id={user.id})")
-        print(f"Created dev user '{USER_NAME}' with password: {password}")
+        print(f"Created dev user '{user_name}' with password: {password}")
 
         # ── 0.3: Insert holdings ────────────────────────────────────────────
         holdings_added = []
@@ -336,12 +360,10 @@ def main():
             TradeJournal.user_id == user.id
         ).count()
 
-        logging.info()
         logging.info("=" * 60)
         logging.info("VERIFICATION")
         logging.info("=" * 60)
         logging.info(f"  User:                {user.username} (id={user.id})")
-        logging.info(f"  Email:               {USER_EMAIL}")
         logging.info(f"  Holdings:            {h_count} (expected 12)")
         logging.info(f"  Valuation snapshots: {v_count} (expected 90)")
         logging.info(f"  Transactions:        {t_count} (expected 28)")
@@ -372,8 +394,9 @@ def main():
         else:
             logging.info("\n⚠️  Some checks failed — review above")
 
-        logging.info(f"\nLogin: {USER_NAME} with the password printed above")
+        logging.info(f"\nLogin: {user_name} with the password printed above")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     main()
