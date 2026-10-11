@@ -1643,11 +1643,8 @@ extension NetworkManager {
 // caller), GET /{scheme_code} (detail), GET /{scheme_code}/nav-history?days=
 // (NAV history for the chart). The backend paths key off `scheme_code`
 // (a string, e.g. "INF209K01157"), NOT the integer `id` — do not pass the
-// row id in the URL path. There is NO /holdings or /sip-calculator endpoint
-// on the backend as of this writing — those calls below will 404; callers
-// fall back gracefully (nav-history/holdings render empty state,
-// sip-calculator computes locally via SIPCalculationResult.computeLocally)
-// so the UI works before and after a future backend pass adds them.
+// row id in the URL path. There is no /holdings or /sip-calculator endpoint;
+// the SIP projection is computed locally (SIPCalculationResult.computeLocally).
 
 extension NetworkManager {
 
@@ -1673,9 +1670,9 @@ extension NetworkManager {
 
     /// Fetches NAV history points for the fund's chart, trimmed server-side to `range`.
     func getMutualFundNAVHistory(schemeCode: String, range: MutualFundNAVRange) async throws -> [MutualFundNAVPoint] {
-        // Backend takes `days` (1-365), not a named range — translate here.
-        let days = min(range.approxDays, 365)
-        let endpoint = "/api/mutual-funds/\(schemeCode)/nav-history?days=\(days)"
+        // Backend takes `days` (1-365), not a named range — every
+        // MutualFundNAVRange case stays within that limit.
+        let endpoint = "/api/mutual-funds/\(schemeCode)/nav-history?days=\(range.approxDays)"
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
         }
@@ -1690,53 +1687,6 @@ extension NetworkManager {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
         }
         do { return try JSONDecoder().decode([MutualFundNAVPoint].self, from: data) }
-        catch { throw NetworkError.decodingError(error.localizedDescription) }
-    }
-
-    /// Fetches the fund's top portfolio holdings. NOTE: no backend route
-    /// exists for this yet (see file header) — always 404s today.
-    func getMutualFundHoldings(schemeCode: String) async throws -> [MutualFundHolding] {
-        let endpoint = "/api/mutual-funds/\(schemeCode)/holdings"
-        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
-            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
-        }
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 20
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
-        }
-        guard (200...299).contains(http.statusCode) else {
-            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
-            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
-        }
-        do { return try JSONDecoder().decode([MutualFundHolding].self, from: data) }
-        catch { throw NetworkError.decodingError(error.localizedDescription) }
-    }
-
-    /// Requests a SIP projection from the backend calculator. Throws if the
-    /// endpoint isn't live yet — callers should fall back to
-    /// `SIPCalculationResult.computeLocally`.
-    func calculateSIP(monthlyAmount: Double, annualReturnPct: Double, years: Double) async throws -> SIPCalculationResult {
-        let endpoint = "/api/mutual-funds/sip-calculator"
-        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
-            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
-        }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 15
-        let body = SIPCalculationRequest(monthlyAmount: monthlyAmount, annualReturnPct: annualReturnPct, years: years)
-        request.httpBody = try? JSONEncoder().encode(body)
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
-        }
-        guard (200...299).contains(http.statusCode) else {
-            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
-            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
-        }
-        do { return try JSONDecoder().decode(SIPCalculationResult.self, from: data) }
         catch { throw NetworkError.decodingError(error.localizedDescription) }
     }
 }

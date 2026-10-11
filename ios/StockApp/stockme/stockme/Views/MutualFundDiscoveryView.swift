@@ -249,6 +249,9 @@ struct MutualFundRowCard: View {
         } label: {
             VStack(alignment: .leading, spacing: Theme.Spacing.card) {
                 MutualFundRowHeader(fund: fund)
+                if fund.isSample == true {
+                    MutualFundSampleDataStamp()
+                }
                 GuillocheDivider()
                 MutualFundRowStats(fund: fund)
             }

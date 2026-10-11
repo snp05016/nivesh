@@ -63,4 +63,26 @@ final class MutualFundDecodingTests: XCTestCase {
         XCTAssertEqual(fund.returns1y, 15.5)
         XCTAssertEqual(fund.isDirectPlan, true)
     }
+
+    func testIsSampleDecodes() throws {
+        // CMON-13: the backend flags its seeded catalog `is_sample` so the UI
+        // can label it; absent on older payloads.
+        let sample = try JSONDecoder().decode(MutualFundDTO.self, from: """
+        {"id": 3, "scheme_name": "Sample Fund", "amc_name": "AMC", "category": "Equity", "is_sample": true}
+        """.data(using: .utf8)!)
+        XCTAssertEqual(sample.isSample, true)
+
+        let legacy = try JSONDecoder().decode(MutualFundDTO.self, from: """
+        {"id": 4, "scheme_name": "Old Fund", "amc_name": "AMC", "category": "Equity"}
+        """.data(using: .utf8)!)
+        XCTAssertNil(legacy.isSample)
+    }
+
+    func testNAVRangesWithinBackendLimit() {
+        // Backend nav-history accepts days 1...365 (le=365); a range beyond that
+        // would silently show a shorter window under a longer label.
+        for range in MutualFundNAVRange.allCases {
+            XCTAssertTrue((1...365).contains(range.approxDays), "\(range.rawValue) requests \(range.approxDays) days")
+        }
+    }
 }

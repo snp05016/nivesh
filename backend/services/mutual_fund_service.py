@@ -5,8 +5,7 @@ Controller-Service-Repository: routers/mutual_funds.py must only validate
 HTTP input and call functions here. All session.query() calls for
 MutualFund live in this module.
 """
-import hashlib
-from datetime import date, timedelta
+from datetime import date
 from typing import Optional
 
 from database import get_session
@@ -135,6 +134,11 @@ _MOCK_FUNDS = [
     },
 ]
 
+# Scheme codes of the seeded sample catalog above. Rows with these codes carry
+# frozen, illustrative figures — the API flags them `is_sample` so clients can
+# label them instead of presenting them as live fund data.
+SAMPLE_SCHEME_CODES = frozenset(r["scheme_code"] for r in _MOCK_FUNDS)
+
 
 def seed_mock_funds_if_empty() -> int:
     """Populate mutual_funds with mock data when the table is empty.
@@ -206,26 +210,12 @@ def get_fund_by_scheme_code(scheme_code: str) -> Optional[MutualFund]:
 
 
 def get_nav_history(scheme_code: str, days: int = 30) -> Optional[list[dict]]:
-    """Return a mocked NAV history series of {date, nav} for a scheme.
+    """Return the NAV history series of {date, nav} for a scheme.
 
-    MOCK DATA — deterministic pseudo-random walk seeded from the scheme
-    code, so repeated calls are stable. Replace with a real AMFI NAV
-    history feed once wired.
+    Returns None when the scheme does not exist, otherwise [] until a real
+    AMFI historical-NAV feed exists. Never fabricate points: clients render
+    whatever this returns as real fund performance.
     """
-    fund = get_fund_by_scheme_code(scheme_code)
-    if fund is None or fund.nav is None:
+    if get_fund_by_scheme_code(scheme_code) is None:
         return None
-
-    seed = int(hashlib.sha256(scheme_code.encode()).hexdigest(), 16)
-    nav = fund.nav
-    history = []
-    today = date.today()
-    # Walk backwards from today so the most recent entry matches current NAV.
-    for i in range(days):
-        day = today - timedelta(days=i)
-        history.append({"date": day.isoformat(), "nav": round(nav, 4)})
-        # deterministic small daily drift derived from the seed and index
-        drift_pct = ((seed >> (i % 32)) % 200 - 100) / 10000.0  # +/-1%
-        nav = nav / (1 + drift_pct)
-    history.reverse()
-    return history
+    return []

@@ -3,10 +3,8 @@ import SwiftUI
 // MARK: - SIP Calculator
 
 /// Systematic Investment Plan projection sheet, launched from a fund's
-/// detail screen. Tries the backend calculator first (POST
-/// /api/mutual-funds/sip-calculator) and falls back to the identical local
-/// formula in SIPCalculationResult.computeLocally if that endpoint isn't
-/// live yet, so the calculator always works.
+/// detail screen. Computed locally via SIPCalculationResult.computeLocally
+/// (same formula as backend mutual_fund_calculators.py; no backend route).
 struct SIPCalculatorSheet: View {
     let fund: MutualFundDTO
     @Environment(\.dismiss) private var dismiss
@@ -75,15 +73,9 @@ struct SIPCalculatorSheet: View {
 
     private func recalculate() async {
         isCalculating = true
-        if let backendResult = try? await NetworkManager.shared.calculateSIP(
+        result = SIPCalculationResult.computeLocally(
             monthlyAmount: monthlyAmount, annualReturnPct: assumedReturnPct, years: years
-        ) {
-            result = backendResult
-        } else {
-            result = SIPCalculationResult.computeLocally(
-                monthlyAmount: monthlyAmount, annualReturnPct: assumedReturnPct, years: years
-            )
-        }
+        )
         isCalculating = false
     }
 }

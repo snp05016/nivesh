@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, model_validator
 
 from services.mutual_fund_service import (
+    SAMPLE_SCHEME_CODES,
     get_fund_by_scheme_code,
     get_nav_history,
     list_funds,
@@ -36,6 +37,9 @@ class MutualFundResponse(BaseModel):
     fund_manager: Optional[str] = None
     is_direct_plan: Optional[bool] = None
     is_growth_plan: Optional[bool] = None
+    # True for the seeded sample catalog (frozen illustrative figures, not a
+    # live AMFI feed); clients must label these rows as sample data.
+    is_sample: bool = False
 
     @model_validator(mode="before")
     @classmethod
@@ -48,6 +52,7 @@ class MutualFundResponse(BaseModel):
                 d["amc_name"] = d.get("amc", "") or ""
             if not d.get("category"):
                 d["category"] = d.get("category", "") or ""
+            d["is_sample"] = d.get("scheme_code") in SAMPLE_SCHEME_CODES
             return d
         elif isinstance(data, dict):
             if not data.get("scheme_name"):
@@ -56,6 +61,7 @@ class MutualFundResponse(BaseModel):
                 data["amc_name"] = data.get("amc", "") or ""
             if not data.get("category"):
                 data["category"] = data.get("category", "") or ""
+            data["is_sample"] = data.get("scheme_code") in SAMPLE_SCHEME_CODES
         return data
 
     class Config:
@@ -95,7 +101,7 @@ def get_mutual_fund_nav_history(
     scheme_code: str,
     days: int = Query(30, ge=1, le=365, description="Number of days of NAV history to return"),
 ):
-    """Get NAV history (list of {date, nav}) for a scheme."""
+    """Get NAV history (list of {date, nav}) for a scheme; [] when no real history exists."""
     seed_mock_funds_if_empty()
     history = get_nav_history(scheme_code, days=days)
     if history is None:

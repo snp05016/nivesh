@@ -99,21 +99,19 @@ class MutualFundViewModel: ObservableObject {
     }
 }
 
-/// Drives MutualFundDetailView — loads full fund detail, NAV history for the
-/// selected chart range, and top holdings independently so partial failures
-/// (e.g. holdings endpoint not live yet) don't block the rest of the screen.
+/// Drives MutualFundDetailView — loads full fund detail and NAV history for the
+/// selected chart range independently so a partial failure doesn't block the
+/// rest of the screen.
 @MainActor
 class MutualFundDetailViewModel: ObservableObject {
     @Published var fund: MutualFundDTO
     @Published var navHistory: [MutualFundNAVPoint] = []
-    @Published var holdings: [MutualFundHolding] = []
     @Published var selectedRange: MutualFundNAVRange = .oneYear
     @Published var isLoadingNAV: Bool = false
-    @Published var isLoadingHoldings: Bool = false
 
     let fundId: Int
     /// Backend paths key off scheme_code (string), not the row id — nil when
-    /// the seed fund has no scheme_code, in which case detail/history/holdings
+    /// the seed fund has no scheme_code, in which case detail/history
     /// calls are skipped and the seed data is shown as-is.
     private let schemeCode: String?
 
@@ -126,7 +124,6 @@ class MutualFundDetailViewModel: ObservableObject {
     func loadAll() {
         Task { await refreshDetail() }
         Task { await loadNAVHistory() }
-        Task { await loadHoldings() }
     }
 
     func refreshDetail() async {
@@ -141,13 +138,6 @@ class MutualFundDetailViewModel: ObservableObject {
         isLoadingNAV = true
         navHistory = (try? await NetworkManager.shared.getMutualFundNAVHistory(schemeCode: schemeCode, range: selectedRange)) ?? []
         isLoadingNAV = false
-    }
-
-    func loadHoldings() async {
-        guard let schemeCode else { return }
-        isLoadingHoldings = true
-        holdings = (try? await NetworkManager.shared.getMutualFundHoldings(schemeCode: schemeCode)) ?? []
-        isLoadingHoldings = false
     }
 
     func changeRange(_ range: MutualFundNAVRange) {

@@ -8,12 +8,10 @@ import Foundation
 // backend/routers/mutual_funds.py:MutualFundResponse exactly (id, scheme_code,
 // scheme_name, amc_name, category, sub_category, nav, nav_date, aum_cr,
 // expense_ratio, returns_1y/3y/5y, risk_level, fund_manager, is_direct_plan,
-// is_growth_plan) — the backend is authoritative for shape; do not invent
-// fields it doesn't return. NOTE: the backend response has NO holdings or
-// sip-calculator endpoints yet — getMutualFundHoldings()/calculateSIP() below
-// hit routes that don't exist server-side and are expected to 404 until a
-// future backend pass adds them; callers already degrade gracefully (empty
-// holdings list, locally-computed SIP projection).
+// is_growth_plan, is_sample) — the backend is authoritative for shape; do not
+// invent fields it doesn't return. There are no holdings or sip-calculator
+// endpoints: the SIP projection is computed locally
+// (SIPCalculationResult.computeLocally).
 
 /// Risk-o-meter classification (SEBI standard six-tier scale). Backend reports
 /// a subset of these as free text in `risk_level` — parsed defensively.
@@ -63,6 +61,9 @@ struct MutualFundDTO: Codable, Identifiable, Equatable {
     let fundManager: String?
     let isDirectPlan: Bool?
     let isGrowthPlan: Bool?
+    /// True when the backend serves this row from its seeded sample catalog
+    /// (frozen illustrative figures, not a live AMFI feed). The UI must label it.
+    let isSample: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -84,6 +85,7 @@ struct MutualFundDTO: Codable, Identifiable, Equatable {
         case fundManager = "fund_manager"
         case isDirectPlan = "is_direct_plan"
         case isGrowthPlan = "is_growth_plan"
+        case isSample = "is_sample"
     }
 
     init(
@@ -103,7 +105,8 @@ struct MutualFundDTO: Codable, Identifiable, Equatable {
         riskLevel: String? = nil,
         fundManager: String? = nil,
         isDirectPlan: Bool? = nil,
-        isGrowthPlan: Bool? = nil
+        isGrowthPlan: Bool? = nil,
+        isSample: Bool? = nil
     ) {
         self.id = id
         self.fundName = fundName
@@ -122,6 +125,7 @@ struct MutualFundDTO: Codable, Identifiable, Equatable {
         self.fundManager = fundManager
         self.isDirectPlan = isDirectPlan
         self.isGrowthPlan = isGrowthPlan
+        self.isSample = isSample
     }
 
     // Decode defensively: allow the current minimal router payload (no MF
@@ -147,6 +151,7 @@ struct MutualFundDTO: Codable, Identifiable, Equatable {
         fundManager = try c.decodeIfPresent(String.self, forKey: .fundManager)
         isDirectPlan = try c.decodeIfPresent(Bool.self, forKey: .isDirectPlan)
         isGrowthPlan = try c.decodeIfPresent(Bool.self, forKey: .isGrowthPlan)
+        isSample = try c.decodeIfPresent(Bool.self, forKey: .isSample)
     }
 
     var navDisplay: String {
@@ -190,13 +195,12 @@ struct MutualFundNAVPoint: Codable, Identifiable, Equatable {
     }
 }
 
-/// Selectable chart ranges for the NAV history view.
+/// Selectable chart ranges for the NAV history view. Every range must fit the
+/// backend's `days` limit (1-365) — no 3Y/5Y until the backend serves them.
 enum MutualFundNAVRange: String, CaseIterable, Identifiable {
     case oneMonth = "1M"
     case sixMonths = "6M"
     case oneYear = "1Y"
-    case threeYears = "3Y"
-    case fiveYears = "5Y"
 
     var id: String { rawValue }
 
@@ -206,44 +210,11 @@ enum MutualFundNAVRange: String, CaseIterable, Identifiable {
         case .oneMonth:   return 30
         case .sixMonths:  return 182
         case .oneYear:    return 365
-        case .threeYears: return 365 * 3
-        case .fiveYears:  return 365 * 5
         }
     }
 }
 
-// MARK: - Holdings
-
-/// A single top-holding line item within a fund's portfolio.
-/// Mirrors GET /api/mutual-funds/{id}/holdings.
-struct MutualFundHolding: Codable, Identifiable, Equatable {
-    var id: String { stockName }
-    let stockName: String
-    let sector: String?
-    let allocationPct: Double
-
-    enum CodingKeys: String, CodingKey {
-        case stockName = "stock_name"
-        case sector
-        case allocationPct = "allocation_pct"
-    }
-}
-
 // MARK: - SIP Calculator
-
-/// Request body for POST /api/mutual-funds/sip-calculator (proxies
-/// backend/services/mutual_fund_calculators.py:calculate_sip_returns).
-struct SIPCalculationRequest: Codable {
-    let monthlyAmount: Double
-    let annualReturnPct: Double
-    let years: Double
-
-    enum CodingKeys: String, CodingKey {
-        case monthlyAmount = "monthly_amount"
-        case annualReturnPct = "annual_return_pct"
-        case years
-    }
-}
 
 /// Mirrors backend/services/mutual_fund_calculators.py:SIPResult.
 struct SIPCalculationResult: Codable, Equatable {
@@ -257,8 +228,8 @@ struct SIPCalculationResult: Codable, Equatable {
         case totalValue = "total_value"
     }
 
-    /// Local fallback so the SIP calculator still works if the backend
-    /// endpoint isn't live yet — mirrors the server formula exactly.
+    /// The SIP calculator's only engine (there is no backend route) —
+    /// mirrors mutual_fund_calculators.py:calculate_sip_returns exactly.
     static func computeLocally(monthlyAmount: Double, annualReturnPct: Double, years: Double) -> SIPCalculationResult {
         let nMonths = years * 12
         let invested = monthlyAmount * nMonths

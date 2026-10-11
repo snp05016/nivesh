@@ -32,9 +32,6 @@ struct MutualFundDetailView: View {
 
                 MutualFundFundManagerSection(fund: vm.fund)
                     .padding(.horizontal, Theme.screenPadding)
-
-                MutualFundHoldingsSection(vm: vm)
-                    .padding(.horizontal, Theme.screenPadding)
             }
             .padding(.vertical, Theme.screenPadding)
         }
@@ -77,6 +74,9 @@ struct MutualFundDetailHeader: View {
                         .font(Theme.officialStampFont(size: 11, relativeTo: .caption))
                         .tracking(1.2)
                         .foregroundColor(Theme.inkSecondary)
+                    if fund.isSample == true {
+                        MutualFundSampleDataStamp()
+                    }
                 }
                 Spacer()
             }
@@ -419,67 +419,19 @@ struct MutualFundFundManagerSection: View {
     }
 }
 
-// MARK: - Holdings
+// MARK: - Sample Data Stamp
 
-struct MutualFundHoldingsSection: View {
-    @ObservedObject var vm: MutualFundDetailViewModel
-
+/// Shown on any fund the backend flags `is_sample` (seeded catalog with frozen
+/// figures, not a live AMFI feed) so it is never mistaken for real fund data.
+struct MutualFundSampleDataStamp: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.card) {
-            Text("Top Holdings")
-                .font(Theme.engravedSerif(size: 18, weight: .semibold, relativeTo: .title3))
-                .foregroundColor(Theme.inkPrimary)
-
-            if vm.isLoadingHoldings && vm.holdings.isEmpty {
-                ProgressView()
-                    .tint(Theme.securityGold)
-                    .frame(maxWidth: .infinity, minHeight: 80)
-                    .padding(Theme.Spacing.card)
-                    .banknoteCard()
-            } else if vm.holdings.isEmpty {
-                Text("Portfolio holdings aren't available for this fund yet.")
-                    .font(Theme.engravedSerif(size: 12, relativeTo: .footnote))
-                    .foregroundColor(Theme.inkTertiary)
-                    .frame(maxWidth: .infinity, minHeight: 80, alignment: .center)
-                    .padding(Theme.Spacing.card)
-                    .banknoteCard()
-            } else {
-                VStack(spacing: Theme.Spacing.medium) {
-                    ForEach(vm.holdings) { holding in
-                        MutualFundHoldingRow(holding: holding)
-                    }
-                }
-                .padding(Theme.Spacing.card)
-                .banknoteCard()
-            }
-        }
-    }
-}
-
-private struct MutualFundHoldingRow: View {
-    let holding: MutualFundHolding
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(holding.stockName)
-                        .font(Theme.engravedSerif(size: 13, relativeTo: .footnote))
-                        .foregroundColor(Theme.inkPrimary)
-                    if let sector = holding.sector {
-                        Text(sector)
-                            .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
-                            .foregroundColor(Theme.inkTertiary)
-                    }
-                }
-                Spacer()
-                Text(String(format: "%.2f%%", holding.allocationPct))
-                    .font(Theme.serialNumberFont(size: 13, relativeTo: .footnote))
-                    .foregroundColor(Theme.inkPrimary)
-            }
-            ProgressView(value: min(holding.allocationPct / 100.0, 1.0))
-                .tint(Theme.securityGold)
-                .frame(height: 4)
-        }
+        Text("SAMPLE DATA · NOT LIVE FUND FIGURES")
+            .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+            .tracking(1.2)
+            .padding(.horizontal, Theme.Spacing.medium)
+            .padding(.vertical, Theme.Spacing.small)
+            .foregroundColor(Theme.holdAmber)
+            .background(Theme.holdAmber.opacity(0.12))
+            .cornerRadius(Theme.CornerRadius.badge)
     }
 }
