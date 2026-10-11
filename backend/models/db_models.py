@@ -1414,6 +1414,11 @@ class LoanApplication(Base):
     decided_at = Column(DateTime, nullable=True)
     # Client-supplied Idempotency-Key header: a retried POST returns this row.
     idempotency_key = Column(String(64), nullable=True)
+    # FINSEC-26: Key Fact Statement for this amount/tenure, frozen at submit,
+    # and when the applicant acknowledged it (NULL = not acknowledged).
+    kfs_apr_pct = Column(Numeric(6, 2), nullable=True)
+    kfs_total_fees = Column(Numeric(14, 2), nullable=True)
+    kfs_acknowledged_at = Column(DateTime, nullable=True)
 
     loan_offer = relationship("LoanOffer", back_populates="applications")
 

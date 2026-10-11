@@ -61,6 +61,8 @@ jobs:
         HF_TOKEN: mock
       # AUTH-25: the route-auth inventory and the auth/ownership/rate-limit suites gate
       # every PR, so a new route without auth (or a broken auth invariant) fails CI.
+      # FINSEC-27: so do the money/identity suites (loans, KYC, FD, subscription,
+      # compliance) and the gate that every such route has a test.
       run: |
         pytest backend/tests/test_ios_endpoints.py \
           backend/tests/test_route_auth_inventory.py \
@@ -79,7 +81,17 @@ jobs:
           backend/tests/test_portfolio_export_isolation.py \
           backend/tests/test_admin_dashboard_security.py \
           backend/tests/test_best_effort_degradation.py \
-          backend/tests/test_analyst_ratings_contract.py
+          backend/tests/test_analyst_ratings_contract.py \
+          backend/tests/test_money_identity_routes.py \
+          backend/tests/test_key_fact_statement.py \
+          backend/tests/test_finance_loans.py \
+          backend/tests/test_kyc_consent_api.py \
+          backend/tests/test_fixed_deposits_api.py \
+          backend/tests/test_subscription_compliance_api.py \
+          backend/tests/test_subscription_lifecycle.py \
+          backend/tests/test_linked_bank_accounts.py \
+          backend/tests/test_finance_tracker_summary.py \
+          backend/tests/test_audit_trail.py
 
     - name: Validate OpenAPI schema
       env:

@@ -65,11 +65,14 @@ class LoanViewModel: ObservableObject {
 class LoanApplicationViewModel: ObservableObject {
     let offer: LoanOfferDTO
 
-    // Changing what's sent starts a new intent, so it gets a fresh idempotency key.
-    @Published var amount: Double { didSet { submitKey = nil } }
-    @Published var tenureMonths: Int { didSet { submitKey = nil } }
+    // Changing what's sent starts a new intent, so it gets a fresh idempotency
+    // key, and a new KFS that must be acknowledged again (FINSEC-26).
+    @Published var amount: Double { didSet { submitKey = nil; kfsAcknowledged = false } }
+    @Published var tenureMonths: Int { didSet { submitKey = nil; kfsAcknowledged = false } }
     @Published var purpose: String = ""
     @Published var kycConsent: Bool = false
+    /// FINSEC-26: the applicant opened and confirmed the KFS for these terms.
+    @Published var kfsAcknowledged: Bool = false
 
     @Published var currentStep: Int = 0
     let totalSteps = 4 // amount, tenure, purpose, KYC consent + review
@@ -109,7 +112,7 @@ class LoanApplicationViewModel: ObservableObject {
         case 0: return amount >= offer.minAmount && amount <= offer.maxAmount
         case 1: return tenureMonths >= offer.minTenureMonths && tenureMonths <= offer.maxTenureMonths
         case 2: return !purpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case 3: return kycConsent
+        case 3: return kycConsent && kfsAcknowledged
         default: return false
         }
     }
@@ -135,6 +138,10 @@ class LoanApplicationViewModel: ObservableObject {
     func submit() async {
         guard kycConsent else {
             submissionError = "Please provide KYC consent to continue."
+            return
+        }
+        guard kfsAcknowledged else {
+            submissionError = "Please read and acknowledge the Key Fact Statement to continue."
             return
         }
         isSubmitting = true
@@ -179,7 +186,8 @@ class LoanApplicationViewModel: ObservableObject {
             loanOfferId: offer.id,
             requestedAmount: amount,
             requestedTenureMonths: tenureMonths,
-            deviceId: deviceId
+            deviceId: deviceId,
+            kfsAcknowledged: kfsAcknowledged
         )
         let key = submitKey ?? UUID().uuidString
         submitKey = key

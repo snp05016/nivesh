@@ -246,10 +246,50 @@ private struct LoanKYCConsentStep: View {
             }
             .buttonStyle(EKPressStyle())
 
+            LoanKFSAcknowledgmentRow(vm: vm)
+
             DisclosureLinkRow(key: .digitalLendingCompliance)
             DisclosureLinkRow(key: .lendingServiceProvider)
 
             LoanApplicationSummaryCard(vm: vm)
+        }
+    }
+}
+
+/// FINSEC-26: the KFS for the chosen amount/tenure, which the applicant must
+/// acknowledge before submitting (sent as kfs_acknowledged).
+private struct LoanKFSAcknowledgmentRow: View {
+    @ObservedObject var vm: LoanApplicationViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+            NavigationLink(destination: KeyFactStatementView(source: .loanOffer(id: vm.offer.id, amount: vm.amount, tenureMonths: vm.tenureMonths))) {
+                HStack(spacing: Theme.Spacing.small) {
+                    Image(systemName: "doc.text.magnifyingglass").foregroundColor(Theme.securityGold)
+                    Text("Key Fact Statement for your loan")
+                        .font(Theme.engravedSerif(size: 13, relativeTo: .subheadline))
+                        .foregroundColor(Theme.inkPrimary)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundColor(Theme.inkTertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(EKPressStyle())
+
+            Button {
+                HapticManager.selection()
+                vm.kfsAcknowledged.toggle()
+            } label: {
+                HStack(spacing: Theme.Spacing.standard) {
+                    Image(systemName: vm.kfsAcknowledged ? "checkmark.square.fill" : "square")
+                        .foregroundColor(vm.kfsAcknowledged ? Theme.securityGold : Theme.inkTertiary)
+                    Text("I have read the Key Fact Statement for this amount and tenure.")
+                        .font(Theme.engravedSerif(size: 13, relativeTo: .subheadline))
+                        .foregroundColor(Theme.inkPrimary)
+                        .multilineTextAlignment(.leading)
+                }
+            }
+            .buttonStyle(EKPressStyle())
         }
     }
 }

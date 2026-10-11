@@ -10,6 +10,13 @@ from uuid import uuid4
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _demo_mode(monkeypatch):
+    import config.settings
+
+    monkeypatch.setattr(config.settings, "DEMO_MODE", True)  # /api/fixed-deposits is demo-gated (FAKE-23)
+
+
 def _new_user_headers() -> dict:
     import database
     from models.db_models import User  # pyright: ignore[reportMissingImports]  (checker resolves `models` to ml-engine/models)

@@ -6,4 +6,4 @@
 - **Foreground Processes:** NEVER start anything that has an infinite loop (like `uvicorn` or any other server) in the foreground. If you must run a server, ALWAYS use the `is_background: true` parameter in the `run_shell_command` tool.
 - **Command Timeouts:** Make sure that all shell commands have a 10-minute timeout enforced to prevent them from hanging indefinitely.
 - **Local Server Management:** When running or restarting the backend server locally for testing, ensure you close any existing processes on the required ports before starting it again.
-  - To stop and restart the local server, run: `bash /Users/saumya/Desktop/nivesh/backend/run.sh` (this script handles killing existing processes on port 8000 and starting uvicorn).
+  - To stop and restart the local server, run: `bash backend/run.sh` from the repository root (this script handles killing existing processes on port 8000 and starting uvicorn).

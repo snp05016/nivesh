@@ -91,6 +91,9 @@ class SubmitLoanApplicationRequest(BaseModel):
     # kyc_consent_service.verify_device_binding() before auto-approval.
     # Simulated for demo purposes, not a real device/SIM-binding integration.
     device_id: Optional[str] = None
+    # FINSEC-26: the applicant read the KFS for this amount/tenure. Optional
+    # so older app builds still submit; their rows keep kfs_acknowledged_at NULL.
+    kfs_acknowledged: bool = False
 
 
 class LoanApplicationResponse(BaseModel):
@@ -104,6 +107,9 @@ class LoanApplicationResponse(BaseModel):
     decision_reason: Optional[str] = None
     submitted_at: Optional[str] = None
     decided_at: Optional[str] = None
+    kfs_apr_pct: Optional[float] = None
+    kfs_total_fees: Optional[float] = None
+    kfs_acknowledged_at: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -239,6 +245,9 @@ def _serialize_application(app) -> LoanApplicationResponse:
         decision_reason=app.decision_reason,
         submitted_at=app.submitted_at.isoformat() if app.submitted_at else None,
         decided_at=app.decided_at.isoformat() if app.decided_at else None,
+        kfs_apr_pct=float(app.kfs_apr_pct) if app.kfs_apr_pct is not None else None,
+        kfs_total_fees=float(app.kfs_total_fees) if app.kfs_total_fees is not None else None,
+        kfs_acknowledged_at=app.kfs_acknowledged_at.isoformat() if app.kfs_acknowledged_at else None,
     )
 
 
@@ -261,6 +270,7 @@ def create_loan_application(
             requested_tenure_months=payload.requested_tenure_months,
             device_id=payload.device_id,
             idempotency_key=idempotency_key,
+            kfs_acknowledged=payload.kfs_acknowledged,
         )
     except ProductBoundsError as exc:
         raise HTTPException(status_code=422, detail=str(exc))

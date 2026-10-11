@@ -10,6 +10,14 @@ from uuid import uuid4
 
 import pytest
 
+
+@pytest.fixture(autouse=True)
+def _demo_mode(monkeypatch):
+    import config.settings
+
+    monkeypatch.setattr(config.settings, "DEMO_MODE", True)  # GET /api/kyc/fraud-signals is demo-gated (FAKE-23)
+
+
 _AUTH_ROUTES = [
     ("post", "/api/kyc/consents"),
     ("get", "/api/kyc/consents"),

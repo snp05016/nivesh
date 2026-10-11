@@ -105,12 +105,15 @@ struct LoanApplicationRequest: Codable {
     let requestedAmount: Double
     let requestedTenureMonths: Int
     let deviceId: String?
+    /// FINSEC-26: the applicant read the KFS for this amount and tenure.
+    let kfsAcknowledged: Bool
 
     enum CodingKeys: String, CodingKey {
         case loanOfferId = "loan_offer_id"
         case requestedAmount = "requested_amount"
         case requestedTenureMonths = "requested_tenure_months"
         case deviceId = "device_id"
+        case kfsAcknowledged = "kfs_acknowledged"
     }
 }
 
@@ -150,6 +153,10 @@ struct LoanApplicationResponse: Codable, Identifiable, Equatable {
     let decisionReason: String?
     let submittedAt: String?
     let decidedAt: String?
+    /// FINSEC-26: KFS snapshot stored at submit (nil on older rows).
+    let kfsAprPct: Double?
+    let kfsTotalFees: Double?
+    let kfsAcknowledgedAt: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -162,6 +169,9 @@ struct LoanApplicationResponse: Codable, Identifiable, Equatable {
         case decisionReason = "decision_reason"
         case submittedAt = "submitted_at"
         case decidedAt = "decided_at"
+        case kfsAprPct = "kfs_apr_pct"
+        case kfsTotalFees = "kfs_total_fees"
+        case kfsAcknowledgedAt = "kfs_acknowledged_at"
     }
 
     var parsedStatus: LoanApplicationStatus { LoanApplicationStatus(rawValue: status) ?? .submitted }

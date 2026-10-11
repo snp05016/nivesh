@@ -172,8 +172,13 @@ def submit_loan_application(
     requested_tenure_months: int,
     device_id: Optional[str] = None,
     idempotency_key: Optional[str] = None,
+    kfs_acknowledged: bool = False,
 ) -> LoanApplication:
     """Submit a loan application against a mock loan offer.
+
+    FINSEC-26: stores the Key Fact Statement APR and fees for the requested
+    amount/tenure on the row, and the acknowledgment time when the applicant
+    confirmed reading that KFS (kfs_acknowledged).
 
     idempotency_key (the client's Idempotency-Key header) makes retries
     safe: a repeated key for the same user returns the original application.
@@ -212,6 +217,10 @@ def submit_loan_application(
                 status = "rejected"
                 reason = f"MOCK DECISION: application rejected — KYC gate failed: {kyc_reason}"
 
+        # FINSEC-26: same figures as compute_key_fact_statement for these terms.
+        rate_pct = float(offer.interest_rate_pct)  # type: ignore[arg-type]
+        fee_pct = float(offer.processing_fee_pct)  # type: ignore[arg-type]
+        now = datetime.now(timezone.utc)
         application = LoanApplication(
             user_id=user_id,
             loan_offer_id=loan_offer_id,
@@ -220,8 +229,11 @@ def submit_loan_application(
             status=status,
             mock_credit_score_at_application=score,
             decision_reason=reason,
-            decided_at=datetime.now(timezone.utc) if status != "under_review" else None,
+            decided_at=now if status != "under_review" else None,
             idempotency_key=idempotency_key,
+            kfs_apr_pct=calculate_apr(requested_amount, rate_pct, requested_tenure_months, fee_pct),
+            kfs_total_fees=round(requested_amount * fee_pct / 100, 2),
+            kfs_acknowledged_at=now if kfs_acknowledged else None,
         )
         session.add(application)
         try:
