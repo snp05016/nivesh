@@ -5,8 +5,9 @@
 # Usage:
 #   BASE_URL="http://localhost:8000" bash test_all.sh
 #   TICKER="TCS" AUTH_TOKEN="..." bash test_all.sh
-#   ONLY="market" bash test_all.sh  # run a specific section
-#   SKIP="ai" bash test_all.sh      # skip expensive AI tests
+#   ONLY="market" bash test_all.sh  # run only sections whose title contains "market"
+#   SKIP="ai" bash test_all.sh      # skip sections whose title contains "ai"
+#   ALLOW_PAID_ENDPOINTS=1 bash test_all.sh  # opt in to the paid LLM sections (20, 21)
 #   PARALLEL=4 bash test_all.sh     # run 4 workers in parallel
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -21,6 +22,7 @@ TICKER3="${TICKER3:-INFY}"
 AUTH_TOKEN="${AUTH_TOKEN:-}"
 ONLY="${ONLY:-}"
 SKIP="${SKIP:-}"
+ALLOW_PAID_ENDPOINTS="${ALLOW_PAID_ENDPOINTS:-0}"
 TIMEOUT="${TIMEOUT:-30}"
 PARALLEL="${PARALLEL:-1}"
 REPORT_FILE="${REPORT_FILE:-/tmp/nivesh_test_report.json}"
@@ -148,12 +150,18 @@ test_post_fields() {
 
 section() {
     local title="$1"
-    if [ -n "$ONLY" ] && ! echo "$ONLY" | grep -qi "$title"; then
+    # Paid sections (POST /analyze starts real LLM runs) are opt-in.
+    if [ "$ALLOW_PAID_ENDPOINTS" != "1" ] && printf '%s' "$title" | grep -qi 'AI ANALYSIS'; then
+        SKIP_COUNT=$((SKIP_COUNT+50))
+        cyan "═══ SKIP (paid, set ALLOW_PAID_ENDPOINTS=1) $title ═══"
+        return 1
+    fi
+    if [ -n "$ONLY" ] && ! printf '%s' "$title" | grep -qiF -- "$ONLY"; then
         SKIP_COUNT=$((SKIP_COUNT+50))
         cyan "═══ SKIP $title ═══"
         return 1
     fi
-    if [ -n "$SKIP" ] && echo "$SKIP" | grep -qi "$title"; then
+    if [ -n "$SKIP" ] && printf '%s' "$title" | grep -qiF -- "$SKIP"; then
         SKIP_COUNT=$((SKIP_COUNT+50))
         cyan "═══ SKIP $title ═══"
         return 1
@@ -483,7 +491,7 @@ if section "15. NOTIFICATIONS"; then
 test_http        "Register device → 401"                        "POST"   "/notifications/register-device" 401
 test_http        "Notification logs → 401"                      "GET"    "/notifications/1"               401
 test_http        "Test notification → 403 or 401"               "POST"   "/notifications/test"            403
-test_http        "Morning summary push → 401 or 403"            "POST"   "/notifications/morning-summary-push" 403
+test_http        "Morning summary push → 401 or 403"            "POST"   "/notifications/morning-summary-push" 401
 test_http        "Notification check → 401"                     "GET"    "/alerts/check/1"                401
 fi
 
@@ -675,8 +683,8 @@ fi
 # SECTION 20: AI Analysis — Standard (5 tests)
 # ═══════════════════════════════════════════════════════════════════════════════
 if section "20. AI ANALYSIS — Standard"; then
-# POST /analyze returns SSE stream, but we check it accepts the request
-test_http    "Analyze standard starts SSE"       "POST" "/analyze" 200 \
+# POST /analyze queues a background job and returns 202
+test_http    "Analyze standard starts SSE"       "POST" "/analyze" 202 \
     -H "Content-Type: application/json" \
     -d "{\"ticker\":\"$TICKER\",\"exchange\":\"NSE\",\"user_id\":0,\"scan_type\":\"standard\",\"deep_scan\":false}"
 
@@ -691,11 +699,11 @@ fi
 # SECTION 21: AI Analysis — Extreme (5 tests)
 # ═══════════════════════════════════════════════════════════════════════════════
 if section "21. AI ANALYSIS — Extreme"; then
-test_http    "Analyze extreme starts SSE"       "POST" "/analyze" 200 \
+test_http    "Analyze extreme starts SSE"       "POST" "/analyze" 202 \
     -H "Content-Type: application/json" \
     -d "{\"ticker\":\"$TICKER\",\"exchange\":\"NSE\",\"user_id\":0,\"scan_type\":\"extreme\",\"deep_scan\":true}"
 
-test_http    "Analyze extreme deep_scan"        "POST" "/analyze" 200 \
+test_http    "Analyze extreme deep_scan"        "POST" "/analyze" 202 \
     -H "Content-Type: application/json" \
     -d "{\"ticker\":\"$TICKER2\",\"exchange\":\"NSE\",\"user_id\":0,\"scan_type\":\"extreme\",\"deep_scan\":true}"
 
@@ -703,7 +711,7 @@ test_http    "Extreme scan_type validation"     "POST" "/analyze" 422 \
     -H "Content-Type: application/json" \
     -d "{\"ticker\":\"$TICKER\",\"exchange\":\"NSE\",\"scan_type\":\"invalid\"}"
 
-test_http    "Extreme BSE ticker"               "POST" "/analyze" 200 \
+test_http    "Extreme BSE ticker"               "POST" "/analyze" 202 \
     -H "Content-Type: application/json" \
     -d "{\"ticker\":\"$TICKER\",\"exchange\":\"BSE\",\"user_id\":0,\"scan_type\":\"extreme\"}"
 fi
@@ -766,20 +774,9 @@ test_http    "No sensitive headers"   "GET" "/health" 200
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# SECTION 25: Bulk / Batch Endpoints (5 tests)
+# SECTION 25: Bulk / Batch Endpoints (1 test; /analyze/batch was removed, LLM-03)
 # ═══════════════════════════════════════════════════════════════════════════════
 if section "25. BULK & BATCH"; then
-test_post_json "Batch analyze → 200"  "/api/v1/analyze/batch" 200 \
-    "{\"tickers\":[\"$TICKER\",\"$TICKER2\"],\"user_id\":0,\"exchange\":\"NSE\"}"
-
-test_post_json "Batch missing tickers → 422" "/api/v1/analyze/batch" 422 \
-    "{\"exchange\":\"NSE\",\"user_id\":0}"
-
-test_post_json "Batch empty tickers → 422" "/api/v1/analyze/batch" 422 \
-    "{\"tickers\":[],\"exchange\":\"NSE\",\"user_id\":0}"
-
-test_http    "Batch GET → 405"  "GET"  "/api/v1/analyze/batch" 405
-
 # Bulk watchlist add (auth required)
 test_post_json "Bulk watchlist add → 401"  "/watchlist/bulk" 401 \
     "{\"user_id\":1,\"tickers\":[\"RELIANCE\",\"TCS\"]}"

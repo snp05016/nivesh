@@ -29,7 +29,7 @@ class _FakeProc:
         pass
 
 
-def test_spawn_registers_and_cancel(monkeypatch):
+def test_spawn_registers_and_cancel(monkeypatch, real_spawn_job):
     import database
     import services.job_manager as jm
     job = database.create_job(22_222_221, "TCS", "NSE", "standard")

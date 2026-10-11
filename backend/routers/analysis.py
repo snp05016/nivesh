@@ -15,7 +15,6 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 
 import yfinance as yf
-import anthropic
 from fastapi import APIRouter, HTTPException, Request, Header
 from fastapi.responses import JSONResponse as _JSONResponse
 
@@ -63,26 +62,6 @@ _yf_circuit_lock = threading.Lock()
 # ---------------------------------------------------------------------------
 # DeepSeek helpers — now imported from services.llm_utils (single source)
 # ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
-# Signal normalization
-# ---------------------------------------------------------------------------
-_SIGNAL_MAP = {
-    "BUY": "BULLISH",
-    "STRONG BUY": "BULLISH",
-    "STRONG_BUY": "BULLISH",
-    "SELL": "BEARISH",
-    "STRONG SELL": "BEARISH",
-    "STRONG_SELL": "BEARISH",
-    "AVOID": "BEARISH",
-    "CAUTIOUS": "CAUTIOUSLY BEARISH",
-}
-
-def _normalize_signal(result: dict) -> dict:
-    if "signal" in result:
-        normalized = result["signal"].strip().upper()
-        result["signal"] = _SIGNAL_MAP.get(normalized, normalized)
-    return result
 
 # ---------------------------------------------------------------------------
 # yfinance circuit breaker
@@ -792,96 +771,6 @@ async def clear_analysis_slots(
         "total_stuck": len(stuck),
         "message": f"Cleared {cleared_count} of {len(stuck)} stuck analysis slots.",
     }
-
-
-# ---------------------------------------------------------------------------
-# POST /analyze/batch
-# ---------------------------------------------------------------------------
-@router.post("/analyze/batch")
-async def batch_analyze_endpoint(req: BatchAnalyzeRequest):
-    try:
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not api_key:
-            raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not set")
-
-        exchange = req.exchange.upper()
-        analysis_date = date.today().strftime("%Y-%m-%d")
-        requests_list = []
-
-        for ticker in req.tickers:
-            full_ticker = _resolve_ticker(ticker, exchange)
-            from prompts import INDIAN_MARKET_SYSTEM_PROMPT
-            user_message = f"Analyze {full_ticker} on {exchange} for {analysis_date}. Return analysis JSON per system prompt."
-            requests_list.append({
-                "custom_id": ticker.upper(),
-                "params": {
-                    "model": SONNET_MODEL,
-                    "max_tokens": 2000,
-                    "system": [{"type": "text", "text": INDIAN_MARKET_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
-                    "messages": [{"role": "user", "content": user_message}],
-                }
-            })
-
-        client = anthropic.Anthropic(api_key=api_key)
-        
-        import time
-        for attempt in range(3):
-            try:
-                batch = client.messages.batches.create(requests=requests_list)
-                break
-            except Exception as e:
-                logging.info(f"[Anthropic] Batch create attempt {attempt+1} failed: {e}")
-                if attempt == 2: raise
-                time.sleep(1.0 * (2 ** attempt))
-
-        return {
-            "batch_id": batch.id,
-            "status": batch.processing_status,
-            "request_counts": batch.request_counts.model_dump() if hasattr(batch.request_counts, 'model_dump') else {},
-            "tickers": req.tickers,
-            "note": "Poll GET /analyze/batch/{batch_id} for results"
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-
-# ---------------------------------------------------------------------------
-# GET /analyze/batch/{batch_id}
-# ---------------------------------------------------------------------------
-@router.get("/analyze/batch/{batch_id}")
-async def batch_analyze_status(batch_id: str):
-    try:
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        client = anthropic.Anthropic(api_key=api_key)
-        
-        import time
-        for attempt in range(3):
-            try:
-                batch = client.messages.batches.retrieve(batch_id)
-                break
-            except Exception as e:
-                logging.info(f"[Anthropic] Batch retrieve attempt {attempt+1} failed: {e}")
-                if attempt == 2: raise
-                time.sleep(1.0 * (2 ** attempt))
-
-        if batch.processing_status == "ended":
-            results = []
-            for result in client.messages.batches.results(batch_id):
-                if result.result.type == "succeeded":
-                    try:
-                        raw_json = result.result.message.content[0].text.strip()
-                        analysis = json.loads(raw_json)
-                        analysis = _normalize_signal(analysis)
-                        with get_session() as session:
-                            save_analysis(session, None, result.custom_id, analysis)
-                        results.append({"ticker": result.custom_id, "status": "saved"})
-                    except Exception as e:
-                        results.append({"ticker": result.custom_id, "status": "error", "detail": str(e)})
-            return {"status": "complete", "results": results}
-
-        return {"status": batch.processing_status, "batch_id": batch_id}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------

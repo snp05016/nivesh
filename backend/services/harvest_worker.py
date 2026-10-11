@@ -256,6 +256,18 @@ def start_scheduler():
             _dash_update_harvest("anomaly_scan", "error", {"error": str(e)})
             logging.error(f"[anomaly_scan] Error: {e}")
 
+    # ── DB backup — 2:30 AM IST (21:00 UTC); see docs/codebase/BACKUP_RESTORE.md ─
+    async def _run_db_backup():
+        _dash_update_harvest("db_backup", "running")
+        try:
+            from services.backup_service import run_backup
+            written = await asyncio.to_thread(run_backup)
+            _dash_update_harvest("db_backup", "idle", {k: str(v) for k, v in written.items()})
+            logging.info(f"[db_backup] Complete: {sorted(written)}")
+        except Exception as e:
+            _dash_update_harvest("db_backup", "error", {"error": str(e)})
+            logging.error(f"[db_backup] Error: {e}")
+
     # ── Wire all jobs ─────────────────────────────────────────────────────────
 
     _scheduler.add_job(_run_harvest_all_advisors,     "cron", hour=1,  minute=30)  # 1:30 AM IST
@@ -296,6 +308,7 @@ def start_scheduler():
     _scheduler.add_job(_run_premarket_cache_warm, "cron", hour=3,  minute=30)             # 9:00 AM IST
     _scheduler.add_job(_run_error_digest,         "cron", hour=1,  minute=30)             # 7:00 AM IST
     _scheduler.add_job(_run_anomaly_scan,         "cron", minute="0")
+    _scheduler.add_job(_run_db_backup,            "cron", hour=21, minute=0, id="db_backup", replace_existing=True)  # 2:30 AM IST
 
     # ── Harvester jobs (ScraperAPI-backed, rate-limited for free tier) ─────────
     _scheduler.add_job(_run_expert_harvest_bg, "interval", minutes=120, id="expert_harvest", replace_existing=True)
@@ -330,7 +343,7 @@ def start_scheduler():
         "All schedulers started — existing: (advisor 1:30, news 12:30, yt-channel 1:00, "
         "yt-portfolio 1:15, snapshot 4:30 PM, pkscreener 4:45 PM, outcome-eval 2:00 AM) | "
         "new: (bhavcopy 7:00 PM, morning-brief-pregen 6:30 AM, "
-        "piotroski-weekly Sun 11 PM, premarket-warm 9:00 AM, error-digest 7:00 AM) | "
+        "piotroski-weekly Sun 11 PM, premarket-warm 9:00 AM, error-digest 7:00 AM, db-backup 2:30 AM) | "
         "harvesters: (expert 120min, sebi 120min, yt-expert 120min) [all IST]"
     )
 

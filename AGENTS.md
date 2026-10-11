@@ -227,6 +227,7 @@ cd backend
 ```
 
 Key rules:
+- **Back up before every server migration** — every server `alembic upgrade`, `downgrade` or `stamp` runs behind the backup gate: `cd backend && ../venv/bin/python scripts/backup_db.py && ../venv/bin/alembic upgrade head`. If the backup fails, do NOT migrate; fix the backup first. Restore steps: `docs/codebase/BACKUP_RESTORE.md`.
 - **Generate BEFORE deploying** — the migration file must be committed alongside the model change.
 - **`alembic check` before commit** — verifies no schema drift between models and DB.
 - **Never manually ALTER TABLE** — all schema changes go through migration files in `migrations/versions/`.
@@ -239,7 +240,7 @@ Schema change checklist:
 1. Edit `models/db_models.py`
 2. `alembic revision --autogenerate -m "description"`
 3. Review the generated migration file
-4. `alembic upgrade head` (local) or `alembic stamp head` (server if DB already matches)
+4. `alembic upgrade head` (local) or, on the server, `scripts/backup_db.py && alembic upgrade head` (`alembic stamp head` if the DB already matches, also after `scripts/backup_db.py`)
 5. Commit both the model change AND the migration file
 
 ---

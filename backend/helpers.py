@@ -257,7 +257,7 @@ class AlertRemoveRequest(BaseModel):
     alert_id: int = Field(..., description="ID of the alert to remove")
 
 class BatchAnalyzeRequest(BaseModel):
-    tickers: list[str] = Field(..., description="List of ticker symbols to analyze")
+    tickers: list[str] = Field(..., min_length=1, max_length=20, description="List of ticker symbols to analyze")
     exchange: str = Field("NSE", description="Exchange to fetch data from")
     user_id: int | None = Field(None, description="Optional user ID")
 

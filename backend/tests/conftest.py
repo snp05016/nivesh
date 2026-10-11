@@ -145,6 +145,22 @@ for _path in (_TEST_DB_PATH, f"{_TEST_DB_PATH}-wal", f"{_TEST_DB_PATH}-shm"):
         pass
 
 # ---------------------------------------------------------------------------
+# STEP 2b: No real child processes (TEST-02)
+# A spawned/forkserver child re-imports everything, so the sys.modules mocks above
+# do not apply there: job_worker would load the real .env keys and run paid
+# DeepSeek/Claude analyses. Patch spawn_job (see `spawned_jobs`) or the Process
+# class itself in tests that need a worker.
+# ---------------------------------------------------------------------------
+import multiprocessing.process as _mp_process
+
+
+def _blocked_process_start(self):
+    raise RuntimeError("tests must not start real processes; patch spawn_job / multiprocessing.Process")
+
+
+_mp_process.BaseProcess.start = _blocked_process_start
+
+# ---------------------------------------------------------------------------
 # STEP 3: Add backend to sys.path and import the app
 # ---------------------------------------------------------------------------
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -183,6 +199,9 @@ def _reset_rate_limiter():
     yield
 
 
+import services.job_manager as _job_manager
+_REAL_SPAWN_JOB = _job_manager.spawn_job
+
 # ---------------------------------------------------------------------------
 # TEST USER CONSTANTS
 # ---------------------------------------------------------------------------
@@ -195,6 +214,24 @@ TEST_USER_ID  = None   # filled by fixture
 # ---------------------------------------------------------------------------
 # FIXTURES
 # ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def spawned_jobs(monkeypatch):
+    """Record spawn_job calls instead of starting analysis workers (TEST-02).
+
+    routers/analysis.py imports spawn_job at call time, so every /analyze request in
+    every test lands here. Returns the recorded (args, kwargs) calls.
+    """
+    calls = []
+    monkeypatch.setattr(_job_manager, "spawn_job", lambda *a, **k: calls.append((a, k)))
+    return calls
+
+
+@pytest.fixture
+def real_spawn_job(spawned_jobs, monkeypatch):
+    """Restore the real spawn_job, for tests that fake multiprocessing.Process themselves."""
+    monkeypatch.setattr(_job_manager, "spawn_job", _REAL_SPAWN_JOB)
+
 
 @pytest.fixture(scope="session")
 def client():
