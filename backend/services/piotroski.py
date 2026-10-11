@@ -1,11 +1,15 @@
 """
 Piotroski F-Score calculator for NSE stocks.
 9-point fundamental health check from yfinance balance sheet data.
-No AI calls. Score 0-3=WEAK, 4-6=NEUTRAL, 7-9=STRONG.
+No AI calls. Graded on the share of AVAILABLE checks that pass
+(>= 7/9 STRONG, >= 4/9 NEUTRAL, else WEAK), so banks/NBFCs with fewer
+reported rows are not capped below STRONG. NaN rows count as missing.
 
 Also provides batch_refresh_piotroski() for the weekly nightly cron job.
 """
 import logging
+import math
+
 import yfinance as yf
 
 logger = logging.getLogger(__name__)
@@ -27,9 +31,15 @@ def compute_piotroski(ticker: str) -> dict:
 
     def get(df, row, col=0):
         try:
-            return float(df.loc[row].iloc[col])
+            v = float(df.loc[row].iloc[col])
         except Exception as _e:
             return None
+        # yfinance leaves gaps as NaN: treat as missing, not as a failed check.
+        return None if math.isnan(v) else v
+
+    def first(*vals):
+        # Explicit None check so a real 0.0 is not discarded like `a or b` would.
+        return next((v for v in vals if v is not None), None)
 
     try:
         t = yf.Ticker(f"{ticker}.NS")
@@ -45,7 +55,7 @@ def compute_piotroski(ticker: str) -> dict:
             p = net_income / total_assets > 0
             checks["roa_positive"] = p; score += int(p); available += 1
 
-        ocf = get(cf, "Operating Cash Flow") or get(cf, "Total Cash From Operating Activities")
+        ocf = first(get(cf, "Operating Cash Flow"), get(cf, "Total Cash From Operating Activities"))
         if ocf is not None:
             p = ocf > 0
             checks["ocf_positive"] = p; score += int(p); available += 1
@@ -68,7 +78,8 @@ def compute_piotroski(ticker: str) -> dict:
         ta_ly = get(bs, "Total Assets", 1)
         if all(v is not None for v in [ltd, total_assets, ltd_ly, ta_ly]):
             if total_assets > 0 and ta_ly > 0:
-                p = (ltd / total_assets) < (ltd_ly / ta_ly)
+                # Debt-free in both years is the best leverage outcome: pass.
+                p = (ltd == 0 and ltd_ly == 0) or (ltd / total_assets) < (ltd_ly / ta_ly)
                 checks["leverage_decreasing"] = p; score += int(p); available += 1
 
         curr_a = get(bs, "Current Assets"); curr_l = get(bs, "Current Liabilities")
@@ -78,8 +89,8 @@ def compute_piotroski(ticker: str) -> dict:
                 p = (curr_a / curr_l) > (curr_a_ly / curr_l_ly)
                 checks["current_ratio_improving"] = p; score += int(p); available += 1
 
-        shares = get(bs, "Ordinary Shares Number") or get(bs, "Share Issued")
-        shares_ly = get(bs, "Ordinary Shares Number", 1) or get(bs, "Share Issued", 1)
+        shares = first(get(bs, "Ordinary Shares Number"), get(bs, "Share Issued"))
+        shares_ly = first(get(bs, "Ordinary Shares Number", 1), get(bs, "Share Issued", 1))
         if shares is not None and shares_ly is not None:
             # Fix 2.49: relaxed from 1.01 to 1.05 to avoid ESOP plans
             # triggering false dilution flags on standard employee stock grants
@@ -117,7 +128,10 @@ def compute_piotroski(ticker: str) -> dict:
         }
 
     confidence = "HIGH" if available >= 8 else ("MEDIUM" if available >= 5 else "LOW")
-    grade = "STRONG" if score >= 7 else ("NEUTRAL" if score >= 4 else "WEAK")
+    # Thresholds were designed for 9 checks; apply them to the ratio so a
+    # partial check set (e.g. 6/6 for a bank) can still grade STRONG.
+    ratio = score / available
+    grade = "STRONG" if ratio >= 7 / 9 else ("NEUTRAL" if ratio >= 4 / 9 else "WEAK")
 
     return {
         "f_score": score,
