@@ -15,7 +15,7 @@
 There is exactly one mechanism: `backend/services/orchestrator.py` inserts
 `backend/tradingagents-core` at the front of `sys.path` right before its
 `from tradingagents...` imports. Every user of the pipeline (the `job_worker`
-subprocess, `routers/analysis.py`, `services/celery_tasks.py`) imports the orchestrator first.
+subprocess, `routers/analysis.py`) imports the orchestrator first.
 Do not add another `sys.path` insert or a `pip install -e` step;
 `backend/tests/test_vendored_tradingagents_path.py` enforces this.
 

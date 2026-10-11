@@ -295,6 +295,11 @@ def run_stress_test_job(
         load_backend_env()
     except Exception as _e:
         pass
+    try:
+        from core.logging_config import configure_child_logging
+        configure_child_logging()
+    except Exception:
+        pass
 
     # The parent's pool is dropped by database._reset_pool_after_fork (DB-02);
     # dispose() with close=True here would close the parent's shared sockets.

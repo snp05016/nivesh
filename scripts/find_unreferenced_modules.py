@@ -30,7 +30,7 @@ ALLOWLIST = {
     # Unreferenced or test-only when this check landed (audit ARCH-19); other audit
     # items decide whether each is wired up or deleted.
     "services.rate_limiter",  # ARCH-11 wires it in
-    "services.celery_tasks",  # Celery path waits on REL-12/DB-03
+    "services.outcome_tracker",  # ML-03 registers the outcome job after DB-03
     "services.macro_modifiers",
     "models.signal_config",
     # Test-only engines that MATH-22 fixed and tested (capital gains, XIRR, IV);

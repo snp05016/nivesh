@@ -11,11 +11,21 @@ flowchart TB
   Backend --> ML[Docker ML engine :8001]
   Backend --> External[NSE, yfinance, SEBI, YouTube, LLM APIs]
   Backend --> Disk[charts/, cache/, token_log.jsonl]
-  Backend --> Scheduler[APScheduler jobs]
-  Worker[Celery worker] --> DB
-  Worker --> External
+  Backend --> Scheduler[APScheduler jobs, in-process]
+  Backend --> Jobs[Analysis/stress-test subprocesses, spawn start method]
   Ops[SSH deploy scripts] --> Server[saumyapatel@192.168.1.122]
 ```
+
+## Supported Topology
+
+One uvicorn process (`--workers 1`, no `--reload`) under systemd (`backend/nivesh.service`; `backend/Dockerfile` matches). That process runs:
+
+- the API;
+- the APScheduler leader (`services/harvest_worker.start_scheduler`, guarded by the `/tmp/nivesh_scheduler.lock` file lock), including the stale-job sweep and RAG ingest;
+- the price-alert poller and the other one-time startup tasks (leader only);
+- analysis and stress-test jobs, each in a child process started through `services/job_manager.spawn_process` with the `spawn` start method, so a child never inherits the parent's DB pool, pgvector connection or held locks.
+
+Rate limits, analysis slots, caches and the job registry live in process memory, so more than one worker is not supported. Scaling out first needs that state in Redis or the database (ARCH-07, PERF-21); only then raise `--workers`. If the scheduler lock file cannot be opened, the scheduler logs an error and does not start.
 
 ## Deployment Artifacts
 
@@ -87,5 +97,5 @@ Domain risk: `qzz.io` is a free third-party subdomain hard-coded in the iOS app 
 
 - Current iOS default base URL is `https://api.nivesh.qzz.io`; `ServerURLPolicy.swift` rewrites legacy `http://192.168.1.122:8000` values to the default.
 - `backend/nivesh.service` runs as `saumyapatel` from `/home/saumyapatel/Desktop/nivesh/backend`, matching AGENTS.md. Confirm the installed copy in `/etc/systemd/system/` matches the repo file and that the unit is enabled.
-- The `--workers` count in `backend/nivesh.service` is the deployed value; the multi-worker decision is tracked separately (ARCH-07).
+- `backend/nivesh.service` and `backend/Dockerfile` both pin `--workers 1` (see Supported Topology); `backend/tests/test_deploy_topology.py` fails if either drifts.
 - `ml-engine` runs separately on port 8001; `scripts/deploy_ml_engine.sh` builds/runs the container on `saumyapatel@192.168.1.122` and restarts backend Uvicorn.

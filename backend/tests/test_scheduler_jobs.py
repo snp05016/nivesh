@@ -126,3 +126,33 @@ def test_feed_fetch_uses_timeout(monkeypatch):
     assert asyncio.run(nh.harvest_news()) == 0
     assert seen and seen[0][0] == "https://example.test/rss"
     assert seen[0][1]["timeout"] == 15
+
+
+# ── REL-12: broken/dead jobs removed, cleanup jobs log without NameError ─────────
+
+def test_removed_jobs_not_registered(captured):
+    names = {getattr(j.func, "__name__", "") for j in captured.jobs}
+    assert not names & {"_run_cache_purge", "_run_premarket_cache_warm", "_run_harvest_filings"}
+    assert not hasattr(hw, "check_signal_outcomes")
+
+
+def test_cleanup_jobs_do_not_nameerror(captured, monkeypatch):
+    import services.notifications_inbox as inbox
+
+    monkeypatch.setattr(inbox, "cleanup_old", lambda: 3)
+    job = next(j.func for j in captured.jobs
+               if getattr(j.func, "__name__", "") == "_run_notification_cleanup")
+    job()  # used to raise NameError: name 'logger' is not defined
+
+
+def test_dash_update_creates_unknown_key():
+    from core import dashboard_state as ds
+
+    key = "rel12_test_job"
+    try:
+        ds._dash_update_harvest(key, "running")
+        assert ds._harvest_status[key]["status"] == "running"
+        assert ds._harvest_status[key]["last_run"] is not None
+    finally:
+        with ds._dash_lock:
+            ds._harvest_status.pop(key, None)

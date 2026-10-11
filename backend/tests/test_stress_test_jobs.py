@@ -1,4 +1,5 @@
 """Stress-test job persistence and progress contracts."""
+from types import SimpleNamespace
 
 
 def test_prepare_stress_test_job_only_builds_durable_launch(monkeypatch):
@@ -135,7 +136,7 @@ def test_capacity_returns_429(monkeypatch):
         "list_active_jobs",
         lambda: [{"job_id": f"busy-{i}", "created_at": None} for i in range(7)],
     )
-    monkeypatch.setattr(job_manager.multiprocessing, "Process", no_process)
+    monkeypatch.setattr(job_manager, "MP_CTX", SimpleNamespace(Process=no_process))
     monkeypatch.setattr(
         stress_test_router,
         "mark_stress_test_start_failed",
@@ -189,7 +190,7 @@ def test_spawn_registers_process_and_shutdown_terminates(monkeypatch):
         def join(self, *_args, **_kwargs):
             pass
 
-    monkeypatch.setattr(job_manager.multiprocessing, "Process", FakeProc)
+    monkeypatch.setattr(job_manager, "MP_CTX", SimpleNamespace(Process=FakeProc))
     monkeypatch.setattr(job_manager.job_repo, "list_active_jobs", lambda: [])
 
     assert job_manager.spawn_process("j2", lambda: None, ()) == 123

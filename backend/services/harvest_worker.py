@@ -24,6 +24,7 @@ from core.security import require_admin
 # DB
 from database import get_session
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/admin", tags=["admin-harvest"])
 _scheduler: AsyncIOScheduler | None = None
 
@@ -125,14 +126,19 @@ def start_scheduler() -> bool:
         logging.getLogger(__name__).info("Scheduler already running, skipping re-init")
         return True
 
+    import fcntl
+    lock_path = "/tmp/nivesh_scheduler.lock"
     try:
-        import fcntl
-        _scheduler_lock_file = open("/tmp/nivesh_scheduler.lock", "w")
-        fcntl.lockf(_scheduler_lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except IOError:
-        logging.getLogger(__name__).info("Another worker is running the scheduler. Skipping.")
+        _scheduler_lock_file = open(lock_path, "w")
+    except OSError as e:  # e.g. PermissionError: not "another worker" (REL-08)
+        logger.error("Cannot open scheduler lock %s: %s; scheduler NOT started", lock_path, e)
         return False
-        
+    try:
+        fcntl.lockf(_scheduler_lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        logger.info("Another worker is running the scheduler. Skipping.")
+        return False
+
     # misfire_grace_time: a job that comes due while the process is busy still runs
     # (APScheduler's default of 1 s silently skipped it).
     _scheduler = AsyncIOScheduler(timezone="UTC", job_defaults={
@@ -144,7 +150,6 @@ def start_scheduler() -> bool:
     from services.youtube_harvester import harvest_youtube_metadata, harvest_portfolio_videos
     from services.portfolio_snapshot import snapshot_all_users, pregen_morning_briefs_all_users
     from services.pkscreener_runner import run_nightly_screen
-    from services.filings_extractor import harvest_filings
     from services.nse_data_provider import download_bhavcopy
     from services.piotroski import batch_refresh_piotroski
     from services.error_telemetry import generate_daily_digest
@@ -182,14 +187,6 @@ def start_scheduler() -> bool:
             _dash_update_harvest("youtube", "idle", {"portfolio": res})
         except Exception as e:
             _dash_update_harvest("youtube", "error", {"error": str(e)})
-
-    def _run_harvest_filings():
-        _dash_update_harvest("filings", "running")
-        try:
-            res = harvest_filings()
-            _dash_update_harvest("filings", "idle", {"result": res})
-        except Exception as e:
-            _dash_update_harvest("filings", "error", {"error": str(e)})
 
     def _run_evaluate_analysis_outcomes():
         with get_session() as db:
@@ -230,32 +227,6 @@ def start_scheduler() -> bool:
         except Exception as e:
             _dash_update_harvest("piotroski_batch", "error", {"error": str(e)})
             logging.error(f"[piotroski_batch] Error: {e}")
-
-    # ── NEW JOB 5: Pre-market cache warm — 9:00 AM IST (3:30 UTC) ───────────
-    def _run_premarket_cache_warm():
-        """Invalidate yesterday's stale analyses so users get fresh data at open."""
-        _dash_update_harvest("premarket_warm", "running")
-        try:
-            from services.disk_cache import invalidate as cache_invalidate, CACHE_ROOT
-            from datetime import date as _date
-            import time as _time
-            warmed = 0
-            # Evict yfinance entries older than 8h to force fresh fetch at market open
-            ns_path = CACHE_ROOT / "yfinance"
-            if ns_path.exists():
-                for path in ns_path.glob("*.json.gz"):
-                    try:
-                        age = _time.time() - path.stat().st_mtime
-                        if age > 8 * 3600:
-                            path.unlink(missing_ok=True)
-                            warmed += 1
-                    except Exception as _e:
-                        pass
-            _dash_update_harvest("premarket_warm", "idle", {"evicted_entries": warmed})
-            logging.info(f"[premarket_warm] Evicted {warmed} stale yfinance cache entries")
-        except Exception as e:
-            _dash_update_harvest("premarket_warm", "error", {"error": str(e)})
-            logging.error(f"[premarket_warm] Error: {e}")
 
     # ── NEW JOB 6: Error telemetry digest — 7:00 AM IST (1:30 UTC) ──────────
     def _run_error_digest():
@@ -348,7 +319,6 @@ def start_scheduler() -> bool:
     _scheduler.add_job(_run_bhavcopy_download,    "cron", hour=13, minute=30)             # 7:00 PM IST
     _scheduler.add_job(_run_pregen_morning_briefs,"cron", hour=1,  minute=0)              # 6:30 AM IST
     _scheduler.add_job(_run_piotroski_batch,      "cron", day_of_week="sun", hour=17, minute=30)  # Sun 11 PM IST
-    _scheduler.add_job(_run_premarket_cache_warm, "cron", hour=3,  minute=30)             # 9:00 AM IST
     _scheduler.add_job(_run_error_digest,         "cron", hour=1,  minute=30)             # 7:00 AM IST
     _scheduler.add_job(_run_anomaly_scan,         "cron", minute="0")
     _scheduler.add_job(_run_db_backup,            "cron", hour=21, minute=0, id="db_backup", replace_existing=True)  # 2:30 AM IST
@@ -390,7 +360,7 @@ def start_scheduler() -> bool:
         "All schedulers started — existing: (advisor 1:30, news 12:30, yt-channel 1:00, "
         "yt-portfolio 1:15, snapshot 4:30 PM, pkscreener 4:45 PM, outcome-eval 2:00 AM) | "
         "new: (bhavcopy 7:00 PM, morning-brief-pregen 6:30 AM, "
-        "piotroski-weekly Sun 11 PM, premarket-warm 9:00 AM, error-digest 7:00 AM, db-backup 2:30 AM) | "
+        "piotroski-weekly Sun 11 PM, error-digest 7:00 AM, db-backup 2:30 AM) | "
         "harvesters: (expert 120min, sebi 120min, yt-expert 120min) [all IST]"
     )
     return True
@@ -451,59 +421,3 @@ def stop_scheduler():
     if _scheduler:
         _scheduler.shutdown(wait=False)
         _scheduler = None
-
-async def check_signal_outcomes():
-    import yfinance as yf
-    from datetime import datetime, timedelta
-    import json
-    import gzip
-    from database import AnalysisHistory, get_session
-    import logging
-
-    try:
-        with get_session() as db:
-            cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-            pending = (
-                db.query(AnalysisHistory)
-                .filter(AnalysisHistory.was_correct == None)
-                .filter(AnalysisHistory.created_at < cutoff)
-                .limit(50)
-                .all()
-            )
-            for row in pending:
-                try:
-                    info = yf.Ticker(row.ticker).info
-                    current_price = info.get('currentPrice') or info.get('regularMarketPrice')
-                    if not current_price:
-                        continue
-                    
-                    raw = row.full_json
-                    if isinstance(raw, (bytes, bytearray, memoryview)):
-                        report = json.loads(gzip.decompress(bytes(raw)))
-                    else:
-                        report = json.loads(raw)
-                    
-                    price_at_signal_date = report.get("current_price") or report.get("price")
-                    if not price_at_signal_date:
-                        continue
-                    
-                    outcome_delta_pct = (current_price - price_at_signal_date) / price_at_signal_date * 100
-                    row.outcome_delta_pct = outcome_delta_pct
-                    row.outcome_checked_at = datetime.now(timezone.utc)
-                    
-                    signal = row.signal.upper() if row.signal else "HOLD"
-                    if signal == "BUY" and outcome_delta_pct > 0:
-                        row.was_correct = True
-                    elif signal == "SELL" and outcome_delta_pct < 0:
-                        row.was_correct = True
-                    elif signal == "HOLD" and abs(outcome_delta_pct) < 5:
-                        row.was_correct = True
-                    else:
-                        row.was_correct = False
-                        
-                except Exception as e:
-                    logging.error(f"Error checking outcome for {row.ticker}: {e}")
-                    
-            db.commit()
-    except Exception as e:
-        logging.error(f"Error in check_signal_outcomes: {e}")

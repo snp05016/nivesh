@@ -28,8 +28,8 @@ def test_alpha158_pipelines_removed():
 
 
 def test_celery_module_has_no_materialization_task():
-    source = (BACKEND_DIR / "services" / "celery_tasks.py").read_text()
-    assert "run_nightly_materialization" not in source
+    # REL-12 deleted the unused Celery module outright.
+    assert _module_absent("services.celery_tasks")
 
 
 def test_drop_migration_drops_both_tables():

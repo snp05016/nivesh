@@ -62,6 +62,18 @@ def configure_logging() -> None:
         )
 
 
+
+def configure_child_logging() -> None:
+    """Configure logging in a spawned job child, which starts with a bare root logger.
+
+    No-op in the main process (e.g. tests calling run_job directly), where main.py
+    already configured it and a second call would add a duplicate handler.
+    """
+    import multiprocessing
+    if multiprocessing.parent_process() is not None:
+        configure_logging()
+
+
 def get_logger(name: str = "nivesh"):
     """Return a structlog logger, falling back to stdlib if structlog absent."""
     try:

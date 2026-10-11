@@ -62,6 +62,11 @@ def run_job(job_id: str, ticker: str, exchange: str,
         load_backend_env()
     except Exception as _e:
         pass
+    try:
+        from core.logging_config import configure_child_logging
+        configure_child_logging()
+    except Exception:
+        pass
 
     import database
     if not database.update_job(job_id, status="RUNNING", pid=os.getpid(),

@@ -11,10 +11,16 @@ import multiprocessing
 import os
 import threading
 from datetime import datetime, timedelta, timezone
+from multiprocessing.process import BaseProcess
 
 from repositories import job_repo
 
-_job_registry: dict[str, "multiprocessing.Process"] = {}
+# REL-06: never fork the threaded API process. A forked child would share the
+# parent's pooled DB/pgvector sockets and could inherit a lock held by another
+# thread; a spawned child starts clean and re-imports what it needs.
+MP_CTX = multiprocessing.get_context("spawn")
+
+_job_registry: dict[str, BaseProcess] = {}
 _registry_lock = threading.Lock()
 
 # Platform-wide cap on QUEUED/RUNNING worker jobs, counted from the DB so it holds
@@ -54,7 +60,7 @@ def spawn_process(job_id: str, target, args: tuple) -> int | None:
     """
     if _active_job_count(job_id) >= MAX_CONCURRENT_JOBS:
         raise JobCapacityError("Server busy, please retry shortly")
-    p = multiprocessing.Process(target=target, args=args, daemon=True)
+    p = MP_CTX.Process(target=target, args=args, daemon=True)
     p.start()
     with _registry_lock:
         _job_registry[job_id] = p

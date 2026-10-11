@@ -1,4 +1,6 @@
 """Task 7 — job_manager spawns into a registry and cancels (terminates + marks CANCELLED)."""
+from types import SimpleNamespace
+
 import pytest
 
 
@@ -34,8 +36,7 @@ def test_spawn_registers_and_cancel(monkeypatch, real_spawn_job):
     import services.job_manager as jm
     job = database.create_job(22_222_221, "TCS", "NSE", "standard")
 
-    monkeypatch.setattr(jm.multiprocessing, "Process",
-                        lambda *a, **k: _FakeProc())
+    monkeypatch.setattr(jm, "MP_CTX", SimpleNamespace(Process=lambda *a, **k: _FakeProc()))
     jm.spawn_job(job["job_id"], "TCS", "NSE", 22_222_221, False, "standard")
     assert job["job_id"] in jm._job_registry
 
@@ -49,6 +50,6 @@ def test_reap_finished_drops_dead(monkeypatch):
     dead = _FakeProc()
     dead._alive = False
     with jm._registry_lock:
-        jm._job_registry["zzz"] = dead
+        jm._job_registry["zzz"] = dead  # type: ignore[assignment]
     jm.reap_finished()
     assert "zzz" not in jm._job_registry

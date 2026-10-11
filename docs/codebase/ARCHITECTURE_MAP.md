@@ -139,7 +139,7 @@ flowchart LR
 |---|---|
 | Purpose | Runs recurring harvests, snapshots, screens, outcome evaluation, RAG ingestion, backups, stale-job sweep, and price-alert polling. |
 | Responsibilities | `start_scheduler()` in `services/harvest_worker.py` registers every APScheduler job; it runs only in the leader worker (fcntl lock `/tmp/nivesh_scheduler.lock`). The leader also starts `routers.alerts._price_alert_poller`. |
-| Dependencies | APScheduler, services.harvest_worker, routers.alerts, database. Not scheduled anywhere: `services/nightly_jobs.py`, `services/celery_tasks.py`, `services/outcome_backfill.py`, `services/outcome_tracker.py` (Celery is not installed; see `requirements.txt`). |
+| Dependencies | APScheduler, services.harvest_worker, routers.alerts, database. Not scheduled anywhere: `services/nightly_jobs.py`, `services/outcome_backfill.py`, `services/outcome_tracker.py`. |
 | Inputs | Startup event, cron/interval schedules, env flags. |
 | Outputs | Updated DB tables, logs, jobs, materialized features, push alerts. |
 | Failure modes | Scheduler not installed, duplicate scheduler jobs, local vs remote backend confusion, worker crash, stale heartbeat. |
@@ -184,7 +184,7 @@ flowchart LR
 - Intended rule: routers handle HTTP validation/process spawning, services hold business logic, repositories hold DB access. Current source still contains direct `session.query(...)` and business logic in several routers, especially `analysis.py`, `portfolio.py`, `market.py`, and dashboard code.
 - API naming is mixed: `/analyze`, `/portfolio/{user_id}`, `/market-indices`, `/search`, `/api/v1/market/*`, `/api/v1/portfolio/*`, and `/harvester/*` coexist.
 - `database.init_db()` still calls `Base.metadata.create_all()` for table creation (no seed data); AGENTS.md requires Alembic for schema changes.
-- Only `harvest_worker.start_scheduler()` registers jobs. `nightly_jobs.py`, `celery_tasks.py`, `outcome_backfill.py` and `outcome_tracker.py` define jobs that nothing schedules, so outcome tracking/calibration data they would produce is not generated.
+- Only `harvest_worker.start_scheduler()` registers jobs. `nightly_jobs.py`, `outcome_backfill.py` and `outcome_tracker.py` define jobs that nothing schedules, so outcome tracking/calibration data they would produce is not generated.
 
 ## Undocumented Components Identified During This Pass
 
