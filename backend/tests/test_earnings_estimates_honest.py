@@ -3,12 +3,12 @@
 TTM actual revenue (totalRevenue) and 12-month forward EPS are not quarterly
 estimates, and LLM snapshot fields are not reported actuals.
 """
-import routers.earnings as earnings_router
+import services.market_service as market_service  # estimates logic lives here (ARCH-13)
 
 
 def test_estimates_do_not_substitute_actuals(client, monkeypatch):
     monkeypatch.setattr(
-        earnings_router, "_yf_fetch_info",
+        market_service, "_yf_fetch_info",
         lambda _sym: {"totalRevenue": 9.6e12, "forwardEps": 120.0, "longName": "Reliance"},
     )
     resp = client.get("/api/v1/earnings/estimates", params={"ticker": "RELIANCE"})
@@ -24,7 +24,7 @@ def test_estimates_do_not_substitute_actuals(client, monkeypatch):
 
 def test_genuine_revenue_estimate_is_kept(client, monkeypatch):
     monkeypatch.setattr(
-        earnings_router, "_yf_fetch_info",
+        market_service, "_yf_fetch_info",
         lambda _sym: {"revenueEstimate": 2.5e11, "longName": "Reliance"},
     )
     body = client.get("/api/v1/earnings/estimates", params={"ticker": "RELIANCE"}).json()

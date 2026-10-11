@@ -2,7 +2,7 @@ import logging
 from datetime import date
 from database import get_session
 from models.db_models import EarningsSurpriseHistory
-from routers.earnings import earnings_estimates_endpoint
+from services.market_service import get_earnings_estimates
 from services.disk_cache import get as _dc_get, set as _dc_set
 
 # Public, unauthenticated route: serve one computed result for an hour instead
@@ -51,7 +51,7 @@ def compute_surprise_for_ticker(ticker: str):
     so eps_estimate is always None and this always returns None.
     """
     try:
-        est_data = earnings_estimates_endpoint(ticker)
+        est_data = get_earnings_estimates(ticker)
         estimated_eps = est_data.get("eps_estimate")
         actual_eps = est_data.get("eps_actual")
         period_end = est_data.get("period_end")

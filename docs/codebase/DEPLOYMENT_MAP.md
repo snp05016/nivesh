@@ -55,7 +55,7 @@ AGENTS.md requires backend verification on `saumyapatel@192.168.1.122`, not by r
 
 ## Environment and Secrets
 
-- `backend/main.py` loads `backend/.env` at import time with `load_dotenv(..., override=True)`.
+- `backend/main.py` loads `backend/.env` at import time via `core.env.load_backend_env()` (`override=False`: variables already set by systemd/docker win over `.env`).
 - Important env vars include `DATABASE_URL`, `JWT_SECRET`, `ALLOWED_ORIGINS`, `ENABLE_SCHEDULER`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `GOOGLE_API_KEY`, and ML-service URL settings used by qlib client.
 - `.env` files, local DBs, logs, and generated binary artifacts must not be staged.
 

@@ -44,12 +44,8 @@ except ImportError:
 
 import json  # kept for local import compat inside functions
 
-# ---------------------------------------------------------------------------
-# Load environment
-# ---------------------------------------------------------------------------
-from core.env import load_backend_env
-
-load_backend_env()
+# Environment: loaded once by the process entry point (main.py, job_worker,
+# stress_test_jobs) via core.env.load_backend_env; not here (ARCH-12).
 
 # ---------------------------------------------------------------------------
 # Third-party

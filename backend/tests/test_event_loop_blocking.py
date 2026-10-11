@@ -16,6 +16,7 @@ import httpx
 import main
 import routers.earnings as earnings
 import services.earnings_surprise as es
+import services.market_service as market_service
 
 BACKEND = Path(__file__).resolve().parent.parent
 _ROUTE_METHODS = {"get", "post", "put", "delete", "patch"}
@@ -49,8 +50,8 @@ def test_no_async_route_without_await():
 
 
 def test_blocking_estimates_does_not_stall_ping(monkeypatch):
-    monkeypatch.setattr(earnings, "_yf_fetch_info", lambda _sym: time.sleep(1.0) or {})
-    monkeypatch.setattr(earnings, "_to_ns", lambda t: t)
+    monkeypatch.setattr(market_service, "_yf_fetch_info", lambda _sym: time.sleep(1.0) or {})
+    monkeypatch.setattr(market_service, "_to_ns", lambda t: t)
 
     async def scenario():
         transport = httpx.ASGITransport(app=main.app)

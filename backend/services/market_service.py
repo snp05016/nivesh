@@ -20,6 +20,9 @@ import time
 import yfinance as yf
 
 from helpers import _to_ns
+# The single guarded (rate-limited, circuit-broken) info fetcher; re-exported for
+# routers that import it from here (ARCH-11).
+from services.yfinance_client import _yf_fetch_info
 
 logger = logging.getLogger(__name__)
 
@@ -56,27 +59,46 @@ def _get_quarterly_fin(full_ticker: str):
     return t, fin
 
 
-def _yf_fetch_info(full_ticker: str) -> dict:
-    """Fetch yfinance Ticker.info with 3 retries. Returns empty dict on failure.
+# NSE sector indices (Yahoo symbol, display name). Used by the sectors route and
+# services/sector_rotation, so it lives here rather than in routers/market (ARCH-13).
+SECTOR_TICKERS = [
+    ("^CNXPSUBANK",  "PSU Bank"),
+    ("^CNXFMCG",     "FMCG"),
+    ("^CNXIT",       "IT"),
+    ("^CNXPHARMA",   "Pharma"),
+    ("^CNXAUTO",     "Auto"),
+    ("^CNXREALTY",   "Realty"),
+    ("^CNXENERGY",   "Energy"),
+    ("^CNXMETAL",    "Metal"),
+]
 
-    NOTE: This replaces the helpers._yf_fetch_info import — the market router
-    was already shadowing it with a local definition. Consolidated here.
+
+def get_earnings_estimates(ticker: str) -> dict:
+    """Body of GET /api/v1/earnings/estimates; also used by services/earnings_surprise.
+
+    Only a genuine quarterly consensus figure counts as an estimate (FAKE-10):
+    no TTM-actual (totalRevenue) or 12-month-forward EPS stand-ins, and no
+    actuals from LLM analysis snapshots (period never matched the estimate).
     """
-    for attempt in range(3):
-        try:
-            t = yf.Ticker(full_ticker)
-            info = t.info
-            if info and (info.get("currentPrice") or info.get("regularMarketPrice")):
-                return info
-        except Exception as _e:
-            if attempt < 2:
-                time.sleep((1.5 * (2 ** attempt)) + (random.random() * 0.5))
+    ticker = ticker.upper()
     try:
-        t = yf.Ticker(full_ticker)
-        return t.info or {}
-    except Exception as e:
-        logger.warning(f"_yf_fetch_info failed for {full_ticker}: {e}")
-        return {}
+        info = _yf_fetch_info(_to_ns(ticker))
+        rev_est = info.get("revenueEstimate")
+        return {
+            "ticker": ticker,
+            "company_name": info.get("longName") or info.get("shortName") or ticker,
+            "revenue_estimate": float(rev_est) / 1e7 if rev_est else None,
+            "revenue_actual": None,
+            "net_profit_estimate": None,
+            "net_profit_actual": None,
+            "eps_estimate": None,
+            "eps_actual": None,
+        }
+    except Exception:
+        logging.exception("[EARNINGS/ESTIMATES] %s failed", ticker)
+        return {"ticker": ticker, "company_name": ticker, "revenue_estimate": None, "revenue_actual": None,
+                "net_profit_estimate": None, "net_profit_actual": None, "eps_estimate": None, "eps_actual": None,
+                "degraded": True}
 
 
 def _yf_frame(full_ticker: str, attr: str):

@@ -37,9 +37,12 @@ def test_load_backend_env_noop_under_tests(tmp_path, monkeypatch):
 
 def test_load_backend_env_loads_when_not_testing(tmp_path, monkeypatch):
     env_file = tmp_path / ".env"
-    env_file.write_text("NIVESH_ENV_PROBE=loaded\n")
+    env_file.write_text("NIVESH_ENV_PROBE=loaded\nNIVESH_ENV_SET=from-file\n")
     monkeypatch.delenv("NIVESH_TESTING")
     monkeypatch.setenv("NIVESH_ENV_PROBE", "before")  # registered so monkeypatch removes it afterwards
+    monkeypatch.delenv("NIVESH_ENV_PROBE")
+    monkeypatch.setenv("NIVESH_ENV_SET", "from-env")
 
     assert load_backend_env(env_file) is True
-    assert os.environ["NIVESH_ENV_PROBE"] == "loaded"  # override=True, as in production
+    assert os.environ["NIVESH_ENV_PROBE"] == "loaded"  # .env fills unset keys
+    assert os.environ["NIVESH_ENV_SET"] == "from-env"  # the real environment wins (ARCH-12)

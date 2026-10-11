@@ -9,7 +9,7 @@ import yfinance as yf
 from datetime import datetime, timedelta
 import math
 from database import get_session, FIIDIIFlow
-from routers.market import SECTOR_TICKERS
+from services.market_service import SECTOR_TICKERS
 
 SECTOR_FII_WEIGHTS = {
     "PSU Bank": 0.05,

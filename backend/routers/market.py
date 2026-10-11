@@ -9,6 +9,7 @@ from helpers import (
 from services.market_service import (
     _get_quarterly_fin, _yf_fetch_info, _fmt_inr_crores, _safe_float, get_rbi_policy,
     analyst_ratings,
+    SECTOR_TICKERS,
 )
 from services.cache_service import cached_call
 from concurrent.futures import ThreadPoolExecutor
@@ -685,17 +686,6 @@ UPCOMING_IPOS = [
     {"company": "Swiggy Ltd", "open_date": "TBD 2026", "price_band": "₹371-390"},
     {"company": "Bajaj Housing Finance", "open_date": "TBD 2026", "price_band": "₹66-70"},
     {"company": "Hyundai India", "open_date": "TBD 2026", "price_band": "₹1865-1960"},
-]
-
-SECTOR_TICKERS = [
-    ("^CNXPSUBANK",  "PSU Bank"),
-    ("^CNXFMCG",     "FMCG"),
-    ("^CNXIT",       "IT"),
-    ("^CNXPHARMA",   "Pharma"),
-    ("^CNXAUTO",     "Auto"),
-    ("^CNXREALTY",   "Realty"),
-    ("^CNXENERGY",   "Energy"),
-    ("^CNXMETAL",    "Metal"),
 ]
 
 def _sector_row(ticker: str, name: str):

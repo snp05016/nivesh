@@ -9,6 +9,7 @@ from helpers import (
 from services import earnings_alerts_service
 from services.market_service import (
     _get_quarterly_fin, _yf_fetch_info, _earnings_result_from_row, _scan_upcoming_earnings,
+    get_earnings_estimates,
 )
 import json
 import logging
@@ -536,28 +537,7 @@ Each result includes:
 
 @router.get("/api/v1/earnings/estimates")
 def earnings_estimates_endpoint(ticker: str):
-    # Only a genuine quarterly consensus figure counts as an estimate (FAKE-10):
-    # no TTM-actual (totalRevenue) or 12-month-forward EPS stand-ins, and no
-    # actuals from LLM analysis snapshots (period never matched the estimate).
-    ticker = ticker.upper()
-    try:
-        info = _yf_fetch_info(_to_ns(ticker))
-        rev_est = info.get("revenueEstimate")
-        return {
-            "ticker": ticker,
-            "company_name": info.get("longName") or info.get("shortName") or ticker,
-            "revenue_estimate": float(rev_est) / 1e7 if rev_est else None,
-            "revenue_actual": None,
-            "net_profit_estimate": None,
-            "net_profit_actual": None,
-            "eps_estimate": None,
-            "eps_actual": None,
-        }
-    except Exception:
-        logging.exception("[EARNINGS/ESTIMATES] %s failed", ticker)
-        return {"ticker": ticker, "company_name": ticker, "revenue_estimate": None, "revenue_actual": None,
-                "net_profit_estimate": None, "net_profit_actual": None, "eps_estimate": None, "eps_actual": None,
-                "degraded": True}
+    return get_earnings_estimates(ticker)
 
 
 @router.get("/api/v1/earnings/post-result-movers")

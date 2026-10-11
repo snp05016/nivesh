@@ -11,19 +11,17 @@ from __future__ import annotations
 
 import logging
 import math
-import random
-import time
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
 
 import yfinance as yf
 
-from config.settings import INDICES_CACHE_TTL as _INDICES_CACHE_TTL
-from helpers import _dcache_get, _dcache_set
 # NSE helpers live once in services.nse_client (quality-aware TTL, honest UA);
 # re-exported because routers import these names from portfolio_service.
-from services.nse_client import _nse_session, _get_asm_gsm_lists  # noqa: F401
+from services.nse_client import (  # noqa: F401
+    _nse_session, _get_asm_gsm_lists, _INDICES_TICKERS, _get_indices_data,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -97,74 +95,7 @@ def _apply_corporate_actions(ticker: str, buy_price: float, quantity: float, buy
 # Market-indices data
 # ---------------------------------------------------------------------------
 
-_INDICES_TICKERS = [
-    ("^NSEI",      "Nifty 50"),
-    ("^BSESN",     "Sensex"),
-    ("^NSEBANK",   "Nifty Bank"),
-    ("^CNXIT",     "Nifty IT"),
-    ("^NSEMDCP50", "Nifty Midcap 100"),
-    ("USDINR=X",   "USD/INR"),
-]
-
-
-def _get_indices_data() -> dict:
-    """Fetch and cache market indices data via Redis (shared across all workers)."""
-    cached = _dcache_get("indices", "all")
-    if cached is not None:
-        return cached
-
-    result = []
-    for ticker, name in _INDICES_TICKERS:
-        try:
-            current = None
-            prev_close = None
-            for attempt in range(3):
-                try:
-                    t = yf.Ticker(ticker)
-                    info = t.fast_info
-                    current = getattr(info, "last_price", None)
-                    prev_close = getattr(info, "previous_close", None)
-
-                    if current is None or prev_close is None or math.isnan(current):
-                        full_info = t.info
-                        current = full_info.get("currentPrice") or full_info.get("regularMarketPrice")
-                        prev_close = full_info.get("previousClose") or full_info.get("regularMarketPreviousClose")
-
-                    if current is None or math.isnan(current):
-                        hist = t.history(period="5d")
-                        if not hist.empty and len(hist) >= 2:
-                            current = float(hist["Close"].iloc[-1])
-                            prev_close = float(hist["Close"].iloc[-2])
-
-                    if current is not None and not math.isnan(current):
-                        break
-                except Exception as e:
-                    logging.info(f"[YF] Indices attempt {attempt+1} failed for {ticker}: {e}")
-                    if attempt < 2:
-                        time.sleep((1.0 * (2 ** attempt)) + (random.random() * 0.2))
-
-            if current is None or math.isnan(current):
-                continue
-
-            change_abs = round(current - (prev_close or 0), 4)
-            change_pct = round((change_abs / prev_close) * 100, 4) if prev_close else 0.0
-            result.append({
-                "name": name,
-                "ticker": ticker,
-                "value": round(float(current), 4),
-                "change_pct": change_pct,
-                "change_abs": change_abs,
-            })
-        except Exception as e:
-            logging.info(f"[indices] Skipping {ticker}: {e}")
-            continue
-
-    payload = {
-        "indices": result,
-        "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
-    }
-    _dcache_set("indices", "all", payload, ttl=_INDICES_CACHE_TTL)
-    return payload
+# _INDICES_TICKERS / _get_indices_data: re-exported from services.nse_client (ARCH-11).
 
 
 # ---------------------------------------------------------------------------

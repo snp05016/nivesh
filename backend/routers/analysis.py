@@ -99,45 +99,6 @@ from helpers import _get_asm_gsm_lists as _helpers_asm_gsm
 _get_asm_gsm_lists = _helpers_asm_gsm
 
 # ---------------------------------------------------------------------------
-# Analysis worker (runs in subprocess)
-# ---------------------------------------------------------------------------
-def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False, scan_type="standard", language=None, debate_rounds=None, risk_tolerance=None):
-    from core.env import load_backend_env
-    from pathlib import Path as _Path
-    import os
-    import traceback
-    import sys
-    load_backend_env()
-    try:
-        sys.path.insert(0, str(_Path(__file__).parent.parent))
-        # Put the local tradingagents-core fork BEFORE the venv so it shadows
-        # the PyPI tradingagents package which lacks default_config.
-        _ta_core = _Path(__file__).parent.parent / "tradingagents-core"
-        if _ta_core.exists():
-            sys.path.insert(0, str(_ta_core))
-        from services.orchestrator import analyze
-        result = analyze(ticker, exchange, user_id, deep_scan=deep_scan, scan_type=scan_type, language=language, debate_rounds=debate_rounds, risk_tolerance=risk_tolerance)
-        queue.put({"status": "ok", "result": result})
-    except ImportError as e:
-        tb = traceback.format_exc()
-        logging.info(f"[WORKER] Import failed: {e}\n{tb}")
-        queue.put({
-            "status": "error",
-            "error": f"Failed to import analysis engine: {e}",
-            "phase": "worker_import",
-            "diagnostic": f"Import traceback:\n{tb[-2000:]}",
-        })
-    except Exception as e:
-        tb = traceback.format_exc()
-        logging.info(f"[WORKER] Analysis failed: {e}\n{tb}")
-        queue.put({
-            "status": "error",
-            "error": str(e),
-            "phase": "analyze_execution",
-            "diagnostic": f"Exception type: {type(e).__name__}\nTraceback:\n{tb[-3000:]}",
-        })
-
-# ---------------------------------------------------------------------------
 # GET /quick-info
 # ---------------------------------------------------------------------------
 @router.get("/quick-info")

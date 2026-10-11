@@ -211,7 +211,7 @@ Services MAY query the DB through `get_session()`. Queries shared by several ser
 Every DB interaction MUST use `get_session()` context manager. NEVER pass sessions across process boundaries. NEVER use global `session` variable.
 
 ### 3.3 Multiprocessing Integrity
-Heavy AI analysis MUST use `multiprocessing.Process` with `multiprocessing.Queue` (pattern: `routers/analysis.py:488-577`). Worker MUST re-import deps + `load_dotenv(override=True)` inside subprocess. NEVER share unpicklable objects across processes. On disconnect: `p.terminate()` to save credits.
+Heavy AI analysis MUST use `multiprocessing.Process` with `multiprocessing.Queue` (pattern: `routers/analysis.py:488-577`). Worker MUST re-import deps + call `core.env.load_backend_env()` (override=False: the real environment wins over `.env`) inside subprocess. NEVER share unpicklable objects across processes. On disconnect: `p.terminate()` to save credits.
 
 ### 3.4 Global State
 Any module-level mutable variable MUST have a dedicated `threading.Lock`. Use with-lock access pattern + explicit release/deletion path. Current locked state: `_running_analyses: set[int]`, per-user semaphores.
