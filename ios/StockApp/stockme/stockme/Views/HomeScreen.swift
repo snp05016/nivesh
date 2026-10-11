@@ -2582,10 +2582,13 @@ extension HomeScreen {
                                     .foregroundStyle(Theme.inkTertiary)
                             }
 
-                            Text(briefData.mood == "positive" ? "Market mood: POSITIVE" :
-                                 briefData.mood == "negative" ? "Market mood: NEGATIVE" : "Market mood: NEUTRAL")
-                                .font(Theme.engravedSerif(size: 15, weight: .bold, relativeTo: .headline))
-                                .foregroundStyle(Theme.inkPrimary)
+                            // FAKE-22: no mood line when the server could not compute one ("unavailable").
+                            if ["positive", "negative", "cautious"].contains(briefData.mood) {
+                                Text(briefData.mood == "positive" ? "Market mood: POSITIVE" :
+                                     briefData.mood == "negative" ? "Market mood: NEGATIVE" : "Market mood: NEUTRAL")
+                                    .font(Theme.engravedSerif(size: 15, weight: .bold, relativeTo: .headline))
+                                    .foregroundStyle(Theme.inkPrimary)
+                            }
 
                             Text(briefData.summary)
                                 .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .body))
@@ -2986,6 +2989,10 @@ struct MorningBriefMoodBadge: View {
     }
 
     static func accessibilityValue(mood: String?, hiddenToday: Bool) -> String {
-        hiddenToday ? "Hidden today, mood \(mood ?? "neutral")" : "Shown"
+        guard hiddenToday else { return "Shown" }
+        switch mood {
+        case "positive", "negative", "cautious": return "Hidden today, mood \(mood ?? "")"
+        default: return "Hidden today, mood unavailable"
+        }
     }
 }

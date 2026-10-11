@@ -198,10 +198,11 @@ def push_morning_summary(user_id: int) -> Optional[dict]:
     except Exception as e:
         logging.error("[morning_push] summary build failed for user %s", user_id, exc_info=True)
         raise RuntimeError("Morning summary unavailable") from e
-    if summary_data.get("summary") == morning_brief.FALLBACK_SUMMARY:
+    # FAKE-22: canned text, or a brief with no computed mood, is not pushed.
+    mood = summary_data.get("mood")
+    if summary_data.get("summary") == morning_brief.FALLBACK_SUMMARY or mood not in morning_brief.MOODS:
         raise RuntimeError("Morning summary unavailable")
 
-    mood = summary_data.get("mood", "cautious")
     mood_label = "UP" if mood == "positive" else "DOWN" if mood == "negative" else "NEUTRAL"
 
     priority_items = summary_data.get("priority_items", []) or []

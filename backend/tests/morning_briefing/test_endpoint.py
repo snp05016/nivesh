@@ -52,12 +52,13 @@ class TestEndpointBasic:
         assert "generated_at" in body, f"Missing 'generated_at' in response: {body}"
 
     def test_endpoint_mood_is_valid_enum(self, client, seeded_user, auth_headers):
-        """mood field must be one of: positive, cautious, negative."""
+        """mood field must be one of: positive, cautious, negative, or "unavailable"
+        when no brief could be computed (FAKE-22: never a made-up "cautious")."""
         uid = seeded_user
         resp = client.get(_get_morning_url(uid), headers=auth_headers)
         body = _json_body(resp)
 
-        assert body["mood"] in ("positive", "cautious", "negative"), \
+        assert body["mood"] in ("positive", "cautious", "negative", "unavailable"), \
             f"Invalid mood value: {body['mood']}"
 
     def test_endpoint_returns_real_content_not_fallback(
@@ -236,7 +237,10 @@ class TestEndpointCaching:
             def create(self, **kwargs):
                 call_count[0] += 1
                 resp = MagicMock()
-                resp.content = [MagicMock(text=f"• Brief #{call_count[0]}")]
+                # Valid JSON: a canned fallback is never cached (FAKE-22), which
+                # would make the second call a miss even without invalidation.
+                text = json.dumps({"summary": f"• Brief #{call_count[0]}", "movers": [], "mood": "positive"})
+                resp.content = [MagicMock(text=text)]
                 resp.usage = MagicMock(input_tokens=10, output_tokens=5)
                 return resp
 

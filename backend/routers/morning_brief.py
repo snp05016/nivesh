@@ -26,6 +26,10 @@ router = APIRouter(tags=["Portfolio"])
 
 # Canned text when no AI brief could be built; the push route refuses to send it.
 FALLBACK_SUMMARY = "• Market data loaded. AI brief unavailable at this time."
+MOODS = ("positive", "cautious", "negative")
+# FAKE-22: mood of a brief nobody computed. A string, not null: shipped iOS builds
+# decode mood as a non-optional String.
+MOOD_UNAVAILABLE = "unavailable"
 
 
 # ---------------------------------------------------------------------------
@@ -45,7 +49,7 @@ def build_morning_summary(user_id: int) -> dict:
         return {
             "summary": "• Enable 'AI processing' in Settings > Account Security > KYC Consents to get an AI morning brief.",
             "movers": [],
-            "mood": "cautious",
+            "mood": MOOD_UNAVAILABLE,  # no brief was computed, so no mood either
             "generated_at": datetime.now(timezone.utc).strftime("%H:%M"),
         }
     now = time.time()
@@ -59,10 +63,12 @@ def build_morning_summary(user_id: int) -> dict:
 
     generated_at = datetime.now(timezone.utc).strftime("%H:%M")
 
+    # FAKE-22: canned content carries no mood and is never cached, so a transient
+    # LLM failure does not pin it for the whole MORNING_BRIEF_TTL.
     fallback = {
         "summary": FALLBACK_SUMMARY,
         "movers": [],
-        "mood": "cautious",
+        "mood": MOOD_UNAVAILABLE,
         "generated_at": generated_at,
     }
 
@@ -157,7 +163,6 @@ mood must be exactly: "positive", "cautious", or "negative"
         from services.llm_utils import claude_messages, HAIKU_MODEL
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key or api_key == "placeholder":
-            _dcache_set("morning_brief", str(user_id), fallback, ttl=_MORNING_CACHE_TTL)
             return fallback
         try:
             llm_budget.guard(user_id, "morning_summary")
@@ -183,6 +188,7 @@ mood must be exactly: "positive", "cautious", or "negative"
             logging.info("[MORNING] Rejected Hindi morning brief output; using English fallback.")
             parsed = fallback
             raw_summary = fallback["summary"]
+        degraded = raw_summary == FALLBACK_SUMMARY  # never cache the canned brief
 
         # Normalize inline bullets ("• A • B • C") to newline-separated ("• A\n• B\n• C")
         if raw_summary and "\n" not in raw_summary and raw_summary.count("•") > 1:
@@ -192,13 +198,13 @@ mood must be exactly: "positive", "cautious", or "negative"
         result = {
             "summary": raw_summary,
             "movers": parsed.get("movers", mover_tickers),
-            "mood": parsed.get("mood", "cautious"),
+            "mood": parsed.get("mood", MOOD_UNAVAILABLE),
             "generated_at": generated_at,
         }
 
-        # Validate mood value
-        if result["mood"] not in ("positive", "cautious", "negative"):
-            result["mood"] = "cautious"
+        # Validate mood value: an unusable one is reported as unavailable, not "cautious".
+        if result["mood"] not in MOODS:
+            result["mood"] = MOOD_UNAVAILABLE
 
         # Build prioritised action list for today
         # Fix 2.36: Signal flips (BULL→BEAR, BEAR→BULL) take TOP priority
@@ -251,12 +257,12 @@ mood must be exactly: "positive", "cautious", or "negative"
         priority_items.sort(key=lambda x: x["priority"])
         result["priority_items"] = priority_items
 
-        _dcache_set("morning_brief", str(user_id), result, ttl=_MORNING_CACHE_TTL)
+        if not degraded:
+            _dcache_set("morning_brief", str(user_id), result, ttl=_MORNING_CACHE_TTL)
         return result
 
     except HTTPException:
         raise
     except Exception as e:
         logging.info(f"[morning-summary] Error: {e}")
-        _dcache_set("morning_brief", str(user_id), fallback, ttl=_MORNING_CACHE_TTL)
         return fallback

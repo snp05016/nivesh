@@ -237,9 +237,9 @@ class TestMarketEndpoints:
         assert response.status_code in [200, 500]  # 500 if yfinance unavailable
     
     def test_ipo_calendar(self):
-        """Test IPO calendar endpoint."""
+        """FAKE-20: the hardcoded /ipo-calendar stub is gone; the IPO Hub uses /api/v1/ipo."""
         response = client.get("/ipo-calendar")
-        assert response.status_code == 200
+        assert response.status_code in (404, 405)  # 405: global OPTIONS route matches every path
     
     def test_search_endpoint(self):
         """Test search endpoint."""
@@ -470,7 +470,8 @@ class TestUserEndpoints:
         assert client.post(url, json={"user_id": 990001}, headers=other).status_code == 403
         own = {"Authorization": f"Bearer {create_access_token(990001)}"}
         response = client.post(url, json={"user_id": 990001}, headers=own)
-        assert response.status_code in [200, 404, 500]
+        # 503 = no computed brief/mood (FAKE-22): stub user 990001 has no AI-processing consent.
+        assert response.status_code in [200, 404, 500, 503]
     
     def test_get_experts(self):
         """Test getting experts list."""

@@ -542,23 +542,6 @@ def analyst_ratings_endpoint(ticker: str, exchange: str = "NSE"):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/ipo-calendar")
-def ipo_calendar_endpoint():
-    """
-    Returns upcoming IPO data (best-effort from public sources).
-
-    Args:
-
-    Returns:
-        Any: The response.
-    """
-    return {
-        "ipos": UPCOMING_IPOS,
-        "note": "IPO data from manual tracking.",
-        "source": "Manual Tracking"
-    }
-
-
 @router.get("/sector-weekly")
 def sector_weekly_endpoint():
     """
@@ -680,13 +663,6 @@ def search_endpoint(q: str = "", limit: int = 20):
         for r in results[:limit]
     ]
 
-
-# Upcoming IPOs (manually tracked)
-UPCOMING_IPOS = [
-    {"company": "Swiggy Ltd", "open_date": "TBD 2026", "price_band": "₹371-390"},
-    {"company": "Bajaj Housing Finance", "open_date": "TBD 2026", "price_band": "₹66-70"},
-    {"company": "Hyundai India", "open_date": "TBD 2026", "price_band": "₹1865-1960"},
-]
 
 def _sector_row(ticker: str, name: str):
     """One sector index row from its 5-day close history, or None. Never raises."""

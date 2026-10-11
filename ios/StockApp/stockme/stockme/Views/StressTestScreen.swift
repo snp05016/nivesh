@@ -105,6 +105,8 @@ struct StressTestHolding: Codable, Identifiable {
     let impactInr: Double
     let liquidityPenaltyPct: Double
     let liquidityPenaltyInr: Double
+    /// FAKE-18: some inputs (price, volatility, liquidity or beta) are defaults, not measured.
+    let isEstimated: Bool?
 
     enum CodingKeys: String, CodingKey {
         case ticker
@@ -116,6 +118,7 @@ struct StressTestHolding: Codable, Identifiable {
         case impactInr = "impact_inr"
         case liquidityPenaltyPct = "liquidity_penalty_pct"
         case liquidityPenaltyInr = "liquidity_penalty_inr"
+        case isEstimated = "is_estimated"
     }
 }
 
@@ -789,9 +792,14 @@ struct StressScenarioSection: View {
                 ForEach(result.holdings) { h in
                     HStack {
                         VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                            Text(h.ticker)
-                                .font(Theme.roundedSecondary(size: 14, weight: .semibold, relativeTo: .subheadline))
-                                .foregroundColor(Theme.inkPrimary)
+                            HStack(spacing: Theme.Spacing.xSmall) {
+                                Text(h.ticker)
+                                    .font(Theme.roundedSecondary(size: 14, weight: .semibold, relativeTo: .subheadline))
+                                    .foregroundColor(Theme.inkPrimary)
+                                if h.isEstimated == true {
+                                    StressEstimatedBadge()
+                                }
+                            }
                             Text(h.sector)
                                 .font(Theme.microLabel())
                                 .foregroundColor(Theme.inkTertiary)
@@ -818,6 +826,19 @@ struct StressScenarioSection: View {
 }
 
 // MARK: - Data Quality Banner
+
+/// Marks a holding whose stress numbers rest on estimated inputs (FAKE-18).
+struct StressEstimatedBadge: View {
+    var body: some View {
+        Text("EST.")
+            .font(Theme.microLabel())
+            .foregroundColor(Theme.holdAmber)
+            .padding(.horizontal, Theme.Spacing.xSmall)
+            .background(Theme.holdAmber.opacity(0.15))
+            .clipShape(Capsule())
+            .accessibilityLabel("Estimated inputs")
+    }
+}
 
 struct StressDataQualityBanner: View {
     let quality: StressDataQuality

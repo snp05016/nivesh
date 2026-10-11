@@ -387,19 +387,17 @@ async def pregen_morning_briefs_all_users() -> dict:
             except Exception as _e:
                 pass
 
+            # FAKE-22: never cache canned text with an uncomputed mood for the full
+            # TTL; leaving the cache empty lets the route build a real brief on demand.
             if not brief:
-                brief = {
-                    "summary": "• Market data loaded. Brief generation failed — please refresh.",
-                    "movers": mover_tickers,
-                    "mood": "cautious",
-                }
-            elif contains_devanagari(brief.get("summary", "")):
+                errors += 1
+                logger.warning("[morning_brief] Unparseable pre-generated brief for user_id=%s", user_id_val)
+                continue
+            if contains_devanagari(brief.get("summary", "")):
+                errors += 1
                 logger.warning("[morning_brief] Rejected Hindi pre-generated brief for user_id=%s", user_id_val)
-                brief = {
-                    "summary": "• Market data loaded. Brief generation returned non-English text - please refresh.",
-                    "movers": mover_tickers,
-                    "mood": "cautious",
-                }
+                continue
+            brief.setdefault("movers", mover_tickers)
 
             brief["generated_at"] = datetime.now(timezone.utc).strftime("%H:%M")
             brief["pregen"] = True
