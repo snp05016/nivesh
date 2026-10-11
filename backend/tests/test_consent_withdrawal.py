@@ -81,10 +81,13 @@ def test_withdraw_returns_200_and_audits(client):
     with database.get_session() as session:
         rows = session.query(AuditLogEntry).filter_by(user_id=uid, action="consent_withdrawn").all()
         assert len(rows) == 1
-        assert dict(rows[0].details) == {"consent_type": "credit_check", "revoked_count": 1}  # type: ignore[arg-type]
+        details: dict = dict(rows[0].details)  # type: ignore[arg-type]
+        assert details["consent_type"] == "credit_check"
+        assert details["revoked_count"] == 1
 
 
-def test_withdraw_without_active_consent_still_audited(client):
+def test_withdraw_without_active_consent_not_audited(client):
+    # FINSEC-16: the trail records real withdrawals only.
     import database
     from models.db_models import AuditLogEntry
 
@@ -96,4 +99,17 @@ def test_withdraw_without_active_consent_still_audited(client):
     assert resp.status_code == 200, resp.text
     assert resp.json()["revoked"] is False
     with database.get_session() as session:
-        assert session.query(AuditLogEntry).filter_by(user_id=uid, action="consent_withdrawn").count() == 1
+        assert session.query(AuditLogEntry).filter_by(user_id=uid, action="consent_withdrawn").count() == 0
+
+
+def test_regrant_new_policy_version_supersedes():
+    from services.disclosure_service import CURRENT_POLICY_VERSION
+    from services.kyc_consent_service import get_active_consents, record_consent
+
+    uid = _new_user()
+    old = record_consent(uid, "data_sharing", True, policy_version="1999-01-01")
+    new = record_consent(uid, "data_sharing", True, policy_version=CURRENT_POLICY_VERSION)
+
+    assert new["id"] != old["id"]
+    active = [c for c in get_active_consents(uid) if c["consent_type"] == "data_sharing"]
+    assert [c["policy_version"] for c in active] == [CURRENT_POLICY_VERSION]

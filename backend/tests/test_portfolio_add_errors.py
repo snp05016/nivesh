@@ -47,13 +47,13 @@ def _ledger(user_id: int, ticker: str = "RELIANCE"):
         return [(str(t.transaction_type), t.date) for t in txns], (str(row.purchase_date) if row else None)
 
 
-def test_oversell_returns_400_with_detail(client):
+def test_oversell_returns_422_with_detail(client):
     user_id, headers = _user()
     assert _add(client, user_id, headers).status_code == 200
 
     r = _add(client, user_id, headers, shares=20, transaction_type="SELL")
 
-    assert r.status_code == 400
+    assert r.status_code == 422  # LedgerError (DB-09)
     assert r.json()["detail"].startswith("Cannot SELL")
 
 

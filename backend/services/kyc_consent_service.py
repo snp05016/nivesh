@@ -125,7 +125,11 @@ def record_consent(
         if granted:
             active = _active_row(session, user_id, consent_type)
             if active is not None:
-                return _consent_to_dict(active)
+                if policy_version is None or active.policy_version == policy_version:  # pyright: ignore[reportGeneralTypeIssues]
+                    return _consent_to_dict(active)
+                # Re-consent to a different policy version (FINSEC-09): supersede
+                # the old grant so the new version is recorded, still one active row.
+                _revoke_active(session, user_id, consent_type, now)
         else:
             _revoke_active(session, user_id, consent_type, now)
         consent = KYCConsent(

@@ -81,5 +81,5 @@ def test_withdraw_revokes_duplicate_active_rows(client, auth_headers, uid):
         rows = session.query(KYCConsent).filter(
             KYCConsent.user_id == uid, KYCConsent.consent_type == "data_sharing"
         ).all()
-    assert len(rows) == 2
+    assert len(rows) == 1  # repeat grants reuse the active row (DB-10)
     assert all(r.revoked_at is not None for r in rows)
