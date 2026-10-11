@@ -1,5 +1,5 @@
 """
-ml-engine configuration — model paths, Alpha158 feature list, regime thresholds.
+ml-engine configuration — model paths, Alpha158 feature list, model hyperparameters.
 
 All config is centralized here so no magic values leak into pipeline code.
 Follows the same pattern as the qlib_engine/ skeleton: constants live in one file,
@@ -18,7 +18,6 @@ CACHE_DIR = ROOT_DIR / "cache"
 
 # Trained model artifacts
 LIGHTGBM_MODEL_PATH = MODEL_DIR / "lgb_model.txt"
-TRA_MODEL_PATH = MODEL_DIR / "tra_model.pt"
 SCALER_PATH = MODEL_DIR / "feature_scaler.json"
 
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -88,23 +87,6 @@ assert len(ALPHA158_FEATURES) == 158, (
 # Ordered feature list used by the pipeline
 FEATURE_LIST = ALPHA158_FEATURES
 
-# ── Regime Thresholds ──────────────────────────────────────────────────────────
-
-# These mirror the existing QuantitativeEngine regime logic (quant_engine.py:§57)
-# but are expressed as configurable thresholds for the ML microservice.
-
-REGIME_THRESHOLDS = {
-    # Annualized volatility thresholds (quant_engine uses _NIFTY_LONG_RUN_ANNUAL_VOL = 0.16)
-    "vol_low": 0.12,       # below this = low-vol regime
-    "vol_high": 0.25,      # above this = high-vol regime
-    # RSI thresholds (quant_engine RSI-14)
-    "rsi_oversold": 30,
-    "rsi_overbought": 70,
-    # Nifty long-run baseline (matches _NIFTY_LONG_RUN_DAILY_VOL = 0.016)
-    "nifty_long_run_daily_vol": 0.016,
-    "nifty_long_run_annual_vol": 0.16,
-}
-
 # Confidence calibration
 CONFIDENCE_CONFIG = {
     "min_confidence": 0.05,
@@ -122,9 +104,11 @@ CONFIDENCE_CONFIG = {
 
 # ── Model Hyperparameters ──────────────────────────────────────────────────────
 
+# The deployed booster is a binary classifier (lgb_model.txt objective=binary,
+# pipeline/inference.py rejects anything else); keep this in step with it.
 LIGHTGBM_PARAMS = {
-    "objective": "regression",
-    "metric": "rmse",
+    "objective": "binary",
+    "metric": "binary_logloss",
     "num_leaves": 32,
     "learning_rate": 0.05,
     "feature_fraction": 0.8,
@@ -135,18 +119,4 @@ LIGHTGBM_PARAMS = {
     "verbose": -1,
     "num_boost_round": 1000,
     "early_stopping_rounds": 50,
-}
-
-# TRA (Temporal Routing Adaptor) defaults
-TRA_CONFIG = {
-    "num_states": 3,
-    "hidden_dim": 64,
-    "num_layers": 2,
-    "input_dim": 158,
-    "seq_len": 60,
-    "dropout": 0.1,
-    "transport_method": "router",
-    "src_info": "LR_TPE",
-    "lamb": 0.0,
-    "rho": 0.99,
 }

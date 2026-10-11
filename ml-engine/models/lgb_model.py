@@ -1,8 +1,10 @@
 """
 Standalone LightGBM ensemble model for stock ranking.
 
-Wraps lightgbm.LGBMRegressor with sensible defaults tuned for financial
-return prediction over Alpha158 features.  No Qlib, no DataHandlerLP.
+Wraps lightgbm.train (a Booster) with defaults tuned for Alpha158 features.
+The objective comes from `params`: DEFAULT_PARAMS is a regressor, but the
+deployed model is trained as a binary classifier (train_alpha158 passes
+objective=binary), so predict() then returns P(up).  No Qlib, no DataHandlerLP.
 
 Interface
 ---------
@@ -15,7 +17,7 @@ model.save("path.lgb") / LGBEnsembleModel.load("path.lgb")
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Union
 
 import numpy as np
 
@@ -53,7 +55,10 @@ DEFAULT_PARAMS: Dict[str, Any] = {
 # ---------------------------------------------------------------------------
 
 class LGBEnsembleModel:
-    """LightGBM regressor ensemble for stock-ranking over Alpha158 features.
+    """LightGBM booster for stock-ranking over Alpha158 features.
+
+    Regression or binary classification, depending on params["objective"]
+    (the deployed model is binary: see the module docstring).
 
     Parameters
     ----------
@@ -193,73 +198,6 @@ class LGBEnsembleModel:
 
         raw = self._model.predict(X)  # type: ignore[union-attr]
         return raw.astype(np.float64)
-
-    # ------------------------------------------------------------------
-    # predict_with_confidence
-    # ------------------------------------------------------------------
-
-    def predict_with_confidence(
-        self,
-        X: np.ndarray,
-        n_estimators_sample: float = 0.8,
-        n_iterations: int = 10,
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """Predict returns with per-sample confidence via sub-ensemble variance.
-
-        Uses random contiguous slices of the tree ensemble (via
-        start_iteration + num_iteration) to produce genuinely different
-        predictions. The standard deviation across slices proxies
-        model uncertainty: low variance = high confidence.
-
-        Parameters
-        ----------
-        X : np.ndarray [N, 158]
-        n_estimators_sample : float
-            Fraction of trees per slice (0 < f <= 1).
-        n_iterations : int
-            Number of random slices to evaluate.
-
-        Returns
-        -------
-        expected_return : np.ndarray [N]
-            Full-model prediction (all trees).
-        confidence : np.ndarray [N]
-            Confidence score in [0, 1].  1 = perfect agreement across slices.
-        """
-        self._check_fitted()
-
-        X = np.asarray(X, dtype=np.float32)
-        if X.ndim == 1:
-            X = X.reshape(1, -1)
-
-        n_total = self._model.num_trees()  # type: ignore[union-attr]
-        n_sample = max(1, int(n_total * n_estimators_sample))
-        max_start = max(0, n_total - n_sample)
-
-        slice_preds = np.zeros((n_iterations, len(X)), dtype=np.float64)
-        rng = np.random.RandomState(42)
-        for i in range(n_iterations):
-            start = rng.randint(0, max_start + 1) if max_start > 0 else 0
-            slice_preds[i] = self._model.predict(  # type: ignore[union-attr]
-                X, start_iteration=start, num_iteration=n_sample,
-            )
-
-        full_pred = self._model.predict(X).astype(np.float64)  # type: ignore[union-attr]
-        std_pred = slice_preds.std(axis=0, ddof=1)
-
-        # Confidence: 1 / (1 + scaled_σ²).  Scale σ by 1000 so that
-        # typical return-prediction variance (~1e-5) produces meaningful
-        # separation in the 0-1 range.
-        raw_conf = 1.0 / (1.0 + (std_pred * 1000) ** 2)
-
-        # Min-max scale within batch, fallback to 0.5 if all identical
-        c_min, c_max = raw_conf.min(), raw_conf.max()
-        if c_max - c_min > 1e-12:
-            confidence = (raw_conf - c_min) / (c_max - c_min)
-        else:
-            confidence = np.full_like(raw_conf, 0.5)
-
-        return full_pred, confidence
 
     # ------------------------------------------------------------------
     # feature importance

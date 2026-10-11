@@ -9,11 +9,14 @@ orchestrator and never cause 500s.
 
 import os
 import asyncio
+import logging
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
 import httpx
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 ML_ENGINE_URL = os.getenv("ML_ENGINE_URL", "http://localhost:8001")
 ML_ENGINE_TIMEOUT = float(os.getenv("ML_ENGINE_TIMEOUT", "5.0"))
@@ -61,7 +64,10 @@ def build_ml_ohlcv_payload(df: pd.DataFrame | None, now: datetime | None = None)
 
 
 async def predict_cross_section(ticker: str, ohlcv_data: list) -> dict | None:
-    """Call the ml-engine /predict/cross-section endpoint.
+    """Call the ml-engine /predict/single endpoint for one ticker.
+
+    The name is historical (kept to avoid churn in callers and tests); the
+    request is a single-stock prediction, not a cross-section.
 
     Args:
         ticker: Stock ticker symbol (e.g. "RELIANCE").
@@ -133,13 +139,15 @@ def predict_cross_section_sync(ticker: str, ohlcv_data: list) -> dict | None:
     do not carry one by default (and sharing loops across threads
     is unsafe).
     """
+    loop = asyncio.new_event_loop()
     try:
-        loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(
+        return loop.run_until_complete(
             predict_cross_section(ticker, ohlcv_data)
         )
-        loop.close()
-        return result
-    except Exception as _e:
+    except Exception as e:
+        logger.warning("[ml_client] sync call failed: %s", type(e).__name__)
         return None
+    finally:
+        loop.close()
+        asyncio.set_event_loop(None)

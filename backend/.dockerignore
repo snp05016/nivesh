@@ -1,0 +1,34 @@
+# Build context is backend/ (the Dockerfile copies requirements.txt and
+# tradingagents-core relative to it), so this file, not the repo root one,
+# decides what `COPY . .` bakes into the image.
+
+# Secrets: credentials come from the runtime environment, never the image
+.env
+.env.*
+!.env.example
+cookies.txt
+
+# Live data and logs
+**/*.db
+**/*.db-*
+**/*.sqlite
+token_log.jsonl
+logs/
+charts/
+cache/
+
+# Local environments and caches
+venv/
+.venv/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+
+# Tests and planning docs (not needed at runtime)
+tests/
+tests_suite/
+test_*.py
+tradingagents-core/**/tests/
+*.md
+*.txt
+!requirements.txt

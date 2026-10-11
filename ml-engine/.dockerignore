@@ -1,4 +1,6 @@
 # Serving needs only main.py, config.py, models/, pipeline/ and requirements.txt.
+venv/
+.venv/
 tests/
 docs/
 sandbox/

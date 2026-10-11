@@ -1,5 +1,6 @@
-from .tra import TRARouter
-from .lgb_model import LGBEnsembleModel
-from .predictor import UnifiedPredictor
+"""ml-engine/models/ — LightGBM model wrapper (lgb_model) and artifact loader (model_loader).
 
-__all__ = ["TRARouter", "LGBEnsembleModel", "UnifiedPredictor"]
+Intentionally no eager imports: importing the package must not pull in heavy
+optional dependencies. Import submodules directly, e.g.
+`from models.model_loader import ModelLoader`.
+"""

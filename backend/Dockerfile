@@ -44,8 +44,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Non-root user for security
-RUN useradd -m -u 1000 nivesh
+# Non-root user for security. WORKDIR created /app as root and COPY --chown
+# does not chown it, so hand it over explicitly: SQLite -wal/-shm files,
+# token_log.jsonl and harvester.db are created there at runtime.
+RUN useradd -m -u 1000 nivesh && chown nivesh:nivesh /app
 USER nivesh
 
 # Copy venv from builder

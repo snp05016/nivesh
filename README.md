@@ -565,7 +565,6 @@ curl https://api.nivesh.qzz.io/health  # DB-backed
 |----------|---------|-------------|
 | **backend_ci.yml** | Push to main | `pip install` → `ruff check` → `pytest` (560 tests) → `alembic upgrade head && alembic check` |
 | **ios_ci.yml** | Push to `ios/**` | `xcodebuild -project stockme.xcodeproj -scheme stockme` |
-| **deploy.yml** | `workflow_dispatch` (manual) | SSH to server → pull → pip install → alembic → restart uvicorn |
 
 ### Tools & Commands
 | Task | Command |

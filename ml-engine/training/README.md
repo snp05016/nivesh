@@ -14,7 +14,6 @@ LightGBM direction classifier trained with walk-forward temporal validation. The
 | `calibration.py` | `compute_calibration_report` (bucketed calibration, ECE, MCE) plus isotonic and Platt calibrators. |
 | `model_registry.py` | Versioned artifacts under `models/registry/<status>/<version>/`: save, load, list, deploy. |
 | `provenance.py` | Run provenance (ML-19): git SHA, library versions, `dataframe_sha256` / `file_sha256` of the training data. |
-| `backtest_engine.py` | `BacktestEngine` (hit rate, Sharpe, drawdown, Brier, ECE). Not called by the trainer. |
 
 ## Quick Start
 

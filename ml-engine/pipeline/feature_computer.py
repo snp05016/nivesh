@@ -208,6 +208,10 @@ class FeatureComputer:
             window_volumes = volumes[-n:]
 
             # ── Category 3: Trend (25 factors) ─────────────────────────────
+            # ROC{n} = close[t-(n-1)] / close[t]: lag n-1, not Qlib Alpha158's
+            # Ref($close, n)/$close. Kept as-is because the deployed booster was
+            # trained on it; changing it needs a retrain. Mind this when
+            # comparing against Qlib baselines.
             features[f"ROC{n}"] = window_closes[0] / c_safe
             features[f"MA{n}"] = float(np.mean(window_closes)) / c_safe
             features[f"BETA{n}"] = self._slope(window_closes) / c_safe
@@ -234,6 +238,8 @@ class FeatureComputer:
             log_vol = np.log(window_volumes + 1)
             features[f"CORR{n}"] = self._corr(window_closes, log_vol)
             if len(ret_1d) >= 2 and len(vol_change) >= 2:
+                # CORD uses log(|dvolume| + 1), not Qlib Alpha158's
+                # Log($volume/Ref($volume,1) + 1). Same retrain caveat as ROC.
                 log_vol_change = np.log(np.abs(vol_change) + 1)
                 features[f"CORD{n}"] = self._corr(ret_1d, log_vol_change)
             else:

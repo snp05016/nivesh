@@ -80,3 +80,21 @@ def test_ml_client_marks_validated_model_as_calibrated():
     assert result["direction"] == 1
     assert result["confidence"] == 0.58
     assert result["fallback_used"] is False
+
+
+def test_sync_wrapper_closes_loop_on_exception():
+    """ML-27: the sync wrapper closes its event loop even when the call raises."""
+    from services.qlib_engine import ml_client
+
+    def _boom(coro):
+        coro.close()  # avoid a "coroutine was never awaited" warning
+        raise RuntimeError("boom")
+
+    loop = MagicMock(spec=asyncio.AbstractEventLoop)
+    loop.run_until_complete.side_effect = _boom
+    with patch.object(ml_client.asyncio, "new_event_loop", return_value=loop), \
+            patch.object(ml_client.asyncio, "set_event_loop") as set_loop:
+        assert ml_client.predict_cross_section_sync("TCS", []) is None
+
+    loop.close.assert_called_once()
+    set_loop.assert_called_with(None)
