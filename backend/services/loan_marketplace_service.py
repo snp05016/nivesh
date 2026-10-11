@@ -452,6 +452,8 @@ def disburse_loan(application_id: int, user_id: int) -> LoanDisbursement:
 
         offer = session.query(LoanOffer).filter(LoanOffer.id == application.loan_offer_id).first()
         nbfc_name = offer.nbfc_name if offer is not None else "Unknown NBFC (mock)"
+        # Disbursed net of the processing fee, as the KFS discloses (net_disbursed_amount).
+        fee_pct = float(offer.processing_fee_pct or 0) if offer is not None else 0.0  # type: ignore[arg-type]
 
         primary_account = (
             session.query(LinkedBankAccount)
@@ -481,7 +483,7 @@ def disburse_loan(application_id: int, user_id: int) -> LoanDisbursement:
             user_id=user_id,
             linked_bank_account_id=primary_account.id,
             nbfc_name=nbfc_name,
-            disbursed_amount=application.requested_amount,
+            disbursed_amount=round(float(application.requested_amount) * (1 - fee_pct / 100), 2),  # type: ignore[arg-type]
             status="completed",
             failure_reason=None,
             disbursed_at=datetime.now(timezone.utc),

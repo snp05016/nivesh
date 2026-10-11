@@ -11,7 +11,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Header, Request
 
 from services.disk_cache import invalidate as _cache_invalidate
-from services.ledger_service import record_transaction, get_or_create_default_group, adjust_position, close_position, LedgerError
+from services.ledger_service import record_transaction, get_or_create_default_group, adjust_position, close_position, LedgerError, parse_trade_date
 from services.yfinance_client import _yf_price_with_status
 
 from helpers import (
@@ -183,24 +183,12 @@ def portfolio_history_endpoint(user_id: int, days: int = 30, _caller: int = Depe
 # 5. POST /portfolio & 6. POST /portfolio/add
 # ---------------------------------------------------------------------------
 def _parse_trade_date(s: Optional[str]) -> Optional[datetime]:
-    """purchase_date ('YYYY-MM-DD', or legacy 'dd-MMM-yyyy') -> aware UTC midnight.
-
-    None/blank -> None (the ledger dates the trade now). 400 when unparseable or
-    in the future (one day of slack: IST runs ahead of UTC).
-    """
-    if s is None or not s.strip():
-        return None
-    for fmt in ("%Y-%m-%d", "%d-%b-%Y"):
-        try:
-            parsed = datetime.strptime(s.strip(), fmt).replace(tzinfo=timezone.utc)
-            break
-        except ValueError:
-            continue
-    else:
-        raise HTTPException(status_code=400, detail="Invalid purchase_date. Use YYYY-MM-DD.")
-    if parsed.date() > (datetime.now(timezone.utc) + timedelta(days=1)).date():
-        raise HTTPException(status_code=400, detail="purchase_date cannot be in the future.")
-    return parsed
+    """purchase_date -> aware UTC midnight (ledger_service.parse_trade_date); 400 when
+    unparseable or in the future. None/blank -> None (the ledger dates the trade now)."""
+    try:
+        return parse_trade_date(s)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/portfolio")

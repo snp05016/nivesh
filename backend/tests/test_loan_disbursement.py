@@ -161,3 +161,12 @@ def test_unique_index_blocks_second_completed_row(approved_app_id):
         with pytest.raises(IntegrityError):
             session.commit()
         session.rollback()
+
+
+def test_disbursed_net_of_processing_fee(approved_app_id):
+    """MATH-12: 1,00,000 at a 1% processing fee disburses 99,000 (the KFS net_disbursed_amount)."""
+    link_bank_account(_USER_ID, "Test Bank", "XXXX6701")
+
+    disbursement = disburse_loan(approved_app_id, _USER_ID)
+
+    assert float(disbursement.disbursed_amount) == 99_000.0  # type: ignore[arg-type]

@@ -303,7 +303,7 @@ STATIC_DISCLOSURES = {
                 "Where this is used",
                 "See GET /api/v1/compliance/key-fact-statement for the computed, "
                 "per-offer/per-scheme breakdown (loan_amount, interest_rate, "
-                "all_fees, apr, emi, total_repayable, tenure).",
+                "all_fees, apr, emi, net_disbursed_amount, total_repayable, tenure).",
             ),
         ],
     },
@@ -356,6 +356,16 @@ def _to_float(value) -> float:
     return float(value)
 
 
+def irr_apr_pct(amount: float, fees: float, annual_rate_pct: float, months: int) -> tuple[float, float]:
+    """(APR %, EMI): APR = 12 x the monthly IRR of the net disbursal (amount - fees)
+    against `months` EMIs on the full amount (RBI KFS convention)."""
+    fee_pct = fees / amount * 100 if amount else 0.0
+    return (
+        calculate_apr(amount, annual_rate_pct, months, fee_pct),
+        round(calculate_emi(amount, annual_rate_pct, months), 2),
+    )
+
+
 def compute_key_fact_statement(
     loan_offer_id: Optional[int] = None,
     scheme_id: Optional[int] = None,
@@ -405,7 +415,9 @@ def compute_key_fact_statement(
                 "interest_rate": interest_rate_pct,
                 "all_fees": all_fees,
                 "apr": apr,
+                "apr_method": "irr_monthly_x12",
                 "emi": round(emi, 2),
+                "net_disbursed_amount": round(chosen_amount - all_fees, 2),
                 "total_repayable": round(emi * chosen_tenure + all_fees, 2),
                 "tenure_months": chosen_tenure,
                 "disclaimer": _MOCK_DISCLAIMER,

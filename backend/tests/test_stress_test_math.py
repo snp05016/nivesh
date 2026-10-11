@@ -153,3 +153,26 @@ def test_cash_has_zero_variance(market_edges):
     mrc = {row["ticker"]: row for row in result["concentration"]["marginal_risk_contributions"]}
     assert mrc["CASH"]["risk_contribution"] == 0.0
     assert mrc["TCS"]["risk_contribution"] > 0.0
+
+
+def test_yfinance_symbols_are_exchange_suffixed(market_edges, monkeypatch):
+    """MATH-03: a bare NSE ticker (HAL is also Halliburton on NYSE) never reaches yfinance bare."""
+    requested = []
+
+    def record(fn):
+        def wrapper(sym, *rest):
+            requested.append(sym)
+            return fn(sym, *rest)
+        return wrapper
+
+    monkeypatch.setattr(stress_test, "_yf_price", record(stress_test._yf_price))
+    monkeypatch.setattr(stress_test, "_yf_fetch_info", record(stress_test._yf_fetch_info))
+    monkeypatch.setattr(stress_test, "get_adjusted_macro_betas", record(stress_test.get_adjusted_macro_betas))
+    holdings = [SimpleNamespace(ticker="HAL", company_name="Hindustan Aeronautics", shares=100, buy_price=3922)]
+
+    result = stress_test.run_stress_test(holdings, ["nifty_crash"])[0]
+
+    requested += [s for call in market_edges["history_calls"] for s in call]
+    assert len(requested) == 4  # price, info, betas, history
+    assert all(s.endswith((".NS", ".BO")) for s in requested), requested
+    assert result["holdings"][0]["ticker"] == "HAL"

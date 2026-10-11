@@ -36,7 +36,11 @@ from services import llm_budget
 from repositories.analysis_repo import latest_signals_by_ticker
 from services.portfolio_service import (
     _get_asm_gsm_lists, _risk_label, compute_sip, compute_pearson_correlation,
+    compute_benchmark, holding_cashflows,
 )
+from services.ledger_service import parse_trade_date
+from models.db_models import Transaction
+import pandas as pd
 from pydantic import BaseModel as _BaseModel, Field as _Field
 from typing import Optional as _Optional
 
@@ -76,7 +80,7 @@ def sip_calculator(req: SIPCalculatorRequest):
     return {"inputs": req.model_dump(), **result}
 
 
-# ── Item 44: Portfolio vs Nifty CAGR ──────────────────────────────────
+# ── Item 44: Portfolio vs Nifty (money-weighted, MATH-04) ──────────────
 @router.get("/portfolio/benchmark")
 def portfolio_benchmark(user_id: int, _caller: int = Depends(require_user_match)):
     with get_session() as db:
@@ -85,69 +89,65 @@ def portfolio_benchmark(user_id: int, _caller: int = Depends(require_user_match)
             Portfolio.group_name != "watchlist",
             Portfolio.is_virtual == False,  # noqa: E712
         ).all()
+        ledger: dict[str, list] = defaultdict(list)
+        if holdings:
+            for tx in db.query(Transaction).filter(
+                Transaction.user_id == user_id,
+                Transaction.ticker.in_([str(h.ticker) for h in holdings]),
+            ).order_by(Transaction.date.asc(), Transaction.id.asc()).all():
+                ledger[str(tx.ticker)].append(tx)
+        # Cash flows by trade date: the ledger, else one BUY on purchase_date
+        # (else the day the row was added).
+        flows_by_holding = []
+        for h in holdings:
+            try:
+                bought = parse_trade_date(h.purchase_date)  # type: ignore[arg-type]
+            except ValueError:
+                bought = None
+            fallback = (bought or h.created_at or datetime.now(timezone.utc)).date()
+            flows = holding_cashflows(ledger[str(h.ticker)], float(h.shares), float(h.buy_price), fallback)  # type: ignore[arg-type]
+            if flows:
+                flows_by_holding.append((str(h.ticker), float(h.shares), flows))  # type: ignore[arg-type]
 
-    if not holdings:
+    if not flows_by_holding:
         raise HTTPException(status_code=404, detail="No holdings to benchmark")
-        
-    earliest_date = None
-    for h in holdings:
-        # Fallback to current date if missing
-        h_date = getattr(h, "created_at", None)
-        if h_date is None:
-            continue
-        if earliest_date is None or h_date < earliest_date:
-            earliest_date = h_date
-            
-    if earliest_date is None:
-        earliest_date = datetime.now() - timedelta(days=365) # fallback 1 year
-        
-    # period in days
-    period_days = (datetime.now() - earliest_date).days
-    if period_days < 1:
-        period_days = 1
-        
-    years = period_days / 365.25
-    
-    # Get Nifty price — no data means no benchmark (never a fake flat 1.0 → 1.0)
+    earliest = min(d for _, _, flows in flows_by_holding for d, _ in flows)
+
+    # Nifty closes — no data means no benchmark (never a fake flat 1.0 → 1.0)
     try:
-        t = yf.Ticker("^NSEI")
-        hist = t.history(start=earliest_date.strftime("%Y-%m-%d"))
+        hist = yf.Ticker("^NSEI").history(start=earliest.strftime("%Y-%m-%d"))
         if hist.empty:
             raise ValueError("empty ^NSEI history")
-        nifty_start = float(hist["Close"].iloc[0])
-        nifty_end = float(hist["Close"].iloc[-1])
+        nifty_closes = [(pd.Timestamp(ts).date(), float(c)) for ts, c in hist["Close"].items()]  # type: ignore[arg-type]
     except Exception as e:
         logging.warning(f"[benchmark] NIFTY history unavailable: {e}")
         raise HTTPException(status_code=503, detail="Benchmark data unavailable")
 
-    nifty_cagr_pct = (((nifty_end / nifty_start) ** (1 / years)) - 1) * 100 if nifty_start > 0 and years > 0 else 0.0
-
-    # Portfolio value — unpriced holdings are excluded from both sides (not valued at cost)
-    total_invested = 0.0
+    # Unpriced holdings are excluded with their cash flows (never valued at cost)
+    cashflows: list = []
     total_current = 0.0
     unpriced: list[str] = []
-    ns_by_ticker = {str(h.ticker): _to_ns(str(h.ticker)) for h in holdings}
+    ns_by_ticker = {ticker: _to_ns(ticker) for ticker, _, _ in flows_by_holding}
     quotes = get_quotes(ns_by_ticker.values())  # one concurrent, cached batch (PERF-07)
-    for h in holdings:
-        ticker = str(h.ticker)
+    for ticker, shares, flows in flows_by_holding:
         cp = quotes.get(ns_by_ticker[ticker], (None, None))[0]
         if not cp:
             unpriced.append(ticker)
             continue
-        total_invested += float(h.buy_price) * float(h.shares)  # type: ignore[arg-type]
-        total_current += cp * float(h.shares)  # type: ignore[arg-type]
-    if total_invested <= 0:
+        cashflows.extend(flows)
+        total_current += cp * shares
+    if total_current <= 0 or not any(cf < 0 for _, cf in cashflows):
         logging.warning(f"[benchmark] no live price for any holding of user {user_id}: {unpriced}")
         raise HTTPException(status_code=503, detail="Benchmark data unavailable")
 
-    port_cagr_pct = (((total_current / total_invested) ** (1 / years)) - 1) * 100 if total_invested > 0 and years > 0 else 0.0
-    
+    try:
+        result = compute_benchmark(cashflows, total_current, nifty_closes, datetime.now(timezone.utc).date())
+    except ValueError as e:  # e.g. XIRR with no root
+        logging.warning(f"[benchmark] return undefined for user {user_id}: {e}")
+        raise HTTPException(status_code=503, detail="Benchmark data unavailable")
     return {
-        "portfolio_cagr_pct": round(port_cagr_pct, 2),
-        "nifty_cagr_pct": round(nifty_cagr_pct, 2),
-        "alpha_pct": round(port_cagr_pct - nifty_cagr_pct, 2),
-        "period_days": period_days,
-        "earliest_holding_date": earliest_date.isoformat(),
+        **result,
+        "earliest_holding_date": min(d for d, _ in cashflows).isoformat(),
         "current_portfolio_value": total_current,
         "unpriced_tickers": unpriced,
     }

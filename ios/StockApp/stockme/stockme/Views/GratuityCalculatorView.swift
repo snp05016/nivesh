@@ -88,7 +88,7 @@ struct GratuityCalculationResult: Equatable {
     let isCapped: Bool
     /// False below the minimum continuous service (`minimumYears`, or
     /// `fixedTermMinimumYears` for fixed-term employees): nothing is payable
-    /// then (finance_calculators.calculate_gratuity mirrors the 5-year rule).
+    /// then. This is the only implementation (the backend has no gratuity calculator).
     let isEligible: Bool
 
     /// Minimum continuous service for gratuity eligibility.

@@ -360,22 +360,64 @@ class TestTargetAndTradeDate:
         assert h is not None
         assert h.target_price is None
 
-    def test_back_dated_trade_is_clamped_after_latest_entry(self, db_session):
-        """A SELL dated before the only BUY must not replay first (and be skipped)."""
+    def test_out_of_order_inserts_follow_trade_dates(self, db_session):
+        """MATH-11: a back-dated BUY keeps its trade date; the replay is date-ordered."""
         gid = int(_make_group(db_session).id)  # type: ignore[arg-type]
-        record_transaction(user_id=1, ticker="ITC", transaction_type="BUY", quantity=10, price=400.0,
-                           group_id=gid, date=datetime(2025, 1, 1, tzinfo=timezone.utc))
-        record_transaction(user_id=1, ticker="ITC", transaction_type="SELL", quantity=4, price=450.0,
-                           group_id=gid, date=datetime(2023, 1, 1, tzinfo=timezone.utc))
+        for tx_type, qty, when in [("BUY", 10, datetime(2025, 3, 1)), ("BUY", 10, datetime(2025, 1, 1)),
+                                   ("SELL", 15, datetime(2025, 4, 1))]:
+            record_transaction(user_id=1, ticker="ITC", transaction_type=tx_type, quantity=qty, price=400.0,
+                               group_id=gid, date=when.replace(tzinfo=timezone.utc))
         db_session.commit()
 
         h = _holding(db_session, 1, "ITC")
-        assert h is not None
-        assert _f(h.shares) == 6.0
+        assert h is not None and _f(h.shares) == 5.0
         txns = sorted(session_query_all(db_session, "ITC", 1), key=lambda t: int(t.id))  # type: ignore[arg-type]
-        assert [(t.transaction_type, t.date.date()) for t in txns] == [  # type: ignore[union-attr]
-            ("BUY", datetime(2025, 1, 1).date()), ("SELL", datetime(2025, 1, 1).date()),
+        assert [t.date.date() for t in txns] == [  # type: ignore[union-attr]
+            datetime(2025, 3, 1).date(), datetime(2025, 1, 1).date(), datetime(2025, 4, 1).date(),
         ]
+
+    def test_split_applies_by_trade_date(self, db_session):
+        """Pre-split BUY 10, post-split BUY 5, then the 2:1 SPLIT entered last: 25 shares, not 30."""
+        gid = int(_make_group(db_session).id)  # type: ignore[arg-type]
+        for tx_type, qty, price, when in [("BUY", 10, 200.0, datetime(2023, 1, 1)),
+                                          ("BUY", 5, 100.0, datetime(2025, 1, 1)),
+                                          ("SPLIT", 2, 0.0, datetime(2024, 1, 1))]:
+            record_transaction(user_id=1, ticker="TCS", transaction_type=tx_type, quantity=qty, price=price,
+                               group_id=gid, date=when.replace(tzinfo=timezone.utc))
+        db_session.commit()
+
+        h = _holding(db_session, 1, "TCS")
+        assert h is not None and _f(h.shares) == 25.0
+
+    def test_back_dated_trade_before_edit_is_dated_at_the_edit(self, db_session):
+        """An edit (ADJUST) is an absolute restatement: an older trade entered after it
+        is applied on top of it, never silently absorbed."""
+        gid = int(_make_group(db_session).id)  # type: ignore[arg-type]
+        record_transaction(user_id=1, ticker="SBIN", transaction_type="BUY", quantity=10, price=600.0,
+                           group_id=gid, date=datetime(2025, 1, 1, tzinfo=timezone.utc))
+        db_session.commit()
+        assert adjust_position(1, "SBIN", 40, 550.0) is not None
+        record_transaction(user_id=1, ticker="SBIN", transaction_type="BUY", quantity=5, price=500.0,
+                           group_id=gid, date=datetime(2024, 1, 1, tzinfo=timezone.utc))
+        db_session.commit()
+
+        h = _holding(db_session, 1, "SBIN")
+        assert h is not None and _f(h.shares) == 45.0
+
+    @pytest.mark.parametrize("raw", ["05-Mar-2025", "2025-03-05"])
+    def test_purchase_date_formats(self, raw):
+        from services.ledger_service import parse_trade_date
+
+        assert parse_trade_date(raw) == datetime(2025, 3, 5, tzinfo=timezone.utc)
+
+    def test_purchase_date_future_or_garbage_rejected(self):
+        from services.ledger_service import parse_trade_date
+
+        future = (datetime.now(timezone.utc) + timedelta(days=10)).strftime("%Y-%m-%d")
+        for bad in (future, "31/12/2024"):
+            with pytest.raises(ValueError):
+                parse_trade_date(bad)
+        assert parse_trade_date("  ") is None
 
     def test_future_dated_trade_is_clamped_so_remove_sticks(self, db_session):
         """A BUY dated ahead of now must not replay after close_position's ADJUST."""

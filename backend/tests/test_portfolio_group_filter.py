@@ -1,5 +1,5 @@
 """DB-19: watchlist rows (same Portfolio table) must never count as holdings."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -11,7 +11,9 @@ def _make_user_with_holding_and_watchlist():
     import database
     from models.db_models import Portfolio, User
 
-    holding_at = datetime.now() - timedelta(days=7)
+    # UTC, like the model default and the route's today (local time flakes near midnight UTC)
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    holding_at = now_utc - timedelta(days=7)
     with database.get_session() as session:
         user = User(username=f"grp_{uuid4().hex[:12]}", password_hash="x", display_name="Group Test")
         session.add(user)
@@ -23,7 +25,7 @@ def _make_user_with_holding_and_watchlist():
         ))
         session.add(Portfolio(
             user_id=user_id, ticker="WATCHX", company_name="Watch Ltd", shares=0, buy_price=0.0,
-            group_name="watchlist", created_at=datetime.now() - timedelta(days=365),
+            group_name="watchlist", created_at=now_utc - timedelta(days=365),
         ))
         session.commit()
     return user_id, holding_at, {"Authorization": f"Bearer {database.create_access_token(user_id)}"}
@@ -60,7 +62,8 @@ def test_benchmark_uses_holding_inception(client, monkeypatch):
 
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["earliest_holding_date"] == holding_at.isoformat()
+    assert body["earliest_holding_date"] == holding_at.date().isoformat()
+    assert body["return_basis"] == "absolute"  # a week is never annualized (MATH-04)
     assert body["period_days"] == 7
     assert body["current_portfolio_value"] == 220.0
     assert priced == ["HOLDX"]

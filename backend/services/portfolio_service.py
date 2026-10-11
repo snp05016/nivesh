@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import logging
 import math
-from datetime import datetime, timezone
+from bisect import bisect_right
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Optional
 
@@ -317,4 +318,88 @@ def compute_holding_pnl(
         "pnl_pct": round(float(pnl_pct), 2),
         "day_change_pct": day_change_pct,
         "price_status": price_status or "live",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Portfolio vs Nifty benchmark (money-weighted, MATH-04)
+# ---------------------------------------------------------------------------
+
+def holding_cashflows(transactions: list, shares: float, buy_price: float, fallback_date: date) -> list[tuple[date, float]]:
+    """Cash flows of one holding by trade date: money in < 0, money out > 0.
+
+    From the date-ordered ledger: BUY -(qty*price + fees), SELL +(qty*price - fees);
+    an ADJUST restates the position, so flows restart there as a BUY of qty @ price.
+    SPLIT/BONUS move no cash, DIVIDEND income is left out. A ledger-less holding
+    is one BUY of shares @ buy_price on fallback_date.
+    """
+    if not transactions:
+        return [(fallback_date, -shares * buy_price)] if shares > 0 else []
+    flows: list[tuple[date, float]] = []
+    for tx in transactions:
+        kind = str(tx.transaction_type).upper()
+        qty, prc, fee = float(tx.quantity or 0), float(tx.price or 0), float(tx.fees or 0)
+        when = tx.date.date() if tx.date is not None else fallback_date
+        if kind == "BUY":
+            flows.append((when, -(qty * prc + fee)))
+        elif kind == "SELL":
+            flows.append((when, qty * prc - fee))
+        elif kind == "ADJUST":
+            flows = [(when, -qty * prc)] if qty > 0 else []
+    return flows
+
+
+def _period_return_pct(flows: list[tuple[date, float]], terminal_value: float, as_of: date, annualize: bool) -> float:
+    """Absolute return (money out + terminal over money in) or annualized XIRR, in %."""
+    if annualize:
+        from services.math_engines.xirr_calculator import xirr
+        return xirr(flows + [(as_of, terminal_value)]).value * 100
+    invested = -sum(cf for _, cf in flows if cf < 0)
+    withdrawn = sum(cf for _, cf in flows if cf > 0)
+    return (terminal_value + withdrawn) / invested * 100 - 100
+
+
+def compute_benchmark(
+    cashflows: list[tuple[date, float]],
+    terminal_value: float,
+    nifty_closes: Optional[list[tuple[date, float]]],
+    as_of: date,
+) -> dict:
+    """Portfolio return vs the same cash flows invested in the Nifty 50 (PME).
+
+    Under a year the return is absolute (SEBI/AMFI convention: never annualize a
+    sub-year period); from a year on it is the money-weighted XIRR. nifty_closes
+    are date-sorted (date, close); None/empty -> Nifty and alpha are None.
+    Nifty and alpha are also None when the PME is undefined: SELL flows that
+    exceed what the same money bought in Nifty leave net-negative units (a
+    negative terminal value has no XIRR).
+    Keys keep their *_cagr_pct names for clients; return_basis says which it is.
+    """
+    if not any(cf < 0 for _, cf in cashflows):
+        raise ValueError("benchmark needs at least one investment cash flow")
+    period_days = (as_of - min(d for d, _ in cashflows)).days
+    annualize = period_days >= 365
+    port_pct = _period_return_pct(cashflows, terminal_value, as_of, annualize)
+
+    nifty_pct: Optional[float] = None
+    if nifty_closes:
+        dates = [d for d, _ in nifty_closes]
+
+        def close_on(d: date) -> float:
+            # Last close on or before d; a flow before the series starts takes the first close.
+            return nifty_closes[max(bisect_right(dates, d) - 1, 0)][1]
+
+        units = sum(-cf / close_on(d) for d, cf in cashflows)
+        if units > 0:
+            try:
+                nifty_pct = _period_return_pct(cashflows, units * nifty_closes[-1][1], as_of, annualize)
+            except ValueError:  # XIRR found no root
+                nifty_pct = None
+
+    return {
+        "portfolio_cagr_pct": round(port_pct, 2),
+        "nifty_cagr_pct": round(nifty_pct, 2) if nifty_pct is not None else None,
+        "alpha_pct": round(port_pct - nifty_pct, 2) if nifty_pct is not None else None,
+        "return_basis": "annualized_xirr" if annualize else "absolute",
+        "period_days": period_days,
     }

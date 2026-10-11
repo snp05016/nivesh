@@ -65,6 +65,27 @@ def _as_utc(dt: datetime) -> datetime:
     return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
 
 
+def parse_trade_date(value: Optional[str]) -> Optional[datetime]:
+    """purchase_date ('YYYY-MM-DD', or legacy 'dd-MMM-yyyy') -> aware UTC midnight.
+
+    None/blank -> None. ValueError when unparseable or in the future (one day
+    of slack: IST runs ahead of UTC).
+    """
+    if value is None or not value.strip():
+        return None
+    for fmt in ("%Y-%m-%d", "%d-%b-%Y"):
+        try:
+            parsed = datetime.strptime(value.strip(), fmt).replace(tzinfo=timezone.utc)
+            break
+        except ValueError:
+            continue
+    else:
+        raise ValueError("Invalid purchase_date. Use YYYY-MM-DD.")
+    if parsed.date() > (datetime.now(timezone.utc) + timedelta(days=1)).date():
+        raise ValueError("purchase_date cannot be in the future.")
+    return parsed
+
+
 def _lock_position(session: Session, user_id: int, ticker: str) -> None:
     """Serialise ledger writes per (user, ticker) for the rest of the transaction."""
     # ponytail: Postgres only (transaction-scoped advisory lock). SQLite already
@@ -270,15 +291,24 @@ def record_transaction(
         # Never future-date a trade: adjust/close date their ADJUST at now(), so a
         # future-dated BUY would replay after it and resurrect a removed holding.
         tx_date = min(_as_utc(date), now) if date is not None else now
-        # ponytail: a back-dated trade is clamped to the latest ledger entry, so replay
-        # order == entry order (the order the SELL check and ADJUST restatements assume);
-        # true out-of-order insertion needs a full re-validation of the replay.
+        # A back-dated trade keeps its trade date: the replay runs in date order
+        # and validates it strictly (_replay), so splits and SELLs see real chronology.
+        # A reconcile ADJUST restates the row as it is now, so it goes after the
+        # whole ledger, not at the trade's date.
         latest = session.query(Transaction.date).filter_by(
-            user_id=user_id, group_id=resolved_group_id, ticker=ticker
+            user_id=user_id, ticker=ticker
         ).order_by(Transaction.date.desc()).first()
-        if latest is not None and latest[0] is not None and _as_utc(tx_date) < _as_utc(latest[0]):
-            tx_date = _as_utc(latest[0])
-        _reconcile_with_read_model(session, user_id, resolved_group_id, ticker, tx_date)
+        reconcile_at = tx_date
+        if latest is not None and latest[0] is not None:
+            reconcile_at = max(tx_date, _as_utc(latest[0]))
+        _reconcile_with_read_model(session, user_id, resolved_group_id, ticker, reconcile_at)
+        # ponytail: ADJUST is an absolute restatement (edit/remove), so a trade dated
+        # before it would be silently absorbed; such trades are dated at the restatement.
+        last_adjust = session.query(Transaction.date).filter_by(
+            user_id=user_id, ticker=ticker, transaction_type="ADJUST"
+        ).order_by(Transaction.date.desc()).first()
+        if last_adjust is not None and last_adjust[0] is not None and tx_date < _as_utc(last_adjust[0]):
+            tx_date = _as_utc(last_adjust[0])
 
         tx = Transaction(
             user_id=user_id,
