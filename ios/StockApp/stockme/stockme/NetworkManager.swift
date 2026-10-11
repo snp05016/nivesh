@@ -67,6 +67,17 @@ enum NetworkError: Error, LocalizedError {
         }
     }
 
+    /// Returns on 2xx; otherwise throws 401 -> unauthorized, 402 -> paymentRequired,
+    /// else serverError(status, FastAPI `detail`) so validation messages
+    /// ("Cannot SELL 20 of TCS: only 10 shares held.") reach the user.
+    static func ensureOK(data: Data, response: URLResponse) throws {
+        guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        let status = http.statusCode
+        if (200...299).contains(status) { return }
+        if status == 401 || status == 402 { throw fromHTTP(status: status, data: data, endpoint: http.url?.path ?? "") }
+        throw NetworkError.serverError(status, serverDetail(from: data))
+    }
+
     /// Developer-facing detail (endpoint, status, body) for GlobalErrorDiagnoser and logs.
     var diagnosticDetail: String {
         switch self {
@@ -175,9 +186,7 @@ class NetworkManager: ObservableObject {
     }
 
     private var currentUserId: Int? {
-        guard let data = UserDefaults.standard.data(forKey: "nivesh_user_v1"),
-              let user = try? JSONDecoder().decode(LoggedInUser.self, from: data) else { return nil }
-        return user.userId
+        AuthManager.loadPersistedUser()?.userId
     }
 
     // MARK: - Input Sanitization (Fixes 3.4, 3.6, 3.26, 3.28, 3.29)
@@ -491,10 +500,11 @@ class NetworkManager: ObservableObject {
     }
 
     
-    func addHolding(userId: Int, ticker: String, companyName: String, shares: Double, buyPrice: Double, purchaseDate: Date, notes: String, targetPrice: Double, transactionType: String = "BUY") async throws {
+    /// `targetPrice` nil omits the field, so the server keeps any existing target.
+    func addHolding(userId: Int, ticker: String, companyName: String, shares: Double, buyPrice: Double, purchaseDate: Date, notes: String, targetPrice: Double?, transactionType: String = "BUY") async throws {
         struct Req: Encodable {
             let user_id: Int; let ticker: String; let exchange: String; let company_name: String; let shares: Double; let buy_price: Double
-            let group_name: String; let purchase_date: String; let notes: String; let target_price: Double; let transaction_type: String
+            let group_name: String; let purchase_date: String; let notes: String; let target_price: Double?; let transaction_type: String
         }
         guard let url = URL(string: "\(baseURL)/portfolio") else { throw NetworkError.invalidURL }
         var request = authRequest(url)
@@ -506,10 +516,8 @@ class NetworkManager: ObservableObject {
             transaction_type: transactionType.uppercased()
         )
         request.httpBody = try JSONEncoder().encode(body)
-        let (_, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw NetworkError.invalidResponse
-        }
+        let (data, response) = try await session.data(for: request)
+        try NetworkError.ensureOK(data: data, response: response)
     }
 
     func saveNote(userId: Int, ticker: String, note: String) async throws {
@@ -609,8 +617,8 @@ class NetworkManager: ObservableObject {
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker))
-        let (_, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        let (data, response) = try await session.data(for: request)
+        try NetworkError.ensureOK(data: data, response: response)
     }
 
     func updateHolding(userId: Int, ticker: String, shares: Double, buyPrice: Double) async throws {
@@ -620,8 +628,8 @@ class NetworkManager: ObservableObject {
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, shares: shares, buy_price: buyPrice))
-        let (_, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        let (data, response) = try await session.data(for: request)
+        try NetworkError.ensureOK(data: data, response: response)
     }
 
     // MARK: - Price Alerts

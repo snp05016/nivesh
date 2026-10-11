@@ -207,7 +207,18 @@ def record_transaction(
         else:
             resolved_group_id = group_id
 
-        tx_date = date if date is not None else datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
+        # Never future-date a trade: adjust/close date their ADJUST at now(), so a
+        # future-dated BUY would replay after it and resurrect a removed holding.
+        tx_date = min(_as_utc(date), now) if date is not None else now
+        # ponytail: a back-dated trade is clamped to the latest ledger entry, so replay
+        # order == entry order (the order the SELL check and ADJUST restatements assume);
+        # true out-of-order insertion needs a full re-validation of the replay.
+        latest = session.query(Transaction.date).filter_by(
+            user_id=user_id, group_id=resolved_group_id, ticker=ticker
+        ).order_by(Transaction.date.desc()).first()
+        if latest is not None and latest[0] is not None and _as_utc(tx_date) < _as_utc(latest[0]):
+            tx_date = _as_utc(latest[0])
         _reconcile_with_read_model(session, user_id, resolved_group_id, ticker, tx_date)
 
         tx_type_upper = transaction_type.upper()
@@ -294,7 +305,8 @@ def _recalculate_portfolio_snapshot(
         existing.buy_price = round(wac, 2)  # type: ignore[assignment]
         if group_id is not None:
             existing.group_id = group_id  # type: ignore[assignment]
-        if target_price is not None:
+        # Old clients send 0.0 for "no target": never let that wipe a real one.
+        if target_price is not None and target_price > 0:
             existing.target_price = target_price  # type: ignore[assignment]
     else:
         new_row = Portfolio(
@@ -305,7 +317,7 @@ def _recalculate_portfolio_snapshot(
             buy_price=round(wac, 2),
             group_name="holdings",
             group_id=group_id,
-            target_price=target_price,
+            target_price=target_price if target_price is not None and target_price > 0 else None,
             purchase_date=purchase_date,
             is_virtual=is_virtual,
         )

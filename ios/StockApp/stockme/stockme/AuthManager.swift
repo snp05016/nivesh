@@ -9,16 +9,36 @@ class AuthManager: ObservableObject {
     /// Fix 3.13: Biometric auth queue — blocks API requests during FaceID/TouchID
     @Published var isAuthenticatingWithBiometrics = false
 
-    private let key = "nivesh_user_v1"
+    /// Keychain account (and legacy UserDefaults key) for the persisted session.
+    static let storageKey = "nivesh_user_v1"
     private let disclaimerRecordedKey = "nivesh_disclaimerRecordedVersion"
 
     init() {
-        if let data = UserDefaults.standard.data(forKey: key),
-           let user = try? JSONDecoder().decode(LoggedInUser.self, from: data) {
+        if let user = Self.loadPersistedUser() {
             currentUser = user
             NetworkManager.shared.authToken = user.token
             recordDisclaimerIfNeeded()
         }
+    }
+
+    /// The persisted session, read from the Keychain. Installs that stored it
+    /// (bearer token included) in plaintext UserDefaults are migrated on first
+    /// read; the legacy copy is removed only once the Keychain write succeeds.
+    static func loadPersistedUser() -> LoggedInUser? {
+        if let data = KeychainStore.get(storageKey) {
+            return try? JSONDecoder().decode(LoggedInUser.self, from: data)
+        }
+        guard let legacy = UserDefaults.standard.data(forKey: storageKey),
+              let user = try? JSONDecoder().decode(LoggedInUser.self, from: legacy) else { return nil }
+        if (try? KeychainStore.set(legacy, for: storageKey)) != nil {
+            UserDefaults.standard.removeObject(forKey: storageKey)
+        }
+        return user
+    }
+
+    private func persist(_ user: LoggedInUser) {
+        guard let data = try? JSONEncoder().encode(user) else { return }
+        try? KeychainStore.set(data, for: Self.storageKey)
     }
 
     var isLoggedIn: Bool { currentUser != nil }
@@ -30,9 +50,7 @@ class AuthManager: ObservableObject {
             let user = try await NetworkManager.shared.login(username: username, password: password)
             currentUser = user
             NetworkManager.shared.authToken = user.token
-            if let data = try? JSONEncoder().encode(user) {
-                UserDefaults.standard.set(data, forKey: key)
-            }
+            persist(user)
             recordDisclaimerIfNeeded()
         } catch {
             loginError = Self.message(for: error, registering: false)
@@ -48,9 +66,7 @@ class AuthManager: ObservableObject {
             let user = try await NetworkManager.shared.register(username: username, password: password, displayName: displayName, acceptedPolicyVersion: PolicyVersion.current)
             currentUser = user
             NetworkManager.shared.authToken = user.token
-            if let data = try? JSONEncoder().encode(user) {
-                UserDefaults.standard.set(data, forKey: key)
-            }
+            persist(user)
             recordDisclaimerIfNeeded()
         } catch {
             loginError = Self.message(for: error, registering: true)
@@ -107,7 +123,8 @@ class AuthManager: ObservableObject {
         URLCache.shared.removeAllCachedResponses()
         currentUser = nil
         NetworkManager.shared.authToken = nil
-        UserDefaults.standard.removeObject(forKey: key)
+        KeychainStore.delete(Self.storageKey)
+        UserDefaults.standard.removeObject(forKey: Self.storageKey)
         UserDefaults.standard.removeObject(forKey: "nivesh_cached_portfolio_v1")
         UserDefaults.standard.removeObject(forKey: "nivesh_last_refresh_v1")
         WidgetSnapshotStore.clear()

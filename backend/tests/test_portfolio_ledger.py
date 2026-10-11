@@ -15,7 +15,7 @@ Run from backend/:
 """
 
 import pytest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -331,6 +331,62 @@ class TestLedgerBackedEditRemove:
         assert adjust_position(1, "NOPE", 10, 100.0) is None
         assert close_position(1, "NOPE") is False
         assert session_query_all(db_session, "NOPE", 1) == []
+
+
+class TestTargetAndTradeDate:
+    def test_buy_without_target_keeps_existing_target(self, db_session):
+        """Omitted (None) or legacy-sentinel 0.0 targets never wipe a real target."""
+        gid = int(_make_group(db_session).id)  # type: ignore[arg-type]
+        record_transaction(user_id=1, ticker="INFY", transaction_type="BUY", quantity=10,
+                           price=1500.0, group_id=gid, company_name="Infosys", target_price=4000.0)
+        record_transaction(user_id=1, ticker="INFY", transaction_type="BUY", quantity=1,
+                           price=1500.0, group_id=gid, target_price=None)
+        record_transaction(user_id=1, ticker="INFY", transaction_type="SELL", quantity=2,
+                           price=1600.0, group_id=gid, target_price=0.0)
+        db_session.commit()
+
+        h = _holding(db_session, 1, "INFY")
+        assert h is not None
+        assert (_f(h.shares), _f(h.target_price)) == (9.0, 4000.0)
+
+    def test_zero_target_on_new_row_is_stored_as_none(self, db_session):
+        gid = int(_make_group(db_session).id)  # type: ignore[arg-type]
+        record_transaction(user_id=1, ticker="TCS", transaction_type="BUY", quantity=1,
+                           price=3500.0, group_id=gid, target_price=0.0)
+        db_session.commit()
+
+        h = _holding(db_session, 1, "TCS")
+        assert h is not None
+        assert h.target_price is None
+
+    def test_back_dated_trade_is_clamped_after_latest_entry(self, db_session):
+        """A SELL dated before the only BUY must not replay first (and be skipped)."""
+        gid = int(_make_group(db_session).id)  # type: ignore[arg-type]
+        record_transaction(user_id=1, ticker="ITC", transaction_type="BUY", quantity=10, price=400.0,
+                           group_id=gid, date=datetime(2025, 1, 1, tzinfo=timezone.utc))
+        record_transaction(user_id=1, ticker="ITC", transaction_type="SELL", quantity=4, price=450.0,
+                           group_id=gid, date=datetime(2023, 1, 1, tzinfo=timezone.utc))
+        db_session.commit()
+
+        h = _holding(db_session, 1, "ITC")
+        assert h is not None
+        assert _f(h.shares) == 6.0
+        txns = sorted(session_query_all(db_session, "ITC", 1), key=lambda t: int(t.id))  # type: ignore[arg-type]
+        assert [(t.transaction_type, t.date.date()) for t in txns] == [  # type: ignore[union-attr]
+            ("BUY", datetime(2025, 1, 1).date()), ("SELL", datetime(2025, 1, 1).date()),
+        ]
+
+    def test_future_dated_trade_is_clamped_so_remove_sticks(self, db_session):
+        """A BUY dated ahead of now must not replay after close_position's ADJUST."""
+        gid = int(_make_group(db_session).id)  # type: ignore[arg-type]
+        record_transaction(user_id=1, ticker="HDFCBANK", transaction_type="BUY", quantity=5,
+                           price=1600.0, group_id=gid,
+                           date=datetime.now(timezone.utc) + timedelta(hours=3))
+        db_session.commit()
+
+        assert close_position(1, "HDFCBANK") is True
+        db_session.commit()
+        assert _holding(db_session, 1, "HDFCBANK") is None
 
 
 # ---------------------------------------------------------------------------

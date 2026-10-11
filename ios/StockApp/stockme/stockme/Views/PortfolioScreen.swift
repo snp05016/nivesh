@@ -103,7 +103,7 @@ class PortfolioScreenViewModel: ObservableObject {
         }
     }
 
-    func addHolding(userId: Int, ticker: String, companyName: String, shares: Double, buyPrice: Double, purchaseDate: Date, notes: String, targetPrice: Double, transactionType: String = "BUY") async throws {
+    func addHolding(userId: Int, ticker: String, companyName: String, shares: Double, buyPrice: Double, purchaseDate: Date, notes: String, targetPrice: Double?, transactionType: String = "BUY") async throws {
         try await NetworkManager.shared.addHolding(userId: userId, ticker: ticker, companyName: companyName, shares: shares, buyPrice: buyPrice, purchaseDate: purchaseDate, notes: notes, targetPrice: targetPrice, transactionType: transactionType)
         await fetchData(userId: userId)
     }
@@ -1603,7 +1603,7 @@ private struct AddHoldingSheet: View {
                                         buyPrice: buyPrice,
                                         purchaseDate: purchaseDate,
                                         notes: notes,
-                                        targetPrice: Double(targetPriceText) ?? 0.0,
+                                        targetPrice: Double(targetPriceText).flatMap { $0 > 0 ? $0 : nil },
                                         transactionType: transactionType
                                     )
                                     dismiss()

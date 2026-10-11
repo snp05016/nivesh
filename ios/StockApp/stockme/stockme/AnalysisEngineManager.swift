@@ -23,9 +23,7 @@ final class AnalysisEngineManager: ObservableObject {
     private var lastTerminalNotified: String? = nil
 
     private var currentUserId: Int? {
-        guard let data = UserDefaults.standard.data(forKey: "nivesh_user_v1"),
-              let user = try? JSONDecoder().decode(LoggedInUser.self, from: data) else { return nil }
-        return user.userId
+        AuthManager.loadPersistedUser()?.userId
     }
 
     private init() {}

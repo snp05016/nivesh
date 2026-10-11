@@ -667,6 +667,27 @@ mood must be exactly: "positive", "cautious", or "negative"
 # ---------------------------------------------------------------------------
 # 5. POST /portfolio & 6. POST /portfolio/add
 # ---------------------------------------------------------------------------
+def _parse_trade_date(s: Optional[str]) -> Optional[datetime]:
+    """purchase_date ('YYYY-MM-DD', or legacy 'dd-MMM-yyyy') -> aware UTC midnight.
+
+    None/blank -> None (the ledger dates the trade now). 400 when unparseable or
+    in the future (one day of slack: IST runs ahead of UTC).
+    """
+    if s is None or not s.strip():
+        return None
+    for fmt in ("%Y-%m-%d", "%d-%b-%Y"):
+        try:
+            parsed = datetime.strptime(s.strip(), fmt).replace(tzinfo=timezone.utc)
+            break
+        except ValueError:
+            continue
+    else:
+        raise HTTPException(status_code=400, detail="Invalid purchase_date. Use YYYY-MM-DD.")
+    if parsed.date() > (datetime.now(timezone.utc) + timedelta(days=1)).date():
+        raise HTTPException(status_code=400, detail="purchase_date cannot be in the future.")
+    return parsed
+
+
 @router.post("/portfolio")
 @router.post("/portfolio/add")
 def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header(None)):
@@ -681,6 +702,7 @@ def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header
         raise HTTPException(status_code=400, detail="Buy price must be greater than 0.")
 
     ticker = req.ticker.upper().strip()
+    trade_date = _parse_trade_date(req.purchase_date)
     try:
         record_transaction(
             user_id=req.user_id,
@@ -689,10 +711,11 @@ def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header
             quantity=req.shares,
             price=req.buy_price,
             fees=0.0,
+            date=trade_date,
             notes=req.notes,
             company_name=req.company_name,
             target_price=req.target_price,
-            purchase_date=req.purchase_date,
+            purchase_date=trade_date.strftime("%Y-%m-%d") if trade_date else None,
             is_virtual=getattr(req, "is_virtual", False),
         )
         _cache_invalidate("morning_brief", str(req.user_id))
@@ -713,7 +736,11 @@ def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except ValueError as e:
+        # Ledger rule violations (e.g. "Cannot SELL 20 of TCS: only 10 shares held.")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logging.exception("[portfolio/add] failed for user %s %s", req.user_id, ticker)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
