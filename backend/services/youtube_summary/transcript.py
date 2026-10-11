@@ -1,4 +1,4 @@
-"""Transcript extraction layer — youtube-transcript-api with yt-dlp fallback."""
+"""Transcript extraction layer — public captions via youtube-transcript-api only (REG-14)."""
 
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ class TranscriptExtractor:
             {
                 "video_id":  str,
                 "text":      str,          # full concatenated transcript
-                "source":    str,          # "youtube_api" | "yt_dlp"
+                "source":    str,          # "youtube_api"
                 "hash":      str,          # sha256 of text
                 "segments":  list[dict],   # [{"start": float, "text": str}, ...]
                 "char_count": int,
@@ -56,12 +56,7 @@ class TranscriptExtractor:
             logger.warning("TranscriptExtractor: could not parse video ID from %r", url_or_id)
             return None
 
-        result = self._try_youtube_transcript_api(video_id)
-        if result:
-            return result
-
-        result = self._try_yt_dlp(video_id)
-        return result
+        return self._try_youtube_transcript_api(video_id)
 
     # ------------------------------------------------------------------
     # Strategy 1: youtube-transcript-api
@@ -107,58 +102,4 @@ class TranscriptExtractor:
             return None
         except Exception as exc:
             logger.debug("youtube-transcript-api failed for %s: %s", video_id, exc)
-            return None
-
-    # ------------------------------------------------------------------
-    # Strategy 2: yt-dlp subtitle / description fallback
-    # ------------------------------------------------------------------
-
-    def _try_yt_dlp(self, video_id: str) -> Optional[dict]:
-        """Fetch auto-captions or description text via yt-dlp."""
-        try:
-            import yt_dlp  # type: ignore
-        except ImportError:
-            logger.debug("yt-dlp not installed; skipping fallback")
-            return None
-
-        url = f"https://www.youtube.com/watch?v={video_id}"
-        ydl_opts = {
-            "skip_download": True,
-            "writesubtitles": True,
-            "writeautomaticsub": True,
-            "subtitleslangs": ["en", "en-IN"],
-            "quiet": True,
-            "no_warnings": True,
-        }
-
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-
-            # Try to get subtitle text from info dict directly (no disk write).
-            # yt-dlp subtitle entries only carry URLs; fetching them requires a
-            # separate network call (disk-based workflow) not implemented here.
-            # Fall through to the description fallback below.
-            text: Optional[str] = None
-
-            if not text:
-                # Fall back to description snippet — lower quality but better than nothing
-                desc = (info.get("description") or "").strip()
-                if len(desc) > 200:
-                    text = desc[:_MAX_CHARS]
-                    logger.debug("yt-dlp: using description fallback for %s (%d chars)", video_id, len(text))
-
-            if not text:
-                return None
-
-            return {
-                "video_id": video_id,
-                "text": text,
-                "source": "yt_dlp",
-                "hash": _sha256(text),
-                "segments": [],
-                "char_count": len(text),
-            }
-        except Exception as exc:
-            logger.debug("yt-dlp failed for %s: %s", video_id, exc)
             return None

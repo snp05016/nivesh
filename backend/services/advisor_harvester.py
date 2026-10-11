@@ -219,77 +219,6 @@ async def _fetch_videos_youtube_api(channel_id: str, lookback_hours: int) -> lis
     return videos
 
 
-def _fetch_videos_ytdlp(channel_id: str, lookback_hours: int) -> list[dict]:
-    """Fetches recent videos from a channel using yt-dlp without needing an API key.
-
-    Args:
-        channel_id (str): The YouTube channel ID.
-        lookback_hours (int): The number of past hours to search for videos.
-
-    Returns:
-        list[dict]: A list of video dictionaries containing metadata.
-    """
-    import yt_dlp  # type: ignore
-
-    channel_url = f"https://www.youtube.com/channel/{channel_id}/videos"
-    ydl_opts = {
-        "quiet": True,
-        "extract_flat": True,
-        "playlistend": 10,
-    }
-    _cookies_path = os.path.join(os.path.dirname(__file__), "..", "cookies.txt")
-    if os.path.exists(_cookies_path):
-        ydl_opts["cookiefile"] = _cookies_path
-
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=lookback_hours)
-
-    videos = []
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        try:
-            info = ydl.extract_info(channel_url, download=False)
-        except Exception as exc:
-            logger.warning("yt-dlp extraction failed for channel %s: %s", channel_id, exc)
-            return []
-
-    entries = info.get("entries", []) if info else []
-    for entry in entries:
-        if not entry:
-            continue
-        vid_id = entry.get("id") or entry.get("url", "").split("v=")[-1]
-        if not vid_id:
-            continue
-
-        title = entry.get("title", "")
-        duration_seconds = int(entry.get("duration") or 0)
-        view_count = int(entry.get("view_count") or 0)
-
-        # yt-dlp flat extract gives upload_date as YYYYMMDD string
-        upload_date_str = entry.get("upload_date", "")
-        if upload_date_str:
-            try:
-                published_at = datetime.strptime(upload_date_str, "%Y%m%d")
-            except ValueError:
-                published_at = datetime.now(timezone.utc)
-        else:
-            # Timestamp field
-            ts = entry.get("timestamp")
-            published_at = datetime.fromtimestamp(ts, tz=timezone.utc) if ts else datetime.now(timezone.utc)
-
-        if published_at < cutoff:
-            continue
-
-        videos.append({
-            "video_id": vid_id,
-            "title": title,
-            "published_at": published_at,
-            "duration_seconds": duration_seconds,
-            "view_count": view_count,
-            "url": f"https://www.youtube.com/watch?v={vid_id}",
-        })
-
-    return videos
-
-
 # ---------------------------------------------------------------------------
 # DB helpers
 # ---------------------------------------------------------------------------
@@ -515,32 +444,18 @@ async def harvest_single_advisor(advisor: dict, lookback_hours: int = 24) -> int
     logger.info("Harvesting advisor: %s (channel %s)", advisor_name, channel_id)
 
     # --- Fetch video list ---
-    videos: list[dict] = []
-    if YOUTUBE_API_KEY:
-        try:
-            videos = await _fetch_videos_youtube_api(channel_id, lookback_hours)
-            logger.info(
-                "%s: YouTube API returned %d videos", advisor_name, len(videos)
-            )
-        except RuntimeError as exc:
-            # Quota / auth error — fall back to yt-dlp
-            logger.warning(
-                "YouTube API quota/auth error for %s, falling back to yt-dlp: %s",
-                advisor_name, exc
-            )
-            videos = _fetch_videos_ytdlp(channel_id, lookback_hours)
-        except Exception as exc:
-            logger.warning(
-                "YouTube API fetch failed for %s, trying yt-dlp fallback: %s",
-                advisor_name,
-                exc,
-            )
-            videos = _fetch_videos_ytdlp(channel_id, lookback_hours)
-    else:
-        videos = _fetch_videos_ytdlp(channel_id, lookback_hours)
+    # Official YouTube Data API only; no page scraping (REG-14).
+    if not YOUTUBE_API_KEY:
+        logger.warning("YOUTUBE_API_KEY not set — skipping advisor %s", advisor_name)
+        return 0
+    try:
+        videos: list[dict] = await _fetch_videos_youtube_api(channel_id, lookback_hours)
         logger.info(
-            "%s: yt-dlp returned %d videos (no API key)", advisor_name, len(videos)
+            "%s: YouTube API returned %d videos", advisor_name, len(videos)
         )
+    except Exception as exc:
+        logger.warning("YouTube API fetch failed for %s: %s", advisor_name, exc)
+        return 0
 
     for video in videos:
         vid_id: str = video["video_id"]

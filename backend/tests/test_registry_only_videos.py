@@ -133,7 +133,6 @@ def test_portfolio_harvest_tags_registry_videos_without_searching(monkeypatch):
         raise AssertionError("portfolio harvest must not search YouTube")
 
     monkeypatch.setattr(youtube_harvester.requests, "get", _no_network)
-    monkeypatch.setattr(youtube_harvester.yt_dlp, "YoutubeDL", _no_network)
     monkeypatch.setattr(youtube_harvester, "get_company_name",
                         lambda t: "Regtag Industries" if t == "REGTAGX" else t)
     with database.get_session() as session:

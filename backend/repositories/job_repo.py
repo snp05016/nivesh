@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
 from models.db_models import AnalysisJob
@@ -22,9 +23,17 @@ _JOB_TERMINAL = {"SUCCEEDED", "FAILED", "CANCELLED", "TIMEOUT"}
 # per (user_id, scan_type).
 _JOB_ACTIVE = ("QUEUED", "RUNNING")
 
-# Wall-clock limits mirror services.job_worker._WALLCLOCK_LIMITS so a crashed
-# worker never permanently blocks new runs of the same scan_type.
-_STALE_LIMITS: dict[str, int] = {"extreme": 600, "deep": 420, "standard": 420}
+# Wall-clock budget per scan type (seconds). Single source: services.job_worker
+# imports it for its kill-switch, and the staleness checks below add _STALE_GRACE
+# (spawn delay) so a crashed worker never permanently blocks new runs.
+WALLCLOCK_LIMITS: dict[str, int] = {"extreme": 600, "deep": 420, "standard": 420}
+_STALE_GRACE = 60
+
+
+def _stale_after_sec(scan_type: Optional[str] = None) -> int:
+    """Age past which an active row cannot belong to a live worker (any type if None)."""
+    limit = WALLCLOCK_LIMITS.get(scan_type, 300) if scan_type else max(WALLCLOCK_LIMITS.values())
+    return limit + _STALE_GRACE
 
 
 class JobAlreadyActive(Exception):
@@ -88,7 +97,7 @@ def create_job(user_id: Optional[int], ticker: str, exchange: str, scan_type: st
         if user_id is not None:
             # A row past its wall-clock limit belongs to a dead worker; fail it in
             # this transaction so it cannot hold the unique index forever.
-            stale_before = now - timedelta(seconds=_STALE_LIMITS.get(scan_type, 300))
+            stale_before = now - timedelta(seconds=_stale_after_sec(scan_type))
             (s.query(AnalysisJob)
                .filter(AnalysisJob.user_id == user_id,
                        AnalysisJob.scan_type == scan_type,
@@ -220,6 +229,9 @@ def add_job_tokens(job_id: str, n: int) -> int:
 def get_active_job_for_user(user_id: Optional[int]) -> Optional[dict]:
     """Retrieve the most recent active job for a user.
 
+    Rows older than any worker's wall-clock budget are ignored: their worker is
+    dead, so they must not drive the app's "analysis running" indicator.
+
     Args:
         user_id (Optional[int]): ID of the user.
 
@@ -228,10 +240,12 @@ def get_active_job_for_user(user_id: Optional[int]) -> Optional[dict]:
     """
     if user_id is None:
         return None
+    threshold = datetime.now(timezone.utc) - timedelta(seconds=_stale_after_sec())
     with _get_session() as s:
         j = (s.query(AnalysisJob)
                .filter(AnalysisJob.user_id == user_id,
-                        AnalysisJob.status.in_(["QUEUED", "RUNNING"]))
+                        AnalysisJob.status.in_(["QUEUED", "RUNNING"]),
+                        AnalysisJob.created_at >= threshold)
                .order_by(AnalysisJob.created_at.desc()).first())
         return _job_to_dict(j) if j else None
 
@@ -241,8 +255,7 @@ def get_active_job_for_user_and_type(user_id: Optional[int], scan_type: str) -> 
     jobs older than their wall-clock limit. Lets extreme and standard coexist."""
     if user_id is None:
         return None
-    cutoff_sec = _STALE_LIMITS.get(scan_type, 300)
-    threshold = datetime.now(timezone.utc) - timedelta(seconds=cutoff_sec)
+    threshold = datetime.now(timezone.utc) - timedelta(seconds=_stale_after_sec(scan_type))
     with _get_session() as s:
         j = (s.query(AnalysisJob)
                .filter(AnalysisJob.user_id == user_id,
@@ -359,26 +372,33 @@ def _pid_alive(pid: Optional[int]) -> bool:
     return True
 
 
-# ponytail: a reused pid keeps a dead row RUNNING; create_job's stale check still
-# frees the user's slot after the wall-clock limit.
 def sweep_stale_jobs(max_heartbeat_age_sec: int = 90) -> int:
-    """Crash recovery: mark QUEUED/RUNNING jobs with a stale heartbeat as FAILED.
+    """Crash recovery: mark QUEUED/RUNNING jobs whose worker is gone as FAILED.
 
-    Skips jobs whose worker pid is still alive on this host.
+    A stale heartbeat counts only when the worker pid is not alive on this host.
+    A row past every wall-clock budget (plus margin) is failed regardless of pid,
+    so a reused pid cannot keep a dead row RUNNING; a still-live overrun worker
+    sees the terminal status on its next heartbeat and exits.
     """
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(seconds=max_heartbeat_age_sec)
+    overrun_before = now - timedelta(seconds=max(WALLCLOCK_LIMITS.values()) + 120)
+    gone = or_(AnalysisJob.heartbeat_at < cutoff, AnalysisJob.created_at < overrun_before)
     with _get_session() as s:
         stale = (s.query(AnalysisJob.job_id, AnalysisJob.pid)
-                   .filter(AnalysisJob.status.in_(_JOB_ACTIVE),
-                           AnalysisJob.heartbeat_at < cutoff).all())
-        dead = [jid for jid, pid in stale if not _pid_alive(pid)]
+                   .filter(AnalysisJob.status.in_(_JOB_ACTIVE), gone).all())
+        if not stale:
+            return 0
+        overrun = {row[0] for row in
+                   s.query(AnalysisJob.job_id)
+                    .filter(AnalysisJob.status.in_(_JOB_ACTIVE),
+                            AnalysisJob.created_at < overrun_before).all()}
+        dead = [jid for jid, pid in stale if jid in overrun or not _pid_alive(pid)]
         if not dead:
             return 0
         n = (s.query(AnalysisJob)
                .filter(AnalysisJob.job_id.in_(dead),
-                       AnalysisJob.status.in_(_JOB_ACTIVE),
-                       AnalysisJob.heartbeat_at < cutoff)
+                       AnalysisJob.status.in_(_JOB_ACTIVE), gone)
                .update({"status": "FAILED", "finished_at": now,
                         "error": "Worker died (stale heartbeat / server restart)"},
                        synchronize_session=False))

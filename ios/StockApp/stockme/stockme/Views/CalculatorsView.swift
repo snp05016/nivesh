@@ -52,7 +52,7 @@ struct CalculatorsView: View {
                                 .foregroundColor(Theme.inkTertiary)
                             GenericSIPCalculatorContent(inputs: $sip)
                         case .gratuity:
-                            Text("Estimate your gratuity payout under the Payment of Gratuity Act, 1972.")
+                            Text("Estimate your gratuity payout under the Code on Social Security, 2020 (Chapter V).")
                                 .font(Theme.engravedSerif(size: 13, relativeTo: .footnote))
                                 .foregroundColor(Theme.inkTertiary)
                             GratuityCalculatorContent(inputs: $gratuity)

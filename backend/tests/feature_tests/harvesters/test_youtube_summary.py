@@ -32,25 +32,18 @@ def test_transcript_extractor_youtube_api(mock_yt_api):
     assert result["text"] == "Hello world"
     assert result["source"] == "youtube_api"
 
-@patch("services.youtube_summary.transcript.yt_dlp")
-@patch("services.youtube_summary.transcript.YouTubeTranscriptApi")
-def test_transcript_extractor_yt_dlp_fallback(mock_yt_api, mock_yt_dlp):
-    # Make youtube-transcript-api fail
-    mock_yt_api.list_transcripts.side_effect = Exception("Not available")
-    
-    # Mock yt-dlp
-    mock_ydl_instance = MagicMock()
-    mock_ydl_instance.extract_info.return_value = {
-        "description": "This is a fallback description " * 10 # make it > 200 chars
-    }
-    mock_yt_dlp.YoutubeDL.return_value.__enter__.return_value = mock_ydl_instance
-    
-    extractor = TranscriptExtractor()
-    result = extractor.extract("dQw4w9WgXcQ")
-    
-    assert result is not None
-    assert result["source"] == "yt_dlp"
-    assert result["char_count"] > 200
+def test_transcript_extractor_no_fallback_without_captions(monkeypatch):
+    # REG-14: no yt-dlp/description fallback; no public captions means no transcript.
+    import sys
+    import types
+    fake = types.SimpleNamespace()
+    fake.YouTubeTranscriptApi = MagicMock()
+    fake.YouTubeTranscriptApi.list_transcripts.side_effect = Exception("Not available")
+    fake.TranscriptsDisabled = type("TranscriptsDisabled", (Exception,), {})
+    fake.NoTranscriptFound = type("NoTranscriptFound", (Exception,), {})
+    monkeypatch.setitem(sys.modules, "youtube_transcript_api", fake)
+
+    assert TranscriptExtractor().extract("dQw4w9WgXcQ") is None
 
 @pytest.mark.asyncio
 @patch("services.youtube_summary.summarizer.get_provider")

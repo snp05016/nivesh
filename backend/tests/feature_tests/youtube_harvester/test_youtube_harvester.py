@@ -9,7 +9,6 @@ def test_portfolio_harvest_runs_without_searching_youtube(monkeypatch):
         raise AssertionError("portfolio harvest must not search YouTube")
 
     monkeypatch.setattr(youtube_harvester.requests, "get", _no_network)
-    monkeypatch.setattr(youtube_harvester.yt_dlp, "YoutubeDL", _no_network)
     monkeypatch.setattr(youtube_harvester, "get_company_name", lambda t: t)
 
     result = asyncio.run(youtube_harvester.harvest_portfolio_videos())

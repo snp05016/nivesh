@@ -2,9 +2,9 @@
 Nivesh Harvester — YouTube Finance Channels harvester.
 
 Fetches the latest videos from a curated registry of reputable Indian finance
-YouTube channels via the YouTube Data API v3, optionally enriches them with
-captions/transcripts via youtube_transcript_api, and stores the results as
-YOUTUBE cards directly to the DB (the scheduler reformats them later).
+YouTube channels via the YouTube Data API v3 and stores title + description +
+link-out as YOUTUBE cards directly to the DB (the scheduler reformats them later).
+No captions or transcripts are fetched (REG-14).
 
 Fully defensive: one channel failing must not stop others. The top-level
 function NEVER raises — on catastrophic failure it records SourceHealth and
@@ -111,16 +111,6 @@ def _list_recent_videos(channel_id: str, max_results: int = 2) -> list[dict]:
     if not data:
         return []
     return data.get("items", [])
-
-
-def _fetch_transcript(video_id: str) -> str:
-    """Best-effort transcript fetch. Returns empty string on any failure."""
-    try:
-        from youtube_transcript_api import YouTubeTranscriptApi  # type: ignore
-        segs = YouTubeTranscriptApi.get_transcript(video_id, languages=["en", "hi"])
-        return " ".join(s["text"] for s in segs if s.get("text"))
-    except Exception as _e:
-        return ""
 
 
 def _build_video_url(video_id: str) -> str:
@@ -262,16 +252,8 @@ def _harvest_channel(
 
             video_url = _build_video_url(video_id)
 
-            # Best-effort transcript (empty string if unavailable)
-            transcript_text = _fetch_transcript(video_id)
-            time.sleep(_API_SLEEP)
-
-            # Assemble raw_text: title + description + transcript (capped)
-            raw_text = "\n".join(filter(None, [
-                title,
-                description,
-                transcript_text[:4000] if transcript_text else "",
-            ]))
+            # Metadata only (title + description); the card links out to the video.
+            raw_text = "\n".join(filter(None, [title, description]))
 
             if not raw_text.strip():
                 continue

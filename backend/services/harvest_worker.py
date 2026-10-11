@@ -34,7 +34,7 @@ def _sync(coro_fn):
 
     AsyncIOScheduler (and BackgroundTasks) run coroutine jobs ON the API event loop
     but send plain callables to a thread pool, so registering only sync callables
-    keeps blocking yfinance/feedparser/yt-dlp/subprocess bodies off the loop (REL-03).
+    keeps blocking yfinance/feedparser/subprocess bodies off the loop (REL-03).
     """
     @functools.wraps(coro_fn)
     def run(*args, **kwargs):

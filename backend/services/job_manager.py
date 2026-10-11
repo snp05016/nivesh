@@ -70,6 +70,7 @@ def spawn_process(job_id: str, target, args: tuple, user_id: int | None = None) 
     JobCapacityError at the platform-wide cap and JobUserLimitError when the owner
     (user_id) is at its own cap.
     """
+    reap_finished()
     active = _active_jobs(job_id)
     if len(active) >= MAX_CONCURRENT_JOBS:
         raise JobCapacityError("Server busy, please retry shortly")
@@ -121,18 +122,39 @@ def cancel_job(job_id: str) -> bool:
 
 
 def reap_finished() -> None:
-    """Drop dead processes from the registry (called opportunistically)."""
+    """Drop dead processes from the registry and release their handles.
+
+    Called on every spawn, so the long-lived API process does not keep one
+    Process object (and its sentinel fd) per finished analysis.
+    """
     with _registry_lock:
-        for jid in [j for j, p in _job_registry.items() if not p.is_alive()]:
+        dead = [(j, p) for j, p in _job_registry.items() if not p.is_alive()]
+        for jid, _p in dead:
             _job_registry.pop(jid, None)
+    for _jid, p in dead:
+        try:
+            p.join(timeout=0)
+            p.close()
+        except Exception:
+            pass  # already closed, or not a real multiprocessing.Process
+
 
 def shutdown_all() -> None:
-    """Terminate all running jobs during server shutdown to prevent semaphore leaks."""
+    """Fail owned jobs and terminate their processes during server shutdown.
+
+    Jobs are marked FAILED first (compare-and-set, so finished jobs keep their
+    status); otherwise a killed run stays RUNNING until the stale sweep.
+    """
     with _registry_lock:
-        jobs = list(_job_registry.values())
+        owned = list(_job_registry.items())
         _job_registry.clear()
-        
-    for p in jobs:
+
+    for jid, _p in owned:
+        try:
+            job_repo.update_job(jid, status="FAILED", error="Interrupted by server restart")
+        except Exception:
+            pass  # DB unavailable at shutdown: the periodic sweep recovers the row
+    for _jid, p in owned:
         if p.is_alive():
             p.terminate()
             p.join(timeout=2)

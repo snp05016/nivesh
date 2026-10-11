@@ -3,14 +3,16 @@ import SwiftUI
 // MARK: - Gratuity Calculator
 //
 // MOCK/DEMO — a simplified, offline estimate only. This is NOT tax or legal
-// advice; it approximates the Payment of Gratuity Act, 1972 formula (and the
-// common 15/30 convention for non-covered establishments) and does not account
+// advice; it approximates the gratuity formula of the Code on Social Security,
+// 2020 (Chapter V, which replaced the Payment of Gratuity Act, 1972) and the
+// common 15/30 convention for non-covered establishments, and does not account
 // for exemptions or employer-specific gratuity schemes. Always
 // confirm actual entitlement with your employer/HR or a qualified advisor.
 //
-// Eligibility: 5 years of continuous service (s.4(1)); below that payable is ₹0.
-// Covered by the Act: Gratuity = (Last Drawn Monthly Salary × 15 × Years) / 26,
-//   where a final part-year of more than 6 months counts as a full year (s.4(2)).
+// Eligibility: 5 years of continuous service (1 year for fixed-term employees,
+//   pro-rata); below that payable is ₹0, except on death or disablement.
+// Covered: Gratuity = (Last Drawn Monthly Salary × 15 × Years) / 26,
+//   where a final part-year of more than 6 months counts as a full year.
 // Not covered: Gratuity = (Salary × 15 × Completed Years) / 30.
 // Statutory ceiling (current): ₹20,00,000 — amounts above this are capped.
 
@@ -20,6 +22,7 @@ struct GratuityInputs {
     var yearsOfService: Double = 10
     var extraMonths: Double = 0
     var coveredByAct = true
+    var isFixedTerm = false
 }
 
 /// Inline, self-contained gratuity calculator body (sliders + result card)
@@ -33,7 +36,8 @@ struct GratuityCalculatorContent: View {
             lastDrawnSalary: inputs.lastDrawnSalary,
             yearsOfService: Int(inputs.yearsOfService),
             months: Int(inputs.extraMonths),
-            coveredByAct: inputs.coveredByAct
+            coveredByAct: inputs.coveredByAct,
+            isFixedTerm: inputs.isFixedTerm
         )
     }
 
@@ -61,7 +65,13 @@ struct GratuityCalculatorContent: View {
                 display: { "\(Int($0)) mo" }
             )
             Toggle(isOn: $inputs.coveredByAct) {
-                Text("Employer covered by the Payment of Gratuity Act")
+                Text("Employer covered by the gratuity law (Social Security Code)")
+                    .font(Theme.engravedSerif(size: 14, relativeTo: .body))
+                    .foregroundColor(Theme.inkPrimary)
+            }
+            .tint(Theme.securityGold)
+            Toggle(isOn: $inputs.isFixedTerm) {
+                Text("Fixed-term employee (eligible after 1 year)")
                     .font(Theme.engravedSerif(size: 14, relativeTo: .body))
                     .foregroundColor(Theme.inkPrimary)
             }
@@ -76,31 +86,36 @@ struct GratuityCalculationResult: Equatable {
     let uncappedGratuity: Double
     let payableGratuity: Double
     let isCapped: Bool
-    /// False below `minimumYears` of continuous service: the Act pays
-    /// nothing then (finance_calculators.calculate_gratuity mirrors this).
+    /// False below the minimum continuous service (`minimumYears`, or
+    /// `fixedTermMinimumYears` for fixed-term employees): nothing is payable
+    /// then (finance_calculators.calculate_gratuity mirrors the 5-year rule).
     let isEligible: Bool
 
-    /// Section 4(1) minimum continuous service for gratuity eligibility.
+    /// Minimum continuous service for gratuity eligibility.
     static let minimumYears = 5
+    /// Fixed-term employees qualify pro-rata after one year of service.
+    static let fixedTermMinimumYears = 1
 
-    /// Statutory ceiling for employees covered under the Payment of
-    /// Gratuity Act, 1972 (current value as of this demo).
+    /// Statutory ceiling under the Code on Social Security, 2020 (Chapter V)
+    /// (current value as of this demo).
     static let statutoryCeiling: Double = 20_00_000
 
     /// Covered: (Salary × 15 × Years) / 26, a final part-year over 6 months
     /// counted as a full year. Not covered: (Salary × 15 × Completed Years) / 30.
-    /// Payable is 0 below `minimumYears`; `uncappedGratuity` is still filled
+    /// Payable is 0 below the minimum service; `uncappedGratuity` is still filled
     /// so the card can show the value that applies on death/disablement.
     /// Pure/local — simplified/demo estimate only, not tax or legal advice.
     static func computeLocally(
         lastDrawnSalary: Double,
         yearsOfService: Int,
         months: Int = 0,
-        coveredByAct: Bool = true
+        coveredByAct: Bool = true,
+        isFixedTerm: Bool = false
     ) -> GratuityCalculationResult {
         let years = max(yearsOfService, 0)
         let extraMonths = min(max(months, 0), 11)
-        let isEligible = years * 12 + extraMonths >= minimumYears * 12
+        let requiredYears = isFixedTerm ? fixedTermMinimumYears : minimumYears
+        let isEligible = years * 12 + extraMonths >= requiredYears * 12
         let countedYears = coveredByAct && extraMonths > 6 ? years + 1 : years
         let uncapped = (lastDrawnSalary * 15 * Double(countedYears)) / (coveredByAct ? 26.0 : 30.0)
         let payable = isEligible ? min(uncapped, statutoryCeiling) : 0
@@ -135,7 +150,7 @@ private struct GratuityResultCard: View {
                 Text("NOT ELIGIBLE")
                     .font(Theme.serialNumberFont(size: 28, relativeTo: .largeTitle))
                     .foregroundColor(Theme.holdAmber)
-                Text("Gratuity is payable after \(GratuityCalculationResult.minimumYears) years of continuous service. Exceptions: no minimum on death or disablement; fixed-term employees may qualify after 1 year under the Code on Social Security, 2020. Estimated value if eligible: \(IndianFormatter.formatLakhsCrores(min(result.uncappedGratuity, GratuityCalculationResult.statutoryCeiling))).")
+                Text("Gratuity requires at least \(GratuityCalculationResult.minimumYears) years of continuous service (\(GratuityCalculationResult.fixedTermMinimumYears) year for fixed-term employees) under the Code on Social Security, 2020, except on death or disablement. Estimated value if eligible: \(IndianFormatter.formatLakhsCrores(min(result.uncappedGratuity, GratuityCalculationResult.statutoryCeiling))).")
                     .font(Theme.engravedSerif(size: 11, relativeTo: .caption2))
                     .foregroundColor(Theme.inkTertiary)
             }

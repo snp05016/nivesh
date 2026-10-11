@@ -7,8 +7,9 @@ Two harvest modes:
      they mention. It never searches YouTube: open search returned unregistered
      finfluencer videos (REG-03).
 
-Channel harvest uses YouTube Data API v3 when YOUTUBE_API_KEY is set, falling back
-silently to yt-dlp. Never raises. Never blocks the main request pipeline.
+Channel harvest uses only the official YouTube Data API v3 and is skipped when
+YOUTUBE_API_KEY is unset: no page scraping (REG-14). Never raises. Never blocks the
+main request pipeline.
 Zero Anthropic API calls.
 """
 
@@ -16,7 +17,6 @@ import os
 import time
 import logging
 import requests
-import yt_dlp
 from datetime import datetime, timezone
 from sqlalchemy import or_
 from database import get_session, YouTubeVideo, Portfolio
@@ -88,7 +88,7 @@ def get_company_name(ticker: str) -> str:
 
 
 def _parse_date(raw: str) -> datetime:
-    """Safely parses a date string from either API (ISO) or yt-dlp (YYYYMMDD) format.
+    """Safely parses a date string in ISO (API) or YYYYMMDD format.
 
     Args:
         raw (str): The raw date string.
@@ -211,7 +211,7 @@ def _fetch_channel_via_api(channel: dict, max_videos: int = 10) -> list[dict]:
             timeout=10,
         )
         if resp.status_code == 403:
-            logger.warning("[API] Quota exhausted — falling back to yt-dlp")
+            logger.warning("[API] Quota exhausted — skipping channel")
             return []
         if resp.status_code != 200:
             return []
@@ -243,54 +243,10 @@ def _fetch_channel_via_api(channel: dict, max_videos: int = 10) -> list[dict]:
         return []
 
 
-def _fetch_channel_via_ytdlp(channel: dict, max_videos: int = 10) -> list[dict]:
-    """Fetches the latest videos from a channel using yt-dlp as a fallback.
-
-    Args:
-        channel (dict): The channel dictionary from the registry.
-        max_videos (int, optional): The maximum number of videos to fetch. Defaults to 10.
-
-    Returns:
-        list[dict]: A list of video dictionaries.
-    """
-    opts = {
-        "quiet": True,
-        "extract_flat": True,
-        "playlist_items": f"1-{max_videos}",
-    }
-    try:
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(channel["channel_url"], download=False)
-            entries = info.get("entries") or []
-            videos = []
-            for e in entries:
-                vid_id = e.get("id") or ""
-                if not vid_id:
-                    continue
-                videos.append({
-                    "video_id": vid_id,
-                    "title": e.get("title", ""),
-                    "channel_name": channel["name"],
-                    "channel_url": channel["channel_url"],
-                    "thumbnail_url": f"https://i.ytimg.com/vi/{vid_id}/mqdefault.jpg",
-                    "video_url": f"https://www.youtube.com/watch?v={vid_id}",
-                    "published_at": str(e.get("upload_date", "")),
-                "description": "",
-                    "duration_seconds": int(e.get("duration") or 0),
-                    "view_count": int(e.get("view_count") or 0),
-                    "source": "channel_harvest",
-                    "sebi_reg": channel.get("sebi_reg"),
-                })
-            return videos
-    except Exception as e:
-        logger.warning(f"[yt-dlp] Channel fetch failed for {channel['name']}: {e}")
-        return []
-
-
 async def harvest_youtube_metadata() -> dict:
     """Nightly channel sweep that fetches latest videos from all SEBI-registered channels.
 
-    Uses API v3 if available, falls back to yt-dlp per channel.
+    Uses the YouTube Data API v3 only; skipped entirely without YOUTUBE_API_KEY.
 
     Returns:
         dict: Summary of the harvest containing 'channels_processed', 'total_channels',
@@ -299,12 +255,14 @@ async def harvest_youtube_metadata() -> dict:
     total_added = 0
     channels_ok = 0
 
+    if not YOUTUBE_API_AVAILABLE:
+        logger.warning("[Harvest] YOUTUBE_API_KEY not set — skipping channel harvest")
+        return {"channels_processed": 0, "total_channels": len(CHANNEL_REGISTRY), "videos_added": 0}
+
     with get_session() as db:
         try:
             for channel in CHANNEL_REGISTRY:
                 videos = _fetch_channel_via_api(channel, max_videos=10)
-                if not videos:
-                    videos = _fetch_channel_via_ytdlp(channel, max_videos=10)
 
                 if not videos:
                     logger.warning(f"[Harvest] No videos returned for {channel['name']}")

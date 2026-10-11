@@ -9,7 +9,6 @@ import asyncio
 import fcntl
 import inspect
 import io
-import sys
 import time
 from types import SimpleNamespace
 
@@ -90,25 +89,6 @@ def test_sync_wrapper_runs_off_loop():
     tick, result = asyncio.run(scenario())
     assert result == "done"
     assert tick < 0.2, f"event loop stalled {tick:.2f}s while the job ran"
-
-
-def test_whisper_disabled_by_default(monkeypatch):
-    from services.transcript_engine import TranscriptError, _fetch_whisper
-
-    monkeypatch.delenv("WHISPER_FALLBACK_ENABLED", raising=False)
-    monkeypatch.setitem(sys.modules, "yt_dlp", None)  # any import attempt raises ImportError
-    with pytest.raises(TranscriptError):
-        _fetch_whisper("x", 10)
-
-
-def test_whisper_duration_cap(monkeypatch):
-    from services.transcript_engine import TranscriptError, _fetch_whisper
-
-    monkeypatch.setenv("WHISPER_FALLBACK_ENABLED", "true")
-    monkeypatch.setenv("WHISPER_MAX_DURATION_SEC", "1800")
-    monkeypatch.setitem(sys.modules, "yt_dlp", None)
-    with pytest.raises(TranscriptError):
-        _fetch_whisper("x", 3600)
 
 
 def test_feed_fetch_uses_timeout(monkeypatch):

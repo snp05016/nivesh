@@ -68,7 +68,7 @@ class YouTubeSummaryService:
         Steps:
           1. Parse video ID.
           2. If not force_refresh, check DB cache.
-          3. Extract transcript via youtube-transcript-api / yt-dlp.
+          3. Extract transcript via youtube-transcript-api (public captions only).
           4. Chunk transcript.
           5. Call AI provider.
           6. Cache result.
@@ -90,7 +90,7 @@ class YouTubeSummaryService:
         video_url = _VIDEO_URL_TEMPLATE.format(video_id)
 
         # ── Step 1: transcript extraction ──────────────────────────────────
-        # Blocking network/yt-dlp work runs off the event loop (REL-01).
+        # Blocking network work runs off the event loop (REL-01).
         transcript = await asyncio.to_thread(self._extractor.extract, video_id)
         if not transcript:
             logger.warning("Transcript unavailable for video_id=%s", video_id)

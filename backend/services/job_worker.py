@@ -17,8 +17,9 @@ import os
 import threading
 import time
 
-# Wall-clock budgets per scan type (seconds). Extreme is depth-first ≤10 min.
-_WALLCLOCK_LIMITS = {"extreme": 600, "deep": 420, "standard": 420}
+# Wall-clock budgets per scan type (seconds); one source shared with the repo's
+# staleness checks (REL-05).
+from repositories.job_repo import WALLCLOCK_LIMITS
 _HEARTBEAT_SEC = 30
 
 
@@ -83,7 +84,7 @@ def run_job(job_id: str, ticker: str, exchange: str,
                                message=f"Analysis started for {ticker}",
                                state="running", pct=1)
 
-    _start_wallclock_watchdog(job_id, _WALLCLOCK_LIMITS.get(scan_type, 300))
+    _start_wallclock_watchdog(job_id, WALLCLOCK_LIMITS.get(scan_type, 300))
     stop_heartbeat = threading.Event()
     _start_heartbeat(job_id, stop_heartbeat)
 
