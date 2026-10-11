@@ -53,8 +53,7 @@ struct ChartTabView: View {
                                 .foregroundStyle(Theme.inkSecondary)
                                 .textSelection(.enabled)
                                 .fixedSize(horizontal: false, vertical: true)
-                            Button { HapticManager.selection(); 
-    HapticManager.selection()
+                            Button {
                                 UIPasteboard.general.string = error
                                 HapticManager.success()
                             } label: {
@@ -186,8 +185,7 @@ struct SMASectionView: View {
 
             HStack(spacing: Theme.Spacing.tight) {
                 ForEach([(20, Theme.securityGold), (50, Theme.bearRed), (200, Theme.avatarBlue)], id: \.0) { period, color in
-                    Button { HapticManager.selection(); 
-    HapticManager.selection()
+                    Button {
                         HapticManager.selection()
                         if showSMA.contains(period) { showSMA.remove(period) }
                         else { showSMA.insert(period) }

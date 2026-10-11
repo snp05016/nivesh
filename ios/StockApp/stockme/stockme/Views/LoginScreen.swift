@@ -185,7 +185,8 @@ struct LoginScreen: View {
                         .disabled(!canProceed || authManager.isLoggingIn)
 
                         // Toggle Mode Button
-                        Button(action: { HapticManager.selection();  HapticManager.selection()
+                        Button(action: {
+                            HapticManager.selection()
                             withAnimation { isRegistering.toggle() }
                         }) {
                             Text(isRegistering ? "HAVE AN ACCOUNT? SIGN IN" : "NEW USER? CREATE ACCOUNT")

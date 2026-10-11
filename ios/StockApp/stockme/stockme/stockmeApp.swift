@@ -363,7 +363,8 @@ struct InteractiveTutorialScreen: View {
 
             VStack {
                 Spacer()
-                Button(action: { HapticManager.selection();  HapticManager.selection()
+                Button(action: {
+                    HapticManager.selection()
                     if currentPage < 2 {
                         withAnimation { currentPage += 1 }
                     } else {

@@ -764,7 +764,8 @@ struct EarningsCalendarView: View {
             Spacer()
             // 1.4 Embedded Alert Trigger
             VStack(spacing: Theme.Spacing.small) {
-                Button(action: { HapticManager.selection();  HapticManager.selection()
+                Button(action: {
+                    HapticManager.selection()
                     Task {
                         do {
                             try await NetworkManager.shared.setEarningsAlert(userId: userId, ticker: r.ticker, date: r.resultDate)
@@ -791,7 +792,8 @@ struct EarningsCalendarView: View {
                     .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.tight).stroke(Theme.borderSage, lineWidth: 0.5))
                 }
                 
-                Button(action: { HapticManager.selection();  HapticManager.selection()
+                Button(action: {
+                    HapticManager.selection()
                     addEventToCalendar(title: "\(r.ticker) Earnings", dateStr: r.resultDate)
                 }) {
                     HStack(spacing: Theme.Spacing.small) {
@@ -1290,7 +1292,7 @@ struct ScreenerView: View {
             return "—"
         }()
 
-        return Button(action: { HapticManager.selection();  HapticManager.selection()
+        return Button(action: {
             HapticManager.selection()
             if isSelected {
                 selectedPreset = nil
@@ -1331,7 +1333,7 @@ struct ScreenerView: View {
                         Spacer()
 
                         // Bookmark toggle
-                        Button(action: { HapticManager.selection();  HapticManager.selection()
+                        Button(action: {
                             vm.toggleScreenerBookmark(preset.id)
                             HapticManager.impact(.light)
                         }) {

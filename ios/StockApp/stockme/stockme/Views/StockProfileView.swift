@@ -267,7 +267,7 @@ struct InteractivePriceChartView: View {
             HStack(spacing: Theme.Spacing.none) {
                 // Period selector
                 ForEach(Array(zip(periods, periodLabels)), id: \.0) { period, label in
-                    Button(label) { HapticManager.selection(); 
+                    Button(label) {
                         HapticManager.selection()
                         selectedPeriod = period
                         zoomFactor = 1.0
@@ -286,8 +286,7 @@ struct InteractivePriceChartView: View {
                 Spacer()
 
                 // Candlestick toggle
-                Button { HapticManager.selection(); 
-    HapticManager.selection()
+                Button {
                     HapticManager.selection()
                     showCandlestick.toggle()
                 } label: {
@@ -299,8 +298,7 @@ struct InteractivePriceChartView: View {
                 .buttonStyle(EKPressStyle())
 
                 // Nifty benchmark toggle
-                Button { HapticManager.selection(); 
-    HapticManager.selection()
+                Button {
                     HapticManager.selection()
                     showNifty.toggle()
                 } label: {
@@ -356,8 +354,7 @@ struct StockProfileView: View {
                         // Period selector below hero chart
                         HStack(spacing: Theme.Spacing.tight) {
                             ForEach(Array(zip(["1mo","3mo","6mo","1y","2y","5y","max"], ["1M","3M","6M","1Y","2Y","5Y","ALL"])), id: \.0) { period, label in
-                                Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                Button {
                                     HapticManager.selection()
                                     chartPeriod = period
                                     Task { await vm.fetchChart(period: period) }
@@ -468,8 +465,7 @@ struct StockProfileView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: Theme.Spacing.none) {
                             ForEach(Array(tabItems.enumerated()), id: \.offset) { idx, item in
-                                Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                Button {
                                     HapticManager.selection()
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
                                         activeTab = idx

@@ -325,7 +325,7 @@ struct PreIPOMarketplaceView: View {
                 }
 
                 // Bookmark
-                Button(action: { HapticManager.selection(); vm.toggleBookmark(company.id); HapticManager.impact(.light) }) {
+                Button(action: { vm.toggleBookmark(company.id); HapticManager.impact(.light) }) {
                     Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
                         .font(Theme.officialStampFont(size: 13))
                         .foregroundStyle(isBookmarked ? Theme.securityGold : Theme.inkTertiary)

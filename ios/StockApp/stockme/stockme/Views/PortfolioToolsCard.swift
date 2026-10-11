@@ -48,7 +48,6 @@ struct PortfolioToolsCard: View {
                     subtitle: "Download portfolio report",
                     isLoading: isExportingPDF
                 ) {
-                    HapticManager.selection()
                     exportPDF()
                 }
 
@@ -70,7 +69,6 @@ struct PortfolioToolsCard: View {
                     subtitle: "Compare against Nifty 50",
                     isLoading: isLoadingBenchmark
                 ) {
-                    HapticManager.selection()
                     fetchBenchmark()
                 }
 
@@ -83,7 +81,6 @@ struct PortfolioToolsCard: View {
                     subtitle: "Project FD maturity value",
                     isLoading: false
                 ) {
-                    HapticManager.selection()
                     showFDCalculatorSheet = true
                 }
 
@@ -96,7 +93,6 @@ struct PortfolioToolsCard: View {
                     subtitle: "EMI, SIP & Gratuity estimates",
                     isLoading: false
                 ) {
-                    HapticManager.selection()
                     showCalculatorsSheet = true
                 }
             }

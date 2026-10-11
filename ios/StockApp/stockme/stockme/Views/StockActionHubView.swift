@@ -95,8 +95,7 @@ struct StockActionHubView: View {
                         HStack {
                             SectionHeaderView(title: "AI ANALYSIS")
                             Spacer()
-                            Button { HapticManager.selection(); 
-    HapticManager.selection()
+                            Button {
                                 HapticManager.selection()
                                 showHowItWorks = true
                             } label: {
@@ -172,7 +171,7 @@ struct StockActionHubView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.canvas, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
-        .banknoteBackButton { HapticManager.selection();  dismiss() }
+        .banknoteBackButton { dismiss() }
         .onAppear {
             guard autoRunOnTap, !didAutoRun else { return }
             didAutoRun = true
@@ -286,8 +285,7 @@ struct StockActionHubView: View {
         disabled: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
-        Button { HapticManager.selection(); 
-    HapticManager.selection()
+        Button {
             HapticManager.selection()
             action()
         } label: {

@@ -34,8 +34,7 @@ private struct ExtremeTabBar: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.small) {
             ForEach(Array(tabs.enumerated()), id: \.offset) { idx, label in
-                Button { HapticManager.selection(); 
-    HapticManager.selection()
+                Button {
                     HapticManager.selection()
                     withAnimation(.easeInOut(duration: 0.2)) {
                         selectedTab = idx

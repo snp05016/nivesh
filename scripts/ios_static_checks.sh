@@ -34,6 +34,16 @@ fail_if_any swift_grep 'Button\([^()]*action: *[^(){}]*\) *\{ *HapticManager'
 # Auth state has one owner: the @StateObject in stockmeApp, injected as an environment
 # object. A static instance would be a second, stale source of truth (audit WIP-12).
 fail_if_any swift_grep 'AuthManager\.shared\b|static +(let|var) +[A-Za-z_]+ *(: *AuthManager)? *= *AuthManager\('
+# Stacked haptics (closed #556, audit WIP-13): two HapticManager calls on one line, or on
+# consecutive non-blank lines unless the first line closes its closure with `}`.
+haptic_dupes() {
+  find "$SRC" -name '*.swift' -print0 | xargs -0 awk '
+    FNR == 1 { p = "" }
+    { c = gsub(/HapticManager\./, "&")
+      if (c >= 2 || (c == 1 && p ~ /HapticManager\./ && p !~ /\}[[:space:]]*$/)) print FILENAME ":" FNR
+      if ($0 !~ /^[[:space:]]*$/) p = $0 }'
+}
+fail_if_any haptic_dupes
 
 if [ "$status" -ne 0 ]; then
   echo "ios_static_checks: FAILED"

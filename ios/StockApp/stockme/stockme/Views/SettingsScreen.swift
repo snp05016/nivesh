@@ -187,8 +187,7 @@ struct SettingsScreen: View {
     private var appearanceSection: some View {
         SettingsGroup(title: "APPEARANCE", hindi: "दिखावट") {
             ForEach(AppTheme.allCases, id: \.self) { theme in
-                Button { HapticManager.selection(); 
-    HapticManager.selection()
+                Button {
                     HapticManager.impact(.medium)
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.72)) {
                         selectedThemeRaw = theme.rawValue
@@ -243,8 +242,7 @@ struct SettingsScreen: View {
             NavRow(icon: "doc.plaintext", color: Theme.securityGold, title: "Terms of Use", destination: DisclosureDetailView(key: .termsOfUse))
             NavRow(icon: "envelope", color: Theme.securityGold, title: "Contact & Grievance Officer", destination: DisclosureDetailView(key: .grievanceOfficer))
             NavRow(icon: "network", color: Theme.securityGold, title: "Data Sharing Governance", destination: DisclosureDetailView(key: .dataSharingGovernance))
-            Button { HapticManager.selection(); 
-    HapticManager.selection()
+            Button {
                 HapticManager.selection()
                 URLCache.shared.removeAllCachedResponses()
             } label: {
@@ -252,8 +250,7 @@ struct SettingsScreen: View {
             }
             .buttonStyle(EKPressStyle())
             Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
-            Button { HapticManager.selection(); 
-    HapticManager.selection()
+            Button {
                 HapticManager.selection()
                 reportManager.savedReports.removeAll()
             } label: {

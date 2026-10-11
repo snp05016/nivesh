@@ -9,7 +9,7 @@ struct FundamentalsTabView: View {
         VStack(spacing: Theme.Spacing.standard) {
             HStack(spacing: Theme.Spacing.none) {
                 ForEach(["Financials", "Shareholding"].enumerated(), id: \.offset) { idx, title in
-                    Button { HapticManager.selection(); 
+                    Button {
                         HapticManager.selection()
                         withAnimation {
                             selectedTab = idx

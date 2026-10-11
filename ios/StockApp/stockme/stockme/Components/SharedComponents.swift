@@ -208,14 +208,12 @@ struct StockRow: View {
                 .stroke(Theme.borderSubtle, lineWidth: 0.5)
         )
         .contextMenu {
-            Button { HapticManager.selection(); 
-    HapticManager.selection()
+            Button {
                 HapticManager.selection()
             } label: {
                 Label("Analyse \(stock.ticker)", systemImage: "chart.line.uptrend.xyaxis")
             }
-            Button { HapticManager.selection(); 
-    HapticManager.selection()
+            Button {
                 HapticManager.light()
                 UIPasteboard.general.string = stock.ticker
             } label: {
@@ -304,7 +302,7 @@ struct SectionHeader: View {
                 }
                 Spacer()
                 if let label = actionLabel, let action = action {
-                    Button(action: { HapticManager.selection();  HapticManager.selection()
+                    Button(action: {
                         HapticManager.selection()
                         action()
                     }) {

@@ -453,8 +453,8 @@ struct AnalysisScreen: View {
                             ChangeBadge(value: pct)
                         }
                     }
-                    Button { HapticManager.selection(); 
-    HapticManager.selection()
+                    Button {
+                        HapticManager.selection()
                         shareAsImage()
                     } label: {
                         Image(systemName: "square.and.arrow.up")
@@ -863,8 +863,7 @@ struct NewsItemCard: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button { HapticManager.selection(); 
-    HapticManager.selection()
+        Button {
             HapticManager.impact(.light)
             onTap()
         } label: {
@@ -1214,7 +1213,8 @@ struct AnalysisLimitationsCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-            Button(action: { HapticManager.selection();  HapticManager.selection()
+            Button(action: {
+                HapticManager.selection()
                 withAnimation(.easeInOut(duration: 0.25)) { expanded.toggle() }
             }) {
                 HStack {
@@ -1383,7 +1383,8 @@ struct CollapsibleSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-            Button(action: { HapticManager.selection();  HapticManager.selection()
+            Button(action: {
+                HapticManager.selection()
                 withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
             }) {
                 HStack(spacing: Theme.Spacing.tight) {

@@ -185,7 +185,7 @@ struct SectionHeaderView: View {
                 Spacer()
 
                 if let label = actionLabel, let action = onAction {
-                    Button(action: { HapticManager.selection();  HapticManager.selection()
+                    Button(action: {
                         HapticManager.selection()
                         action()
                     }) {
@@ -225,7 +225,7 @@ struct IndexChipView: View {
     }
 
     var body: some View {
-        Button(action: { HapticManager.selection();  HapticManager.selection()
+        Button(action: {
             HapticManager.selection()
             onTap?()
         }) {

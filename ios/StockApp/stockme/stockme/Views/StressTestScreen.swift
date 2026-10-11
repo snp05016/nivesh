@@ -390,8 +390,8 @@ struct StressDiagnosticCard: View {
                     .multilineTextAlignment(.leading)
                 Spacer()
                 #if DEBUG
-                Button { HapticManager.selection(); 
-    HapticManager.selection()
+                Button {
+                    HapticManager.selection()
                     withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
                 } label: {
                     Image(systemName: expanded ? "chevron.up" : "chevron.down")
@@ -611,7 +611,7 @@ struct StressTestScreen: View {
                                 .multilineTextAlignment(.center)
                                 .lineLimit(2)
                         }
-                        Button { HapticManager.selection(); 
+                        Button {
                             HapticManager.selection()
                             vm.cancel()
                         } label: {
@@ -635,8 +635,7 @@ struct StressTestScreen: View {
                     }
                     .padding(.horizontal, Theme.screenPadding)
                 } else {
-                    Button { HapticManager.selection(); 
-    HapticManager.selection()
+                    Button {
                         vm.runTest(userId: authManager.currentUser?.userId ?? 0)
                         HapticManager.impact(.medium)
                     } label: {

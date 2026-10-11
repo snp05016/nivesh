@@ -218,8 +218,7 @@ private struct GlobalOverlayModifier: ViewModifier {
     }
     @ViewBuilder
     private var globalRunningPill: some View {
-        Button { HapticManager.selection(); 
-    HapticManager.selection()
+        Button {
             HapticManager.selection()
             showEngineActivity = true
         } label: {

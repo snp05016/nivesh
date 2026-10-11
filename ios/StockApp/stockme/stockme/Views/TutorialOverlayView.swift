@@ -188,7 +188,7 @@ struct TutorialOverlayView: View {
                     .buttonStyle(EKPressStyle())
                 }
                 Spacer()
-                Button(action: { HapticManager.selection();  HapticManager.selection()
+                Button(action: {
                     HapticManager.impact(.light)
                     tutorialManager.currentStep == tutorialManager.totalSteps
                         ? tutorialManager.complete()

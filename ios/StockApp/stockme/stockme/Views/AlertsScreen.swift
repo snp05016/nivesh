@@ -338,8 +338,8 @@ struct AddAlertSheet: View {
                                 if !searchResults.isEmpty {
                                     VStack(spacing: Theme.Spacing.none) {
                                         ForEach(searchResults.prefix(5)) { entry in
-                                            Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                            Button {
+                                                HapticManager.selection()
                                                 selectedTicker = entry.ticker
                                                 selectedCompany = entry.companyName
                                                 searchText = ""
@@ -459,8 +459,8 @@ struct AddAlertSheet: View {
                             Text(errorText).font(.caption).foregroundStyle(Theme.bearRed)
                         }
 
-                        Button { HapticManager.selection(); 
-    HapticManager.selection()
+                        Button {
+                            HapticManager.selection()
                             guard let price = calculatedTargetPrice, canAdd else { return }
                             guard let user = authManager.currentUser else {
                                 errorText = "Sign in to set alerts."

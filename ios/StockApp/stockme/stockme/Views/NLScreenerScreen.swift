@@ -223,7 +223,7 @@ struct NLScreenerScreen: View {
                 }
             
             if !viewModel.query.isEmpty {
-                Button(action: { HapticManager.selection();  HapticManager.selection()
+                Button(action: {
                     viewModel.query = ""
                     HapticManager.selection()
                 }) {
@@ -234,7 +234,7 @@ struct NLScreenerScreen: View {
                 .accessibilityLabel("Clear query")
             }
             
-            Button(action: { HapticManager.selection();  HapticManager.selection()
+            Button(action: {
                 HapticManager.selection()
             }) {
                 Image(systemName: "mic.fill")
@@ -314,7 +314,7 @@ struct NLScreenerScreen: View {
                     .padding(.top, Theme.Spacing.large)
                 
                 ForEach(viewModel.history, id: \.self) { h in
-                    Button(action: { HapticManager.selection();  HapticManager.selection()
+                    Button(action: {
                         HapticManager.selection()
                         viewModel.performSearch(searchQuery: h)
                     }) {

@@ -103,8 +103,7 @@ struct AIHowItWorksView: View {
     private func stepCard(idx: Int, step: (icon: String, title: String, short: String, detail: String)) -> some View {
         let isExpanded = expandedStep == idx
 
-        return Button { HapticManager.selection(); 
-    HapticManager.selection()
+        return Button {
             HapticManager.selection()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 expandedStep = isExpanded ? nil : idx

@@ -223,7 +223,8 @@ struct SearchScreen: View {
                                     .scaleEffect(0.7)
                                     .tint(Theme.securityGold)
                             } else if !searchText.isEmpty {
-                                Button(action: { HapticManager.selection();  HapticManager.selection()
+                                Button(action: {
+                                    HapticManager.selection()
                                     searchText = ""
                                     hideKeyboard()
                                 }) {
@@ -233,7 +234,7 @@ struct SearchScreen: View {
                                 .accessibilityLabel("Clear search")
                             }
 
-                            Button(action: { HapticManager.selection();  HapticManager.selection()
+                            Button(action: {
                                 speechManager.toggleRecording()
                                 HapticManager.selection()
                             }) {
@@ -242,7 +243,8 @@ struct SearchScreen: View {
                             }
                             .accessibilityLabel(speechManager.isRecording ? "Stop voice search" : "Voice search")
 
-                            Button(action: { HapticManager.selection();  HapticManager.selection()
+                            Button(action: {
+                                HapticManager.selection()
                                 showFilterSheet = true
                             }) {
                                 Image(systemName: "line.3.horizontal.decrease.circle")
@@ -271,8 +273,7 @@ struct SearchScreen: View {
                             ScrollView(.horizontal) {
                                 HStack(spacing: Theme.Spacing.medium) {
                                     ForEach(screenerPresets, id: \.preset) { item in
-                                        Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                        Button {
                                             HapticManager.light()
                                             activeCustomPreset = nil
                                             if activePreset == item.preset {
@@ -302,8 +303,7 @@ struct SearchScreen: View {
                                     }
 
                                     ForEach(customPresetsManager.presets) { preset in
-                                        Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                        Button {
                                             HapticManager.light()
                                             activePreset = nil
                                             if activeCustomPreset == preset {
@@ -392,8 +392,7 @@ struct SearchScreen: View {
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                     }
                                     ForEach(Array(screenerResults.enumerated()), id: \.element.id) { index, result in
-                                        Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                        Button {
                                             HapticManager.selection()
                                             screenerActionResult = result
                                             showScreenerAction = true
@@ -405,8 +404,7 @@ struct SearchScreen: View {
                                     }
                                 } else if searchText.isEmpty {
                                     ForEach(trendingStocks) { stock in
-                                        Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                        Button {
                                             HapticManager.selection()
                                             stockTapTicker = stock.ticker
                                             stockTapCompanyName = stock.companyName
@@ -427,8 +425,7 @@ struct SearchScreen: View {
                                                 .foregroundStyle(Theme.inkSecondary)
                                             // Still allow direct navigation — user may know the exact ticker
                                             let ticker = searchText.uppercased().trimmingCharacters(in: .whitespaces)
-                                            Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                            Button {
                                                 HapticManager.selection()
                                                 stockTapTicker = ticker
                                                 stockTapCompanyName = nil
@@ -443,8 +440,7 @@ struct SearchScreen: View {
                                         .padding(.top, Theme.sectionSpacing)
                                     } else {
                                         ForEach(searchResults) { entry in
-                                            Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                            Button {
                                                 HapticManager.selection()
                                                 stockTapTicker = entry.ticker
                                                 stockTapCompanyName = entry.companyName
@@ -804,8 +800,8 @@ private struct FilterSheet: View {
                             .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
                     } else {
                         ForEach(customPresetsManager.presets) { preset in
-                            Button { HapticManager.selection(); 
-    HapticManager.selection()
+                            Button {
+                                HapticManager.selection()
                                 onSelect(preset)
                                 dismiss()
                             } label: {
@@ -830,8 +826,8 @@ private struct FilterSheet: View {
                     TextField("Preset name", text: $newPresetName)
                         .font(Theme.engravedSerif(size: 14, weight: .regular, relativeTo: .body))
                     ForEach(allSectors, id: \.self) { sector in
-                        Button { HapticManager.selection(); 
-    HapticManager.selection()
+                        Button {
+                            HapticManager.selection()
                             if selectedSectors.contains(sector) {
                                 selectedSectors.remove(sector)
                             } else {

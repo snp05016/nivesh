@@ -754,7 +754,7 @@ struct HomeScreen: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     if viewModel.morningBriefData != nil {
                         let isDismissedToday = morningBriefShownDate == WireDate.dayKey(Date())
-                        Button { HapticManager.selection(); 
+                        Button {
                             HapticManager.selection()
                             if isDismissedToday {
                                 morningBriefShownDate = ""
@@ -1885,8 +1885,7 @@ struct CompactNewsCell: View {
         // Item 20: Long-press context menu — Save to Reading List
         .contextMenu {
             if let url = URL(string: article.articleUrl) {
-                Button { HapticManager.selection(); 
-    HapticManager.selection()
+                Button {
                     try? SSReadingList.default()?.addItem(
                         with: url,
                         title: article.headline,
@@ -1898,8 +1897,7 @@ struct CompactNewsCell: View {
                 }
             }
             if let url = URL(string: article.articleUrl) {
-                Button { HapticManager.selection(); 
-    HapticManager.selection()
+                Button {
                     UIPasteboard.general.string = url.absoluteString
                     HapticManager.selection()
                 } label: {
@@ -2392,8 +2390,7 @@ extension HomeScreen {
                                     .focused($searchFocused)
                                     .autocapitalization(.allCharacters)
                                 if !searchText.isEmpty {
-                                    Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                    Button {
                                         HapticManager.selection()
                                         searchText = ""
                                     } label: {
@@ -2404,8 +2401,7 @@ extension HomeScreen {
                                     .buttonStyle(.plain)
                                     .accessibilityLabel("Clear search")
                                 }
-                                Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                Button {
                                     HapticManager.selection()
                                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                         showSearch = false
@@ -2430,8 +2426,7 @@ extension HomeScreen {
                             if !searchResults.isEmpty {
                                 VStack(spacing: Theme.Spacing.none) {
                                     ForEach(searchResults.prefix(8)) { entry in
-                                        Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                        Button {
                                             HapticManager.selection()
                                             stockTapTicker = entry.ticker
                                             stockTapCompanyName = entry.companyName
@@ -2559,7 +2554,6 @@ extension HomeScreen {
                 VStack(spacing: Theme.Spacing.card) {
                     SectionHeader(title: "Watchlist", hindiTitle: "बाज़ार की निगरानी", actionLabel: "SEE ALL →") {
                         // Switch to Portfolio tab (tab 4) to show full holdings
-                        HapticManager.selection()
                         NotificationCenter.default.post(
                             name: Notification.Name("switchToTab"),
                             object: nil,
@@ -2670,8 +2664,7 @@ extension HomeScreen {
                             }
 
                             HStack(spacing: Theme.Spacing.standard) {
-                                Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                Button {
                                     HapticManager.selection()
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                         morningBriefShownDate = WireDate.dayKey(Date())
@@ -2688,8 +2681,7 @@ extension HomeScreen {
                                 }
                                 .buttonStyle(EKPressStyle())
 
-                                Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                Button {
                                     HapticManager.selection()
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                         morningBriefShownDate = WireDate.dayKey(Date())
@@ -2805,8 +2797,7 @@ extension HomeScreen {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: Theme.Spacing.medium) {
                                     // "All" chip
-                                    Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                    Button {
                                         HapticManager.selection()
                                         selectedChannel = nil
                                     } label: {
@@ -2823,8 +2814,7 @@ extension HomeScreen {
                                     .buttonStyle(EKPressStyle())
 
                                     ForEach(channelNames, id: \.self) { channel in
-                                        Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                        Button {
                                             HapticManager.selection()
                                             selectedChannel = channel
                                         } label: {

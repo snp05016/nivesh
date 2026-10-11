@@ -145,8 +145,7 @@ struct AnalysisCoreSections: View {
                     .foregroundStyle(Theme.inkTertiary)
                     .explainableTerm("Heuristic Confidence")
                 if analysis.confidenceMathBreakdown != nil {
-                    QuantInspectorInfoButton { HapticManager.selection(); 
-    HapticManager.selection()
+                    QuantInspectorInfoButton {
                         showQuantInspector = true
                     }
                 }
@@ -178,8 +177,7 @@ struct AnalysisCoreSections: View {
                 .tracking(1.5)
                 .foregroundStyle(Theme.inkTertiary)
                 
-            Button { HapticManager.selection(); 
-    HapticManager.selection()
+            Button {
                 HapticManager.selection()
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     showFullSummary.toggle()
@@ -609,8 +607,7 @@ private struct QuantInspectorInfoButton: View {
     }
 
     var body: some View {
-        Button { HapticManager.selection(); 
-    HapticManager.selection()
+        Button {
             HapticManager.selection()
             action()
         } label: {

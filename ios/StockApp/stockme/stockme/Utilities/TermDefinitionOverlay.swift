@@ -88,7 +88,7 @@ struct TermTooltipCard: View {
             .banknoteCard()
             .frame(maxWidth: min(UIScreen.main.bounds.width * 0.85, 500))
 
-            Button(action: { HapticManager.selection();  HapticManager.selection()
+            Button(action: {
                 triggerSelectionHaptic()
                 onDismiss()
             }) {

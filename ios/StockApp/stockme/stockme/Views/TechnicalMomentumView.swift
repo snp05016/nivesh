@@ -424,7 +424,7 @@ struct MomentumIndicatorCard: View {
             }
 
             // 9.6 View in Chart button — navigates to AnalysisScreen for this ticker
-            Button(action: { HapticManager.selection();  HapticManager.selection()
+            Button(action: {
                 HapticManager.selection()
                 showAnalysis = true
             }) {
@@ -540,7 +540,7 @@ struct TopMoverRow: View {
             }
 
             // Chart shortcut
-            Button(action: { HapticManager.selection();  HapticManager.selection()
+            Button(action: {
                 HapticManager.selection()
                 showAnalysis = true
             }) {

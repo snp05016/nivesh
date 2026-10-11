@@ -41,12 +41,10 @@ struct GlossaryBrowserView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Theme.Spacing.small) {
                         ChipView(label: "All", isSelected: selectedCategory == nil) {
-                            HapticManager.selection()
                             selectedCategory = nil
                         }
                         ForEach(TermCategory.allCases, id: \.self) { cat in
                             ChipView(label: cat.rawValue, isSelected: selectedCategory == cat) {
-                                HapticManager.selection()
                                 selectedCategory = selectedCategory == cat ? nil : cat
                             }
                         }
@@ -70,8 +68,7 @@ struct GlossaryBrowserView: View {
                             .foregroundStyle(Theme.inkTertiary)
                         HStack(spacing: Theme.Spacing.small) {
                             ForEach(suggestedTerms, id: \.self) { term in
-                                Button { HapticManager.selection(); 
-    HapticManager.selection()
+                                Button {
                                     HapticManager.selection()
                                     searchText = term
                                 } label: {
@@ -114,7 +111,6 @@ struct GlossaryBrowserView: View {
                                 ForEach(recentlyViewed, id: \.self) { term in
                                     if let entry = FinanceTerms.shared.lookup(term) {
                                         ChipView(label: term, isSelected: false) {
-                                            HapticManager.selection()
                                         }
                                         .overlay {
                                             // invisible tap-through to show the term
@@ -158,8 +154,7 @@ private struct TermRow: View {
     @State private var showSheet = false
 
     var body: some View {
-        Button { HapticManager.selection(); 
-    HapticManager.selection()
+        Button {
             HapticManager.selection()
             onTap()
             showSheet = true

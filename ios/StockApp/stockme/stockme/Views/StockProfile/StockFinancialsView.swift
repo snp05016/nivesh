@@ -222,8 +222,7 @@ struct FinancialSegmentedPicker<T: RawRepresentable & CaseIterable & Hashable>: 
                 .foregroundStyle(Theme.inkTertiary)
             HStack(spacing: Theme.Spacing.small) {
                 ForEach(cases, id: \.rawValue) { option in
-                    Button { HapticManager.selection(); 
-    HapticManager.selection()
+                    Button {
                         HapticManager.selection()
                         selection = option
                     } label: {
@@ -269,8 +268,7 @@ struct FinancialPeriodStrip: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Theme.Spacing.tight) {
                 ForEach(periods, id: \.self) { period in
-                    Button { HapticManager.selection(); 
-    HapticManager.selection()
+                    Button {
                         HapticManager.selection()
                         selected = period
                     } label: {

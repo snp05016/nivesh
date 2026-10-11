@@ -211,7 +211,7 @@ struct StrategyLabScreen: View {
                     chartSection(result)
                     
                     if viewModel.isComparing {
-                        Button(action: { HapticManager.selection();  HapticManager.selection()
+                        Button(action: {
                             HapticManager.selection()
                             viewModel.stopCompare()
                         }) {
@@ -227,7 +227,7 @@ struct StrategyLabScreen: View {
                         .ekPress()
                         .padding(.horizontal, Theme.screenPadding)
                     } else {
-                        Button(action: { HapticManager.selection();  HapticManager.selection()
+                        Button(action: {
                             HapticManager.selection()
                             showingCompareSheet = true
                         }) {
@@ -267,7 +267,8 @@ struct StrategyLabScreen: View {
         .sheet(isPresented: $showingCompareSheet) {
             NavigationStack {
                 List(STRATEGY_OPTIONS) { strategy in
-                    Button(action: { HapticManager.selection();  HapticManager.selection()
+                    Button(action: {
+                        HapticManager.selection()
                         showingCompareSheet = false
                         Task { await viewModel.runCompareBacktest(with: strategy) }
                     }) {
@@ -323,7 +324,7 @@ struct StrategyLabScreen: View {
             HStack(spacing: Theme.Spacing.standard) {
                 ForEach([1, 3, 5, 10], id: \.self) { years in
                     let label = years == 10 ? "ALL" : "\(years)Y"
-                    Button(action: { HapticManager.selection();  HapticManager.selection()
+                    Button(action: {
                         HapticManager.selection()
                         viewModel.selectedYears = years
                     }) {
@@ -346,7 +347,7 @@ struct StrategyLabScreen: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Theme.Spacing.standard) {
                     ForEach(STRATEGY_OPTIONS) { strategy in
-                        Button(action: { HapticManager.selection();  HapticManager.selection()
+                        Button(action: {
                             HapticManager.selection()
                             viewModel.selectedStrategy = strategy
                         }) {
@@ -511,7 +512,7 @@ struct StrategyLabScreen: View {
     
     private func tradeLogSection(_ result: StrategyBacktestResult) -> some View {
         VStack(spacing: Theme.Spacing.none) {
-            Button(action: { HapticManager.selection();  HapticManager.selection()
+            Button(action: {
                 HapticManager.selection()
                 withAnimation { showingTradeLog.toggle() }
             }) {

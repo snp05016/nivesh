@@ -914,7 +914,7 @@ struct SweepFilterChips: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.medium) {
             ForEach(SweepFilter.allCases, id: \.self) { filter in
-                Button(action: { HapticManager.selection();  HapticManager.selection()
+                Button(action: {
                     HapticManager.selection()
                     selectedFilter = filter
                 }) {

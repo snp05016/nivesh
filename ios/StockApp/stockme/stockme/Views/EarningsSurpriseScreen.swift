@@ -142,7 +142,7 @@ struct EarningsSurpriseScreen: View {
                     .buttonStyle(EKPressStyle())
                     .accessibilityLabel("Help")
                     
-                    Button { HapticManager.selection(); 
+                    Button {
                         HapticManager.selection()
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                             vm.isCalendarView.toggle()

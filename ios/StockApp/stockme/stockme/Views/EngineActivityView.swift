@@ -166,8 +166,7 @@ struct EngineActivityView: View {
     // MARK: - Cancel
 
     private var cancelButton: some View {
-        Button { HapticManager.selection(); 
-    HapticManager.selection()
+        Button {
             HapticManager.warning()
             engineManager.cancelActiveJob()
         } label: {

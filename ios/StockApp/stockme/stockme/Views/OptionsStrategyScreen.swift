@@ -256,7 +256,7 @@ struct OptionsStrategyScreen: View {
     }
 
     private var addLegButton: some View {
-        Button(action: { HapticManager.selection()
+        Button(action: {
             HapticManager.soft()
             withAnimation { legs.append(OptionLegVM()); computeLocal() }
         }) {

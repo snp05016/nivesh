@@ -174,8 +174,8 @@ private struct DrawerContent: View {
                     .tracking(1.5)
             }
             Spacer()
-            Button { HapticManager.selection(); 
-    HapticManager.selection()
+            Button {
+                HapticManager.selection()
                 withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) { isOpen = false }
             } label: {
                 Image(systemName: "xmark")
@@ -202,7 +202,7 @@ private struct BookmarkRow: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: { HapticManager.selection();  HapticManager.selection()
+        Button(action: {
             HapticManager.selection()
             onTap()
         }) {

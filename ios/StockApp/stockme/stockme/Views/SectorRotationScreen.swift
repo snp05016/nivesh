@@ -75,7 +75,7 @@ struct SectorRotationScreen: View {
                 // Period Selector
                 HStack(spacing: Theme.Spacing.standard) {
                     ForEach(periods, id: \.self) { period in
-                        Button(action: { HapticManager.selection();  HapticManager.selection()
+                        Button(action: {
                             HapticManager.selection()
                             viewModel.selectedPeriod = period
                             Task { await viewModel.fetchRotation() }
@@ -235,7 +235,7 @@ struct SectorRotationCard: View {
     let sector: SectorRotationSector
     
     var body: some View {
-        Button(action: { HapticManager.selection();  HapticManager.selection()
+        Button(action: {
             HapticManager.selection()
         }) {
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
