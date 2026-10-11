@@ -1411,8 +1411,8 @@ private struct AddHoldingSheet: View {
         }
     }
     
-    private var shares: Double { Double(sharesText) ?? 0 }
-    private var buyPrice: Double { Double(buyPriceText) ?? 0 }
+    private var shares: Double { DecimalText.parse(sharesText) ?? 0 }
+    private var buyPrice: Double { DecimalText.parse(buyPriceText) ?? 0 }
     private var canAdd: Bool { selectedEntry != nil && shares > 0 && buyPrice > 0 && !isAdding }
     
     var body: some View {
@@ -1510,7 +1510,7 @@ private struct AddHoldingSheet: View {
                                 .foregroundStyle(Theme.inkSecondary)
                             TextField("e.g. 100", text: $sharesText)
                                 .accessibilityLabel("Number of shares")
-                                .keyboardType(.numberPad)
+                                .keyboardType(.decimalPad)
                                 .font(Theme.serialNumberFont(size: 16))
                                 .foregroundStyle(Theme.inkPrimary)
                                 .padding(Theme.Spacing.standard)
@@ -1590,7 +1590,11 @@ private struct AddHoldingSheet: View {
                                 errorText = problem
                                 return
                             }
-                            guard let entry = selectedEntry, let user = authManager.currentUser else { return }
+                            guard let entry = selectedEntry else { return }
+                            guard let user = authManager.currentUser else {
+                                errorText = "Sign in to record trades."
+                                return
+                            }
                             isAdding = true
                             errorText = nil
                             Task {
@@ -1603,7 +1607,7 @@ private struct AddHoldingSheet: View {
                                         buyPrice: buyPrice,
                                         purchaseDate: purchaseDate,
                                         notes: notes,
-                                        targetPrice: Double(targetPriceText).flatMap { $0 > 0 ? $0 : nil },
+                                        targetPrice: DecimalText.parse(targetPriceText).flatMap { $0 > 0 ? $0 : nil },
                                         transactionType: transactionType
                                     )
                                     dismiss()

@@ -296,9 +296,9 @@ struct AddAlertSheet: View {
     // Fix 3.12: Disable Save if target price is invalid or zero
     var calculatedTargetPrice: Double? {
         if inputMode == "fixed" {
-            return Double(targetPriceText)
+            return DecimalText.parse(targetPriceText)
         } else {
-            guard let pct = Double(percentageText), let current = currentPrice else { return nil }
+            guard let pct = DecimalText.parse(percentageText), pct > 0, let current = currentPrice else { return nil }
             if direction == "above" {
                 return current * (1 + pct / 100.0)
             } else {
@@ -307,9 +307,12 @@ struct AddAlertSheet: View {
         }
     }
 
+    var targetError: String? {
+        InputValidation.alertTargetError(target: calculatedTargetPrice, direction: direction, current: currentPrice)
+    }
+
     var canAdd: Bool {
-        guard !selectedTicker.isEmpty, let target = calculatedTargetPrice, target > 0 else { return false }
-        return true
+        !selectedTicker.isEmpty && targetError == nil
     }
 
     var body: some View {
@@ -447,6 +450,11 @@ struct AddAlertSheet: View {
                             }
                         }
 
+                        if !selectedTicker.isEmpty, (inputMode == "fixed" ? !targetPriceText.isEmpty : !percentageText.isEmpty),
+                           let hint = targetError {
+                            Text(hint).font(.caption).foregroundStyle(Theme.bearRed)
+                        }
+
                         if !errorText.isEmpty {
                             Text(errorText).font(.caption).foregroundStyle(Theme.bearRed)
                         }
@@ -454,16 +462,19 @@ struct AddAlertSheet: View {
                         Button { HapticManager.selection(); 
     HapticManager.selection()
                             guard let price = calculatedTargetPrice, canAdd else { return }
+                            guard let user = authManager.currentUser else {
+                                errorText = "Sign in to set alerts."
+                                return
+                            }
                             isAdding = true
+                            errorText = ""
                             Task {
-                                if let user = authManager.currentUser {
-                                    do {
-                                        _ = try await NetworkManager.shared.addAlert(userId: user.userId, ticker: selectedTicker, targetPrice: price, direction: direction, companyName: selectedCompany)
-                                        onAdded()
-                                        dismiss()
-                                    } catch {
-                                        errorText = "Failed to set alert. Try again."
-                                    }
+                                do {
+                                    _ = try await NetworkManager.shared.addAlert(userId: user.userId, ticker: selectedTicker, targetPrice: price, direction: direction, companyName: selectedCompany)
+                                    onAdded()
+                                    dismiss()
+                                } catch {
+                                    errorText = "Failed to set alert. Try again."
                                 }
                                 isAdding = false
                             }
