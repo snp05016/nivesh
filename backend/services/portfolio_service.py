@@ -19,10 +19,11 @@ from typing import Optional
 
 import yfinance as yf
 
-from config.settings import get_user_agent
 from config.settings import INDICES_CACHE_TTL as _INDICES_CACHE_TTL
-from config.settings import ASM_GSM_CACHE_TTL as _ASM_GSM_CACHE_TTL
 from helpers import _dcache_get, _dcache_set
+# NSE helpers live once in services.nse_client (quality-aware TTL, honest UA);
+# re-exported because routers import these names from portfolio_service.
+from services.nse_client import _nse_session, _get_asm_gsm_lists  # noqa: F401
 
 
 # ---------------------------------------------------------------------------
@@ -164,66 +165,6 @@ def _get_indices_data() -> dict:
     }
     _dcache_set("indices", "all", payload, ttl=_INDICES_CACHE_TTL)
     return payload
-
-
-# ---------------------------------------------------------------------------
-# NSE client helpers
-# ---------------------------------------------------------------------------
-
-def _nse_session():
-    """Bootstrap a requests.Session with NSE cookies."""
-    import requests
-    s = requests.Session()
-    s.headers.update({
-        "User-Agent": get_user_agent(),
-        "Accept": "application/json, text/plain, */*",
-        "Referer": "https://www.nseindia.com/",
-    })
-    try:
-        s.get("https://www.nseindia.com", timeout=8)
-    except Exception as _e:
-        pass
-    return s
-
-
-def _get_asm_gsm_lists() -> dict:
-    """Fetch and cache ASM/GSM lists from NSE (Redis-backed, shared across workers)."""
-    cached = _dcache_get("asm_gsm", "lists")
-    if cached is not None:
-        return cached
-
-    logging.info("[NSE] Refreshing ASM/GSM lists...")
-    data: dict[str, set] = {"ASM": set(), "GSM": set()}
-    try:
-        session = _nse_session()
-
-        resp = session.get("https://www.nseindia.com/api/surveillance-asm-list?index=longTerm", timeout=10)
-        if resp.status_code == 200:
-            for item in resp.json().get("data", []):
-                sym = item.get("symbol")
-                if sym:
-                    data["ASM"].add(sym.upper())
-
-        resp = session.get("https://www.nseindia.com/api/surveillance-asm-list?index=shortTerm", timeout=10)
-        if resp.status_code == 200:
-            for item in resp.json().get("data", []):
-                sym = item.get("symbol")
-                if sym:
-                    data["ASM"].add(sym.upper())
-
-        resp = session.get("https://www.nseindia.com/api/surveillance-gsm-list", timeout=10)
-        if resp.status_code == 200:
-            for item in resp.json().get("data", []):
-                sym = item.get("symbol")
-                if sym:
-                    data["GSM"].add(sym.upper())
-
-        redis_data = {"ASM": sorted(data["ASM"]), "GSM": sorted(data["GSM"])}
-        _dcache_set("asm_gsm", "lists", redis_data, ttl=_ASM_GSM_CACHE_TTL)
-        return data  # return sets for in-memory callers
-    except Exception as e:
-        logging.info(f"[NSE] ASM/GSM fetch failed: {e}")
-        return data
 
 
 # ---------------------------------------------------------------------------

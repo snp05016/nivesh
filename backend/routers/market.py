@@ -1182,7 +1182,8 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
         "errors": errors,
     }
 
-    _dcache_set("market", cache_key, result, ttl=900)
+    # A partial profile (errors non-empty) is kept 60 s so it refreshes once upstream recovers (PERF-18).
+    _dcache_set("market", cache_key, result, ttl=60 if errors else 900)
     return result
 
 
@@ -1622,7 +1623,8 @@ Response: {
                 "active_by_value": [], "active_by_volume": [],
                 "fetched_at": _dt.now(timezone.utc).isoformat(),
             }
-            _dc_set("market_pulse", cache_key, empty_result)
+            # Upstream failure, not a real empty market: keep it 60 s only (PERF-18).
+            _dc_set("market_pulse", cache_key, empty_result, ttl=60)
             return empty_result
 
         gainers = sorted(movers, key=lambda x: x["change_pct"], reverse=True)[:10]
@@ -1638,7 +1640,7 @@ Response: {
             "fetched_at": _dt.now(timezone.utc).isoformat(),
         }
         # Cache for 15 minutes (market data refreshes frequently)
-        _dc_set("market_pulse", cache_key, result)
+        _dc_set("market_pulse", cache_key, result, ttl=900)
         return result
 
     except Exception as exc:

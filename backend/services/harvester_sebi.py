@@ -1,14 +1,13 @@
 """
 SEBI / Exchange filings harvester.
 
-Fetches the NSE corporate-announcements RSS feed through ScraperAPI
-(residential-IP proxy), keeps only items that match governance red-flag
+Fetches the public NSE corporate-announcements RSS feed directly, with an
+honest bot User-Agent and no proxying (REG-10), keeps only items that match governance red-flag
 keywords (auditor/CFO/MD resignation, pledge invocation, SEBI orders,
 insider trading, forensic audit, etc.), and stores them as raw GOVERNANCE
 cards (credibility 10). The scheduler reformats them afterwards.
 
-Fully defensive: if SCRAPERAPI_API_KEY is missing or the fetch fails,
-it records a SourceHealth failure and returns 0. Never raises.
+Fully defensive: if the fetch fails or is blocked, it records a SourceHealth failure and returns 0. Never raises.
 
 Public: harvest_sebi_filings(limit=30) -> int   (number of NEW cards stored)
 """
@@ -16,19 +15,18 @@ Public: harvest_sebi_filings(limit=30) -> int   (number of NEW cards stored)
 from __future__ import annotations
 
 import logging
-import os
 import re
 
 import feedparser
 import requests
 
+from config.settings import get_user_agent
 from services.harvester_db import get_session as h_get_session, upsert_card, record_source_health
 from services.harvester_reformatter import make_external_id, derive_credential
 
 logger = logging.getLogger("harvester.sebi")
 
 NSE_RSS_URL = "https://www.nseindia.com/corporates/corpInfo/equities/rss/announcementsRss.xml"
-SCRAPERAPI_URL = "http://api.scraperapi.com"
 SOURCE_NAME = "NSE Corporate Announcements"
 
 # Governance red-flag keywords (lower-cased match against title + summary).
@@ -77,34 +75,22 @@ def _extract_tickers(text: str) -> list[str]:
     return out[:6]
 
 
-def _build_scraperapi_url(target_url: str) -> str | None:
-    """Build a ScraperAPI proxy URL.  Returns None when the key is missing."""
-    key = os.environ.get("SCRAPERAPI_API_KEY", "").strip()
-    if not key:
-        logger.error("[sebi] SCRAPERAPI_API_KEY not set — cannot fetch NSE")
-        return None
-    return f"{SCRAPERAPI_URL}?api_key={key}&url={target_url}"
-
-
 def _fetch_feed() -> list:
-    """Fetch NSE RSS entries through ScraperAPI residential-IP proxy."""
-    proxy_url = _build_scraperapi_url(NSE_RSS_URL)
-    if not proxy_url:
-        return []
-
+    """Fetch NSE RSS entries directly (public feed, no proxy, no UA spoofing)."""
     try:
-        resp = requests.get(proxy_url, timeout=45)
-        logger.info("[sebi] ScraperAPI RSS response: %s, content length: %s",
+        resp = requests.get(NSE_RSS_URL, headers={"User-Agent": get_user_agent()}, timeout=20)
+        logger.info("[sebi] RSS response: %s, content length: %s",
                      resp.status_code, len(resp.content or b""))
         if resp.status_code == 200 and resp.content and len(resp.content) > 100:
             parsed = feedparser.parse(resp.content)
             entries = getattr(parsed, "entries", []) or []
             logger.info("[sebi] RSS entries found: %d", len(entries))
             return entries
-        logger.warning("[sebi] ScraperAPI returned status=%s len=%s",
+        logger.warning("[sebi] RSS returned status=%s len=%s",
                         resp.status_code, len(resp.content or b""))
     except Exception as exc:  # noqa: BLE001
-        logger.warning("[sebi] ScraperAPI fetch failed: %s", exc)
+        # Type only: request exception text can embed the full URL.
+        logger.warning("[sebi] RSS fetch failed: %s", type(exc).__name__)
     return []
 
 

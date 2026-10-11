@@ -249,7 +249,7 @@ def start_scheduler() -> bool:
             from services.anomaly_scanner import run_anomaly_scan
             run_anomaly_scan()
             _dash_update_harvest("anomaly_scan", "idle", {})
-            logging.info("[anomaly_scan] Hourly scan complete.")
+            logging.info("[anomaly_scan] Scan complete.")
         except Exception as e:
             _dash_update_harvest("anomaly_scan", "error", {"error": str(e)})
             logging.error(f"[anomaly_scan] Error: {e}")
@@ -340,10 +340,11 @@ def start_scheduler() -> bool:
     _scheduler.add_job(_run_pregen_morning_briefs,"cron", hour=1,  minute=0)              # 6:30 AM IST
     _scheduler.add_job(_run_piotroski_batch,      "cron", day_of_week="sun", hour=17, minute=30)  # Sun 11 PM IST
     _scheduler.add_job(_run_error_digest,         "cron", hour=1,  minute=30)             # 7:00 AM IST
-    _scheduler.add_job(_run_anomaly_scan,         "cron", minute="0")
+    # Weekdays 04:00-11:00 UTC = 09:30-16:30 IST: hourly in market hours plus one post-close run (PERF-19).
+    _scheduler.add_job(_run_anomaly_scan,         "cron", day_of_week="mon-fri", hour="4-11", minute=0)
     _scheduler.add_job(_run_db_backup,            "cron", hour=21, minute=0, id="db_backup", replace_existing=True)  # 2:30 AM IST
 
-    # ── Harvester jobs (ScraperAPI-backed, rate-limited for free tier) ─────────
+    # ── Harvester jobs (rate-limited) ────────────────────────────────────────────
     _scheduler.add_job(_run_expert_harvest_bg, "interval", minutes=120, id="expert_harvest", replace_existing=True, **_stagger(65))
     _scheduler.add_job(_run_sebi_harvest_bg,   "interval", minutes=120, id="sebi_harvest",   replace_existing=True, **_stagger(85))
     _scheduler.add_job(_run_youtube_expert_bg, "interval", minutes=120, id="youtube_expert_harvest", replace_existing=True, **_stagger(105))

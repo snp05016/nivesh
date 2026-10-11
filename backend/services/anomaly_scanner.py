@@ -5,18 +5,22 @@ for the configured NSE universe.
 """
 import logging
 from datetime import datetime, date, timedelta, timezone
+from zoneinfo import ZoneInfo
 import pandas as pd
 from typing import Optional, List, Dict, Any
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, func
 from database import Base, get_session, ENGINE
 from models.db_models import MarketAnomaly
 from helpers import NSE_TICKERS
-from services.nse_data_provider import get_price_history, fetch_info, download_bhavcopy
+from services.nse_data_provider import get_price_history, fetch_info
 from services.factor_engine import compute_indicators
 from services.options_scraper import fetch_option_chain, compute_derivatives_metrics
 
 logger = logging.getLogger(__name__)
+
+_IST = ZoneInfo("Asia/Kolkata")
+_RETENTION_DAYS = 30
 
 def _determine_severity(anomaly_type: str, magnitude: float) -> str:
     """Determines the severity level of an anomaly based on its type and magnitude.
@@ -54,13 +58,12 @@ def _determine_severity(anomaly_type: str, magnitude: float) -> str:
         return "LOW"
     return "MEDIUM"
 
-def _detect_anomalies_for_ticker(ticker: str, company: str, bhavcopy_data: dict) -> List[dict]:
+def _detect_anomalies_for_ticker(ticker: str, company: str) -> List[dict]:
     """Scans historical and options data for a specific ticker to detect anomalies.
 
     Args:
         ticker (str): The NSE ticker symbol.
         company (str): The name of the company.
-        bhavcopy_data (dict): Daily delivery percentage data parsed from the NSE Bhavcopy.
 
     Returns:
         List[dict]: A list of detected anomaly dictionaries for the ticker.
@@ -143,7 +146,8 @@ def _detect_anomalies_for_ticker(ticker: str, company: str, bhavcopy_data: dict)
             "change_pct": change_pct
         })
         
-    chain = fetch_option_chain(ticker, use_cache=True)
+    # NSE's option-chain API takes the bare symbol ("RELIANCE"), not the yfinance "RELIANCE.NS".
+    chain = fetch_option_chain(ticker.split(".")[0], use_cache=True)
     if chain:
         try:
             metrics = compute_derivatives_metrics(chain, curr_close)
@@ -158,18 +162,6 @@ def _detect_anomalies_for_ticker(ticker: str, company: str, bhavcopy_data: dict)
                 })
         except Exception as e:
             logger.debug(f"Option metrics failed for {ticker}: {e}")
-
-    symbol = ticker.replace(".NS", "")
-    if symbol in bhavcopy_data:
-        delivery_pct = bhavcopy_data[symbol]
-        if delivery_pct > 80 and curr_vol > vol_20d:
-            anomalies.append({
-                "anomaly_type": "DELIVERY_SPIKE",
-                "severity": _determine_severity("DELIVERY_SPIKE", delivery_pct),
-                "detail": f"Delivery volume spiked to {delivery_pct:.1f}% on high volume.",
-                "price": curr_close,
-                "change_pct": change_pct
-            })
 
     high_52w = df['High'].iloc[-252:].max() if len(df) >= 252 else df['High'].max()
     low_52w = df['Low'].iloc[-252:].min() if len(df) >= 252 else df['Low'].min()
@@ -234,48 +226,45 @@ def _detect_anomalies_for_ticker(ticker: str, company: str, bhavcopy_data: dict)
 def run_anomaly_scan() -> List[dict]:
     """Runs a comprehensive scan across the entire defined universe of NSE tickers.
 
-    Downloads necessary end-of-day data, evaluates each ticker for anomalies, 
-    persists findings to the database, and sorts results by severity.
+    Evaluates each ticker for anomalies and upserts findings so each
+    (ticker, anomaly_type) is stored at most once per IST trading day; rows
+    older than _RETENTION_DAYS are pruned. Results are sorted by severity.
 
     Returns:
         List[dict]: The complete list of sorted anomalies detected during the scan.
     """
-    bhav_res = download_bhavcopy()
-    
-    bhavcopy_data = {}
-    if bhav_res and "rows" in bhav_res and isinstance(bhav_res["rows"], list):
-        for row in bhav_res["rows"]:
-            sym = row.get("SYMBOL")
-            dlv_pct = row.get("DELIV_PER")
-            if sym and dlv_pct:
-                try:
-                    bhavcopy_data[sym] = float(dlv_pct)
-                except ValueError:
-                    pass
-
     all_anomalies = []
     
     for name, ticker in NSE_TICKERS.items():
         try:
-            anomalies = _detect_anomalies_for_ticker(ticker, name, bhavcopy_data)
+            anomalies = _detect_anomalies_for_ticker(ticker, name)
             all_anomalies.extend(anomalies)
         except Exception as e:
             logger.error(f"Error scanning {ticker}: {e}")
 
     try:
+        now = datetime.now(timezone.utc)
+        day_start = datetime.now(_IST).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
         with get_session() as db:
+            existing = {
+                (r.ticker, r.anomaly_type): r
+                for r in db.query(MarketAnomaly).filter(MarketAnomaly.timestamp >= day_start)
+            }
             for a in all_anomalies:
-                db_record = MarketAnomaly(
-                    ticker=a["ticker"],
-                    company=a["company"],
-                    anomaly_type=a["anomaly_type"],
-                    severity=a["severity"],
-                    detail=a["detail"],
-                    price=a["price"],
-                    change_pct=a["change_pct"],
-                    timestamp=datetime.now(timezone.utc)
-                )
-                db.add(db_record)
+                row = existing.get((a["ticker"], a["anomaly_type"]))
+                if row is None:
+                    row = MarketAnomaly(ticker=a["ticker"], anomaly_type=a["anomaly_type"])
+                    db.add(row)
+                    existing[(a["ticker"], a["anomaly_type"])] = row
+                row.company = a["company"]
+                row.severity = a["severity"]
+                row.detail = a["detail"]
+                row.price = a["price"]
+                row.change_pct = a["change_pct"]
+                row.timestamp = now  # type: ignore[assignment]
+            db.query(MarketAnomaly).filter(
+                MarketAnomaly.timestamp < now - timedelta(days=_RETENTION_DAYS)
+            ).delete(synchronize_session=False)
             db.commit()
     except Exception as e:
         logger.error(f"Failed to save anomalies to DB: {e}")
@@ -288,7 +277,9 @@ def run_anomaly_scan() -> List[dict]:
 def get_latest_anomalies(limit: int = 10) -> List[dict]:
     """Retrieves the most recent market anomalies from the database.
 
-    Fetches anomalies detected within the last 24 hours, heavily weighted by severity.
+    Fetches anomalies from the 24 hours before the most recent scan (not wall-clock
+    now), so the last trading day stays visible over weekends and exchange holidays
+    when the weekday-only scan does not run. Results are weighted by severity.
 
     Args:
         limit (int): The maximum number of anomalies to return. Defaults to 10.
@@ -298,9 +289,11 @@ def get_latest_anomalies(limit: int = 10) -> List[dict]:
     """
     try:
         with get_session() as db:
-            # We want recent anomalies, past 24 hours ideally
-            yesterday = datetime.now(timezone.utc) - timedelta(days=1)
-            records = db.query(MarketAnomaly).filter(MarketAnomaly.timestamp > yesterday).order_by(MarketAnomaly.timestamp.desc()).limit(limit * 2).all()
+            # Anchor the 24 h window to the latest scan: the scan runs Mon-Fri only.
+            latest = db.query(func.max(MarketAnomaly.timestamp)).scalar()
+            if latest is None:
+                return []
+            records = db.query(MarketAnomaly).filter(MarketAnomaly.timestamp >= latest - timedelta(days=1)).order_by(MarketAnomaly.timestamp.desc()).limit(limit * 2).all()
             
             results = []
             for r in records:

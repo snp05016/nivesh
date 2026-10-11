@@ -366,7 +366,10 @@ def fetch_market_pulse() -> dict:
         return pulse
 
     result = _fetch_pulse_fallback()
-    _cache_set("market_pulse", result)
+    # A fallback with no indices is an upstream failure: return it uncached so
+    # the next call retries instead of pinning zeros for 15 min (PERF-18).
+    if result.get("indices"):
+        _cache_set("market_pulse", result)
     return result
 
 

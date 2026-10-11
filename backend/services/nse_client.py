@@ -16,7 +16,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config.settings import (
     ASM_GSM_CACHE_TTL as _ASM_GSM_CACHE_TTL,
-    HTTP_DEFAULT_TIMEOUT as _HTTP_DEFAULT_TIMEOUT,
     INDICES_CACHE_TTL as _INDICES_CACHE_TTL,
 )
 from services.disk_cache import get as _dcache_get, set as _dcache_set
@@ -26,23 +25,31 @@ from services.disk_cache import get as _dcache_get, set as _dcache_set
 # NSE Session
 # ---------------------------------------------------------------------------
 
+# (connect, read) cap: the bootstrap plus three list calls used to take ~20 s worst case.
+_NSE_TIMEOUT = (3, 5)
+
+# Partial/failed ASM/GSM refreshes are cached this long only, so callers stop
+# hammering NSE but recover within minutes instead of hours (PERF-18).
+_ASM_GSM_DEGRADED_TTL = 120
+
+_ASM_GSM_URLS = (
+    ("ASM", "https://www.nseindia.com/api/surveillance-asm-list?index=longTerm"),
+    ("ASM", "https://www.nseindia.com/api/surveillance-asm-list?index=shortTerm"),
+    ("GSM", "https://www.nseindia.com/api/surveillance-gsm-list"),
+)
+
+
 def _nse_session():
-    """Bootstrap a session with NSE cookies."""
+    """Bootstrap a session with NSE cookies, identified by the honest bot UA (REG-10)."""
     import requests
-    # Task 40: rotate User-Agent with fake-useragent; fallback to static string
-    try:
-        from fake_useragent import UserAgent as _UA
-        _user_agent = _UA().random
-    except Exception as _e:
-        _user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
     s = requests.Session()
     s.headers.update({
-        "User-Agent": _user_agent,
+        "User-Agent": get_user_agent(),
         "Accept": "application/json, text/plain, */*",
         "Referer": "https://www.nseindia.com/",
     })
     try:
-        s.get("https://www.nseindia.com", timeout=_HTTP_DEFAULT_TIMEOUT)
+        s.get("https://www.nseindia.com", timeout=_NSE_TIMEOUT)
     except Exception: pass
     return s
 
@@ -52,7 +59,11 @@ def _nse_session():
 # ---------------------------------------------------------------------------
 
 def _get_asm_gsm_lists():
-    """Fetch and cache ASM/GSM lists from NSE (Redis-backed, shared across workers)."""
+    """Fetch and cache ASM/GSM lists from NSE (Redis-backed, shared across workers).
+
+    Full TTL only when all three lists answered 200; a partial or failed refresh
+    is cached for _ASM_GSM_DEGRADED_TTL so it is not pinned for hours.
+    """
     # Check Redis cache first
     cached = _dcache_get("asm_gsm", "lists")
     if cached is not None:
@@ -60,33 +71,25 @@ def _get_asm_gsm_lists():
 
     logging.info("[NSE] Refreshing ASM/GSM lists...")
     data = {"ASM": set(), "GSM": set()}
+    ok = True
     try:
         session = _nse_session()
-        resp = session.get("https://www.nseindia.com/api/surveillance-asm-list?index=longTerm", timeout=_HTTP_DEFAULT_TIMEOUT)
-        if resp.status_code == 200:
+        for section, url in _ASM_GSM_URLS:
+            resp = session.get(url, timeout=_NSE_TIMEOUT)
+            if resp.status_code != 200:
+                ok = False
+                continue
             for item in resp.json().get("data", []):
                 sym = item.get("symbol")
-                if sym: data["ASM"].add(sym.upper())
-
-        resp = session.get("https://www.nseindia.com/api/surveillance-asm-list?index=shortTerm", timeout=_HTTP_DEFAULT_TIMEOUT)
-        if resp.status_code == 200:
-            for item in resp.json().get("data", []):
-                sym = item.get("symbol")
-                if sym: data["ASM"].add(sym.upper())
-
-        resp = session.get("https://www.nseindia.com/api/surveillance-gsm-list", timeout=_HTTP_DEFAULT_TIMEOUT)
-        if resp.status_code == 200:
-            for item in resp.json().get("data", []):
-                sym = item.get("symbol")
-                if sym: data["GSM"].add(sym.upper())
-
-        # Store as sorted lists (JSON-safe) in Redis
-        redis_data = {"ASM": sorted(data["ASM"]), "GSM": sorted(data["GSM"])}
-        _dcache_set("asm_gsm", "lists", redis_data, ttl=_ASM_GSM_CACHE_TTL)
-        return data
+                if sym: data[section].add(sym.upper())
     except Exception as e:
-        logging.info(f"[NSE] ASM/GSM fetch failed: {e}")
-        return data
+        ok = False
+        logging.info(f"[NSE] ASM/GSM fetch failed: {type(e).__name__}")
+
+    # Store as sorted lists (JSON-safe) in Redis
+    redis_data = {"ASM": sorted(data["ASM"]), "GSM": sorted(data["GSM"])}
+    _dcache_set("asm_gsm", "lists", redis_data, ttl=_ASM_GSM_CACHE_TTL if ok else _ASM_GSM_DEGRADED_TTL)
+    return data
 
 
 def _evict_asm_gsm_ticker(ticker: str) -> bool:

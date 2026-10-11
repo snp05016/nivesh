@@ -3,6 +3,7 @@ lock that tells "cannot open the lock file" apart from "another worker holds it"
 import fcntl
 import io
 import logging
+import os
 import re
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -10,7 +11,12 @@ from unittest.mock import MagicMock
 import services.harvest_worker as hw
 
 REPO = Path(__file__).resolve().parents[2]
-LAUNCHERS = ["backend/nivesh.service", "backend/Dockerfile", ".github/workflows/deploy.yml"]
+LAUNCHERS = [
+    "backend/nivesh.service", "backend/Dockerfile", ".github/workflows/deploy.yml",
+    "scripts/deploy_ml_engine.sh", "scripts/deploy_ml_microservice.sh",
+]
+# Connections kept free for the scheduler, job subprocesses and admin sessions (PERF-21).
+_PG_RESERVE = 10
 
 
 def test_launch_configs_single_worker():
@@ -24,6 +30,24 @@ def test_launch_configs_single_worker():
             assert int(n) == 1, f"{rel} runs {n} workers"
     assert "--workers 1" in (REPO / "backend" / "nivesh.service").read_text()
     assert '"--workers", "1"' in (REPO / "backend" / "Dockerfile").read_text()
+
+
+def test_reload_only_in_marked_local_dev_script():
+    """PERF-21: run.sh may use --reload only while it is labelled local-dev-only."""
+    text = (REPO / "backend" / "run.sh").read_text()
+    if "--reload" in text:
+        assert re.search(r"local dev(elopment)? only", text, re.IGNORECASE)
+
+
+def test_pool_budget_within_pg_limit():
+    """PERF-21: workers x (pool_size + max_overflow) + reserve must fit Postgres max_connections."""
+    db_src = (REPO / "backend" / "database.py").read_text()
+    pool = int(re.search(r"pool_size=(\d+)", db_src).group(1))
+    overflow = int(re.search(r"max_overflow=(\d+)", db_src).group(1))
+    unit = (REPO / "backend" / "nivesh.service").read_text()
+    workers = int(re.search(r"--workers\s+(\d+)", unit).group(1))
+    pg_max = int(os.getenv("PG_MAX_CONNECTIONS", "100"))
+    assert workers * (pool + overflow) + _PG_RESERVE <= pg_max, (workers, pool, overflow, pg_max)
 
 
 def _fresh(monkeypatch, opener, lockf):

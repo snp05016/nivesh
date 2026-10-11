@@ -147,16 +147,12 @@ YF_RATE_LIMIT_TOKENS: float = float(os.getenv("YF_RATE_LIMIT_TOKENS", 30))
 YF_RATE_LIMIT_PER_SEC: float = float(os.getenv("YF_RATE_LIMIT_PER_SEC", 0.5))
 
 # ---------------------------------------------------------------------------
-# Task 40: Dynamic User-Agent generation (replaces hardcoded strings)
+# REG-10: one constant, honest bot identifier. No browser impersonation and
+# no User-Agent rotation (fake_useragent was removed).
 # ---------------------------------------------------------------------------
-_ua_generator = None
+_BOT_CONTACT_URL = os.getenv("BOT_CONTACT_URL", "").strip()
+_USER_AGENT = f"NiveshBot/1.0 (+{_BOT_CONTACT_URL})" if _BOT_CONTACT_URL else "NiveshBot/1.0"
+
 
 def get_user_agent() -> str:
-    global _ua_generator
-    try:
-        if _ua_generator is None:
-            from fake_useragent import UserAgent
-            _ua_generator = UserAgent(os='mac os x', browsers=['chrome', 'safari'])
-        return _ua_generator.random
-    except Exception as _e:
-        return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    return _USER_AGENT
