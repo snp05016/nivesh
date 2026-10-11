@@ -36,7 +36,8 @@ def test_market_scrape_failure_returns_503(client, monkeypatch):
     monkeypatch.setattr(market, "fetch_earnings_sync_ratio", _boom)
     resp = client.get("/api/v1/earnings/sync-ratio")
     assert resp.status_code == 503, resp.text
-    assert resp.json()["detail"].startswith("Data harvesting service unavailable")
+    assert resp.json()["detail"].startswith("Market data source temporarily unavailable")
+    assert "upstream scrape failed" not in resp.text  # REL-17: no upstream error text
 
 
 def test_dashboard_data_lists_job_started_via_helpers(client, monkeypatch):
