@@ -26,9 +26,22 @@ _DEVANAGARI_RE = re.compile(r"[\u0900-\u097F]")
 # Model constants — canonical definitions
 # ═════════════════════════════════════════════════════════════════════════════
 
-HAIKU_MODEL = "claude-haiku-4-5-20251001"  # Tier 2 — synthesis agents
-SONNET_MODEL = "claude-sonnet-4-6"          # Tier 3 — final reformatter only (3.5 alias retired/404)
-DEEPSEEK_MODEL = "deepseek-chat"            # Tier 1 — bulk agent tasks
+# The only place model IDs live (tests/test_model_names.py enforces it). Override per
+# deploy via env, e.g. after a frozen-input eval justifies a newer model.
+HAIKU_MODEL = os.getenv("NIVESH_HAIKU_MODEL", "claude-haiku-4-5-20251001")  # Tier 2 — synthesis agents
+SONNET_MODEL = os.getenv("NIVESH_SONNET_MODEL", "claude-sonnet-4-6")         # Tier 3 — final reformatter only
+DEEPSEEK_MODEL = os.getenv("NIVESH_DEEPSEEK_MODEL", "deepseek-chat")         # Tier 1 — bulk agent tasks
+DEEPSEEK_REASONER_MODEL = os.getenv("NIVESH_DEEPSEEK_REASONER_MODEL", "deepseek-reasoner")  # extreme scans
+
+_CLAUDE_MAJOR_RE = re.compile(r"^claude-[a-z]+-(\d+)")
+
+
+def sampling_kwargs(model: str) -> dict[str, Any]:
+    """temperature=0 for Claude 4.x and older; {} for 5.x+, which reject non-default sampling (400)."""
+    m = _CLAUDE_MAJOR_RE.match(model or "")
+    if m and int(m.group(1)) >= 5:
+        return {}
+    return {"temperature": 0}
 
 
 def contains_devanagari(text: object) -> bool:
@@ -69,13 +82,13 @@ def deepseek_chat(
     leave room for internal reasoning, then return content (or
     reasoning_content as fallback).
 
-    When model is 'deepseek-v4-pro', enables thinking mode with max reasoning effort.
+    When model is DEEPSEEK_REASONER_MODEL, reserves extra headroom for reasoning tokens.
     Retries up to 3 times with exponential backoff (2 s, 4 s, 8 s).
     """
     from helpers import _log_token_usage  # local import avoids circular deps
 
     selected_model = model or DEEPSEEK_MODEL
-    is_pro = selected_model == "deepseek-reasoner"
+    is_pro = selected_model == DEEPSEEK_REASONER_MODEL
     client = get_deepseek_client()
     last_exc: Exception | None = None
     # Reasoner (is_pro) needs headroom for reasoning_content, but the old `max_tokens * 8`

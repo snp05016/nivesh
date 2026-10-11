@@ -5,6 +5,7 @@ Loads the model once at module import time and reuses it (singleton pattern).
 """
 from datetime import timezone
 import logging
+import os
 import threading
 import time
 from typing import Optional
@@ -38,6 +39,7 @@ def get_classifier():
                 device=-1,
                 truncation=True,
                 max_length=512,
+                token=os.getenv("HF_TOKEN"),
             )
             _load_failed_at = None
             logger.info("FinBERT loaded successfully (ProsusAI/finbert).")

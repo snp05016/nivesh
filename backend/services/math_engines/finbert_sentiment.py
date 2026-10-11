@@ -130,18 +130,13 @@ def _try_finbert(texts: list[str]) -> list[float] | None:
         list[float] | None: A list of sentiment scores if successful, or None if unavailable.
     """
     try:
-        import os
-        from transformers import pipeline  # type: ignore[import]
+        # Process-wide ProsusAI/finbert singleton with failure backoff (LLM-23):
+        # never build a pipeline per call.
+        from services.sentiment_engine import get_classifier
 
-        # Use ProsusAI/finbert — a popular FinBERT checkpoint
-        sentiment_pipe = pipeline(
-            "text-classification",
-            model="ProsusAI/finbert",
-            tokenizer="ProsusAI/finbert",
-            truncation=True,
-            max_length=512,
-            token=os.getenv("HF_TOKEN")
-        )
+        sentiment_pipe = get_classifier()
+        if sentiment_pipe is None:
+            return None
         results = sentiment_pipe(texts)
         scores = []
         for r in results:

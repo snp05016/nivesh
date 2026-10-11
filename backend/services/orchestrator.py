@@ -61,6 +61,8 @@ from services.llm_utils import (
     HAIKU_MODEL,
     SONNET_MODEL,
     DEEPSEEK_MODEL,
+    DEEPSEEK_REASONER_MODEL,
+    sampling_kwargs,
 )
 # backward-compat aliases for internal callers
 _get_deepseek_client = get_deepseek_client
@@ -565,7 +567,7 @@ def build_ta_config(scan_type: str = "standard", debate_rounds: int | None = Non
     if scan_type == "extreme":
         # DeepSeek reasoning model for all agent nodes — bounded for ≤10 min depth-first runs.
         # Runaway fix: rounds/tokens capped + explicit LangGraph recursion + tool-loop bound.
-        config["quick_think_llm"] = "deepseek-reasoner"
+        config["quick_think_llm"] = DEEPSEEK_REASONER_MODEL
         config["quick_think_provider"] = "deepseek"
         config["max_debate_rounds"] = 1          # AGENTS.md §4.2: single debate round
         config["max_risk_discuss_rounds"] = 1    # was 2 — runaway fix
@@ -816,10 +818,12 @@ def reformat_with_claude(
     claude_succeeded = False
     if claude_api_key:
         claude_client = get_anthropic_client()
-        system_array = [
+        system_array: list = [
             {
                 "type": "text",
                 "text": INDIAN_MARKET_SYSTEM_PROMPT,
+                # ~3K static tokens reused on every reformat: cache reads bill at ~10% of input.
+                "cache_control": {"type": "ephemeral"},
             }
         ]
         if is_extreme:
@@ -844,7 +848,7 @@ def reformat_with_claude(
                     max_tokens=reformat_max_tokens,
                     system=system_array,
                     messages=[{"role": "user", "content": user_message}],
-                    temperature=0,
+                    **sampling_kwargs(SONNET_MODEL),  # 5.x models reject temperature
                 )
                 _log_token_usage("reformat", response.usage, SONNET_MODEL)
                 raw_json = _extract_json_from_text(response.content[0].text)

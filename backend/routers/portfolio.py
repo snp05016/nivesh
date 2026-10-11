@@ -55,7 +55,7 @@ from decimal import Decimal
 
 from services.staleness import compute_staleness
 from services.piotroski import compute_piotroski
-from services.llm_utils import contains_devanagari
+from services.llm_utils import contains_devanagari, HAIKU_MODEL
 from services.market_service import get_rbi_policy
 
 
