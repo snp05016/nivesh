@@ -34,6 +34,9 @@ jobs:
       run: |
         ruff check backend/ || echo "Ruff found issues, treating as warnings for now"
 
+    - name: Check for unreferenced backend modules
+      run: python scripts/find_unreferenced_modules.py
+
     - name: Test with pytest
       env:
         PYTHONPATH: backend
