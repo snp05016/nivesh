@@ -1,5 +1,7 @@
 # Nivesh — API Reference
 
+> **ARCHIVED: not maintained.** The current route inventory is `docs/codebase/API_CONTRACT_MAP.md`, regenerated with `python3 scripts/route_inventory.py`. Paths below may be stale.
+
 > Source of truth: actual router files in `backend/routers/`.
 > Base URL (production): `https://api.nivesh.qzz.io`
 > All endpoints require `Authorization: Bearer <JWT>` unless marked *public*.
@@ -195,12 +197,11 @@
 
 ## Sector Rotation
 
-### `sector_rotation.py` (prefix: `/api/v1`)
+### `sector_rotation.py` (router prefix `/market`, mounted under `/api/v1`)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/v1/sector-rotation` | Multi-period sector quadrant (1m/3m/6m/1y) with FII/DII flow |
-| `GET` | `/api/v1/sector-rotation/momentum` | Sector momentum ranking |
+| `GET` | `/api/v1/market/sector-rotation` | Sector return, momentum, FII/DII flow and quadrant for a period (pro entitlement) |
 
 ---
 
