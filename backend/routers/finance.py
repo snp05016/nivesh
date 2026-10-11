@@ -69,8 +69,10 @@ class CreditScoreResponse(BaseModel):
 
 class SubmitLoanApplicationRequest(BaseModel):
     loan_offer_id: int
-    requested_amount: float = Field(..., gt=0)
-    requested_tenure_months: int = Field(..., gt=0)
+    # Upper caps keep inputs inside Numeric(14,2); the offer's own range is
+    # enforced in the service (check_product_bounds).
+    requested_amount: float = Field(..., gt=0, le=1e11)
+    requested_tenure_months: int = Field(..., gt=0, le=600)
     # MOCK KYC — device_id of the submitting device, checked against
     # kyc_consent_service.verify_device_binding() before auto-approval.
     # Simulated for demo purposes, not a real device/SIM-binding integration.

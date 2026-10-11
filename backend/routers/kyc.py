@@ -8,7 +8,7 @@ real telecom SIM-swap-detection API and no real credit-bureau / government ID
 verification anywhere behind this router — see kyc_consent_service.py for the
 full disclosure and the KYC-gate invariant this endpoint set makes reachable.
 """
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from core.security import require_auth
@@ -33,8 +33,13 @@ class RecordConsentRequest(BaseModel):
     granted: bool
 
 
+# Matches DeviceBinding.device_id String(120).
+DEVICE_ID_MAX_LEN = 120
+
+
 class BindDeviceRequest(BaseModel):
-    device_id: str = Field(..., min_length=1, max_length=200)
+    device_id: str = Field(..., min_length=1, max_length=DEVICE_ID_MAX_LEN)
+    # Ignored: the server always makes a successfully bound device primary.
     is_primary: bool = True
 
 
@@ -66,16 +71,22 @@ def list_consents(user_id: int = Depends(require_auth)):
 def create_device_binding(body: BindDeviceRequest, user_id: int = Depends(require_auth)):
     """Bind a device_id to the current user.
 
-    On rejection (MOCK fraud-signal heuristics — see kyc_consent_service.py),
-    the response body includes a "fraud_signal" field, e.g.
-    "cross_user_device_reuse" or "rebind_rate_limit_exceeded", in addition to
-    "bound": False and a human-readable "reason".
+    On rejection (MOCK fraud-signal heuristics — see kyc_consent_service.py)
+    the response is HTTP 409 with detail {"bound": False, "reason",
+    "fraud_signal"}, e.g. "cross_user_device_reuse" or
+    "rebind_rate_limit_exceeded".
     """
-    return bind_device(user_id, body.device_id, body.is_primary)
+    result = bind_device(user_id, body.device_id)
+    if result.get("bound") is False:
+        raise HTTPException(status_code=409, detail=result)
+    return result
 
 
 @router.get("/device-binding/verify")
-def check_device_binding(device_id: str = Query(...), user_id: int = Depends(require_auth)):
+def check_device_binding(
+    device_id: str = Query(..., min_length=1, max_length=DEVICE_ID_MAX_LEN),
+    user_id: int = Depends(require_auth),
+):
     return verify_device_binding(user_id, device_id)
 
 

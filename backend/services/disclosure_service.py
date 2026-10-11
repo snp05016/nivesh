@@ -13,10 +13,11 @@ number. Nothing in this module should be treated as compliant legal text
 for an actual regulated lending/fintech product.
 """
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, cast
 
 from database import get_session
 from models.db_models import FixedDepositScheme, LoanOffer
+from services.product_bounds import check_product_bounds
 
 _MOCK_DISCLAIMER = (
     "MOCK/DEMO CONTENT — illustrative placeholder text for a portfolio "
@@ -202,7 +203,9 @@ def compute_key_fact_statement(
     allowed range; when omitted, the offer/scheme's minimum amount and
     minimum tenure are used as representative illustrative figures.
 
-    Returns None if the referenced offer/scheme is not found.
+    Returns None if the referenced offer/scheme is not found. Raises
+    ProductBoundsError when an override is outside the offer/scheme range
+    (or the product is inactive).
     """
     if loan_offer_id is not None:
         with get_session() as session:
@@ -212,6 +215,8 @@ def compute_key_fact_statement(
 
             chosen_amount = amount if amount is not None else _to_float(offer.min_amount)
             chosen_tenure = tenure_months if tenure_months is not None else offer.min_tenure_months
+            if amount is not None or tenure_months is not None:
+                check_product_bounds(offer, chosen_amount, cast(int, chosen_tenure), "loan offer")
             chosen_tenure = max(1, chosen_tenure)
 
             interest_rate_pct = _to_float(offer.interest_rate_pct)
@@ -245,6 +250,8 @@ def compute_key_fact_statement(
 
             chosen_amount = amount if amount is not None else _to_float(scheme.min_amount)
             chosen_tenure = tenure_months if tenure_months is not None else scheme.min_tenure_months
+            if amount is not None or tenure_months is not None:
+                check_product_bounds(scheme, chosen_amount, cast(int, chosen_tenure), "FD scheme")
             chosen_tenure = max(1, chosen_tenure)
 
             interest_rate_pct = _to_float(scheme.interest_rate_pct)

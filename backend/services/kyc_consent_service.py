@@ -243,6 +243,11 @@ def bind_device(user_id: int, device_id: str, is_primary: bool = True) -> dict:
     and does NOT create/update the DeviceBinding row. On success, returns the
     same shape as before ({"id", "user_id", "device_id", "bound_at",
     "is_primary"}) for backward compatibility with existing callers.
+
+    The server decides primacy (FINSEC-18): a successful bind always makes
+    this device the user's only primary device and demotes every other one
+    in the same transaction. ``is_primary`` is accepted for signature
+    compatibility but ignored.
     """
     with get_session() as session:
         window_start = datetime.now(timezone.utc) - timedelta(hours=24)
@@ -297,15 +302,20 @@ def bind_device(user_id: int, device_id: str, is_primary: bool = True) -> dict:
             )
             .first()
         )
+        session.query(DeviceBinding).filter(
+            DeviceBinding.user_id == user_id,
+            DeviceBinding.device_id != device_id,
+            DeviceBinding.is_primary.is_(True),
+        ).update({DeviceBinding.is_primary: False}, synchronize_session=False)
         if existing is not None:
-            existing.is_primary = is_primary
+            existing.is_primary = True
             binding = existing
         else:
             binding = DeviceBinding(
                 user_id=user_id,
                 device_id=device_id,
                 bound_at=datetime.now(timezone.utc),
-                is_primary=is_primary,
+                is_primary=True,
             )
             session.add(binding)
 

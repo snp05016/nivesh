@@ -47,10 +47,15 @@ class FDSchemeResponse(BaseModel):
         from_attributes = True
 
 
+# Upper caps keep inputs inside Numeric(14,2) and away from float overflow.
+MAX_PRINCIPAL = 1e11
+MAX_TENURE_MONTHS = 1200
+
+
 class FDCalculatorRequest(BaseModel):
-    principal_amount: float = Field(..., gt=0)
-    tenure_months: int = Field(..., gt=0)
-    interest_rate_pct: float = Field(..., ge=0)
+    principal_amount: float = Field(..., gt=0, le=MAX_PRINCIPAL)
+    tenure_months: int = Field(..., gt=0, le=MAX_TENURE_MONTHS)
+    interest_rate_pct: float = Field(..., ge=0, le=50)
 
 
 class FDCalculatorResponse(BaseModel):
@@ -60,8 +65,8 @@ class FDCalculatorResponse(BaseModel):
 
 class CreateFDBookingRequest(BaseModel):
     scheme_id: int
-    principal_amount: float = Field(..., gt=0)
-    tenure_months: int = Field(..., gt=0)
+    principal_amount: float = Field(..., gt=0, le=MAX_PRINCIPAL)
+    tenure_months: int = Field(..., gt=0, le=MAX_TENURE_MONTHS)
     payment_method: str = Field(..., pattern="^(upi|net_banking)$")
     # MOCK KYC — device_id of the booking device, checked against
     # kyc_consent_service.verify_device_binding() before mock instant
@@ -143,7 +148,7 @@ def post_fd_calculator(payload: FDCalculatorRequest):
             interest_rate_pct=payload.interest_rate_pct,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=422, detail=str(exc))
     return FDCalculatorResponse(**result)
 
 

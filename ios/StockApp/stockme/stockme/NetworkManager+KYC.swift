@@ -81,6 +81,21 @@ extension NetworkManager {
         guard let http = response as? HTTPURLResponse else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
         }
+        // 409: a mock fraud heuristic rejected the bind;
+        // body is {"detail": {"bound": false, "reason", "fraud_signal"}}.
+        if http.statusCode == 409 {
+            let detail = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["detail"] as? [String: Any]
+            let message: String
+            switch detail?["fraud_signal"] as? String {
+            case "cross_user_device_reuse":
+                message = "This device is already registered to another account."
+            case "rebind_rate_limit_exceeded":
+                message = "Too many device bind attempts today. Please try again in 24 hours."
+            default:
+                message = "This device couldn't be bound right now."
+            }
+            throw NetworkError.serverError(409, message)
+        }
         guard (200...299).contains(http.statusCode) else {
             let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
             throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))

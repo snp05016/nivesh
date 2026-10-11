@@ -254,7 +254,7 @@ struct AccountSecurityStatusView: View {
             actionMessage = "This device is now bound."
             HapticManager.success()
         } catch {
-            errorMessage = "Couldn't bind this device. Please try again."
+            errorMessage = (error as? NetworkError)?.errorDescription ?? "Couldn't bind this device. Please try again."
         }
         isBindingDevice = false
     }

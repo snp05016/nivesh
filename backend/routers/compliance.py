@@ -10,12 +10,13 @@ deletion is performed anywhere in this router or its service.
 """
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from typing import Optional
 
 from core.security import require_auth
 from services import compliance_service, disclosure_service
+from services.product_bounds import ProductBoundsError
 
 router = APIRouter(prefix="/api/v1/compliance", tags=["Compliance"])
 
@@ -138,8 +139,8 @@ def get_disclosure_content(key: str):
 def get_key_fact_statement(
     loan_offer_id: Optional[int] = None,
     scheme_id: Optional[int] = None,
-    amount: Optional[float] = None,
-    tenure_months: Optional[int] = None,
+    amount: Optional[float] = Query(None, gt=0, le=1e11),
+    tenure_months: Optional[int] = Query(None, gt=0, le=1200),
 ):
     """Returns a structured Key Fact Statement (KFS) breakdown — loan_amount,
     interest_rate, all_fees, apr, tenure — computed dynamically from a real
@@ -154,12 +155,15 @@ def get_key_fact_statement(
             status_code=422,
             detail="Provide exactly one of 'loan_offer_id' or 'scheme_id'",
         )
-    kfs = disclosure_service.compute_key_fact_statement(
-        loan_offer_id=loan_offer_id,
-        scheme_id=scheme_id,
-        amount=amount,
-        tenure_months=tenure_months,
-    )
+    try:
+        kfs = disclosure_service.compute_key_fact_statement(
+            loan_offer_id=loan_offer_id,
+            scheme_id=scheme_id,
+            amount=amount,
+            tenure_months=tenure_months,
+        )
+    except ProductBoundsError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     if kfs is None:
         raise HTTPException(status_code=404, detail="Loan offer or FD scheme not found")
     return kfs

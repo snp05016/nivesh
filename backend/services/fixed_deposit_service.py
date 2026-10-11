@@ -11,6 +11,7 @@ bank/NBFC FD issuer rate-card feed is called; schemes below are hand-seeded
 demo data. Bookings settle instantly in-process — no real UPI/net-banking
 payment gateway is called anywhere in this module.
 """
+import math
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -186,7 +187,12 @@ def calculate_fd_maturity(
     n = COMPOUNDING_PERIODS_PER_YEAR
     r = interest_rate_pct / 100.0
 
-    maturity_amount = principal * (1.0 + r / n) ** (n * tenure_years)
+    try:
+        maturity_amount = principal * (1.0 + r / n) ** (n * tenure_years)
+    except OverflowError:
+        raise ValueError("principal, tenure or interest rate is out of range")
+    if not math.isfinite(maturity_amount):
+        raise ValueError("principal, tenure or interest rate is out of range")
     interest_earned = maturity_amount - principal
 
     return {
