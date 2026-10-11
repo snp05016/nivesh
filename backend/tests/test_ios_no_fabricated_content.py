@@ -62,3 +62,14 @@ def test_no_simulated_account_controls():
     assert "MockSession" not in security
     assert "demo — not sent to server" not in security
     assert '"PROFILE SAVED"' not in _view("ProfileSettingsView.swift")
+
+
+def test_dead_mock_code_removed():
+    """FAKE-24: preview-only mocks and dead fabricated-value code stay deleted."""
+    for path in (IOS_ROOT / "stockme").rglob("*.swift"):
+        src = path.read_text(encoding="utf-8")
+        for symbol in ("DashboardMockData", "MockFundamentals", "useMockAI"):
+            assert symbol not in src, f"{path.name} still references {symbol}"
+    backend = Path(__file__).resolve().parents[1]
+    assert "def compute_cisi" not in (backend / "services" / "sentiment_engine.py").read_text(encoding="utf-8")
+    assert not (backend / "services" / "parsers" / "earnings_call_summarizer.py").exists()

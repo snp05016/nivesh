@@ -74,9 +74,3 @@ struct DetailedFinancialsTabView: View {
         }
     }
 }
-
-#Preview {
-    DetailedFinancialsTabView(financials: MockFundamentals.mockFinancials)
-        .padding(.vertical)
-        .background(Theme.canvasDeep)
-}

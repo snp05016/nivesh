@@ -3,16 +3,11 @@
 Controller-Service-Repository: routers only call has_entitlement() /
 get_effective_tier() from here; no ORM access happens in routers.
 
-This module derives a user's *effective* tier from UserSubscription rather
-than trusting the stored `tier` column blindly. See the UserSubscription
-docstring in models/db_models.py: once `is_active` is False (the user
-cancelled) and `renews_at` has passed, there is no cron job in this repo
-that flips `tier` back to "free" — so callers that care about "is this
-subscription still actually entitled" must derive it themselves. That is
-exactly what get_effective_tier() does below.
+The effective tier is the stored `tier` as returned by
+subscription_service.get_or_create_subscription(), which reverts any paid plan
+whose `renews_at` has passed (cancelled or not) to "free" on read — the single
+source of truth for expiry (FINSEC-13).
 """
-from datetime import datetime, timezone
-
 from services import subscription_service
 
 # Tier ranking — higher number == more entitlements. Used to compare a
@@ -90,34 +85,12 @@ def get_feature_catalog() -> list[dict]:
 
 
 def get_effective_tier(user_id: int) -> str:
-    """Returns the user's *effective* (actually-entitled) subscription tier.
-
-    - No subscription row at all -> "free".
-    - is_active is False AND renews_at has passed (or is unset) -> "free",
-      regardless of what the stale `tier` column says.
-    - Otherwise -> the stored `tier` (covers: active subscriptions, and
-      cancelled-but-not-yet-lapsed subscriptions that still keep access
-      through the end of the billing period they already paid for).
+    """Returns the user's *effective* (actually-entitled) subscription tier:
+    "free" with no row or once the paid period (`renews_at`) has ended;
+    otherwise the stored tier, including a cancelled plan whose paid period
+    is still running. Expiry lives in subscription_service._load_subscription.
     """
-    sub = subscription_service.get_or_create_subscription(user_id)
-    tier = sub.get("tier", "free")
-    is_active = sub.get("is_active", True)
-    renews_at = sub.get("renews_at")
-
-    if is_active:
-        return tier
-
-    # is_active is False — subscription was cancelled. Still entitled to
-    # `tier` until renews_at, if that date is known and hasn't passed yet.
-    if renews_at is not None:
-        now = datetime.now(timezone.utc)
-        # renews_at may be a naive datetime (SQLite/tests) — normalize.
-        if renews_at.tzinfo is None:
-            renews_at = renews_at.replace(tzinfo=timezone.utc)
-        if renews_at > now:
-            return tier
-
-    return "free"
+    return subscription_service.get_or_create_subscription(user_id).get("tier", "free")
 
 
 def has_entitlement(user_id: int, feature_key: str) -> bool:

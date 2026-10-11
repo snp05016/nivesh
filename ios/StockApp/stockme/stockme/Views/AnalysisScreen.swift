@@ -402,7 +402,6 @@ struct AnalysisScreen: View {
     @State private var showingRegenerateAlert = false
     @State private var showSetAlertSheet = false
     @State private var activeTab = 0
-    @AppStorage("useMockAI") private var useMockAI = false
     @AppStorage("defaultDeepScan") private var defaultDeepScan: Bool = false
     @AppStorage("analysisLastTab") private var savedLastTab: Int = 0
     @AppStorage("nivesh_defaultChartRange") private var defaultChartRange: String = "1M"
@@ -621,7 +620,7 @@ struct AnalysisScreen: View {
     private func startRun(scanType: String, deepScan: Bool) {
         let r = AnalysisRequest.from(ticker: ticker, scanType: scanType, deepScan: deepScan,
                                      languageSetting: analysisLanguage, roundsSetting: debateRoundsStr)
-        viewModel.fetchAnalysis(ticker: r.ticker, userId: authManager.currentUser?.userId, useMock: useMockAI,
+        viewModel.fetchAnalysis(ticker: r.ticker, userId: authManager.currentUser?.userId, useMock: false,
                                 reportManager: reportManager, deepScan: r.deepScan, scanType: r.scanType,
                                 language: r.language, debateRounds: r.debateRounds)
     }
@@ -747,7 +746,7 @@ struct AnalysisScreen: View {
                 HapticManager.impact(.medium)
                 // Replays the failed request (same tier, language, rounds); falls back to a default run.
                 if viewModel.lastRequest != nil {
-                    viewModel.retryLast(userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager)
+                    viewModel.retryLast(userId: authManager.currentUser?.userId, useMock: false, reportManager: reportManager)
                 } else {
                     runDefaultAnalysis()
                 }

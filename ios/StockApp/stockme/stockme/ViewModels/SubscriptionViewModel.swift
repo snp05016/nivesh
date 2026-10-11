@@ -100,6 +100,12 @@ class SubscriptionViewModel: ObservableObject {
 
     /// MOCK - simulated for demo purposes: no real StoreKit purchase sheet.
     func upgrade(to plan: SubscriptionPlanDTO) async {
+        // The Free card's DOWNGRADE is a cancel at period end: the upgrade
+        // route only accepts paid tiers and would 422 (FINSEC-13).
+        if plan.parsedTier == .free {
+            await cancel()
+            return
+        }
         isProcessingAction = true
         actionErrorMessage = nil
         #if DEBUG

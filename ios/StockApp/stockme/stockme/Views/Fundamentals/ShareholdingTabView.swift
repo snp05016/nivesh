@@ -82,9 +82,3 @@ struct ShareholdingTabView: View {
         }
     }
 }
-
-#Preview {
-    ShareholdingTabView(shareholding: MockFundamentals.mockShareholding)
-        .padding(.vertical)
-        .background(Theme.canvasDeep)
-}
