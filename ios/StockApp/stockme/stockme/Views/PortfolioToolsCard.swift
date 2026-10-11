@@ -2,12 +2,26 @@ import SwiftUI
 
 // MARK: - Models
 
+/// GET /portfolio/benchmark (routers/portfolio_analytics.py + portfolio_service.compute_benchmark).
+/// The *_cagr_pct keys hold an absolute return under a year and an XIRR from a year on; return_basis says which.
 struct BenchmarkData: Codable {
-    let portfolio_cagr: Double?
-    let benchmark_cagr: Double?
+    let portfolioReturn: Double?
+    let niftyReturn: Double?
     let alpha: Double?
-    let tracking_error: Double?
-    let information_ratio: Double?
+    let returnBasis: String?
+    let periodDays: Int?
+    let unpricedTickers: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case portfolioReturn = "portfolio_cagr_pct"
+        case niftyReturn = "nifty_cagr_pct"
+        case alpha = "alpha_pct"
+        case returnBasis = "return_basis"
+        case periodDays = "period_days"
+        case unpricedTickers = "unpriced_tickers"
+    }
+
+    var isAnnualized: Bool { returnBasis == "annualized_xirr" }
 }
 
 // MARK: - Portfolio Tools Card
@@ -146,10 +160,17 @@ struct PortfolioToolsCard: View {
             do {
                 let data = try await NetworkManager.shared.fetchBenchmark(userId: userId)
                 await MainActor.run {
-                    benchmarkData = data
                     showBenchmarkSheet = true
                     isLoadingBenchmark = false
-                    HapticManager.success()
+                    // A payload without a portfolio return is a failure, not an all-"--" success.
+                    if data.portfolioReturn != nil {
+                        benchmarkData = data
+                        HapticManager.success()
+                    } else {
+                        benchmarkData = nil
+                        benchmarkError = "Benchmark unavailable"
+                        HapticManager.error()
+                    }
                 }
             } catch {
                 await MainActor.run {
@@ -254,15 +275,15 @@ private struct BenchmarkComparisonSheet: View {
 
                             VStack(spacing: Theme.Spacing.none) {
                                 BenchmarkRow(
-                                    label: "Portfolio CAGR",
-                                    value: d.portfolio_cagr,
+                                    label: d.isAnnualized ? "Portfolio XIRR" : "Portfolio return",
+                                    value: d.portfolioReturn,
                                     isPercent: true
                                 )
                                 GuillocheDivider()
                                     .padding(.horizontal, Theme.Spacing.card)
                                 BenchmarkRow(
-                                    label: "Benchmark CAGR",
-                                    value: d.benchmark_cagr,
+                                    label: d.isAnnualized ? "Nifty 50 (same cash flows)" : "Nifty 50 return",
+                                    value: d.niftyReturn,
                                     isPercent: true
                                 )
                                 GuillocheDivider()
@@ -273,22 +294,15 @@ private struct BenchmarkComparisonSheet: View {
                                     isPercent: true,
                                     isAlpha: true
                                 )
-                                GuillocheDivider()
-                                    .padding(.horizontal, Theme.Spacing.card)
-                                BenchmarkRow(
-                                    label: "Tracking Error",
-                                    value: d.tracking_error,
-                                    isPercent: true
-                                )
-                                GuillocheDivider()
-                                    .padding(.horizontal, Theme.Spacing.card)
-                                BenchmarkRow(
-                                    label: "Information Ratio",
-                                    value: d.information_ratio,
-                                    isPercent: false
-                                )
                             }
                             .banknoteCard()
+
+                            if let unpriced = d.unpricedTickers, !unpriced.isEmpty {
+                                Text("Excluded (price unavailable): \(unpriced.joined(separator: ", "))")
+                                    .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .caption))
+                                    .foregroundStyle(Theme.inkTertiary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
                         }
                         .padding(Theme.Spacing.screen)
                     }
