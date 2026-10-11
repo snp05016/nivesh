@@ -27,6 +27,10 @@ class OptionLegRequest(BaseModel):
     position: str = Field(..., description="Position: LONG or SHORT")
     strike: float = Field(..., gt=0, description="Strike price of the option")
     premium: float = Field(default=0.0, ge=0, description="Premium paid/received per share")
+    quantity: float = Field(
+        default=1.0, gt=0, le=1_000_000,
+        description="Total units = lots x lot size; default 1 = per-share P&L",
+    )
 
     @field_validator("type")
     @classmethod
@@ -73,6 +77,7 @@ class OptionsPayoffResponse(BaseModel):
     net_premium_formatted: str
     num_legs: int
     strategy_type: str
+    pnl_basis: str = "per_share"  # "per_share" when every leg has quantity 1, else "position"
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +92,8 @@ def compute_strategy_payoff(
     """
     Compute the P&L payoff curve and key metrics for a multi-leg options strategy.
 
-Accepts up to 10 legs. Each leg specifies CALL/PUT, LONG/SHORT, strike, and premium.
+Accepts up to 10 legs. Each leg specifies CALL/PUT, LONG/SHORT, strike, premium and an
+optional quantity (lots x lot size; default 1, so amounts are per share).
 Returns the full payoff vector (100 price points ±20% around spot) plus:
 - Max profit, max loss (or "Unlimited" if uncapped)
 - Breakeven points

@@ -35,7 +35,7 @@ struct OptionsStrategyScreen: View {
     @State private var isLoading = false
     @State private var response: OptionsPayoffResponse? = nil
     @State private var localPayoff: [PayoffVectorPoint] = []
-    @State private var localMetrics: (maxProfit: Double, maxLoss: Double, breakevens: [Double], netPremium: Double)? = nil
+    @State private var localMetrics: (maxProfit: Double, maxLoss: Double, breakevens: [Double], netPremium: Double, maxProfitUnlimited: Bool, maxLossUnlimited: Bool)? = nil
     @State private var errorMessage: String? = nil
     @State private var showHelp = false
 
@@ -282,7 +282,7 @@ struct OptionsStrategyScreen: View {
 
     private var metricsSection: some View {
         VStack(spacing: Theme.Spacing.medium) {
-            Text("KEY METRICS")
+            Text("KEY METRICS · PER SHARE")
                 .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                 .tracking(1.2)
                 .foregroundStyle(Theme.inkTertiary)
@@ -329,7 +329,7 @@ struct OptionsStrategyScreen: View {
         .padding(.horizontal, Theme.screenPadding)
     }
 
-    private func localMetricsCard(_ m: (Double, Double, [Double], Double)) -> some View {
+    private func localMetricsCard(_ m: (Double, Double, [Double], Double, Bool, Bool)) -> some View {
         let premium = m.3
         return VStack(spacing: Theme.Spacing.medium) {
             HStack {
@@ -346,8 +346,8 @@ struct OptionsStrategyScreen: View {
             GuillocheDivider()
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Theme.Spacing.standard) {
-                metricBox("MAX PROFIT", IndianFormatter.price(m.0), Theme.bullGreen)
-                metricBox("MAX LOSS", IndianFormatter.price(m.1), Theme.bearRed)
+                metricBox("MAX PROFIT", IndianFormatter.price(m.0), Theme.bullGreen, unlimited: m.4)
+                metricBox("MAX LOSS", IndianFormatter.price(m.1), Theme.bearRed, unlimited: m.5)
                 metricBox("BREAKEVEN", breakevensText(m.2), Theme.inkPrimary)
                 metricBox("SPOT PRICE", IndianFormatter.price(parsedSpot), Theme.securityGold)
             }
@@ -668,25 +668,29 @@ struct OptionsStrategyScreen: View {
             pts.append(PayoffVectorPoint(price: price, pnl: totalPnl))
         }
 
-        let pnls = pts.map { $0.pnl }
-        let maxP = pnls.max() ?? 0
-        let minP = pnls.min() ?? 0
+        // Same extreme-point logic as the server: P&L is piecewise linear with kinks
+        // only at strikes, so finite extremes lie at S = 0 or a strike. Only calls
+        // are unbounded (slope above the top strike); put payoffs cap at S = 0.
+        let candidates = [0.0] + Array(Set(legs.map { $0.strike }.filter { $0 > 0 })).sorted()
+        let vals = candidates.map { s in legs.reduce(0.0) { $0 + legPayoff(leg: $1, underlying: s) } }
+        let upSlope = legs.filter { $0.type == "CALL" }.reduce(0.0) { $0 + ($1.position == "LONG" ? 1 : -1) }
+        let maxP = vals.max() ?? 0
+        let minP = vals.min() ?? 0
 
         var bes: [Double] = []
-        for i in 0..<(pts.count - 1) {
-            let p1 = pts[i], p2 = pts[i + 1]
-            if p1.pnl * p2.pnl <= 0, !(p1.pnl == 0 && p2.pnl == 0) {
-                if p1.pnl == 0 { bes.append(p1.price) }
-                else if p2.pnl == 0 { bes.append(p2.price) }
-                else {
-                    let frac = abs(p1.pnl) / (abs(p1.pnl) + abs(p2.pnl))
-                    bes.append(p1.price + frac * (p2.price - p1.price))
-                }
+        for i in 0..<(candidates.count - 1) {
+            let s1 = candidates[i], s2 = candidates[i + 1], v1 = vals[i], v2 = vals[i + 1]
+            if v1 * v2 <= 0, !(v1 == 0 && v2 == 0) {
+                bes.append(s1 + (s2 - s1) * v1 / (v1 - v2))
             }
         }
+        if let k = candidates.last, let v = vals.last, upSlope != 0, v * upSlope < 0 {
+            bes.append(k - v / upSlope)
+        }
+        let roundedBes = Array(Set(bes.map { ($0 * 100).rounded() / 100 })).sorted()
 
         localPayoff = pts
-        localMetrics = (maxP, minP, bes.sorted(), netPremium)
+        localMetrics = (maxP, minP, roundedBes, netPremium, upSlope > 0, upSlope < 0)
     }
 
     private func legPayoff(leg: OptionLegVM, underlying: Double) -> Double {

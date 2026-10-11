@@ -25,16 +25,18 @@ def _leg_payoff(leg: dict, underlying: float) -> float:
     Compute P&L for a single option leg at a given underlying price.
 
     Args:
-        leg: {"type": "CALL"|"PUT", "position": "LONG"|"SHORT", "strike": float, "premium": float}
+        leg: {"type": "CALL"|"PUT", "position": "LONG"|"SHORT", "strike": float, "premium": float,
+              "quantity": float (optional, total units = lots x lot size; default 1 = per share)}
         underlying: current underlying asset price
 
     Returns:
-        P&L in INR (negative = loss)
+        P&L in INR for the leg's quantity (negative = loss)
     """
     opt_type = leg["type"].upper()
     position = leg["position"].upper()
     strike = float(leg["strike"])
     premium = float(leg["premium"])
+    qty = float(leg.get("quantity", 1.0))
 
     if opt_type == "CALL":
         payoff = max(0.0, underlying - strike)
@@ -44,9 +46,9 @@ def _leg_payoff(leg: dict, underlying: float) -> float:
         raise ValueError(f"Invalid option type: {opt_type}. Must be CALL or PUT.")
 
     if position == "LONG":
-        return payoff - premium
+        return (payoff - premium) * qty
     elif position == "SHORT":
-        return premium - payoff
+        return (premium - payoff) * qty
     else:
         raise ValueError(f"Invalid position: {position}. Must be LONG or SHORT.")
 
@@ -96,27 +98,16 @@ def compute_payoff_vector(
 # Breakeven finder
 # ---------------------------------------------------------------------------
 
-def _find_breakevens(payoff_vector: List[dict]) -> List[float]:
-    """Find underlying prices where P&L crosses zero via linear interpolation."""
+def _exact_breakevens(candidates: List[float], vals: List[float], up_slope: float) -> List[float]:
+    """Zero crossings of the piecewise-linear P&L given its values at S=0 and each strike."""
     breakevens = []
-
-    for i in range(len(payoff_vector) - 1):
-        p1 = payoff_vector[i]
-        p2 = payoff_vector[i + 1]
-        pnl1 = p1["pnl"]
-        pnl2 = p2["pnl"]
-
-        if pnl1 * pnl2 <= 0 and not (pnl1 == 0 and pnl2 == 0):
-            if pnl1 == 0:
-                be = p1["underlying_price"]
-            elif pnl2 == 0:
-                be = p2["underlying_price"]
-            else:
-                # Linear interpolation: price where pnl = 0
-                frac = abs(pnl1) / (abs(pnl1) + abs(pnl2))
-                be = p1["underlying_price"] + frac * (p2["underlying_price"] - p1["underlying_price"])
-            breakevens.append(round(be, 2))
-
+    for s1, s2, v1, v2 in zip(candidates, candidates[1:], vals, vals[1:]):
+        if v1 * v2 <= 0 and not (v1 == 0 and v2 == 0):
+            breakevens.append(round(s1 + (s2 - s1) * v1 / (v1 - v2), 2))
+    # Ray beyond the top strike: v + up_slope * (S - K) = 0
+    k, v = candidates[-1], vals[-1]
+    if up_slope != 0 and v * up_slope < 0:
+        breakevens.append(round(k - v / up_slope, 2))
     return sorted(set(breakevens))
 
 
@@ -137,14 +128,15 @@ def compute_options_payoff(
         {
             "spot_price": float,
             "payoff_vector": [{underlying_price, pnl}, ...],
-            "max_profit": float | "Unlimited",
-            "max_loss": float | "Unlimited",
+            "max_profit": float | None (None when unlimited),
+            "max_loss": float | None (None when unlimited),
             "max_profit_formatted": str,
             "max_loss_formatted": str,
             "breakevens": [float, ...],
             "net_premium": float,
             "net_premium_formatted": str,
             "strategy_type": str,
+            "pnl_basis": "per_share" | "position",
         }
     """
     if not legs:
@@ -164,40 +156,38 @@ def compute_options_payoff(
         if float(leg.get("strike", 0)) <= 0:
             raise ValueError(f"Leg {i}: strike price must be positive.")
         leg.setdefault("premium", 0.0)  # premium defaults to 0 if not provided
+        qty = float(leg.setdefault("quantity", 1.0))  # default 1 = per-share P&L
+        if not (math.isfinite(qty) and qty > 0):
+            raise ValueError(f"Leg {i}: quantity must be a positive number.")
 
     # Compute payoff vector
     payoff_vector = compute_payoff_vector(spot_price, legs)
 
-    # Net premium (premium received minus premium paid)
+    # Net premium (premium received minus premium paid), scaled by quantity
     net_premium = 0.0
     for leg in legs:
-        premium = float(leg["premium"])
+        premium = float(leg["premium"]) * float(leg["quantity"])
         if leg["position"].upper() == "SHORT":
             net_premium += premium
         else:
             net_premium -= premium
     net_premium = round(net_premium, 4)
 
-    # Compute max profit and max loss from the payoff vector
-    pnls = [p["pnl"] for p in payoff_vector]
-    max_profit_val = max(pnls)
-    max_loss_val = min(pnls)
+    # Only calls can be unbounded: as price -> infinity the P&L slope is
+    # (long call qty - short call qty). Put payoffs are capped at S = 0.
+    up_slope = round(sum(
+        float(l["quantity"]) * (1 if l["position"].upper() == "LONG" else -1)
+        for l in legs if l["type"].upper() == "CALL"
+    ), 6)
+    unlimited_profit = up_slope > 0
+    unlimited_loss = up_slope < 0
 
-    # Detect unlimited profit/loss by asymptotic slope of P&L curve.
-    # As price -> infinity: only calls matter (puts = 0). Net slope = (#call_longs - #call_shorts).
-    # As price -> 0: only puts matter (calls = 0). Net slope = (#put_longs - #put_shorts).
-    num_call_longs = sum(1 for l in legs if l["type"].upper() == "CALL" and l["position"].upper() == "LONG")
-    num_call_shorts = sum(1 for l in legs if l["type"].upper() == "CALL" and l["position"].upper() == "SHORT")
-    num_put_longs = sum(1 for l in legs if l["type"].upper() == "PUT" and l["position"].upper() == "LONG")
-    num_put_shorts = sum(1 for l in legs if l["type"].upper() == "PUT" and l["position"].upper() == "SHORT")
-
-    up_slope = num_call_longs - num_call_shorts          # slope at +infinity
-    down_slope = num_put_shorts - num_put_longs          # slope at 0 (positive = gains as price drops)
-
-    # Unlimited profit: either upward or downward slope is positive
-    unlimited_profit = (up_slope > 0) or (down_slope > 0)
-    # Unlimited loss: either upward or downward slope is negative
-    unlimited_loss = (up_slope < 0) or (down_slope < 0)
+    # P&L is piecewise linear with kinks only at strikes, so its finite extremes
+    # lie at S = 0 or at a strike (beyond the top strike the slope is up_slope).
+    candidates = [0.0] + sorted({float(l["strike"]) for l in legs})
+    vals = [sum(_leg_payoff(l, s) for l in legs) for s in candidates]
+    max_profit_val = round(max(vals), 4)
+    max_loss_val = round(min(vals), 4)
 
     max_profit = max_profit_val if not unlimited_profit else "Unlimited"
     max_loss = max_loss_val if not unlimited_loss else "Unlimited"
@@ -206,8 +196,8 @@ def compute_options_payoff(
     max_profit_formatted = "Unlimited" if isinstance(max_profit, str) else format_indian_currency(float(max_profit))
     max_loss_formatted = "Unlimited" if isinstance(max_loss, str) else format_indian_currency(float(max_loss))
 
-    # Find breakeven points
-    breakevens = _find_breakevens(payoff_vector)
+    # Exact breakevens (not limited to the ±20% chart window)
+    breakevens = _exact_breakevens(candidates, vals, up_slope)
 
     # Determine strategy type heuristically
     num_legs = len(legs)
@@ -227,6 +217,7 @@ def compute_options_payoff(
         "net_premium_formatted": format_indian_currency(net_premium),
         "num_legs": num_legs,
         "strategy_type": strategy_type,
+        "pnl_basis": "per_share" if all(float(l["quantity"]) == 1.0 for l in legs) else "position",
     }
 
 
