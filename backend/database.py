@@ -58,6 +58,19 @@ else:
 SessionLocal = sessionmaker(bind=ENGINE, autoflush=False, autocommit=False)
 
 
+def _reset_pool_after_fork() -> None:
+    """DB-02: a forked child must never reuse the parent's pooled sockets.
+
+    dispose(close=False) drops the inherited pool without closing the parent's
+    connections; the child then opens its own on first use.
+    """
+    ENGINE.dispose(close=False)
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_pool_after_fork)
+
+
 @contextmanager
 def get_session() -> Session:
     """Provide a transactional scope around a series of operations.

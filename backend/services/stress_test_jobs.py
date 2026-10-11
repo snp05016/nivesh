@@ -286,12 +286,8 @@ def run_stress_test_job(
     except Exception as _e:
         pass
 
-    # Dispose parent's connection pool — child process must not share parent DB file descriptors
-    try:
-        from database import ENGINE
-        ENGINE.dispose()
-    except Exception as _e:
-        pass
+    # The parent's pool is dropped by database._reset_pool_after_fork (DB-02);
+    # dispose() with close=True here would close the parent's shared sockets.
 
     from services.stress_test import run_stress_test
 

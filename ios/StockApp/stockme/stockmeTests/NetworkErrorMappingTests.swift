@@ -30,6 +30,30 @@ final class NetworkErrorMappingTests: XCTestCase {
         }
     }
 
+    /// CMON-06: a 402 from require_entitlement becomes the typed paywall error.
+    func testEnsureOK402MapsToPaymentRequired() {
+        let body = Data(#"{"detail":{"message":"x","required_tier":"pro"}}"#.utf8)
+        XCTAssertThrowsError(try NetworkError.ensureOK(data: body, response: response(402))) { error in
+            guard case NetworkError.paymentRequired(let tier, let message) = error else {
+                return XCTFail("expected .paymentRequired, got \(error)")
+            }
+            XCTAssertEqual(tier, "pro")
+            XCTAssertEqual(message, "x")
+        }
+    }
+
+    /// CMON-06: the options payoff route is entitlement-gated, so it must carry the Bearer token.
+    func testOptionsPayoffRequestCarriesBearer() throws {
+        let nm = NetworkManager.shared
+        let saved = nm.authToken
+        defer { nm.authToken = saved }
+        nm.authToken = "hdr.payload.sig"
+        let legs = [OptionLeg(type: "CALL", position: "LONG", strike: 100, premium: 5)]
+        let request = try nm.makeOptionsPayoffRequest(spotPrice: 100, legs: legs)
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer hdr.payload.sig")
+        XCTAssertEqual(request.httpMethod, "POST")
+    }
+
     func testEnsureOK2xxPasses() {
         XCTAssertNoThrow(try NetworkError.ensureOK(data: Data(), response: response(200)))
         XCTAssertNoThrow(try NetworkError.ensureOK(data: Data(), response: response(204)))

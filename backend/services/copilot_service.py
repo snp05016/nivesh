@@ -101,7 +101,10 @@ User Message: {user_message}
     reply = ""
     context_cards = None
     
-    if "PORTFOLIO" in intent and not (user_id and has_active_consent(user_id, AI_PROCESSING_CONSENT)):
+    if "PORTFOLIO" in intent and not user_id:
+        reply = "Sign in to ask about your portfolio."
+
+    elif "PORTFOLIO" in intent and not has_active_consent(user_id, AI_PROCESSING_CONSENT):
         # FINSEC-04: holdings go to the LLM processors only with the opt-in consent.
         reply = "To discuss your holdings, enable 'AI processing' in Settings > Account Security > KYC Consents."
 

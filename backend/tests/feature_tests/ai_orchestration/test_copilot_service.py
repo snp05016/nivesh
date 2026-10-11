@@ -1,4 +1,5 @@
 import pytest
+from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
 
 from backend.services.copilot_service import process_copilot_request, strip_emoji, _manage_tokens
@@ -35,12 +36,33 @@ def test_process_copilot_portfolio(mock_get_session, mock_claude, mock_deepseek,
     # Mock DB session
     mock_db = MagicMock()
     mock_get_session.return_value.__enter__.return_value = mock_db
-    mock_db.query.return_value.filter.return_value.all.return_value = []
-    
+    # SimpleNamespace, not MagicMock: a MagicMock row answered h.quantity and hid DB-20.
+    mock_db.query.return_value.filter.return_value.all.return_value = [
+        SimpleNamespace(ticker="SBIN", shares=10.0, buy_price=500.0, group_name="holdings"),
+    ]
+
     res = process_copilot_request("How is my portfolio?", [], {}, 1)
-    
+
     assert res["reply"] == "Portfolio looks great."
     mock_claude.assert_called_once()
+    prompt = mock_claude.call_args[0][0][-1]["content"]
+    assert "SBIN (10 shares" in prompt
+    assert "quantity" not in prompt
+
+
+@patch("backend.services.copilot_service.has_active_consent")
+@patch("backend.services.copilot_service.deepseek_chat")
+@patch("backend.services.copilot_service.claude_haiku")
+@patch("backend.services.copilot_service.get_session")
+def test_process_copilot_portfolio_anonymous(mock_get_session, mock_claude, mock_deepseek, mock_consent):
+    mock_deepseek.return_value = "PORTFOLIO"
+
+    res = process_copilot_request("How is my portfolio?", [], {}, None)
+
+    assert "Sign in" in res["reply"]
+    mock_claude.assert_not_called()
+    mock_get_session.assert_not_called()
+    mock_consent.assert_not_called()
 
 @patch("backend.services.copilot_service.deepseek_chat")
 @patch("backend.services.copilot_service.claude_haiku")

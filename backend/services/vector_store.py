@@ -18,6 +18,22 @@ EMBEDDING_DIM = 384
 _store_lock = threading.Lock()
 _conn: "psycopg2.extensions.connection | None" = None
 _initialised = False
+# Keeps the parent's connection object alive in forked children: if the child
+# garbage-collected it, psycopg2 would send a terminate on the parent's socket.
+_inherited_conns: list = []
+
+
+def _reset_after_fork() -> None:
+    """DB-02: a forked child opens its own pgvector connection and lock."""
+    global _conn, _store_lock
+    if _conn is not None:
+        _inherited_conns.append(_conn)
+    _conn = None
+    _store_lock = threading.Lock()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_after_fork)
 
 
 def _get_conn() -> "psycopg2.extensions.connection":

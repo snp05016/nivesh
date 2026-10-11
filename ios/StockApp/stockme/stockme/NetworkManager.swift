@@ -1387,7 +1387,9 @@ class NetworkManager: ObservableObject {
 
     // MARK: - Options Strategy
 
-    func getOptionsPayoff(spotPrice: Double, legs: [OptionLeg]) async throws -> OptionsPayoffResponse {
+    /// The route depends on require_entitlement("ideas_for_profit"), so the request
+    /// must go through authRequest (Bearer token) or every user gets a 401.
+    func makeOptionsPayoffRequest(spotPrice: Double, legs: [OptionLeg]) throws -> URLRequest {
         let endpoint = "/api/v1/options/payoff"
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
@@ -1396,10 +1398,13 @@ class NetworkManager: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 15
+        request.httpBody = try JSONEncoder().encode(OptionsPayoffRequest(spotPrice: spotPrice, legs: legs))
+        return request
+    }
 
-        let body = OptionsPayoffRequest(spotPrice: spotPrice, legs: legs)
-        request.httpBody = try JSONEncoder().encode(body)
-
+    func getOptionsPayoff(spotPrice: Double, legs: [OptionLeg]) async throws -> OptionsPayoffResponse {
+        let endpoint = "/api/v1/options/payoff"
+        let request = try makeOptionsPayoffRequest(spotPrice: spotPrice, legs: legs)
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
