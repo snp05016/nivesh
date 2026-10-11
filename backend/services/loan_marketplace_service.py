@@ -283,7 +283,12 @@ def link_bank_account(
             is_primary=not has_existing,
         )
         session.add(account)
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError:
+            # unique (user_id, masked_account_number): same mask already linked.
+            session.rollback()
+            raise ValueError("This masked account number is already linked")
         session.refresh(account)
         return account
 

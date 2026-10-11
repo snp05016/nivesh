@@ -174,7 +174,7 @@ in DEMO_MODE; there is no live IPO feed. Demo catalog screens that work end to e
 - [ ] Broker research
 - [x] Expert technical analysis (public advisor commentary) (evidence: ios/StockApp/stockme/stockme/Views/ExpertNetworkView.swift:ExpertNetworkView; backend/routers/market.py:ideas_advisors_endpoint)
 - [ ] Webinars
-- [ ] Compare Stocks (GET /api/v1/compare exists; no iOS screen)
+- [ ] Compare Stocks (placeholder GET /api/v1/compare removed; no iOS screen)
   - [ ] Side-by-side comparison of up to 3 stocks
   - [ ] Fundamental comparison
   - [ ] Shareholding comparison

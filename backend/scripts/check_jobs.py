@@ -1,7 +1,7 @@
-import logging
 """Check analysis job status. Usage: python3 check_jobs.py [running|--all|--stuck|TICKER]"""
 
 from __future__ import annotations
+import logging
 
 import sys
 from pathlib import Path

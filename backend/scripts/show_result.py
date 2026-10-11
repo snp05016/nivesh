@@ -1,7 +1,7 @@
-import logging
 """Display the latest successful AI analysis for a ticker."""
 
 from __future__ import annotations
+import logging
 
 import sys
 from pathlib import Path

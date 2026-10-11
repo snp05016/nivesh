@@ -1,4 +1,3 @@
-import logging
 """
 Task 27 — Signal Agreement Multiplier.
 
@@ -7,6 +6,7 @@ vector cosine agreement to produce a confidence-weighted composite.
 """
 
 from __future__ import annotations
+import logging
 import math
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel

@@ -1,4 +1,3 @@
-import logging
 """Job-scoped checkpoint emitter — the single channel for per-agent progress.
 
 Each agent node calls ``emit(...)`` to record a one-line status + progress %.
@@ -6,6 +5,7 @@ Safe no-op when ``job_id`` is None (e.g. standard scans not tracked as jobs, or
 direct library use outside a job context). Never raises into the analysis pipeline.
 """
 from __future__ import annotations
+import logging
 
 
 class CheckpointEmitter:

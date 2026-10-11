@@ -27,6 +27,9 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install Bandit
-        run: pip install bandit
+        run: pip install bandit==1.7.10
       - name: Run Bandit
-        run: bandit -r backend/ -ll -ii || echo "Bandit found potential security issues"
+        # Blocking: fails on any medium/high finding not already triaged into the baseline.
+        # Regenerate the baseline with the same version and exclusions:
+        #   bandit -r backend/ -ll -ii -x backend/tradingagents-core,backend/tests,backend/.venv,backend/venv -f json -o backend/.bandit-baseline.json
+        run: bandit -r backend/ -ll -ii -x backend/tradingagents-core,backend/tests,backend/.venv,backend/venv -b backend/.bandit-baseline.json

@@ -129,7 +129,8 @@ class LinkedBankAccountResponse(BaseModel):
 
 class LinkBankAccountRequest(BaseModel):
     bank_name: str = Field(..., min_length=2, max_length=100)
-    masked_account_number: str = Field(..., min_length=4, max_length=20)
+    # Masked only: 2-16 mask chars then the last 4 digits ("XXXX1234"); full numbers fail with 422.
+    masked_account_number: str = Field(..., min_length=6, max_length=20, pattern=r"^[Xx*]{2,16}\d{4}$")
     account_type: str = Field("savings", pattern="^(savings|current)$")
     ifsc_code: Optional[str] = Field(None, max_length=15)
 
@@ -350,13 +351,16 @@ def create_linked_bank_account(payload: LinkBankAccountRequest, user_id: int = D
     masked_account_number must already be masked by the client (e.g.
     "XXXX1234") — this endpoint never accepts or stores full account numbers.
     """
-    account = link_bank_account(
-        user_id=user_id,
-        bank_name=payload.bank_name,
-        masked_account_number=payload.masked_account_number,
-        account_type=payload.account_type,
-        ifsc_code=payload.ifsc_code,
-    )
+    try:
+        account = link_bank_account(
+            user_id=user_id,
+            bank_name=payload.bank_name,
+            masked_account_number=payload.masked_account_number,
+            account_type=payload.account_type,
+            ifsc_code=payload.ifsc_code,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     return LinkedBankAccountResponse(
         id=account.id,
         bank_name=account.bank_name,

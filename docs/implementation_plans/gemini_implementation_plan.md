@@ -51,9 +51,9 @@
 ### Quant/Math Agent
 - [x] Build `seasonality_analysis.py` (Historical monthly return probability).
 ### Data Ingestion Agent
-- [x] Build webhook listeners for BSE/NSE real-time corporate announcements.
+- [ ] Build webhook listeners for BSE/NSE real-time corporate announcements. (unwired handler module removed in ARCH-19; not built)
 ### Document AI Agent
-- [x] Build `earnings_call_summarizer.py` (LLM prompt chains for Concall transcripts).
+- [ ] Build `earnings_call_summarizer.py` (LLM prompt chains for Concall transcripts). (placeholder module removed in ARCH-19; not built)
 - [x] Build `whatsapp_alert_formatter.py` (Compressing complex financial data into readable AI alerts).
 ### Data Verification Agent
 - [x] Write latency tests for the ingestion-to-alert pipeline (must be < 2 seconds).

@@ -1,4 +1,3 @@
-import logging
 """
 database_integrity_tests/_base.py
 ====================================
@@ -7,6 +6,7 @@ Bootstraps an isolated in-memory SQLite DB from the real ORM models,
 provides a rich logging mechanism, and exposes assertion helpers.
 """
 from __future__ import annotations
+import logging
 
 import os
 import sys
