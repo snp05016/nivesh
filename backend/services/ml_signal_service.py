@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import httpx
 
 from schemas.ml_signal import FeatureDriver, MLReliability, MLSignalResponse
+from services.qlib_engine.ml_client import build_ml_ohlcv_payload
 
 logger = logging.getLogger(__name__)
 
@@ -103,33 +104,23 @@ async def get_ml_signal(symbol: str) -> MLSignalResponse:
     """
     symbol = symbol.strip().upper()
 
-    # Fetch recent OHLCV data for the ML engine (offload to thread pool)
-    ohlcv_data = []
+    # Fetch OHLCV history for the ML engine (offload to thread pool). 1y gives
+    # the >=120 completed bars the shared payload builder requires.
     try:
         ns_ticker = f"{symbol}.NS" if not symbol.endswith((".NS", ".BO")) else symbol
 
         def _fetch_history():
             ticker_obj = yf.Ticker(ns_ticker)
-            return ticker_obj.history(period="3mo")
+            return ticker_obj.history(period="1y")
 
         hist = await asyncio.to_thread(_fetch_history)
-        if not hist.empty:
-            hist.index = hist.index.tz_localize(None)
-            for dt, row in hist.tail(90).iterrows():
-                ohlcv_data.append({
-                    "date": dt.strftime("%Y-%m-%d") if hasattr(dt, "strftime") else str(dt),
-                    "open": float(row["Open"]),
-                    "high": float(row["High"]),
-                    "low": float(row["Low"]),
-                    "close": float(row["Close"]),
-                    "volume": float(row["Volume"]),
-                })
+        ohlcv_data = build_ml_ohlcv_payload(hist)
     except Exception as e:
         logger.warning("Failed to fetch OHLCV data for %s: %s", symbol, e)
         return _build_unavailable_response(symbol, f"Could not fetch OHLCV data: {e}")
 
-    if len(ohlcv_data) < 5:
-        return _build_unavailable_response(symbol, f"Insufficient OHLCV data ({len(ohlcv_data)} rows, need 5+)")
+    if not ohlcv_data:
+        return _build_unavailable_response(symbol, "Insufficient price history for ML signal")
 
     try:
         async with httpx.AsyncClient(timeout=ML_ENGINE_TIMEOUT) as client:

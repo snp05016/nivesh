@@ -9,10 +9,55 @@ orchestrator and never cause 500s.
 
 import os
 import asyncio
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
+
 import httpx
+import pandas as pd
 
 ML_ENGINE_URL = os.getenv("ML_ENGINE_URL", "http://localhost:8001")
 ML_ENGINE_TIMEOUT = float(os.getenv("ML_ENGINE_TIMEOUT", "5.0"))
+
+# Training builds each row from the last 120 completed daily bars.
+ML_MIN_HISTORY_ROWS = 120
+ML_MAX_HISTORY_ROWS = 252
+_IST = ZoneInfo("Asia/Kolkata")
+# NSE closes at 15:30 IST; the day's bar is treated as final from 15:45.
+_SESSION_FINAL_AT = time(15, 45)
+
+
+def build_ml_ohlcv_payload(df: pd.DataFrame | None, now: datetime | None = None) -> list[dict]:
+    """Build the ml-engine OHLCV payload from a yfinance-style daily frame.
+
+    The single builder for every backend caller, so all of them send the same
+    shape as training: completed bars only (today's in-progress bar dropped),
+    ascending unique dates, no NaN rows, and no ``vwap`` key (ml-engine then
+    uses (H+L+C)/3, as training does). Returns [] when fewer than
+    ML_MIN_HISTORY_ROWS completed bars remain.
+    """
+    cols = ["Open", "High", "Low", "Close", "Volume"]
+    if df is None or df.empty or not set(cols).issubset(df.columns):
+        return []
+    frame = pd.DataFrame(df[cols]).dropna()
+    idx = pd.DatetimeIndex(pd.to_datetime(frame.index))
+    if idx.tz is not None:
+        idx = idx.tz_localize(None)  # keep the exchange-local trading date
+    frame = frame.set_axis(idx).sort_index()
+    frame = frame[~frame.index.duplicated(keep="last")]
+
+    days = [ts.strftime("%Y-%m-%d") for ts in pd.DatetimeIndex(frame.index)]
+    values = frame.to_numpy(dtype=float)
+    now_ist = (now or datetime.now(_IST)).astimezone(_IST)
+    if days and days[-1] == now_ist.strftime("%Y-%m-%d") and now_ist.time() < _SESSION_FINAL_AT:
+        days, values = days[:-1], values[:-1]
+
+    days, values = days[-ML_MAX_HISTORY_ROWS:], values[-ML_MAX_HISTORY_ROWS:]
+    if len(days) < ML_MIN_HISTORY_ROWS:
+        return []
+    return [
+        {"date": d, "open": float(o), "high": float(h), "low": float(l), "close": float(c), "volume": float(v)}
+        for d, (o, h, l, c, v) in zip(days, values)
+    ]
 
 
 async def predict_cross_section(ticker: str, ohlcv_data: list) -> dict | None:

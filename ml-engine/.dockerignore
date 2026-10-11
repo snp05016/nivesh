@@ -1,0 +1,18 @@
+# Serving needs only main.py, config.py, models/, pipeline/ and requirements.txt.
+tests/
+docs/
+sandbox/
+data/
+cache/
+training/
+models/registry/
+.ml-alpha158-candidate/
+evaluate_*.py
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+*.md
+**/*.csv
+**/*.parquet
+.env
+.env.*

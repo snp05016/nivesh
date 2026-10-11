@@ -1460,23 +1460,10 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str) -
         from services.math_engines.monte_carlo_bootstrap import MonteCarloBootstrapEngine
         from database import get_session as _cal_get_session
         # --- ML Engine cross-section client ---
-        from services.qlib_engine.ml_client import predict_cross_section_sync
+        from services.qlib_engine.ml_client import build_ml_ohlcv_payload, predict_cross_section_sync
 
-        # Prepare OHLCV list for ml-engine cross-section call
-        _cal_ohlcv: list = []
-        if price_df is not None and not price_df.empty:
-            _ohlcv_cols = {"Open": "open", "High": "high", "Low": "low",
-                           "Close": "close", "Volume": "volume"}
-            for idx, row in price_df.tail(252).iterrows():
-                d = {
-                    _ohlcv_cols.get(col, col.lower()): float(row[col])
-                    for col in _ohlcv_cols if col in row.index
-                }
-                # Add date (required by ml-engine OHLCVRow) and vwap fallback
-                d["date"] = str(idx.date()) if hasattr(idx, "date") else str(idx)
-                if "vwap" not in d:
-                    d["vwap"] = d.get("close", 0.0)
-                _cal_ohlcv.append(d)
+        # Shared builder: completed bars only, no vwap key (matches training)
+        _cal_ohlcv = build_ml_ohlcv_payload(price_df)
 
         _cal_tasks = {
             "agreement": lambda: compute_signal_agreement(agent_reports),

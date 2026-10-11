@@ -22,6 +22,7 @@ import logging
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -40,7 +41,11 @@ from config import (
     LIGHTGBM_PARAMS,
 )
 from models.model_loader import ModelLoader
-from pipeline.feature_computer import FeatureComputer
+from pipeline.feature_computer import (
+    FeatureComputer,
+    InsufficientHistoryError,
+    InvalidOHLCVError,
+)
 from pipeline.inference import InferenceEngine
 
 _LOG = logging.getLogger("ml-engine")
@@ -61,6 +66,9 @@ MANIFEST_PATH = LIGHTGBM_MODEL_PATH.parent / "MANIFEST.json"
 
 SUPPORTED_HORIZONS = [20]
 DEFAULT_PREDICTION_HORIZON = 20
+# Reject inputs whose latest bar is older than this (calendar days, covers
+# long exchange holidays): a stale series would be scored as if it were current.
+MAX_INPUT_AGE_DAYS = 10
 
 
 # ── Request / Response Models ──────────────────────────────────────────────────
@@ -98,7 +106,7 @@ class SingleStockRequest(BaseModel):
         default_factory=list,
         min_length=0,
         max_length=500,
-        description="OHLCV data — 60+ rows recommended, minimum 5",
+        description="OHLCV data — minimum 60 rows (longest feature window)",
         alias="ohlcv",
     )
     ohlcv_data: list[OHLCVRow] = Field(
@@ -107,7 +115,7 @@ class SingleStockRequest(BaseModel):
         max_length=500,
         description="OHLCV data (alternate key from Nivesh orchestrator)",
     )
-    ticker: str = Field(default="UNKNOWN", description="Stock ticker for logging")
+    ticker: str = Field(default="UNKNOWN", max_length=32, description="Stock ticker for logging")
     model_type: str = Field(
         default="lightgbm",
         pattern="^(lightgbm|tra|ensemble)$",
@@ -425,24 +433,48 @@ def _ohlcv_to_polars(rows: list[OHLCVRow]) -> pl.DataFrame:
     return pl.DataFrame(records)
 
 
+def _is_stale(rows: list[OHLCVRow]) -> bool:
+    """True when the last row carries an ISO date older than MAX_INPUT_AGE_DAYS."""
+    if not rows or not rows[-1].date:
+        return False
+    try:
+        last = date.fromisoformat(rows[-1].date[:10])
+    except ValueError:
+        return False
+    return (datetime.now(timezone.utc).date() - last).days > MAX_INPUT_AGE_DAYS
+
+
 # ── Predict ────────────────────────────────────────────────────────────────────
 
 
+# Plain ``def``: FastAPI runs it in its threadpool, so CPU-bound polars/LightGBM
+# work never blocks the event loop (and /health) for other requests.
 @app.post("/predict/single", response_model=PredictionResult)
-async def predict_single(req: SingleStockRequest) -> PredictionResult:
+def predict_single(req: SingleStockRequest) -> PredictionResult:
     """Predict for a single stock from its OHLCV history."""
     if _feature_computer is None or _inference_engine is None:
         raise HTTPException(status_code=503, detail="Model engine not initialized")
 
     t0 = time.perf_counter()
 
-    df = _ohlcv_to_polars(req.ohlcv_data or req.ohlcv)
+    rows = req.ohlcv_data or req.ohlcv
+    if _is_stale(rows):
+        raise HTTPException(status_code=422, detail="stale_input")
 
+    df = _ohlcv_to_polars(rows)
+
+    # Static details only: exception text stays in the server log.
     try:
         features_df = _feature_computer.compute_all(df)
-    except Exception as exc:
-        _LOG.error("Feature computation failed for %s: %s", req.ticker, exc)
-        raise HTTPException(status_code=422, detail=f"Feature computation failed: {exc}")
+    except InsufficientHistoryError:
+        _LOG.warning("Insufficient history for %s (%d rows)", req.ticker, len(rows))
+        raise HTTPException(status_code=422, detail="insufficient_history")
+    except InvalidOHLCVError:
+        _LOG.warning("Invalid OHLCV input for %s", req.ticker, exc_info=True)
+        raise HTTPException(status_code=422, detail="invalid_ohlcv")
+    except Exception:
+        _LOG.exception("Feature computation failed for %s", req.ticker)
+        raise HTTPException(status_code=422, detail="Feature computation failed")
 
     try:
         result = _inference_engine.predict(
@@ -450,9 +482,9 @@ async def predict_single(req: SingleStockRequest) -> PredictionResult:
             ticker=req.ticker,
             model_type=req.model_type,
         )
-    except Exception as exc:
-        _LOG.error("Inference failed for %s: %s", req.ticker, exc)
-        raise HTTPException(status_code=500, detail=f"Inference failed: {exc}")
+    except Exception:
+        _LOG.exception("Inference failed for %s", req.ticker)
+        raise HTTPException(status_code=500, detail="Inference failed")
 
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
 

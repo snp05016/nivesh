@@ -27,6 +27,18 @@ import polars as pl
 
 _LOG = logging.getLogger(__name__)
 
+# Longest rolling window (config.WINDOWS). Fewer rows would zero-fill the
+# 60-day features, which training never sees, so reject them instead.
+MIN_ROWS = 60
+
+
+class InsufficientHistoryError(ValueError):
+    """Fewer OHLCV rows than the longest feature window."""
+
+
+class InvalidOHLCVError(ValueError):
+    """Non-finite, non-positive, inconsistent or unordered OHLCV input."""
+
 
 class FeatureComputer:
     """Compute Alpha158 features and apply RobustZScoreNorm scaling."""
@@ -65,7 +77,11 @@ class FeatureComputer:
         # Categories 3-8: Windowed factors
         features.update(self._compute_windowed(df))
 
-        # Fill any missing features with 0.0 (windows larger than available data)
+        # NaN guard (closed #520): never hand non-finite values to the model.
+        if not all(np.isfinite(v) for v in features.values()):
+            raise InvalidOHLCVError("Computed features contain NaN or inf")
+
+        # Safety net only: _validate_input guarantees every window is computed.
         for f in self.feature_list:
             if f not in features:
                 features[f] = 0.0
@@ -93,8 +109,26 @@ class FeatureComputer:
                 f"Missing required columns: {missing}. "
                 f"Input must have: open, high, low, close, volume, vwap, date"
             )
-        if len(df) < 5:
-            raise ValueError("Need at least 5 rows of OHLCV data")
+        if len(df) < MIN_ROWS:
+            raise InsufficientHistoryError(f"Need at least {MIN_ROWS} rows of OHLCV data")
+
+        def _col(name: str) -> np.ndarray:
+            return df[name].cast(pl.Float64).to_numpy()  # nulls -> NaN
+
+        o, h, l, c, v = (_col(n) for n in ("open", "high", "low", "close", "volume"))
+        prices = np.concatenate([o, h, l, c])
+        if not (np.isfinite(prices).all() and (prices > 0).all()):
+            raise InvalidOHLCVError("OHLC prices must be finite and positive")
+        # Zero volume is legal (the training data has zero-volume days).
+        if not (np.isfinite(v).all() and (v >= 0).all()):
+            raise InvalidOHLCVError("Volume must be finite and non-negative")
+        if not (h >= l).all():
+            raise InvalidOHLCVError("High must be >= low on every row")
+
+        if "date" in df.columns and df["date"].null_count() == 0:
+            dates = df["date"]
+            if not (dates.is_sorted() and dates.n_unique() == len(dates)):
+                raise InvalidOHLCVError("Dates must be strictly increasing")
 
     # ── Category 1: Kline Basic (9 factors, single-day geometry) ───────────
 

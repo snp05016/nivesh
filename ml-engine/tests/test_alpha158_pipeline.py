@@ -33,7 +33,7 @@ if _ML_ENGINE_DIR not in sys.path:
     sys.path.insert(0, _ML_ENGINE_DIR)
 
 from config import ALPHA158_FEATURES, FEATURE_LIST, WINDOWS  # noqa: E402
-from pipeline.feature_computer import FeatureComputer           # noqa: E402
+from pipeline.feature_computer import FeatureComputer, InsufficientHistoryError  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -328,13 +328,13 @@ class TestFeatureComputerScaler:
 class TestFeatureComputerEdgeCases:
     """Edge-case resilience."""
 
-    def test_minimum_5_rows(self) -> None:
-        """FeatureComputer must not crash on exactly 5 rows (only w=5 window active)."""
-        df = _make_ohlcv(n=5, seed=99)
+    def test_minimum_60_rows(self) -> None:
+        """60 rows (longest window) is accepted; 59 would zero-fill 60-day features and is rejected."""
         fc = FeatureComputer(feature_list=FEATURE_LIST, scaler_params=None)
-        result = fc.compute_all(df)
-        # Should return 1 row; some windowed columns will be zero (skipped windows)
+        result = fc.compute_all(_make_ohlcv(n=60, seed=99))
         assert result.shape[0] == 1
+        with pytest.raises(InsufficientHistoryError):
+            fc.compute_all(_make_ohlcv(n=59, seed=99))
 
     def test_missing_vwap_column_is_handled(self) -> None:
         """Category 2 VWAP0 should fallback to (H+L+C)/3 when vwap column is absent."""
@@ -347,10 +347,10 @@ class TestFeatureComputerEdgeCases:
         assert math.isfinite(float(result["VWAP0"][0]))
 
     def test_raises_on_fewer_than_5_rows(self) -> None:
-        """compute_all must raise ValueError when fewer than 5 rows supplied."""
+        """compute_all must raise ValueError when far too few rows are supplied."""
         df = _make_ohlcv(n=4, seed=1)
         fc = FeatureComputer(feature_list=FEATURE_LIST, scaler_params=None)
-        with pytest.raises(ValueError, match="Need at least 5 rows"):
+        with pytest.raises(ValueError, match="Need at least 60 rows"):
             fc.compute_all(df)
 
     def test_raises_on_missing_required_column(self) -> None:
