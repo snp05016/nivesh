@@ -228,7 +228,7 @@ def generate_markdown_reports(results, lgb_res):
     # 1. BASELINE_COMPARISON.md
     with open(OUTPUT_DIR / "BASELINE_COMPARISON.md", "w") as f:
         f.write("# Baseline Comparison: ML vs Naive\n\n| Model | Hit Rate | Sharpe | Brier Score | Precision |\n|---|---|---|---|---|\n")
-        f.write(f"| **LightGBM** | {results['LightGBM']['mean_hit_rate']} | {np.mean([r.sharpe_ratio for r in lgb_res]) if hasattr(lgb_res[0], 'sharpe_ratio') else 'N/A'} | {results['LightGBM']['mean_brier_score']} | {results['LightGBM']['mean_precision']} |\n")
+        f.write(f"| **LightGBM** | {results['LightGBM']['mean_hit_rate']} | {np.mean([r.sharpe_ratio for r in lgb_res]) if lgb_res and hasattr(lgb_res[0], 'sharpe_ratio') else 'N/A'} | {results['LightGBM']['mean_brier_score']} | {results['LightGBM']['mean_precision']} |\n")
         for b in ["random", "bullish", "bearish", "rsi", "mom20", "mom60", "sma_cross"]:
             if b in results:
                 f.write(f"| {b} | {results[b]['mean_hit_rate']} | N/A | {results[b]['mean_brier_score']} | {results[b]['mean_precision']} |\n")
@@ -247,10 +247,21 @@ def generate_markdown_reports(results, lgb_res):
         for name, res in results.get("Ablation", {}).items():
             f.write(f"| {name} | {res['mean_hit_rate']} | {res['mean_brier_score']} |\n")
             
-    # Write empty stubs for the rest, the user can read the JSON or I can fill them.
-    for report in ["REGIME_ANALYSIS.md", "MODEL_STRENGTHS.md", "MODEL_WEAKNESSES.md", "FINAL_VERDICT.md"]:
-        with open(OUTPUT_DIR / report, "w") as f:
-            f.write(f"# {report.split('.')[0].replace('_', ' ')}\n\nSee `eval_results.json` for detailed metrics.")
+    # 4. REGIME_ANALYSIS.md (strengths/weaknesses/verdict need human judgment, so none are auto-written)
+    regimes = results.get("Regime", {})
+    with open(OUTPUT_DIR / "REGIME_ANALYSIS.md", "w") as f:
+        f.write("# Regime Analysis\n\nRegime = mean 20d forward return of the validation year (>0.5% Bull, <-0.2% Bear, else Sideways).\n\n")
+        f.write("| Regime | Year | Hit Rate | Sharpe |\n|---|---|---|---|\n")
+        for regime, entries in regimes.items():
+            for e in entries:
+                f.write(f"| {regime} | {e['year']} | {e['hit_rate']:.4f} | {e['sharpe']:.2f} |\n")
+        f.write("\n| Regime | Years | Mean Hit Rate | Mean Sharpe |\n|---|---|---|---|\n")
+        for regime in ["Bull", "Bear", "Sideways"]:
+            entries = regimes.get(regime, [])
+            if entries:
+                f.write(f"| {regime} | {len(entries)} | {np.mean([e['hit_rate'] for e in entries]):.4f} | {np.mean([e['sharpe'] for e in entries]):.2f} |\n")
+            else:
+                f.write(f"| {regime} | 0 | n/a | n/a |\n")
 
 if __name__ == "__main__":
     run_evaluation()
