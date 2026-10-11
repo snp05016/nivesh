@@ -1,6 +1,8 @@
+import logging
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from services.nl_screener import NLQueryNotUnderstood, NLQueryUnavailable, process_nl_query
+from services.nl_screener import NLQueryNotUnderstood, process_nl_query
 
 from typing import Dict, List, Optional
 
@@ -38,7 +40,7 @@ def natural_language_screener(req: NLScreenerRequest):
             status_code=422,
             detail='Could not understand the query. Try e.g. "banks with PE under 20".',
         )
-    except NLQueryUnavailable:
+    except Exception:
+        # LLM outage or DB failure (LLM-08): transient, never cached, so 503 lets the client retry.
+        logging.getLogger(__name__).exception("NL screener failed")
         raise HTTPException(status_code=503, detail="Screener is temporarily unavailable")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal server error")

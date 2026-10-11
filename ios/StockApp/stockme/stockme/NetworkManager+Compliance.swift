@@ -108,4 +108,52 @@ extension NetworkManager {
         do { return try JSONDecoder().decode(KeyFactStatementDTO.self, from: data) }
         catch { throw NetworkError.decodingError(error.localizedDescription) }
     }
+
+    // MARK: - Account deletion (FINSEC-03)
+
+    /// Schedules erasure of the signed-in account. The backend re-checks the
+    /// password (403 when wrong) and erases the data after its grace period
+    /// (`ERASURE_GRACE_DAYS`), unless `cancelAccountDeletion()` runs first.
+    /// POST /api/v1/compliance/deletion-requests
+    func requestAccountDeletion(password: String) async throws -> DeletionRequestDTO {
+        var request = try complianceRequest("/api/v1/compliance/deletion-requests", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["password": password])
+        let (data, response) = try await session.data(for: request)
+        try NetworkError.ensureOK(data: data, response: response)
+        do { return try JSONDecoder().decode(DeletionRequestDTO.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    /// Latest deletion request for the signed-in user (`status` nil when none).
+    /// GET /api/v1/compliance/deletion-requests/status
+    func fetchDeletionStatus() async throws -> DeletionRequestDTO {
+        let request = try complianceRequest("/api/v1/compliance/deletion-requests/status", method: "GET")
+        let (data, response) = try await session.data(for: request)
+        try NetworkError.ensureOK(data: data, response: response)
+        do { return try JSONDecoder().decode(DeletionRequestDTO.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    /// Withdraws a pending deletion request during the grace period.
+    /// POST /api/v1/compliance/deletion-requests/cancel
+    func cancelAccountDeletion() async throws {
+        let request = try complianceRequest("/api/v1/compliance/deletion-requests/cancel", method: "POST")
+        let (data, response) = try await session.data(for: request)
+        try NetworkError.ensureOK(data: data, response: response)
+    }
+
+    private func complianceRequest(_ endpoint: String, method: String) throws -> URLRequest {
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else { throw NetworkError.invalidURL }
+        var request = authRequest(url)
+        request.httpMethod = method
+        request.timeoutInterval = 20
+        return request
+    }
+}
+
+/// Deletion request state from /api/v1/compliance/deletion-requests*:
+/// "pending" (erasure scheduled, cancellable), "completed", "cancelled", or nil.
+struct DeletionRequestDTO: Decodable {
+    let status: String?
 }

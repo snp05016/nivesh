@@ -13,7 +13,8 @@ compliance_service erases after a grace period (see compliance_service.py).
 """
 from fastapi import APIRouter, Depends, Request
 
-from core.security import require_auth
+from core.security import rate_limited_user, require_auth
+from routers.compliance import DeletionRequestBody, require_password
 from routers.subscription import SubscriptionResponse
 from services import compliance_service, kyc_consent_service, subscription_service
 
@@ -33,15 +34,21 @@ def get_my_consents(user_id: int = Depends(require_auth)):
 
 
 @router.delete("/account")
-def delete_my_account(request: Request, user_id: int = Depends(require_auth)):
+def delete_my_account(
+    body: DeletionRequestBody, request: Request, user_id: int = Depends(rate_limited_user("compliance"))
+):
     """Request deletion of the current user's account. The daily erasure job
     deletes or de-identifies the user's data once the request is
     scheduled_erasure_after_days old; until then
     POST /api/v1/compliance/deletion-requests/cancel withdraws it. If a
     request is already pending, the service reports that instead of creating
     a duplicate. Records the client IP on the audit entry, same as
-    POST /api/v1/compliance/deletion-requests."""
+    POST /api/v1/compliance/deletion-requests, and like it requires the
+    account password in the JSON body (403 otherwise). Shares that route's
+    per-user "compliance" bucket (10/hour), so a stolen token cannot
+    brute-force the password here faster than through /login."""
+    require_password(user_id, body.password)
     result = compliance_service.request_account_deletion(
-        user_id, reason=None, ip_address=request.client.host if request.client else None
+        user_id, reason=body.reason, ip_address=request.client.host if request.client else None
     )
     return {**result, "scheduled_erasure_after_days": compliance_service.ERASURE_GRACE_DAYS}

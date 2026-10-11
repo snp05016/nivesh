@@ -450,10 +450,11 @@ def verify_access_token(token: str) -> Optional[int]:
         user_id = int(sub)
         # AUTH-13: revoked by logout/password change/erasure (token_version bump) or
         # unknown user. Tokens minted before the "ver" claim count as version 0.
+        # FINSEC-03: an erased account keeps a tombstone row; its tokens die with it.
         with get_session() as session:
-            current = session.query(User.token_version).filter(User.id == user_id).scalar()
-        if current is None or int(payload.get("ver", 0)) != int(current):
-            _auth_logger.debug("[auth] revoked or unknown-user token")
+            row = session.query(User.token_version, User.deleted_at).filter(User.id == user_id).first()
+        if row is None or row[1] is not None or int(payload.get("ver", 0)) != int(row[0]):
+            _auth_logger.debug("[auth] revoked, erased or unknown-user token")
             return None
         return user_id
     except pyjwt.ExpiredSignatureError:

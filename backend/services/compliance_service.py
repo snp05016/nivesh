@@ -20,7 +20,7 @@ from typing import Optional
 
 from sqlalchemy.exc import IntegrityError
 
-from database import get_session
+from database import get_session, verify_password
 from models.db_models import AuditLogEntry, Base, DataDeletionRequest, User
 
 # Reuse the existing KYC consent revoke logic rather than duplicating it.
@@ -68,6 +68,14 @@ def _log_action(
     )
     session.add(entry)
     return entry
+
+
+def password_matches(user_id: int, password: str) -> bool:
+    """Re-authentication for account deletion (FINSEC-03): a stolen bearer
+    token alone must not be enough to schedule an erasure."""
+    with get_session() as session:
+        row = session.query(User.password_hash).filter(User.id == user_id, User.deleted_at.is_(None)).first()
+        return row is not None and verify_password(password, str(row[0]))
 
 
 def request_account_deletion(

@@ -6,6 +6,7 @@ state never leak between tests or into the shared session test user.
 """
 from __future__ import annotations
 
+import functools
 from uuid import uuid4
 
 import pytest
@@ -29,13 +30,23 @@ _AUTH_ROUTES = [
 
 _GATED_FEATURE = "swot_analysis"
 
+# FINSEC-03: deletion routes re-authenticate with the account password.
+_PASSWORD = "Delete-Me-123"
+
+
+@functools.cache
+def _password_hash() -> str:
+    import database
+
+    return database._hash_password(_PASSWORD)
+
 
 def _new_user_headers() -> dict:
     import database
     from models.db_models import User  # pyright: ignore[reportMissingImports]  (checker resolves `models` to ml-engine/models)
 
     with database.get_session() as session:
-        user = User(username=f"sub_{uuid4().hex[:12]}", password_hash="x", display_name="Subscription Test")
+        user = User(username=f"sub_{uuid4().hex[:12]}", password_hash=_password_hash(), display_name="Subscription Test")
         session.add(user)
         session.commit()
         user_id = int(user.id)  # type: ignore[arg-type]
@@ -115,12 +126,12 @@ def test_deletion_request_round_trip(client):
 
     assert client.get(f"{base}/status", headers=headers).json() == {"status": None}
 
-    created = client.post(base, json={"reason": "test"}, headers=headers)
+    created = client.post(base, json={"reason": "test", "password": _PASSWORD}, headers=headers)
     assert created.status_code == 200, created.text
     assert created.json()["created"] is True
     assert created.json()["status"] == "pending"
 
-    duplicate = client.post(base, json={}, headers=headers)
+    duplicate = client.post(base, json={"password": _PASSWORD}, headers=headers)
     assert duplicate.status_code == 200, duplicate.text
     assert duplicate.json()["created"] is False
     assert duplicate.json()["id"] == created.json()["id"]

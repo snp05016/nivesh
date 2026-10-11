@@ -11,6 +11,7 @@ Every DB write goes through database.get_session() into the per-session temp DB
 """
 from __future__ import annotations
 
+import functools
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -40,12 +41,23 @@ def _swift_keys(file_name: str, struct: str) -> set[str]:
     return keys
 
 
+# FINSEC-03: deletion routes re-authenticate with the account password.
+_PASSWORD = "Delete-Me-123"
+
+
+@functools.cache
+def _password_hash() -> str:
+    import database
+
+    return database._hash_password(_PASSWORD)
+
+
 def _new_user() -> tuple[int, dict]:
     import database
     from models.db_models import User  # pyright: ignore[reportMissingImports]  (checker resolves `models` to ml-engine/models)
 
     with database.get_session() as session:
-        user = User(username=f"mc_{uuid4().hex[:12]}", password_hash="x", display_name="Money Control Test")
+        user = User(username=f"mc_{uuid4().hex[:12]}", password_hash=_password_hash(), display_name="Money Control Test")
         session.add(user)
         session.commit()
         user_id = int(user.id)  # type: ignore[arg-type]
@@ -256,8 +268,8 @@ def test_delete_my_account_is_idempotent(client):
     from models.db_models import DataDeletionRequest  # pyright: ignore[reportMissingImports]  (checker resolves `models` to ml-engine/models)
 
     user_id, headers = _new_user()
-    first = client.delete("/api/me/account", headers=headers)
-    second = client.delete("/api/me/account", headers=headers)
+    first = client.request("DELETE", "/api/me/account", json={"password": _PASSWORD}, headers=headers)
+    second = client.request("DELETE", "/api/me/account", json={"password": _PASSWORD}, headers=headers)
 
     assert first.status_code == 200 and second.status_code == 200, (first.text, second.text)
     assert first.json()["created"] is True
@@ -271,7 +283,9 @@ def test_delete_my_account_is_idempotent(client):
 
 def test_audit_trail_is_per_user(client, other_user):
     user_id, headers = _new_user()
-    created = client.post("/api/v1/compliance/deletion-requests", json={"reason": "test"}, headers=headers)
+    created = client.post(
+        "/api/v1/compliance/deletion-requests", json={"reason": "test", "password": _PASSWORD}, headers=headers
+    )
     assert created.status_code == 200, created.text
     assert client.post("/api/v1/compliance/deletion-requests/cancel", headers=headers).status_code == 200
 

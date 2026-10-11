@@ -46,6 +46,7 @@ struct SettingsScreen: View {
     #endif
     @State private var showClearHistoryAlert = false
     @State private var showCalculators = false
+    @State private var showDeleteAccount = false
     @StateObject private var notificationManager = NotificationManager.shared
 
     private var morningBriefDate: Binding<Date> {
@@ -94,6 +95,8 @@ struct SettingsScreen: View {
             )
             // Sheet, not NavRow: CalculatorsView owns a NavigationStack (no nesting).
             .sheet(isPresented: $showCalculators) { CalculatorsView() }
+            // FINSEC-03: in-app account deletion (App Store 5.1.1(v)); the sheet owns its NavigationStack.
+            .sheet(isPresented: $showDeleteAccount) { DeleteAccountSheet().environmentObject(authManager) }
             .onAppear {
                 // Older builds stored display text ("Ask Every Time", "Deep"); StockActionHubView reads lowercase keys.
                 let normalized = defaultScanType == "Ask Every Time" ? "ask" : defaultScanType.lowercased()
@@ -287,6 +290,13 @@ struct SettingsScreen: View {
                 RowLabel(icon: "door.right.hand.open", color: Theme.bearRed, title: "SIGN OUT", tint: Theme.bearRed)
             }
             .buttonStyle(EKPressStyle())
+            if authManager.isLoggedIn {
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
+                Button(role: .destructive) { HapticManager.selection(); showDeleteAccount = true } label: {
+                    RowLabel(icon: "person.crop.circle.badge.xmark", color: Theme.bearRed, title: "DELETE ACCOUNT", tint: Theme.bearRed)
+                }
+                .buttonStyle(EKPressStyle())
+            }
         }
     }
 

@@ -202,7 +202,9 @@ def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_
     return res
 
 
-def get_all_ticker_history(session: Session, ticker: str, user_id: Optional[int] = None, limit: int = 50) -> list[dict]:
+def get_all_ticker_history(
+    session: Session, ticker: str, user_id: Optional[int] = None, limit: int = 50, scan_type: Optional[str] = None
+) -> list[dict]:
     """Retrieve the most recent `limit` analyses for a ticker, ordered oldest to newest.
 
     Args:
@@ -210,6 +212,7 @@ def get_all_ticker_history(session: Session, ticker: str, user_id: Optional[int]
         ticker (str): The stock ticker symbol.
         user_id (Optional[int], optional): ID of the user to filter by. Defaults to None.
         limit (int, optional): Maximum number of records to return. Defaults to 50.
+        scan_type (Optional[str], optional): Only this tier's reports (LLM-16). Defaults to all tiers.
 
     Returns:
         list[dict]: Historical analysis dictionaries, oldest first; the last element is the newest.
@@ -217,6 +220,8 @@ def get_all_ticker_history(session: Session, ticker: str, user_id: Optional[int]
     q = session.query(AnalysisHistory).filter(AnalysisHistory.ticker == ticker.upper())
     if user_id is not None:
         q = q.filter(AnalysisHistory.user_id == user_id)
+    if scan_type is not None:
+        q = q.filter(AnalysisHistory.scan_type == scan_type)
     # Newest window first, then reverse: ordering asc before LIMIT returned the oldest rows (DB-16).
     rows = q.order_by(AnalysisHistory.created_at.desc(), AnalysisHistory.id.desc()).limit(limit).all()
     results = []

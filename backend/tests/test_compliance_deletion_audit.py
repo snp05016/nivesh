@@ -7,7 +7,18 @@ throwaway user so deletion state never leaks into the shared test user.
 """
 from __future__ import annotations
 
+import functools
 from uuid import uuid4
+
+# FINSEC-03: deletion routes re-authenticate with the account password.
+_PASSWORD = "Delete-Me-123"
+
+
+@functools.cache
+def _password_hash() -> str:
+    import database
+
+    return database._hash_password(_PASSWORD)
 
 
 def _new_user() -> tuple[int, dict]:
@@ -15,7 +26,7 @@ def _new_user() -> tuple[int, dict]:
     from models.db_models import User  # pyright: ignore[reportMissingImports]  (checker resolves `models` to ml-engine/models)
 
     with database.get_session() as session:
-        user = User(username=f"del_{uuid4().hex[:12]}", password_hash="x", display_name="Deletion Audit Test")
+        user = User(username=f"del_{uuid4().hex[:12]}", password_hash=_password_hash(), display_name="Deletion Audit Test")
         session.add(user)
         session.commit()
         user_id = int(user.id)  # type: ignore[arg-type]
@@ -38,7 +49,7 @@ def _deletion_audit_entry(user_id: int) -> tuple[str | None, dict]:
 def test_compliance_deletion_request_audit_has_ip_and_reason(client):
     user_id, headers = _new_user()
 
-    resp = client.post("/api/v1/compliance/deletion-requests", json={"reason": "test"}, headers=headers)
+    resp = client.post("/api/v1/compliance/deletion-requests", json={"reason": "test", "password": _PASSWORD}, headers=headers)
 
     assert resp.status_code == 200, resp.text
     assert resp.json()["created"] is True
@@ -51,7 +62,7 @@ def test_compliance_deletion_request_audit_has_ip_and_reason(client):
 def test_me_account_deletion_audit_has_ip(client):
     user_id, headers = _new_user()
 
-    resp = client.delete("/api/me/account", headers=headers)
+    resp = client.request("DELETE", "/api/me/account", json={"password": _PASSWORD}, headers=headers)
 
     assert resp.status_code == 200, resp.text
     assert resp.json()["created"] is True

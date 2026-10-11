@@ -7,10 +7,21 @@ for requests past the grace period.
 """
 from __future__ import annotations
 
+import functools
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 # pyright: reportMissingImports=false
+
+# FINSEC-03: both deletion routes re-authenticate with the account password.
+_PASSWORD = "Erase-Me-123"
+
+
+@functools.cache
+def _password_hash() -> str:
+    import database
+
+    return database._hash_password(_PASSWORD)
 
 
 def _new_user() -> int:
@@ -18,7 +29,7 @@ def _new_user() -> int:
     from models.db_models import User
 
     with database.get_session() as session:
-        user = User(username=f"erase_{uuid4().hex[:12]}", password_hash="x", display_name="Erase Me")
+        user = User(username=f"erase_{uuid4().hex[:12]}", password_hash=_password_hash(), display_name="Erase Me")
         session.add(user)
         session.commit()
         return int(user.id)  # type: ignore[arg-type]
@@ -106,7 +117,7 @@ def test_erase_user_end_to_end():
         assert user is not None and user.deleted_at is not None
         assert str(user.username).startswith("deleted_")
         assert str(user.display_name) == "Deleted user"
-        assert str(user.password_hash) != "x"
+        assert str(user.password_hash) != _password_hash()
         assert s.get(User, other).deleted_at is None  # type: ignore[union-attr]
     assert _status(request_id) == "completed"
 
@@ -146,9 +157,55 @@ def test_delete_account_endpoint_reports_schedule(client):
     uid = _new_user()
     headers = {"Authorization": f"Bearer {database.create_access_token(uid)}"}
 
-    resp = client.delete("/api/me/account", headers=headers)
+    resp = client.request("DELETE", "/api/me/account", json={"password": _PASSWORD}, headers=headers)
 
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["created"] is True and body["status"] == "pending"
     assert body["scheduled_erasure_after_days"] == 7
+
+
+def test_deletion_routes_require_password(client):
+    import database
+
+    uid = _new_user()
+    headers = {"Authorization": f"Bearer {database.create_access_token(uid)}"}
+
+    wrong = {"password": "not-the-password"}
+    assert client.post("/api/v1/compliance/deletion-requests", json=wrong, headers=headers).status_code == 403
+    assert client.request("DELETE", "/api/me/account", json=wrong, headers=headers).status_code == 403
+    assert client.post("/api/v1/compliance/deletion-requests", json={}, headers=headers).status_code == 422
+    assert client.get("/api/v1/compliance/deletion-requests/status", headers=headers).json() == {"status": None}
+
+
+def test_password_guessing_shares_per_user_limit(client):
+    # Both re-auth routes draw on one "compliance" bucket (10/hour per user).
+    import database
+
+    headers = {"Authorization": f"Bearer {database.create_access_token(_new_user())}"}
+    wrong = {"password": "not-the-password"}
+    for i in range(10):
+        path = "/api/me/account" if i % 2 else "/api/v1/compliance/deletion-requests"
+        assert client.request("DELETE" if i % 2 else "POST", path, json=wrong, headers=headers).status_code == 403
+    resp = client.request("DELETE", "/api/me/account", json=wrong, headers=headers)
+    assert resp.status_code == 429, resp.text
+
+
+def test_erased_user_token_and_login_rejected(client):
+    import database
+    from models.db_models import User
+    from services.compliance_service import erase_user
+
+    uid = _new_user()
+    with database.get_session() as s:
+        username = str(s.get(User, uid).username)  # type: ignore[union-attr]
+    headers = {"Authorization": f"Bearer {database.create_access_token(uid)}"}
+    assert client.get("/api/me/subscription", headers=headers).status_code == 200
+
+    resp = client.post("/api/v1/compliance/deletion-requests", json={"password": _PASSWORD}, headers=headers)
+    assert resp.status_code == 200, resp.text
+    erase_user(uid, request_id=int(resp.json()["id"]))
+
+    assert database.verify_access_token(headers["Authorization"].split(" ", 1)[1]) is None
+    assert client.get("/api/me/subscription", headers=headers).status_code == 401
+    assert client.post("/login", json={"username": username, "password": _PASSWORD}).status_code == 401

@@ -33,7 +33,15 @@ _VALID_DISCLOSURE_KEYS = (
 
 
 class DeletionRequestBody(BaseModel):
+    # FINSEC-03: re-authenticate; a bearer token alone cannot schedule an erasure.
+    password: str = Field(..., min_length=1, max_length=128)
     reason: Optional[str] = Field(default=None, max_length=500)
+
+
+def require_password(user_id: int, password: str) -> None:
+    """403 unless password is the account's current password."""
+    if not compliance_service.password_matches(user_id, password):
+        raise HTTPException(status_code=403, detail="Incorrect password")
 
 
 class ConsentWithdrawBody(BaseModel):
@@ -60,7 +68,9 @@ def request_account_deletion(
     user_id: int = Depends(rate_limited_user("compliance")),
 ):
     """Create a pending account-deletion request; the user's data is erased
-    once it is compliance_service.ERASURE_GRACE_DAYS old unless cancelled."""
+    once it is compliance_service.ERASURE_GRACE_DAYS old unless cancelled.
+    Requires the account password (403 otherwise)."""
+    require_password(user_id, body.password)
     result = compliance_service.request_account_deletion(
         user_id, reason=body.reason, ip_address=_client_ip(request)
     )
