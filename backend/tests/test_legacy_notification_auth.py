@@ -48,9 +48,11 @@ def test_register_device_requires_own_token(client, users):
     assert own.status_code == 200
     assert _tokens_for(b, device) == 1
 
-    taken = client.post(url, json={"user_id": a, "device_token": device}, headers=a_headers)
-    assert taken.status_code == 409
-    assert _tokens_for(a, device) == 0
+    # DB-26: the same phone, now logged in as A, re-binds the token to A.
+    rebound = client.post(url, json={"user_id": a, "device_token": device}, headers=a_headers)
+    assert rebound.status_code == 200
+    assert _tokens_for(a, device) == 1
+    assert _tokens_for(b, device) == 0
 
     bad = client.post(url, json={"user_id": b, "device_token": "not-hex"}, headers=b_headers)
     assert bad.status_code == 400

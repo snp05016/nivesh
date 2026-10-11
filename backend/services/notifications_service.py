@@ -1,10 +1,12 @@
 import os
+import re
 import json
 import logging
 from datetime import datetime, timezone
 from core.config_guard import is_production
 from helpers import (
     get_session,
+    DeviceToken,
     NotificationErrorLog,
     log_notification_error,
     upsert_device_token,
@@ -34,6 +36,22 @@ def register_user_device(authorization: str, user_id: int, device_token: str, pl
             target_device=device_token,
         )
         raise RuntimeError("Internal server error")
+
+def unregister_user_device(user_id: int, device_token: str) -> dict:
+    """Delete the caller's own binding of a device token (logout, DB-26).
+
+    Only a row owned by `user_id` is removed, so one user cannot unregister another's device.
+    """
+    if not re.fullmatch(r"[0-9a-fA-F]{64,256}", device_token or ""):
+        raise ValueError("Invalid APNs device token format")
+    with get_session() as session:
+        deleted = (
+            session.query(DeviceToken)
+            .filter_by(device_token=device_token, user_id=user_id)
+            .delete(synchronize_session=False)
+        )
+        session.commit()
+    return {"status": "unregistered" if deleted else "not_found"}
 
 def dispatch_mock_push(device_token: str, title: str, body: str, user_id: int):
     if is_production():

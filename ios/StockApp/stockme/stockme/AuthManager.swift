@@ -10,6 +10,8 @@ class AuthManager: ObservableObject {
     /// Keychain account (and legacy UserDefaults key) for the persisted session.
     static let storageKey = "nivesh_user_v1"
     private let disclaimerRecordedKey = "nivesh_disclaimerRecordedVersion"
+    /// Written by NotificationManager when APNs hands over the device token.
+    private static let apnsTokenKey = "apns_device_token"
 
     init() {
         if let user = Self.loadPersistedUser() {
@@ -50,6 +52,7 @@ class AuthManager: ObservableObject {
             NetworkManager.shared.authToken = user.token
             persist(user)
             recordDisclaimerIfNeeded()
+            rebindDeviceToken()
         } catch {
             loginError = Self.message(for: error, registering: false)
         }
@@ -66,10 +69,18 @@ class AuthManager: ObservableObject {
             NetworkManager.shared.authToken = user.token
             persist(user)
             recordDisclaimerIfNeeded()
+            rebindDeviceToken()
         } catch {
             loginError = Self.message(for: error, registering: true)
         }
         isLoggingIn = false
+    }
+
+    /// DB-26: a device token belongs to whoever is signed in on this phone, so
+    /// re-register it for the new account (the backend re-binds it).
+    private func rebindDeviceToken() {
+        guard let token = UserDefaults.standard.string(forKey: Self.apnsTokenKey) else { return }
+        Task { try? await NetworkManager.shared.registerDeviceToken(token: token) }
     }
 
     /// FINSEC-09: the disclaimer is accepted before sign-in (device-local
@@ -114,6 +125,12 @@ class AuthManager: ObservableObject {
     }
 
     func logout() {
+        // DB-26: stop this account's alerts reaching the device. Bearer is captured
+        // now because authToken is cleared below, before the request runs.
+        if let bearer = NetworkManager.shared.authToken,
+           let token = UserDefaults.standard.string(forKey: Self.apnsTokenKey) {
+            Task { await NetworkManager.shared.unregisterDeviceToken(token: token, bearer: bearer) }
+        }
         // Fix 3.30: Destructive cleanup — cancel network session and clear state
         URLSession.shared.invalidateAndCancel()
         // GH-695: NetworkManager's default config caches to URLCache.shared (Cache.db);

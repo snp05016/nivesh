@@ -59,22 +59,21 @@ from config.settings import NSE_TICKER_OVERRIDES, QUICK_INFO_TTL as _QUICK_INFO_
 def upsert_device_token(user_id: int, device_token: str, platform: str = "ios") -> dict:
     """Register or update a device token for push notifications.
 
-    Security: refuses to silently rebind an existing device token to a
-    different user_id without re-verification. If the token already belongs
-    to another user, the caller must prove ownership of the prior binding
-    (i.e. re-authenticate as that user) or the upsert is rejected.
-    
+    A token identifies a physical device, not an account: when it is already
+    bound to another user (someone else logged in on this phone), it is re-bound
+    to `user_id` (DB-26), so the previous owner's alerts stop reaching this device.
+    Callers must pass the authenticated user's id (AUTH-09), never a body value.
+
     Args:
-        user_id (int): The ID of the user.
+        user_id (int): The ID of the authenticated user.
         device_token (str): The APNs or FCM device token.
         platform (str): The OS platform (e.g., 'ios', 'android').
-        
+
     Returns:
         dict: Success message if registered.
-        
+
     Raises:
         ValueError: If token format is invalid.
-        PermissionError: If token belongs to another user.
     """
     import re
 
@@ -86,10 +85,7 @@ def upsert_device_token(user_id: int, device_token: str, platform: str = "ios") 
     with get_session() as session:
         existing = session.query(DeviceToken).filter_by(device_token=device_token).first()
         if existing:
-            if existing.user_id != user_id:
-                raise PermissionError(
-                    f"Device token already registered to a different user"
-                )
+            existing.user_id = user_id  # pyright: ignore[reportAttributeAccessIssue]  (Column typing)
             existing.updated_at = _dt.now(timezone.utc)
             existing.platform = platform or existing.platform
         else:
@@ -100,10 +96,7 @@ def upsert_device_token(user_id: int, device_token: str, platform: str = "ios") 
                 session.rollback()
                 duplicate = session.query(DeviceToken).filter_by(device_token=device_token).first()
                 if duplicate:
-                    if duplicate.user_id != user_id:
-                        raise PermissionError(
-                            f"Device token already registered to a different user"
-                        )
+                    duplicate.user_id = user_id  # pyright: ignore[reportAttributeAccessIssue]  (Column typing)
                     duplicate.updated_at = _dt.now(timezone.utc)
                     duplicate.platform = platform or duplicate.platform
                 else:

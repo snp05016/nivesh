@@ -38,6 +38,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+from core.timeutil import to_utc_naive
+
 # ── DB location: backend root, never shared with the main stockapp.db ─────────
 _DB_PATH = Path(__file__).parent.parent / "harvester.db"
 DATABASE_URL = f"sqlite:///{_DB_PATH}"
@@ -296,7 +298,7 @@ def _parse_dt(raw: str) -> datetime | None:
     raw = str(raw).strip()
     # ISO first
     try:
-        return datetime.fromisoformat(raw.replace("Z", "+00:00")).replace(tzinfo=None)
+        return to_utc_naive(datetime.fromisoformat(raw.replace("Z", "+00:00")))
     except Exception as _e:
         pass
     for fmt in (
@@ -310,7 +312,7 @@ def _parse_dt(raw: str) -> datetime | None:
         "%d-%m-%Y",
     ):
         try:
-            return datetime.strptime(raw, fmt).replace(tzinfo=None)
+            return to_utc_naive(datetime.strptime(raw, fmt))
         except Exception as _e:
             continue
     return None

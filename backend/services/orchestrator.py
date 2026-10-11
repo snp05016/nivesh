@@ -102,6 +102,7 @@ from database import (
 from prompts import INDIAN_MARKET_SYSTEM_PROMPT, NEWS_ANALYST_PERSONA, EXTREME_ADDENDUM
 
 from services.staleness import compute_staleness
+from core.timeutil import ist_today
 from services.piotroski import compute_piotroski
 from services.confidence_fusion import _fuse_final_confidence, get_ml_engine_mode
 
@@ -777,7 +778,7 @@ def reformat_with_claude(
     user_message = (
         f"Below is the raw trading analysis for {full_ticker} ({exchange}).\n\n"
         f"<raw_analysis>\n{raw_output}\n</raw_analysis>\n\n"
-        f"Today's date: {date.today().strftime('%d-%b-%Y')}"
+        f"Today's date: {ist_today().strftime('%d-%b-%Y')}"
     )
 
     def _validate_parsed(parsed: dict) -> dict | None:
@@ -886,7 +887,7 @@ def reformat_with_claude(
             "ticker": full_ticker,  # noqa: extreme bundles attached by analyze() on the happy path
             "company_name": full_ticker,
             "exchange": exchange,
-            "analysis_date": date.today().strftime("%Y-%m-%d"),
+            "analysis_date": ist_today().strftime("%Y-%m-%d"),
             "signal": "HOLD",
             "confidence_pct": 0,
             "current_price_inr": 0.0,
@@ -1080,9 +1081,8 @@ def _normalize_response(result: dict, scan_type: str = "standard", quant_payload
     if not isinstance(result.get("extreme_thesis"), list):
         result["extreme_thesis"] = []
 
-    # 15. analysis_date — always use server date, never trust AI-generated date
-    from datetime import date
-    result["analysis_date"] = date.today().strftime("%Y-%m-%d")
+    # 15. analysis_date — always the IST trading date, never trust AI-generated date
+    result["analysis_date"] = ist_today().strftime("%Y-%m-%d")
 
     # 16. EXTREME superset — additive guarantees so the iOS extra sections/graphs
     # always decode. Standard analyses skip this entirely.
@@ -1807,7 +1807,7 @@ def analyze(
     shared = language in (None, "English")
     deep_scan = deep_scan or scan_type == "deep"
     full_ticker = _resolve_ticker(ticker, exchange)
-    analysis_date = date.today().strftime("%Y-%m-%d")
+    analysis_date = ist_today().strftime("%Y-%m-%d")
 
     # Job-scoped progress relay (no-op when job_id is None, e.g. standard cache warms).
     from services.checkpoints import CheckpointEmitter

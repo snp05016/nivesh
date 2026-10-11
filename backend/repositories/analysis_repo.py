@@ -1,11 +1,12 @@
 """Analysis history repository — query functions extracted from database.py."""
 
 import json
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
 
+from core.timeutil import ist_today
 from models.db_models import AnalysisHistory, SignalEvent
 
 
@@ -60,13 +61,13 @@ def save_analysis(session: Session, user_id: Optional[int], ticker: str, result:
             ticker=ticker,
             from_signal=prev_signal or "NONE",
             to_signal=new_signal,
-            event_date=result.get("analysis_date", date.today().isoformat()),
+            event_date=result.get("analysis_date", ist_today().isoformat()),
         ))
 
     record = AnalysisHistory(
         user_id=user_id,
         ticker=ticker,
-        analysis_date=date.today().isoformat(),  # always server date — never trust LLM's date field
+        analysis_date=ist_today().isoformat(),  # always IST trading date — never trust LLM's date field
         signal=new_signal,
         confidence_pct=result.get("confidence_pct"),
         target_short=tp.get("short_term_3m"),

@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
-from helpers import require_admin
+from helpers import require_admin, require_auth
 from services.notifications_service import (
     register_user_device,
+    unregister_user_device,
     dispatch_mock_push,
     fetch_notification_errors
 )
@@ -13,6 +14,9 @@ class RegisterDeviceRequest(BaseModel):
     user_id: int
     device_token: str
     platform: str = "ios"
+
+class UnregisterDeviceRequest(BaseModel):
+    device_token: str
 
 class PushMockRequest(BaseModel):
     device_token: str
@@ -30,6 +34,14 @@ def register_device(req: RegisterDeviceRequest, authorization: str = Header(None
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/api/v1/notifications/unregister")
+def unregister_device(req: UnregisterDeviceRequest, user_id: int = Depends(require_auth)):
+    """Drop the caller's binding of this device token (called by iOS on logout)."""
+    try:
+        return unregister_user_device(user_id, req.device_token)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/api/v1/dev/push-mock")
 def push_mock(req: PushMockRequest, _admin: int = Depends(require_admin)):

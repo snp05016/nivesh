@@ -1032,6 +1032,19 @@ class NetworkManager: ObservableObject {
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
     }
 
+    /// DB-26: drop this device's push binding on logout. `bearer` is captured before
+    /// logout clears `authToken`; failures are ignored (the next login re-binds the token).
+    func unregisterDeviceToken(token: String, bearer: String) async {
+        struct Req: Encodable { let device_token: String }
+        guard let url = URL(string: "\(baseURL)/api/v1/notifications/unregister") else { return }
+        var request = authRequest(url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONEncoder().encode(Req(device_token: token))
+        _ = try? await session.data(for: request)
+    }
+
     struct NotificationPayload: Decodable {
         let title: String
         let body: String

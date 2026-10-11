@@ -3,31 +3,10 @@ Staleness scoring for Nivesh analysis results.
 Returns a score 0-100 for how urgently a stock should be re-analysed.
 Pure math — no AI calls, no network calls.
 """
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Optional
 
-# UAE offset — all timestamp comparisons use UAE Standard Time (UTC+4)
-UAE_OFFSET = timedelta(hours=4)
-# Market opens at 09:15 IST on weekdays
-_MARKET_OPEN_HOUR = 9
-_MARKET_OPEN_MINUTE = 15
-
-
-def is_pre_market(analysis_date: Optional[datetime] = None) -> bool:
-    """Check if an analysis was generated before market open (09:15 IST).
-    Pre-market analyses use stale pre-open data and should be invalidated
-    once live trading begins. Fix 2.34.
-    """
-    now_uae = datetime.now(timezone.utc) + UAE_OFFSET
-    market_open = now_uae.replace(
-        hour=_MARKET_OPEN_HOUR, minute=_MARKET_OPEN_MINUTE, second=0, microsecond=0
-    )
-    if analysis_date is not None:
-        anal_time = analysis_date.hour * 60 + analysis_date.minute
-        market_open_mins = _MARKET_OPEN_HOUR * 60 + _MARKET_OPEN_MINUTE
-        if anal_time < market_open_mins and now_uae > market_open:
-            return True
-    return False
+from core.timeutil import utcnow
 
 
 def compute_staleness(
@@ -61,15 +40,14 @@ def compute_staleness(
     score = 0
     reasons = []
 
-    # Age of analysis (weight 40) — uses IST to avoid midnight false positives
+    # Age of analysis (weight 40) — both sides in UTC; naive DB values are UTC (DB-24)
     if last_analysis_date is None:
         score += 40
         reasons.append("never analysed")
     else:
-        now_uae = datetime.now(timezone.utc) + UAE_OFFSET
         if last_analysis_date.tzinfo is None:
             last_analysis_date = last_analysis_date.replace(tzinfo=timezone.utc)
-        age_days = (now_uae - last_analysis_date).days
+        age_days = (utcnow() - last_analysis_date).days
         if age_days > 30:
             score += 40
             reasons.append(f"analysis is {age_days}d old")

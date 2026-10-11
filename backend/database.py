@@ -36,11 +36,13 @@ def _pg_connect_args() -> dict:
     statement_timeout bounds a hung query; idle_in_transaction_session_timeout
     ends a session left idle inside an open transaction, so it cannot pin a
     pooled connection or the vacuum horizon. Both are in ms, env-overridable.
+    timezone=UTC (DB-24): naive DateTime columns hold UTC, so aware UTC values must not
+    be shifted into the server/role TimeZone on write.
     """
     statement_ms = int(os.getenv("DB_STATEMENT_TIMEOUT_MS", "60000"))
     idle_tx_ms = int(os.getenv("DB_IDLE_TX_TIMEOUT_MS", "120000"))
     return {
-        "options": f"-c statement_timeout={statement_ms} -c idle_in_transaction_session_timeout={idle_tx_ms}"
+        "options": f"-c statement_timeout={statement_ms} -c idle_in_transaction_session_timeout={idle_tx_ms} -c timezone=UTC"
     }
 
 
