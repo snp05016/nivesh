@@ -23,9 +23,45 @@ class AnalysisViewModel: ObservableObject {
     private var analysisTask: Task<Void, Never>?
     private var pollJobTask: Task<Void, Never>?
 
+    /// What AnalysisScreen does on appear when it was NOT launched from the
+    /// action hub (holding rows, Home, Search, Earnings push it directly).
+    enum AutoStart: Equatable { case idle, showCached, promptCached, fetch }
+
+    /// Never starts a paid job just because the screen appeared: without a
+    /// saved report the screen goes idle and waits for an explicit "Run analysis".
+    static func autoStart(forceCached: Bool, hasCached: Bool, autoRegenerateStale: Bool, cachedIsStale: Bool) -> AutoStart {
+        guard hasCached else { return .idle }
+        if forceCached { return .showCached }
+        if autoRegenerateStale && cachedIsStale { return .fetch }  // explicit opt-in setting
+        return .promptCached
+    }
+
+    /// How to treat the POST /analyze response.
+    enum StartOutcome: Equatable { case cached, attach(String), conflict(String), unexpected }
+
+    static func classify(_ start: StartJobResponse, ticker: String) -> StartOutcome {
+        if start.analysis != nil { return .cached }
+        if let jid = start.jobId, start.status == "QUEUED" || start.status == "RUNNING" { return .attach(jid) }
+        if start.errorCode == "ALREADY_RUNNING" {
+            // The 409 is keyed on user + scan type, not ticker: only attach to a
+            // job for this same ticker, never show another stock's result here.
+            if let jid = start.jobId, start.ticker?.uppercased() == ticker.uppercased() { return .attach(jid) }
+            return .conflict(start.ticker ?? "another stock")
+        }
+        return .unexpected
+    }
+
+    /// Price/header data for the idle state only; no analysis job.
+    func loadQuickInfo(ticker: String) {
+        Task { quickInfo = await NetworkManager.shared.quickInfo(ticker: ticker) }
+    }
+
     func fetchAnalysis(ticker: String, userId: Int?, useMock: Bool, reportManager: LocalReportManager, deepScan: Bool = false, scanType: String = "standard", language: String? = nil, debateRounds: Int? = nil) {
         analysisTask?.cancel()
         pollJobTask?.cancel()
+        // Set synchronously so the Run button disappears before a second tap can land.
+        isLoading = true
+        jobId = nil  // a stale id from a previous run would pin isLoading = true below
 
         analysisTask = Task {
             isLoading = true
@@ -71,8 +107,26 @@ class AnalysisViewModel: ObservableObject {
                     return
                 }
 
-                if start.status == "QUEUED" || start.status == "RUNNING" || start.status == "ALREADY_RUNNING" {
-                    jobId = start.jobId
+                let outcome = Self.classify(start, ticker: ticker)
+                if case .conflict(let otherTicker) = outcome {
+                    errorInfo = AnalysisErrorInfo(
+                        diagnostic: nil,
+                        rawError: "An analysis for \(otherTicker) is already running. Wait for it to finish, then try again.",
+                        httpStatusCode: 409, responseBody: start.errorDetail ?? "", responseHeaders: "",
+                        requestUrl: NetworkManager.shared.baseURL + "/analyze", elapsedSeconds: 0,
+                        quickInfoElapsed: quickInfoElapsed, isRetryable: true,
+                        isMockMode: useMock, isDeepScan: deepScan)
+                } else if outcome == .unexpected {
+                    errorInfo = AnalysisErrorInfo(
+                        diagnostic: nil, rawError: "Unexpected response from server",
+                        httpStatusCode: 0, responseBody: "", responseHeaders: "",
+                        requestUrl: NetworkManager.shared.baseURL + "/analyze", elapsedSeconds: 0,
+                        quickInfoElapsed: quickInfoElapsed, isRetryable: true,
+                        isMockMode: useMock, isDeepScan: deepScan)
+                }
+
+                if case .attach(let attachJobId) = outcome {
+                    jobId = attachJobId
                     // Poll every 2s until terminal — try raw dict first, StockAnalysis fallback
                     pollJobTask = Task {
                         while !Task.isCancelled {
@@ -263,6 +317,17 @@ struct AnalysisScreen: View {
                     renderLoadingState()
                 } else if let errorInfo = viewModel.errorInfo {
                     renderErrorState(errorInfo)
+                } else {
+                    AnalysisIdleStateView(
+                        ticker: ticker,
+                        exchange: portfolioHolding?.stock.exchange ?? "NSE",
+                        quickInfo: viewModel.quickInfo,
+                        isRunning: viewModel.isLoading,
+                        onRun: {
+                            HapticManager.impact(.medium)
+                            runDefaultAnalysis()
+                        }
+                    )
                 }
             }
             .navigationBarBackButtonHidden(true)
@@ -350,19 +415,23 @@ struct AnalysisScreen: View {
                         let forbidden = Self.deepScanDisabledTickers.contains(ticker.uppercased())
                         viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: !forbidden, scanType: "extreme")
                     }
-                } else if forceCached, let cached = previousAnalysis {
-                    viewModel.analysis = cached
-                } else if let cached = previousAnalysis, autoRegenerateStale,
-                          cached.analysisDate != Self.todayString {
-                    let lang = analysisLanguage == "English" ? nil : analysisLanguage
-                    let rounds = Int(debateRoundsStr)
-                    viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: deepScanEnabled, language: lang, debateRounds: rounds)
-                } else if previousAnalysis != nil {
-                    showingRegenerateAlert = true
                 } else {
-                    let lang = analysisLanguage == "English" ? nil : analysisLanguage
-                    let rounds = Int(debateRoundsStr)
-                    viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: deepScanEnabled, language: lang, debateRounds: rounds)
+                    switch AnalysisViewModel.autoStart(
+                        forceCached: forceCached,
+                        hasCached: previousAnalysis != nil,
+                        autoRegenerateStale: autoRegenerateStale,
+                        cachedIsStale: previousAnalysis?.analysisDate != Self.todayString
+                    ) {
+                    case .showCached:
+                        viewModel.analysis = previousAnalysis
+                    case .fetch:
+                        runDefaultAnalysis()
+                    case .promptCached:
+                        showingRegenerateAlert = true
+                    case .idle:
+                        // No saved report: show the idle state and wait for "Run analysis".
+                        viewModel.loadQuickInfo(ticker: ticker)
+                    }
                 }
             }
             startPricePolling()
@@ -401,6 +470,14 @@ struct AnalysisScreen: View {
                 .disabled(Self.deepScanDisabledTickers.contains(ticker.uppercased()))
                 .opacity(Self.deepScanDisabledTickers.contains(ticker.uppercased()) ? 0.4 : 1.0)
         }
+    }
+
+    /// Default (non-hub) analysis run: user's deep-scan, language and debate settings.
+    private func runDefaultAnalysis() {
+        guard !viewModel.isLoading else { return }
+        let lang = analysisLanguage == "English" ? nil : analysisLanguage
+        let rounds = Int(debateRoundsStr)
+        viewModel.fetchAnalysis(ticker: ticker, userId: authManager.currentUser?.userId, useMock: useMockAI, reportManager: reportManager, deepScan: deepScanEnabled, language: lang, debateRounds: rounds)
     }
 
     // MARK: - Immersive hero chart

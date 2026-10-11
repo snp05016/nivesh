@@ -245,10 +245,13 @@ struct StartJobRequest: Encodable {
 
 struct StartJobResponse: Codable {
     let jobId: String?; let status: String?; let ticker: String?
+    /// Set on error bodies, e.g. the 409 `ALREADY_RUNNING` payload (which has no `status`).
+    let errorCode: String?; let errorDetail: String?
     var analysis: StockAnalysis?
 
     enum CodingKeys: String, CodingKey {
         case jobId = "job_id"; case status; case ticker
+        case errorCode = "error_code"; case errorDetail = "error_detail"
     }
 
     init(from decoder: Decoder) throws {
@@ -256,9 +259,12 @@ struct StartJobResponse: Codable {
         jobId = try c.decodeIfPresent(String.self, forKey: .jobId)
         status = try c.decodeIfPresent(String.self, forKey: .status)
         ticker = try c.decodeIfPresent(String.self, forKey: .ticker)
-        // If the response is a cache hit, it IS a StockAnalysis — try decoding it directly
-        if jobId == nil {
-            analysis = try? StockAnalysis(from: decoder)
+        errorCode = try c.decodeIfPresent(String.self, forKey: .errorCode)
+        errorDetail = try c.decodeIfPresent(String.self, forKey: .errorDetail)
+        // A cache hit IS a StockAnalysis. Decode it strictly: schema drift must
+        // surface as an error, not as a silent nil that leaves the screen blank.
+        if jobId == nil && errorCode == nil {
+            analysis = try StockAnalysis(from: decoder)
         } else {
             analysis = nil
         }
@@ -269,6 +275,8 @@ struct StartJobResponse: Codable {
         try c.encodeIfPresent(jobId, forKey: .jobId)
         try c.encodeIfPresent(status, forKey: .status)
         try c.encodeIfPresent(ticker, forKey: .ticker)
+        try c.encodeIfPresent(errorCode, forKey: .errorCode)
+        try c.encodeIfPresent(errorDetail, forKey: .errorDetail)
     }
 }
 
