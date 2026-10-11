@@ -38,6 +38,11 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertNil(ticker("nivesh://analyze/INFY/extra"))
     }
 
+    func testPushTickerAndURLResolveToSameTicker() {
+        // NotificationManager.didReceive validates userInfo["ticker"] the same way.
+        XCTAssertEqual(DeepLink.validTicker("reliance"), ticker("nivesh://analyze/RELIANCE"))
+    }
+
     func testPushPayloadTickerValidation() {
         XCTAssertEqual(DeepLink.validTicker("infy"), "INFY")
         XCTAssertNil(DeepLink.validTicker(""))

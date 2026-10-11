@@ -582,8 +582,7 @@ struct PortfolioScreen: View {
         P&L: \(pnl)
         """
         
-        if let encoded = text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-           let url = URL(string: "whatsapp://send?text=\(encoded)") {
+        if let url = URL(string: "whatsapp://send?text=\(text.urlQueryValue)") {
             if UIApplication.shared.canOpenURL(url) {
                 UIApplication.shared.open(url)
             }

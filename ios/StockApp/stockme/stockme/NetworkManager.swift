@@ -342,14 +342,23 @@ class NetworkManager: ObservableObject {
     }
 
     /// Poll a job but return raw dict — no StockAnalysis decode. Resilient to schema changes.
-    func pollJobRaw(jobId: String, userId: Int?) async throws -> [String: Any]? {
+    /// Non-2xx throws `serverError`: the 403/422 error bodies are JSON dicts too and must not
+    /// read as a job with an empty status.
+    func pollJobRaw(jobId: String, userId: Int?) async throws -> [String: Any] {
         var urlStr = "\(baseURL)/analyze/job/\(jobId)"
         if let uid = userId { urlStr += "?user_id=\(uid)" }
-        guard let url = URL(string: urlStr) else { return nil }
+        guard let url = URL(string: urlStr) else { throw NetworkError.invalidURL }
         var request = authRequest(url)
         request.timeoutInterval = 10
-        let (data, _) = try await session.data(for: request)
-        return try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(http.statusCode) else {
+            throw NetworkError.serverError(http.statusCode, NetworkError.serverDetail(from: data))
+        }
+        guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw NetworkError.decodingError("job response is not a JSON object")
+        }
+        return obj
     }
 
     func cancelJob(jobId: String, userId: Int?) async throws {
@@ -737,7 +746,7 @@ class NetworkManager: ObservableObject {
     // MARK: - Quarterly Financials
 
     func getQuarterlyFinancialsResponse(ticker: String, exchange: String = "NSE") async -> QuarterlyFinancialsResponse? {
-        guard let url = URL(string: "\(baseURL)/quarterly-financials?ticker=\(ticker)&exchange=\(exchange)") else { return nil }
+        guard let url = URL(string: "\(baseURL)/quarterly-financials?ticker=\(ticker.urlQueryValue)&exchange=\(exchange)") else { return nil }
         var request = URLRequest(url: url)
         request.timeoutInterval = 15
         guard let (data, resp) = try? await session.data(for: request),
@@ -781,7 +790,7 @@ class NetworkManager: ObservableObject {
     // MARK: - Analyst Ratings
 
     func getAnalystRatings(ticker: String, exchange: String = "NSE") async -> AnalystRatingsResponse? {
-        guard let url = URL(string: "\(baseURL)/analyst-ratings?ticker=\(ticker)&exchange=\(exchange)") else { return nil }
+        guard let url = URL(string: "\(baseURL)/analyst-ratings?ticker=\(ticker.urlQueryValue)&exchange=\(exchange)") else { return nil }
         var request = URLRequest(url: url)
         request.timeoutInterval = 12
         guard let (data, resp) = try? await session.data(for: request),
@@ -813,7 +822,7 @@ class NetworkManager: ObservableObject {
     // MARK: - Quick Info
 
     func quickInfo(ticker: String, exchange: String = "NSE") async -> QuickInfo? {
-        guard let url = URL(string: "\(baseURL)/quick-info?ticker=\(ticker)&exchange=\(exchange)") else { return nil }
+        guard let url = URL(string: "\(baseURL)/quick-info?ticker=\(ticker.urlQueryValue)&exchange=\(exchange)") else { return nil }
         var request = URLRequest(url: url)
         request.timeoutInterval = 10
         guard let (data, resp) = try? await session.data(for: request),
@@ -824,8 +833,7 @@ class NetworkManager: ObservableObject {
     // MARK: - Stock OHLCV History
 
     func fetchStockHistory(ticker: String, exchange: String = "NSE", period: String = "1y") async -> StockHistoryResponse? {
-        guard let encoded = ticker.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let url = URL(string: "\(baseURL)/api/v1/market/stock-history?ticker=\(encoded)&exchange=\(exchange)&period=\(period)") else {
+        guard let url = URL(string: "\(baseURL)/api/v1/market/stock-history?ticker=\(ticker.urlQueryValue)&exchange=\(exchange)&period=\(period)") else {
             print("[fetchStockHistory] Invalid URL for ticker=\(ticker) exchange=\(exchange)")
             return nil
         }
@@ -862,9 +870,8 @@ class NetworkManager: ObservableObject {
     // MARK: - Unified Stock Profile
 
     func fetchStockProfile(ticker: String, exchange: String = "NSE") async throws -> StockProfileResponse {
-        let endpoint = "/api/v1/stock-profile?ticker=\(ticker)&exchange=\(exchange)"
-        guard let encoded = ticker.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let url = URL(string: "\(baseURL)\(endpoint)") else {
+        let endpoint = "/api/v1/stock-profile?ticker=\(ticker.urlQueryValue)&exchange=\(exchange)"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
             print("[fetchStockProfile] Invalid URL: \(baseURL)\(endpoint)")
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
         }
@@ -935,7 +942,7 @@ class NetworkManager: ObservableObject {
     ) async throws -> FinancialStatementResponse {
         return try await _fetchDecode(
             FinancialStatementResponse.self,
-            endpoint: "/api/v1/fundamentals/financials?ticker=\(symbol)&exchange=\(exchange)&period_type=\(periodType)&consolidation=\(consolidation)&periods=\(periods)",
+            endpoint: "/api/v1/fundamentals/financials?ticker=\(symbol.urlQueryValue)&exchange=\(exchange)&period_type=\(periodType)&consolidation=\(consolidation)&periods=\(periods)",
             timeout: 20
         )
     }
@@ -943,7 +950,7 @@ class NetworkManager: ObservableObject {
     func fetchShareholding(symbol: String, exchange: String = "NSE") async throws -> ShareholdingResponse {
         return try await _fetchDecode(
             ShareholdingResponse.self,
-            endpoint: "/api/v1/fundamentals/shareholding?ticker=\(symbol)&exchange=\(exchange)",
+            endpoint: "/api/v1/fundamentals/shareholding?ticker=\(symbol.urlQueryValue)&exchange=\(exchange)",
             timeout: 20
         )
     }
@@ -951,7 +958,7 @@ class NetworkManager: ObservableObject {
     func fetchCorporateActions(symbol: String, exchange: String = "NSE") async throws -> CorporateActionsResponse {
         return try await _fetchDecode(
             CorporateActionsResponse.self,
-            endpoint: "/api/v1/fundamentals/corporate-actions?ticker=\(symbol)&exchange=\(exchange)",
+            endpoint: "/api/v1/fundamentals/corporate-actions?ticker=\(symbol.urlQueryValue)&exchange=\(exchange)",
             timeout: 20
         )
     }
@@ -959,7 +966,7 @@ class NetworkManager: ObservableObject {
     func fetchValuation(symbol: String, exchange: String = "NSE") async throws -> ValuationResponse {
         return try await _fetchDecode(
             ValuationResponse.self,
-            endpoint: "/api/v1/fundamentals/valuation?ticker=\(symbol)&exchange=\(exchange)",
+            endpoint: "/api/v1/fundamentals/valuation?ticker=\(symbol.urlQueryValue)&exchange=\(exchange)",
             timeout: 20
         )
     }
@@ -967,7 +974,7 @@ class NetworkManager: ObservableObject {
     func fetchRiskSignals(symbol: String, exchange: String = "NSE") async throws -> RiskSignalsResponse {
         return try await _fetchDecode(
             RiskSignalsResponse.self,
-            endpoint: "/api/v1/fundamentals/risk-signals?ticker=\(symbol)&exchange=\(exchange)",
+            endpoint: "/api/v1/fundamentals/risk-signals?ticker=\(symbol.urlQueryValue)&exchange=\(exchange)",
             timeout: 20
         )
     }
@@ -976,8 +983,7 @@ class NetworkManager: ObservableObject {
 
     func searchStocks(q: String) async -> [StockEntry] {
         guard !q.isEmpty,
-              let encoded = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let url = URL(string: "\(baseURL)/api/v1/search?query=\(encoded)") else { return [] }
+              let url = URL(string: "\(baseURL)/api/v1/search?query=\(q.urlQueryValue)") else { return [] }
         var request = authRequest(url)
         request.timeoutInterval = 5
         guard let (data, resp) = try? await session.data(for: request),
@@ -1270,7 +1276,7 @@ class NetworkManager: ObservableObject {
     }
 
     func fetchEarningsEstimates(ticker: String) async throws -> EarningsEstimate {
-        return try await _fetchDecode(EarningsEstimate.self, endpoint: "/api/v1/earnings/estimates?ticker=\(ticker)")
+        return try await _fetchDecode(EarningsEstimate.self, endpoint: "/api/v1/earnings/estimates?ticker=\(ticker.urlQueryValue)")
     }
 
     func fetchPostResultMovers() async throws -> [PostResultMover] {
@@ -1734,8 +1740,7 @@ extension NetworkManager {
     func fetchHarvesterFeed(ticker: String? = nil, limit: Int = 20) async throws -> HarvesterFeedResponse {
         var urlStr = "\(harvesterBaseURL)/harvester/feed?limit=\(limit)"
         if let t = ticker, !t.isEmpty {
-            let enc = t.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? t
-            urlStr += "&ticker=\(enc)"
+            urlStr += "&ticker=\(t.urlQueryValue)"
         }
         guard let url = URL(string: urlStr) else { throw NetworkError.invalidURL }
         var request = URLRequest(url: url)

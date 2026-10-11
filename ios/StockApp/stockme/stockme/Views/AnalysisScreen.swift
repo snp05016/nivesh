@@ -51,6 +51,153 @@ class AnalysisViewModel: ObservableObject {
         return .unexpected
     }
 
+    // MARK: - Job polling
+
+    /// Per-run values the poll loop needs to store results and build errors.
+    private struct PollContext {
+        let jobId: String
+        let userId: Int?
+        let ticker: String
+        let scanType: String
+        let quickInfoElapsed: Double
+        let useMock: Bool
+        let deepScan: Bool
+        let reportManager: LocalReportManager
+        let started: Date
+    }
+
+    private var pollFailures = 0
+
+    /// What a failed job poll means for the loop.
+    enum PollOutcome: Equatable { case retry, terminal(String) }
+
+    static let jobLostMessage = "This analysis is no longer available. Start a new one."
+    static let maxPollFailures = 8
+    static let maxPollDuration: TimeInterval = 30 * 60
+
+    /// 401/403/404/422 mean the job is gone or not this user's: polling again cannot succeed.
+    /// Network errors and 5xx are transient and retried with backoff.
+    static func pollOutcome(for error: Error) -> PollOutcome {
+        switch error as? NetworkError {
+        case .serverError(let code, _)? where [401, 403, 404, 422].contains(code):
+            return .terminal(jobLostMessage)
+        case .unauthorized?:
+            return .terminal(jobLostMessage)
+        default:
+            return .retry
+        }
+    }
+
+    /// Delay before the next poll: 2 s, doubling per consecutive failure, capped at 15 s.
+    static func pollDelay(consecutiveFailures: Int) -> UInt64 {
+        let seconds: UInt64 = consecutiveFailures >= 3 ? 15 : 2 << UInt64(max(consecutiveFailures, 0))
+        return seconds * 1_000_000_000
+    }
+
+    /// One poll of the running job. Returns the delay before the next poll, or nil to stop.
+    private func pollOnce(_ ctx: PollContext) async -> UInt64? {
+        guard jobId == ctx.jobId else { return nil }
+        let raw: [String: Any]
+        do {
+            raw = try await NetworkManager.shared.pollJobRaw(jobId: ctx.jobId, userId: ctx.userId)
+        } catch {
+            if Task.isCancelled { return nil }
+            pollFailures += 1
+            if case .terminal(let message) = Self.pollOutcome(for: error) {
+                endPolling(ctx, message: message)
+                return nil
+            }
+            if pollFailures >= Self.maxPollFailures {
+                endPolling(ctx, message: "Lost contact with the analysis server. Check your connection and try again.")
+                return nil
+            }
+            return Self.pollDelay(consecutiveFailures: pollFailures)
+        }
+        if Task.isCancelled { return nil }
+        pollFailures = 0
+
+        let polledStatus = raw["status"] as? String ?? ""
+        let polledStage  = raw["stage"] as? String
+        let polledPct    = raw["progress_pct"] as? Int
+        let polledCheckpoints = raw["checkpoints"] as? [[String: Any]]
+        let polledError  = raw["error"] as? String
+
+        jobStatus = JobStatus(
+            jobId: ctx.jobId, userId: ctx.userId, ticker: ctx.ticker,
+            scanType: ctx.scanType, status: polledStatus,
+            stage: polledStage, progressPct: polledPct,
+            checkpoints: nil, tokensUsed: nil, error: polledError, result: nil
+        )
+        if let cps = polledCheckpoints {
+            engineCheckpoints = cps.compactMap { cp in
+                guard let stage = cp["stage"] as? String,
+                      let agent = cp["agent"] as? String,
+                      let msg = cp["message"] as? String else { return nil }
+                return CheckpointEvent(ts: cp["ts"] as? String ?? "", stage: stage, agent: agent, message: msg, state: cp["state"] as? String ?? "running")
+            }
+        }
+        isLoading = polledStatus != "SUCCEEDED" && polledStatus != "FAILED" && polledStatus != "TIMEOUT" && polledStatus != "CANCELLED"
+
+        if polledStatus == "SUCCEEDED" {
+            // Try StockAnalysis decode
+            if let resultData = raw["result"] {
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: resultData)
+                    let decoded = try JSONDecoder().decode(StockAnalysis.self, from: jsonData)
+                    analysis = decoded
+                    ctx.reportManager.saveReport(decoded)
+                    isLoading = false
+                } catch {
+                    print("[AnalysisScreen] StockAnalysis decode failed: \(error)")
+                    // Show error with raw signal info so user sees something
+                    let sigRaw = (resultData as? [String: Any])?["signal"] as? String ?? "?"
+                    errorInfo = AnalysisErrorInfo(
+                        diagnostic: nil,
+                        rawError: "Decode failed but analysis complete. Signal: \(sigRaw)",
+                        httpStatusCode: 200, responseBody: "", responseHeaders: "",
+                        requestUrl: "/analyze/job/\(ctx.jobId)", elapsedSeconds: 0,
+                        quickInfoElapsed: ctx.quickInfoElapsed, isRetryable: false,
+                        isMockMode: ctx.useMock, isDeepScan: ctx.deepScan)
+                    isLoading = false
+                }
+            } else {
+                isLoading = false
+            }
+        } else if ["FAILED", "TIMEOUT", "CANCELLED"].contains(polledStatus) {
+            errorInfo = AnalysisErrorInfo(
+                diagnostic: nil, rawError: polledError ?? "analysis \(polledStatus)",
+                httpStatusCode: 0, responseBody: "", responseHeaders: "",
+                requestUrl: "/analyze/job/\(ctx.jobId)", elapsedSeconds: 0,
+                quickInfoElapsed: ctx.quickInfoElapsed, isRetryable: true,
+                isMockMode: ctx.useMock, isDeepScan: ctx.deepScan)
+            isLoading = false
+        }
+
+        switch polledStatus {
+        case "QUEUED", "RUNNING":
+            if Date().timeIntervalSince(ctx.started) > Self.maxPollDuration {
+                endPolling(ctx, message: "The analysis is taking longer than expected. Check your saved reports later.")
+                return nil
+            }
+            return Self.pollDelay(consecutiveFailures: 0)
+        case "SUCCEEDED", "FAILED", "TIMEOUT", "CANCELLED":
+            return nil
+        default:
+            endPolling(ctx, message: "Unexpected response from server")
+            return nil
+        }
+    }
+
+    private func endPolling(_ ctx: PollContext, message: String) {
+        errorInfo = AnalysisErrorInfo(
+            diagnostic: nil, rawError: message,
+            httpStatusCode: 0, responseBody: "", responseHeaders: "",
+            requestUrl: "/analyze/job/\(ctx.jobId)", elapsedSeconds: 0,
+            quickInfoElapsed: ctx.quickInfoElapsed, isRetryable: true,
+            isMockMode: ctx.useMock, isDeepScan: ctx.deepScan)
+        isLoading = false
+    }
+
     /// Price/header data for the idle state only; no analysis job.
     func loadQuickInfo(ticker: String) {
         Task { quickInfo = await NetworkManager.shared.quickInfo(ticker: ticker) }
@@ -127,75 +274,16 @@ class AnalysisViewModel: ObservableObject {
 
                 if case .attach(let attachJobId) = outcome {
                     jobId = attachJobId
-                    // Poll every 2s until terminal — try raw dict first, StockAnalysis fallback
-                    pollJobTask = Task {
+                    pollFailures = 0
+                    let ctx = PollContext(jobId: attachJobId, userId: userId, ticker: ticker, scanType: scanType,
+                                          quickInfoElapsed: quickInfoElapsed, useMock: useMock, deepScan: deepScan,
+                                          reportManager: reportManager, started: Date())
+                    pollJobTask = Task { [weak self] in
+                        // self is held only for one poll, so leaving the screen releases the
+                        // view model and ends the loop (the server job keeps running).
                         while !Task.isCancelled {
-                            guard let jid = jobId else { break }
-                            let rawJob = try? await NetworkManager.shared.pollJobRaw(jobId: jid, userId: userId)
-                            if let raw = rawJob {
-                                let polledStatus = raw["status"] as? String ?? ""
-                                let polledStage  = raw["stage"] as? String
-                                let polledPct    = raw["progress_pct"] as? Int
-                                let polledCheckpoints = raw["checkpoints"] as? [[String: Any]]
-                                let polledError  = raw["error"] as? String
-
-                                await MainActor.run {
-                                    jobStatus = JobStatus(
-                                        jobId: jid, userId: userId, ticker: ticker,
-                                        scanType: scanType, status: polledStatus,
-                                        stage: polledStage, progressPct: polledPct,
-                                        checkpoints: nil, tokensUsed: nil, error: polledError, result: nil
-                                    )
-                                    if let cps = polledCheckpoints {
-                                        engineCheckpoints = cps.compactMap { cp in
-                                            guard let stage = cp["stage"] as? String,
-                                                  let agent = cp["agent"] as? String,
-                                                  let msg = cp["message"] as? String else { return nil }
-                                            return CheckpointEvent(ts: cp["ts"] as? String ?? "", stage: stage, agent: agent, message: msg, state: cp["state"] as? String ?? "running")
-                                        }
-                                    }
-                                    isLoading = polledStatus != "SUCCEEDED" && polledStatus != "FAILED" && polledStatus != "TIMEOUT" && polledStatus != "CANCELLED"
-
-                                    if polledStatus == "SUCCEEDED" {
-                                        // Try StockAnalysis decode
-                                        if let resultData = raw["result"] {
-                                            do {
-                                                let jsonData = try JSONSerialization.data(withJSONObject: resultData)
-                                                let decoded = try JSONDecoder().decode(StockAnalysis.self, from: jsonData)
-                                                analysis = decoded
-                                                reportManager.saveReport(decoded)
-                                                isLoading = false
-                                            } catch {
-                                                print("[AnalysisScreen] StockAnalysis decode failed: \(error)")
-                                                // Show error with raw signal info so user sees something
-                                                let sigRaw = (resultData as? [String: Any])?["signal"] as? String ?? "?"
-                                                errorInfo = AnalysisErrorInfo(
-                                                    diagnostic: nil,
-                                                    rawError: "Decode failed but analysis complete. Signal: \(sigRaw)",
-                                                    httpStatusCode: 200, responseBody: "", responseHeaders: "",
-                                                    requestUrl: "/analyze/job/\(jid)", elapsedSeconds: 0,
-                                                    quickInfoElapsed: quickInfoElapsed, isRetryable: false,
-                                                    isMockMode: useMock, isDeepScan: deepScan)
-                                                isLoading = false
-                                            }
-                                        } else {
-                                            isLoading = false
-                                        }
-                                    } else if ["FAILED", "TIMEOUT", "CANCELLED"].contains(polledStatus) {
-                                        errorInfo = AnalysisErrorInfo(
-                                            diagnostic: nil, rawError: polledError ?? "analysis \(polledStatus)",
-                                            httpStatusCode: 0, responseBody: "", responseHeaders: "",
-                                            requestUrl: "/analyze/job/\(jid)", elapsedSeconds: 0,
-                                            quickInfoElapsed: quickInfoElapsed, isRetryable: true,
-                                            isMockMode: useMock, isDeepScan: deepScan)
-                                        isLoading = false
-                                    }
-                                }
-                            }
-                            if ["SUCCEEDED", "FAILED", "TIMEOUT", "CANCELLED"].contains(rawJob?["status"] as? String ?? "") {
-                                break
-                            }
-                            try? await Task.sleep(nanoseconds: 2_000_000_000)
+                            guard let delay = await self?.pollOnce(ctx) else { break }
+                            try? await Task.sleep(nanoseconds: delay)
                         }
                     }
                 }
@@ -432,7 +520,9 @@ struct AnalysisScreen: View {
             retainedAnalysis = newValue
         }
         .onDisappear {
-            // v2 engine: analysis runs server-side — do NOT cancel. Just stop price polling.
+            // v2 engine: analysis runs server-side — do NOT cancel the job poll here. Pushing the
+            // stock profile also fires onDisappear and nothing would restart it; the poll holds
+            // the view model weakly and ends by itself once the screen is popped.
             pricePollingTask?.cancel()
             pricePollingTask = nil
         }

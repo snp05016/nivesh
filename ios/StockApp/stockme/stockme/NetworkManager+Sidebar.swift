@@ -241,7 +241,7 @@ extension NetworkManager {
     /// Fetch earnings calendar for a date with 7-day price sparklines per ticker.
     func fetchEarningsCalendar(date: String, ticker: String? = nil) async -> EarningsCalendarDayResponse? {
         var path = "/api/v1/earnings/calendar?date=\(date)"
-        if let t = ticker { path += "&ticker=\(t)" }
+        if let t = ticker { path += "&ticker=\(t.urlQueryValue)" }
         guard let url = URL(string: "\(baseURL)\(path)") else {
             os_log(.error, "[Nivesh/Fetch] EarningsCalendar: invalid URL")
             print("[Nivesh/Fetch] EarningsCalendar: INVALID URL")

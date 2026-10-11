@@ -37,16 +37,13 @@ final class AgentStreamClient: ObservableObject {
         isConnected = true
         connectionFailed = false
         task = Task {
-            let urlString = "\(NetworkManager.shared.baseURL)/api/v1/dashboard/stream?user_id=\(userId)&ticker=\(ticker)"
+            let urlString = "\(NetworkManager.shared.baseURL)/api/v1/dashboard/stream?user_id=\(userId)&ticker=\(ticker.urlQueryValue)"
             guard let url = URL(string: urlString) else {
                 await MainActor.run { self.connectionFailed = true; self.isConnected = false }
                 return
             }
-            var request = URLRequest(url: url)
+            var request = NetworkManager.shared.authRequest(url)
             request.timeoutInterval = 120
-            if let token = NetworkManager.shared.authToken {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
             do {
                 let (bytes, _) = try await URLSession.shared.bytes(for: request)
                 for try await line in bytes.lines {
@@ -89,31 +86,10 @@ final class AgentStreamClient: ObservableObject {
 // MARK: - Dialectic Progress View
 struct DialecticProgressView: View {
     @StateObject private var client = AgentStreamClient()
-    @State private var showFallback = false
-    @State private var fallbackStep = 0
     @State private var reconnectAttempts = 0
     @Environment(\.scenePhase) private var scenePhase
     let userId: Int?
     let ticker: String
-
-    private static let fallbackStages: [(agent: String, message: String, llmModel: String)] = [
-        ("Factor Engine", "Computing RSI, MACD, Bollinger Bands, SMA crossovers...", "Deterministic"),
-        ("Epistemic Feedback", "Loading prior analysis audit and outcome tracking...", "N/A"),
-        ("Governance Agent", "Scanning for auditor resignations, SEBI actions, promoter pledges...", "LLM"),
-        ("Market Analyst", "Analyzing price structure, volume profiles, DMA signals...", "LLM"),
-        ("Sentiment Analyst", "Processing social sentiment and news mood...", "LLM"),
-        ("News Analyst", "Scanning headlines, macro catalysts, red flags...", "LLM"),
-        ("Fundamentals Analyst", "Decomposing P&L quality, FCF, working capital...", "LLM"),
-        ("Bull Researcher", "Building bullish thesis with catalysts...", "LLM"),
-        ("Bear Researcher", "Challenging assumptions, finding risks...", "LLM"),
-        ("Research Manager", "Synthesizing debate, assigning verdict...", "LLM"),
-        ("Trader", "Computing entry, target, stop-loss levels...", "LLM"),
-        ("Risk Committee", "Aggressive profile — stress-testing levels...", "LLM"),
-        ("Risk Committee", "Conservative profile — capital preservation...", "LLM"),
-        ("Risk Committee", "Neutral profile — blended assessment...", "LLM"),
-        ("Portfolio Manager", "Final verdict — synthesizing all nodes...", "LLM"),
-        ("Claude Reformatter", "Reformatting into structured JSON...", "LLM"),
-    ]
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.none) {
@@ -132,39 +108,39 @@ struct DialecticProgressView: View {
             GuillocheDivider()
                 .padding(.bottom, Theme.Spacing.card)
 
-            // Progress bar — uses actual total from events (fallback = stages count)
-            let completedCount = max(client.events.filter { $0.status == "complete" }.count,
-                                      showFallback && fallbackStep > 0 ? fallbackStep - 1 : 0)
-            let total = client.events.isEmpty ? Self.fallbackStages.count
-                      : (client.events.last?.totalStages ?? Self.fallbackStages.count)
-            VStack(spacing: Theme.Spacing.small) {
-                let barWidth = UIScreen.main.bounds.width - 2 * Theme.screenPadding
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Theme.inkTertiary.opacity(0.1))
-                        .frame(height: 3)
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Theme.securityGold)
-                        .frame(width: barWidth * CGFloat(completedCount) / CGFloat(total), height: 3)
-                        .animation(.easeInOut(duration: 0.4), value: completedCount)
-                }
-                .frame(height: 3)
-                Text("Stage \(completedCount)/\(total)")
-                    .font(Theme.microLabel(size: 8))
-                    .foregroundStyle(Theme.inkTertiary)
-            }
-            .padding(.bottom, Theme.Spacing.card)
-
-            if !showFallback && client.events.isEmpty && client.isConnected {
-                // Initial connecting state
+            if client.events.isEmpty {
+                // No real progress reported yet: neutral state, never invented stages.
                 HStack(spacing: Theme.Spacing.medium) {
                     ProgressView()
                         .tint(Theme.securityGold)
-                    Text("Initializing agent graph...")
+                    Text(client.connectionFailed
+                         ? "Live progress unavailable. The analysis continues on the server."
+                         : "Waiting for the analysis engine to report progress...")
                         .font(.caption)
                         .foregroundStyle(Theme.inkSecondary)
                 }
-            } else if !showFallback && !client.events.isEmpty {
+            } else {
+                // Progress bar — only from stages the stream actually reported
+                let completedCount = client.events.filter { $0.status == "complete" }.count
+                let total = max(client.events.last?.totalStages ?? 1, 1)
+                VStack(spacing: Theme.Spacing.small) {
+                    let barWidth = UIScreen.main.bounds.width - 2 * Theme.screenPadding
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Theme.inkTertiary.opacity(0.1))
+                            .frame(height: 3)
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Theme.securityGold)
+                            .frame(width: barWidth * CGFloat(min(completedCount, total)) / CGFloat(total), height: 3)
+                            .animation(.easeInOut(duration: 0.4), value: completedCount)
+                    }
+                    .frame(height: 3)
+                    Text("Stage \(completedCount)/\(total)")
+                        .font(Theme.microLabel(size: 8))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+                .padding(.bottom, Theme.Spacing.card)
+
                 // Live SSE events
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -182,32 +158,6 @@ struct DialecticProgressView: View {
                     }
                 }
                 .frame(maxHeight: 320)
-            } else {
-                // Fallback: pre-defined stages with sequential reveal
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: Theme.Spacing.none) {
-                            ForEach(0..<min(fallbackStep, Self.fallbackStages.count), id: \.self) { i in
-                                let stage = Self.fallbackStages[i]
-                                let status: String = i < fallbackStep - 1 ? "complete"
-                                    : (i == fallbackStep - 1 && fallbackStep > Self.fallbackStages.count ? "complete" : "thinking")
-                                AgentEventRow(event: AgentEvent(
-                                    agentName: stage.agent,
-                                    status: status,
-                                    message: stage.message,
-                                    llmModel: stage.llmModel,
-                                    stage: i,
-                                    totalStages: Self.fallbackStages.count
-                                ))
-                                .id(i)
-                            }
-                        }
-                    }
-                    .onChange(of: fallbackStep) { _, _ in
-                        withAnimation { proxy.scrollTo(fallbackStep - 1, anchor: .bottom) }
-                    }
-                }
-                .frame(maxHeight: 320)
             }
         }
         .padding(Theme.Spacing.card)
@@ -216,13 +166,6 @@ struct DialecticProgressView: View {
         .onAppear {
             if let uid = userId {
                 client.connect(userId: uid, ticker: ticker)
-            }
-            // Fallback timer: if no events after 3 seconds, start sequential animation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                if client.events.isEmpty {
-                    showFallback = true
-                    advanceFallback()
-                }
             }
         }
         .onDisappear { client.disconnect() }
@@ -241,18 +184,6 @@ struct DialecticProgressView: View {
                 }
                 reconnectAttempts += 1
             default: break
-            }
-        }
-    }
-
-    private func advanceFallback() {
-        guard showFallback else { return }
-        guard fallbackStep < Self.fallbackStages.count else { return }
-        fallbackStep += 1
-        let delay: TimeInterval = fallbackStep < Self.fallbackStages.count ? 1.8 : 0
-        if fallbackStep < Self.fallbackStages.count {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                advanceFallback()
             }
         }
     }

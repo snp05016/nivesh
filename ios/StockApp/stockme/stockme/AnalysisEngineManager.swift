@@ -20,7 +20,6 @@ final class AnalysisEngineManager: ObservableObject {
     @Published var result: StockAnalysis? = nil  // full result when SUCCEEDED
 
     private var pollTask: Task<Void, Never>? = nil
-    private var isCancelling = false
 
     private var currentUserId: Int? {
         guard let data = UserDefaults.standard.data(forKey: "nivesh_user_v1"),
@@ -77,7 +76,6 @@ final class AnalysisEngineManager: ObservableObject {
                 } catch {
                     try? await Task.sleep(nanoseconds: 5_000_000_000)
                 }
-                if isCancelling { break }
             }
         }
     }
@@ -90,11 +88,11 @@ final class AnalysisEngineManager: ObservableObject {
 
     func cancelActiveJob() {
         guard let jid = activeJobId else { return }
-        isCancelling = true
+        // The watcher keeps running: it must pick up the next job after this one.
         Task {
             try? await NetworkManager.shared.cancelJob(jobId: jid, userId: currentUserId)
             await MainActor.run {
-                isRunning = false; status = "CANCELLED"; isCancelling = false
+                isRunning = false; status = "CANCELLED"
             }
         }
     }
@@ -116,6 +114,8 @@ final class AnalysisEngineManager: ObservableObject {
         default: return
         }
         content.sound = .default
+        // NotificationManager.didReceive routes a tap on this to the stock's hub.
+        content.userInfo = ["ticker": job.ticker]
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(identifier: "job-\(job.jobId)-\(job.status)",
                                             content: content, trigger: trigger)

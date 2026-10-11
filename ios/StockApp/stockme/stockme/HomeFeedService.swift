@@ -8,7 +8,7 @@ class HomeFeedService {
     func fetchFeed(userId: Int, ticker: String? = nil) async throws -> HomeFeedResponse {
         var urlString = "\(NetworkManager.shared.baseURL)/api/v1/home-feed?user_id=\(userId)"
         if let ticker = ticker {
-            urlString += "&ticker=\(ticker)"
+            urlString += "&ticker=\(ticker.urlQueryValue)"
         }
         
         guard let url = URL(string: urlString) else {
