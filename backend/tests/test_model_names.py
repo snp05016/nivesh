@@ -53,7 +53,7 @@ def test_reformat_request_caches_system_prompt_and_drops_temperature_on_5x(monke
     msg = MagicMock()
     msg.content = [MagicMock(text='{"signal": "HOLD"}')]
     client.messages.create.return_value = msg
-    monkeypatch.setattr(orchestrator.anthropic, "Anthropic", lambda **_kw: client)
+    monkeypatch.setattr(orchestrator, "get_anthropic_client", lambda: client)
     monkeypatch.setattr(orchestrator, "SONNET_MODEL", "claude-sonnet-5-5")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test_key")
     monkeypatch.setattr("time.sleep", lambda _s: None)
