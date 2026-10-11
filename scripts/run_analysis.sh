@@ -8,6 +8,7 @@ TICKER=""; MODE="normal"; USER_ID=""; EXCHANGE="NSE"; TIMEOUT=""
 
 usage() {
   echo "Usage: $0 --ticker SYM --mode normal|deep|extreme --user ID [--exchange NSE] [--host URL] [--timeout SEC]"
+  echo "Starts a PAID /analyze job (LLM spend): requires ALLOW_PAID_ENDPOINTS=1. Optional NIVESH_TOKEN is sent as a Bearer token."
   exit 2
 }
 
@@ -45,8 +46,15 @@ except Exception:
     print(''); raise SystemExit
 print(d.get('$1','') if isinstance(d, dict) else '')"; }
 
+if [[ "${ALLOW_PAID_ENDPOINTS:-}" != "1" ]]; then
+  echo "Refusing to start a paid /analyze job on $HOST (ticker=$TICKER mode=$MODE). Set ALLOW_PAID_ENDPOINTS=1 to proceed." >&2
+  exit 3
+fi
+AUTH_ARGS=()
+[[ -n "${NIVESH_TOKEN:-}" ]] && AUTH_ARGS=(-H "Authorization: Bearer $NIVESH_TOKEN")
+
 echo "==> POST /analyze  ticker=$TICKER mode=$MODE scan_type=$SCAN_TYPE deep=$DEEP user=$USER_ID host=$HOST"
-RESP=$(curl -s -X POST "$HOST/analyze" -H 'Content-Type: application/json' \
+RESP=$(curl -s -X POST "$HOST/analyze" ${AUTH_ARGS[@]+"${AUTH_ARGS[@]}"} -H 'Content-Type: application/json' \
   -d "{\"ticker\":\"$TICKER\",\"exchange\":\"$EXCHANGE\",\"user_id\":$USER_ID,\"scan_type\":\"$SCAN_TYPE\",\"deep_scan\":$DEEP}")
 
 ERR=$(echo "$RESP" | jqget error_code)
@@ -65,7 +73,7 @@ while true; do
     echo "TIMEOUT after ${ELAPSED}s; last poll:"; echo "$JOB" | python3 -m json.tool 2>/dev/null || echo "$JOB"
     exit 124
   fi
-  JOB=$(curl -s "$HOST/analyze/job/$JOB_ID?user_id=$USER_ID")
+  JOB=$(curl -s ${AUTH_ARGS[@]+"${AUTH_ARGS[@]}"} "$HOST/analyze/job/$JOB_ID?user_id=$USER_ID")
   STATUS=$(echo "$JOB" | jqget status)
   STAGE=$(echo "$JOB" | jqget stage)
   PROG=$(echo "$JOB" | jqget progress_pct)
