@@ -14,7 +14,6 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from collections import defaultdict
-from types import SimpleNamespace
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from fastapi.responses import FileResponse
 from core.security import require_user_match, require_admin
@@ -194,68 +193,9 @@ def get_valuation_history(user_id: int, days: int = Query(90, ge=1, le=3650), _c
             PortfolioValuationHistory.snapshot_date >= cutoff_date
         ).order_by(PortfolioValuationHistory.snapshot_date.asc()).all()
 
-        estimated_points: list[Any] = []
-        if not snapshots:
-            holdings = session.query(Portfolio).filter(
-                Portfolio.user_id == user_id,
-                Portfolio.group_name == "holdings"
-            ).all()
-            if holdings:
-                try:
-                    ticker_shares = {}
-                    for h in holdings:
-                        t = h.ticker.upper()
-                        ticker_shares[t] = ticker_shares.get(t, 0.0) + h.shares
-
-                    all_closes = {}
-                    for t in ticker_shares:
-                        try:
-                            hist = yf_history(f"{t}.NS", "35d")  # shared, cached (PERF-07)
-                            if not hist.empty:
-                                closes = hist["Close"].dropna()
-                                all_closes[t] = {d.strftime("%Y-%m-%d"): float(c) for d, c in closes.items()}
-                        except Exception as e:
-                            logging.warning(f"Caught exception: {e}")
-                            continue
-
-                    if all_closes:
-                        all_dates = set()
-                        for closes in all_closes.values():
-                            all_dates.update(closes.keys())
-                        sorted_dates = sorted(all_dates)[-30:]
-
-                        total_invested = sum(h.buy_price * h.shares for h in holdings)
-
-                        for date_str in sorted_dates:
-                            total_value = 0.0
-                            missing = False
-                            for t, shares in ticker_shares.items():
-                                if t in all_closes and date_str in all_closes[t]:
-                                    total_value += all_closes[t][date_str] * shares
-                                else:
-                                    missing = True
-                                    break
-                            if missing:
-                                continue
-
-                            pnl = total_value - total_invested
-                            pnl_pct = (pnl / total_invested * 100) if total_invested > 0 else 0.0
-
-                            # REL-10: back-filled from TODAY's shares and cost, so it is an
-                            # estimate. Return it flagged, never persist it as real history.
-                            estimated_points.append(SimpleNamespace(
-                                snapshot_date=date_str,
-                                total_value=round(total_value, 2),
-                                total_invested=round(total_invested, 2),
-                                total_pnl=round(pnl, 2),
-                                pnl_percent=round(pnl_pct, 2),
-                                nifty_close=None,
-                            ))
-                        estimated_points = [p for p in estimated_points if p.snapshot_date >= cutoff_date]
-                        snapshots = estimated_points
-                except Exception as e:
-                    logging.info(f"[Valuation Seeding] Error for user {user_id}: {e}")
-
+        # No snapshots means an empty history: the nightly job (services/portfolio_snapshot)
+        # is the only writer. A back-fill from today's shares and cost would show P&L for
+        # positions the user did not hold then (CMON-05, MATH-09).
         if snapshots:
             first = snapshots[0]
             last = snapshots[-1]
@@ -270,7 +210,6 @@ def get_valuation_history(user_id: int, days: int = Query(90, ge=1, le=3650), _c
         return {
             "user_id": user_id,
             "days": days,
-            "estimated": bool(estimated_points),
             "snapshots": [
                 {
                     "date": s.snapshot_date,

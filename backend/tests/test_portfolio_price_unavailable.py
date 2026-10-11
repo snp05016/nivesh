@@ -203,23 +203,26 @@ def test_snapshot_get_current_price_keeps_suffixed_ticker(monkeypatch):
     assert seen == ["TCS.NS"]
 
 
-def test_valuation_history_backfill_is_estimated_not_persisted(client, monkeypatch):
-    """REL-10: the 30-day back-fill uses today's shares/cost, so it is returned flagged
-    as estimated and never written to PortfolioValuationHistory."""
+def test_valuation_history_without_snapshots_is_empty(client, monkeypatch):
+    """CMON-05 / MATH-09 (after REL-10): with no nightly snapshots the history is empty.
+    Nothing is back-filled from today's shares/cost, returned or written."""
     import database
     import routers.portfolio_analytics as portfolio_router
     from models.db_models import PortfolioValuationHistory
 
-    uid, headers = _make_user_with_holdings([("TCS", 2, 3000.0)])
+    # Price history is available, so the old back-fill would have produced 3 points.
     idx = pd.date_range(end=pd.Timestamp.today().normalize(), periods=3, freq="D")
-    hist = SimpleNamespace(history=lambda **_kw: pd.DataFrame({"Close": [3000.0, 3100.0, 3200.0]}, index=idx))
-    monkeypatch.setattr(portfolio_router.yf, "Ticker", lambda _sym: hist)
+    closes = pd.DataFrame({"Close": [3000.0, 3100.0, 3200.0]}, index=idx)
+    uid, headers = _make_user_with_holdings([("TCS", 2, 3000.0)])
+    monkeypatch.setattr(portfolio_router.yf, "Ticker", lambda _sym: SimpleNamespace(history=lambda **_kw: closes))
+    monkeypatch.setattr(portfolio_router, "yf_history", lambda *_a, **_kw: closes)
 
-    r = client.get("/api/v1/portfolio/valuation-history", params={"user_id": uid}, headers=headers)
+    r = client.get("/api/v1/portfolio/valuation-history", params={"user_id": uid, "days": 30}, headers=headers)
 
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["estimated"] is True
-    assert [p["total_value"] for p in body["snapshots"]] == [6000.0, 6200.0, 6400.0]
+    assert body["snapshots"] == []
+    assert body["summary"]["data_points"] == 0
+    assert body["summary"]["period_change_value"] == 0.0
     with database.get_session() as session:
         assert session.query(PortfolioValuationHistory).filter_by(user_id=uid).count() == 0

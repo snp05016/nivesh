@@ -29,8 +29,6 @@ def test_stock_profile_200_when_info_empty_and_history_row_malformed(client, mon
     cache_writes = []
     monkeypatch.setattr(market_router, "_resolve_ticker", lambda t, e: f"{t}.NS")
     monkeypatch.setattr(market_router, "_yf_fetch_info", lambda _sym: {})
-    # DII without FII used to hit the try-scoped _institutional_total_pct (UnboundLocalError).
-    monkeypatch.setattr(market_router, "get_fundamentals", lambda *_a, **_k: {"dii_holding_pct": 20.0})
     monkeypatch.setattr(market_router, "get_price_history", lambda *_a, **_k: None)
     monkeypatch.setattr(market_router, "_get_quarterly_fin", lambda _sym: (None, None))
     monkeypatch.setattr(market_router, "_dcache_get", lambda *_a, **_k: None)
@@ -42,8 +40,9 @@ def test_stock_profile_200_when_info_empty_and_history_row_malformed(client, mon
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert "company_info_unavailable" in body["errors"]
-    assert body["dii_holding_pct"] == 20.0
+    assert body["institutional_holding_pct"] is None
     assert body["fii_holding_pct"] is None
+    assert body["dii_holding_pct"] is None
     assert body["quarterly_financials"]["promoter_history"] == []
     assert cache_writes == [60]  # partial profiles are cached briefly
 

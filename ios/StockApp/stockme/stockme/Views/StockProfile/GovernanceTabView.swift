@@ -283,8 +283,9 @@ struct GovernanceInstitutionalSectionView: View {
     var body: some View {
         let fii = info.fiiHoldingPct ?? 0
         let dii = info.diiHoldingPct ?? 0
+        let institutional = info.institutionalTotalPct
         let promoter = info.promoterHoldingPct ?? 0
-        let publicHolding = max(0, 100 - promoter - fii - dii)
+        let publicHolding = max(0, 100 - promoter - institutional)
 
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
             Text("INSTITUTIONAL OWNERSHIP")
@@ -295,10 +296,15 @@ struct GovernanceInstitutionalSectionView: View {
             Chart {
                 BarMark(x: .value("Pct", promoter), y: .value("Type", "Holding"))
                     .foregroundStyle(Theme.securityGold)
-                BarMark(x: .value("Pct", fii), y: .value("Type", "Holding"))
-                    .foregroundStyle(Theme.bullGreen)
-                BarMark(x: .value("Pct", dii), y: .value("Type", "Holding"))
-                    .foregroundStyle(Theme.avatarBlue)
+                if info.hasFiiDiiSplit {
+                    BarMark(x: .value("Pct", fii), y: .value("Type", "Holding"))
+                        .foregroundStyle(Theme.bullGreen)
+                    BarMark(x: .value("Pct", dii), y: .value("Type", "Holding"))
+                        .foregroundStyle(Theme.avatarBlue)
+                } else {
+                    BarMark(x: .value("Pct", institutional), y: .value("Type", "Holding"))
+                        .foregroundStyle(Theme.bullGreen)
+                }
                 BarMark(x: .value("Pct", publicHolding), y: .value("Type", "Holding"))
                     .foregroundStyle(Theme.inkTertiary.opacity(0.3))
             }
@@ -309,8 +315,12 @@ struct GovernanceInstitutionalSectionView: View {
 
             HStack(spacing: Theme.Spacing.standard) {
                 SPLegendDot(color: Theme.securityGold, label: "Promoter", value: promoter)
-                SPLegendDot(color: Theme.bullGreen, label: "FII", value: fii)
-                SPLegendDot(color: Theme.avatarBlue, label: "DII", value: dii)
+                if info.hasFiiDiiSplit {
+                    SPLegendDot(color: Theme.bullGreen, label: "FII", value: fii)
+                    SPLegendDot(color: Theme.avatarBlue, label: "DII", value: dii)
+                } else {
+                    SPLegendDot(color: Theme.bullGreen, label: "FII+DII", value: institutional)
+                }
                 SPLegendDot(color: Theme.inkTertiary.opacity(0.4), label: "Public", value: publicHolding)
             }
         }

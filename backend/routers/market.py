@@ -8,7 +8,7 @@ from helpers import (
 
 from services.market_service import (
     _get_quarterly_fin, _yf_fetch_info, _fmt_inr_crores, _safe_float, get_rbi_policy,
-    analyst_ratings, quarterly_rows,
+    analyst_ratings, quarterly_rows, holdings_from_info,
     SECTOR_TICKERS,
 )
 from services.cache_service import cached_call
@@ -29,7 +29,7 @@ from services.scraper import (
     fetch_yoy_aggregate_indicators,
 )
 from services.options_scraper import fetch_option_chain, compute_derivatives_metrics
-from services.nse_data_provider import get_price_history, get_fundamentals
+from services.nse_data_provider import get_price_history
 from services.market_calendar import market_status
 
 router = APIRouter(tags=["Market Data"])
@@ -846,20 +846,15 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
     day_change_pct = None
     pe_ratio = None
     sector = None
-    promoter_holding_pct = None
-    fii_holding_pct = None
-    dii_holding_pct = None
+    # Shareholding + D/E, shared with /quick-info so both agree (CMKT-08).
+    holdings = holdings_from_info({})
     roe_pct = None
     roce_pct = None
     ebitda_margin_pct = None
-    debt_to_equity = None
     week_52_high = None
     week_52_low = None
     market_cap_crores = None
     description = None
-    # yfinance total institutional (FII + DII); set before the try so the holdings
-    # supplement below can read it when the info fetch fails (CMKT-04).
-    _institutional_total_pct: float | None = None
 
     try:
         info = _yf_fetch_info(full_ticker)
@@ -878,18 +873,7 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
         pe_ratio = info.get("trailingPE") or info.get("forwardPE")
         sector = info.get("sector")
 
-        # Holdings — yfinance stores as decimal (0.452 = 45.2%)
-        raw_promoter = info.get("heldPercentInsiders")
-        if raw_promoter is not None:
-            promoter_holding_pct = round(float(raw_promoter) * 100, 2)
-
-        # heldPercentInstitutions = total institutional (FII + DII combined).
-        # Store it separately so we can derive FII = institutional - DII later
-        # instead of misreporting the full institutional as FII alone (#256/#306).
-        raw_inst = info.get("heldPercentInstitutions")
-        if raw_inst is not None:
-            _institutional_total_pct = round(float(raw_inst) * 100, 2)
-            fii_holding_pct = _institutional_total_pct  # provisional; revised below
+        holdings = holdings_from_info(info)
 
         # Profitability — yfinance returns decimal (0.152 = 15.2%)
         roe = info.get("returnOnEquity")
@@ -906,7 +890,6 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
         if ebitda and total_revenue and float(total_revenue) > 0:
             ebitda_margin_pct = round((float(ebitda) / float(total_revenue)) * 100, 2)
 
-        debt_to_equity = info.get("debtToEquity")
         week_52_high = info.get("fiftyTwoWeekHigh")
         week_52_low = info.get("fiftyTwoWeekLow")
 
@@ -921,25 +904,6 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
 
     except Exception as e:
         errors.append("company_info_unavailable")
-
-    # ── Supplement holdings from fundamentals provider ─────────────────────
-    try:
-        fund = get_fundamentals(ticker, exchange)
-        if fund:
-            fund_fii = fund.get("fii_holding_pct")
-            fund_dii = fund.get("dii_holding_pct")
-            if fund_fii:
-                fii_holding_pct = fund_fii
-            if fund_dii:
-                dii_holding_pct = fund_dii
-                # If fundamentals gave DII but not FII and we only have the
-                # yfinance institutional total (FII+DII combined), derive FII
-                # so FII + DII = institutional_total, not 135%+ (#256/#306).
-                if not fund_fii and _institutional_total_pct is not None:
-                    fii_holding_pct = max(0.0, round(_institutional_total_pct - fund_dii, 2))
-    except Exception as e:
-        logging.warning("[stock-profile] holdings supplement failed for %s: %s", ticker, e)
-        errors.append("holdings_supplement_unavailable")
 
     # ── 2. Price history — full error capture ──────────────────────────────
     price_history_data: dict = {"prices": [], "source": None, "error": None}
@@ -1076,13 +1040,10 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
         "day_change_pct": _clean_num(day_change_pct) or 0,
         "pe_ratio": _clean_num(pe_ratio),
         "sector": sector,
-        "promoter_holding_pct": _clean_num(promoter_holding_pct),
-        "fii_holding_pct": _clean_num(fii_holding_pct),
-        "dii_holding_pct": _clean_num(dii_holding_pct),
+        **holdings,
         "roe_pct": _clean_num(roe_pct),
         "roce_pct": _clean_num(roce_pct),
         "ebitda_margin_pct": _clean_num(ebitda_margin_pct),
-        "debt_to_equity": _clean_num(debt_to_equity),
         "week_52_high": _clean_num(week_52_high),
         "week_52_low": _clean_num(week_52_low),
         "market_cap_crores": _clean_num(market_cap_crores),

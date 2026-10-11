@@ -414,6 +414,8 @@ struct QuickInfo: Codable {
     let promoterHoldingPct: Double?
     let fiiHoldingPct: Double?
     let diiHoldingPct: Double?
+    /// FII + DII combined (Yahoo's only figure); FII/DII stay nil without a real split (CMKT-08).
+    let institutionalHoldingPct: Double?
     let ebitdaMarginPct: Double?
     let roePct: Double?
     let rocePct: Double?
@@ -441,6 +443,7 @@ struct QuickInfo: Codable {
         case promoterHoldingPct = "promoter_holding_pct"
         case fiiHoldingPct = "fii_holding_pct"
         case diiHoldingPct = "dii_holding_pct"
+        case institutionalHoldingPct = "institutional_holding_pct"
         case ebitdaMarginPct = "ebitda_margin_pct"
         case roePct = "roe_pct"
         case rocePct = "roce_pct"
@@ -452,6 +455,16 @@ struct QuickInfo: Codable {
         case governanceScore = "governance_score"
         case governanceRedFlags = "governance_red_flags"
     }
+}
+
+extension QuickInfo {
+    /// Institutional total for the shareholding split: the reported total, else FII + DII.
+    var institutionalTotalPct: Double {
+        institutionalHoldingPct ?? ((fiiHoldingPct ?? 0) + (diiHoldingPct ?? 0))
+    }
+
+    /// True when a source split institutional holding into FII and DII.
+    var hasFiiDiiSplit: Bool { fiiHoldingPct != nil || diiHoldingPct != nil }
 }
 
 struct PeVsAvg: Codable {
@@ -496,6 +509,7 @@ struct StockProfileResponse: Codable {
     let promoterHoldingPct: Double?
     let fiiHoldingPct: Double?
     let diiHoldingPct: Double?
+    let institutionalHoldingPct: Double?
     let roePct: Double?
     let rocePct: Double?
     let ebitdaMarginPct: Double?
@@ -517,6 +531,7 @@ struct StockProfileResponse: Codable {
         case promoterHoldingPct = "promoter_holding_pct"
         case fiiHoldingPct = "fii_holding_pct"
         case diiHoldingPct = "dii_holding_pct"
+        case institutionalHoldingPct = "institutional_holding_pct"
         case roePct = "roe_pct"
         case rocePct = "roce_pct"
         case ebitdaMarginPct = "ebitda_margin_pct"

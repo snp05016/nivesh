@@ -322,6 +322,7 @@ class StockProfileViewModel: ObservableObject {
                     promoterHoldingPct: profile.promoterHoldingPct,
                     fiiHoldingPct: profile.fiiHoldingPct,
                     diiHoldingPct: profile.diiHoldingPct,
+                    institutionalHoldingPct: profile.institutionalHoldingPct,
                     ebitdaMarginPct: profile.ebitdaMarginPct,
                     roePct: profile.roePct,
                     rocePct: profile.rocePct,

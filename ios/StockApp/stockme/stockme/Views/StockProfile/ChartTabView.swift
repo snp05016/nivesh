@@ -386,10 +386,11 @@ struct ShareholdingSectionView: View {
         let promoter = qInfo.promoterHoldingPct ?? 0
         let fii = qInfo.fiiHoldingPct ?? 0
         let dii = qInfo.diiHoldingPct ?? 0
-        let publicHolding = max(0, 100 - promoter - fii - dii)
+        let institutional = qInfo.institutionalTotalPct
+        let publicHolding = max(0, 100 - promoter - institutional)
         let legendColumns = [GridItem(.flexible(), spacing: Theme.Spacing.standard), GridItem(.flexible(), spacing: Theme.Spacing.standard)]
 
-        if promoter > 0 || fii > 0 || dii > 0 {
+        if promoter > 0 || institutional > 0 {
             VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
                 Text("SHAREHOLDING PATTERN")
                     .font(Theme.officialStampFont(size: 9))
@@ -398,8 +399,12 @@ struct ShareholdingSectionView: View {
 
                 Chart {
                     BarMark(x: .value("Pct", promoter), y: .value("Type", "Holding")).foregroundStyle(Theme.securityGold)
-                    BarMark(x: .value("Pct", fii), y: .value("Type", "Holding")).foregroundStyle(Theme.bullGreen)
-                    BarMark(x: .value("Pct", dii), y: .value("Type", "Holding")).foregroundStyle(Theme.avatarBlue)
+                    if qInfo.hasFiiDiiSplit {
+                        BarMark(x: .value("Pct", fii), y: .value("Type", "Holding")).foregroundStyle(Theme.bullGreen)
+                        BarMark(x: .value("Pct", dii), y: .value("Type", "Holding")).foregroundStyle(Theme.avatarBlue)
+                    } else {
+                        BarMark(x: .value("Pct", institutional), y: .value("Type", "Holding")).foregroundStyle(Theme.bullGreen)
+                    }
                     BarMark(x: .value("Pct", publicHolding), y: .value("Type", "Holding")).foregroundStyle(Theme.inkTertiary.opacity(0.4))
                 }
                 .chartXAxis { AxisMarks { _ in AxisValueLabel() } }
@@ -407,8 +412,12 @@ struct ShareholdingSectionView: View {
 
                 LazyVGrid(columns: legendColumns, alignment: .leading, spacing: Theme.Spacing.small) {
                     SPLegendDot(color: Theme.securityGold, label: "Promoter", value: promoter)
-                    SPLegendDot(color: Theme.bullGreen, label: "FII", value: fii)
-                    SPLegendDot(color: Theme.avatarBlue, label: "DII", value: dii)
+                    if qInfo.hasFiiDiiSplit {
+                        SPLegendDot(color: Theme.bullGreen, label: "FII", value: fii)
+                        SPLegendDot(color: Theme.avatarBlue, label: "DII", value: dii)
+                    } else {
+                        SPLegendDot(color: Theme.bullGreen, label: "FII+DII", value: institutional)
+                    }
                     SPLegendDot(color: Theme.inkTertiary.opacity(0.4), label: "Public", value: publicHolding)
                 }
             }

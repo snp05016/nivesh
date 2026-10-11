@@ -24,7 +24,7 @@ class MockTicker:
             "returnOnCapitalEmployed": 0.18,
             "ebitda": 500000000,
             "totalRevenue": 2000000000,
-            "debtToEquity": 0.5,
+            "debtToEquity": 50.0,  # Yahoo reports D/E as a percentage
             "fiftyTwoWeekHigh": 2700.0,
             "fiftyTwoWeekLow": 2100.0,
             "marketCap": 150000000000,
@@ -94,7 +94,9 @@ def test_stock_profile_endpoint_comprehensive(client):
     assert data["pe_ratio"] == 25.5
     assert data["sector"] == "Energy"
     assert data["promoter_holding_pct"] == 45.2
-    assert data["fii_holding_pct"] == 35.8
+    assert data["institutional_holding_pct"] == 35.8  # FII + DII combined
+    assert data["fii_holding_pct"] is None  # no FII/DII split source (CMKT-08)
+    assert data["dii_holding_pct"] is None
     assert data["roe_pct"] == 15.0
     assert data["roce_pct"] == 18.0
     assert data["debt_to_equity"] == 0.5

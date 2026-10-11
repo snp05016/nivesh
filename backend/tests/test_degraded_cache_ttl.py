@@ -64,7 +64,6 @@ def test_stock_profile_partial_ttl(monkeypatch):
     monkeypatch.setattr(market, "_dcache_set", rec)
     monkeypatch.setattr(market, "_resolve_ticker", lambda t, e: f"{t}.NS")
     monkeypatch.setattr(market, "_yf_fetch_info", lambda t: {})
-    monkeypatch.setattr(market, "get_fundamentals", lambda t, e: {})
     monkeypatch.setattr(market, "get_price_history", _boom)
     monkeypatch.setattr(market, "_get_quarterly_fin", _boom)
 

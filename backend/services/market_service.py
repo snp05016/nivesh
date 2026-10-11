@@ -241,6 +241,38 @@ def quarterly_rows(fin, limit: int = 8) -> list[dict]:
         for col in list(fin.columns)[:limit]
     ]
 
+
+def holdings_from_info(info: dict) -> dict:
+    """Shareholding and D/E from a yfinance info dict, shared by /quick-info and
+    /api/v1/stock-profile so both report the same values in the same units (CMKT-08).
+
+    Yahoo's heldPercentInstitutions is FII + DII combined and no source here splits
+    it, so FII, DII and the promoter pledge stay None instead of being estimated
+    (#256, #304, #306, #462). debtToEquity arrives as a percentage (36.6) and is
+    returned as a ratio (0.37).
+    """
+    def _num(key: str) -> float | None:
+        raw = info.get(key)
+        if raw is None:
+            return None
+        try:
+            v = float(raw)
+        except (TypeError, ValueError):
+            return None
+        return None if math.isnan(v) or math.isinf(v) else v
+
+    promoter = _num("heldPercentInsiders")
+    institutional = _num("heldPercentInstitutions")
+    dte = _num("debtToEquity")
+    return {
+        "promoter_holding_pct": round(promoter * 100, 2) if promoter is not None else None,
+        "institutional_holding_pct": round(institutional * 100, 2) if institutional is not None else None,
+        "fii_holding_pct": None,
+        "dii_holding_pct": None,
+        "promoter_pledged_pct": None,
+        "debt_to_equity": round(dte / 100, 2) if dte is not None else None,
+    }
+
 def _earnings_result_from_row(r, now_iso: str) -> dict:
     """Build an EarningsResult dict from an AnalysisHistory row."""
     try:
