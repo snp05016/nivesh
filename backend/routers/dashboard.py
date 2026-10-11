@@ -1,46 +1,37 @@
 import logging
-from fastapi import APIRouter, Request, Header, HTTPException
+from fastapi import APIRouter, Request, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
 import asyncio
 import json
 import time
 from helpers import (
     _dash_lock, _active_analyses, _completed_analyses,
-    _harvest_status, _token_stats, _request_log, require_auth
+    _harvest_status, _token_stats, _request_log, require_admin
 )
 from services.ai_engine_monitor import build_ai_engine_monitor, get_ai_engine_job_detail
 
 router = APIRouter(tags=["Dashboard"])
 
-async def event_generator(request: Request):
-    """Generate SSE events for dashboard and checkpoint progress updates."""
-    ticker = request.query_params.get("ticker", "")
-    last_check = time.time()
-    sent_progress_count = 0
+# Admin-only operator stream: poll gently and close after a bounded time so a
+# forgotten tab cannot hold a connection (and a DB poll) forever.
+_STREAM_POLL_SEC = 3
+_STREAM_MAX_SEC = 600
 
+
+async def event_generator(request: Request):
+    """Generate SSE dashboard snapshots for the admin operator view."""
+    started = time.monotonic()
     while True:
         if await request.is_disconnected():
             break
 
-        if ticker:
-            # Serve analysis checkpoint progress for this ticker
-            try:
-                from services.orchestrator import get_analysis_progress
-                events = get_analysis_progress(ticker)
-                # Send only new events since last check
-                for event in events[sent_progress_count:]:
-                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-                sent_progress_count = len(events)
-            except Exception as e:
-                import logging
-                logging.error(f"Error occurred: {e}", exc_info=True)
-                raise HTTPException(status_code=500, detail="Internal server error")
-
-        # Also send dashboard snapshot every 2s (for general monitoring)
-        current_state = get_dashboard_snapshot()
+        # The snapshot does sync DB reads; keep them off the event loop.
+        current_state = await asyncio.to_thread(get_dashboard_snapshot)
         yield f"data: {json.dumps(current_state, ensure_ascii=False)}\n\n"
 
-        await asyncio.sleep(1)  # Poll every 1s during analysis for faster updates
+        if time.monotonic() - started >= _STREAM_MAX_SEC:
+            break
+        await asyncio.sleep(_STREAM_POLL_SEC)
 
 def get_dashboard_snapshot():
     """Get current dashboard state.
@@ -64,13 +55,17 @@ def get_dashboard_snapshot():
     except Exception as e:
         logging.info(f"[dashboard] active job read failed: {e}")
 
+    # Built outside _dash_lock: it runs its own DB query and must not stall
+    # writers of the in-memory dashboard state.
+    ai_engine = build_ai_engine_monitor(mode="running")
+
     with _dash_lock:
         merged = {**dict(_active_analyses), **db_jobs}
         return {
             "type": "dashboard_snapshot",
             "active_analyses": merged,
             "recent_analyses": list(_completed_analyses)[:10],
-            "ai_engine": build_ai_engine_monitor(mode="running"),
+            "ai_engine": ai_engine,
             "harvest_status": dict(_harvest_status),
             "token_stats": {
                 "total_input": _token_stats["total_input"],
@@ -81,10 +76,10 @@ def get_dashboard_snapshot():
         }
 
 @router.get("/api/v1/dashboard/ai-engine")
-async def ai_engine_dashboard(
+def ai_engine_dashboard(
     mode: str = "running",
     ticker: str | None = None,
-    limit: int = 20,
+    limit: int = Query(20, ge=1, le=100),
     authorization: str = Header(None),
 ):
     """
@@ -99,12 +94,12 @@ async def ai_engine_dashboard(
     Returns:
         Any: The response.
     """
-    require_auth(authorization)
+    require_admin(authorization)
     return build_ai_engine_monitor(mode=mode, ticker=ticker, limit=limit)
 
 
 @router.get("/api/v1/dashboard/ai-engine/{job_id}")
-async def ai_engine_job_detail(job_id: str, authorization: str = Header(None)):
+def ai_engine_job_detail(job_id: str, authorization: str = Header(None)):
     """
     Detailed monitor record for one AI engine job.
 
@@ -115,7 +110,7 @@ async def ai_engine_job_detail(job_id: str, authorization: str = Header(None)):
     Returns:
         Any: The response.
     """
-    require_auth(authorization)
+    require_admin(authorization)
     detail = get_ai_engine_job_detail(job_id)
     if detail is None:
         raise HTTPException(status_code=404, detail="AI engine job not found")
@@ -125,7 +120,7 @@ async def ai_engine_job_detail(job_id: str, authorization: str = Header(None)):
 @router.get("/api/v1/dashboard/stream")
 async def dashboard_stream(request: Request, authorization: str = Header(None)):
     """
-    SSE endpoint for live dashboard updates and checkpoint progress.
+    Admin-only SSE endpoint for live dashboard snapshots.
 
     Args:
         request (Request): The request.
@@ -134,7 +129,7 @@ async def dashboard_stream(request: Request, authorization: str = Header(None)):
     Returns:
         Any: The response.
     """
-    require_auth(authorization)
+    require_admin(authorization)
     return StreamingResponse(
         event_generator(request),
         media_type="text/event-stream",

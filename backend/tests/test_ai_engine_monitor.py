@@ -257,7 +257,7 @@ def test_ai_engine_dashboard_route_returns_monitor_payload(monkeypatch):
 
     import main
 
-    monkeypatch.setattr("routers.dashboard.require_auth", lambda authorization: {"id": 1})
+    monkeypatch.setattr("routers.dashboard.require_admin", lambda authorization: 1)
     client = TestClient(main.app)
 
     response = client.get(
@@ -279,7 +279,7 @@ def test_ai_engine_dashboard_detail_route_returns_job(monkeypatch):
 
     now = datetime(2026, 6, 16, 12, 0, tzinfo=timezone.utc)
     job = _make_job("DETAIL", status="RUNNING", now=now)
-    monkeypatch.setattr("routers.dashboard.require_auth", lambda authorization: {"id": 1})
+    monkeypatch.setattr("routers.dashboard.require_admin", lambda authorization: 1)
     client = TestClient(main.app)
 
     response = client.get(
