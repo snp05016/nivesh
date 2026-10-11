@@ -29,5 +29,9 @@ gate() {
 # Empty Xcode template tests count as coverage while testing nothing (IOSCORE-28).
 gate template-stub 'Write your test here' '' ios/StockApp/stockme/stockmeTests
 
+# One environment-injected AuthManager; no shadow singleton or "act as user #1" fallback (IOSCORE-31).
+gate auth-singleton 'AuthManager\.shared'
+gate user-id-fallback 'userId \?\? 1([^0-9.]|$)'
+
 [ "$FAIL" -eq 0 ] && echo "ios_lint_gates: OK"
 exit "$FAIL"

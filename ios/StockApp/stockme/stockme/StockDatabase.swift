@@ -31,15 +31,22 @@ enum StockDatabase {
         }
     }
 
+    /// Lowercased ticker/name/sector, computed once so a keystroke does not
+    /// re-lowercase ~3.7k entries several times over.
+    private static let index: [(entry: StockEntry, ticker: String, name: String, sector: String)] =
+        all.map { ($0, $0.ticker.lowercased(), $0.companyName.lowercased(), $0.sector.lowercased()) }
+
     static func search(_ query: String) -> [StockEntry] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !q.isEmpty else { return [] }
-        let prefix = all.filter {
-            $0.ticker.lowercased().hasPrefix(q) || $0.companyName.lowercased().hasPrefix(q)
-        }
-        let contains = all.filter {
-            !($0.ticker.lowercased().hasPrefix(q) || $0.companyName.lowercased().hasPrefix(q)) &&
-            ($0.ticker.lowercased().contains(q) || $0.companyName.lowercased().contains(q) || $0.sector.lowercased().contains(q))
+        var prefix: [StockEntry] = []
+        var contains: [StockEntry] = []
+        for row in index {
+            if row.ticker.hasPrefix(q) || row.name.hasPrefix(q) {
+                prefix.append(row.entry)
+            } else if row.ticker.contains(q) || row.name.contains(q) || row.sector.contains(q) {
+                contains.append(row.entry)
+            }
         }
         return Array((prefix + contains).prefix(50))
     }

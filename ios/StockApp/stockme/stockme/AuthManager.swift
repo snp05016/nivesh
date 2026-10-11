@@ -6,8 +6,6 @@ class AuthManager: ObservableObject {
     @Published var currentUser: LoggedInUser? = nil
     @Published var isLoggingIn = false
     @Published var loginError: String? = nil
-    /// Fix 3.13: Biometric auth queue — blocks API requests during FaceID/TouchID
-    @Published var isAuthenticatingWithBiometrics = false
 
     /// Keychain account (and legacy UserDefaults key) for the persisted session.
     static let storageKey = "nivesh_user_v1"

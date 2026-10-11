@@ -184,13 +184,6 @@ struct stockmeApp: App {
                     )
                 }
                 #endif
-                NotificationCenter.default.addObserver(
-                    forName: Notification.Name("resetTutorial"),
-                    object: nil, queue: .main
-                ) { _ in
-                    tutorialManager.resetForTesting()
-                    tutorialManager.isShowingTutorial = true
-                }
             }
             .onChange(of: authManager.currentUser?.userId) { _, newUserId in
                 if newUserId != nil {

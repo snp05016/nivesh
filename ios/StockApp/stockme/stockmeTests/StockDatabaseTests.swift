@@ -16,4 +16,13 @@ final class StockDatabaseTests: XCTestCase {
         XCTAssertEqual(hit?.sector, "Chemicals")
         XCTAssertEqual(hit?.exchange, "NSE")
     }
+
+    /// IOSCORE-32: retired tickers are pruned; their successors are findable.
+    func testRetiredTickersPrunedSuccessorsFound() {
+        let tickers = Set(StockDatabase.all.map(\.ticker))
+        XCTAssertFalse(tickers.contains("ZOMATO"))
+        XCTAssertFalse(tickers.contains("TATAMOTORS"))
+        XCTAssertTrue(StockDatabase.search("eter").contains { $0.ticker == "ETERNAL" })
+        XCTAssertTrue(StockDatabase.search("TMPV").contains { $0.ticker == "TMPV" })
+    }
 }

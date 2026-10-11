@@ -570,26 +570,6 @@ struct PortfolioScreen: View {
         }
     }
 
-    private func shareToWhatsApp() {
-        let totalVal = viewModel.totalValue.inrFormatted
-        let investedVal = viewModel.investedValue.inrFormatted
-        let rawPnl = viewModel.totalValue - viewModel.investedValue
-        let pnl = IndianFormatter.signedPrice(rawPnl)
-        
-        let text = """
-        My Nivesh Portfolio 📈
-        Total Value: \(totalVal)
-        Invested: \(investedVal)
-        P&L: \(pnl)
-        """
-        
-        if let url = URL(string: "whatsapp://send?text=\(text.urlQueryValue)") {
-            if UIApplication.shared.canOpenURL(url) {
-                UIApplication.shared.open(url)
-            }
-        }
-    }
-
     private var addPortfolioButton: some View {
         Button {
             HapticManager.selection()
@@ -1399,13 +1379,12 @@ private struct AddHoldingSheet: View {
     @State private var errorText: String? = nil
     @State private var isAdding = false
     @State private var transactionType = "BUY"
+    @State private var backendHits: [StockEntry] = []
     
+    /// Backend /search hits first (listed tickers the bundled list lacks), then local matches.
     private var searchResults: [StockEntry] {
-        if searchText.trimmingCharacters(in: .whitespaces).isEmpty { return [] }
-        let q = searchText.uppercased()
-        return StockDatabase.all.filter {
-            $0.ticker.contains(q) || $0.companyName.uppercased().contains(q)
-        }
+        let backendTickers = Set(backendHits.map(\.ticker))
+        return backendHits + StockDatabase.search(searchText).filter { !backendTickers.contains($0.ticker) }
     }
     
     private var shares: Double { DecimalText.parse(sharesText) ?? 0 }
@@ -1637,6 +1616,16 @@ private struct AddHoldingSheet: View {
             }
             .navigationTitle("Record Trade")
             .navigationBarTitleDisplayMode(.inline)
+            .task(id: searchText) {
+                backendHits = []
+                let q = searchText.trimmingCharacters(in: .whitespaces)
+                guard selectedEntry == nil, !q.isEmpty else { return }
+                try? await Task.sleep(nanoseconds: 350_000_000)
+                guard !Task.isCancelled else { return }
+                let hits = await NetworkManager.shared.searchStocks(q: q)
+                guard !Task.isCancelled else { return }
+                backendHits = hits
+            }
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()

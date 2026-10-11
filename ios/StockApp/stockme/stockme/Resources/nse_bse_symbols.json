@@ -193,7 +193,7 @@
   },
   {
     "ticker": "AWL",
-    "name": "Adani Wilmar Ltd",
+    "name": "AWL Agri Business Ltd",
     "sector": "FMCG",
     "exchange": "NSE"
   },
@@ -1530,12 +1530,6 @@
     "exchange": "NSE"
   },
   {
-    "ticker": "TATAMOTORS",
-    "name": "Tata Motors Ltd",
-    "sector": "Auto",
-    "exchange": "NSE"
-  },
-  {
     "ticker": "TATAPOWER",
     "name": "Tata Power Company Ltd",
     "sector": "Power",
@@ -1695,12 +1689,6 @@
     "ticker": "ZEEL",
     "name": "Zee Entertainment Enterprises Ltd",
     "sector": "Media",
-    "exchange": "NSE"
-  },
-  {
-    "ticker": "ZOMATO",
-    "name": "Zomato Ltd",
-    "sector": "Consumer Tech",
     "exchange": "NSE"
   },
   {

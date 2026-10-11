@@ -189,38 +189,6 @@ class NetworkManager: ObservableObject {
         AuthManager.loadPersistedUser()?.userId
     }
 
-    // MARK: - Input Sanitization (Fixes 3.4, 3.6, 3.26, 3.28, 3.29)
-
-    /// Fix 3.4+3.6: Sanitize ticker input — strip SQL injection chars, emoji, enforce max length.
-    private func sanitizeTicker(_ raw: String) -> String {
-        var cleaned = raw.uppercased()
-        let forbiddenChars = CharacterSet(charactersIn: "$;-%'\"").union(.symbols)
-        cleaned = cleaned.unicodeScalars
-            .filter { !forbiddenChars.contains($0) && $0.properties.generalCategory != .otherSymbol }
-            .map { String($0) }.joined()
-        return String(cleaned.prefix(20))
-    }
-
-    /// Fix 3.26: Strip exchange suffix (.NS, .BO) for endpoints requiring separate params.
-    private func stripExchangeSuffix(_ ticker: String) -> String {
-        return ticker.replacingOccurrences(of: ".NS", with: "")
-                     .replacingOccurrences(of: ".BO", with: "")
-    }
-
-    /// Fix 3.28: Validate JWT has three-part header.payload.signature format.
-    private func isJWTFormatValid(_ token: String) -> Bool {
-        let parts = token.components(separatedBy: ".")
-        return parts.count == 3 && parts.allSatisfy { !$0.isEmpty }
-    }
-
-    /// Fix 3.29: Route all-numeric tickers as BSE codes. Reject single-digit noise.
-    private func classifyNumericInput(_ raw: String) -> String? {
-        let digits = raw.filter { $0.isNumber }
-        guard digits == raw, !raw.isEmpty else { return nil }
-        if raw.count >= 5 { return "BSE" }
-        return nil
-    }
-
     /// Fix 3.14: Format date as IST string (India Standard Time, +05:30).
     /// All calendar/earnings queries must use IST before encoding into backend params.
     static func istDateString(from date: Date = Date()) -> String {
@@ -230,9 +198,6 @@ class NetworkManager: ObservableObject {
     func authRequest(_ url: URL) -> URLRequest {
         var req = URLRequest(url: url)
         if let token = authToken {
-            if !isJWTFormatValid(token) {
-                print("[NetworkManager] WARNING: JWT format suspicious — attaching anyway")
-            }
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         let corrId = generateCorrelationID(subsystem: "ios")
