@@ -533,7 +533,7 @@ curl https://api.nivesh.qzz.io/health  # DB-backed
 | **Port** | `8000` (uvicorn --reload) |
 | **Venv** | `/home/saumyapatel/Desktop/nivesh/venv` |
 | **API** | `https://api.nivesh.qzz.io` |
-| **Admin token** | `ADMIN_TOKEN=admin` in server `.env` |
+| **Admin auth** | JWT from `POST /login` for an `is_admin` account (`backend/scripts/manage_users.py set-admin <username>`); there is no `ADMIN_TOKEN` |
 | **Deploy skill** | `/nivesh-deploy` — full pipeline: sync → kill → restart → health → tests |
 
 ### Banknote Aesthetic (iOS)

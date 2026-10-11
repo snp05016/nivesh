@@ -29,9 +29,9 @@ ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh/backend && \
 # Public endpoints
 curl -s --max-time 10 https://api.nivesh.qzz.io/<path>
 
-# Auth-protected endpoints  
+# Auth-protected endpoints: JWT = access_token from POST /login (is_admin account for admin routes)
 curl -s --max-time 10 https://api.nivesh.qzz.io/<path> \
-  -H "Authorization: Bearer admin"
+  -H "Authorization: Bearer $JWT"
 ```
 
 ## Test Categories to Run

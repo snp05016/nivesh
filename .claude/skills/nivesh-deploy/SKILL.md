@@ -77,7 +77,7 @@ Test these endpoints and verify 200 responses:
 | `GET /api/v1/market/sector-rotation` | No | Valid JSON |
 
 - Any 500 → ABORT "Endpoint 5xx: /path"
-- Auth endpoints: use `Authorization: Bearer admin`
+- Admin rows: send `Authorization: Bearer $ADMIN_JWT`, the `access_token` from `POST /login` for an `is_admin` account (grant with `backend/scripts/manage_users.py set-admin <username>`; `/api/v1/predictions/performance` also needs that account on the pro tier). There is no static admin token: without a JWT from the owner, skip the Admin rows and report them as skipped.
 - Verification must never call LLM-backed or CPU-heavy routes (analysis, multi-agent debate, assistant chat, NL screener, strategy sweep, stress test, portfolio PDF). Add such a check only behind `ALLOW_PAID_ENDPOINTS=1`, and only for an explicit, owner-approved run.
 
 ### Step 5 — Run Tests on Server
@@ -134,4 +134,4 @@ ssh -o ConnectTimeout=5 saumyapatel@192.168.1.122 "
 | Port | 8000 |
 | Venv | /home/saumyapatel/Desktop/nivesh/venv |
 | API | https://api.nivesh.qzz.io |
-| Admin Token | ADMIN_TOKEN=admin (in server .env) |
+| Admin auth | JWT from `POST /login` for an `is_admin` account; no `ADMIN_TOKEN` (must not be set in server .env) |

@@ -274,9 +274,34 @@ def auth_headers(auth_token):
 
 
 @pytest.fixture(scope="session")
-def admin_headers():
-    """Admin authorization headers."""
-    return {"Authorization": "Bearer admin"}
+def admin_headers(client):
+    """Bearer headers for a real is_admin account; there is no admin token bypass (AUTH-02).
+
+    The account gets a random username and password per session and is deleted at
+    teardown, so a run against a .env DATABASE_URL never leaves a known admin login.
+    """
+    import secrets
+    import uuid
+    from database import get_session, User
+    username = f"test_admin_{uuid.uuid4().hex[:8]}"
+    password = secrets.token_urlsafe(24)
+    client.post("/register", json={
+        "username": username,
+        "password": password,
+        "display_name": "Test Admin",
+    })
+    resp = client.post("/login", json={"username": username, "password": password})
+    assert resp.status_code == 200, f"Admin login failed: {resp.text}"
+    data = resp.json()
+    with get_session() as session:
+        session.query(User).filter(User.id == data["user_id"]).update({"is_admin": True})
+        session.commit()
+    yield {"Authorization": f"Bearer {data['access_token']}"}
+    with get_session() as session:
+        user = session.query(User).filter(User.id == data["user_id"]).first()
+        if user:
+            session.delete(user)
+            session.commit()
 
 
 @pytest.fixture(scope="session")

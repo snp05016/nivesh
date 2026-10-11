@@ -45,9 +45,10 @@ curl -s --max-time 5 https://api.nivesh.qzz.io/health
 ## Post-Deploy Verification
 
 ```bash
-# Critical endpoints
-curl -s https://api.nivesh.qzz.io/api/v1/predictions/performance -H "Auth: Bearer admin"
-curl -s https://api.nivesh.qzz.io/api/v1/stocks/RELIANCE.NS/financials -H "Auth: Bearer admin"
+# Critical endpoints. ADMIN_JWT = access_token from POST /login for an is_admin account
+# (backend/scripts/manage_users.py set-admin <username>); there is no static admin token.
+curl -s https://api.nivesh.qzz.io/api/v1/predictions/performance -H "Authorization: Bearer $ADMIN_JWT"
+curl -s https://api.nivesh.qzz.io/api/v1/stocks/RELIANCE.NS/financials -H "Authorization: Bearer $ADMIN_JWT"
 curl -s https://api.nivesh.qzz.io/dividends/RELIANCE.NS
 
 # Run tests on server, in a throwaway worktree with no backend/.env (never the prod checkout)

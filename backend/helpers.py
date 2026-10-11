@@ -2,7 +2,6 @@
 Shared helpers, constants, and models for the Nivesh FastAPI application.
 Re-exports from domain-specific modules. Architecture deepened per Candidate 3.
 """
-import os
 from datetime import datetime
 from typing import Optional
 from collections import deque
@@ -24,6 +23,8 @@ from database import (
 
 # Re-export from focused domain modules
 from core.rate_limiter import _check_rate_limit, _rate_limit_store, _RATE_LIMITS
+# One auth implementation (AUTH-02): same objects, so dependency_overrides keyed on either path match.
+from core.security import get_current_user_id, require_auth, require_admin
 from core.concurrency import (
     _acquire_analysis_slot, _release_analysis_slot, _force_clear_analysis_slot,
     _get_stuck_analyses, _get_analyze_semaphore, _release_analyze_semaphore,
@@ -111,64 +112,6 @@ def upsert_device_token(user_id: int, device_token: str, platform: str = "ios") 
                     raise
         session.commit()
     return {"success": True, "message": "Device token registered"}
-
-# ---------------------------------------------------------------------------
-# JWT Auth Dependencies
-# ---------------------------------------------------------------------------
-
-def get_current_user_id(authorization: str = Header(None)) -> Optional[int]:
-    """Extract user ID from the Authorization header.
-    
-    Args:
-        authorization (str): The Bearer token header.
-        
-    Returns:
-        Optional[int]: User ID if valid, None otherwise.
-    """
-    if not authorization or not authorization.startswith("Bearer "):
-        return None
-    token = authorization.split(" ", 1)[1]
-    return verify_access_token(token)
-
-def require_auth(authorization: str = Header(None)) -> int:
-    """Require authentication via JWT token.
-    
-    Args:
-        authorization (str): The Bearer token header.
-        
-    Returns:
-        int: The authenticated user ID.
-        
-    Raises:
-        HTTPException: If token is missing, invalid, or expired (401).
-    """
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
-    token = authorization.split(" ", 1)[1]
-    admin_override = os.getenv("ADMIN_TOKEN")
-    if admin_override and token == admin_override:
-        return 1
-    user_id = verify_access_token(token)
-    if user_id is None:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    return user_id
-
-def require_admin(authorization: str = Header(None)) -> int:
-    """Require admin privileges.
-    
-    Args:
-        authorization (str): The Bearer token header.
-        
-    Returns:
-        int: The authenticated admin user ID.
-        
-    Raises:
-        HTTPException: If user is not an admin (403).
-    """
-    user_id = require_auth(authorization)
-    if not is_admin(user_id):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return user_id
 
 # ---------------------------------------------------------------------------
 # Request / Response Models: defined once in schemas/ (ARCH-01). Re-exported

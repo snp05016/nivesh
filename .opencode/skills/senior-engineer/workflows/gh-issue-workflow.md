@@ -4,7 +4,7 @@ Triage and fix GitHub issues methodically. One issue at a time.
 
 ## Prerequisites
 - Use `gh` CLI for all GitHub operations.
-- Admin token (`Authorization: Bearer admin`) for protected endpoints.
+- Protected endpoints: `Authorization: Bearer <JWT>` from `POST /login`; admin routes need an `is_admin` account (`backend/scripts/manage_users.py set-admin`). There is no static admin token.
 - Read AGENTS.md §8 for GitHub DevOps Hub rules.
 
 ## Checklist

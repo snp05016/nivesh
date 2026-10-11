@@ -12,7 +12,7 @@ from unittest.mock import patch, MagicMock
 
 # ── Test 1: Alpha validation horizon normalization ────────────────────────────
 
-def test_alpha_validation_accepts_lowercase_horizon():
+def test_alpha_validation_accepts_lowercase_horizon(auth_headers):
     """Beacon test: POST /api/v1/backtests/alpha-validation with '30d' (lowercase) returns 200."""
     from main import app
     client = TestClient(app)
@@ -25,7 +25,7 @@ def test_alpha_validation_accepts_lowercase_horizon():
         resp = client.post(
             "/api/v1/backtests/alpha-validation",
             json={"horizon": "30d", "strategy_type": "confidence_weighted", "tickers": ["RELIANCE.NS"]},
-            headers={"Authorization": "Bearer admin"},
+            headers=auth_headers,
         )
         assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
         body = resp.json()
@@ -33,7 +33,7 @@ def test_alpha_validation_accepts_lowercase_horizon():
 
 
 @pytest.mark.parametrize("horizon", ["7d", "20d", "30d", "60d", "90d", "7D", "20D", "30D", "60D", "90D"])
-def test_all_horizon_formats_accepted(horizon):
+def test_all_horizon_formats_accepted(horizon, auth_headers):
     """All horizon variants (lowercase and uppercase) are accepted."""
     from main import app
     client = TestClient(app)
@@ -43,12 +43,12 @@ def test_all_horizon_formats_accepted(horizon):
         resp = client.post(
             "/api/v1/backtests/alpha-validation",
             json={"horizon": horizon, "strategy_type": "confidence_weighted", "tickers": ["RELIANCE.NS"]},
-            headers={"Authorization": "Bearer admin"},
+            headers=auth_headers,
         )
         assert resp.status_code == 200, f"Failed for horizon='{horizon}': {resp.text}"
 
 
-def test_invalid_horizon_rejected():
+def test_invalid_horizon_rejected(auth_headers):
     """Invalid horizon like '15d' or 'invalid' is rejected with 422."""
     from main import app
     client = TestClient(app)
@@ -56,19 +56,19 @@ def test_invalid_horizon_rejected():
     resp = client.post(
         "/api/v1/backtests/alpha-validation",
         json={"horizon": "15d", "strategy_type": "confidence_weighted", "tickers": ["RELIANCE.NS"]},
-        headers={"Authorization": "Bearer admin"},
+        headers=auth_headers,
     )
     assert resp.status_code == 422, f"Expected 422 for invalid horizon, got {resp.status_code}"
 
 
 # ── Test 2: Strategy sweep endpoint ──────────────────────────────────────────
 
-def test_strategy_sweep_returns_valid_configs():
+def test_strategy_sweep_returns_valid_configs(auth_headers):
     """GET /api/v1/backtests/strategy-sweep returns best CAGR and Sharpe configs."""
     from main import app
     client = TestClient(app)
 
-    resp = client.get("/api/v1/backtests/strategy-sweep", headers={"Authorization": "Bearer admin"})
+    resp = client.get("/api/v1/backtests/strategy-sweep", headers=auth_headers)
     assert resp.status_code == 200
     body = resp.json()
     assert "best_cagr" in body
@@ -79,14 +79,14 @@ def test_strategy_sweep_returns_valid_configs():
 
 # ── Test 3: Calibration endpoint ─────────────────────────────────────────────
 
-def test_calibration_endpoint_accepts_lowercase_horizon():
+def test_calibration_endpoint_accepts_lowercase_horizon(auth_headers):
     """GET /api/v1/predictions/calibration?horizon=30d returns 200 with proper schema."""
     from main import app
     client = TestClient(app)
 
     resp = client.get(
         "/api/v1/predictions/calibration?horizon=30d",
-        headers={"Authorization": "Bearer admin"},
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     body = resp.json()
@@ -97,14 +97,14 @@ def test_calibration_endpoint_accepts_lowercase_horizon():
 
 # ── Test 4: ML signal graceful degradation ───────────────────────────────────
 
-def test_ml_signal_returns_graceful_unavailable():
+def test_ml_signal_returns_graceful_unavailable(auth_headers):
     """When ml-engine is down, /api/v1/stocks/X/ml-signal returns 200 with unavailable status."""
     from main import app
     client = TestClient(app)
 
     resp = client.get(
         "/api/v1/stocks/RELIANCE.NS/ml-signal",
-        headers={"Authorization": "Bearer admin"},
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     body = resp.json()
@@ -115,14 +115,14 @@ def test_ml_signal_returns_graceful_unavailable():
 
 # ── Test 5: Pillar attribution schema ────────────────────────────────────────
 
-def test_pillar_attribution_returns_pillars():
+def test_pillar_attribution_returns_pillars(auth_headers):
     """Pillar attribution returns a pillars array (may be empty with no data)."""
     from main import app
     client = TestClient(app)
 
     resp = client.get(
         "/api/v1/predictions/pillar-attribution?horizon=30d",
-        headers={"Authorization": "Bearer admin"},
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     body = resp.json()
