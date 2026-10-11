@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'ios/**'
+      - 'scripts/find_unreferenced_swift.py'
     branches: [ "main" ]
   pull_request:
     paths:
       - 'ios/**'
+      - 'scripts/find_unreferenced_swift.py'
     branches: [ "main" ]
 
 jobs:
@@ -16,6 +18,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Check for unreferenced Swift files
+      run: python3 scripts/find_unreferenced_swift.py ios/StockApp/stockme/stockme
 
     - name: Set up Xcode
       uses: maxim-lobanov/setup-xcode@v1
