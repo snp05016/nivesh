@@ -11,7 +11,7 @@ table); downgrade recreates them exactly as 931cb6d2cbb6 and cb0f4d2ce6e1 did,
 only if missing.
 
 Revision ID: 36e47c594dc7
-Revises: t4u5v6w7x8y9
+Revises: e0edc81fbf84
 Create Date: 2026-10-11
 """
 from typing import Sequence, Union
@@ -22,7 +22,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "36e47c594dc7"
-down_revision: Union[str, Sequence[str], None] = "t4u5v6w7x8y9"
+down_revision: Union[str, Sequence[str], None] = "e0edc81fbf84"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
