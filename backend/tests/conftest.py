@@ -135,6 +135,10 @@ _nse_dp.get_fundamentals.return_value = {}
 # file, sets dummy API keys and NIVESH_TESTING=1. Capture the URL before main is
 # imported so the guard below catches anything that rebinds the engine.
 _TEST_DATABASE_URL = os.environ["DATABASE_URL"]
+# Docs are off by default (REL-26); schema-contract tests need /openapi.json.
+os.environ.setdefault("ENABLE_API_DOCS", "true")
+# Keep the job cap out of unrelated tests; cap tests patch MAX_CONCURRENT_JOBS.
+os.environ.setdefault("MAX_CONCURRENT_JOBS", "10000")
 
 # ---------------------------------------------------------------------------
 # STEP 2b: No real child processes (TEST-02)

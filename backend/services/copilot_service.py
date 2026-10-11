@@ -1,6 +1,5 @@
 import json
 import re
-import multiprocessing
 from typing import List, Dict, Any, Optional
 
 from database import get_session
@@ -46,16 +45,7 @@ def strip_emoji(text: str) -> str:
         text,
     )
 
-def _deep_analysis_worker(queue, ticker: str, exchange: str, user_id: int):
-    """Worker process for deep analysis to protect the main thread."""
-    from services.orchestrator import analyze
-    import traceback
-    try:
-        # Run standard analysis
-        result = analyze(ticker, exchange, user_id, deep_scan=False, scan_type="standard")
-        queue.put({"status": "ok", "result": result})
-    except Exception as e:
-        queue.put({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
+_TICKER_RE = re.compile(r"[A-Z0-9][A-Z0-9&.\-]{0,29}")
 
 def _manage_tokens(conversation_history: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Summarize conversation if it gets too long, keeping system prompts and last 3 messages raw."""
@@ -116,53 +106,38 @@ User Message: {user_message}
         reply = "To discuss your holdings, enable 'AI processing' in Settings > Account Security > KYC Consents."
 
     elif "PORTFOLIO" in intent:
-        # Query DB via get_session()
+        # Query DB via get_session(); the session is closed before the LLM call.
         with get_session() as db:
             from database import Portfolio
-            holdings = db.query(Portfolio).filter(Portfolio.user_id == user_id).all()
-            if holdings:
-                holdings_str = ", ".join([f"{h.ticker} ({h.quantity} shares)" for h in holdings])
-                prompt = f"The user has the following holdings: {holdings_str}. Answer their question: {user_message}"
-            else:
-                prompt = f"The user has no portfolio holdings currently. Answer their question: {user_message}"
-                
-            messages = managed_history + [{"role": "user", "content": prompt}]
-            reply = claude_haiku(messages) # Tier 2 for synthesis
+            holdings = db.query(Portfolio).filter(
+                Portfolio.user_id == user_id,
+                Portfolio.group_name == "holdings",
+            ).all()
+            holdings_str = ", ".join(
+                f"{h.ticker} ({h.shares:g} shares @ Rs {h.buy_price:,.2f})" for h in holdings
+            )
+        if holdings_str:
+            prompt = f"The user has the following holdings: {holdings_str}. Answer their question: {user_message}"
+        else:
+            prompt = f"The user has no portfolio holdings currently. Answer their question: {user_message}"
+
+        messages = managed_history + [{"role": "user", "content": prompt}]
+        reply = claude_haiku(messages) # Tier 2 for synthesis
             
     elif "DEEP_ANALYSIS" in intent:
         # Extract ticker
         ticker_prompt = f"Extract the stock ticker symbol from this message and context. Context: {context_str}. Message: {user_message}. Return ONLY the ticker symbol (e.g. RELIANCE, HDFCBANK). If none found, reply NONE."
         ticker = deepseek_chat([{"role": "user", "content": ticker_prompt}]).strip().upper()
         
-        if ticker == "NONE" or not ticker:
+        if ticker == "NONE" or not _TICKER_RE.fullmatch(ticker):
             messages = managed_history + [{"role": "user", "content": user_message}]
             reply = claude_haiku(messages)
         else:
-            # Spawn multiprocessing
-            q = multiprocessing.Queue()
-            p = multiprocessing.Process(target=_deep_analysis_worker, args=(q, ticker, "NSE", user_id))
-            p.start()
-            # Wait for result with timeout
-            try:
-                res = q.get(timeout=60)
-                p.join()
-                q.close()
-                q.join_thread()
-
-                if res["status"] == "ok":
-                    analysis_data = res["result"]
-                    signal = analysis_data.get("signal", "UNKNOWN")
-                    # Prepare response
-                    reply = f"I've analyzed {ticker}. The overall signal is {signal}."
-                    context_cards = [analysis_data]
-                else:
-                    reply = f"I encountered an error analyzing {ticker}: {res.get('error')}"
-            except Exception as e:
-                p.terminate()
-                p.join(timeout=2)
-                q.close()
-                q.join_thread()
-                reply = f"Analysis for {ticker} timed out or failed."
+            # Never run (or relay) an analysis inside chat: point the user at the
+            # analysis screen, which runs as a tracked, capped background job.
+            reply = (f"Open {ticker} from Search and run an analysis there "
+                     f"to see the full report and its progress.")
+            context_cards = [{"type": "open_analysis", "ticker": ticker}]
                 
     elif "NAVIGATION" in intent:
         nav_context = current_context.get("app_navigation", "")

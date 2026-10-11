@@ -286,9 +286,34 @@ def create_user(session: Session, username: str, password: str, display_name: st
 # JWT Authentication
 # ---------------------------------------------------------------------------
 
+import logging  # noqa: E402
+
 import jwt as pyjwt  # noqa: E402
 
-_JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
+_auth_logger = logging.getLogger("nivesh.auth")
+
+
+def _load_jwt_secret(env=os.environ) -> str:
+    """JWT_SECRET, refusing a missing/weak value in production (SILENT-09).
+
+    Outside production a weak value falls back to a per-process random secret and
+    logs CRITICAL, because such tokens die on restart and fail on other workers.
+    """
+    from core.config_guard import is_production, jwt_secret_problem
+    secret = env.get("JWT_SECRET")
+    problem = jwt_secret_problem(secret)
+    if problem is None:
+        return str(secret)
+    if is_production(env):
+        raise RuntimeError(f"{problem}: JWT_SECRET must be set (>=32 chars) in production")
+    _auth_logger.critical(
+        "%s - using a per-process random secret; tokens will not survive restarts "
+        "or work across workers", problem,
+    )
+    return secrets.token_hex(32)
+
+
+_JWT_SECRET = _load_jwt_secret()
 _JWT_ALGORITHM = "HS256"
 _JWT_EXPIRY_HOURS = 720  # 30 days — prevents silent 401s from expired tokens on mobile
 
@@ -323,8 +348,13 @@ def verify_access_token(token: str) -> Optional[int]:
         payload = pyjwt.decode(token, _JWT_SECRET, algorithms=[_JWT_ALGORITHM])
         sub = payload.get("sub")
         return int(sub) if sub is not None else None
-    except Exception as _e:
-        return None
+    except pyjwt.ExpiredSignatureError:
+        _auth_logger.debug("[auth] token expired")
+    except pyjwt.InvalidSignatureError:
+        _auth_logger.warning("[auth] invalid token signature (secret mismatch across workers/restarts?)")
+    except (pyjwt.InvalidTokenError, ValueError, TypeError):
+        _auth_logger.debug("[auth] malformed token")
+    return None
 
 
 def is_admin(user_id: int) -> bool:

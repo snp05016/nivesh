@@ -15,6 +15,9 @@ STRESS_TEST_SCAN_TYPE = "stress_test"
 _STRESS_TEST_TICKER = "PORTFOLIO"
 _STRESS_TEST_EXCHANGE = "NSE"
 _ACTIVE_STATUSES = {"QUEUED", "RUNNING"}
+# Hard wall-clock budget for one stress-test worker; matches the 300 s window in which
+# job_repo.get_active_job_for_user_and_type treats a stress job as still active.
+STRESS_TEST_WALLCLOCK_SEC = 300
 
 
 @dataclass(frozen=True)
@@ -170,7 +173,18 @@ def prepare_stress_test_job(
 
     Returns:
         StressTestLaunch: An object containing the created job_id and payload.
+        If the user already has an active stress test, its job_id is returned
+        instead of starting a second worker.
     """
+    existing = job_repo.get_active_job_for_user_and_type(user_id, STRESS_TEST_SCAN_TYPE)
+    if existing:
+        return StressTestLaunch(
+            job_id=existing["job_id"],
+            holdings=[],
+            scenarios=list(scenarios),
+            completed_response={"job_id": existing["job_id"], "status": "running"},
+        )
+
     holdings = stress_test_repo.list_portfolio_holdings(user_id, portfolio_id)
     job = job_repo.create_job(
         user_id,
@@ -303,6 +317,8 @@ def run_stress_test_job(
             stage="init",
             progress_pct=2,
         )
+        from services.job_worker import _start_wallclock_watchdog
+        _start_wallclock_watchdog(job_id, STRESS_TEST_WALLCLOCK_SEC)
         emit("init", 2, "Initializing stress-test engine")
 
         def on_holding_progress(done: int, total: int, ticker: str) -> None:

@@ -31,7 +31,7 @@ if _parsed.get_backend_name() != "sqlite" and "test" not in (_parsed.database or
 
 os.environ.update({
     "DATABASE_URL": _db_url,
-    "JWT_SECRET": "test_secret_key_for_pytest_only",
+    "JWT_SECRET": "test_secret_key_for_pytest_only_0123456789",  # >=32 chars (SILENT-09)
     "ANTHROPIC_API_KEY": "test_key",
     # "placeholder" is the sentinel tradingagents-core's live-API skipif gate recognises.
     "DEEPSEEK_API_KEY": "placeholder",

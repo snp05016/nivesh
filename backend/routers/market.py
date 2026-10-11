@@ -1609,24 +1609,11 @@ Errors are caught, logged to market_error_logs, and fallback values served.
         "fetched_at": now_iso,
     }
 
-    def _ticker_dict(s: dict) -> dict:
-        dma50 = float(s.get("dma_50") or 0.0)
-        dma200 = float(s.get("dma_200") or 0.0)
-        return {
-            "ticker": s.get("ticker", ""),
-            "last_price": dma50,
-            "ma20": dma50,
-            "ma50": dma200,
-            "sparkline": [],
-            "trend_date": now_iso[:10],
-            "crossover": s.get("signal", ""),
-        }
-
-    raw_signals = momentum_raw.get("crossovers", []) if isinstance(momentum_raw, dict) else []
-    bullish = [_ticker_dict(s) for s in raw_signals if s.get("signal") == "GOLDEN_CROSS"]
-    bearish = [_ticker_dict(s) for s in raw_signals if s.get("signal") == "DEATH_CROSS"]
-
-    # No hardcoded fallback — if no real crossover signals exist, return empty lists
+    # fetch_momentum entries already carry the iOS MomentumTicker fields (ticker,
+    # last_price, ma20, ma50, sparkline, trend_date, crossover), so pass them through.
+    mom = momentum_raw if isinstance(momentum_raw, dict) else {}
+    bullish = list(mom.get("bullish") or [])
+    bearish = list(mom.get("bearish") or [])
 
     # ── SECTION 1: Live Reporting Sync ───────────────────────────────────────
     # No exchange-wide results-filing source exists (filings_extractor only sees
@@ -1662,7 +1649,8 @@ Errors are caught, logged to market_error_logs, and fallback values served.
 
     return {
         "pulse": pulse_section,
-        "momentum": {"bullish": bullish, "bearish": bearish, "fetched_at": now_iso},
+        "momentum": {"bullish": bullish, "bearish": bearish,
+                     "fetched_at": mom.get("fetched_at", now_iso)},
         "live_reporting_sync": None,
         "yoy_market_health": yoy_health,
         "cap_index_aggregator": cap_grid,

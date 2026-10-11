@@ -8,25 +8,69 @@ correctness does not depend on this parent process staying alive.
 from __future__ import annotations
 
 import multiprocessing
+import os
 import threading
+from datetime import datetime, timedelta, timezone
+
+from repositories import job_repo
 
 _job_registry: dict[str, "multiprocessing.Process"] = {}
 _registry_lock = threading.Lock()
+
+# Platform-wide cap on QUEUED/RUNNING worker jobs, counted from the DB so it holds
+# across uvicorn workers.
+MAX_CONCURRENT_JOBS = int(os.getenv("MAX_CONCURRENT_JOBS", "6"))
+# Longer than any worker's wall-clock budget (extreme = 600 s): an active row older
+# than this belongs to a worker that died without updating it, so it holds no slot.
+_STALE_ACTIVE_SEC = 900
+
+
+class JobCapacityError(RuntimeError):
+    """Raised when MAX_CONCURRENT_JOBS worker jobs are already active."""
+
+
+def _active_job_count(exclude_job_id: str) -> int:
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=_STALE_ACTIVE_SEC)
+    count = 0
+    for job in job_repo.list_active_jobs():
+        if job.get("job_id") == exclude_job_id:
+            continue
+        created = job.get("created_at")
+        if created:
+            ts = datetime.fromisoformat(created)
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            if ts < cutoff:
+                continue
+        count += 1
+    return count
+
+
+def spawn_process(job_id: str, target, args: tuple) -> int | None:
+    """Start a daemon worker for an already-created job row and register it.
+
+    Every subprocess job goes through here so shutdown_all/cancel_job cover it.
+    Raises JobCapacityError when the platform-wide cap is reached.
+    """
+    if _active_job_count(job_id) >= MAX_CONCURRENT_JOBS:
+        raise JobCapacityError("Server busy, please retry shortly")
+    p = multiprocessing.Process(target=target, args=args, daemon=True)
+    p.start()
+    with _registry_lock:
+        _job_registry[job_id] = p
+    return p.pid
 
 
 def spawn_job(job_id: str, ticker: str, exchange: str,
               user_id, deep_scan: bool, scan_type: str,
               language=None, debate_rounds=None, risk_tolerance=None) -> None:
     from services.job_worker import run_job
-    p = multiprocessing.Process(
-        target=run_job,
-        args=(job_id, ticker, exchange, user_id, deep_scan, scan_type,
-              language, debate_rounds, risk_tolerance),
-        daemon=True,
+    spawn_process(
+        job_id,
+        run_job,
+        (job_id, ticker, exchange, user_id, deep_scan, scan_type,
+         language, debate_rounds, risk_tolerance),
     )
-    p.start()
-    with _registry_lock:
-        _job_registry[job_id] = p
 
 
 def cancel_job(job_id: str) -> bool:

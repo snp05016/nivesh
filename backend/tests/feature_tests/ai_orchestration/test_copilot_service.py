@@ -44,20 +44,13 @@ def test_process_copilot_portfolio(mock_get_session, mock_claude, mock_deepseek,
 
 @patch("backend.services.copilot_service.deepseek_chat")
 @patch("backend.services.copilot_service.claude_haiku")
-@patch("backend.services.copilot_service.multiprocessing.Process")
-@patch("backend.services.copilot_service.multiprocessing.Queue")
-def test_process_copilot_deep_analysis(mock_queue, mock_process, mock_claude, mock_deepseek):
-    # Mock intent and ticker extraction
+def test_process_copilot_deep_analysis(mock_claude, mock_deepseek):
+    # Chat never runs an analysis itself; it deep-links to the analysis screen.
     mock_deepseek.side_effect = ["DEEP_ANALYSIS", "RELIANCE"]
-    
-    # Mock the multiprocessing queue to return a successful analysis
-    mock_q_instance = MagicMock()
-    mock_q_instance.get.return_value = {"status": "ok", "result": {"signal": "BULLISH", "confidence": 80}}
-    mock_queue.return_value = mock_q_instance
-    
+
     res = process_copilot_request("Analyze Reliance for me", [], {}, 1)
-    
-    assert "I've analyzed RELIANCE. The overall signal is BULLISH." in res["reply"]
-    assert res["context_cards"] == [{"signal": "BULLISH", "confidence": 80}]
-    mock_process.assert_called_once()
-    mock_q_instance.get.assert_called_once()
+
+    assert "RELIANCE" in res["reply"]
+    assert "signal" not in res["reply"].lower()
+    assert res["context_cards"] == [{"type": "open_analysis", "ticker": "RELIANCE"}]
+    mock_claude.assert_not_called()

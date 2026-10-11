@@ -17,6 +17,10 @@ from typing import Optional
 from core.env import load_backend_env
 load_backend_env()  # no-op under pytest (NIVESH_TESTING=1)
 
+# Refuse to boot production with a forgeable JWT secret or wildcard CORS (REL-26).
+from core.config_guard import docs_enabled, validate_startup_config
+validate_startup_config()
+
 # Disk cache — L2 persistent layer (L1 = in-memory _quick_info_cache)
 from services.disk_cache import get as _dcache_get, set as _dcache_set, stats as _dcache_stats
 from services.ai_engine_monitor import build_ai_engine_monitor
@@ -105,7 +109,7 @@ async def _lifespan(app: FastAPI):
     await _on_shutdown()
 
 
-_ENABLE_DOCS = os.getenv("ENABLE_API_DOCS", "true").lower() == "true"
+_ENABLE_DOCS = docs_enabled()
 app = FastAPI(
     title="Indian Stock Market Analysis API", 
     lifespan=_lifespan,
@@ -123,11 +127,13 @@ from fastapi.middleware.cors import CORSMiddleware
 # localhost:3000 should only be added in dev via env var.
 _ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "")
 _origins = [o.strip() for o in _ALLOWED_ORIGINS.split(",") if o.strip()]
+# A wildcard is never combined with credentials (production refuses '*' outright).
+_wildcard = "*" in _origins
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_origins if _origins != ["*"] else ["*"],
-    allow_credentials=True,
+    allow_origins=["*"] if _wildcard else _origins,
+    allow_credentials=not _wildcard,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -404,9 +410,16 @@ async def _on_startup():
 
 
 async def _on_shutdown():
-    stop_scheduler()
-    from services.job_manager import shutdown_all
-    shutdown_all()
+    # Each step runs even if an earlier one fails, so worker processes are always reaped.
+    try:
+        stop_scheduler()
+    except Exception:
+        logging.exception("[shutdown] stop_scheduler failed")
+    try:
+        from services.job_manager import shutdown_all
+        shutdown_all()
+    except Exception:
+        logging.exception("[shutdown] shutdown_all failed")
 
 
 @app.get("/ping")

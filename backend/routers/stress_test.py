@@ -1,10 +1,9 @@
-import multiprocessing
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List
 
 from helpers import require_auth
+from services import job_manager
 from services.stress_test_jobs import (
     get_owned_stress_test_job,
     list_owned_stress_test_jobs,
@@ -18,8 +17,7 @@ router = APIRouter()
 
 class StressTestRequest(BaseModel):
     portfolio_id: str
-    scenarios: List[str] = Field(default_factory=list)
-    custom_shocks: Optional[dict[str, float]] = None
+    scenarios: List[str] = Field(default_factory=list, max_length=20)
 
 class StressTestHolding(BaseModel):
     ticker: str
@@ -46,20 +44,23 @@ def start_stress_test(req: StressTestRequest, user_id: int = Depends(require_aut
     if launch.completed_response is not None:
         return launch.completed_response
 
-    process = multiprocessing.Process(
-        target=run_stress_test_job,
-        args=(launch.job_id, launch.holdings, launch.scenarios),
-        daemon=True,
-    )
     try:
-        process.start()
-        record_stress_test_process(launch.job_id, process.pid)
-    except Exception as exc:
+        pid = job_manager.spawn_process(
+            launch.job_id,
+            run_stress_test_job,
+            (launch.job_id, launch.holdings, launch.scenarios),
+        )
+        record_stress_test_process(launch.job_id, pid)
+    except job_manager.JobCapacityError as exc:
         mark_stress_test_start_failed(launch.job_id, exc)
         raise HTTPException(
-            status_code=500,
-            detail=f"Could not start stress test: {exc}",
+            status_code=429,
+            detail="Server busy, please retry shortly",
+            headers={"Retry-After": "30"},
         ) from exc
+    except Exception as exc:
+        mark_stress_test_start_failed(launch.job_id, exc)
+        raise HTTPException(status_code=500, detail="Could not start stress test") from exc
     return {"job_id": launch.job_id, "status": "running"}
 
 

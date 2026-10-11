@@ -6,6 +6,11 @@ def test_prepare_stress_test_job_only_builds_durable_launch(monkeypatch):
 
     holdings = [{"ticker": "TCS", "shares": 10.0, "buy_price": 100.0}]
     monkeypatch.setattr(
+        stress_test_jobs.job_repo,
+        "get_active_job_for_user_and_type",
+        lambda *_args: None,
+    )
+    monkeypatch.setattr(
         stress_test_jobs.stress_test_repo,
         "list_portfolio_holdings",
         lambda user_id, portfolio_id: holdings,
@@ -48,14 +53,8 @@ def test_start_endpoint_marks_durable_job_failed_when_process_spawn_fails(monkey
     )
     recorded = {}
 
-    class FailingProcess:
-        pid = None
-
-        def __init__(self, **_kwargs):
-            pass
-
-        def start(self):
-            raise RuntimeError("process table full")
+    def failing_spawn(*_args, **_kwargs):
+        raise RuntimeError("process table full")
 
     monkeypatch.setattr(
         stress_test_router,
@@ -63,9 +62,9 @@ def test_start_endpoint_marks_durable_job_failed_when_process_spawn_fails(monkey
         lambda *_args, **_kwargs: launch,
     )
     monkeypatch.setattr(
-        stress_test_router.multiprocessing,
-        "Process",
-        FailingProcess,
+        stress_test_router.job_manager,
+        "spawn_process",
+        failing_spawn,
     )
     monkeypatch.setattr(
         stress_test_router,
@@ -81,11 +80,147 @@ def test_start_endpoint_marks_durable_job_failed_when_process_spawn_fails(monkey
         stress_test_router.start_stress_test(request, user_id=7)
 
     assert exc_info.value.status_code == 500
-    assert "process table full" in str(exc_info.value.detail)
+    # The owner-visible DB row keeps the cause; the HTTP detail does not leak it.
+    assert "process table full" not in str(exc_info.value.detail)
     assert recorded == {
         "job_id": "stress-job-2",
         "error": "process table full",
     }
+
+
+def test_second_stress_request_returns_existing_job(monkeypatch):
+    from services import stress_test_jobs
+
+    created = []
+    monkeypatch.setattr(
+        stress_test_jobs.job_repo,
+        "get_active_job_for_user_and_type",
+        lambda user_id, scan_type: {"job_id": "j1"},
+    )
+    monkeypatch.setattr(
+        stress_test_jobs.job_repo,
+        "create_job",
+        lambda *args: created.append(args) or {"job_id": "new"},
+    )
+
+    launch = stress_test_jobs.prepare_stress_test_job(7, "holdings", ["NIFTY_CRASH"])
+
+    assert launch.job_id == "j1"
+    assert launch.completed_response == {"job_id": "j1", "status": "running"}
+    assert created == []
+
+
+def test_capacity_returns_429(monkeypatch):
+    import pytest
+    from fastapi import HTTPException
+
+    from routers import stress_test as stress_test_router
+    from services import job_manager
+    from services.stress_test_jobs import StressTestLaunch
+
+    launch = StressTestLaunch(
+        job_id="stress-job-3",
+        holdings=[{"ticker": "TCS", "shares": 10.0, "buy_price": 100.0}],
+        scenarios=["NIFTY_CRASH"],
+    )
+    recorded = {}
+
+    def no_process(*_args, **_kwargs):
+        raise AssertionError("must not start a process when at capacity")
+
+    monkeypatch.setattr(stress_test_router, "prepare_stress_test_job", lambda *_a, **_k: launch)
+    monkeypatch.setattr(job_manager, "MAX_CONCURRENT_JOBS", 6)
+    monkeypatch.setattr(
+        job_manager.job_repo,
+        "list_active_jobs",
+        lambda: [{"job_id": f"busy-{i}", "created_at": None} for i in range(7)],
+    )
+    monkeypatch.setattr(job_manager.multiprocessing, "Process", no_process)
+    monkeypatch.setattr(
+        stress_test_router,
+        "mark_stress_test_start_failed",
+        lambda job_id, error: recorded.update(job_id=job_id),
+    )
+
+    request = stress_test_router.StressTestRequest(portfolio_id="holdings", scenarios=[])
+    with pytest.raises(HTTPException) as exc_info:
+        stress_test_router.start_stress_test(request, user_id=7)
+
+    assert exc_info.value.status_code == 429
+    assert exc_info.value.headers == {"Retry-After": "30"}
+    assert recorded == {"job_id": "stress-job-3"}
+
+
+def test_scenarios_bounded():
+    import pytest
+    from pydantic import ValidationError
+
+    from routers.stress_test import StressTestRequest
+
+    StressTestRequest(portfolio_id="h", scenarios=["X"] * 20)
+    with pytest.raises(ValidationError):
+        StressTestRequest(portfolio_id="h", scenarios=["X"] * 21)
+
+
+def test_spawn_registers_process_and_shutdown_terminates(monkeypatch):
+    from services import job_manager
+
+    created = []
+
+    class FakeProc:
+        def __init__(self, target=None, args=(), daemon=None):
+            self.pid = 123
+            self.daemon = daemon
+            self.terminated = False
+            created.append(self)
+
+        def start(self):
+            pass
+
+        def is_alive(self):
+            return not self.terminated
+
+        def terminate(self):
+            self.terminated = True
+
+        def kill(self):
+            self.terminated = True
+
+        def join(self, *_args, **_kwargs):
+            pass
+
+    monkeypatch.setattr(job_manager.multiprocessing, "Process", FakeProc)
+    monkeypatch.setattr(job_manager.job_repo, "list_active_jobs", lambda: [])
+
+    assert job_manager.spawn_process("j2", lambda: None, ()) == 123
+    proc = created[0]
+    with job_manager._registry_lock:
+        assert job_manager._job_registry["j2"] is proc
+    assert proc.daemon is True
+
+    job_manager.shutdown_all()
+    assert proc.terminated
+    assert "j2" not in job_manager._job_registry
+
+
+def test_capacity_ignores_own_and_stale_rows(monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    from services import job_manager
+
+    old = (datetime.now(timezone.utc) - timedelta(hours=2)).replace(tzinfo=None).isoformat()
+    fresh = datetime.now(timezone.utc).isoformat()
+    monkeypatch.setattr(
+        job_manager.job_repo,
+        "list_active_jobs",
+        lambda: [
+            {"job_id": "mine", "created_at": fresh},
+            {"job_id": "dead", "created_at": old},
+            {"job_id": "live", "created_at": fresh},
+        ],
+    )
+
+    assert job_manager._active_job_count("mine") == 1
 
 
 def test_running_job_is_visible_from_any_api_worker(client, auth_headers, test_user_id):
