@@ -228,6 +228,9 @@ def start_scheduler() -> bool:
             _dash_update_harvest("piotroski_batch", "error", {"error": str(e)})
             logging.error(f"[piotroski_batch] Error: {e}")
 
+    # No pre-market cache warm: the disk cache is gone and Redis/TTLCache
+    # entries expire on their own (OPS-18).
+
     # ── NEW JOB 6: Error telemetry digest — 7:00 AM IST (1:30 UTC) ──────────
     def _run_error_digest():
         _dash_update_harvest("error_digest", "running")
@@ -292,6 +295,21 @@ def start_scheduler() -> bool:
         logger.info(f"Notification cleanup: {deleted} old notifs deleted")
 
     _scheduler.add_job(_run_notification_cleanup, "cron", hour=21, minute=30)  # 3:00 AM IST
+
+    # ── Retention: old news, finished-job payloads, triggered alerts, token log (PERF-15)
+    def _run_retention():
+        _dash_update_harvest("retention", "running")
+        try:
+            from services.retention import run_retention
+            counts = run_retention()
+            _dash_update_harvest("retention", "idle", counts)
+            logging.info(f"[retention] {counts}")
+        except Exception as e:
+            _dash_update_harvest("retention", "error", {"error": str(e)})
+            logging.exception("[retention] failed")
+
+    _scheduler.add_job(_run_retention, "cron", hour=21, minute=50,
+                       id="retention", replace_existing=True)  # 3:20 AM IST
 
     # ── Backfill UserPreferences for existing users ─────────────────────────
     def _run_backfill_preferences():
@@ -362,7 +380,7 @@ def start_scheduler() -> bool:
         "All schedulers started — existing: (advisor 1:30, news 12:30, yt-channel 1:00, "
         "yt-portfolio 1:15, snapshot 4:30 PM + retry 5:30 PM, pkscreener 4:45 PM, outcome-eval 2:00 AM) | "
         "new: (bhavcopy 7:00 PM, morning-brief-pregen 6:30 AM, "
-        "piotroski-weekly Sun 11 PM, error-digest 7:00 AM, db-backup 2:30 AM) | "
+        "piotroski-weekly Sun 11 PM, error-digest 7:00 AM, db-backup 2:30 AM, retention 3:20 AM) | "
         "harvesters: (expert 120min, sebi 120min, yt-expert 120min) [all IST]"
     )
     return True

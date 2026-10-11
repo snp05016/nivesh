@@ -1,0 +1,9 @@
+# Lint gate for backend CI (OPS-20). Start with fatal-only rules that pass today:
+# E9 syntax errors, F63 invalid comparisons/asserts, F7 misplaced statements,
+# F404 late __future__ imports.
+# Next: add F821 (undefined name) once LLM-01's NameError fix lands, then widen.
+target-version = "py311"
+extend-exclude = ["tradingagents-core", "tests_suite", "venv", ".venv"]
+
+[lint]
+select = ["E9", "F63", "F7", "F404"]

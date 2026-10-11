@@ -215,6 +215,9 @@ class AnalysisHistory(Base):
         Index("ix_analysis_history_scan_type", "scan_type"),
         Index("ix_analysis_history_created_at", "created_at"),
         Index("ix_analysis_history_ticker_user", "ticker", "user_id"),
+        # PERF-15: earnings date filters and the latest-scan cache gate.
+        Index("ix_analysis_history_analysis_date", "analysis_date"),
+        Index("ix_analysis_history_ticker_scan_created", "ticker", "scan_type", "created_at"),
     )
 
 
@@ -257,6 +260,7 @@ class AnalysisJob(Base):
     __table_args__ = (
         Index("ix_analysis_jobs_user_id", "user_id"),
         Index("ix_analysis_jobs_ticker", "ticker"),
+        Index("ix_analysis_jobs_status_created", "status", "created_at"),  # PERF-15: SSE/monitor scans
         # One active job per user and scan_type, enforced atomically (DB-11).
         Index(
             "uq_analysis_jobs_active_user_scan", "user_id", "scan_type",
@@ -283,6 +287,7 @@ class PriceTarget(Base):
 
     __table_args__ = (
         Index("ix_price_targets_user_id", "user_id"),
+        Index("ix_price_targets_triggered_ticker", "triggered", "ticker"),  # PERF-15: alert poller
         CheckConstraint("target_price > 0", name="ck_price_targets_positive"),
     )
 
@@ -414,6 +419,10 @@ class NewsArticle(Base):
     is_red_flag     = Column(Boolean, default=False)        # True if contains auditor/CFO/SEBI keywords
     created_at      = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    __table_args__ = (
+        Index("ix_news_articles_published_at", "published_at"),  # PERF-15: home feed, sentiment trend
+    )
+
 
 class YouTubeVideo(Base):
     """Stores harvested financial YouTube video metadata."""
@@ -436,6 +445,12 @@ class YouTubeVideo(Base):
     matched_ticker  = Column(String, nullable=True, index=True)
     source          = Column(String, default="channel_harvest")
     sebi_reg        = Column(String, nullable=True)
+
+    __table_args__ = (
+        # PERF-15: home feed filters/sorts on these.
+        Index("ix_youtube_videos_published_at", "published_at"),
+        Index("ix_youtube_videos_ticker_views", "matched_ticker", "view_count"),
+    )
 
 
 class PortfolioValuationHistory(Base):

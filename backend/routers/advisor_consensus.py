@@ -6,10 +6,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from collections import Counter, defaultdict
 from fastapi import APIRouter, Depends, HTTPException, Query
-from helpers import get_session, AdvisorInsight, require_auth
+from helpers import get_session, AdvisorInsight, require_auth, _dcache_get, _dcache_set
 from services import stock_universe
 
 router = APIRouter(tags=["Portfolio"])
+
+_ADVISOR_CONSENSUS_TTL = 600  # seconds; advisor harvest runs every 2 h
 
 
 @router.get("/api/v1/portfolio/advisor-consensus")
@@ -32,6 +34,11 @@ def portfolio_advisor_consensus(
     """
 
     try:
+        # Market-wide aggregate: one cached copy per window (PERF-20).
+        cached = _dcache_get("advisor_consensus", str(days))
+        if cached is not None:
+            return cached
+
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
         with get_session() as session:
@@ -136,7 +143,7 @@ def portfolio_advisor_consensus(
         sector_signals.sort(key=lambda x: x["bullish_count"], reverse=True)
         sector_signals = sector_signals[:3]
 
-        return {
+        result = {
             "generated_at": datetime.now(timezone.utc).isoformat() + "Z",
             "window_days": days,
             "sector_signals": sector_signals,
@@ -144,6 +151,8 @@ def portfolio_advisor_consensus(
             "total_videos_processed": total_videos_processed,
             "last_harvest_at": last_harvest_at,
         }
+        _dcache_set("advisor_consensus", str(days), result, ttl=_ADVISOR_CONSENSUS_TTL)
+        return result
 
     except HTTPException:
         raise

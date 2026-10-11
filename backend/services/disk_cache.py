@@ -7,8 +7,6 @@ It provides backward compatibility for sync routes calling get() and set().
 from typing import Any, Optional
 from services import cache_service
 
-CACHE_ROOT = "/var/cache/nivesh"  # Dummy for backwards compat
-
 # cache_service.cache is looked up at call time so tests can swap the singleton.
 
 def get(namespace: str, key: str) -> Optional[Any]:

@@ -28,14 +28,15 @@ jobs:
         python -m pip install --upgrade pip
         # OPS-16: exact pins from requirements.lock; requirements.txt only until the lock exists.
         if [ -f backend/requirements.lock ]; then pip install -r backend/requirements.lock; else pip install -r backend/requirements.txt; fi
-        pip install ruff mypy pytest httpx
+        pip install ruff==0.8.4 pytest httpx
 
     - name: Lint with ruff
-      # Blocking for code that cannot run: syntax errors (E9), broken comparisons/asserts (F63),
-      # misplaced statements (F7) and late __future__ imports (F404).
-      # ponytail: add F82 (undefined names) after LLM-01 NameError lands
-      run: |
-        ruff check backend/ --target-version py311 --select E9,F63,F7,F404 --extend-exclude backend/tradingagents-core
+      # Rules live in backend/ruff.toml: syntax errors (E9), broken comparisons/asserts (F63),
+      # misplaced statements (F7) and late __future__ imports (F404). Widen there.
+      run: ruff check backend/
+
+    - name: Repo policy checks
+      run: bash scripts/check_repo_policy.sh
 
     - name: Check for unreferenced backend modules
       run: python scripts/find_unreferenced_modules.py
