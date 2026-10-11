@@ -132,7 +132,7 @@ private struct GratuityResultCard: View {
                 }
             }
 
-            Text("MOCK/DEMO — simplified estimate for employees covered under the Payment of Gratuity Act, 1972. Not tax or legal advice; confirm with your employer or an advisor.")
+            Text("Simplified estimate for employees covered under the Payment of Gratuity Act, 1972. Not tax or legal advice; confirm with your employer or an advisor.")
                 .font(Theme.engravedSerif(size: 11, relativeTo: .caption2))
                 .foregroundColor(Theme.inkTertiary)
         }

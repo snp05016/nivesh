@@ -6,11 +6,8 @@ struct NewsMultimediaView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var articles: [NewsArticleItem] = []
     @State private var videos: [YouTubeVideoItem] = []
-    @State private var expertTab: Int = 0
     @State private var isLoading = false
     @State private var loadError: String?
-
-    let expertTabs = ["Fundamental Calls", "F&O Calls & Analysis", "Commodity Calls"]
 
     var body: some View {
         ZStack {
@@ -50,7 +47,6 @@ struct NewsMultimediaView: View {
                         newsCarousel
                         podcastSection
                         editorialSection
-                        expertPanel
                         allNewsSection
                     }
                     .padding(.bottom, Theme.Spacing.xLarge)
@@ -203,55 +199,6 @@ struct NewsMultimediaView: View {
                 }
             }
         }
-    }
-
-    // MARK: 8.5 Expert Execution Panel
-
-    private var expertPanel: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
-            SectionHeader(title: "GET EXPERT ADVICE", hindiTitle: "विशेषज्ञ सलाह")
-
-            // Tab bar
-            HStack(spacing: Theme.Spacing.none) {
-                ForEach(Array(expertTabs.enumerated()), id: \.offset) { idx, tab in
-                    Button(action: { HapticManager.selection(); expertTab = idx }) {
-                        Text(tab)
-                            .font(.caption2.weight(expertTab == idx ? .bold : .regular))
-                            .foregroundStyle(expertTab == idx ? Theme.securityGold : Theme.inkTertiary)
-                            .multilineTextAlignment(.center)
-                            .padding(.vertical, Theme.Spacing.medium)
-                            .frame(maxWidth: .infinity)
-                            .background(expertTab == idx ? Theme.securityGold.opacity(0.08) : Color.clear)
-                    }
-                }
-            }
-            .background(Theme.canvasDeep)
-            .cornerRadius(Theme.CornerRadius.medium)
-            .padding(.horizontal, Theme.Spacing.card)
-
-            // Expert call cards based on selected panel
-            expertCallCards(for: expertTab)
-                .padding(.horizontal, Theme.Spacing.card)
-        }
-    }
-
-    private func expertCallPlaceholder(for tab: Int) -> String {
-        switch tab {
-        case 0: return "Long-horizon corporate intrinsic valuation calls from SEBI-registered fundamental analysts."
-        case 1: return "Short-term high-leverage derivative positioning and open interest analysis."
-        default: return "Physical resource metrics and hard asset allocation data for commodities."
-        }
-    }
-
-    @ViewBuilder
-    private func expertCallCards(for tab: Int) -> some View {
-        Text(expertCallPlaceholder(for: tab))
-            .font(.caption)
-            .foregroundStyle(Theme.inkSecondary)
-            .lineSpacing(4)
-            .padding(Theme.Spacing.standard)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .banknoteCard()
     }
 
     // MARK: Placeholders

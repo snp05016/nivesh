@@ -50,7 +50,7 @@ struct CopilotScreen: View {
         TAB BAR (5 tabs at bottom):
         Tab 1 - Home: Main dashboard, market indices, morning brief, quick analysis access.
         Tab 2 - Markets: Hub for all analytical tools. Contains sub-sections:
-        \(MarketSection.allCases.map { "  - \($0.englishTitle): \($0.description)" }.joined(separator: "\n"))
+        \(MarketSection.allCases.filter { ReleaseGate.isVisible($0) }.map { "  - \($0.englishTitle): \($0.description)" }.joined(separator: "\n"))
         Tab 3 - Ideas: Expert stock ideas, curated research, thematic baskets from SEBI-registered advisors.
         Tab 4 - News: Multimedia news feed, articles, real-time financial newswire.
         Tab 5 - Portfolio: Holdings, net worth, daily P&L, transaction history, allocation breakdown, risk analysis, red flags, trade journal, exports (Excel/PDF).

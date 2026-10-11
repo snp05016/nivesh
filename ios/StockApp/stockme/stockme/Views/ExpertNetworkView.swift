@@ -69,19 +69,6 @@ class ExpertNetworkViewModel: ObservableObject {
         set { bookmarksRaw = newValue.joined(separator: ",") }
     }
 
-    private static let fallbackExperts: [MarketExpert] = [
-        MarketExpert(id: "E1", name: "Rajesh Palviya", sebiRegId: nil,
-                     yearsExperience: 19, strategy: "Harmonic Trading Strategy",
-                     focusTags: ["Charts", "Currency", "Gold"],
-                     postCount: 0, isVerified: true,
-                     bio: "Senior VP Technical Research tracking Indian and global derivative markets."),
-        MarketExpert(id: "E2", name: "Anand James", sebiRegId: nil,
-                     yearsExperience: 14, strategy: "Wyckoff Method",
-                     focusTags: ["Charts", "Equity", "Index"],
-                     postCount: 0, isVerified: true,
-                     bio: "Chief Market Strategist applying Wyckoff methodology to Nifty structural pivots."),
-    ]
-
     func load() {
         isLoading = true
         fetchError = nil
@@ -95,7 +82,7 @@ class ExpertNetworkViewModel: ObservableObject {
             async let expertsFetch = fetchExperts()
             async let postsFetch = fetchPosts()
             let (e, p) = await (expertsFetch, postsFetch)
-            experts = e.isEmpty ? Self.fallbackExperts : e
+            experts = e
             posts = p
 
             if advisors.isEmpty && insights.isEmpty {

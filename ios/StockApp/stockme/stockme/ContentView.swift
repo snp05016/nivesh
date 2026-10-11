@@ -384,9 +384,9 @@ enum MarketSection: String, Hashable, CaseIterable {
         case .ipo: return "Price band, lot size, GMP, dates and live subscription status for every IPO"
         case .mutualFunds: return "Browse by category, AUM and returns; NAV history, expense ratio, riskometer and SIP calculator"
         case .forum: return "Per-stock and general market message boards, threaded replies, upvotes and community polls"
-        case .financeTracker: return "Mock linked bank accounts, balance summary, and a placeholder spend categorization breakdown"
-        case .loanMarketplace: return "Browse demo loan offers by type and tenure, then submit a mock multi-step application"
-        case .fixedDeposits: return "Compare demo NBFC fixed deposit schemes by rate and tenure, project maturity value, and book"
+        case .financeTracker: return "Linked bank accounts, balance summary and spend categorization breakdown"
+        case .loanMarketplace: return "Browse loan offers by type and tenure, then start a multi-step application"
+        case .fixedDeposits: return "Compare NBFC fixed deposit schemes by rate and tenure, project maturity value, and book"
         }
     }
     var accentColor: Color {
@@ -662,6 +662,7 @@ struct MarketsView: View {
     @ViewBuilder
     private func sectionDestination(_ section: MarketSection) -> some View {
         sectionContent(section)
+            .demoDataRibbon(ReleaseGate.hiddenInRelease.contains(section)) // UX-22
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {

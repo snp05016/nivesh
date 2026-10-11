@@ -263,7 +263,10 @@ struct SettingsScreen: View {
     private var accountSection: some View {
         SettingsGroup(title: "ACCOUNT", hindi: "खाता") {
             NavRow(icon: "crown.fill", color: Theme.securityGold, title: "Subscription", destination: SubscriptionManagementView())
-            NavRow(icon: "lock.shield.fill", color: Theme.securityGold, title: "Account Security", destination: AccountSecurityView())
+            // UX-22/IOSUI-13: password change, 2FA and sessions are simulated; Debug only.
+            if ReleaseGate.demoFeatures {
+                NavRow(icon: "lock.shield.fill", color: Theme.securityGold, title: "Account Security", destination: AccountSecurityView().demoDataRibbon())
+            }
             PickerRow(icon: "indianrupeesign", color: Theme.securityGold, title: "Currency Format", selection: $currencyDisplay, options: ["Lakhs/Crores", "Absolute"])
             PickerRow(icon: "arrow.triangle.2.circlepath", color: Theme.inkSecondary, title: "Home Auto-refresh", selection: $homeAutoRefreshSeconds, options: ["0", "30", "60", "120"])
             ToggleRow(icon: "newspaper", color: Theme.securityGold, title: "IPO Alerts", isOn: $ipoAlerts)
