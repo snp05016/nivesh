@@ -53,10 +53,13 @@ struct MarketPulseResponse: Codable {
     let declines: Int
     let unchanged: Int
     let breadthRatio: Double?
+    /// Set when breadth comes from a fixed large-cap sample (not market-wide).
+    let breadthSampleSize: Int?
     let fetchedAt: String
     enum CodingKeys: String, CodingKey {
         case indices, advances, declines, unchanged
         case breadthRatio = "breadth_ratio"
+        case breadthSampleSize = "breadth_sample_size"
         case fetchedAt = "fetched_at"
     }
 }

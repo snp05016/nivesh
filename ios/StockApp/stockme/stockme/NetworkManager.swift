@@ -451,7 +451,7 @@ class NetworkManager: ObservableObject {
         
         do {
             let resp = try JSONDecoder().decode(PortfolioResponse.self, from: data)
-            return resp.holdings.map { dto in
+            let holdings: [PortfolioHolding] = resp.holdings.map { dto in
                 let stock = Stock(
                     ticker: dto.ticker,
                     companyName: dto.company_name,
@@ -469,6 +469,8 @@ class NetworkManager: ObservableObject {
                     targetPrice: dto.target_price
                 )
             }
+            WidgetSnapshotStore.save(holdings: holdings)
+            return holdings
         } catch {
             print("Decoding error in getPortfolio: \(error)")
             throw NetworkError.decodingError(error.localizedDescription)

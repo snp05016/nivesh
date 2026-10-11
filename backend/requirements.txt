@@ -56,7 +56,7 @@ fpdf2>=2.8.1
 # If installing from local path: pip install -e ./tradingagents-core
 
 # Firecrawl scraping SDK (optional — falls back to direct scraping without API key)
-firecrawl-py>=1.5.0
+firecrawl-py==4.28.2
 newspaper3k>=0.2.8
 lxml_html_clean>=0.4.0
 

@@ -1288,6 +1288,13 @@ private struct MarketPulseDashCard: View {
                     if pulse.advances + pulse.declines > 0 {
                         ADBreathBar(advancing: pulse.advances, declining: pulse.declines)
                             .padding(.horizontal, cardHPad)
+                        if let sampleSize = pulse.breadthSampleSize {
+                            Text("Sample of \(sampleSize) large caps")
+                                .font(.caption2).monospaced()
+                                .foregroundStyle(Theme.inkTertiary)
+                                .padding(.horizontal, cardHPad)
+                                .padding(.top, Theme.Spacing.small)
+                        }
                     }
 
                     // Fine rule
@@ -2193,6 +2200,13 @@ private struct InstitutionalDashCard: View {
                         .foregroundStyle(dimText)
                         .padding(.horizontal, cardHPad)
                         .padding(.bottom, Theme.Spacing.standard)
+
+                    if flow.funds.isEmpty {
+                        Text("Fund data unavailable")
+                            .font(.caption)
+                            .foregroundStyle(dimText)
+                            .padding(.horizontal, cardHPad)
+                    }
 
                     // Fund rows
                     VStack(spacing: Theme.Spacing.none) {

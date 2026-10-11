@@ -130,11 +130,11 @@ def _firecrawl_extract(url: str, schema: dict) -> dict | None:
     if fc is None:
         return None
     try:
-        result = fc.scrape_url(url, params={
-            "formats": ["extract"],
-            "extract": {"schema": schema},
-        })
-        return result.get("extract") if isinstance(result, dict) else None
+        # firecrawl-py v2 (pinned in requirements.txt): scrape() takes formats
+        # directly and returns a Document whose .json holds the extraction.
+        doc = fc.scrape(url, formats=[{"type": "json", "schema": schema}])
+        data = doc.get("json") if isinstance(doc, dict) else getattr(doc, "json", None)
+        return data if isinstance(data, dict) else None
     except Exception as e:
         logger.warning(f"Firecrawl extract failed [{url}]: {e}")
         return None
@@ -287,18 +287,59 @@ def _fetch_pulse_fallback() -> dict:
     except Exception as e:
         logger.warning(f"Failed to fetch advance/decline from yf: {e}")
 
-    # Scale up the sample to approximate Nifty 500 breadth
-    scale = 10
-    advances *= scale
-    declines *= scale
-    unchanged *= scale
-
+    # Breadth here is a 20-large-cap sample, reported as-is with its size;
+    # never scaled up to pose as market-wide (Nifty 500) breadth.
     return {
         "indices": indices,
         "advances": advances,
         "declines": declines,
         "unchanged": unchanged,
         "breadth_ratio": round(advances / declines, 2) if declines > 0 else (round(advances, 2) if advances else None),
+        "breadth_sample_size": len(_NIFTY_SAMPLE),
+        "breadth_universe": "NIFTY_20_SAMPLE",
+        "source": "yfinance_sample",
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _is_int(v) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def _is_num(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+_PULSE_INDEX_KEYS = ("name", "value", "change_pts", "change_pct", "direction")
+
+
+def _validate_pulse_extraction(extracted: dict | None) -> dict | None:
+    """
+    Normalise a Firecrawl pulse extraction to the iOS MarketPulseResponse
+    contract (non-optional str index fields, int A/D counts). The schema has
+    no required fields, so an LLM extraction may return nulls; one null would
+    fail the whole /market/dashboard decode on iOS. Returns None when the
+    extraction is unusable so the caller falls back to yfinance.
+    """
+    if not isinstance(extracted, dict):
+        return None
+    raw = extracted.get("indices")
+    indices = [
+        {k: row[k] for k in _PULSE_INDEX_KEYS}
+        for row in (raw if isinstance(raw, list) else [])
+        if isinstance(row, dict) and all(isinstance(row.get(k), str) for k in _PULSE_INDEX_KEYS)
+    ]
+    adv, dec, unch = (extracted.get(k) for k in ("advances", "declines", "unchanged"))
+    if not indices or not (isinstance(adv, int) and isinstance(dec, int) and _is_int(unch)) \
+            or isinstance(adv, bool) or isinstance(dec, bool):
+        return None
+    return {
+        "indices": indices,
+        "advances": adv,
+        "declines": dec,
+        "unchanged": unch,
+        "breadth_ratio": round(adv / dec, 2) if dec > 0 else (float(adv) if adv else None),
+        "source": "firecrawl",
         "fetched_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -319,10 +360,10 @@ def fetch_market_pulse() -> dict:
         "https://www.moneycontrol.com/stocks/marketstats/indiceswatch.php",
         _PULSE_SCHEMA,
     )
-    if extracted and extracted.get("indices"):
-        extracted.setdefault("fetched_at", datetime.now(timezone.utc).isoformat())
-        _cache_set("market_pulse", extracted)
-        return extracted
+    pulse = _validate_pulse_extraction(extracted)
+    if pulse is not None:
+        _cache_set("market_pulse", pulse)
+        return pulse
 
     result = _fetch_pulse_fallback()
     _cache_set("market_pulse", result)
@@ -561,7 +602,7 @@ def _fetch_mf_fallback() -> list[dict]:
                     df = data[sym]
                 else:
                     df = data
-                if df.empty or len(df.dropna()) > 10:
+                if not df.empty and len(df.dropna()) > 10:
                     start_px = float(df['Close'].dropna().iloc[0])
                     end_px = float(df['Close'].dropna().iloc[-1])
                     ret_pct = round(((end_px - start_px) / start_px) * 100, 2)
@@ -575,18 +616,8 @@ def _fetch_mf_fallback() -> list[dict]:
                 continue
     except Exception as e:
         logger.warning(f"MF Fallback failed: {e}")
-        
-    # If it utterly fails, provide realistic recent approximations so UI isn't broken
-    if not funds:
-        funds = [
-            {"name": "Quant Small Cap Fund", "category": "Small Cap", "one_year_return_pct": 52.4, "aum_cr": None},
-            {"name": "Nippon India Small Cap", "category": "Small Cap", "one_year_return_pct": 48.1, "aum_cr": None},
-            {"name": "HDFC Mid-Cap Opportunities", "category": "Mid Cap", "one_year_return_pct": 42.8, "aum_cr": None},
-            {"name": "SBI Long Term Equity", "category": "Large & Mid", "one_year_return_pct": 36.5, "aum_cr": None},
-            {"name": "Parag Parikh Flexi Cap", "category": "Flexi Cap", "one_year_return_pct": 28.2, "aum_cr": None},
-            {"name": "ICICI Pru Bluechip", "category": "Large Cap", "one_year_return_pct": 25.1, "aum_cr": None},
-        ]
-        
+
+    # No data means an empty list; never substitute invented fund returns.
     return funds
 
 
@@ -609,7 +640,7 @@ _TOTAL_LISTED_OBLIGATIONS = 5042
 def _fetch_sync_ratio_fallback() -> dict:
     """
     Scrape Moneycontrol earnings results page for count of declared results.
-    Falls back to yfinance-based estimation if parsing fails.
+    Returns declared_count=None (source "unavailable") if parsing fails.
     """
     import re
 
@@ -649,50 +680,12 @@ def _fetch_sync_ratio_fallback() -> dict:
     except Exception as e:
         logger.warning(f"Moneycontrol sync ratio scrape failed: {e}")
 
-    # --- Fallback: count NSE-listed tickers via yfinance batch download ---
-    try:
-        import yfinance as yf
-        # Use a broad NSE sample to estimate reporting density
-        sample_tickers = [
-            "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
-            "SBIN.NS", "BAJFINANCE.NS", "LT.NS", "AXISBANK.NS", "WIPRO.NS",
-            "SUNPHARMA.NS", "TITAN.NS", "MARUTI.NS", "KOTAKBANK.NS", "POWERGRID.NS",
-            "ITC.NS", "HINDUNILVR.NS", "BHARTIARTL.NS", "ASIANPAINT.NS", "HCLTECH.NS",
-            "ADANIENT.NS", "TATAMOTORS.NS", "ONGC.NS", "NTPC.NS", "COALINDIA.NS",
-            "TATASTEEL.NS", "JSWSTEEL.NS", "TECHM.NS", "DRREDDY.NS", "CIPLA.NS",
-        ]
-        data = yf.download(sample_tickers, period="5d", group_by="ticker", progress=False)
-        declared = 0
-        for t in sample_tickers:
-            try:
-                if isinstance(data.columns, pd.MultiIndex):
-                    if t not in data.columns.get_level_values(0):
-                        continue
-                    df = data[t]
-                else:
-                    df = data
-                # If the stock has recent price action (last 2 trading days), count it
-                if not df.empty and len(df.dropna()) >= 2:
-                    declared += 1
-            except Exception as _e:
-                continue
-
-        # Extrapolate: if 30/30 sample stocks have data, assume broad market is active
-        ratio = declared / len(sample_tickers) if sample_tickers else 0.5
-        estimated = int(_TOTAL_LISTED_OBLIGATIONS * ratio)
-        return {
-            "declared_count": estimated,
-            "total_expected": _TOTAL_LISTED_OBLIGATIONS,
-            "source": "yfinance_extrapolated",
-        }
-    except Exception as e:
-        logger.warning(f"yfinance sync ratio fallback failed: {e}")
-
-    # Last resort: return a neutral estimate
+    # No honest count available: price activity is not a results declaration,
+    # so never extrapolate one.
     return {
-        "declared_count": int(_TOTAL_LISTED_OBLIGATIONS * 0.6),
+        "declared_count": None,
         "total_expected": _TOTAL_LISTED_OBLIGATIONS,
-        "source": "fallback_estimate",
+        "source": "unavailable",
     }
 
 
@@ -842,6 +835,30 @@ def fetch_yoy_aggregate_indicators() -> dict:
     return result
 
 
+def _validate_fund_extraction(extracted: dict | None) -> list[dict]:
+    """
+    Keep only Firecrawl fund rows that satisfy the iOS MutualFund contract
+    (str name, str category, numeric one_year_return_pct, aum_cr numeric or
+    None). Rows with a missing category are dropped rather than given an
+    invented one.
+    """
+    raw = extracted.get("funds") if isinstance(extracted, dict) else None
+    return [
+        {
+            "name": f["name"],
+            "category": f["category"],
+            "one_year_return_pct": f["one_year_return_pct"],
+            "aum_cr": f.get("aum_cr"),
+        }
+        for f in (raw if isinstance(raw, list) else [])
+        if isinstance(f, dict)
+        and isinstance(f.get("name"), str)
+        and isinstance(f.get("category"), str)
+        and _is_num(f.get("one_year_return_pct"))
+        and (f.get("aum_cr") is None or _is_num(f.get("aum_cr")))
+    ]
+
+
 def fetch_institutional_flow() -> dict:
     """
     Fetch institutional fund flows by scraping top mutual fund performance.
@@ -857,9 +874,11 @@ def fetch_institutional_flow() -> dict:
         "https://www.moneycontrol.com/mutual-funds/performance-tracker/returns/large-cap-fund.html",
         _MF_SCHEMA,
     )
-    funds = extracted.get("funds", []) if extracted else []
+    funds = _validate_fund_extraction(extracted)
+    source = "firecrawl"
     if not funds:
         funds = _fetch_mf_fallback()
+        source = "yfinance" if funds else "unavailable"
 
     funds = sorted(
         [f for f in funds if f.get("one_year_return_pct") is not None],
@@ -867,6 +886,6 @@ def fetch_institutional_flow() -> dict:
         reverse=True,
     )[:10]
 
-    result = {"funds": funds, "fetched_at": datetime.now(timezone.utc).isoformat()}
+    result = {"funds": funds, "source": source, "fetched_at": datetime.now(timezone.utc).isoformat()}
     _cache_set("institutional_flow", result)
     return result

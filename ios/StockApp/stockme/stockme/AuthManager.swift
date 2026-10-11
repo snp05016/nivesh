@@ -89,5 +89,6 @@ class AuthManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: key)
         UserDefaults.standard.removeObject(forKey: "nivesh_cached_portfolio_v1")
         UserDefaults.standard.removeObject(forKey: "nivesh_last_refresh_v1")
+        WidgetSnapshotStore.clear()
     }
 }

@@ -50,9 +50,15 @@ def test_fetch_market_pulse(mock_fallback, mock_firecrawl, mock_set, mock_get):
     
     # Test firecrawl success
     mock_get.return_value = None
-    mock_firecrawl.return_value = {"indices": [{"name": "Test", "value": "100"}]}
+    # Must satisfy _validate_pulse_extraction (all str index fields, int A/D counts)
+    mock_firecrawl.return_value = {
+        "indices": [{"name": "NIFTY 50", "value": "24,000", "change_pts": "+10",
+                     "change_pct": "+0.04%", "direction": "up"}],
+        "advances": 30, "declines": 15, "unchanged": 5,
+    }
     res2 = fetch_market_pulse()
     assert "indices" in res2
+    assert res2["source"] == "firecrawl"
     assert mock_fallback.call_count == 0
     
     # Test fallback
