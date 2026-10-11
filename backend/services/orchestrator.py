@@ -803,7 +803,7 @@ def reformat_with_claude(
                     messages=[{"role": "user", "content": user_message}],
                     temperature=0,
                 )
-                _log_token_usage("reformat", response.usage)
+                _log_token_usage("reformat", response.usage, SONNET_MODEL)
                 raw_json = _extract_json_from_text(response.content[0].text)
                 parsed = _json_loads(raw_json)
                 validated = _validate_parsed(parsed)

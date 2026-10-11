@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime, timezone
 from collections import deque
 
+SERVER_START = datetime.now(timezone.utc)
 _dash_lock = threading.Lock()
 _harvest_status = {
     "advisor":  {"status": "idle", "last_run": None, "last_result": None},
@@ -33,21 +34,51 @@ _token_stats = {
 _token_log_lock = threading.Lock()
 TOKEN_LOG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "token_log.jsonl")
 
+# USD per 1M tokens (input, output). First substring match on the lower-cased model wins,
+# so the more specific 'deepseek-reasoner' must precede 'deepseek'.
+_PRICING_PER_M: list[tuple[str, float, float]] = [
+    ("deepseek-reasoner", 0.55, 2.19),
+    ("deepseek", 0.14, 0.28),
+    ("haiku", 1.0, 5.0),
+    ("sonnet", 3.0, 15.0),
+    ("opus", 15.0, 75.0),
+]
+
+
+def estimate_cost_usd(model: str | None, input_tokens: int, output_tokens: int) -> float | None:
+    """USD cost of one call, or None when the model is missing or unpriced."""
+    m = (model or "").lower()
+    for needle, in_rate, out_rate in _PRICING_PER_M:
+        if needle in m:
+            return (input_tokens * in_rate + output_tokens * out_rate) / 1_000_000
+    return None
+
+
+def model_vendor(model: str | None) -> str:
+    """'deepseek', 'claude' or 'unknown' — the dashboard cost bucket for a model."""
+    m = (model or "").lower()
+    if "deepseek" in m:
+        return "deepseek"
+    if any(k in m for k in ("haiku", "sonnet", "opus")):
+        return "claude"
+    return "unknown"
+
 
 def _dash_update_harvest(key: str, status: str, result: dict | None = None) -> None:
     with _dash_lock:
-        if key in _harvest_status:
-            _harvest_status[key]["status"] = status
-            if status == "running":
-                _harvest_status[key]["last_run"] = datetime.now(timezone.utc).isoformat()
-            if result is not None:
-                _harvest_status[key]["last_result"] = result
-                _dash_logs.appendleft({
-                    "ts": datetime.now(timezone.utc).isoformat(),
-                    "key": key,
-                    "status": status,
-                    "result": result
-                })
+        # Scheduler jobs (bhavcopy, rag_ingest, ...) register themselves on first update.
+        _harvest_status.setdefault(key, {"status": "idle", "last_run": None, "last_result": None})
+        _harvest_status[key]["status"] = status
+        if status == "running":
+            _harvest_status[key]["last_run"] = datetime.now(timezone.utc).isoformat()
+        if result is not None:
+            _harvest_status[key]["last_result"] = result
+            _dash_logs.appendleft({
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "key": key,
+                "status": status,
+                "result": result
+            })
 
 def _dash_start_job(job_id: str, ticker: str, exchange: str, user_id) -> None:
     with _dash_lock:
@@ -94,7 +125,8 @@ def _dash_log_request(method: str, path: str, params: dict, status: int, duratio
             "duration_ms": round(duration_ms),
         })
 
-def _log_token_usage(endpoint: str, usage) -> None:
+def _log_token_usage(endpoint: str, usage, model: str | None = None) -> None:
+    """Record one LLM call. Pass `model` so the dashboard can price it by vendor."""
     inp = getattr(usage, "input_tokens", 0)
     if inp == 0:
         inp = getattr(usage, "prompt_tokens", 0)
@@ -107,6 +139,7 @@ def _log_token_usage(endpoint: str, usage) -> None:
         entry = {
             "ts": datetime.now(timezone.utc).isoformat(),
             "endpoint": endpoint,
+            "model": model or "unknown",
             "input_tokens": inp,
             "output_tokens": out,
             "cache_creation_input_tokens": cw,
@@ -127,6 +160,9 @@ def _log_token_usage(endpoint: str, usage) -> None:
         _token_stats["recent"].appendleft({
             "ts": datetime.now(timezone.utc).isoformat(),
             "endpoint": endpoint,
+            "model": model or "unknown",
             "input": inp,
             "output": out,
+            "cache_read": cr,
+            "cache_write": cw,
         })

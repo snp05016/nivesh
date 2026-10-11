@@ -100,7 +100,7 @@ def deepseek_chat(
             response = client.chat.completions.create(**kwargs)
 
             if log_endpoint and hasattr(response, "usage"):
-                _log_token_usage(log_endpoint, response.usage)
+                _log_token_usage(log_endpoint, response.usage, selected_model)
 
             choice = response.choices[0]
             content = choice.message.content or ""

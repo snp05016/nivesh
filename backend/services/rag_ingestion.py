@@ -1,9 +1,11 @@
 """
-RAG Ingestion — Chunk, embed, and upsert NewsArticles + AdvisorInsights.
+RAG Ingestion — chunk, embed, and upsert NewsArticles + AdvisorInsights into pgvector.
 
-Run once at startup for initial load, then nightly via APScheduler.
+Incremental: scheduled once a day by the leader-only scheduler (harvest_worker job
+'rag_ingest'). Each doc type resumes after the highest source-row id already in the
+vector store, rows are streamed in small id-ordered batches, and no DB session is held
+while embedding — a run with no new rows does zero embedding work.
 """
-import gc
 import logging
 from datetime import datetime, timezone
 import os
@@ -12,12 +14,17 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 
 from database import get_session, NewsArticle, AdvisorInsight
-from services.vector_store import upsert_documents, collection_count
+from services.vector_store import (
+    upsert_documents, collection_count, max_ingested_row_id, delete_legacy_chunks,
+)
 
 logger = logging.getLogger(__name__)
 
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 100
+FETCH_BATCH = 200   # source rows per DB round-trip
+EMBED_BATCH = 50    # chunks per model.encode call
+DOC_TYPES = ("news_article", "advisor_transcript")
 
 _model: SentenceTransformer | None = None
 _model_lock = threading.Lock()
@@ -38,116 +45,102 @@ def _get_embedding_model() -> SentenceTransformer:
     return _model
 
 
-def _make_chunk_id(ticker: str, date_str: str, doc_type: str, chunk_idx: int) -> str:
-    """Generate a unique ID for a document chunk.
+def _make_chunk_id(doc_type: str, row_id: int, chunk_idx: int) -> str:
+    """Chunk id '<doc_type>:<source row id>:<chunk idx>'.
 
-    Args:
-        ticker (str): The stock ticker associated with the document.
-        date_str (str): The published date of the document.
-        doc_type (str): The type of the document (e.g., 'news_article').
-        chunk_idx (int): The sequential index of the chunk.
-
-    Returns:
-        str: A unique identifier for the chunk.
+    Including the source row id keeps same-ticker, same-day articles from overwriting
+    each other; vector_store.max_ingested_row_id() parses it back as the watermark.
     """
-    return f"{ticker}_{date_str}_{doc_type}_chunk{chunk_idx}"
+    return f"{doc_type}:{row_id}:{chunk_idx}"
 
 
-def ingest_all() -> int:
-    """Ingest all existing NewsArticles and AdvisorInsights. Returns count of chunks upserted.
-    
-    Returns:
-        int: The total number of document chunks successfully upserted into the vector store.
-    """
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP,
-        separators=["\n\n", "\n", ". ", " ", ""],
-    )
-    model = _get_embedding_model()
-    total_chunks = 0
-
+def _fetch_batch(doc_type: str, after_id: int, limit: int = FETCH_BATCH) -> list[tuple[int, str, str, str, str]]:
+    """Next `limit` rows with id > after_id as plain (id, ticker, text, date_str, source)
+    tuples, ordered by id. Uses its own short session and only the needed columns."""
     with get_session() as session:
-        articles = session.query(NewsArticle).filter(
-            NewsArticle.body_text.isnot(None),
-            NewsArticle.body_text != "",
-        ).all()
-        logger.info("Ingesting %d news articles", len(articles))
-
-        for article in articles:
-            if not article.ticker or not article.body_text:
-                continue
-            chunks = splitter.split_text(article.body_text)
-            date_str = article.published_at.strftime("%Y-%m-%d") if article.published_at else "unknown"
-            source = article.article_url or "news"
-
-            for batch_start in range(0, len(chunks), 50):
-                batch_end = min(batch_start + 50, len(chunks))
-                batch_ids = []
-                batch_docs = []
-                batch_metas = []
-                for i in range(batch_start, batch_end):
-                    cid = _make_chunk_id(article.ticker, date_str, "news_article", i)
-                    batch_ids.append(cid)
-                    batch_docs.append(chunks[i])
-                    batch_metas.append({
-                        "ticker": article.ticker,
-                        "date": date_str,
-                        "doc_type": "news_article",
-                        "source": source,
-                        "chunk_idx": i,
-                    })
-                embeddings = model.encode(batch_docs).tolist()
-                upsert_documents(batch_ids, batch_docs, batch_metas, embeddings)
-                total_chunks += len(batch_ids)
-                gc.collect()
-
-        insights = session.query(AdvisorInsight).all()
-        logger.info("Ingesting %d advisor transcripts", len(insights))
-
-        for insight in insights:
-            transcript = insight.raw_snippet or ""
-            if not insight.ticker or not transcript:
-                continue
-            chunks = splitter.split_text(transcript)
-            date_str = insight.published_at.strftime("%Y-%m-%d") if insight.published_at else "unknown"
-
-            for batch_start in range(0, len(chunks), 50):
-                batch_end = min(batch_start + 50, len(chunks))
-                batch_ids = []
-                batch_docs = []
-                batch_metas = []
-                for i in range(batch_start, batch_end):
-                    cid = _make_chunk_id(insight.ticker, date_str, "advisor_transcript", i)
-                    batch_ids.append(cid)
-                    batch_docs.append(chunks[i])
-                    batch_metas.append({
-                        "ticker": insight.ticker,
-                        "date": date_str,
-                        "doc_type": "advisor_transcript",
-                        "source": insight.advisor_name or "advisor",
-                        "chunk_idx": i,
-                    })
-                embeddings = model.encode(batch_docs).tolist()
-                upsert_documents(batch_ids, batch_docs, batch_metas, embeddings)
-                total_chunks += len(batch_ids)
-                gc.collect()
-
-    logger.info("Ingestion complete: %d chunks total, collection size: %d", total_chunks, collection_count())
-    return total_chunks
+        if doc_type == "news_article":
+            query = session.query(
+                NewsArticle.id, NewsArticle.ticker, NewsArticle.body_text,
+                NewsArticle.published_at, NewsArticle.article_url,
+            ).filter(
+                NewsArticle.id > after_id,
+                NewsArticle.body_text.isnot(None),
+                NewsArticle.body_text != "",
+            ).order_by(NewsArticle.id)
+            default_source = "news"
+        else:
+            query = session.query(
+                AdvisorInsight.id, AdvisorInsight.ticker, AdvisorInsight.raw_snippet,
+                AdvisorInsight.published_at, AdvisorInsight.advisor_name,
+            ).filter(AdvisorInsight.id > after_id).order_by(AdvisorInsight.id)
+            default_source = "advisor"
+        rows = query.limit(limit).all()
+        return [
+            (
+                row_id, ticker or "", text or "",
+                published.strftime("%Y-%m-%d") if published else "unknown",
+                source or default_source,
+            )
+            for row_id, ticker, text, published, source in rows
+        ]
 
 
 _last_ingested: str | None = None
 
 
 def ingest_new() -> int:
-    """Nightly CRON — re-ingest all (de-duplication handled by ChromaDB upsert).
-    
-    Returns:
-        int: The total number of document chunks processed during the nightly ingestion.
+    """Embed and upsert rows added since the last run. Returns the number of chunks upserted.
+
+    ponytail: the watermark is the max ingested row id, so a row whose text is filled in
+    after a later row was ingested is not picked up; add an updated_at watermark if needed.
     """
     global _last_ingested
-    logger.info("Starting nightly RAG ingestion")
-    count = ingest_all()
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP,
+        separators=["\n\n", "\n", ". ", " ", ""],
+    )
+    model = None  # loaded lazily: a run with nothing new never loads MiniLM
+    total_chunks = 0
+
+    for doc_type in DOC_TYPES:
+        last_id = max_ingested_row_id(doc_type)
+        if last_id is None:
+            # First run on the new id scheme: drop colliding legacy chunks, embed from scratch.
+            removed = delete_legacy_chunks(doc_type)
+            if removed:
+                logger.info("Removed %d legacy %s chunks", removed, doc_type)
+            last_id = 0
+
+        while True:
+            rows = _fetch_batch(doc_type, last_id)
+            if not rows:
+                break
+            ids: list[str] = []
+            docs: list[str] = []
+            metas: list[dict] = []
+            for row_id, ticker, text, date_str, source in rows:
+                if not ticker or not text:
+                    continue
+                for i, chunk in enumerate(splitter.split_text(text)):
+                    ids.append(_make_chunk_id(doc_type, row_id, i))
+                    docs.append(chunk)
+                    metas.append({
+                        "ticker": ticker,
+                        "date": date_str,
+                        "doc_type": doc_type,
+                        "source": source,
+                        "chunk_idx": i,
+                    })
+            for start in range(0, len(ids), EMBED_BATCH):
+                if model is None:
+                    model = _get_embedding_model()
+                end = start + EMBED_BATCH
+                embeddings = model.encode(docs[start:end]).tolist()
+                upsert_documents(ids[start:end], docs[start:end], metas[start:end], embeddings)
+            total_chunks += len(ids)
+            last_id = rows[-1][0]
+
     _last_ingested = datetime.now(timezone.utc).isoformat()
-    logger.info("Nightly ingestion complete: %d chunks", count)
-    return count
+    logger.info("RAG ingestion complete: %d new chunks, collection size: %d",
+                total_chunks, collection_count())
+    return total_chunks

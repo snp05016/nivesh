@@ -84,12 +84,9 @@ def notifications_register_device(req: DeviceTokenRegisterRequest):
 def notifications_test(req: TestNotificationRequest):
     try:
         return user_service.test_notification(req.user_id, req.ticker, req.exchange)
-    except Exception as e:
-        return {
-            "title": f"{req.ticker.upper()} — Analysis",
-            "body": "Tap to view latest analysis",
-            "data": {"ticker": req.ticker.upper(), "exchange": req.exchange},
-        }
+    except Exception:
+        logging.exception("[NOTIFICATIONS/TEST] failed for user %s", req.user_id)
+        raise HTTPException(status_code=503, detail="Could not build test notification")
 
 
 @router.post("/notifications/morning-summary-push")

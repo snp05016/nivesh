@@ -43,7 +43,7 @@ def _get_service():
     except ModuleNotFoundError as exc:
         raise HTTPException(
             status_code=503,
-            detail=f"YouTubeSummaryService is not installed: {exc}",
+            detail="YouTube summary service is not available",
         ) from exc
     return get_youtube_summary_service()
 

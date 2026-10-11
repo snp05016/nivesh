@@ -67,8 +67,10 @@ import threading
 # Dashboard state — single source of truth is core.dashboard_state (written by
 # helpers/routers/services). Importing the same objects here keeps the admin
 # dashboard and the request-log middleware on that one copy (ARCH-05).
+# /dashboard-data reads through the module (_ds) so it always sees live values
+# (and tests can monkeypatch them).
 # ---------------------------------------------------------------------------
-_server_start = datetime.now(timezone.utc)
+import core.dashboard_state as _ds
 from core.dashboard_state import (
     _dash_lock, _active_analyses, _completed_analyses, _request_log,
     _dash_logs as _harvest_logs, _token_stats, _harvest_status,
@@ -185,7 +187,8 @@ class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Content-Security-Policy"] = "default-src 'self'"
+        # setdefault: the admin dashboard route sets its own, wider policy.
+        response.headers.setdefault("Content-Security-Policy", "default-src 'self'")
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         # Fixes #109: Prevent CDN/browser caching of authenticated API responses
         if request.url.path.startswith("/api/"):
@@ -207,10 +210,11 @@ logger = logging.getLogger("nivesh.main")
 
 @app.exception_handler(DataHarvestingError)
 async def _data_harvesting_error_handler(_req: _FRequest, exc: DataHarvestingError):
-    """Exception handler for DataHarvestingError."""
+    """Exception handler for DataHarvestingError — 503 without echoing upstream error text."""
+    logger.warning("DataHarvestingError at %s %s: %s", _req.method, _req.url.path, exc)
     return _JSONResponse(
         status_code=503,
-        content={"detail": f"Data harvesting service unavailable: {exc}"},
+        content={"detail": "Market data source temporarily unavailable. Please retry shortly."},
     )
 
 
@@ -218,7 +222,9 @@ async def _data_harvesting_error_handler(_req: _FRequest, exc: DataHarvestingErr
 async def _http_exception_handler(_req: _FRequest, exc: HTTPException):
     """Sanitize HTTP exceptions — never expose internal details for 500 errors."""
     headers = getattr(exc, "headers", None)
-    if exc.status_code >= 500:
+    # 502/503/504 carry deliberate, client-safe retry messages (callers must not put
+    # exception text in them); every other 5xx is masked.
+    if exc.status_code >= 500 and exc.status_code not in (502, 503, 504):
         logger.error(f"HTTP {exc.status_code} at {_req.method} {_req.url.path}: {exc.detail}")
         return _JSONResponse(
             status_code=exc.status_code,
@@ -363,23 +369,9 @@ async def _on_startup():
             logging.warning(f"Preference backfill skipped: {e}")
     threading.Thread(target=_backfill_preferences, daemon=True).start()
 
-    # Initial RAG vector ingestion at startup (always runs, regardless of scheduler)
-    def _startup_ingest():
-        try:
-            from services.vector_store import init_store
-            if not init_store():
-                logging.warning("ChromaDB init failed, skipping RAG ingestion")
-                return
-            logging.info("Starting initial RAG ingestion...")
-            from services.rag_ingestion import ingest_all
-            count = ingest_all()
-            logging.info("Initial RAG ingestion complete: %d chunks", count)
-        except Exception as e:
-            logging.warning("Initial RAG ingestion failed (non-blocking): %s", e)
-    global _startup_thread
-    _startup_thread = threading.Thread(target=_startup_ingest, daemon=True)
-    _startup_thread.start()
-    
+    # RAG ingestion is incremental and runs only in the leader scheduler
+    # (harvest_worker job 'rag_ingest'), never per worker at startup.
+
     # ENABLE_SCHEDULER block removed (fixes #85): start_scheduler() from
     # harvest_worker (called above) already registers all cron jobs including
     # harvest_youtube_metadata, harvest_news, and snapshot_all_users.
@@ -390,9 +382,6 @@ async def _on_shutdown():
     stop_scheduler()
     from services.job_manager import shutdown_all
     shutdown_all()
-    global _startup_thread
-    if '_startup_thread' in globals() and _startup_thread and _startup_thread.is_alive():
-        _startup_thread.join(timeout=2.0)
 
 
 @app.get("/ping")
@@ -1051,6 +1040,19 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
 </div>
 
 <script>
+// ─── Admin auth ──────────────────────────────────────────────
+// Admin JWT kept for this tab only: prompted once, cleared on 401/403 so the next refresh re-prompts.
+function authHeaders(){
+  let t=sessionStorage.getItem('nivesh_admin_jwt');
+  if(!t){t=(prompt('Admin JWT (Bearer token):')||'').trim();if(t)sessionStorage.setItem('nivesh_admin_jwt',t);}
+  return {'Authorization':'Bearer '+t};
+}
+async function adminFetch(url,opts){
+  const r=await fetch(url,{...(opts||{}),headers:authHeaders()});
+  if(r.status===401||r.status===403)sessionStorage.removeItem('nivesh_admin_jwt');
+  return r;
+}
+
 // ─── Charts ─────────────────────────────────────────────────
 let chartAlloc=null, chartSigs=null, chartVal=null, chartPnl=null, chartNw=null;
 
@@ -1062,18 +1064,20 @@ let currentUserData=null;
 let currentUserTab='portfolio';
 
 // ─── Formatting ──────────────────────────────────────────────
+// Every server-supplied string (request paths, usernames, scraped titles, LLM text) goes through esc() before innerHTML.
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function fmt(n){if(n==null)return'-';if(n>=1e9)return(n/1e9).toFixed(2)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return''+n}
 function fmtINR(n){if(n==null||isNaN(n))return'-';const abs=Math.abs(n);let s;if(abs>=1e7)s=(n/1e7).toFixed(2)+' Cr';else if(abs>=1e5)s=(n/1e5).toFixed(2)+' L';else s=n.toFixed(0).replace(/\\B(?=(\\d{3})+(?!\\d))/g,',');return(n<0?'-₹':'₹')+s.replace('-','')}
 function fmtCost(c){if(c==null)return'$-.--';return'$'+c.toFixed(4)}
 function ts(iso){if(!iso)return'-';return new Date(iso).toLocaleTimeString('en-IN',{hour12:false})}
 function dts(iso){if(!iso)return'-';const d=new Date(iso);return d.toLocaleDateString('en-IN')+' '+d.toLocaleTimeString('en-IN',{hour12:false})}
 function ela(iso){if(!iso)return'';const s=Math.floor((Date.now()-new Date(iso))/1000);if(s<60)return s+'s';if(s<3600)return Math.floor(s/60)+'m '+s%60+'s';return Math.floor(s/3600)+'h'}
-function sig(s){if(!s)return'-';const u=s.toUpperCase();if(u.includes('BUY')||u==='STRONG_BUY'||u==='BULL')return`<span class="badge bull">${s}</span>`;if(u.includes('SELL')||u==='STRONG_SELL'||u==='BEAR')return`<span class="badge bear">${s}</span>`;return`<span class="badge hold">${s}</span>`}
-function ctype(t){if(!t)return'-';const u=(t||'').toUpperCase();if(u==='CACHE HIT')return`<span class="badge cache">CACHE</span>`;if(u==='SMART CACHE')return`<span class="badge smart">SMART</span>`;if(u==='FULL AI')return`<span class="badge full">FULL AI</span>`;return`<span class="badge hold">${t}</span>`}
-function stbadge(s){if(!s)return'-';const l=s.toLowerCase();if(l==='completed')return`<span class="badge ok">&#x2713; done</span>`;if(l==='error')return`<span class="badge err">&#x2717; error</span>`;return`<span class="badge hold">${s}</span>`}
-function mbadge(m){return`<span class="badge m${m||'GET'}">${m}</span>`}
-function hbadge(c){if(!c)return'-';const cls=c<300?'ok':c<400?'cache':'err';return`<span class="badge ${cls}">${c}</span>`}
-function fmtParams(p){if(!p||!Object.keys(p).length)return'';const s=JSON.stringify(p).replace(/[{}"]/g,'');return s.length>40?s.slice(0,40)+'...':s}
+function sig(s){if(!s)return'-';const u=s.toUpperCase();if(u.includes('BUY')||u==='STRONG_BUY'||u==='BULL')return`<span class="badge bull">${esc(s)}</span>`;if(u.includes('SELL')||u==='STRONG_SELL'||u==='BEAR')return`<span class="badge bear">${esc(s)}</span>`;return`<span class="badge hold">${esc(s)}</span>`}
+function ctype(t){if(!t)return'-';const u=(t||'').toUpperCase();if(u==='CACHE HIT')return`<span class="badge cache">CACHE</span>`;if(u==='SMART CACHE')return`<span class="badge smart">SMART</span>`;if(u==='FULL AI')return`<span class="badge full">FULL AI</span>`;return`<span class="badge hold">${esc(t)}</span>`}
+function stbadge(s){if(!s)return'-';const l=s.toLowerCase();if(l==='completed')return`<span class="badge ok">&#x2713; done</span>`;if(l==='error')return`<span class="badge err">&#x2717; error</span>`;return`<span class="badge hold">${esc(s)}</span>`}
+function mbadge(m){return`<span class="badge m${esc(m||'GET')}">${esc(m)}</span>`}
+function hbadge(c){if(!c)return'-';const cls=c<300?'ok':c<400?'cache':'err';return`<span class="badge ${cls}">${esc(c)}</span>`}
+function fmtParams(p){if(!p||!Object.keys(p).length)return'';const s=JSON.stringify(p).replace(/[{}"]/g,'');return esc(s.length>40?s.slice(0,40)+'...':s)}
 function pct(a,b){if(!b)return'0%';return Math.round(a/b*100)+'%'}
 function pnlClass(v){return v>=0?'pnl-pos':'pnl-neg'}
 function actionClass(a){const m={'BUY':'journal-action-buy','SELL':'journal-action-sell','HOLD':'journal-action-hold','WATCH':'journal-action-watch'};return m[a]||'';}
@@ -1106,8 +1110,8 @@ function renderFeatureErrors(featureErrors){
   grid.innerHTML=Object.entries(featureErrors).map(([name,errs])=>{
     const hasErrs=errs&&errs.length>0;
     const icon=icons[name]||'&#x1F534;';
-    const body=hasErrs?errs.map(e=>`<div class="feat-err-item"><div class="feat-err-path">${e.path||'-'}</div><div class="feat-err-meta">${hbadge(e.status)} &bull; ${ts(e.ts)}</div></div>`).join(''):`<div class="feat-clean-msg">&#x2714; No errors</div>`;
-    return`<div class="feature-card ${hasErrs?'has-errors':'clean'}"><div class="feature-header"><span class="feature-name">${icon} ${name}</span><div class="feat-status-dot"></div></div><div class="feature-body">${body}</div></div>`;
+    const body=hasErrs?errs.map(e=>`<div class="feat-err-item"><div class="feat-err-path">${esc(e.path||'-')}</div><div class="feat-err-meta">${hbadge(e.status)} &bull; ${ts(e.ts)}</div></div>`).join(''):`<div class="feat-clean-msg">&#x2714; No errors</div>`;
+    return`<div class="feature-card ${hasErrs?'has-errors':'clean'}"><div class="feature-header"><span class="feature-name">${icon} ${esc(name)}</span><div class="feat-status-dot"></div></div><div class="feature-body">${body}</div></div>`;
   }).join('');
 }
 
@@ -1120,7 +1124,7 @@ function renderHarvestStatus(harvests){
     if(h.status==='running'){color='val-blue';val='RUNNING...';}
     else if(h.status==='error'){color='val-red';val='ERROR';}
     else if(h.status==='idle'&&h.last_run){color='val-green';val='IDLE';}
-    return`<div class="stat-tile tile-dark"><div class="val ${color}">${val}</div><div class="lbl">${name.toUpperCase()}</div><div class="ts" style="margin-top:4px">${h.last_run?ts(h.last_run):'Never'}</div></div>`;
+    return`<div class="stat-tile tile-dark"><div class="val ${color}">${esc(val)}</div><div class="lbl">${esc(name.toUpperCase())}</div><div class="ts" style="margin-top:4px">${h.last_run?ts(h.last_run):'Never'}</div></div>`;
   }).join('');
   const map={youtube:'btn-yt-harvest',advisor:'btn-adv-harvest',news:'btn-news-harvest'};
   Object.entries(map).forEach(([key,id])=>{
@@ -1133,7 +1137,7 @@ function renderHarvestStatus(harvests){
 
 async function triggerHarvest(type){
   const ep={youtube:'harvest-youtube',advisor:'harvest-advisors',news:'harvest-news'};
-  const r=await fetch('/api/v1/admin/'+ep[type],{method:'POST',headers:{'Authorization':'Bearer admin'}});
+  const r=await adminFetch('/api/v1/admin/'+ep[type],{method:'POST'});
   if(r.ok)refreshAll();else alert('Failed: '+r.status);
 }
 
@@ -1153,24 +1157,24 @@ async function loadUser(userId){
   if(!userId){document.getElementById('user-stat-chips').innerHTML='';currentUserData=null;return;}
   document.getElementById('user-stat-chips').innerHTML='<span style="color:#484f58;font-size:11px">Loading...</span>';
   try{
-    const r=await fetch('/dashboard-user-data?user_id='+userId,{headers:{'Authorization':'Bearer admin'}});
+    const r=await adminFetch('/dashboard-user-data?user_id='+userId);
+    if(!r.ok){document.getElementById('user-stat-chips').innerHTML='<span class="badge err">HTTP '+r.status+' '+esc(r.statusText)+'</span>';return;}
     const d=await r.json();
-    if(d.error){document.getElementById('user-stat-chips').innerHTML='<span class="badge err">'+d.error+'</span>';return;}
     currentUserData=d;
     // Stat chips
     const u=d.user||{};
     const ps=d.portfolio_summary||{};
     const acc=d.accuracy||{};
     document.getElementById('user-stat-chips').innerHTML=`
-      <div class="user-stat-chip">&#x1F464; <span class="chip-val">${u.display_name||u.username}</span></div>
+      <div class="user-stat-chip">&#x1F464; <span class="chip-val">${esc(u.display_name||u.username)}</span></div>
       <div class="user-stat-chip">Holdings: <span class="chip-val">${ps.holdings_count||0}</span></div>
       <div class="user-stat-chip">Invested: <span class="chip-val">${fmtINR(ps.total_invested||0)}</span></div>
       <div class="user-stat-chip">Analyses: <span class="chip-val">${(d.analyses||[]).length}</span></div>
       <div class="user-stat-chip">Accuracy: <span class="chip-val">${acc.accuracy_pct!=null?acc.accuracy_pct+'%':'N/A'}</span></div>
-      <div class="user-stat-chip">Joined: <span class="chip-val">${u.created_at?u.created_at.slice(0,10):'-'}</span></div>
+      <div class="user-stat-chip">Joined: <span class="chip-val">${esc(u.created_at?u.created_at.slice(0,10):'-')}</span></div>
     `;
     renderUserTab(d, currentUserTab);
-  }catch(e){document.getElementById('user-stat-chips').innerHTML='<span class="badge err">Error: '+e.message+'</span>';}
+  }catch(e){document.getElementById('user-stat-chips').innerHTML='<span class="badge err">Error: '+esc(e.message)+'</span>';}
 }
 
 function renderUserTab(d, tab){
@@ -1193,14 +1197,14 @@ function renderPortfolio(d){
 
   document.getElementById('portfolio-table').innerHTML=rows.length===0?'<tr><td colspan="9" class="empty">No holdings</td></tr>':rows.map((r,i)=>`<tr>
     <td class="ts">${i+1}</td>
-    <td style="font-weight:700;color:#f0f6fc">${r.ticker}</td>
-    <td style="color:#8b949e;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.company_name}</td>
-    <td>${r.shares}</td>
+    <td style="font-weight:700;color:#f0f6fc">${esc(r.ticker)}</td>
+    <td style="color:#8b949e;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.company_name)}</td>
+    <td>${esc(r.shares)}</td>
     <td>₹${r.buy_price.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
     <td style="color:#c9a84c;font-weight:700">${fmtINR(r.invested)}</td>
-    <td><span class="badge hold">${r.group_name}</span></td>
-    <td style="color:#6e7681;font-size:10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.notes||'—'}</td>
-    <td class="ts">${r.created_at?r.created_at.slice(0,10):'-'}</td>
+    <td><span class="badge hold">${esc(r.group_name)}</span></td>
+    <td style="color:#6e7681;font-size:10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.notes||'—')}</td>
+    <td class="ts">${esc(r.created_at?r.created_at.slice(0,10):'-')}</td>
   </tr>`).join('');
 
   // Allocation donut
@@ -1245,14 +1249,14 @@ function renderAnalyses(d){
     return`<div class="analysis-report">
       <div class="report-header">
         <div>
-          <div class="report-ticker">${a.ticker} ${sig(a.signal)}</div>
-          <div class="report-company">${a.company_name||''}</div>
+          <div class="report-ticker">${esc(a.ticker)} ${sig(a.signal)}</div>
+          <div class="report-company">${esc(a.company_name)}</div>
         </div>
         <div class="report-meta">
           ${correctBadge}<br>
           Conf: <span style="color:#c9a84c">${a.confidence_pct!=null?a.confidence_pct+'%':'-'}</span><br>
           Price: <span style="color:#f0f6fc">${a.current_price_inr!=null?fmtINR(a.current_price_inr):'-'}</span><br>
-          <span class="ts">${a.created_at?a.created_at.slice(0,10):'-'}</span>
+          <span class="ts">${esc(a.created_at?a.created_at.slice(0,10):'-')}</span>
         </div>
       </div>
       <div class="target-prices">
@@ -1263,16 +1267,16 @@ function renderAnalyses(d){
       <div class="report-body">
         <div class="report-col">
           <h4>&#x1F7E2; Bull Case</h4>
-          <ul class="report-list">${bull.length?bull.map(b=>`<li>${b}</li>`).join(''):'<li style="color:#484f58">No bull case</li>'}</ul>
+          <ul class="report-list">${bull.length?bull.map(b=>`<li>${esc(b)}</li>`).join(''):'<li style="color:#484f58">No bull case</li>'}</ul>
           <h4 style="margin-top:10px">&#x1F514; Key Risks</h4>
-          <ul class="report-list">${risks.length?risks.map(r=>`<li>${r}</li>`).join(''):'<li style="color:#484f58">No risks</li>'}</ul>
+          <ul class="report-list">${risks.length?risks.map(r=>`<li>${esc(r)}</li>`).join(''):'<li style="color:#484f58">No risks</li>'}</ul>
         </div>
         <div class="report-col">
           <h4>&#x1F534; Bear Case</h4>
-          <ul class="report-list">${bear.length?bear.map(b=>`<li>${b}</li>`).join(''):'<li style="color:#484f58">No bear case</li>'}</ul>
+          <ul class="report-list">${bear.length?bear.map(b=>`<li>${esc(b)}</li>`).join(''):'<li style="color:#484f58">No bear case</li>'}</ul>
           <h4 style="margin-top:10px">&#x1F4CA; Key Factors</h4>
           <div class="key-factors">
-            ${Object.entries(kf).slice(0,6).map(([k,v])=>`<div class="kf-item"><div class="kf-label">${k.replace(/_/g,' ')}</div><div class="kf-val">${(v||'').slice(0,60)}</div></div>`).join('')}
+            ${Object.entries(kf).slice(0,6).map(([k,v])=>`<div class="kf-item"><div class="kf-label">${esc(k.replace(/_/g,' '))}</div><div class="kf-val">${esc(String(v||'').slice(0,60))}</div></div>`).join('')}
           </div>
         </div>
       </div>
@@ -1289,7 +1293,7 @@ function renderValuation(d){
 
   const table=document.getElementById('valuation-table');
   table.innerHTML=hist.length===0?'<tr><td colspan="6" class="empty">No valuation history</td></tr>':hist.map(v=>`<tr>
-    <td class="ts">${v.snapshot_date}</td>
+    <td class="ts">${esc(v.snapshot_date)}</td>
     <td style="color:#c9a84c">${fmtINR(v.total_value)}</td>
     <td>${fmtINR(v.total_invested)}</td>
     <td class="${pnlClass(v.total_pnl)}">${fmtINR(v.total_pnl)}</td>
@@ -1325,12 +1329,12 @@ function renderAlerts(d){
   if(alerts.length===0){container.innerHTML='<div class="empty">No price alerts</div>';return;}
   container.innerHTML=alerts.map(a=>`<div class="alert-item ${a.triggered?'alert-triggered':''}">
     <div>
-      <span style="font-weight:700;color:#f0f6fc">${a.ticker}</span>
-      <span class="ts" style="margin-left:8px">${a.created_at?a.created_at.slice(0,10):'-'}</span>
+      <span style="font-weight:700;color:#f0f6fc">${esc(a.ticker)}</span>
+      <span class="ts" style="margin-left:8px">${esc(a.created_at?a.created_at.slice(0,10):'-')}</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <span style="color:#c9a84c">₹${a.target_price.toLocaleString('en-IN')}</span>
-      <span class="badge ${a.direction==='above'?'bull':'bear'}">${a.direction?.toUpperCase()}</span>
+      <span class="badge ${a.direction==='above'?'bull':'bear'}">${esc(a.direction?.toUpperCase())}</span>
       ${a.triggered?'<span class="badge ok">TRIGGERED</span>':'<span class="badge hold">ACTIVE</span>'}
     </div>
   </div>`).join('');
@@ -1344,16 +1348,16 @@ function renderJournal(d){
   container.innerHTML=journal.map(j=>`<div class="journal-entry ${actionClass(j.action)}">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <div>
-        <span style="font-weight:700;color:#f0f6fc">${j.ticker}</span>
-        ${j.company_name?`<span class="ts" style="margin-left:6px">${j.company_name}</span>`:''}
-        <span class="badge ${j.action==='BUY'?'bull':j.action==='SELL'?'bear':'hold'}" style="margin-left:8px">${j.action}</span>
-        ${j.mood?`<span class="badge hold" style="margin-left:4px">${j.mood}</span>`:''}
+        <span style="font-weight:700;color:#f0f6fc">${esc(j.ticker)}</span>
+        ${j.company_name?`<span class="ts" style="margin-left:6px">${esc(j.company_name)}</span>`:''}
+        <span class="badge ${j.action==='BUY'?'bull':j.action==='SELL'?'bear':'hold'}" style="margin-left:8px">${esc(j.action)}</span>
+        ${j.mood?`<span class="badge hold" style="margin-left:4px">${esc(j.mood)}</span>`:''}
       </div>
-      <div class="ts">${j.created_at?j.created_at.slice(0,10):'-'}</div>
+      <div class="ts">${esc(j.created_at?j.created_at.slice(0,10):'-')}</div>
     </div>
     <div style="font-size:11px;color:#8b949e;margin-bottom:4px">&#x1F4B0; Price at time: <span style="color:#c9a84c">₹${j.price_at_time.toLocaleString('en-IN')}</span></div>
-    <div style="font-size:11px;color:#8b949e"><strong style="color:#6e7681">Reason:</strong> ${j.reason_text||'—'}</div>
-    ${j.outcome_text?`<div style="font-size:11px;color:#6e7681;margin-top:4px;padding-top:4px;border-top:1px solid #21262d"><strong>Outcome:</strong> ${j.outcome_text}</div>`:''}
+    <div style="font-size:11px;color:#8b949e"><strong style="color:#6e7681">Reason:</strong> ${esc(j.reason_text||'—')}</div>
+    ${j.outcome_text?`<div style="font-size:11px;color:#6e7681;margin-top:4px;padding-top:4px;border-top:1px solid #21262d"><strong>Outcome:</strong> ${esc(j.outcome_text)}</div>`:''}
   </div>`).join('');
 }
 
@@ -1363,13 +1367,13 @@ function renderNetWorth(d){
   chartNw=destroyChart(chartNw);
   const table=document.getElementById('networth-table');
   table.innerHTML=ledger.length===0?'<tr><td colspan="7" class="empty">No net worth data</td></tr>':ledger.map(n=>`<tr>
-    <td class="ts">${n.snapshot_date}</td>
+    <td class="ts">${esc(n.snapshot_date)}</td>
     <td style="color:#c9a84c;font-weight:700">${fmtINR(n.total_value_inr)}</td>
     <td class="${pnlClass(n.daily_delta_inr||0)}">${n.daily_delta_inr!=null?fmtINR(n.daily_delta_inr):'-'}</td>
     <td class="${pnlClass(n.daily_delta_pct||0)}">${n.daily_delta_pct!=null?n.daily_delta_pct.toFixed(2)+'%':'-'}</td>
     <td style="color:#6e7681">${n.peak_value_inr!=null?fmtINR(n.peak_value_inr):'-'}</td>
-    <td>${n.top_gainer_ticker?`<span class="pnl-pos">${n.top_gainer_ticker} +${n.top_gainer_pct?.toFixed(1)}%</span>`:'-'}</td>
-    <td>${n.top_loser_ticker?`<span class="pnl-neg">${n.top_loser_ticker} ${n.top_loser_pct?.toFixed(1)}%</span>`:'-'}</td>
+    <td>${n.top_gainer_ticker?`<span class="pnl-pos">${esc(n.top_gainer_ticker)} +${n.top_gainer_pct?.toFixed(1)}%</span>`:'-'}</td>
+    <td>${n.top_loser_ticker?`<span class="pnl-neg">${esc(n.top_loser_ticker)} ${n.top_loser_pct?.toFixed(1)}%</span>`:'-'}</td>
   </tr>`).join('');
 
   if(ledger.length===0)return;
@@ -1385,7 +1389,7 @@ function renderNetWorth(d){
 // ─── Main refresh ────────────────────────────────────────────
 async function refreshAll(){
   try{
-    const r=await fetch('/dashboard-data',{headers:{'Authorization':'Bearer admin'}});
+    const r=await adminFetch('/dashboard-data');
     if(!r.ok){document.getElementById('lu').textContent='Auth error '+r.status;return;}
     const d=await r.json();
 
@@ -1419,23 +1423,23 @@ async function refreshAll(){
     // Active analyses
     const active=d.active_analyses||[];
     document.getElementById('ac').textContent=active.length+' running';
-    document.getElementById('ab').innerHTML=active.length===0?'<div class="empty">No active analyses</div>':active.map(a=>`<div class="analysis-item active"><div style="display:flex;justify-content:space-between;align-items:center"><span class="a-ticker">${a.ticker}</span><span class="ts">${ts(a.start_ts)}</span></div><div class="a-meta">${a.exchange||'NSE'} &bull; User ${a.user_id||'N/A'} &bull; running ${ela(a.start_ts)}</div><div class="a-stage"><span class="s-dot"></span>${a.stage||'Processing...'}</div></div>`).join('');
+    document.getElementById('ab').innerHTML=active.length===0?'<div class="empty">No active analyses</div>':active.map(a=>`<div class="analysis-item active"><div style="display:flex;justify-content:space-between;align-items:center"><span class="a-ticker">${esc(a.ticker)}</span><span class="ts">${ts(a.start_ts)}</span></div><div class="a-meta">${esc(a.exchange||'NSE')} &bull; User ${esc(a.user_id||'N/A')} &bull; running ${ela(a.start_ts)}</div><div class="a-stage"><span class="s-dot"></span>${esc(a.stage||'Processing...')}</div></div>`).join('');
 
     // Recent analyses
     const an=d.recent_analyses||[];
     document.getElementById('anc').textContent=an.length+' shown';
-    document.getElementById('at').innerHTML=an.length===0?'<tr><td colspan="6" class="empty">No activity</td></tr>':an.slice(0,15).map(a=>`<tr><td class="ts">${ts(a.start_ts||a.ts)}</td><td style="font-weight:700;color:#f0f6fc">${a.ticker}</td><td>${ctype(a.cache_type)}</td><td>${sig(a.signal)}</td><td class="ts">${a.duration_s!=null?a.duration_s+'s':'-'}</td><td>${stbadge(a.status)}</td></tr>`).join('');
+    document.getElementById('at').innerHTML=an.length===0?'<tr><td colspan="6" class="empty">No activity</td></tr>':an.slice(0,15).map(a=>`<tr><td class="ts">${ts(a.start_ts||a.ts)}</td><td style="font-weight:700;color:#f0f6fc">${esc(a.ticker)}</td><td>${ctype(a.cache_type)}</td><td>${sig(a.signal)}</td><td class="ts">${a.duration_s!=null?a.duration_s+'s':'-'}</td><td>${stbadge(a.status)}</td></tr>`).join('');
 
     // News / videos (overview & harvesters tabs)
     const lnews=d.latest_news||[];
     document.getElementById('lnc').textContent=lnews.length+' recent';
-    const newsHtml=lnews.length===0?'<tr><td colspan="4" class="empty">No news</td></tr>':lnews.map(n=>`<tr><td class="ts">${ts(n.ts)}</td><td style="font-weight:700;color:#f0f6fc">${n.ticker||'—'}</td><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.red_flag?'<span class="badge err">&#x1F6A9;</span> ':''}${n.headline}</td><td>${n.sentiment?`<span class="badge ${n.sentiment.toLowerCase()}">${n.sentiment}</span>`:'—'}</td></tr>`).join('');
+    const newsHtml=lnews.length===0?'<tr><td colspan="4" class="empty">No news</td></tr>':lnews.map(n=>`<tr><td class="ts">${ts(n.ts)}</td><td style="font-weight:700;color:#f0f6fc">${esc(n.ticker||'—')}</td><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.red_flag?'<span class="badge err">&#x1F6A9;</span> ':''}${esc(n.headline)}</td><td>${n.sentiment?`<span class="badge ${esc(n.sentiment.toLowerCase())}">${esc(n.sentiment)}</span>`:'—'}</td></tr>`).join('');
     document.getElementById('lnt').innerHTML=newsHtml;
     document.getElementById('lnt2').innerHTML=newsHtml;
 
     const lvideos=d.latest_videos||[];
     document.getElementById('lvc').textContent=lvideos.length+' recent';
-    const vidHtml=lvideos.length===0?'<tr><td colspan="4" class="empty">No videos</td></tr>':lvideos.map(v=>`<tr><td class="ts">${ts(v.ts)}</td><td style="font-weight:700;color:#f0f6fc">${v.ticker||'—'}</td><td style="color:#bc8cff">${v.channel}</td><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.title}</td></tr>`).join('');
+    const vidHtml=lvideos.length===0?'<tr><td colspan="4" class="empty">No videos</td></tr>':lvideos.map(v=>`<tr><td class="ts">${ts(v.ts)}</td><td style="font-weight:700;color:#f0f6fc">${esc(v.ticker||'—')}</td><td style="color:#bc8cff">${esc(v.channel)}</td><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(v.title)}</td></tr>`).join('');
     document.getElementById('lvt').innerHTML=vidHtml;
     document.getElementById('lvt2').innerHTML=vidHtml;
 
@@ -1443,7 +1447,7 @@ async function refreshAll(){
     renderHarvestStatus(d.harvest_status);
     const hlogs=d.harvest_logs||[];
     document.getElementById('hrc').textContent=hlogs.length+' logged';
-    document.getElementById('hrt').innerHTML=hlogs.length===0?'<tr><td colspan="3" class="empty">No logs</td></tr>':hlogs.map(l=>`<tr><td class="ts">${ts(l.ts)}</td><td style="font-weight:700;color:#c9a84c">${l.key.toUpperCase()}</td><td style="font-size:10px;color:#8b949e;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${JSON.stringify(l.result)}</td></tr>`).join('');
+    document.getElementById('hrt').innerHTML=hlogs.length===0?'<tr><td colspan="3" class="empty">No logs</td></tr>':hlogs.map(l=>`<tr><td class="ts">${ts(l.ts)}</td><td style="font-weight:700;color:#c9a84c">${esc(l.key.toUpperCase())}</td><td style="font-size:10px;color:#8b949e;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(JSON.stringify(l.result))}</td></tr>`).join('');
 
     // AI stats
     const cl=d.claude_stats||{},ds=d.deepseek_stats||{},tok=d.token_stats||{};
@@ -1463,21 +1467,22 @@ async function refreshAll(){
     document.getElementById('to').textContent=fmt(tok.total_output||0);
     document.getElementById('tr').textContent=fmt(tok.total_cache_read||0);
     document.getElementById('tw').textContent=fmt(tok.total_cache_write||0);
-    document.getElementById('tc').textContent=(tok.total_calls||0)+' calls this session';
+    const un=d.unknown_stats||{};
+    document.getElementById('tc').textContent=(tok.total_calls||0)+' calls this session'+(un.calls?' | '+fmt(un.calls)+' logged calls unpriced (no model)':'');
     const cl2=tok.recent||[];
     document.getElementById('clc').textContent=cl2.length+' recent';
-    document.getElementById('ct').innerHTML=cl2.length===0?'<tr><td colspan="6" class="empty">No AI calls</td></tr>':cl2.map(c=>`<tr><td class="ts">${ts(c.ts)}</td><td style="color:#bc8cff;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.endpoint||'-'}</td><td style="color:#f85149">${fmt(c.input)}</td><td style="color:#3fb950">${fmt(c.output)}</td><td style="color:#58a6ff">${fmt(c.cache_read)}</td><td style="color:#d29922">${fmt(c.cache_write)}</td></tr>`).join('').join('');
+    document.getElementById('ct').innerHTML=cl2.length===0?'<tr><td colspan="6" class="empty">No AI calls</td></tr>':cl2.map(c=>`<tr><td class="ts">${ts(c.ts)}</td><td style="color:#bc8cff;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.endpoint||'-')}</td><td style="color:#f85149">${fmt(c.input)}</td><td style="color:#3fb950">${fmt(c.output)}</td><td style="color:#58a6ff">${fmt(c.cache_read)}</td><td style="color:#d29922">${fmt(c.cache_write)}</td></tr>`).join('');
     if(d.cache_stats){
       const sg=document.getElementById('scraper_status_grid');
       const sdata=d.cache_stats.scraper||{};
       const skeys=Object.keys(sdata);
-      sg.innerHTML=skeys.length===0?'<div class="empty" style="grid-column:1/-1">No scraper cache</div>':skeys.map((k,i)=>{const colors=['val-red','val-green','val-blue','val-gold'];return`<div class="stat-tile tile-dark"><div class="val ${colors[i%4]}">${sdata[k].age_s}s</div><div class="lbl">${k}</div></div>`;}).join('');
+      sg.innerHTML=skeys.length===0?'<div class="empty" style="grid-column:1/-1">No scraper cache</div>':skeys.map((k,i)=>{const colors=['val-red','val-green','val-blue','val-gold'];return`<div class="stat-tile tile-dark"><div class="val ${colors[i%4]}">${esc(sdata[k].age_s)}s</div><div class="lbl">${esc(k)}</div></div>`;}).join('');
     }
 
     // Requests
     const reqs=(d.request_log||[]).slice(0,50);
     document.getElementById('rc').textContent=reqs.length+' shown';
-    document.getElementById('rt').innerHTML=reqs.length===0?'<tr><td colspan="6" class="empty">No requests</td></tr>':reqs.map(r=>`<tr><td class="ts">${ts(r.ts)}</td><td>${mbadge(r.method)}</td><td class="path" title="${r.path}">${r.path}</td><td class="ts">${fmtParams(r.params)}</td><td>${hbadge(r.status)}</td><td class="ts">${r.duration_ms!=null?r.duration_ms+'ms':'-'}</td></tr>`).join('');
+    document.getElementById('rt').innerHTML=reqs.length===0?'<tr><td colspan="6" class="empty">No requests</td></tr>':reqs.map(r=>`<tr><td class="ts">${ts(r.ts)}</td><td>${mbadge(r.method)}</td><td class="path" title="${esc(r.path)}">${esc(r.path)}</td><td class="ts">${fmtParams(r.params)}</td><td>${hbadge(r.status)}</td><td class="ts">${r.duration_ms!=null?esc(r.duration_ms)+'ms':'-'}</td></tr>`).join('');
 
     // Archive
     const hist=d.historical_analyses||[];
@@ -1485,8 +1490,8 @@ async function refreshAll(){
     document.getElementById('ht').innerHTML=hist.length===0?'<tr><td colspan="8" class="empty">No data</td></tr>':hist.map(h=>{
       const isExp=expandedIds.has(h.id);
       let fp='';try{fp=JSON.stringify(JSON.parse(h.full_json),null,2);}catch(e){fp=h.full_json||'';}
-      return`<tr><td class="ts">${dts(h.ts)}</td><td style="font-weight:700;color:#f0f6fc">${h.ticker}</td><td class="ts">${h.analysis_date||'-'}</td><td>${sig(h.signal)}</td><td style="color:#d29922">${h.confidence!=null?h.confidence+'%':'-'}</td><td class="ts">${h.user_id||'-'}</td><td>${h.full_json&&JSON.parse(h.full_json).was_correct===true?'<span class="badge ok">&#x2713;</span>':h.full_json&&JSON.parse(h.full_json).was_correct===false?'<span class="badge err">&#x2717;</span>':'-'}</td><td><button class="btn-view" onclick="toggleDetails(${h.id})">View</button></td></tr>
-      <tr id="details-${h.id}" style="display:${isExp?'table-row':'none'}"><td colspan="8"><div class="archive-details" style="display:block"><div class="json-box">${fp}</div></div></td></tr>`;
+      return`<tr><td class="ts">${dts(h.ts)}</td><td style="font-weight:700;color:#f0f6fc">${esc(h.ticker)}</td><td class="ts">${esc(h.analysis_date||'-')}</td><td>${sig(h.signal)}</td><td style="color:#d29922">${h.confidence!=null?h.confidence+'%':'-'}</td><td class="ts">${esc(h.user_id||'-')}</td><td>${h.full_json&&JSON.parse(h.full_json).was_correct===true?'<span class="badge ok">&#x2713;</span>':h.full_json&&JSON.parse(h.full_json).was_correct===false?'<span class="badge err">&#x2717;</span>':'-'}</td><td><button class="btn-view" onclick="toggleDetails(${Number(h.id)})">View</button></td></tr>
+      <tr id="details-${Number(h.id)}" style="display:${isExp?'table-row':'none'}"><td colspan="8"><div class="archive-details" style="display:block"><div class="json-box">${esc(fp)}</div></div></td></tr>`;
     }).join('');
 
     // Populate user select on first load
@@ -1503,14 +1508,14 @@ let _usersPopulated=false;
 async function populateUserDropdown(){
   if(_usersPopulated)return;
   try{
-    const r=await fetch('/users',{headers:{'Authorization':'Bearer admin'}});
+    const r=await adminFetch('/users');
     if(!r.ok){console.warn('Could not load user list: HTTP '+r.status);return;}
     const users=await r.json();
     if(!Array.isArray(users)||users.length===0){
       console.warn('No users returned from /users');return;
     }
     const sel=document.getElementById('user-select');
-    sel.innerHTML='<option value="">-- select user --</option>'+users.map(u=>`<option value="${u.id}">#${u.id} ${u.display_name||u.username} (${u.username})</option>`).join('');
+    sel.innerHTML='<option value="">-- select user --</option>'+users.map(u=>`<option value="${esc(u.id)}">#${esc(u.id)} ${esc(u.display_name||u.username)} (${esc(u.username)})</option>`).join('');
     _usersPopulated=true;
   }catch(e){console.warn('Could not populate user list:',e);}
 }
@@ -1531,7 +1536,7 @@ async function loadAIEngine(){
   const params=new URLSearchParams({mode:_aiMode,limit:'30'});
   if(ticker)params.set('ticker',ticker);
   try{
-    const r=await fetch('/api/v1/dashboard/ai-engine?'+params,{headers:{'Authorization':'Bearer admin'}});
+    const r=await adminFetch('/api/v1/dashboard/ai-engine?'+params);
     if(!r.ok){console.warn('AI engine fetch failed:',r.status);return;}
     const d=await r.json();
     renderAIEngine(d);
@@ -1560,15 +1565,15 @@ function renderAIEngine(d){
       const tl=j.phase_timeline||[];
       const hasTimeline=tl.length>0;
       return `<tr>
-        <td style="font-weight:700;color:#f0f6fc">${j.ticker||'-'}${j.is_stuck?' <span class="badge err">STUCK</span>':''}</td>
-        <td><span class="badge ${scl}">${status}</span></td>
-        <td style="max-width:180px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${j.current_phase||j.stage||'-'}</div><div class="phase-bar"><div class="phase-bar-fill ${barCls}" style="width:${pct}%"></div></div></td>
-        <td class="ts">${pct}%</td>
-        <td class="ts">${j.age_label||'-'}</td>
-        <td class="ts">${j.elapsed_label||'-'}</td>
-        <td><span class="badge hold">${j.scan_type||'standard'}</span></td>
+        <td style="font-weight:700;color:#f0f6fc">${esc(j.ticker||'-')}${j.is_stuck?' <span class="badge err">STUCK</span>':''}</td>
+        <td><span class="badge ${scl}">${esc(status)}</span></td>
+        <td style="max-width:180px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(j.current_phase||j.stage||'-')}</div><div class="phase-bar"><div class="phase-bar-fill ${barCls}" style="width:${Number(pct)||0}%"></div></div></td>
+        <td class="ts">${esc(pct)}%</td>
+        <td class="ts">${esc(j.age_label||'-')}</td>
+        <td class="ts">${esc(j.elapsed_label||'-')}</td>
+        <td><span class="badge hold">${esc(j.scan_type||'standard')}</span></td>
         <td class="ts" style="color:#bc8cff">${fmt(j.tokens_used||0)}</td>
-        <td style="max-width:110px"><span class="ts" style="font-size:9px">${j.job_id}</span>${j.is_stuck?` <button class="btn-view err" style="font-size:9px;padding:2px 6px" onclick="cancelAIMonitorJob('${j.job_id}')">X</button>`:''}</td>
+        <td style="max-width:110px"><span class="ts" style="font-size:9px">${esc(j.job_id)}</span>${j.is_stuck?` <button class="btn-view err" style="font-size:9px;padding:2px 6px" data-job="${esc(j.job_id)}" onclick="cancelAIMonitorJob(this.dataset.job)">X</button>`:''}</td>
       </tr>
       ${hasTimeline?`<tr><td colspan="9" style="padding:4px 12px 8px">
         <div style="display:flex;gap:4px;flex-wrap:wrap;font-size:10px;color:#6e7681">
@@ -1576,7 +1581,7 @@ function renderAIEngine(d){
             const dc=p.state==='active'?'active':p.state==='done'?'done':p.state==='failed'?'failed':'';
             return `<div style="display:flex;align-items:center;gap:6px;padding:2px 6px;background:#0d1117;border-radius:4px;border:1px solid #21262d;flex:0 0 auto;min-width:100px">
               <div class="timeline-dot ${dc}"></div>
-              <div><div style="color:#8b949e;font-weight:600">${p.stage||'-'}</div><div style="font-size:9px;color:#484f58;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.message||'').slice(0,50)}</div></div>
+              <div><div style="color:#8b949e;font-weight:600">${esc(p.stage||'-')}</div><div style="font-size:9px;color:#484f58;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(String(p.message||'').slice(0,50))}</div></div>
             </div>`;
           }).join('')}
         </div>
@@ -1591,15 +1596,15 @@ function renderAIEngine(d){
     ltbody.innerHTML='<tr><td colspan="9" class="empty">No completed analyses</td></tr>';
   }else{
     ltbody.innerHTML=latest.map(l=>`<tr>
-      <td style="font-weight:700;color:#f0f6fc">${l.ticker||'-'}</td>
+      <td style="font-weight:700;color:#f0f6fc">${esc(l.ticker||'-')}</td>
       <td>${sig(l.signal)}</td>
       <td style="color:#d29922">${l.confidence_pct!=null?l.confidence_pct+'%':'-'}</td>
-      <td class="ts">${l.analysis_tier||l.scan_type||'-'}</td>
+      <td class="ts">${esc(l.analysis_tier||l.scan_type||'-')}</td>
       <td style="color:#c9a84c">${l.current_price_inr!=null?'₹'+l.current_price_inr.toLocaleString('en-IN'):'-'}</td>
       <td style="color:#c9a84c">${l.target_12m!=null?'₹'+l.target_12m.toLocaleString('en-IN'):'-'}</td>
       <td class="${l.upside_12m_pct!=null&&l.upside_12m_pct>0?'pnl-pos':'pnl-neg'}">${l.upside_12m_pct!=null?l.upside_12m_pct.toFixed(1)+'%':'-'}</td>
       <td class="ts">${fmt(l.tokens_used||0)}</td>
-      <td class="ts">${l.analysis_date||'-'}</td>
+      <td class="ts">${esc(l.analysis_date||'-')}</td>
     </tr>`).join('');
   }
 }
@@ -1607,7 +1612,7 @@ function renderAIEngine(d){
 async function cancelAIMonitorJob(jobId){
   if(!confirm('Cancel job '+jobId+'?'))return;
   try{
-    const r=await fetch('/analyze/'+jobId+'/cancel',{method:'POST',headers:{'Authorization':'Bearer admin'}});
+    const r=await adminFetch('/analyze/'+jobId+'/cancel',{method:'POST'});
     if(r.ok)loadAIEngine();
     else console.warn('Cancel failed:',r.status);
   }catch(e){console.warn('Cancel error:',e);}
@@ -1623,10 +1628,18 @@ setInterval(loadAIEngine, 10000);
 </html>"""
 
 
+# ponytail: unsafe-inline for the admin page only; move inline JS to a static file to drop it
+_ADMIN_CSP = (
+    "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+    "style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; "
+    "frame-ancestors 'none'; base-uri 'none'"
+)
+
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard_html():
     """Return the raw HTML content for the admin dashboard."""
-    return HTMLResponse(content=_DASHBOARD_HTML)
+    return HTMLResponse(content=_DASHBOARD_HTML, headers={"Content-Security-Policy": _ADMIN_CSP})
 
 
 @app.get("/dashboard-data")
@@ -1642,14 +1655,14 @@ def dashboard_data(authorization: str = Header(None)):
         and database entity counts.
     """
     require_admin(authorization)
-    uptime = (datetime.now(timezone.utc) - _server_start).total_seconds()
+    uptime = (datetime.now(timezone.utc) - _ds.SERVER_START).total_seconds()
     
     # Fetch historical analyses and stats from DB
     history = []
     db_stats = {}
     try:
         with get_session() as session:
-            rows = session.query(AnalysisHistory).order_by(AnalysisHistory.created_at.desc()).all()
+            rows = session.query(AnalysisHistory).order_by(AnalysisHistory.created_at.desc()).limit(100).all()
             for r in rows:
                 history.append({
                     "id": r.id,
@@ -1722,21 +1735,21 @@ def dashboard_data(authorization: str = Header(None)):
         scraper_cache = {}
 
     cache_stats = {
-        "quick_info": len(_quick_info_cache),
+        "quick_info": len(_quick_info_cache),  # helpers' live L1 cache the routers fill
         "scraper": scraper_cache
     }
 
-    with _dash_lock:
-        active = list(_active_analyses.values())
-        completed = list(_completed_analyses)
-        reqs = list(_request_log)
+    with _ds._dash_lock:
+        active = list(_ds._active_analyses.values())
+        completed = list(_ds._completed_analyses)
+        reqs = list(_ds._request_log)
         tok = {
-            "total_input":       _token_stats["total_input"],
-            "total_output":      _token_stats["total_output"],
-            "total_cache_read":  _token_stats["total_cache_read"],
-            "total_cache_write": _token_stats["total_cache_write"],
-            "total_calls":       _token_stats["total_calls"],
-            "recent":            list(_token_stats["recent"]),
+            "total_input":       _ds._token_stats["total_input"],
+            "total_output":      _ds._token_stats["total_output"],
+            "total_cache_read":  _ds._token_stats["total_cache_read"],
+            "total_cache_write": _ds._token_stats["total_cache_write"],
+            "total_calls":       _ds._token_stats["total_calls"],
+            "recent":            list(_ds._token_stats["recent"]),
         }
 
     # Separate Claude vs DeepSeek stats from token_log.jsonl
@@ -1745,39 +1758,37 @@ def dashboard_data(authorization: str = Header(None)):
         "deepseek": bool(os.getenv("DEEPSEEK_API_KEY")),
         "google": bool(os.getenv("GOOGLE_API_KEY")),
     }
-    claude_stats = {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
-    deepseek_stats = {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+    # Bucket every token_log.jsonl line by the vendor of its logged model. Lines with no
+    # known model (all lines written before the model field existed) are counted but
+    # never priced — guessing Sonnet rates misreported DeepSeek-heavy spend.
+    stats_by_vendor = {
+        "claude":   {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0},
+        "deepseek": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0},
+        "unknown":  {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": None},
+    }
     try:
-        if os.path.exists(TOKEN_LOG_PATH):
-            HAIKU_INPUT_RATE = 0.001 / 1_000_000
-            HAIKU_OUTPUT_RATE = 0.005 / 1_000_000
-            SONNET_INPUT_RATE = 0.003 / 1_000_000
-            SONNET_OUTPUT_RATE = 0.015 / 1_000_000
-            DEEPSEEK_INPUT_RATE = 0.00014 / 1_000_000
-            DEEPSEEK_OUTPUT_RATE = 0.00028 / 1_000_000
-            with open(TOKEN_LOG_PATH, "r") as f:
+        token_log = Path(_ds.TOKEN_LOG_PATH)
+        if token_log.exists():
+            with open(token_log, "r") as f:
                 for line in f:
                     try:
                         e = json.loads(line.strip())
-                        model = (e.get("model") or "").lower()
                         inp = e.get("input_tokens", 0) or 0
                         out = e.get("output_tokens", 0) or 0
-                        if "deepseek" in model:
-                            cost = inp * DEEPSEEK_INPUT_RATE + out * DEEPSEEK_OUTPUT_RATE
-                            deepseek_stats["calls"] += 1
-                            deepseek_stats["input_tokens"] += inp
-                            deepseek_stats["output_tokens"] += out
-                            deepseek_stats["cost_usd"] += cost
-                        else:
-                            cost = (inp * HAIKU_INPUT_RATE + out * HAIKU_OUTPUT_RATE) if "haiku" in model else (inp * SONNET_INPUT_RATE + out * SONNET_OUTPUT_RATE)
-                            claude_stats["calls"] += 1
-                            claude_stats["input_tokens"] += inp
-                            claude_stats["output_tokens"] += out
-                            claude_stats["cost_usd"] += cost
+                        bucket = stats_by_vendor[_ds.model_vendor(e.get("model"))]
+                        bucket["calls"] += 1
+                        bucket["input_tokens"] += inp
+                        bucket["output_tokens"] += out
+                        cost = _ds.estimate_cost_usd(e.get("model"), inp, out)
+                        if cost is not None and bucket["cost_usd"] is not None:
+                            bucket["cost_usd"] += cost
                     except Exception as _e:
                         continue
     except Exception as _e:
-        pass
+        logging.warning(f"[dashboard] token log read failed: {_e}")
+    claude_stats = stats_by_vendor["claude"]
+    deepseek_stats = stats_by_vendor["deepseek"]
+    unknown_stats = stats_by_vendor["unknown"]
 
     # Per-feature error extraction from request log
     feature_routes = {
@@ -1794,10 +1805,10 @@ def dashboard_data(authorization: str = Header(None)):
         "Sector Performance":   ["/sector-performance"],
     }
     feature_errors = {}
-    with _dash_lock:
-        all_reqs = list(_request_log)
-        current_harvests = {k: v.copy() for k, v in _harvest_status.items()}
-        h_logs = list(_harvest_logs)
+    with _ds._dash_lock:
+        all_reqs = list(_ds._request_log)
+        current_harvests = {k: v.copy() for k, v in _ds._harvest_status.items()}
+        h_logs = list(_ds._dash_logs)
 
     for feature, prefixes in feature_routes.items():
         errs = []
@@ -1833,7 +1844,7 @@ def dashboard_data(authorization: str = Header(None)):
     merged_active = list({**db_active_jobs, **{a.get("job_id", ""): a for a in active}}.values())
 
     return {
-        "server_start":    _server_start.isoformat(),
+        "server_start":    _ds.SERVER_START.isoformat(),
         "uptime_s":        round(uptime),
         "active_analyses": merged_active,
         "recent_analyses": completed,
@@ -1844,6 +1855,7 @@ def dashboard_data(authorization: str = Header(None)):
         "cache_stats":     cache_stats,
         "claude_stats":    claude_stats,
         "deepseek_stats":  deepseek_stats,
+        "unknown_stats":   unknown_stats,
         "feature_errors":  feature_errors,
         "harvest_status":  current_harvests,
         "harvest_logs":    h_logs,
@@ -1874,7 +1886,7 @@ def dashboard_user_data(user_id: int, authorization: str = Header(None)):
             # ── User info ──
             user = session.query(User).filter(User.id == user_id).first()
             if not user:
-                return {"error": "User not found"}
+                raise HTTPException(status_code=404, detail="User not found")
             result["user"] = {
                 "id": user.id,
                 "username": user.username,
@@ -2022,9 +2034,10 @@ def dashboard_user_data(user_id: int, authorization: str = Header(None)):
                 "accuracy_pct": round(correct / checked * 100, 1) if checked > 0 else None,
             }
 
-    except Exception as e:
-        result["error"] = str(e)
-        import traceback
-        result["traceback"] = traceback.format_exc()[:500]
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("[dashboard-user-data] failed for user %s", user_id)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     return result

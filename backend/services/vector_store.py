@@ -27,15 +27,16 @@ def _get_conn() -> "psycopg2.extensions.connection":
         psycopg2.extensions.connection: The active database connection.
 
     Raises:
-        RuntimeError: If the RAG_DB_PASS environment variable is not set.
+        RuntimeError: If RAG_DB_USER or RAG_DB_PASS is not set (init_store() turns
+            this into False, so RAG stays optional).
     """
     global _conn
     if _conn is None or _conn.closed:
         db_name = os.getenv("RAG_DB_NAME", "nivesh")
-        db_user = os.getenv("RAG_DB_USER", "saumyapatel")
+        db_user = os.getenv("RAG_DB_USER", "")
         db_pass = os.getenv("RAG_DB_PASS", "")
-        if not db_pass:
-            raise RuntimeError("RAG_DB_PASS environment variable must be set")
+        if not db_user or not db_pass:
+            raise RuntimeError("RAG_DB_USER and RAG_DB_PASS must be set")
         db_host = os.getenv("RAG_DB_HOST", "127.0.0.1")
         _conn = psycopg2.connect(
             dbname=db_name, user=db_user, password=db_pass, host=db_host
@@ -125,6 +126,38 @@ def upsert_documents(ids: list[str], documents: list[str],
                 document = EXCLUDED.document
         """, rows)
     logger.debug("Upserted %d documents", len(ids))
+
+
+def max_ingested_row_id(doc_type: str) -> int | None:
+    """Highest source-row id already ingested for doc_type, or None if none.
+
+    Parsed from chunk ids of the form '<doc_type>:<row_id>:<chunk_idx>'
+    (rag_ingestion._make_chunk_id); this is the incremental-ingest watermark.
+    """
+    conn = _get_conn()
+    with _store_lock, conn.cursor() as cur:
+        cur.execute(
+            f"SELECT MAX(split_part(id, ':', 2)::int) FROM {TABLE_NAME} "
+            "WHERE doc_type = %s AND id LIKE %s",
+            (doc_type, doc_type + ":%"),
+        )
+        row = cur.fetchone()
+    return row[0] if row else None
+
+
+def delete_legacy_chunks(doc_type: str) -> int:
+    """Delete doc_type chunks whose id predates the '<doc_type>:<row_id>:<idx>' scheme.
+
+    Legacy ids ('<ticker>_<date>_<doc_type>_chunkN') collided across same-day
+    articles; they are dropped once and re-embedded under the new ids.
+    """
+    conn = _get_conn()
+    with _store_lock, conn.cursor() as cur:
+        cur.execute(
+            f"DELETE FROM {TABLE_NAME} WHERE doc_type = %s AND id NOT LIKE %s",
+            (doc_type, doc_type + ":%"),
+        )
+        return cur.rowcount
 
 
 def query_collection(query_embedding: list[float], ticker: str,

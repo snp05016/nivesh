@@ -126,7 +126,7 @@ def portfolio_benchmark(user_id: int, authorization: str = Header(None)):
         holdings = db.query(Portfolio).filter(Portfolio.user_id == user_id).all()
         
     if not holdings:
-        return {"error": "No holdings to benchmark"}
+        raise HTTPException(status_code=404, detail="No holdings to benchmark")
         
     earliest_date = None
     for h in holdings:
@@ -148,18 +148,18 @@ def portfolio_benchmark(user_id: int, authorization: str = Header(None)):
     years = period_days / 365.25
     
     # Get Nifty price
+    # No Nifty data means no benchmark — never fabricate a 0% Nifty CAGR.
     try:
         t = yf.Ticker("^NSEI")
         hist = t.history(start=earliest_date.strftime("%Y-%m-%d"))
-        if not hist.empty:
-            nifty_start = float(hist["Close"].iloc[0])
-            nifty_end = float(hist["Close"].iloc[-1])
-        else:
-            nifty_start, nifty_end = 1.0, 1.0
     except Exception as e:
         import logging
-        logging.warning(f"Caught exception: {e}")
-        nifty_start, nifty_end = 1.0, 1.0
+        logging.warning(f"[BENCHMARK] Nifty history failed: {e}")
+        hist = None
+    if hist is None or hist.empty:
+        raise HTTPException(status_code=503, detail="Nifty benchmark data temporarily unavailable")
+    nifty_start = float(hist["Close"].iloc[0])
+    nifty_end = float(hist["Close"].iloc[-1])
         
     nifty_cagr_pct = (((nifty_end / nifty_start) ** (1 / years)) - 1) * 100 if nifty_start > 0 and years > 0 else 0.0
     
@@ -557,7 +557,7 @@ mood must be exactly: "positive", "cautious", or "negative"
                 logging.info(f"[Anthropic] Morning summary attempt {attempt+1} failed: {e}")
                 if attempt == 2: raise
                 time.sleep(1.0 * (2 ** attempt))
-        _log_token_usage("morning_summary", response.usage)
+        _log_token_usage("morning_summary", response.usage, HAIKU_MODEL)
 
         raw = _extract_json_from_text(response.content[0].text)
         try:
@@ -2200,9 +2200,9 @@ def export_portfolio_pdf(user_id: int, authorization: str = Header(None)):
 
     except HTTPException:
         raise
-    except Exception as e:
-        logging.error(f"[PDF-EXPORT] Top-level error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception:
+        logging.exception("[PDF-EXPORT] Top-level error")
+        raise HTTPException(status_code=503, detail="Portfolio review unavailable. Please try again later.")
 
 
 # ---------------------------------------------------------------------------

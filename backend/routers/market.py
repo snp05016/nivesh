@@ -17,6 +17,7 @@ from services.market_service import (
 )
 
 import json
+import logging
 import os
 import time
 import asyncio
@@ -998,7 +999,8 @@ def market_pulse_endpoint():
     try:
         return fetch_market_pulse()
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Market pulse unavailable: {e}")
+        logging.warning("Market pulse unavailable: %s", e)
+        raise HTTPException(status_code=502, detail="Market pulse temporarily unavailable")
 
 @router.get("/api/v1/market/momentum")
 def market_momentum_endpoint():
@@ -1013,7 +1015,8 @@ def market_momentum_endpoint():
     try:
         return fetch_momentum()
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Momentum data unavailable: {e}")
+        logging.warning("Momentum data unavailable: %s", e)
+        raise HTTPException(status_code=502, detail="Momentum data temporarily unavailable")
 
 @router.get("/api/v1/market/macro-alternatives")
 def market_macro_alternatives_endpoint():
@@ -1028,7 +1031,8 @@ def market_macro_alternatives_endpoint():
     try:
         return fetch_macro_alternatives()
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Macro data unavailable: {e}")
+        logging.warning("Macro data unavailable: %s", e)
+        raise HTTPException(status_code=502, detail="Macro data temporarily unavailable")
 
 @router.get("/api/v1/market/institutional-flow")
 def market_institutional_flow_endpoint():
@@ -1043,7 +1047,8 @@ def market_institutional_flow_endpoint():
     try:
         return fetch_institutional_flow()
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Institutional flow unavailable: {e}")
+        logging.warning("Institutional flow unavailable: %s", e)
+        raise HTTPException(status_code=502, detail="Institutional flow temporarily unavailable")
 
 
 @router.get("/api/v1/market/stock-history")
@@ -1558,7 +1563,8 @@ def market_dashboard_endpoint():
                 "fetched_at":    _dt.now(timezone.utc).isoformat(),
             }
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Dashboard fetch failed: {e}")
+        logging.warning("Dashboard fetch failed: %s", e)
+        raise HTTPException(status_code=502, detail="Market dashboard temporarily unavailable")
 
 
 # ── /api/v1/market/dashboard-pulse ───────────────────────────────────────────
@@ -1951,7 +1957,6 @@ async def earnings_progress_endpoint():
                     if prof_g is not None and -200 < prof_g < 500:
                         prof_vals.append(prof_g)
                 except Exception as e:
-                    import logging
                     logging.warning(f"Caught exception: {e}")
                     continue
         return {
@@ -1961,9 +1966,10 @@ async def earnings_progress_endpoint():
             "yoy_net_profit_growth_pct": round(sum(prof_vals) / len(prof_vals), 2) if prof_vals else None,
             "fetched_at": now_iso,
         }
-    except Exception as e:
-        logging.info(f"[EARNINGS/PROGRESS] {e}")
-        return {"reported": 0, "total": 50, "yoy_revenue_growth_pct": None, "yoy_net_profit_growth_pct": None, "fetched_at": now_iso}
+    except Exception:
+        logging.exception("[EARNINGS/PROGRESS] failed")
+        return {"reported": 0, "total": 50, "yoy_revenue_growth_pct": None, "yoy_net_profit_growth_pct": None,
+                "fetched_at": now_iso, "degraded": True}
 
 
 def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple[list[dict], str]:
@@ -2229,11 +2235,13 @@ Adds data_source and diagnostic fields for transparency.
 
     except Exception as e:
         log_earnings_error("earnings_feed", str(e))
+        logging.exception("[EARNINGS/FEED] failed")
         return {
             "sort": sort, "latest": [], "best_performers": [], "worst_performers": [],
-            "results": [], "count": 0, "data_source": "empty", "error": str(e),
-            "diagnostic": f"Earnings feed endpoint failed with error: {str(e)[:200]}. Run an analysis first to populate earnings data.",
-            "fetched_at": now_iso
+            "results": [], "count": 0, "data_source": "empty",
+            "error": "Earnings feed temporarily unavailable",
+            "diagnostic": "Earnings feed failed to load. Please retry shortly.",
+            "fetched_at": now_iso, "degraded": True,
         }
 
 
@@ -2303,8 +2311,10 @@ Each result includes:
         }
     except Exception as e:
         log_earnings_error("earnings_calendar", str(e))
+        logging.exception("[EARNINGS/CALENDAR] failed")
         return {"date": target_date, "results": [], "count": 0,
-                "error": str(e), "fetched_at": now_iso}
+                "error": "Earnings calendar temporarily unavailable", "fetched_at": now_iso,
+                "degraded": True}
 
 
 @router.get("/api/v1/earnings/estimates")
@@ -2329,7 +2339,6 @@ async def earnings_estimates_endpoint(ticker: str):
                     net_profit_actual = fs.get("net_profit_crores")
                     eps_actual = fs.get("eps")
                 except Exception as e:
-                    import logging
                     logging.error(f"Error occurred: {e}", exc_info=True)
                     raise HTTPException(status_code=500, detail="Internal server error")
         return {
@@ -2342,10 +2351,11 @@ async def earnings_estimates_endpoint(ticker: str):
             "eps_estimate": float(eps_est) if eps_est else None,
             "eps_actual": float(eps_actual) if eps_actual else None,
         }
-    except Exception as e:
-        logging.info(f"[EARNINGS/ESTIMATES] {ticker}: {e}")
+    except Exception:
+        logging.exception("[EARNINGS/ESTIMATES] %s failed", ticker)
         return {"ticker": ticker, "company_name": ticker, "revenue_estimate": None, "revenue_actual": None,
-                "net_profit_estimate": None, "net_profit_actual": None, "eps_estimate": None, "eps_actual": None}
+                "net_profit_estimate": None, "net_profit_actual": None, "eps_estimate": None, "eps_actual": None,
+                "degraded": True}
 
 
 @router.get("/api/v1/earnings/post-result-movers")
@@ -2384,14 +2394,13 @@ async def post_result_movers_endpoint():
                         "volume": vol,
                     })
                 except Exception as e:
-                    import logging
                     logging.warning(f"Caught exception: {e}")
                     continue
         movers.sort(key=lambda x: abs(x["change_percent"]), reverse=True)
         return {"movers": movers, "fetched_at": now_iso}
-    except Exception as e:
-        logging.info(f"[EARNINGS/POST-RESULT-MOVERS] {e}")
-        return {"movers": [], "fetched_at": now_iso}
+    except Exception:
+        logging.exception("[EARNINGS/POST-RESULT-MOVERS] failed")
+        return {"movers": [], "fetched_at": now_iso, "degraded": True}
 
 
 from pydantic import BaseModel as _BaseModelLocal
@@ -2438,7 +2447,9 @@ Pass ?user_id=<id> to filter. Returns empty list if none.
             }
     except Exception as e:
         log_market_error("earnings_alerts_get", str(e))
-        return {"alerts": [], "count": 0, "error": str(e), "fetched_at": datetime.now(timezone.utc).isoformat()}
+        logging.exception("[EARNINGS/ALERTS] list failed")
+        return {"alerts": [], "count": 0, "error": "Earnings alerts temporarily unavailable",
+                "fetched_at": datetime.now(timezone.utc).isoformat(), "degraded": True}
 
 
 @router.post("/api/v1/earnings/alerts")
@@ -2577,7 +2588,7 @@ Requires admin auth.
 def get_option_chain_metrics_endpoint(ticker: str, current_price: float = 0):
     """
     Returns pre-computed F&O derivatives metrics (PCR, Max Pain, OI Skew).
-Cached 15 minutes. Returns error dict if NSE is unreachable.
+Cached 15 minutes. Raises 503 if NSE is unreachable.
 
     Args:
         ticker (str): The ticker.
@@ -2589,7 +2600,7 @@ Cached 15 minutes. Returns error dict if NSE is unreachable.
     from services.options_scraper import fetch_option_chain, compute_derivatives_metrics
     raw_chain = fetch_option_chain(ticker.upper())
     if not raw_chain:
-        return {"error": "Option chain unavailable from NSE", "ticker": ticker, "metrics": None}
+        raise HTTPException(status_code=503, detail="Option chain temporarily unavailable from NSE")
     metrics = compute_derivatives_metrics(raw_chain, current_price=current_price)
     return {"ticker": ticker.upper(), "metrics": metrics}
 

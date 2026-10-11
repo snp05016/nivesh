@@ -1,78 +1,72 @@
-import pytest
+"""REL-21 — incremental RAG ingestion: chunk ids carry the source row id, and a run with
+no new rows does no embedding work."""
+import importlib
+import sys
 from unittest.mock import MagicMock, patch
-from datetime import datetime
 
-from services.rag_ingestion import ingest_all, ingest_new, _make_chunk_id
+import pytest
+
+# Heavy/optional deps: use the real module when installed, otherwise a stub. Every call
+# into them below is patched, so the tests behave the same either way.
+for _name in ("sentence_transformers", "langchain_text_splitters", "psycopg2",
+              "psycopg2.extras", "pgvector", "pgvector.psycopg2"):
+    try:
+        importlib.import_module(_name)
+    except ImportError:
+        sys.modules[_name] = MagicMock()
+
+from services import rag_ingestion  # noqa: E402
+from services.rag_ingestion import _make_chunk_id, ingest_new  # noqa: E402
+
 
 @pytest.fixture
-def mock_db_session():
-    with patch("services.rag_ingestion.get_session") as mock_session_maker:
-        session = MagicMock()
-        mock_session_maker.return_value.__enter__.return_value = session
-        yield session
+def fake_env():
+    """Patch the splitter, model and vector store; yield (model, upsert mock)."""
+    splitter = MagicMock()
+    splitter.split_text.side_effect = lambda text: [text]  # one chunk per row
+    model = MagicMock()
+    model.encode.side_effect = lambda docs: MagicMock(tolist=lambda: [[0.1, 0.2, 0.3]] * len(docs))
+    with patch.object(rag_ingestion, "RecursiveCharacterTextSplitter", return_value=splitter), \
+         patch.object(rag_ingestion, "_get_embedding_model", return_value=model), \
+         patch.object(rag_ingestion, "upsert_documents") as upsert, \
+         patch.object(rag_ingestion, "collection_count", return_value=0), \
+         patch.object(rag_ingestion, "delete_legacy_chunks", return_value=0):
+        yield model, upsert
 
-@pytest.fixture
-def mock_vector_store():
-    with patch("services.rag_ingestion.upsert_documents") as mock_upsert, \
-         patch("services.rag_ingestion.collection_count", return_value=10) as mock_count:
-        yield mock_upsert, mock_count
 
-@pytest.fixture
-def mock_sentence_transformer():
-    with patch("services.rag_ingestion.SentenceTransformer") as mock_st:
-        model = MagicMock()
-        model.encode.return_value = MagicMock(tolist=lambda: [[0.1, 0.2, 0.3]])
-        mock_st.return_value = model
-        yield mock_st
+def test_chunk_ids_include_row_id():
+    assert _make_chunk_id("news_article", 1, 0) != _make_chunk_id("news_article", 2, 0)
+    assert _make_chunk_id("news_article", 7, 3) == "news_article:7:3"
 
-def test_make_chunk_id():
-    chunk_id = _make_chunk_id("AAPL", "2023-01-01", "news_article", 5)
-    assert chunk_id == "AAPL_2023-01-01_news_article_chunk5"
 
-def test_ingest_all(mock_db_session, mock_vector_store, mock_sentence_transformer):
-    mock_upsert, _ = mock_vector_store
-    
-    # Mock data
-    class MockArticle:
-        ticker = "AAPL"
-        body_text = "This is a test article body."
-        published_at = datetime(2023, 1, 1)
-        article_url = "http://example.com"
-        
-    class MockInsight:
-        ticker = "GOOGL"
-        raw_snippet = "This is a test insight."
-        published_at = datetime(2023, 1, 2)
-        advisor_name = "Test Advisor"
-        
-    # Setup mock query results
-    mock_query = mock_db_session.query.return_value
-    mock_query.filter.return_value.all.return_value = [MockArticle()]
-    mock_query.all.return_value = [MockInsight()]
-    
-    total_chunks = ingest_all()
-    
-    assert total_chunks == 2
-    assert mock_upsert.call_count == 2
-    
-    # Check first upsert call for article
-    args, kwargs = mock_upsert.call_args_list[0]
-    batch_ids, batch_docs, batch_metas, embeddings = args
-    assert len(batch_ids) == 1
-    assert "AAPL_2023-01-01_news_article_chunk0" in batch_ids
-    assert batch_metas[0]["ticker"] == "AAPL"
-    
-    # Check second upsert call for insight
-    args, kwargs = mock_upsert.call_args_list[1]
-    batch_ids, batch_docs, batch_metas, embeddings = args
-    assert len(batch_ids) == 1
-    assert "GOOGL_2023-01-02_advisor_transcript_chunk0" in batch_ids
-    assert batch_metas[0]["ticker"] == "GOOGL"
+def test_same_ticker_same_day_articles_not_overwritten(fake_env):
+    _model, upsert = fake_env
+    news_rows = [
+        (1, "TCS", "first article body", "2026-01-05", "https://a"),
+        (2, "TCS", "second article body", "2026-01-05", "https://b"),
+    ]
 
-def test_ingest_new(mock_db_session, mock_vector_store, mock_sentence_transformer):
-    mock_upsert, _ = mock_vector_store
-    
-    with patch("services.rag_ingestion.ingest_all", return_value=5) as mock_ingest_all:
-        count = ingest_new()
-        assert count == 5
-        mock_ingest_all.assert_called_once()
+    def fetch(doc_type, after_id, limit=200):
+        return news_rows if doc_type == "news_article" and after_id == 0 else []
+
+    with patch.object(rag_ingestion, "max_ingested_row_id", return_value=None), \
+         patch.object(rag_ingestion, "_fetch_batch", side_effect=fetch):
+        total = ingest_new()
+
+    ids = [cid for call in upsert.call_args_list for cid in call.args[0]]
+    assert total == 2
+    assert len(set(ids)) == 2
+    assert set(ids) == {"news_article:1:0", "news_article:2:0"}
+
+
+def test_second_run_no_new_rows_zero_encode(fake_env):
+    model, upsert = fake_env
+    with patch.object(rag_ingestion, "max_ingested_row_id", return_value=2), \
+         patch.object(rag_ingestion, "_fetch_batch", return_value=[]) as fetch:
+        total = ingest_new()
+
+    assert total == 0
+    assert model.encode.call_count == 0
+    upsert.assert_not_called()
+    # resumes after the watermark for both doc types
+    assert {c.args[:2] for c in fetch.call_args_list} == {("news_article", 2), ("advisor_transcript", 2)}

@@ -8,7 +8,8 @@ Contains:
 - Admin harvest trigger endpoints (FastAPI router)
 """
 
-from datetime import timezone
+import asyncio
+from datetime import datetime, timedelta, timezone
 import logging
 from fastapi import APIRouter, BackgroundTasks, Header
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -300,6 +301,28 @@ def start_scheduler():
     _scheduler.add_job(_run_expert_harvest_bg, "interval", minutes=120, id="expert_harvest", replace_existing=True)
     _scheduler.add_job(_run_sebi_harvest_bg,   "interval", minutes=120, id="sebi_harvest",   replace_existing=True)
     _scheduler.add_job(_run_youtube_expert_bg, "interval", minutes=120, id="youtube_expert_harvest", replace_existing=True)
+
+    # ── RAG ingestion — incremental, leader-only (this scheduler holds the fcntl lock).
+    # Replaces the old per-worker full re-embed at startup. First run 5 min after boot.
+    async def _run_rag_ingest():
+        _dash_update_harvest("rag_ingest", "running")
+        try:
+            from services.vector_store import init_store
+            if not init_store():
+                _dash_update_harvest("rag_ingest", "idle", {"skipped": "vector store unavailable"})
+                return
+            from services.rag_ingestion import ingest_new
+            n = await asyncio.to_thread(ingest_new)  # CPU-bound embedding off the event loop
+            _dash_update_harvest("rag_ingest", "idle", {"chunks": n})
+        except Exception as e:
+            logging.exception("[rag_ingest] failed")
+            _dash_update_harvest("rag_ingest", "error", {"error": str(e)})
+
+    _scheduler.add_job(
+        _run_rag_ingest, "cron", hour=21, minute=45, id="rag_ingest",  # 3:15 AM IST
+        max_instances=1, coalesce=True, replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=5),
+    )
 
     _scheduler.start()
     promote_initial_admins()

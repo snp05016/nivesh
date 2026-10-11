@@ -1088,11 +1088,10 @@ def screener_endpoint(preset: str):
                             "pe_ratio": round(pe, 1),
                         })
                     except Exception as e:
-                        import logging
                         logging.warning(f"Caught exception: {e}")
                         continue
                 results = results[:12]
-            except Exception as _se:
+            except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
                 logging.info(f"[SCREENER ghar_ghar_modi] {_se}")
 
         elif preset == "earnings_pioneers":
@@ -1137,11 +1136,10 @@ def screener_endpoint(preset: str):
                             "profit_growth_pct": round(float(profit_growth), 1),
                         })
                     except Exception as e:
-                        import logging
                         logging.warning(f"Caught exception: {e}")
                         continue
                 results = results[:12]
-            except Exception as _se:
+            except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
                 logging.info(f"[SCREENER earnings_pioneers] {_se}")
 
         elif preset == "institutional_capitulation":
@@ -1175,7 +1173,6 @@ def screener_endpoint(preset: str):
                                     rs = gain / loss.replace(0, 1e-10)
                                     rsi_val = 100 - (100 / (1 + float(rs.iloc[-1])))
                             except Exception as e:
-                                import logging
                                 logging.warning(f"Caught exception: {e}")
                                 rsi_val = None
                             if rsi_val is None or rsi_val >= 30:
@@ -1189,7 +1186,6 @@ def screener_endpoint(preset: str):
                                     metrics = compute_derivatives_metrics(raw_chain, float(hist["Close"].iloc[-1]))
                                     pcr_val = metrics.get("pcr")
                             except Exception as e:
-                                import logging
                                 logging.warning(f"Caught exception: {e}")
                                 pcr_val = None
                             if pcr_val is None or pcr_val <= 1.5:
@@ -1205,11 +1201,10 @@ def screener_endpoint(preset: str):
                                 "pcr": pcr_val,
                             })
                         except Exception as e:
-                            import logging
                             logging.warning(f"Caught exception: {e}")
                             continue
                 results = results[:12]
-            except Exception as _se:
+            except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
                 logging.info(f"[SCREENER institutional_capitulation] {_se}")
 
         elif preset == "quality_value":
@@ -1246,11 +1241,10 @@ def screener_endpoint(preset: str):
                             "reason": f"Signal: {signal}, Confidence: {conf}%, PE below sector avg",
                         })
                     except Exception as e:
-                        import logging
                         logging.warning(f"Caught exception: {e}")
                         continue
                 results = results[:12]
-            except Exception as _se:
+            except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
                 logging.info(f"[SCREENER quality_value] {_se}")
 
         elif preset == "promoter_conviction":
@@ -1295,11 +1289,10 @@ def screener_endpoint(preset: str):
                                 "reason": f"Low pledging ({pledged:.1f}%), signal: {r.signal}",
                             })
                         except Exception as e:
-                            import logging
                             logging.warning(f"Caught exception: {e}")
                             continue
                 results = results[:12]
-            except Exception as _se:
+            except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
                 logging.info(f"[SCREENER promoter_conviction] {_se}")
 
         elif preset == "fii_accumulation":
@@ -1335,11 +1328,10 @@ def screener_endpoint(preset: str):
                                 "reason": f"FII increased: {fii1:.1f}% → {fii0:.1f}%",
                             })
                         except Exception as e:
-                            import logging
                             logging.warning(f"Caught exception: {e}")
                             continue
                 results = results[:12]
-            except Exception as _se:
+            except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
                 logging.info(f"[SCREENER fii_accumulation] {_se}")
 
         elif preset == "turnaround":
@@ -1370,11 +1362,10 @@ def screener_endpoint(preset: str):
                                 "reason": ts_story.strip()[:60],
                             })
                         except Exception as e:
-                            import logging
                             logging.warning(f"Caught exception: {e}")
                             continue
                 results = results[:12]
-            except Exception as _se:
+            except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
                 logging.info(f"[SCREENER turnaround] {_se}")
 
         elif preset == "52w_low_bullish":
@@ -1406,7 +1397,6 @@ def screener_endpoint(preset: str):
                             fj_data = json.loads(fj)
                             company = fj_data.get("company_name") or company
                         except Exception as e:
-                            import logging
                             logging.error(f"Error occurred: {e}", exc_info=True)
                             raise HTTPException(status_code=500, detail="Internal server error")
                         results.append({
@@ -1417,11 +1407,10 @@ def screener_endpoint(preset: str):
                             "reason": "Price near 52W low, signal bullish",
                         })
                     except Exception as e:
-                        import logging
                         logging.warning(f"Caught exception: {e}")
                         continue
                 results = results[:12]
-            except Exception as _se:
+            except ImportError as _se:  # optional dependency missing -> no results; any other failure -> 503
                 logging.info(f"[SCREENER 52w_low_bullish] {_se}")
 
         else:
@@ -1429,10 +1418,11 @@ def screener_endpoint(preset: str):
 
         _yf_circuit_record_success()
         return results
-    except Exception as _top_err:
-        logging.info(f"[SCREENER] Top-level error: {_top_err}")
+    except Exception:
+        logging.exception("[SCREENER] Top-level error")
         _yf_circuit_record_failure()
-        return []
+        # [] means "no matches"; a failure must be distinguishable (iOS throws on non-2xx).
+        raise HTTPException(status_code=503, detail="Screener temporarily unavailable")
 
 
 # ---------------------------------------------------------------------------
@@ -1582,15 +1572,14 @@ def daily_action_endpoint(user_id: int, authorization: str = Header(None)):
 def token_stats_endpoint(authorization: str = Header(None)):
     require_admin(authorization)
     try:
-        HAIKU_INPUT_RATE  = 0.001 / 1_000_000
-        HAIKU_OUTPUT_RATE = 0.005 / 1_000_000
-        SONNET_INPUT_RATE  = 0.003 / 1_000_000
-        SONNET_OUTPUT_RATE = 0.015 / 1_000_000
+        from collections import defaultdict
+        from core.dashboard_state import estimate_cost_usd
 
         if not os.path.exists(TOKEN_LOG_PATH):
             return {
                 "total_cost_usd": 0.0,
                 "total_calls": 0,
+                "unpriced_calls": 0,
                 "cost_by_endpoint": {},
                 "cache_hit_rate_pct": 0.0,
                 "most_expensive_endpoint": None,
@@ -1601,10 +1590,13 @@ def token_stats_endpoint(authorization: str = Header(None)):
 
         total_cost = 0.0
         total_calls = 0
+        unpriced_calls = 0
         cost_by_ep: dict[str, float] = {}
         total_input = 0
         total_output = 0
         total_cache_read = 0
+        day_costs: dict = defaultdict(float)
+        day_calls: dict = defaultdict(int)
 
         with open(TOKEN_LOG_PATH, "r") as f:
             for line in f:
@@ -1619,13 +1611,13 @@ def token_stats_endpoint(authorization: str = Header(None)):
                 inp = entry.get("input_tokens", 0) or 0
                 out = entry.get("output_tokens", 0) or 0
                 cr  = entry.get("cache_read_input_tokens", 0) or 0
-                model = (entry.get("model") or "").lower()
                 endpoint = entry.get("endpoint") or "unknown"
-
-                if "haiku" in model:
-                    cost = inp * HAIKU_INPUT_RATE + out * HAIKU_OUTPUT_RATE
-                else:
-                    cost = inp * SONNET_INPUT_RATE + out * SONNET_OUTPUT_RATE
+                # Lines without a known model (all pre-fix lines) are counted but never
+                # priced — guessing Sonnet rates misreported DeepSeek-heavy spend.
+                cost = estimate_cost_usd(entry.get("model"), inp, out)
+                if cost is None:
+                    unpriced_calls += 1
+                    cost = 0.0
 
                 total_cost += cost
                 total_calls += 1
@@ -1633,32 +1625,13 @@ def token_stats_endpoint(authorization: str = Header(None)):
                 total_output += out
                 total_cache_read += cr
                 cost_by_ep[endpoint] = cost_by_ep.get(endpoint, 0.0) + cost
+                day = (entry.get("ts") or entry.get("timestamp") or "")[:10]
+                if day:
+                    day_costs[day] += cost
+                    day_calls[day] += 1
 
         cache_hit_rate = round(total_cache_read / total_input * 100, 2) if total_input > 0 else 0.0
         most_expensive = max(cost_by_ep, key=lambda k: cost_by_ep[k]) if cost_by_ep else None
-
-        from collections import defaultdict
-        day_costs: dict = defaultdict(float)
-        day_calls: dict = defaultdict(int)
-        with open(TOKEN_LOG_PATH, "r") as f2:
-            for line in f2:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    e = json.loads(line)
-                    day = (e.get("timestamp") or "")[:10]
-                    if day:
-                        inp2 = e.get("input_tokens", 0) or 0
-                        out2 = e.get("output_tokens", 0) or 0
-                        model2 = (e.get("model") or "").lower()
-                        c2 = (inp2 * HAIKU_INPUT_RATE + out2 * HAIKU_OUTPUT_RATE) if "haiku" in model2 else (inp2 * SONNET_INPUT_RATE + out2 * SONNET_OUTPUT_RATE)
-                        day_costs[day] += c2
-                        day_calls[day] += 1
-                except Exception as e:
-                    import logging
-                    logging.warning(f"Caught exception: {e}")
-                    continue
 
         unique_days = len(day_costs) or 1
         monthly_est = round(total_cost / unique_days * 30, 2)
@@ -1668,6 +1641,7 @@ def token_stats_endpoint(authorization: str = Header(None)):
             "total_cost_usd": round(total_cost, 6),
             "total_cost_inr": round(total_cost * 83.5, 2),
             "total_calls": total_calls,
+            "unpriced_calls": unpriced_calls,
             "cost_by_endpoint": {k: round(v, 6) for k, v in sorted(cost_by_ep.items(), key=lambda x: x[1], reverse=True)},
             "cache_hit_rate_pct": cache_hit_rate,
             "most_expensive_endpoint": most_expensive,
