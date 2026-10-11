@@ -236,6 +236,10 @@ extension NetworkManager {
         guard let http = response as? HTTPURLResponse else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
         }
+        if http.statusCode == 409 {
+            // Business-rule rejection (no primary bank account, already disbursed): {"detail": String}.
+            throw NetworkError.serverError(409, NetworkError.serverDetail(from: data))
+        }
         guard (200...299).contains(http.statusCode) else {
             let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
             throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))

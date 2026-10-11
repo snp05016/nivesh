@@ -75,7 +75,8 @@ def create_device_binding(body: BindDeviceRequest, user_id: int = Depends(requir
     On rejection (MOCK fraud-signal heuristics — see kyc_consent_service.py)
     the response is HTTP 409 with detail {"bound": False, "reason",
     "fraud_signal"}, e.g. "cross_user_device_reuse" or
-    "rebind_rate_limit_exceeded".
+    "rebind_rate_limit_exceeded". The service has already committed the
+    DeviceBindingAttempt audit row by then.
     """
     result = bind_device(user_id, body.device_id)
     if result.get("bound") is False:

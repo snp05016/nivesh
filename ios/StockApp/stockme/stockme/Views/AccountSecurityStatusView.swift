@@ -253,6 +253,8 @@ struct AccountSecurityStatusView: View {
             verifyResult = try await NetworkManager.shared.verifyDeviceBinding(deviceId: currentDeviceId)
             actionMessage = "This device is now bound."
             HapticManager.success()
+        } catch NetworkError.serverError(409, let message?) {
+            errorMessage = message
         } catch {
             errorMessage = (error as? NetworkError)?.errorDescription ?? "Couldn't bind this device. Please try again."
         }

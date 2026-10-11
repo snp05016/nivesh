@@ -23,6 +23,8 @@ from services.finance_tracker_service import (
     list_spend_categories,
 )
 from services.loan_marketplace_service import (
+    DisbursementNotFound,
+    DisbursementRejected,
     disburse_loan,
     get_application_by_id,
     get_disbursement_for_application,
@@ -289,15 +291,17 @@ def disburse_loan_application(application_id: int, user_id: int = Depends(requir
     """Trigger a MOCK instant disbursement of an approved loan application to
     the caller's primary linked bank account.
 
-    Fails closed (status="failed" with a failure_reason) rather than
-    silently no-op'ing if the caller has no primary LinkedBankAccount on
-    file yet. MOCK DATA — no real fund transfer or NBFC settlement rail is
-    involved.
+    404 if the application is unknown; 409 (detail = reason) if it is not
+    approved, already disbursed, or the caller has no primary
+    LinkedBankAccount yet. Nothing is persisted on a 409. MOCK DATA — no real
+    fund transfer or NBFC settlement rail is involved.
     """
     try:
         disbursement = disburse_loan(application_id, user_id)
-    except ValueError as exc:
+    except DisbursementNotFound as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except DisbursementRejected as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     return _serialize_disbursement(disbursement)
 
 

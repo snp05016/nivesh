@@ -84,17 +84,7 @@ extension NetworkManager {
         // 409: a mock fraud heuristic rejected the bind;
         // body is {"detail": {"bound": false, "reason", "fraud_signal"}}.
         if http.statusCode == 409 {
-            let detail = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["detail"] as? [String: Any]
-            let message: String
-            switch detail?["fraud_signal"] as? String {
-            case "cross_user_device_reuse":
-                message = "This device is already registered to another account."
-            case "rebind_rate_limit_exceeded":
-                message = "Too many device bind attempts today. Please try again in 24 hours."
-            default:
-                message = "This device couldn't be bound right now."
-            }
-            throw NetworkError.serverError(409, message)
+            throw NetworkError.serverError(409, Self.deviceBindRejectionMessage(from: data))
         }
         guard (200...299).contains(http.statusCode) else {
             let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
@@ -102,6 +92,22 @@ extension NetworkManager {
         }
         do { return try JSONDecoder().decode(DeviceBindingDTO.self, from: data) }
         catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    /// Friendly copy for a 409 device-bind rejection
+    /// (`{"detail": {"reason", "fraud_signal"}}`). The backend `reason` is
+    /// diagnostic mock text, so only `fraud_signal` drives the message.
+    nonisolated static func deviceBindRejectionMessage(from data: Data) -> String {
+        let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let detail = obj?["detail"] as? [String: Any]
+        switch detail?["fraud_signal"] as? String {
+        case "cross_user_device_reuse":
+            return "This device is already registered to another account."
+        case "rebind_rate_limit_exceeded":
+            return "Too many device bind attempts in the last 24 hours. Please try again later."
+        default:
+            return "This device couldn't be bound right now."
+        }
     }
 
     /// Checks whether `deviceId` matches the signed-in user's registered

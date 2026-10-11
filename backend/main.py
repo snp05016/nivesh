@@ -1170,7 +1170,21 @@ async function triggerHarvest(type){
 function toggleDetails(id){
   const el=document.getElementById('details-'+id);
   if(expandedIds.has(id)){expandedIds.delete(id);el.style.display='none';}
-  else{expandedIds.add(id);el.style.display='table-row';}
+  else{expandedIds.add(id);el.style.display='table-row';loadAnalysisJson(id);}
+}
+
+// raw_output/full_json are not in /dashboard-data; fetch one row on expand.
+async function loadAnalysisJson(id){
+  const box=document.getElementById('json-'+id);
+  if(!box||box.textContent)return;
+  box.textContent='Loading...';
+  try{
+    const r=await adminFetch('/dashboard-data/analysis/'+id);
+    if(!r.ok){box.textContent='Failed: '+r.status;return;}
+    const d=await r.json();
+    let fp='';try{fp=JSON.stringify(JSON.parse(d.full_json),null,2);}catch(e){fp=d.full_json||d.raw_output||'';}
+    box.textContent=fp||'(empty)';
+  }catch(e){box.textContent='Failed to load';}
 }
 
 // ─── User selector population ────────────────────────────────
@@ -1515,10 +1529,10 @@ async function refreshAll(){
     document.getElementById('hnc').textContent=hist.length+' records';
     document.getElementById('ht').innerHTML=hist.length===0?'<tr><td colspan="8" class="empty">No data</td></tr>':hist.map(h=>{
       const isExp=expandedIds.has(h.id);
-      let fp='';try{fp=JSON.stringify(JSON.parse(h.full_json),null,2);}catch(e){fp=h.full_json||'';}
-      return`<tr><td class="ts">${dts(h.ts)}</td><td style="font-weight:700;color:#f0f6fc">${esc(h.ticker)}</td><td class="ts">${esc(h.analysis_date||'-')}</td><td>${sig(h.signal)}</td><td style="color:#d29922">${h.confidence!=null?h.confidence+'%':'-'}</td><td class="ts">${esc(h.user_id||'-')}</td><td>${h.full_json&&JSON.parse(h.full_json).was_correct===true?'<span class="badge ok">&#x2713;</span>':h.full_json&&JSON.parse(h.full_json).was_correct===false?'<span class="badge err">&#x2717;</span>':'-'}</td><td><button class="btn-view" onclick="toggleDetails(${Number(h.id)})">View</button></td></tr>
-      <tr id="details-${Number(h.id)}" style="display:${isExp?'table-row':'none'}"><td colspan="8"><div class="archive-details" style="display:block"><div class="json-box">${esc(fp)}</div></div></td></tr>`;
+      return`<tr><td class="ts">${dts(h.ts)}</td><td style="font-weight:700;color:#f0f6fc">${esc(h.ticker)}</td><td class="ts">${esc(h.analysis_date||'-')}</td><td>${sig(h.signal)}</td><td style="color:#d29922">${h.confidence!=null?h.confidence+'%':'-'}</td><td class="ts">${esc(h.user_id||'-')}</td><td>${h.was_correct===true?'<span class="badge ok">&#x2713;</span>':h.was_correct===false?'<span class="badge err">&#x2717;</span>':'-'}</td><td><button class="btn-view" onclick="toggleDetails(${Number(h.id)})">View</button></td></tr>
+      <tr id="details-${Number(h.id)}" style="display:${isExp?'table-row':'none'}"><td colspan="8"><div class="archive-details" style="display:block"><div class="json-box" id="json-${Number(h.id)}"></div></div></td></tr>`;
     }).join('');
+    expandedIds.forEach(id=>loadAnalysisJson(id));
 
     // Populate user select on first load
     populateUserDropdown();
@@ -1688,7 +1702,8 @@ def dashboard_data(authorization: str = Header(None)):
     db_stats = {}
     try:
         with get_session() as session:
-            rows = session.query(AnalysisHistory).order_by(AnalysisHistory.created_at.desc()).limit(100).all()
+            # Summary rows only; raw_output/full_json come from /dashboard-data/analysis/{id} (GH-689).
+            rows = session.query(AnalysisHistory).order_by(AnalysisHistory.created_at.desc()).limit(50).all()
             for r in rows:
                 history.append({
                     "id": r.id,
@@ -1697,8 +1712,7 @@ def dashboard_data(authorization: str = Header(None)):
                     "analysis_date": r.analysis_date,
                     "signal": r.signal,
                     "confidence": r.confidence_pct,
-                    "raw_output": r.raw_output,
-                    "full_json": r.full_json,
+                    "was_correct": r.was_correct,
                     "user_id": r.user_id,
                 })
             db_stats = {
@@ -1890,6 +1904,17 @@ def dashboard_data(authorization: str = Header(None)):
         "ai_health":       ai_health,
         "ai_engine":       build_ai_engine_monitor(mode="running"),
     }
+
+
+@app.get("/dashboard-data/analysis/{analysis_id}")
+def dashboard_analysis_detail(analysis_id: int, authorization: str = Header(None)):
+    """raw_output/full_json for one archive row, fetched when the admin expands it."""
+    require_admin(authorization)
+    with get_session() as session:
+        row = session.query(AnalysisHistory).filter(AnalysisHistory.id == analysis_id).first()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        return {"id": row.id, "raw_output": row.raw_output, "full_json": row.full_json}
 
 
 @app.get("/dashboard-user-data")

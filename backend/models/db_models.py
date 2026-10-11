@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import (
     Boolean, CheckConstraint, Column, DateTime, Float, Integer, JSON, Numeric, String, Text,
-    ForeignKey, Index, UniqueConstraint,
+    ForeignKey, Index, UniqueConstraint, text,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -1407,9 +1407,11 @@ class LoanDisbursement(Base):
 
     Requires the borrower to already have a LinkedBankAccount (the loan
     marketplace one, defined above — NOT FinanceTrackerAccount) marked
-    is_primary=True; if none exists, disbursement fails closed with
-    status="failed" and a failure_reason, rather than silently no-op'ing —
-    see services/loan_marketplace_service.py:disburse_loan().
+    is_primary=True; if none exists, disbursement fails closed (no row is
+    written) rather than silently no-op'ing — see
+    services/loan_marketplace_service.py:disburse_loan(). Legacy "failed"
+    rows may still exist. At most one "completed" row per application
+    (partial unique index).
     """
     __tablename__ = "loan_disbursements"
 
@@ -1430,6 +1432,13 @@ class LoanDisbursement(Base):
         CheckConstraint(
             "status IN ('pending','completed','failed')",
             name="ck_loan_disbursement_status",
+        ),
+        Index(
+            "uq_loan_disbursement_completed_per_app",
+            "loan_application_id",
+            unique=True,
+            sqlite_where=text("status = 'completed'"),
+            postgresql_where=text("status = 'completed'"),
         ),
     )
 

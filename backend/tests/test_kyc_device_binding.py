@@ -1,4 +1,4 @@
-"""FINSEC-18: device binding is server-decided and rejections are 409.
+"""FINSEC-18 / GH-665: device binding is server-decided and rejections are 409.
 
 - The server, not the client, decides primacy: a successful bind makes the
   device the user's only primary device and demotes every other one.
@@ -115,6 +115,26 @@ def test_cross_user_rejection_returns_409(client, auth_headers, clean_bindings, 
     bindings, attempts = _rows(clean_bindings)
     assert bindings == {}
     assert attempts == 1
+
+    # The rejection is still audited.
+    import database
+    from models.db_models import DeviceBindingAttempt  # pyright: ignore[reportMissingImports]
+
+    with database.get_session() as session:
+        outcomes = [
+            a.outcome
+            for a in session.query(DeviceBindingAttempt).filter(DeviceBindingAttempt.user_id == clean_bindings)
+        ]
+    assert outcomes == ["rejected_cross_user"]
+
+
+def test_rate_limit_returns_409(client, auth_headers, clean_bindings, monkeypatch):
+    monkeypatch.setattr("services.kyc_consent_service.MAX_BIND_ATTEMPTS_PER_24H", 0)
+    resp = client.post("/api/kyc/device-binding", json={"device_id": "gh665-dev-rl"}, headers=auth_headers)
+    assert resp.status_code == 409, resp.text
+    detail = resp.json()["detail"]
+    assert detail["fraud_signal"] == "rebind_rate_limit_exceeded"
+    assert detail["reason"]
 
 
 def test_device_id_too_long_422(client, auth_headers, clean_bindings):

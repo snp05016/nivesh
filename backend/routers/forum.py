@@ -3,9 +3,9 @@
 Controller-only: HTTP validation lives here, all DB access and business
 logic live in services/forum_service.py (Controller-Service-Repository).
 """
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, cast
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from core.security import get_current_user_id, require_admin, require_auth
@@ -21,7 +21,7 @@ from services.forum_service import (
     list_threads,
     report_post,
     resolve_report,
-    thread_count_for_board,
+    thread_counts_by_board,
     unblock,
     vote_poll,
     vote_post,
@@ -169,6 +169,7 @@ class ResolveReportRequest(BaseModel):
 def list_forum_boards():
     """List discussion boards (general market boards + per-stock boards)."""
     boards = list_boards()
+    counts = thread_counts_by_board()
     return [
         ForumBoardResponse(
             id=b.id,
@@ -177,7 +178,7 @@ def list_forum_boards():
             description=b.description,
             board_type=b.board_type,
             ticker=b.ticker,
-            thread_count=thread_count_for_board(b.id),
+            thread_count=counts.get(cast(int, b.id), 0),
         )
         for b in boards
     ]
@@ -188,13 +189,19 @@ def list_forum_boards():
 # ---------------------------------------------------------------------------
 
 @router.get("/boards/{board_id}/threads", response_model=List[ForumThreadSummaryResponse])
-def list_board_threads(board_id: int, viewer_id: Optional[int] = Depends(get_current_user_id)):
-    """List thread summaries for a board. Public; a signed-in viewer's blocks
-    and reports are filtered out."""
+def list_board_threads(
+    board_id: int,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    viewer_id: Optional[int] = Depends(get_current_user_id),
+):
+    """List thread summaries for a board, pinned first then newest, paged by
+    limit/offset. Public; a signed-in viewer's blocks and reports are
+    filtered out."""
     board = get_board_by_id(board_id)
     if board is None:
         raise HTTPException(status_code=404, detail="Board not found")
-    return list_threads(board_id, viewer_id=viewer_id)
+    return list_threads(board_id, viewer_id=viewer_id, limit=limit, offset=offset)
 
 
 @router.get("/threads/{thread_id}", response_model=ForumThreadDetailResponse)

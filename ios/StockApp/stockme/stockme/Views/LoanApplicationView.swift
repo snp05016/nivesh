@@ -394,13 +394,15 @@ struct LoanDisbursementCard: View {
 
             if let disbursement = vm.disbursement {
                 DisbursementStatusRow(disbursement: disbursement)
-            } else if let error = vm.disbursementError {
+            }
+            if let error = vm.disbursementError {
                 Text(error)
                     .font(Theme.engravedSerif(size: 12, relativeTo: .footnote))
                     .foregroundColor(Theme.bearRed)
             }
 
-            if vm.disbursement == nil {
+            // A legacy "failed" row must not dead-end the flow: allow a retry.
+            if vm.disbursement == nil || vm.disbursement?.status == "failed" {
                 Button {
                     HapticManager.selection()
                     Task { await vm.requestDisbursement() }

@@ -5,10 +5,11 @@ Controller-Service-Repository: routers/forum.py must only validate HTTP
 input and call functions here. All session.query() calls for the forum
 ORM models live in this module.
 """
-from typing import Optional
+from typing import Any, Optional, cast
 
 from sqlalchemy import case, distinct, func
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import defer
 
 from database import get_session
 from models.db_models import (
@@ -101,9 +102,15 @@ def get_board_by_id(board_id: int) -> Optional[ForumBoard]:
         return session.query(ForumBoard).filter(ForumBoard.id == board_id).first()
 
 
-def thread_count_for_board(board_id: int) -> int:
+def thread_counts_by_board() -> dict[int, int]:
+    """{board_id: thread count} for every board with threads, in one query."""
     with get_session() as session:
-        return session.query(ForumThread).filter(ForumThread.board_id == board_id).count()
+        rows = (
+            session.query(ForumThread.board_id, func.count(ForumThread.id))
+            .group_by(ForumThread.board_id)
+            .all()
+        )
+        return {board_id: count for board_id, count in rows}
 
 
 # ---------------------------------------------------------------------------
@@ -145,43 +152,74 @@ def _is_visible(post: ForumPost, viewer_id: Optional[int], blocked: set[int], re
 # Threads
 # ---------------------------------------------------------------------------
 
-def list_threads(board_id: int, viewer_id: Optional[int] = None) -> list[dict]:
+def list_threads(
+    board_id: int, viewer_id: Optional[int] = None, limit: int = 50, offset: int = 0
+) -> list[dict]:
     """List thread summaries for a board (title, author, reply/vote counts),
-    minus threads the viewer blocked/reported or moderators hid."""
+    minus threads the viewer blocked/reported or moderators hid.
+
+    A fixed number of queries regardless of page size (GH-679): one each for
+    threads, their posts (bodies deferred), authors and polls.
+    """
     with get_session() as session:
         blocked, reported = _viewer_filters(session, viewer_id)
+        thread_query = session.query(ForumThread).filter(ForumThread.board_id == board_id)
+        if blocked:
+            thread_query = thread_query.filter(ForumThread.user_id.notin_(blocked))
+        # ponytail: page is cut before the per-post visibility filter below, so a
+        # page can hold fewer than `limit` threads; move that filter into SQL if it matters.
         threads = (
-            session.query(ForumThread)
-            .filter(ForumThread.board_id == board_id)
+            thread_query
             .order_by(ForumThread.is_pinned.desc(), ForumThread.created_at.desc())
+            .offset(offset)
+            .limit(limit)
             .all()
         )
+        if not threads:
+            return []
+        thread_ids = [cast(int, t.id) for t in threads]
+
+        posts_by_thread: dict[int, list[ForumPost]] = {tid: [] for tid in thread_ids}
+        for post in (
+            session.query(ForumPost)
+            .options(defer(ForumPost.body))  # pyright: ignore[reportArgumentType]  (Column-style model)
+            .filter(ForumPost.thread_id.in_(thread_ids))
+            .order_by(ForumPost.created_at.asc(), ForumPost.id.asc())
+            .all()
+        ):
+            posts_by_thread[post.thread_id].append(post)  # type: ignore[index]
+
+        author_names: dict[Any, Any] = {
+            uid: name
+            for uid, name in session.query(User.id, User.display_name)
+            .filter(User.id.in_({t.user_id for t in threads}))
+            .all()
+        }
+        threads_with_poll = {
+            row[0]
+            for row in session.query(ForumPoll.thread_id)
+            .filter(ForumPoll.thread_id.in_(thread_ids))
+            .distinct()
+            .all()
+        }
+
         results = []
         for thread in threads:
-            posts = (
-                session.query(ForumPost)
-                .filter(ForumPost.thread_id == thread.id)
-                .order_by(ForumPost.created_at.asc())
-                .all()
-            )
+            posts = posts_by_thread[thread.id]  # type: ignore[index]
             op_post = next((p for p in posts if p.is_op), posts[0] if posts else None)
-            if thread.user_id in blocked:
-                continue
             if op_post is not None and not _is_visible(op_post, viewer_id, blocked, reported):
                 continue
             posts = [p for p in posts if _is_visible(p, viewer_id, blocked, reported)]
-            author = session.query(User).filter(User.id == thread.user_id).first()
-            has_poll = session.query(ForumPoll).filter(ForumPoll.thread_id == thread.id).first() is not None
             results.append({
                 "id": thread.id,
                 "board_id": thread.board_id,
                 "title": thread.title,
-                "author_display_name": author.display_name if author else "Unknown",
+                "author_display_name": author_names.get(thread.user_id, "Unknown"),
                 "is_pinned": thread.is_pinned,
                 "reply_count": max(len(posts) - 1, 0),
                 "upvotes": op_post.upvotes if op_post else 0,
                 "downvotes": op_post.downvotes if op_post else 0,
-                "has_poll": has_poll,
+                "has_poll": thread.id in threads_with_poll,
                 "created_at": thread.created_at.isoformat() if thread.created_at else None,
                 "op_post_id": op_post.id if op_post else None,
                 "is_mine": viewer_id is not None and thread.user_id == viewer_id,
@@ -204,7 +242,6 @@ def get_thread_detail(thread_id: int, viewer_id: Optional[int] = None) -> Option
             return None
 
         board = session.query(ForumBoard).filter(ForumBoard.id == thread.board_id).first()
-        author = session.query(User).filter(User.id == thread.user_id).first()
 
         posts = (
             session.query(ForumPost)
@@ -212,6 +249,12 @@ def get_thread_detail(thread_id: int, viewer_id: Optional[int] = None) -> Option
             .order_by(ForumPost.created_at.asc())
             .all()
         )
+        author_names: dict[Any, Any] = {
+            uid: name
+            for uid, name in session.query(User.id, User.display_name)
+            .filter(User.id.in_({thread.user_id} | {p.user_id for p in posts}))
+            .all()
+        }
         op_post = next((p for p in posts if p.is_op), None)
         if op_post is not None and not _is_visible(op_post, viewer_id, blocked, reported):
             return None
@@ -219,14 +262,13 @@ def get_thread_detail(thread_id: int, viewer_id: Optional[int] = None) -> Option
         for post in posts:
             if not _is_visible(post, viewer_id, blocked, reported):
                 continue
-            post_author = session.query(User).filter(User.id == post.user_id).first()
             post_payloads.append({
                 "id": post.id,
                 "thread_id": post.thread_id,
                 "parent_post_id": post.parent_post_id,
                 "body": post.body,
                 "is_op": post.is_op,
-                "author_display_name": post_author.display_name if post_author else "Unknown",
+                "author_display_name": author_names.get(post.user_id, "Unknown"),
                 "upvotes": post.upvotes,
                 "downvotes": post.downvotes,
                 "created_at": post.created_at.isoformat() if post.created_at else None,
@@ -259,7 +301,7 @@ def get_thread_detail(thread_id: int, viewer_id: Optional[int] = None) -> Option
             "board_id": thread.board_id,
             "board_name": board.name if board else None,
             "title": thread.title,
-            "author_display_name": author.display_name if author else "Unknown",
+            "author_display_name": author_names.get(thread.user_id, "Unknown"),
             "is_pinned": thread.is_pinned,
             "created_at": thread.created_at.isoformat() if thread.created_at else None,
             "posts": post_payloads,

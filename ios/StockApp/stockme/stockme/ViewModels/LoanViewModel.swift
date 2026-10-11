@@ -159,6 +159,10 @@ class LoanApplicationViewModel: ObservableObject {
         do {
             disbursement = try await NetworkManager.shared.requestDisbursement(applicationId: applicationId, idempotencyKey: key)
             disburseKey = nil
+        } catch NetworkError.serverError(409, let message?) {
+            // Definitive business-rule rejection: the next attempt is a new request.
+            disburseKey = nil
+            disbursementError = message
         } catch {
             disbursementError = error.moneyActionMessage(fallback: "Couldn't request disbursement. Please try again.")
         }

@@ -13,6 +13,8 @@ real underwriting.
 from datetime import datetime, timezone
 from typing import Optional
 
+from sqlalchemy.exc import IntegrityError
+
 from database import get_session
 from models.db_models import LinkedBankAccount, LoanApplication, LoanDisbursement, LoanOffer
 from services.credit_bureau_mock_service import get_mock_credit_score
@@ -288,24 +290,36 @@ def link_bank_account(
 # integration. No real fund transfer, NBFC-to-bank settlement rail, or
 # payment gateway is involved. Models the real-world requirement that a
 # lender cannot disburse funds without a destination account: fails closed
-# (status="failed" + failure_reason) rather than silently no-op'ing when the
-# borrower has no primary LinkedBankAccount on file.
+# (DisbursementRejected, nothing persisted) rather than silently no-op'ing
+# when the borrower has no primary LinkedBankAccount on file.
 # ---------------------------------------------------------------------------
+
+class DisbursementNotFound(ValueError):
+    """The loan application does not exist or belongs to another user."""
+
+
+class DisbursementRejected(ValueError):
+    """A business rule blocks disbursement (not approved, already disbursed,
+    no primary bank account)."""
+
 
 def disburse_loan(application_id: int, user_id: int) -> LoanDisbursement:
     """Disburse an approved LoanApplication as a MOCK instant settlement.
 
     Preconditions enforced (fail closed, not a silent no-op):
-      - The LoanApplication must exist and belong to user_id.
+      - The LoanApplication must exist and belong to user_id
+        (else DisbursementNotFound).
       - The LoanApplication.status must be "approved" (already-disbursed or
-        not-yet-approved applications are rejected with a ValueError).
+        not-yet-approved applications raise DisbursementRejected).
       - The borrower must have at least one LinkedBankAccount (the loan
         marketplace one — NOT FinanceTrackerAccount) with is_primary=True;
-        if none exists, a LoanDisbursement row is still created, but with
-        status="failed" and a failure_reason explaining that a bank account
-        must be linked first.
+        if none exists, DisbursementRejected is raised and no row is written,
+        so retries cannot pile up failed rows.
 
-    On success, the LoanApplication.status is advanced to "disbursed".
+    On success, the LoanApplication.status is advanced to "disbursed" by an
+    atomic approved->disbursed UPDATE, so concurrent calls cannot both record
+    a completed disbursement (the partial unique index
+    uq_loan_disbursement_completed_per_app is the database backstop).
     """
     with get_session() as session:
         application = (
@@ -314,11 +328,11 @@ def disburse_loan(application_id: int, user_id: int) -> LoanDisbursement:
             .first()
         )
         if application is None:
-            raise ValueError(f"Loan application {application_id} not found")
+            raise DisbursementNotFound(f"Loan application {application_id} not found")
         if application.status == "disbursed":
-            raise ValueError(f"Loan application {application_id} has already been disbursed")
+            raise DisbursementRejected(f"Loan application {application_id} has already been disbursed")
         if application.status != "approved":
-            raise ValueError(
+            raise DisbursementRejected(
                 f"Loan application {application_id} is not approved (status={application.status}); "
                 "cannot disburse"
             )
@@ -333,24 +347,21 @@ def disburse_loan(application_id: int, user_id: int) -> LoanDisbursement:
         )
 
         if primary_account is None:
-            disbursement = LoanDisbursement(
-                loan_application_id=application.id,
-                user_id=user_id,
-                linked_bank_account_id=None,
-                nbfc_name=nbfc_name,
-                disbursed_amount=application.requested_amount,
-                status="failed",
-                failure_reason=(
-                    "MOCK DECISION: no primary linked bank account on file for this user — "
-                    "a bank account must be linked (and marked primary) via "
-                    "POST /linked-bank-accounts before funds can be disbursed."
-                ),
-                disbursed_at=datetime.now(timezone.utc),
+            raise DisbursementRejected("Link a bank account and mark it primary before requesting disbursement.")
+
+        already_disbursed = f"Loan application {application_id} has already been disbursed"
+        claimed = (
+            session.query(LoanApplication)
+            .filter(
+                LoanApplication.id == application_id,
+                LoanApplication.user_id == user_id,
+                LoanApplication.status == "approved",
             )
-            session.add(disbursement)
-            session.commit()
-            session.refresh(disbursement)
-            return disbursement
+            .update({"status": "disbursed"}, synchronize_session=False)
+        )
+        if claimed != 1:
+            session.rollback()
+            raise DisbursementRejected(already_disbursed)
 
         disbursement = LoanDisbursement(
             loan_application_id=application.id,
@@ -363,8 +374,11 @@ def disburse_loan(application_id: int, user_id: int) -> LoanDisbursement:
             disbursed_at=datetime.now(timezone.utc),
         )
         session.add(disbursement)
-        application.status = "disbursed"
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            raise DisbursementRejected(already_disbursed)
         session.refresh(disbursement)
         return disbursement
 
