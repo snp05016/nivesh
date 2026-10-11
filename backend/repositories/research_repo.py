@@ -26,7 +26,7 @@ from typing import Any, Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from models.db_models import (
+from models.db_models import (  # pyright: ignore[reportMissingImports]  (checker resolves `models` to ml-engine/models)
     Portfolio,
     ResearchLiveMetric,
     ResearchPrediction,

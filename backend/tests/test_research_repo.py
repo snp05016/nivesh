@@ -16,7 +16,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
-from models.db_models import (
+from models.db_models import (  # pyright: ignore[reportMissingImports]  (checker resolves `models` to ml-engine/models)
     Base,
     Portfolio,
     ResearchPrediction,
