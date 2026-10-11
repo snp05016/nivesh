@@ -35,7 +35,7 @@ def _make_user(ticker: str, analysed: str):
 
 
 def test_excel_history_sheet_contains_only_callers_analyses(client, monkeypatch):
-    import routers.portfolio as portfolio_router
+    import routers.portfolio_exports as portfolio_router
 
     a_tag, b_tag = f"AAA{uuid4().hex[:6]}".upper(), f"BBB{uuid4().hex[:6]}".upper()
     uid_a, headers_a = _make_user("INFY", a_tag)
@@ -64,7 +64,7 @@ def test_excel_history_sheet_contains_only_callers_analyses(client, monkeypatch)
 
 
 def test_pdf_export_failure_is_generic_non_200(client, monkeypatch):
-    import routers.portfolio as portfolio_router
+    import routers.portfolio_exports as portfolio_router
 
     uid, headers = _make_user("INFY", "INFY")
     secret = "db-password=hunter2 at 10.0.0.5"
