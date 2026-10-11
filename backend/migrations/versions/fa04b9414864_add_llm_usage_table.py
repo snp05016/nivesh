@@ -7,7 +7,7 @@ Idempotent: the table is created only if it does not exist (fresh databases get 
 from Base.metadata.create_all), and downgrade drops it only if it exists.
 
 Revision ID: fa04b9414864
-Revises: f32cf73ca308
+Revises: 620b1e83d21e
 Create Date: 2026-10-11
 """
 from typing import Sequence, Union
@@ -18,7 +18,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "fa04b9414864"
-down_revision: Union[str, Sequence[str], None] = "f32cf73ca308"
+down_revision: Union[str, Sequence[str], None] = "620b1e83d21e"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
