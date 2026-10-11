@@ -9,7 +9,7 @@ left as is. (The one-completed-disbursement index is 4aa54575a6f3.)
 downgrade: drop the constraints and columns if present.
 
 Revision ID: 7b766cb99b86
-Revises: 4aa54575a6f3
+Revises: 25342fdfb06f
 Create Date: 2026-10-11
 """
 from typing import Sequence, Union
@@ -20,7 +20,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "7b766cb99b86"
-down_revision: Union[str, Sequence[str], None] = "4aa54575a6f3"
+down_revision: Union[str, Sequence[str], None] = "25342fdfb06f"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
