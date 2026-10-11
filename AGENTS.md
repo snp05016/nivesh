@@ -236,6 +236,7 @@ Key rules:
 - **JSON columns use `default="{}"`** (string, not Python dict) — SQLite requires constant defaults.
 - **`datetime.utcnow` forbidden in models** — use `default=lambda: datetime.now(timezone.utc)` (evaluated at row-insert time, not import time).
 - **All ORM models live in `models/db_models.py` ONLY** — never define a second `class Foo(Base)` in a service file. Centralizing prevents `Table already defined` errors.
+- **Exception — harvester cache DB.** `services/harvester_db.py` owns a separate SQLite file (`backend/harvester.db`) with its own `Base`, `HarvestedCard` and `SourceHealth`, managed by `create_all` outside Alembic on purpose (it is a rebuildable cache, isolated from the main DB). A column change there needs a one-off `ALTER TABLE` on each harvester.db or deleting the file; `init_harvester_db()` raises on column drift at startup so it never fails silently.
 
 Schema change checklist:
 1. Edit `models/db_models.py`

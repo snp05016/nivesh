@@ -3,6 +3,7 @@ import re
 from typing import List, Dict, Any
 
 from database import get_session
+from helpers import _ban_western_scale
 from services.llm_utils import deepseek_chat, claude_messages, HAIKU_MODEL
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
 # Single strip_emoji: the old local copy's U+2000-2BFF range also ate ₹, dashes and bullets.
@@ -142,7 +143,6 @@ User question: {user_message}"""
         reply = deepseek_chat(messages) # Fast response
         
     # Response Normalizer
-    from main import _ban_western_scale
     reply = strip_emoji(reply)
     try:
         reply = _ban_western_scale(reply)

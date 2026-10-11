@@ -3,7 +3,7 @@ from helpers import (
     _dcache_set, _quick_info_cache, _QUICK_INFO_TTL, EarningsSyncRatioResponse,
     YoYAggregateResponse, InstitutionalLeaderboardResponse, NetWorthSnapshotResponse, User,
     Portfolio, NetWorthLedger, log_market_error, _check_rate_limit, _get_indices_data,
-    _get_asm_gsm_lists, _nse_session,
+    _get_asm_gsm_lists, _nse_session, format_indian_currency,
 )
 
 from services.market_service import (
@@ -77,20 +77,6 @@ def nifty_history_endpoint(days: int = 365):
 @router.get("/dividends/{ticker}")
 def dividend_history_endpoint(ticker: str, exchange: str = "NSE"):
     try:
-        try:
-            from main import format_indian_currency
-        except ImportError:
-            def format_indian_currency(value, symbol="₹"):
-                if value is None: return "N/A"
-                abs_val = abs(value)
-                sign = "-" if value < 0 else ""
-                if abs_val >= 10000000:
-                    return f"{sign}{symbol}{abs_val/10000000:,.2f} Crores"
-                elif abs_val >= 100000:
-                    return f"{sign}{symbol}{abs_val/100000:,.2f} Lakhs"
-                else:
-                    return f"{sign}{symbol}{abs_val:,.2f}"
-
         resolved_ticker = _resolve_ticker(ticker, exchange)
         t = yf.Ticker(resolved_ticker)
         divs = t.dividends

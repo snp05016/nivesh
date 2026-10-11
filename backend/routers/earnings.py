@@ -4,8 +4,9 @@ Split out of routers/market.py (ARCH-14); paths, handler names and tags are unch
 """
 from helpers import (
     get_session, _resolve_ticker, _to_ns, _dcache_get, _dcache_set, DataHarvestingError,
-    require_auth, AnalysisHistory, EarningsAlert, log_market_error, log_earnings_error,
+    require_auth, AnalysisHistory, log_market_error, log_earnings_error,
 )
+from services import earnings_alerts_service
 from services.market_service import (
     _get_quarterly_fin, _yf_fetch_info, _earnings_result_from_row, _scan_upcoming_earnings,
 )
@@ -624,24 +625,12 @@ def earnings_alerts_get_endpoint(user_id: int = Depends(require_auth)):
         Any: The response.
     """
     try:
-        with get_session() as session:
-            rows = session.query(EarningsAlert).filter(
-                EarningsAlert.user_id == user_id
-            ).order_by(EarningsAlert.earnings_date.asc()).all()
-            return {
-                "alerts": [
-                    {
-                        "id": r.id,
-                        "user_id": r.user_id,
-                        "ticker": r.ticker,
-                        "earnings_date": r.earnings_date,
-                        "created_at": r.created_at.isoformat() if r.created_at else None,
-                    }
-                    for r in rows
-                ],
-                "count": len(rows),
-                "fetched_at": datetime.now(timezone.utc).isoformat(),
-            }
+        alerts = earnings_alerts_service.list_alerts(user_id)
+        return {
+            "alerts": alerts,
+            "count": len(alerts),
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
     except Exception as e:
         log_market_error("earnings_alerts_get", str(e))
         logging.exception("[EARNINGS/ALERTS] list failed")
@@ -663,41 +652,8 @@ Deduplicates — if same user/ticker/date already exists, returns 200 with exist
     """
     ticker = body.ticker.upper().strip()
     try:
-        with get_session() as session:
-            # Dedup check
-            existing = session.query(EarningsAlert).filter(
-                EarningsAlert.user_id == user_id,
-                EarningsAlert.ticker == ticker,
-                EarningsAlert.earnings_date == body.earnings_date,
-            ).first()
-            if existing:
-                return {
-                    "id": existing.id,
-                    "user_id": existing.user_id,
-                    "ticker": existing.ticker,
-                    "earnings_date": existing.earnings_date,
-                    "created_at": existing.created_at.isoformat() if existing.created_at else None,
-                    "status": "already_exists",
-                    "fetched_at": datetime.now(timezone.utc).isoformat(),
-                }
-
-            entry = EarningsAlert(
-                user_id=user_id,
-                ticker=ticker,
-                earnings_date=body.earnings_date,
-            )
-            session.add(entry)
-            session.commit()
-            session.refresh(entry)
-            return {
-                "id": entry.id,
-                "user_id": entry.user_id,
-                "ticker": entry.ticker,
-                "earnings_date": entry.earnings_date,
-                "created_at": entry.created_at.isoformat() if entry.created_at else None,
-                "status": "created",
-                "fetched_at": datetime.now(timezone.utc).isoformat(),
-            }
+        alert = earnings_alerts_service.create_alert(user_id, ticker, body.earnings_date)
+        return {**alert, "fetched_at": datetime.now(timezone.utc).isoformat()}
     except Exception as e:
         log_market_error("earnings_alerts_post", str(e), context_ticker=ticker)
         logging.exception("[EARNINGS/ALERTS] create failed")
@@ -717,16 +673,9 @@ def earnings_alerts_delete_endpoint(alert_id: int, user_id: int = Depends(requir
         Any: The response.
     """
     try:
-        with get_session() as session:
-            entry = session.query(EarningsAlert).filter(
-                EarningsAlert.id == alert_id,
-                EarningsAlert.user_id == user_id
-            ).first()
-            if not entry:
-                raise HTTPException(status_code=404, detail="Alert not found" if user_id else "Alert not found or not authorized")
-            session.delete(entry)
-            session.commit()
-            return {"deleted": True, "alert_id": alert_id, "fetched_at": datetime.now(timezone.utc).isoformat()}
+        if not earnings_alerts_service.delete_alert(user_id, alert_id):
+            raise HTTPException(status_code=404, detail="Alert not found")
+        return {"deleted": True, "alert_id": alert_id, "fetched_at": datetime.now(timezone.utc).isoformat()}
     except HTTPException:
         raise
     except Exception as e:

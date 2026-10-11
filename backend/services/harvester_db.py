@@ -6,12 +6,17 @@ file (`harvester.db`) at the backend root. If this database is corrupted or the
 harvester crashes, the main Nivesh backend (port 8000, stockapp.db) is
 unaffected — zero overlap by design.
 
+Schema is managed by Base.metadata.create_all, deliberately outside Alembic:
+the file is a rebuildable cache. create_all never alters existing tables, so a
+column change needs a one-off ALTER TABLE or deleting harvester.db;
+init_harvester_db() raises on column drift instead of failing later.
+
 Two tables:
   HarvestedCard  — one reformatted, credibility-scored card per scraped item.
   SourceHealth   — per-source scrape health for the /harvester/sources endpoint.
 
 Public API:
-  init_harvester_db()                — create tables (idempotent).
+  init_harvester_db()                — create tables (idempotent), raise on column drift.
   get_session()                      — context manager (commit/rollback/close).
   SessionLocal                       — raw session factory (for manual use).
   upsert_card(session, card)         — insert if external_id is new; True if inserted.
@@ -36,6 +41,7 @@ from sqlalchemy import (
     Text,
     create_engine,
     event,
+    inspect,
 )
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -153,10 +159,29 @@ class SourceHealth(Base):
 # Lifecycle
 # ═════════════════════════════════════════════════════════════════════════════
 
-def init_harvester_db() -> None:
-    """Create all tables. Safe to call repeatedly."""
-    Base.metadata.create_all(bind=ENGINE)
-    _scrub_unverified_sebi_claims()
+def init_harvester_db(engine=ENGINE) -> None:
+    """Create all tables, then fail loudly on column drift. Safe to call repeatedly.
+
+    create_all never alters an existing table, so a column added to a model would
+    otherwise surface later as 'no such column' (GH-618).
+    """
+    Base.metadata.create_all(bind=engine)
+    insp = inspect(engine)
+    drift = []
+    for table in Base.metadata.sorted_tables:
+        actual = {c["name"] for c in insp.get_columns(table.name)}
+        missing = {c.name for c in table.columns} - actual
+        if missing:
+            drift.append(f"{table.name}: missing {sorted(missing)}")
+    if drift:
+        msg = (
+            f"harvester.db schema drift: {'; '.join(drift)}. harvester.db is a rebuildable "
+            "cache outside Alembic: ALTER TABLE or delete the file and restart."
+        )
+        logging.getLogger("harvester.db").error(msg)
+        raise RuntimeError(msg)
+    if engine is ENGINE:
+        _scrub_unverified_sebi_claims()
 
 
 def _scrub_unverified_sebi_claims() -> None:

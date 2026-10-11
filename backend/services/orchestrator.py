@@ -79,6 +79,7 @@ from langgraph.graph import StateGraph, START, END
 # Application — helpers, DB, prompts, services
 # ---------------------------------------------------------------------------
 from helpers import (
+    _ban_western_scale,
     EXCHANGE_SUFFIX,
     _resolve_ticker,
     _to_ns,
@@ -1166,11 +1167,14 @@ def _normalize_response(result: dict, scan_type: str = "standard", quant_payload
 
     # 23. Western scale validation — ban Million/Billion/Trillion in output
     try:
-        from main import _ban_western_scale
         _ban_western_scale(json.dumps(result, ensure_ascii=False),
                           company_name=result.get("company_name", ""))
-    except ValueError:
-        pass  # validation only — never crash normalization
+    except ValueError as exc:
+        # validation only — never crash normalization, but keep violations visible
+        logging.getLogger("orchestrator").warning(
+            "western scale in analysis output for %s: %s",
+            result.get("company_name"), exc,
+        )
 
     # 24. ML Hybrid Pipeline — inject quantitative engine payload
     #     (LLM cannot override these math-derived values)

@@ -173,10 +173,6 @@
 | `GET` | `/api/v1/stocks/{symbol}/risk-signals` | `get_risk_signals` | `backend/routers/stock_financials.py:1232` |
 | `GET` | `/api/v1/stocks/{symbol}/shareholding` | `get_shareholding` | `backend/routers/stock_financials.py:632` |
 | `GET` | `/api/v1/stocks/{symbol}/valuation` | `get_valuation` | `backend/routers/stock_financials.py:1065` |
-| `DELETE` | `/api/v1/stocks/{ticker}` | `delete_stock_details` | `backend/routers/stocks.py:29` |
-| `GET` | `/api/v1/stocks/{ticker}` | `read_stock_details` | `backend/routers/stocks.py:19` |
-| `POST` | `/api/v1/stocks/{ticker}` | `create_stock_details` | `backend/routers/stocks.py:14` |
-| `PUT` | `/api/v1/stocks/{ticker}` | `update_stock_details` | `backend/routers/stocks.py:24` |
 | `GET` | `/api/v1/subscription` | `get_subscription` | `backend/routers/subscription.py:46` |
 | `POST` | `/api/v1/subscription/cancel` | `cancel_subscription` | `backend/routers/subscription.py:64` |
 | `GET` | `/api/v1/subscription/entitlements` | `get_entitlements` | `backend/routers/subscription.py:73` |

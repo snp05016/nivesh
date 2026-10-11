@@ -5,7 +5,7 @@ and stock ideas based on user-provided topics and risk tolerances.
 """
 import json
 from services.llm_utils import _deepseek_chat
-from helpers import _extract_json_from_text
+from helpers import _extract_json_from_text, _ban_western_scale
 
 def generate_brainstorming_ideas(topic: str, risk_tolerance: str) -> dict:
     """Generates 3-5 investment strategies related to the topic, suggesting Indian stock tickers.
@@ -52,10 +52,6 @@ Do not include any other text or markdown outside the JSON.
     parsed = json.loads(json_str)
     
     # Enforce Indian numbering system
-    try:
-        from main import _ban_western_scale
-        _ban_western_scale(json.dumps(parsed))
-    except ImportError:
-        pass
+    _ban_western_scale(json.dumps(parsed))
     
     return parsed

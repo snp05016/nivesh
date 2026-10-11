@@ -3,7 +3,7 @@ import os
 from unittest.mock import patch, MagicMock
 from datetime import datetime
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 
 from services.harvester_db import (
@@ -41,10 +41,18 @@ def test_harvester_db_isolation():
     assert "harvester.db" in DATABASE_URL
     assert "stockapp.db" not in DATABASE_URL
 
-def test_init_harvester_db():
-    with patch("services.harvester_db.Base.metadata.create_all") as mock_create:
-        init_harvester_db()
-        mock_create.assert_called_once()
+def test_init_harvester_db_creates_tables(engine):
+    init_harvester_db(engine)
+    assert {"harvested_cards", "source_health"} <= set(inspect(engine).get_table_names())
+    init_harvester_db(engine)  # idempotent
+
+
+def test_init_harvester_db_detects_missing_column(engine):
+    # GH-618: create_all never alters an existing table, so drift must fail loudly.
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE harvested_cards (id INTEGER PRIMARY KEY)"))
+    with pytest.raises(RuntimeError, match="external_id"):
+        init_harvester_db(engine)
 
 def test_upsert_card_new_valid(db_session):
     card = {

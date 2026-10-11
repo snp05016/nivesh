@@ -544,7 +544,7 @@ def test_trade_journal_userId_stats_unauthenticated(client):
 def test_trade_journal_userId_stats_not_found(client, auth_headers):
     dummy_path = "/trade-journal/9999999/stats"
     response = client.get(dummy_path, headers=auth_headers)
-    assert response.status_code in (404, 200)
+    assert response.status_code == 403  # another user\'s id (GH-630)
 
 def test_trade_journal_userId_stats_validation_error(client, auth_headers):
     bad_path = "/trade-journal/invalid_id/stats"

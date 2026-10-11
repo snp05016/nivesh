@@ -197,23 +197,24 @@ def trade_journal_delete_endpoint(entry_id: int, user_id: int, _caller: int = De
 # 22. GET /trade-journal/{user_id}/stats
 # ---------------------------------------------------------------------------
 @router.get("/trade-journal/{user_id}/stats")
-def trade_journal_stats_endpoint(user_id: int, auth_user_id: int = Depends(require_auth)):
+def trade_journal_stats_endpoint(user_id: int, _caller: int = Depends(require_user_match)):
     """
-    Compute analytics over all journal entries for a user. Auth required.
+    Compute analytics over all journal entries for a user. The bearer must be
+    the path user (GH-630: 401 without a token, 403 for another user's id).
 
     Args:
         user_id (int): The user_id.
-        auth_user_id (int): The auth_user_id.
+        _caller (int): The authenticated user_id (equal to user_id).
 
     Returns:
         Any: The response.
     """
     try:
         with get_session() as session:
-            user = session.get(User, auth_user_id)
+            user = session.get(User, user_id)
             if not user:
-                raise HTTPException(status_code=404, detail=f"User {auth_user_id} not found")
-            entries = session.query(TradeJournal).filter_by(user_id=auth_user_id).all()
+                raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+            entries = session.query(TradeJournal).filter_by(user_id=user_id).all()
             entries_data = []
             for e in entries:
                 entries_data.append({
@@ -230,8 +231,8 @@ def trade_journal_stats_endpoint(user_id: int, auth_user_id: int = Depends(requi
         patterns = []
         try:
             all_reasons = " | ".join(e["reason_text"] for e in entries_data if e["reason_text"])
-            if all_reasons and os.getenv("DEEPSEEK_API_KEY") and has_active_consent(auth_user_id, AI_PROCESSING_CONSENT):
-                llm_budget.guard(auth_user_id, "trade_journal_stats")  # over budget -> no patterns
+            if all_reasons and os.getenv("DEEPSEEK_API_KEY") and has_active_consent(user_id, AI_PROCESSING_CONSENT):
+                llm_budget.guard(user_id, "trade_journal_stats")  # over budget -> no patterns
                 prompt = (
                     f'Find 2 patterns in these trade journal reasons: {all_reasons[:2000]}. '
                     'Return JSON: [{"pattern": str}]'

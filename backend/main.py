@@ -272,7 +272,7 @@ async def _global_exception_handler(_req: _FRequest, exc: Exception):
 # ---------------------------------------------------------------------------
 # Import and register routers
 # ---------------------------------------------------------------------------
-from routers import auth, portfolio, market, analysis, portfolio_analytics, morning_brief, advisor_consensus, portfolio_exports, trade_journal, earnings, institutional, ideas, admin_errors, alerts, user, dashboard, notifications, brainstorming, strategy, copilot, anomalies, correlation, nl_screener, stress_test, sector_rotation, earnings_surprise, options_strategy, predictions, fundamentals, backtests, stock_financials, preferences, notifications_inbox, search, stocks, ipo, mutual_funds, forum, finance, compliance, subscription, kyc, fixed_deposits, account
+from routers import auth, portfolio, market, analysis, portfolio_analytics, morning_brief, advisor_consensus, portfolio_exports, trade_journal, earnings, institutional, ideas, admin_errors, alerts, user, dashboard, notifications, brainstorming, strategy, copilot, anomalies, correlation, nl_screener, stress_test, sector_rotation, earnings_surprise, options_strategy, predictions, fundamentals, backtests, stock_financials, preferences, notifications_inbox, search, ipo, mutual_funds, forum, finance, compliance, subscription, kyc, fixed_deposits, account
 from routers import harvester as harvester_router
 from routers.health import router as health_router  # Task 56
 from routers import youtube_summary as youtube_summary_router
@@ -320,7 +320,6 @@ app.include_router(subscription.router)
 app.include_router(notifications_inbox.router)
 app.include_router(youtube_summary_router.router)
 app.include_router(search.router)
-app.include_router(stocks.router)
 # ARCH-17: money-control routers live under /api/v1/<name>. The old /api/<name>
 # paths stay as deprecated aliases, hidden from OpenAPI, for the shipped iOS app;
 # drop them in the release that moves the app to /api/v1.
