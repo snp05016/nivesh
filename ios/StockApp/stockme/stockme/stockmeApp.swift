@@ -120,10 +120,9 @@ struct stockmeApp: App {
                         .transition(.opacity)
                 }
             }
-            // Pin the type size so the app renders identically on every device,
-            // ignoring the user's system "Larger Text" / Dynamic Type setting.
-            // All `relativeTo:` fonts now resolve against this fixed scale.
-            .dynamicTypeSize(.large)
+            // Honour the user's Dynamic Type ("Larger Text") setting up to AX2.
+            // Theme font helpers clamp to the same ceiling (Theme.maxContentSizeCategory).
+            .dynamicTypeSize(...DynamicTypeSize.accessibility2)
             .animation(reduceAnimations ? .none : .spring(response: 0.45, dampingFraction: 0.8, blendDuration: 0), value: launchPhase)
             .onChange(of: launchAnimDone) { done in
                 if done {

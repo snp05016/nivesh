@@ -3,13 +3,13 @@ import SwiftUI
 // MARK: - Banknote Dialog
 //
 // App-owned replacement for the native `.confirmationDialog` / `.alert`.
-// The native variants render translucent "oval" action buttons, draw system
-// separators/borders around every button, and scale their text with the
-// device's Dynamic Type setting — so they look different on every iPhone.
+// The native variants render translucent "oval" action buttons and draw system
+// separators/borders around every button.
 //
-// This dialog is drawn entirely in-app with the Banknote aesthetic, fixed
-// typography, no translucent ovals and no per-button system borders, so it is
-// identical on every device.
+// This dialog is drawn entirely in-app with the Banknote aesthetic, no
+// translucent ovals and no per-button system borders. Its text uses the Theme
+// font helpers, so it scales with Dynamic Type (up to AX2); the message scrolls
+// when large text would otherwise push the buttons off screen.
 //
 // Usage:
 //   .banknoteDialog("Remove TICKER?", isPresented: $show, message: "…", buttons: [
@@ -61,11 +61,17 @@ private struct BanknoteDialogCard: View {
                         .fixedSize(horizontal: false, vertical: true)
 
                     if let message, !message.isEmpty {
-                        Text(message)
-                            .font(Theme.engravedSerif(size: 14, weight: .regular))
-                            .foregroundStyle(Theme.inkSecondary)
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
+                        ScrollView {
+                            Text(message)
+                                .font(Theme.engravedSerif(size: 14, weight: .regular))
+                                .foregroundStyle(Theme.inkSecondary)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .scrollBounceBehavior(.basedOnSize)
+                        .frame(maxHeight: 320)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .padding(.top, Theme.Spacing.tight)

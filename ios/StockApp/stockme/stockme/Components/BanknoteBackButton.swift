@@ -3,9 +3,9 @@ import SwiftUI
 // MARK: - Banknote Back Button
 //
 // A fully app-owned back control that replaces the SwiftUI/UIKit native back
-// button (which renders the previous screen's title, varies per device/locale,
-// and scales with the system Dynamic Type setting). This chevron-in-a-coin
-// looks identical on every device.
+// button (which renders the previous screen's title and varies per
+// device/locale). The chevron uses Theme.engravedSerif, so it scales with
+// Dynamic Type (up to AX2) inside its fixed coin; VoiceOver reads it as "Back".
 //
 // Usage on any pushed screen:
 //   @Environment(\.dismiss) private var dismiss

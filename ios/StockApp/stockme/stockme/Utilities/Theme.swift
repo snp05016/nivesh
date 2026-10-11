@@ -171,21 +171,43 @@ enum Theme {
         }
     }
 
-    /// Body / heading text — now uses system font so all call sites keep working.
+    /// Largest Dynamic Type category the app honours (AX2). Matches the root
+    /// `.dynamicTypeSize(...DynamicTypeSize.accessibility2)` clamp in stockmeApp.
+    static let maxContentSizeCategory: UIContentSizeCategory = .accessibilityLarge
+
+    /// Smallest size for micro text (stamps, serial numbers, micro labels).
+    static let microTextFloor: CGFloat = 11
+
+    /// The system "Larger Text" setting. Read from the trait collection (not
+    /// UIApplication) because this file is also compiled into the widget extension.
+    static var systemContentSizeCategory: UIContentSizeCategory {
+        let category = UITraitCollection.current.preferredContentSizeCategory
+        return category == .unspecified ? .large : category
+    }
+
+    /// Scales a design size with Dynamic Type relative to `style`, clamped to
+    /// `maxContentSizeCategory`, then applies the in-app Font Size multiplier.
+    static func scaledSize(_ size: CGFloat, relativeTo style: Font.TextStyle, minimum: CGFloat = 0,
+                           category: UIContentSizeCategory = Theme.systemContentSizeCategory) -> CGFloat {
+        let clamped = min(category, maxContentSizeCategory)
+        let traits = UITraitCollection(preferredContentSizeCategory: clamped)
+        return UIFontMetrics(forTextStyle: uiTextStyle(from: style))
+            .scaledValue(for: max(size, minimum), compatibleWith: traits) * fontSizeMultiplier
+    }
+
+    /// Body / heading text — system font scaled with Dynamic Type relative to `style`.
     static func engravedSerif(size: CGFloat, weight: Font.Weight = .regular, relativeTo style: Font.TextStyle = .body) -> Font {
-        Font.system(size: size * fontSizeMultiplier, weight: weight == .bold ? .bold : .regular, design: .default)
+        Font.system(size: scaledSize(size, relativeTo: style), weight: weight == .bold ? .bold : .regular, design: .default)
     }
 
     /// Monospaced font for prices, percentages, numerical data.
     static func serialNumberFont(size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
-        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size) * fontSizeMultiplier
-        return Font.system(size: scaled, weight: .medium, design: .monospaced)
+        Font.system(size: scaledSize(size, relativeTo: style, minimum: microTextFloor), weight: .medium, design: .monospaced)
     }
 
     /// Official stamp labels — apply .tracking(1.5) at call site.
     static func officialStampFont(size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
-        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size) * fontSizeMultiplier
-        return Font.system(size: scaled, weight: .medium, design: .default)
+        Font.system(size: scaledSize(size, relativeTo: style, minimum: microTextFloor), weight: .medium, design: .default)
     }
 
     static var showHindiLabels: Bool {
@@ -216,7 +238,7 @@ enum Theme {
     /// Returns zero-size font when Hindi labels are disabled.
     static func hindiFont(size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
         guard showHindiLabels else { return Font.system(size: 0.01) }
-        return Font.system(size: size, weight: .regular)
+        return Font.system(size: scaledSize(size, relativeTo: style), weight: .regular)
     }
 
     static let labelStyle = Font.caption.weight(.bold).uppercaseSmallCaps()
@@ -225,40 +247,40 @@ enum Theme {
 
     /// Large price display — monospaced bold for live prices.
     static func dataLarge(size: CGFloat = 28, relativeTo style: Font.TextStyle = .title) -> Font {
-        Font.system(size: size, weight: .bold, design: .monospaced)
+        Font.system(size: scaledSize(size, relativeTo: style), weight: .bold, design: .monospaced)
     }
 
     /// Extra-large display — monospaced bold for portfolio totals.
     static func dataXL(size: CGFloat = 38, relativeTo style: Font.TextStyle = .largeTitle) -> Font {
-        Font.system(size: size, weight: .bold, design: .monospaced)
+        Font.system(size: scaledSize(size, relativeTo: style), weight: .bold, design: .monospaced)
     }
 
     /// Monospaced tabular font — vertically aligned decimals for P&L numbers.
     static func monoTabular(size: CGFloat = 14, relativeTo style: Font.TextStyle = .body) -> Font {
-        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
+        let scaled = scaledSize(size, relativeTo: style)
         return Font.system(size: scaled, weight: .medium, design: .monospaced)
     }
 
     /// Micro label — for axis labels, timestamps.
     static func microLabel(size: CGFloat = 10, relativeTo style: Font.TextStyle = .caption2) -> Font {
-        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
+        let scaled = scaledSize(size, relativeTo: style, minimum: microTextFloor)
         return Font.system(size: scaled, weight: .medium, design: .default)
     }
 
     /// Section header label — ALL CAPS with tracking +1.2 at call site.
     static func sectionCapsLabel(size: CGFloat = 11, relativeTo style: Font.TextStyle = .caption) -> Font {
-        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
+        let scaled = scaledSize(size, relativeTo: style)
         return Font.system(size: scaled, weight: .semibold, design: .default)
     }
 
     /// SF Pro Rounded for secondary typography.
     static func roundedSecondary(size: CGFloat = 14, weight: Font.Weight = .regular, relativeTo style: Font.TextStyle = .body) -> Font {
-        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
+        let scaled = scaledSize(size, relativeTo: style)
         return Font.system(size: scaled, weight: weight, design: .rounded)
     }
 
     static func roundedCaption(size: CGFloat = 11, relativeTo style: Font.TextStyle = .caption) -> Font {
-        let scaled = UIFontMetrics(forTextStyle: uiTextStyle(from: style)).scaledValue(for: size)
+        let scaled = scaledSize(size, relativeTo: style)
         return Font.system(size: scaled, weight: .regular, design: .rounded)
     }
 
