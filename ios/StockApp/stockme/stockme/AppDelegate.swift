@@ -1,11 +1,15 @@
 import UIKit
-import UserNotifications
 
-class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+// Notification presentation and taps are handled by NotificationManager,
+// which is the UNUserNotificationCenter delegate.
+class AppDelegate: NSObject, UIApplicationDelegate {
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         CrashInterceptor.register()
+        // Install the notification delegate before launch finishes so a tap that
+        // cold-launches the app is still delivered to didReceive.
+        _ = NotificationManager.shared
         return true
     }
 
@@ -22,33 +26,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     ) {
         NotificationManager.shared.handleRegistrationError(error)
     }
-
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-    ) {
-        completionHandler([.banner, .sound, .badge])
-    }
-
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
-        let userInfo = response.notification.request.content.userInfo
-        if let ticker = userInfo["ticker"] as? String {
-            NotificationCenter.default.post(
-                name: .openStockAnalysis,
-                object: nil,
-                userInfo: ["ticker": ticker]
-            )
-        }
-        completionHandler()
-    }
 }
 
 extension Notification.Name {
-    static let openStockAnalysis = Notification.Name("openStockAnalysis")
     static let watchlistUpdated = Notification.Name("watchlistUpdated")
 }

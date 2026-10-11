@@ -744,6 +744,13 @@ struct HomeScreen: View {
                     feedVM.fetch(userId: user.userId, forceRefresh: true)
                 }
             }
+            // Deep link / push tap: pop to root and open the stock's action hub.
+            // receive(on:) delivers asynchronously, so clearing the value here is not re-entrant.
+            .onReceive(DeepLinkRouter.shared.$pendingTicker.compactMap { $0 }.receive(on: DispatchQueue.main)) { ticker in
+                DeepLinkRouter.shared.pendingTicker = nil
+                navigationPath = NavigationPath()
+                navigationPath.append(StockActionHubDest(ticker: ticker))
+            }
             .onReceive(NotificationCenter.default.publisher(for: .watchlistUpdated)) { _ in
                 guard let user = authManager.currentUser else { return }
                 Task {

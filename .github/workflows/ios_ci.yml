@@ -5,11 +5,13 @@ on:
     paths:
       - 'ios/**'
       - 'scripts/find_unreferenced_swift.py'
+      - 'scripts/ios_release_checks.sh'
     branches: [ "main" ]
   pull_request:
     paths:
       - 'ios/**'
       - 'scripts/find_unreferenced_swift.py'
+      - 'scripts/ios_release_checks.sh'
     branches: [ "main" ]
 
 jobs:
@@ -21,6 +23,9 @@ jobs:
 
     - name: Check for unreferenced Swift files
       run: python3 scripts/find_unreferenced_swift.py ios/StockApp/stockme/stockme
+
+    - name: iOS release readiness checks
+      run: bash scripts/ios_release_checks.sh
 
     - name: Set up Xcode
       uses: maxim-lobanov/setup-xcode@v1

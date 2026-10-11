@@ -48,9 +48,11 @@ struct SettingsScreen: View {
     @AppStorage("homeAutoRefreshSeconds") private var homeAutoRefreshSeconds = "0"
     @AppStorage("ipoAlerts") private var ipoAlerts = false
 
-    // Dev
+    #if DEBUG
+    // Dev (debug builds only)
     @State private var showDevTools = false
     @State private var devToolsTapCount = 0
+    #endif
     @State private var showClearHistoryAlert = false
     @StateObject private var notificationManager = NotificationManager.shared
 
@@ -77,7 +79,9 @@ struct SettingsScreen: View {
                         appearanceSection
                         dataSection
                         accountSection
+                        #if DEBUG
                         if showDevTools { devSection }
+                        #endif
                     }
                     .padding(.horizontal, Theme.Spacing.screen)
                     .padding(.vertical, Theme.Spacing.large)
@@ -127,6 +131,7 @@ struct SettingsScreen: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(EKPressStyle())
+                    #if DEBUG
                     .simultaneousGesture(TapGesture().onEnded {
                         devToolsTapCount += 1
                         if devToolsTapCount >= 3 {
@@ -137,6 +142,7 @@ struct SettingsScreen: View {
                             HapticManager.selection()
                         }
                     })
+                    #endif
                 }
                 .banknoteCard()
             }
@@ -275,11 +281,13 @@ struct SettingsScreen: View {
 
     // MARK: - Dev Tools
 
+    #if DEBUG
     private var devSection: some View {
         SettingsGroup(title: "DEVELOPER TOOLS", hindi: "डेव टूल्स") {
             NavRow(icon: "exclamationmark.shield.fill", color: Theme.bearRed, title: "Crash Lab (\(CrashLog.shared.count()))", destination: CrashLabView())
         }
     }
+    #endif
 }
 
 // MARK: - Reusable Row Components (private to this file)

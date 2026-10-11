@@ -9,7 +9,8 @@ enum ServerURLPolicy {
         guard let storedURL, !storedURL.isEmpty else {
             return defaultURL
         }
-        guard !legacyDefaultURLs.contains(storedURL) else {
+        // ATS is enforced (no NSAllowsArbitraryLoads), so a plain-http override can never connect.
+        guard !legacyDefaultURLs.contains(storedURL), storedURL.hasPrefix("https://") else {
             return defaultURL
         }
         return storedURL

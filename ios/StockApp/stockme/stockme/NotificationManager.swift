@@ -42,7 +42,6 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
     func handleDeviceToken(_ token: Data) {
         let tokenString = token.map { String(format: "%02x", $0) }.joined()
         self.deviceToken = tokenString
-        print("[Nivesh/APNs] Device token: \(tokenString)")
         os_log(.info, "[Nivesh/APNs] Token received")
 
         // Persist to UserDefaults for legacy access
@@ -78,6 +77,20 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         completionHandler([.banner, .sound, .badge])
+    }
+
+    /// Notification tap: open the stock's action hub when the payload carries a ticker
+    /// (price-alert pushes send `"ticker"` alongside `aps`).
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        if let raw = response.notification.request.content.userInfo["ticker"] as? String,
+           let ticker = DeepLink.validTicker(raw) {
+            DeepLinkRouter.shared.pendingTicker = ticker
+        }
+        completionHandler()
     }
 
     /// Schedule a local notification immediately.

@@ -65,10 +65,6 @@ struct stockmeApp: App {
     @State private var wentToBackground = false
     @Environment(\.scenePhase) private var scenePhase
 
-    // Fix 3.23: Deep-link 404 routing — catch delisted ticker deep links
-    @State private var deepLinkTicker: String? = nil
-    @State private var deepLinkError: String? = nil
-
     // ── Launch state machine ─────────────────────────────────────────────
     private enum LaunchPhase { case loading, biometricGate, mainInterface }
     @State private var launchPhase: LaunchPhase = .loading
@@ -164,6 +160,7 @@ struct stockmeApp: App {
                     isBiometricLocked = true
                     authenticateWithBiometrics()
                 }
+                #if DEBUG
                 if devWelcomeNotification {
                     NotificationManager.shared.scheduleLocal(
                         title: "Welcome to Nivesh",
@@ -171,6 +168,7 @@ struct stockmeApp: App {
                         subtitle: "Environment: DEBUG"
                     )
                 }
+                #endif
                 NotificationCenter.default.addObserver(
                     forName: Notification.Name("resetTutorial"),
                     object: nil, queue: .main
@@ -219,18 +217,11 @@ struct stockmeApp: App {
         }
     }
 
+    /// nivesh://analyze/TICKER and nivesh://watchlist/add/TICKER open the stock's
+    /// action hub on the Home tab; unknown tickers and other URLs are ignored.
     private func handleDeepLink(_ url: URL) {
-        guard url.scheme == "nivesh" else { return }
-        
-        let path = url.path
-        let components = path.split(separator: "/").map(String.init)
-        
-        if url.host == "analyze", let ticker = components.first {
-            NotificationCenter.default.post(name: Notification.Name("DeepLinkAnalyze"), object: ticker.uppercased())
-        } else if url.host == "watchlist", components.first == "add", components.count > 1 {
-            let ticker = components[1]
-            NotificationCenter.default.post(name: Notification.Name("DeepLinkWatchlistAdd"), object: ticker.uppercased())
-        }
+        guard let ticker = DeepLink.ticker(from: url) else { return }
+        DeepLinkRouter.shared.pendingTicker = ticker
     }
 
     // MARK: - Async Boot Synchronization

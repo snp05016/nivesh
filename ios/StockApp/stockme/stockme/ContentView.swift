@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Combine
 
 struct ContentView: View {
     @EnvironmentObject var authManager: AuthManager
@@ -200,6 +201,10 @@ private struct GlobalOverlayModifier: ViewModifier {
                 if let tab = notif.userInfo?["tab"] as? Int {
                     withAnimation(.easeInOut(duration: 0.25)) { selectedTab = tab }
                 }
+            }
+            // Deep link / push tap: HomeScreen pushes the action hub, so show the Home tab.
+            .onReceive(DeepLinkRouter.shared.$pendingTicker.compactMap { $0 }.receive(on: DispatchQueue.main)) { _ in
+                selectedTab = 0
             }
     }
     @ViewBuilder

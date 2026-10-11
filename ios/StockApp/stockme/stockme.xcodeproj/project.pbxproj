@@ -17,6 +17,7 @@
 		C52789692FD37E75001449A9 /* launch_animated.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = C52789682FD37E75001449A9 /* launch_animated.mp4 */; };
 		DECB14E755B044F6B5EE6F78 /* FinanceTerms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69C6BCF5FDE543BDA43C719B /* FinanceTerms.swift */; };
 		E34E73D25AF01C38AA811E1F /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE68747565E218B524BDA777 /* WidgetKit.framework */; };
+		927071BDB45B4ED5A390E1CE /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6DDA76A97E2B43AEB8A631E7 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -75,6 +76,7 @@
 		CB11A87B4A3C0D1298C98C71 /* Theme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Theme.swift; path = stockme/Utilities/Theme.swift; sourceTree = "<group>"; };
 		D822F29E492E020F7F3666CF /* NiveshWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NiveshWidget.swift; sourceTree = "<group>"; };
 		FE68747565E218B524BDA777 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		6DDA76A97E2B43AEB8A631E7 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -135,6 +137,7 @@
 			children = (
 				A1B2C3D4E5F6A1B2C3D4E5F6 /* Info.plist */,
 				D822F29E492E020F7F3666CF /* NiveshWidget.swift */,
+				6DDA76A97E2B43AEB8A631E7 /* PrivacyInfo.xcprivacy */,
 			);
 			path = NiveshWidget;
 			sourceTree = "<group>";
@@ -344,6 +347,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				927071BDB45B4ED5A390E1CE /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -554,6 +558,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = stockme.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = stockme.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
@@ -600,6 +606,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = stockme.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = stockme.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;

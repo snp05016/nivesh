@@ -120,8 +120,8 @@ class NetworkManager: ObservableObject {
     static let shared = NetworkManager()
 
     static let serverURLKey = "serverBaseURL"
-    /// Home WiFi default. After DigitalOcean deploy, update via Settings tab —
-    /// no rebuild needed (stored in UserDefaults).
+    /// Production API. A stored https override (UserDefaults) is honoured; anything
+    /// else falls back here (see ServerURLPolicy).
     static let defaultURL   = "https://api.nivesh.qzz.io"
 
     var baseURL: String {
@@ -131,12 +131,6 @@ class NetworkManager: ObservableObject {
             UserDefaults.standard.removeObject(forKey: Self.serverURLKey)
         }
         return resolvedURL
-    }
-
-    func updateBaseURL(_ url: String) {
-        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        UserDefaults.standard.set(trimmed, forKey: Self.serverURLKey)
     }
 
     var authToken: String? = nil
