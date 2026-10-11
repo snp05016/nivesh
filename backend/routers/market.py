@@ -9,6 +9,8 @@ from helpers import (
 from services.market_service import (
     _get_quarterly_fin, _yf_fetch_info, _fmt_inr_crores, _safe_float, get_rbi_policy,
 )
+from services.cache_service import cached_call
+from concurrent.futures import ThreadPoolExecutor
 
 import json
 import logging
@@ -255,82 +257,55 @@ def quarterly_financials_endpoint(ticker: str, exchange: str = "NSE"):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+_MACRO_SYMBOLS = (
+    ("usd_inr", "USDINR=X"),
+    ("crude_oil_usd", "CL=F"),
+    ("brent_oil_usd", "BZ=F"),  # India imports Brent-priced oil, more relevant than WTI
+    ("india_vix", "^INDIAVIX"),  # fear gauge for Indian retail markets
+)
+
+
+def _macro_quote(sym: str):
+    """Last price for one macro symbol, or None. Never raises."""
+    try:
+        info = yf.Ticker(sym).info or {}
+        v = info.get("regularMarketPrice") or info.get("currentPrice")
+        return round(float(v), 2) if v and math.isfinite(float(v)) else None
+    except Exception as e:
+        logging.warning(f"[macro-strip] {sym} quote failed: {e}")
+        return None
+
+
+def _compute_macro_strip() -> dict:
+    """The four quotes fetched concurrently; a failed one is null, never invented."""
+    with ThreadPoolExecutor(max_workers=len(_MACRO_SYMBOLS)) as ex:
+        prices = list(ex.map(_macro_quote, [sym for _, sym in _MACRO_SYMBOLS]))
+    result: dict = {key: price for (key, _), price in zip(_MACRO_SYMBOLS, prices)}
+    result["india_vix_source"] = "live" if result["india_vix"] is not None else "unavailable"
+    return result
+
+
 @router.get("/macro-strip")
 def macro_strip_endpoint():
     """
-    Returns USD/INR rate, crude oil price, and RBI repo rate for context strip.
+    Returns USD/INR rate, crude oil price, India VIX and RBI repo rate for the context strip.
 
-    Args:
+    Single-flight cached for 5 min (PERF-10); a strip without USD/INR is kept
+    only 30 s so a transient Yahoo failure is retried soon.
 
     Returns:
         Any: The response.
     """
     try:
-        import math
-        result = {}
-
-        # USD/INR
-        try:
-            t = yf.Ticker("USDINR=X")
-            info = t.info
-            usd_inr = info.get("regularMarketPrice") or info.get("currentPrice")
-            if usd_inr and not math.isnan(float(usd_inr)):
-                result["usd_inr"] = round(float(usd_inr), 2)
-            else:
-                result["usd_inr"] = None
-        except Exception as e:
-            import logging
-            logging.warning(f"Caught exception: {e}")
-            result["usd_inr"] = None
-
-        # Crude oil (WTI)
-        try:
-            t = yf.Ticker("CL=F")
-            info = t.info
-            crude = info.get("regularMarketPrice") or info.get("currentPrice")
-            if crude and not math.isnan(float(crude)):
-                result["crude_oil_usd"] = round(float(crude), 2)
-            else:
-                result["crude_oil_usd"] = None
-        except Exception as e:
-            import logging
-            logging.warning(f"Caught exception: {e}")
-            result["crude_oil_usd"] = None
-
-        # Brent crude (India imports Brent-priced oil, more relevant than WTI)
-        try:
-            t = yf.Ticker("BZ=F")
-            info = t.info
-            brent = info.get("regularMarketPrice") or info.get("currentPrice")
-            if brent and not math.isnan(float(brent)):
-                result["brent_oil_usd"] = round(float(brent), 2)
-            else:
-                result["brent_oil_usd"] = None
-        except Exception as e:
-            import logging
-            logging.warning(f"Caught exception: {e}")
-            result["brent_oil_usd"] = None
-
-        # India VIX — fear gauge for Indian retail markets. No invented
-        # fallback: a failed fetch is reported as unavailable (null).
-        result["india_vix"] = None
-        result["india_vix_source"] = "unavailable"
-        try:
-            t = yf.Ticker("^INDIAVIX")
-            info = t.info
-            vix = info.get("regularMarketPrice") or info.get("currentPrice")
-            if vix and not math.isnan(float(vix)):
-                result["india_vix"] = round(float(vix), 2)
-                result["india_vix_source"] = "live"
-        except Exception as e:
-            import logging
-            logging.warning(f"Caught exception: {e}")
-
-        # RBI repo rate — operator-maintained config value with as-of date
+        result = dict(cached_call(
+            "market", "macro_strip", _compute_macro_strip, ttl=300,
+            cache_if=lambda r: r.get("usd_inr") is not None, negative_ttl=30,
+        ))
+        # RBI repo rate — operator-maintained config value with as-of date (not cached)
         result.update(get_rbi_policy())
-
         return result
     except Exception as e:
+        logging.error(f"[macro-strip] failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -784,75 +759,43 @@ SECTOR_TICKERS = [
     ("^CNXMETAL",    "Metal"),
 ]
 
-_sector_cache: dict = {"data": None, "ts": 0.0}
+def _sector_row(ticker: str, name: str):
+    """One sector index row from its 5-day close history, or None. Never raises."""
+    try:
+        current, prev = _yf_price(ticker)
+    except Exception as e:
+        logging.warning(f"[sector-performance] {ticker} failed: {e}")
+        return None
+    if current is None or prev is None or not math.isfinite(current) or not math.isfinite(prev) or prev == 0:
+        return None
+    change_abs = round(current - prev, 2)
+    return {
+        "name": name,
+        "ticker": ticker,
+        "value": round(current, 2),
+        "change_abs": change_abs,
+        "change_pct": round((change_abs / prev) * 100, 2),
+    }
+
+
+def _compute_sector_performance() -> dict:
+    with ThreadPoolExecutor(max_workers=len(SECTOR_TICKERS)) as ex:
+        rows = list(ex.map(lambda tn: _sector_row(*tn), SECTOR_TICKERS))
+    sectors = [r for r in rows if r is not None]
+    return {
+        "sectors": sorted(sectors, key=lambda x: abs(x["change_pct"]), reverse=True),
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 @router.get("/sector-performance")
 def sector_performance_endpoint():
-    global _sector_cache
-    now = time.time()
-    if _sector_cache["data"] and now - _sector_cache["ts"] < 600:
-        return _sector_cache["data"]
-
-    def _as_finite_float(value):
-        if isinstance(value, bool):
-            return None
-        if not isinstance(value, (int, float)):
-            return None
-        value = float(value)
-        return value if math.isfinite(value) else None
-
-    sectors = []
-    import math
-    for ticker, name in SECTOR_TICKERS:
-        try:
-            current = None
-            prev = None
-            for attempt in range(3):
-                try:
-                    t = yf.Ticker(ticker)
-                    info = t.fast_info if hasattr(t, "fast_info") else {}
-                    current = _as_finite_float(getattr(info, "last_price", None)) or _as_finite_float((t.info or {}).get("regularMarketPrice"))
-                    prev    = _as_finite_float(getattr(info, "previous_close", None)) or _as_finite_float((t.info or {}).get("previousClose"))
-
-                    if current is None:
-                        # Fallback: History
-                        hist = t.history(period="5d")
-                        if not hist.empty and len(hist) >= 2:
-                            current = float(hist["Close"].iloc[-1])
-                            prev = float(hist["Close"].iloc[-2])
-
-                    if current is not None:
-                        break
-                except Exception as e:
-                    logging.info(f"[YF] Sector perf attempt {attempt+1} failed for {ticker}: {e}")
-                    if attempt < 2:
-                        time.sleep((1.0 * (2 ** attempt)) + (random.random() * 0.2))
-
-            current = _as_finite_float(current)
-            prev = _as_finite_float(prev)
-            if current is None or prev is None or prev == 0:
-                continue
-            change_abs = round(current - prev, 2)
-            change_pct = round((change_abs / prev) * 100, 2)
-            sectors.append({
-                "name": name,
-                "ticker": ticker,
-                "value": round(current, 2),
-                "change_abs": change_abs,
-                "change_pct": change_pct,
-            })
-        except Exception as e:
-            import logging
-            logging.warning(f"Caught exception: {e}")
-            continue
-
-    result = {
-        "sectors": sorted(sectors, key=lambda x: abs(x["change_pct"]), reverse=True),
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
-    }
-    _sector_cache = {"data": result, "ts": now}
-    return result
+    """Sector index moves. Single-flight cached 10 min; a result with fewer than
+    half the sectors is kept only 60 s instead of pinning a partial view (PERF-10)."""
+    return cached_call(
+        "sector", "performance", _compute_sector_performance, ttl=600,
+        cache_if=lambda r: len(r["sectors"]) >= len(SECTOR_TICKERS) // 2, negative_ttl=60,
+    )
 
 
 # ---------------------------------------------------------------------------

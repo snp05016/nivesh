@@ -5,7 +5,8 @@ Provides ML predictions to the Nivesh backend (Python 3.14) which cannot
 run Qlib/LightGBM natively due to Python version constraints.
 
 Endpoints:
-  GET  /health                    — liveness probe
+  GET  /health                    — liveness probe (process is up)
+  GET  /ready                     — readiness probe: 503 unless the booster is loaded
   POST /predict/single            — single-stock prediction from OHLCV data
   GET  /model/status              — loaded model metadata
 
@@ -24,6 +25,7 @@ from __future__ import annotations
 
 import hmac
 import json
+from collections import deque
 import logging
 import os
 import time
@@ -36,6 +38,7 @@ from typing import Any
 import numpy as np
 import polars as pl
 from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from config import (
@@ -74,6 +77,15 @@ DEFAULT_PREDICTION_HORIZON = 20
 # Reject inputs whose latest bar is older than this (calendar days, covers
 # long exchange holidays): a stale series would be scored as if it were current.
 MAX_INPUT_AGE_DAYS = 10
+
+# Rolling window of (direction, fallback_used, signal_state) for the last predictions. A model
+# that collapses to one class or silently falls back shows up here and in
+# /model/status (ML-24; ML-01's class-balance guard should reuse _prediction_stats).
+# ponytail: per-process window; a metrics backend replaces it when one exists.
+_recent: deque[tuple[int, bool, str]] = deque(maxlen=500)
+_DEGENERATE_MIN_N = 50
+_DEGENERATE_SHARE = 0.9
+_degenerate_flagged = False
 
 
 def require_api_key(x_ml_engine_key: str | None = Header(default=None)) -> None:
@@ -221,6 +233,7 @@ class ModelStatus(BaseModel):
     lightgbm_path: str | None = None
     model_version: str | None = None
     model_validated: bool = False
+    recent_predictions: dict[str, Any] | None = None
 
 
 # ── Version Detection ─────────────────────────────────────────────────────────
@@ -376,6 +389,22 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "service": "ml-engine"}
 
 
+@app.get("/ready")
+async def ready() -> JSONResponse:
+    """Readiness probe: 200 only when the trained booster is loaded.
+
+    A missing lgb_model.txt keeps /health green but would serve the heuristic
+    fallback, so deploy gates and the container HEALTHCHECK probe this instead.
+    """
+    if _lightgbm_model is None or _inference_engine is None:
+        return JSONResponse(status_code=503, content={"status": "degraded", "reason": "model_not_loaded"})
+    return JSONResponse(content={
+        "status": "ready",
+        "model_version": _model_version,
+        "model_validated": _model_validated,
+    })
+
+
 # ── Model Status ───────────────────────────────────────────────────────────────
 
 
@@ -392,6 +421,7 @@ async def model_status() -> ModelStatus:
         lightgbm_path=str(LIGHTGBM_MODEL_PATH) if lightgbm_loaded else None,
         model_version=_model_version,
         model_validated=_model_validated,
+        recent_predictions=_prediction_stats(),
     )
 
 
@@ -424,6 +454,51 @@ def _is_stale(rows: list[OHLCVRow]) -> bool:
     except ValueError:
         return False
     return (datetime.now(timezone.utc).date() - last).days > MAX_INPUT_AGE_DAYS
+
+
+def _prediction_stats() -> dict[str, Any]:
+    """Class mix and fallback rate over the recent window; degenerate = one class dominates.
+
+    Class balance is measured over signal_state == "ok" predictions only: an
+    unvalidated model serves every call as no_edge direction 0 by design, which
+    is reported as no_edge_rate, not as a collapsed model.
+    """
+    recent = list(_recent)
+    n = len(recent)
+    ok = [d for d, _, state in recent if state == "ok"]
+    n_ok = len(ok)
+    share = {k: (ok.count(int(k)) / n_ok if n_ok else 0.0) for k in ("-1", "0", "1")}
+    return {
+        "n": n,
+        "n_ok": n_ok,
+        "no_edge_rate": ((n - n_ok) / n) if n else 0.0,
+        "class_share": share,
+        "fallback_rate": (sum(1 for _, f, _ in recent if f) / n) if n else 0.0,
+        "degenerate": n_ok >= _DEGENERATE_MIN_N and max(share.values()) > _DEGENERATE_SHARE,
+    }
+
+
+def _record_prediction(ticker: str, direction: int, fallback_used: bool, mode: str,
+                       raw_score: float | None, latency_ms: float, signal_state: str) -> None:
+    """Structured per-prediction log line plus the rolling class-balance window."""
+    global _degenerate_flagged
+    _recent.append((direction, fallback_used, signal_state))
+    _LOG.info(json.dumps({
+        "event": "prediction",
+        "ticker": ticker,
+        "model_version": _model_version,
+        "mode": mode,
+        "direction": direction,
+        "signal_state": signal_state,
+        "raw_score": raw_score,
+        "latency_ms": round(latency_ms, 2),
+        "fallback_used": fallback_used,
+    }))
+    stats = _prediction_stats()
+    if stats["degenerate"] and not _degenerate_flagged:
+        _LOG.warning("Prediction distribution degenerate over last %d ok-state calls: %s",
+                     stats["n_ok"], stats["class_share"])
+    _degenerate_flagged = stats["degenerate"]
 
 
 # ── Predict ────────────────────────────────────────────────────────────────────
@@ -473,13 +548,16 @@ def predict_single(req: SingleStockRequest) -> PredictionResult:
     expected_direction = result["expected_direction"]
     confidence_score = result["confidence_score"]
     lightgbm_loaded = _lightgbm_model is not None
+    mode = "trained_lightgbm_baseline" if lightgbm_loaded else "fallback_technical_heuristic"
+    _record_prediction(req.ticker, expected_direction, not lightgbm_loaded, mode,
+                       result.get("raw_score"), elapsed_ms, result["signal_state"])
     return PredictionResult(
         ticker=req.ticker,
         direction=expected_direction,
         expected_direction=expected_direction,
         confidence=confidence_score,
         confidence_score=confidence_score,
-        ml_engine_mode="trained_lightgbm_baseline" if lightgbm_loaded else "fallback_technical_heuristic",
+        ml_engine_mode=mode,
         lightgbm_loaded=lightgbm_loaded,
         features=[],  # reserved: no feature attribution is computed
         prediction_time_ms=round(elapsed_ms, 2),

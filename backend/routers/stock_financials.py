@@ -1409,18 +1409,6 @@ async def get_stock_ml_signal(symbol: str, user_id: int = Depends(require_auth))
     Returns:
         Any: The response.
     """
-    from services.ml_signal_service import get_ml_signal
-    from services.disk_cache import get as cache_get, set as cache_set
+    from services.ml_signal_service import get_ml_signal_cached
 
-    # v2 key: entries cached from the always-bullish engine must not be served.
-    cache_key = f"ml_signal_v2_{symbol.upper()}"
-    cached = cache_get("ml_signal", cache_key)
-    if cached and cached.get("status") in ("ready", "no_edge"):
-        return MLSignalResponse(**cached)
-
-    result = await get_ml_signal(symbol)
-
-    if result and result.status in ("ready", "no_edge"):
-        cache_set("ml_signal", cache_key, result.model_dump(), ttl=3600)
-
-    return result
+    return await get_ml_signal_cached(symbol)

@@ -20,6 +20,9 @@ def vix_down(monkeypatch):
     # Every yfinance quote (USD/INR, Brent, ^INDIAVIX) returns no price.
     monkeypatch.setattr(market_router.yf, "Ticker", lambda *_a, **_k: SimpleNamespace(info={}))
     monkeypatch.setattr(scraper, "fetch_market_pulse", lambda: {})
+    # /macro-strip is cached (PERF-10): drop any strip an earlier test computed.
+    import services.cache_service as cache_service
+    cache_service.cache.invalidate_sync("market", "macro_strip")
 
 
 @pytest.fixture

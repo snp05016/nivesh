@@ -8,6 +8,7 @@ and enriches responses with reliability metrics from the calibration service.
 import os
 import asyncio
 import logging
+import time
 import yfinance as yf
 from datetime import datetime, timezone
 
@@ -21,6 +22,9 @@ logger = logging.getLogger(__name__)
 ML_ENGINE_URL = os.getenv("ML_ENGINE_URL", "http://localhost:8001")
 ML_ENGINE_TIMEOUT = 5.0  # seconds
 NO_EDGE_WARNING = "This model has not shown out-of-sample skill, so no direction is shown."
+ML_SIGNAL_CACHE_TTL = 3600
+_MODEL_VERSION_TTL = 60.0  # seconds between /model/status probes
+_model_version_cache: tuple[float, str | None] | None = None  # (fetched_at monotonic, version)
 
 
 def _direction_label(direction: int) -> str:
@@ -203,3 +207,41 @@ async def get_ml_signal(symbol: str) -> MLSignalResponse:
         signal_state="ok",
         warning=data.get("warning"),
     )
+
+
+async def get_ml_model_version() -> str | None:
+    """Deployed ml-engine model_version (cached 60 s); None when the engine is unreachable."""
+    global _model_version_cache
+    now = time.monotonic()
+    if _model_version_cache is not None and now - _model_version_cache[0] < _MODEL_VERSION_TTL:
+        return _model_version_cache[1]
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            resp = await client.get(f"{ML_ENGINE_URL}/model/status", headers=ml_engine_headers())
+            resp.raise_for_status()
+            version = resp.json().get("model_version")
+    except Exception as e:
+        logger.warning("ML engine /model/status unavailable: %s", e)
+        return None
+    _model_version_cache = (now, version)
+    return version
+
+
+async def get_ml_signal_cached(symbol: str) -> MLSignalResponse:
+    """get_ml_signal behind the shared cache, keyed by model version (ML-24).
+
+    A model swap (or a fallback to no model) changes the key, so an hour-old
+    signal from the previous model is never served as the current one.
+    """
+    from services.disk_cache import get as cache_get, set as cache_set
+
+    version = await get_ml_model_version()
+    cache_key = f"ml_signal_{version or 'none'}_{symbol.strip().upper()}"
+    cached = await asyncio.to_thread(cache_get, "ml_signal", cache_key)
+    if cached and cached.get("status") in ("ready", "no_edge"):
+        return MLSignalResponse(**cached)
+
+    result = await get_ml_signal(symbol)
+    if result and result.status in ("ready", "no_edge"):
+        await asyncio.to_thread(cache_set, "ml_signal", cache_key, result.model_dump(), ML_SIGNAL_CACHE_TTL)
+    return result

@@ -13,8 +13,10 @@ import json
 import logging
 import asyncio
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, Depends, HTTPException
 import yfinance as yf
+from services.cache_service import cached_call
 from services.scraper import fetch_earnings_sync_ratio, fetch_yoy_aggregate_indicators
 from pydantic import BaseModel as _BaseModel
 from typing import Optional as _Optional
@@ -23,68 +25,70 @@ from pydantic import BaseModel as _BaseModelLocal
 router = APIRouter(tags=["Market Data"])
 
 
+def _ticker_earnings_events(ticker_raw: str, today) -> list:
+    """Upcoming/recent earnings events for one holding. Logs and returns [] on
+    any failure, so one bad ticker never discards the batch (PERF-10)."""
+    try:
+        full_ticker = _resolve_ticker(ticker_raw, "NSE")
+        cal = yf.Ticker(full_ticker).calendar
+        earnings_dates = []
+        if isinstance(cal, dict) and 'Earnings Date' in cal:
+            dates_val = cal['Earnings Date']
+            if isinstance(dates_val, list):
+                earnings_dates = dates_val
+        elif hasattr(cal, 'empty') and not cal.empty and 'Earnings Date' in cal.columns:
+            # fallback for older yfinance versions that return DataFrame
+            earnings_dates = cal['Earnings Date'].dropna().tolist()
+
+        events = []
+        for d in earnings_dates:
+            ed = d.date() if hasattr(d, 'date') else d
+            days_away = (ed - today).days
+            if -7 <= days_away <= 45:
+                events.append({
+                    "ticker": ticker_raw.upper(),
+                    "earnings_date": ed.strftime("%d-%b-%Y"),
+                    "days_away": days_away,
+                })
+        return events
+    except Exception as e:
+        logging.warning(f"[earnings-calendar] skipping {ticker_raw}: {e}")
+        return []
+
+
+def _holding_tickers() -> list:
+    from database import get_session, Portfolio
+    with get_session() as session:
+        return [t[0] for t in session.query(Portfolio.ticker).filter(
+            Portfolio.group_name == "holdings"
+        ).distinct().all()]
+
+
+def _compute_earnings_calendar() -> dict:
+    tickers = _holding_tickers()
+    today = datetime.now().date()
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        per_ticker = list(ex.map(lambda t: _ticker_earnings_events(t, today), tickers))
+    results = [e for events in per_ticker for e in events]
+    results.sort(key=lambda x: x["days_away"])
+    return {"events": results}
+
+
 @router.get("/earnings-calendar")
 def earnings_calendar_endpoint():
     """
     Returns upcoming earnings dates for NSE portfolio stocks.
 
-    Args:
+    Single-flight cached for 15 min: concurrent misses compute once (PERF-10).
 
     Returns:
         Any: The response.
     """
-    cached = _dcache_get("market", "earnings_calendar")
-    if cached is not None:
-        return cached
     try:
-        from database import get_session, Portfolio
-        with get_session() as session:
-            tickers = session.query(Portfolio.ticker).filter(
-                Portfolio.group_name == "holdings"
-            ).distinct().all()
-            tickers = [t[0] for t in tickers]
-
-        results = []
-        today = datetime.now().date()
-
-        for ticker_raw in tickers:
-            try:
-                full_ticker = _resolve_ticker(ticker_raw, "NSE")
-                t = yf.Ticker(full_ticker)
-                cal = t.calendar
-                earnings_dates = []
-                if isinstance(cal, dict) and 'Earnings Date' in cal:
-                    dates_val = cal['Earnings Date']
-                    if isinstance(dates_val, list):
-                        earnings_dates = dates_val
-                elif hasattr(cal, 'empty') and not cal.empty and 'Earnings Date' in cal.columns:
-                    # fallback for older yfinance versions that return DataFrame
-                    earnings_dates = cal['Earnings Date'].dropna().tolist()
-
-                for d in earnings_dates:
-                    try:
-                        ed = d.date() if hasattr(d, 'date') else d
-                        days_away = (ed - today).days
-                        if -7 <= days_away <= 45:
-                            results.append({
-                                "ticker": ticker_raw.upper(),
-                                "earnings_date": ed.strftime("%d-%b-%Y"),
-                                "days_away": days_away,
-                            })
-                    except Exception as e:
-                        import logging
-                        logging.error(f"Error occurred: {e}", exc_info=True)
-                        raise HTTPException(status_code=500, detail="Internal server error")
-            except Exception as e:
-                import logging
-                logging.error(f"Error occurred: {e}", exc_info=True)
-                raise HTTPException(status_code=500, detail="Internal server error")
-
-        results.sort(key=lambda x: x["days_away"])
-        payload = {"events": results}
-        _dcache_set("market", "earnings_calendar", payload, ttl=900)
-        return payload
+        return cached_call("market", "earnings_calendar", _compute_earnings_calendar,
+                           ttl=900, cache_if=lambda p: p is not None)
     except Exception as e:
+        logging.error(f"[earnings-calendar] failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

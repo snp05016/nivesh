@@ -36,6 +36,10 @@ ENV RESEARCH_DATA_DIR=/data
 
 EXPOSE 8001
 
+# Readiness (booster loaded), not just liveness. The slim image has no curl.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/ready', timeout=4)"
+
 USER mluser
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]

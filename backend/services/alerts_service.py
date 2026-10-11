@@ -5,6 +5,7 @@ import os
 import threading
 import jwt as pyjwt
 import time
+from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from typing import Optional
 from urllib.parse import quote as _url_quote
@@ -59,6 +60,27 @@ def remove_price_alert(user_id: int, alert_id: int):
         session.commit()
     return {"success": True}
 
+def _current_prices(tickers) -> dict:
+    """{ticker: current price or None}, one lookup per unique ticker, fetched
+    concurrently (PERF-17). Blocking: call from a thread, not the event loop.
+
+    ponytail: per-call pool; swap for the shared quote gateway when it exists.
+    """
+    unique = sorted(set(tickers))
+    if not unique:
+        return {}
+
+    def _one(t):
+        try:
+            return _yf_price(_to_ns(t))[0]
+        except Exception as e:
+            logger.warning("Price lookup failed for %s: %s", t, e)
+            return None
+
+    with ThreadPoolExecutor(max_workers=min(8, len(unique))) as ex:
+        return dict(zip(unique, ex.map(_one, unique)))
+
+
 def get_alerts_data(user_id: int):
     with get_session() as session:
         alerts = (
@@ -79,10 +101,10 @@ def get_alerts_data(user_id: int):
             for a in alerts
         ]
 
+    prices = _current_prices(row["ticker"] for row in alerts_data)
     result = []
     for row in alerts_data:
-        ns_ticker = _to_ns(row["ticker"])
-        current_price, _ = _yf_price(ns_ticker)
+        current_price = prices.get(row["ticker"])
         distance_pct = None
         if current_price and row["target_price"]:
             distance_pct = round(abs(current_price - row["target_price"]) / row["target_price"] * 100, 2)
@@ -277,11 +299,8 @@ async def _poll_once() -> None:
     if not pending:
         return
 
-    prices = {}
-    for t in {row[2] for row in pending}:
-        price, _ = await asyncio.to_thread(_yf_price, _to_ns(t))
-        if price is not None:
-            prices[t] = price
+    # Ticker resolution and price fetches both run off the event loop.
+    prices = await asyncio.to_thread(_current_prices, [row[2] for row in pending])
 
     for alert_id, user_id, ticker, target_price, direction in pending:
         current_price = prices.get(ticker)

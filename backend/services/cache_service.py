@@ -10,7 +10,7 @@ import logging
 import os
 import threading
 import time
-from typing import Any, Optional
+from typing import Any, Callable, Optional, TypeVar
 
 import redis
 from cachetools import TTLCache
@@ -52,6 +52,7 @@ def _safe_json_dumps(obj: Any) -> str:
 logger = logging.getLogger(__name__)
 
 _REDIS_BACKOFF_S = 30.0  # after a connection error, skip Redis for this long
+_DEFAULT_TTL = 600       # namespaces missing from ttl_map
 _now = time.monotonic    # indirection so tests can control the clock
 
 
@@ -81,6 +82,18 @@ class CacheService:
             "options": 900,
             "news_processed": 43200,
             "morning_brief": 86400,
+            "market_pulse": 900,
+            "market": 900,
+            "asm_gsm": 21600,
+            "indices": 300,
+            "macro_impact": 3600,
+            "ml_signal": 3600,
+            "piotroski": 86400,
+            "screener": 3600,
+            "stock_history": 3600,
+            "quote": 60,
+            "yf_info": 900,
+            "yf_hist": 21600,
         }
 
     # ── Redis availability ────────────────────────────────────────────────
@@ -116,7 +129,7 @@ class CacheService:
     def set_sync(self, namespace: str, key: str, value: Any, ttl: Optional[int] = None) -> None:
         full_key = f"{namespace}:{key}"
         if ttl is None:
-            ttl = self.ttl_map.get(namespace, 3600)
+            ttl = self.ttl_map.get(namespace, _DEFAULT_TTL)
         r = self._redis()
         if r is not None:
             try:
@@ -179,3 +192,37 @@ def sync_set(namespace: str, key: str, value: Any, ttl: Optional[int] = None) ->
 
 def stats() -> dict:
     return cache.stats()
+
+
+_T = TypeVar("_T")
+# ponytail: per-process single-flight; cross-worker needs a Redis SET NX lock.
+_SF_LOCKS = [threading.Lock() for _ in range(64)]
+
+
+def cached_call(
+    namespace: str,
+    key: str,
+    fn: Callable[[], _T],
+    ttl: Optional[int] = None,
+    cache_if: Callable[[_T], bool] = bool,
+    negative_ttl: int = 0,
+) -> _T:
+    """Cache-aside with single flight: concurrent misses on one key run fn() once.
+
+    A result failing cache_if (empty/partial) is cached only for negative_ttl
+    seconds (0 = not at all), so a transient upstream failure is neither
+    pinned for the full TTL nor recomputed by every caller.
+    """
+    hit = cache.get_sync(namespace, key)
+    if hit is not None:
+        return hit
+    with _SF_LOCKS[hash((namespace, key)) % len(_SF_LOCKS)]:
+        hit = cache.get_sync(namespace, key)
+        if hit is not None:
+            return hit
+        value = fn()
+        if cache_if(value):
+            cache.set_sync(namespace, key, value, ttl)
+        elif negative_ttl > 0 and value is not None:
+            cache.set_sync(namespace, key, value, negative_ttl)
+        return value

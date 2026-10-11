@@ -89,10 +89,12 @@ run_container() {
         "$1"
 }
 
+# Readiness, not liveness: /ready is 503 when the booster failed to load
+# (e.g. a missing lgb_model.txt), which /health would report as "ok" while the
+# container serves the heuristic fallback (ML-24).
 wait_healthy() {
     for _ in {1..30}; do
-        if curl -fsS --max-time 2 "http://localhost:${PORT}/health" 2>/dev/null \
-            | grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'; then
+        if curl -fsS --max-time 2 "http://localhost:${PORT}/ready" > /dev/null 2>&1; then
             return 0
         fi
         sleep 1

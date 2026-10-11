@@ -145,3 +145,71 @@ def test_fallback_bounded_per_entry(monkeypatch):
         svc.set_sync("ns", f"k{i}", i, ttl=60)
     assert len(svc._fallback_cache) <= maxsize
     assert svc.get_sync("ns", f"k{maxsize + 499}") == maxsize + 499
+
+
+def test_every_namespace_has_explicit_ttl():
+    """PERF-11: market_pulse is 15 min, not the old 1 h default; unknown ns get 600 s."""
+    svc = CacheService(redis_url="redis://localhost:19999")
+    assert svc.ttl_map["market_pulse"] == 900
+    for ns in ("piotroski", "stock_history", "ml_signal", "market", "quote"):
+        assert ns in svc.ttl_map
+    assert cs._DEFAULT_TTL == 600
+
+
+def test_cached_call_single_flight(monkeypatch):
+    """PERF-10/11: concurrent misses on one key run the upstream fn once."""
+    import time as _time
+    from concurrent.futures import ThreadPoolExecutor
+
+    svc = CacheService(redis_url="redis://localhost:19999")
+    _redis_down(svc, monkeypatch)
+    monkeypatch.setattr(cs, "cache", svc)
+    calls = []
+
+    def _fn():
+        calls.append(1)
+        _time.sleep(0.05)
+        return {"v": 1}
+
+    with ThreadPoolExecutor(20) as ex:
+        results = list(ex.map(lambda _: cs.cached_call("t", "k", _fn, ttl=60), range(20)))
+    assert len(calls) == 1
+    assert all(r == {"v": 1} for r in results)
+
+
+def test_cached_call_negative_ttl(monkeypatch, clock):
+    """A result failing cache_if is kept only for negative_ttl, then refetched."""
+    svc = CacheService(redis_url="redis://localhost:19999")
+    _redis_down(svc, monkeypatch)
+    monkeypatch.setattr(cs, "cache", svc)
+    calls = []
+
+    def _partial():
+        calls.append(1)
+        return {"sectors": []}
+
+    def _ok(r):
+        return len(r["sectors"]) > 0
+
+    cs.cached_call("sector", "performance", _partial, ttl=600, cache_if=_ok, negative_ttl=60)
+    cs.cached_call("sector", "performance", _partial, ttl=600, cache_if=_ok, negative_ttl=60)
+    assert len(calls) == 1
+
+    clock[0] += 61
+    cs.cached_call("sector", "performance", _partial, ttl=600, cache_if=_ok, negative_ttl=60)
+    assert len(calls) == 2
+
+
+def test_cached_call_no_negative_ttl_never_caches_failure(monkeypatch):
+    svc = CacheService(redis_url="redis://localhost:19999")
+    _redis_down(svc, monkeypatch)
+    monkeypatch.setattr(cs, "cache", svc)
+    calls = []
+
+    def _empty():
+        calls.append(1)
+        return {}
+
+    cs.cached_call("t", "empty", _empty)
+    cs.cached_call("t", "empty", _empty)
+    assert len(calls) == 2
