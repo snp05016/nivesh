@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from core.demo_mode import require_demo_mode
-from core.security import require_auth
+from core.security import rate_limited_user, require_auth
 from services.kyc_consent_service import (
     bind_device,
     get_active_consents,
@@ -57,7 +57,7 @@ class BindDeviceRequest(BaseModel):
 def create_consent(
     body: RecordConsentRequest,
     request: Request,
-    user_id: int = Depends(require_auth),
+    user_id: int = Depends(rate_limited_user("kyc_consent")),
     x_app_version: Optional[str] = Header(None),
 ):
     ip_address = request.client.host if request.client else None
@@ -75,7 +75,7 @@ def create_consent(
 
 
 @router.delete("/consents/{consent_type}")
-def delete_consent(consent_type: str, user_id: int = Depends(require_auth)):
+def delete_consent(consent_type: str, user_id: int = Depends(rate_limited_user("kyc_consent"))):
     return revoke_consent(user_id, consent_type)
 
 
@@ -89,7 +89,7 @@ def list_consents(user_id: int = Depends(require_auth)):
 # ---------------------------------------------------------------------------
 
 @router.post("/device-binding")
-def create_device_binding(body: BindDeviceRequest, user_id: int = Depends(require_auth)):
+def create_device_binding(body: BindDeviceRequest, user_id: int = Depends(rate_limited_user("kyc_bind"))):
     """Bind a device_id to the current user.
 
     On rejection (MOCK fraud-signal heuristics — see kyc_consent_service.py)

@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from core.security import require_auth
+from core.security import rate_limited_user, require_auth
 from services import compliance_service, disclosure_service
 from services.product_bounds import ProductBoundsError
 
@@ -57,7 +57,7 @@ def _client_ip(request: Request) -> Optional[str]:
 def request_account_deletion(
     body: DeletionRequestBody,
     request: Request,
-    user_id: int = Depends(require_auth),
+    user_id: int = Depends(rate_limited_user("compliance")),
 ):
     """Create a pending account-deletion request; the user's data is erased
     once it is compliance_service.ERASURE_GRACE_DAYS old unless cancelled."""
@@ -70,7 +70,7 @@ def request_account_deletion(
 @router.post("/deletion-requests/cancel")
 def cancel_account_deletion(
     request: Request,
-    user_id: int = Depends(require_auth),
+    user_id: int = Depends(rate_limited_user("compliance")),
 ):
     """Cancel the current pending account-deletion request, if any."""
     result = compliance_service.cancel_deletion_request(user_id, ip_address=_client_ip(request))
@@ -92,7 +92,7 @@ def get_deletion_status(user_id: int = Depends(require_auth)):
 def withdraw_consent(
     body: ConsentWithdrawBody,
     request: Request,
-    user_id: int = Depends(require_auth),
+    user_id: int = Depends(rate_limited_user("compliance")),
 ):
     """Withdraw a previously-granted KYC consent (e.g. "data_sharing",
     "credit_check", "sim_binding") and log the withdrawal to the audit trail.

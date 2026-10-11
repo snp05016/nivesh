@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from core.demo_mode import require_demo_mode
-from core.security import require_auth
+from core.security import rate_limited_user, require_auth
 from services.credit_bureau_mock_service import get_mock_credit_report_summary
 from services.finance_tracker_service import (
     create_summary,
@@ -233,7 +233,7 @@ def _serialize_application(app) -> LoanApplicationResponse:
 @router.post("/loan-applications", response_model=LoanApplicationResponse)
 def create_loan_application(
     payload: SubmitLoanApplicationRequest,
-    user_id: int = Depends(require_auth),
+    user_id: int = Depends(rate_limited_user("money_write")),
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key", max_length=64),
 ):
     """Submit a loan application against a MOCK NBFC offer.
@@ -293,7 +293,7 @@ def _serialize_disbursement(d) -> LoanDisbursementResponse:
 
 
 @router.post("/loan-applications/{application_id}/disburse", response_model=LoanDisbursementResponse)
-def disburse_loan_application(application_id: int, user_id: int = Depends(require_auth)):
+def disburse_loan_application(application_id: int, user_id: int = Depends(rate_limited_user("money_write"))):
     """Trigger a MOCK instant disbursement of an approved loan application to
     the caller's primary linked bank account.
 
@@ -345,7 +345,7 @@ def get_my_linked_bank_accounts(user_id: int = Depends(require_auth)):
 
 
 @router.post("/linked-bank-accounts", response_model=LinkedBankAccountResponse)
-def create_linked_bank_account(payload: LinkBankAccountRequest, user_id: int = Depends(require_auth)):
+def create_linked_bank_account(payload: LinkBankAccountRequest, user_id: int = Depends(rate_limited_user("money_write"))):
     """Register a MOCK linked bank account for the loan marketplace demo.
 
     masked_account_number must already be masked by the client (e.g.
@@ -418,7 +418,7 @@ def get_finance_spend_categories(user_id: int = Depends(require_auth)):
 
 
 @router.post("/accounts/link-demo", response_model=FinanceAccountResponse)
-def post_link_demo_finance_account(payload: LinkFinanceAccountDemoRequest, user_id: int = Depends(require_auth)):
+def post_link_demo_finance_account(payload: LinkFinanceAccountDemoRequest, user_id: int = Depends(rate_limited_user("money_write"))):
     """"Link Account (Demo)" — fabricates a new MOCK linked account.
 
     MOCK DATA — simulated for demo purposes, not a real integration. No

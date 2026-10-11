@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 from datetime import datetime
 
-from core.security import require_auth
+from core.security import rate_limited_user, require_auth
 from services import entitlement_service, subscription_service
 
 router = APIRouter(prefix="/api/v1/subscription", tags=["Subscription"])
@@ -51,7 +51,7 @@ def get_subscription(user_id: int = Depends(require_auth)):
 
 
 @router.post("/upgrade", response_model=SubscriptionResponse)
-def upgrade_subscription(req: UpgradeRequest, user_id: int = Depends(require_auth)):
+def upgrade_subscription(req: UpgradeRequest, user_id: int = Depends(rate_limited_user("subscription"))):
     """MOCK upgrade — simulated for demo purposes. No real StoreKit
     purchase or payment processor call happens server-side."""
     try:
@@ -62,7 +62,7 @@ def upgrade_subscription(req: UpgradeRequest, user_id: int = Depends(require_aut
 
 
 @router.post("/cancel", response_model=SubscriptionResponse)
-def cancel_subscription(user_id: int = Depends(require_auth)):
+def cancel_subscription(user_id: int = Depends(rate_limited_user("subscription"))):
     """MOCK cancel — simulated for demo purposes. Tier stays until
     `renews_at`; see services/subscription_service.mock_cancel() for the
     "no cron reverts this" caveat."""

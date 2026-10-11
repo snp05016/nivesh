@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from core.demo_mode import require_demo_mode
-from core.security import require_auth
+from core.security import rate_limited_user, require_auth
 from services.fixed_deposit_service import (
     book_fixed_deposit,
     calculate_fd_maturity,
@@ -180,7 +180,7 @@ def _serialize_booking(booking) -> FDBookingResponse:
 @router.post("/bookings", response_model=FDBookingResponse)
 def create_fd_booking(
     payload: CreateFDBookingRequest,
-    user_id: int = Depends(require_auth),
+    user_id: int = Depends(rate_limited_user("money_write")),
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key", max_length=64),
 ):
     """Book a MOCK fixed deposit with mock-instant settlement.

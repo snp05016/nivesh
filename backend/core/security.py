@@ -7,6 +7,7 @@ these, so there is one implementation. There is no operator/admin token bypass
 
 from typing import Optional
 from fastapi import Depends, HTTPException, Header
+from core import rate_limiter
 from database import verify_access_token, is_admin
 
 
@@ -35,6 +36,19 @@ def require_admin(authorization: str = Header(None)) -> int:
     if not is_admin(user_id):
         raise HTTPException(status_code=403, detail="Admin access required")
     return user_id
+
+
+def rate_limited_user(bucket: str):
+    """Dependency: require_auth plus a per-user limit on a core.rate_limiter bucket.
+
+    Use on write endpoints that create identity/money rows (FINSEC-23); 429 with
+    Retry-After once the user exceeds the bucket's _RATE_LIMITS entry.
+    """
+    def _dep(user_id: int = Depends(require_auth)) -> int:
+        # Module-attribute lookup, so tests can patch core.rate_limiter._check_rate_limit.
+        rate_limiter._check_rate_limit(f"user:{user_id}", bucket)
+        return user_id
+    return _dep
 
 
 def assert_same_user(user_id: int, uid: int) -> None:
