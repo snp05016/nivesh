@@ -13,6 +13,7 @@ from pydantic import ValidationError
 
 import helpers
 import schemas
+from tests.conftest import REGISTER_CONSENT
 
 MODEL_NAMES = (
     "LoginRequest", "RegisterRequest", "AnalyzeRequest",
@@ -28,7 +29,7 @@ MODEL_NAMES = (
 def _register_and_login(client) -> tuple[int, dict[str, str]]:
     username = f"arch01_{uuid.uuid4().hex[:10]}"
     password = "AuditPass!123"
-    reg = client.post("/register", json={"username": username, "password": password, "display_name": "ARCH-01"})
+    reg = client.post("/register", json={"username": username, "password": password, "display_name": "ARCH-01", **REGISTER_CONSENT})
     assert reg.status_code == 200, reg.text
     login = client.post("/login", json={"username": username, "password": password})
     assert login.status_code == 200, login.text

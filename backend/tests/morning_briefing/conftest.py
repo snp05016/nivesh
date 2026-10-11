@@ -71,6 +71,7 @@ def _ai_processing_consent(monkeypatch):
 # ---------------------------------------------------------------------------
 # Re-export from the package __init__ for backward compatibility
 from tests.morning_briefing import MOCK_MORNING_BRIEF_TEXT, _json_body
+from tests.conftest import REGISTER_CONSENT
 
 MOCK_MORNING_BRIEF_JSON = {
     "summary": MOCK_MORNING_BRIEF_TEXT,
@@ -114,6 +115,7 @@ def test_user_creds(client):
         "username": username,
         "password": password,
         "display_name": "Morning Brief Tester",
+        **REGISTER_CONSENT,
     })
     assert resp.status_code in (200, 409), resp.text  # 409 = already exists from prior run
     login = client.post("/login", json={"username": username, "password": password})

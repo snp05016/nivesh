@@ -69,7 +69,7 @@ enum DisclosureSection: Codable, Identifiable, Equatable {
 
 /// GET /api/v1/compliance/disclosures/{key}. Valid keys (mirrors
 /// backend/routers/compliance.py `_VALID_DISCLOSURE_KEYS`): privacy_policy,
-/// data_sharing_governance, digital_lending_compliance,
+/// terms_of_use, grievance_officer, data_sharing_governance, digital_lending_compliance,
 /// lending_service_provider, apr_disclosure, sim_binding_fraud_prevention.
 struct DisclosureDTO: Codable, Equatable {
     let key: String?
@@ -83,6 +83,7 @@ struct DisclosureDTO: Codable, Equatable {
 enum DisclosureKey: String, CaseIterable, Identifiable {
     case privacyPolicy = "privacy_policy"
     case termsOfUse = "terms_of_use"
+    case grievanceOfficer = "grievance_officer"
     case dataSharingGovernance = "data_sharing_governance"
     case digitalLendingCompliance = "digital_lending_compliance"
     case lendingServiceProvider = "lending_service_provider"
@@ -95,11 +96,21 @@ enum DisclosureKey: String, CaseIterable, Identifiable {
         switch self {
         case .privacyPolicy: return "Privacy Policy"
         case .termsOfUse: return "Terms of Use"
+        case .grievanceOfficer: return "Contact & Grievance Officer"
         case .dataSharingGovernance: return "Data Sharing Governance"
         case .digitalLendingCompliance: return "Digital Lending Compliance"
         case .lendingServiceProvider: return "Lending Service Provider"
         case .aprDisclosure: return "APR Disclosure"
         case .simBindingFraudPrevention: return "SIM-Binding Fraud Prevention"
+        }
+    }
+
+    /// REG-12: the privacy policy, terms and grievance contact are the real
+    /// notices; the lending/marketplace disclosures are still demo copy.
+    var isDemoContent: Bool {
+        switch self {
+        case .privacyPolicy, .termsOfUse, .grievanceOfficer: return false
+        default: return true
         }
     }
 }

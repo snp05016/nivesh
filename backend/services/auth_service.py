@@ -1,5 +1,6 @@
 from helpers import get_session, get_user_by_credentials, User, create_access_token
 from database import create_user as _create_user
+from services.disclosure_service import CURRENT_POLICY_VERSION
 from services.kyc_consent_service import record_consent
 
 
@@ -28,8 +29,14 @@ PASSWORD_MIN_LENGTH = 8
 PASSWORD_MAX_BYTES = 72
 
 
-def register_user(username, password, display_name, accepted_policy_version=None, ip_address=None, app_version=None):
-    # Password policy; ValueError surfaces as HTTP 400 with this text as `detail`.
+def register_user(username, password, display_name, accepted_policy_version=None, age_confirmed=False, ip_address=None, app_version=None):
+    # REG-12: no account without consent to the current notice and an 18+
+    # attestation. ValueError surfaces as HTTP 400 with this text as `detail`.
+    if accepted_policy_version != CURRENT_POLICY_VERSION:
+        raise ValueError("Please update the app and accept the current Privacy Policy and Terms of Use.")
+    if age_confirmed is not True:
+        raise ValueError("You must be 18 or older to create an account.")
+    # Password policy.
     if not password or len(password) < PASSWORD_MIN_LENGTH:
         raise ValueError(f"Password must be at least {PASSWORD_MIN_LENGTH} characters.")
     if len(password.encode("utf-8")) > PASSWORD_MAX_BYTES:
@@ -44,14 +51,13 @@ def register_user(username, password, display_name, accepted_policy_version=None
             raise RuntimeError("Failed to create user")
         payload = _auth_payload(user)
 
-    # FINSEC-09: server-side record of the notice the user accepted at sign-up.
-    # Older clients send no version, so there is nothing to record for them.
-    if accepted_policy_version:
-        for consent_type in ("privacy_notice", "terms"):
-            record_consent(
-                payload["user_id"], consent_type, True,
-                ip_address=ip_address,
-                policy_version=accepted_policy_version,
-                app_version=app_version,
-            )
+    # FINSEC-09 / REG-12: server-side record of the notice and the age
+    # attestation the user accepted at sign-up.
+    for consent_type in ("privacy_notice", "terms", "age_18_plus"):
+        record_consent(
+            payload["user_id"], consent_type, True,
+            ip_address=ip_address,
+            policy_version=accepted_policy_version,
+            app_version=app_version,
+        )
     return payload

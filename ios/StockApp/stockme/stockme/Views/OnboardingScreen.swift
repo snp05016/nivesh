@@ -9,8 +9,8 @@ struct OnboardingScreen: View {
             PaperTexture()
 
             // Watermarks
-            BanknoteWatermark(text: "RESERVE BANK", size: 120, opacity: 0.02, alignment: .topLeading)
-            BanknoteWatermark(text: "CENTRAL REGISTRY", size: 100, opacity: 0.02, alignment: .bottomTrailing)
+            BanknoteWatermark(text: "NIVESH", size: 120, opacity: 0.02, alignment: .topLeading)
+            BanknoteWatermark(text: "निवेश", size: 100, opacity: 0.02, alignment: .bottomTrailing)
 
             VStack(spacing: Theme.Spacing.none) {
                 Spacer()
@@ -33,14 +33,14 @@ struct OnboardingScreen: View {
                         .font(Theme.engravedSerif(size: 44, weight: .bold, relativeTo: .largeTitle))
                         .foregroundStyle(Theme.inkPrimary)
                     
-                    Text("OFFICIAL FINANCIAL TENDER")
+                    Text("EDUCATIONAL MARKET TOOL")
                         .font(Theme.labelStyle)
                         .foregroundStyle(Theme.inkSecondary)
                 }
                 .staggerAppear(delay: 0.2)
 
                 // Tagline
-                Text("Invest with Official Clarity")
+                Text("Learn the market with clarity")
                     .font(Theme.engravedSerif(size: 16, relativeTo: .body))
                     .italic()
                     .foregroundStyle(Theme.inkSecondary)
@@ -51,16 +51,16 @@ struct OnboardingScreen: View {
 
                 // Features (Presented as Registry Bulletins)
                 VStack(spacing: Theme.Spacing.screen) {
-                    FeatureRegistryRow(icon: "shield.righthalf.filled", text: "AI-verified analysis for the Indian market", delay: 0.5)
+                    FeatureRegistryRow(icon: "shield.righthalf.filled", text: "AI-assisted analysis for the Indian market", delay: 0.5)
                     FeatureRegistryRow(icon: "indianrupeesign", text: "Secure real-time P&L tracking", delay: 0.6)
-                    FeatureRegistryRow(icon: "doc.text.fill", text: "Official archives and record keeping", delay: 0.7)
+                    FeatureRegistryRow(icon: "doc.text.fill", text: "Your portfolio records in one place", delay: 0.7)
                 }
                 .padding(.horizontal, Theme.Spacing.xLarge)
                 .padding(.bottom, Theme.Spacing.xLarge)
 
                 // CTA (The Official Access Button)
                 Button(action: { HapticManager.selection(); onContinue() }) {
-                    Text("ENTER REGISTRY")
+                    Text("GET STARTED")
                         .font(Theme.labelStyle)
                         .foregroundStyle(Theme.canvas)
                         .frame(maxWidth: .infinity)

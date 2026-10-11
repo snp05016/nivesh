@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 
 from main import app
+from tests.conftest import REGISTER_CONSENT
 
 
 CRITICAL_ROUTES = {
@@ -61,7 +62,7 @@ def _register_and_login(client, suffix: str) -> tuple[int, dict[str, str]]:
     password = "AuditPass!123"
     register = client.post(
         "/register",
-        json={"username": username, "password": password, "display_name": "Audit User"},
+        json={"username": username, "password": password, "display_name": "Audit User", **REGISTER_CONSENT},
     )
     assert register.status_code == 200, register.text
 
@@ -104,7 +105,7 @@ def test_auth_rejects_invalid_credentials(client):
 
 def test_register_duplicate_username_returns_400(client):
     username = f"dup_{uuid.uuid4().hex[:10]}"
-    payload = {"username": username, "password": "AuditPass!123", "display_name": "Duplicate"}
+    payload = {"username": username, "password": "AuditPass!123", "display_name": "Duplicate", **REGISTER_CONSENT}
     first = client.post("/register", json=payload)
     second = client.post("/register", json=payload)
 

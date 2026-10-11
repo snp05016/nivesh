@@ -18,6 +18,7 @@ import pytest
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from tests.conftest import REGISTER_CONSENT
 
 # conftest.py patches heavy modules before any app import — rely on that here.
 from models.db_models import Base, Portfolio, PortfolioGroup, Transaction
@@ -414,7 +415,8 @@ def auth_headers(test_client):
 
     username = f"ledger_{tag}"
     r = test_client.post("/register", json={
-        "username": username, "password": pw, "display_name": f"LedgerTest {tag}"
+        "username": username, "password": pw, "display_name": f"LedgerTest {tag}",
+        **REGISTER_CONSENT,
     })
     assert r.status_code in (200, 201, 400)  # 400 if already exists
 

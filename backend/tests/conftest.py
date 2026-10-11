@@ -185,6 +185,11 @@ if _database.ENGINE.url != _make_url(_TEST_DATABASE_URL):
 from database import init_db
 init_db()
 
+# REG-12: POST /register requires the current policy version and an 18+
+# attestation. Spread into every test registration payload.
+from services.disclosure_service import CURRENT_POLICY_VERSION as _CURRENT_POLICY_VERSION
+REGISTER_CONSENT = {"accepted_policy_version": _CURRENT_POLICY_VERSION, "age_confirmed": True}
+
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limiter():
@@ -270,6 +275,7 @@ def auth_token(client):
         "username": TEST_USERNAME,
         "password": TEST_PASSWORD,
         "display_name": TEST_DISPLAY,
+        **REGISTER_CONSENT,
     })
     # Always login
     resp = client.post("/login", json={
@@ -306,6 +312,7 @@ def admin_headers(client):
         "username": username,
         "password": password,
         "display_name": "Test Admin",
+        **REGISTER_CONSENT,
     })
     resp = client.post("/login", json={"username": username, "password": password})
     assert resp.status_code == 200, f"Admin login failed: {resp.text}"

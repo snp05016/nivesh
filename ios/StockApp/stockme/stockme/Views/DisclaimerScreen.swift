@@ -13,15 +13,15 @@ struct DisclaimerScreen: View {
                 Spacer()
 
                 VStack(spacing: Theme.Spacing.large) {
-                    // Official Warning Stamp
-                    BanknoteSignalBadge(text: "OFFICIAL NOTICE", color: Theme.securityGold, rotation: -4)
+                    // Warning Stamp
+                    BanknoteSignalBadge(text: "IMPORTANT", color: Theme.securityGold, rotation: -4)
                         .scaleEffect(1.2)
 
                     VStack(spacing: Theme.Spacing.small) {
                         Text("महत्वपूर्ण सूचना")
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(Theme.inkSecondary)
-                        Text("REGISTRY DISCLAIMER")
+                        Text("DISCLAIMER")
                             .font(Theme.engravedSerif(size: 22, weight: .bold, relativeTo: .title2))
                             .foregroundStyle(Theme.inkPrimary)
                     }
@@ -64,7 +64,7 @@ struct DisclaimerScreen: View {
                     }
 
                     VStack(spacing: Theme.Spacing.xSmall) {
-                        Text("By entering the registry you agree to the")
+                        Text("By continuing you agree to the")
                             .foregroundStyle(Theme.inkSecondary.opacity(0.6))
                             .multilineTextAlignment(.center)
                         Button { showTerms = true } label: {

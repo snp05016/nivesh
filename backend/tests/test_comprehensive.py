@@ -11,6 +11,7 @@ import sys
 import os
 
 from main import app
+from tests.conftest import REGISTER_CONSENT
 
 # Rate-limiter state is reset per test by the autouse fixture in conftest.py.
 client = TestClient(app)
@@ -39,7 +40,8 @@ class TestAuthEndpoints:
         response = client.post("/register", json={
             "username": "testuser_new",
             "password": "testpass123",
-            "display_name": "Test User"
+            "display_name": "Test User",
+            **REGISTER_CONSENT,
         })
         assert response.status_code in [200, 400]  # 400 if username already exists
     
@@ -49,13 +51,15 @@ class TestAuthEndpoints:
         client.post("/register", json={
             "username": "duplicate_user",
             "password": "testpass123",
-            "display_name": "Duplicate User"
+            "display_name": "Duplicate User",
+            **REGISTER_CONSENT,
         })
         # Second registration with same username
         response = client.post("/register", json={
             "username": "duplicate_user",
             "password": "testpass456",
-            "display_name": "Duplicate User 2"
+            "display_name": "Duplicate User 2",
+            **REGISTER_CONSENT,
         })
         assert response.status_code in [200, 400]
 
@@ -577,7 +581,8 @@ class TestIntegration:
         reg_response = client.post("/register", json={
             "username": "integration_test",
             "password": "testpass123",
-            "display_name": "Integration Test"
+            "display_name": "Integration Test",
+            **REGISTER_CONSENT,
         })
         
         # 2. Login

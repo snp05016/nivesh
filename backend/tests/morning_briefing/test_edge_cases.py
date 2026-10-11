@@ -12,6 +12,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from tests.morning_briefing import _json_body
+from tests.conftest import REGISTER_CONSENT
 
 
 # ---------------------------------------------------------------------------
@@ -30,6 +31,7 @@ def _create_user(client, suffix):
         "username": username,
         "password": password,
         "display_name": f"Edge User {suffix}",
+        **REGISTER_CONSENT,
     })
     if resp.status_code not in (200, 409):
         raise RuntimeError(f"Register failed: {resp.status_code} {resp.text}")

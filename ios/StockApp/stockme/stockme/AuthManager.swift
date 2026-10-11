@@ -58,12 +58,12 @@ class AuthManager: ObservableObject {
         isLoggingIn = false
     }
     
-    func register(username: String, password: String, displayName: String) async {
+    func register(username: String, password: String, displayName: String, ageConfirmed: Bool) async {
         isLoggingIn = true
         loginError = nil
         do {
-            // The registration form only enables this after the policy checkbox is ticked.
-            let user = try await NetworkManager.shared.register(username: username, password: password, displayName: displayName, acceptedPolicyVersion: PolicyVersion.current)
+            // The registration form only enables this after the policy and 18+ boxes are ticked.
+            let user = try await NetworkManager.shared.register(username: username, password: password, displayName: displayName, acceptedPolicyVersion: PolicyVersion.current, ageConfirmed: ageConfirmed)
             currentUser = user
             NetworkManager.shared.authToken = user.token
             persist(user)

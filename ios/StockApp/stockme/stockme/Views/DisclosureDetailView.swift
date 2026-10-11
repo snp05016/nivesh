@@ -5,10 +5,10 @@ import SwiftUI
 // Generic screen that fetches and renders a DisclosureDTO by key from the
 // REAL GET /api/v1/compliance/disclosures/{key} endpoint
 // (backend/routers/compliance.py + backend/services/disclosure_service.py).
-// DEMO-GRADE / ILLUSTRATIVE CONTENT ONLY — every disclosure body rendered
-// here is clearly-labelled placeholder/demo copy for a portfolio project,
-// NOT real legal advice, NOT a real regulatory filing, and does NOT
-// reference any real SEBI/RBI registration or license number.
+// Privacy Policy, Terms of Use and Grievance Officer are the real notices
+// (no demo badge). Every other key (key.isDemoContent) is clearly-labelled
+// placeholder/demo copy: NOT real legal advice, NOT a real regulatory filing,
+// and does NOT reference any real SEBI/RBI registration or license number.
 
 struct DisclosureDetailView: View {
     let key: DisclosureKey
@@ -40,7 +40,7 @@ struct DisclosureDetailView: View {
                     .font(Theme.engravedSerif(size: 22, weight: .bold))
                     .foregroundStyle(Theme.inkPrimary)
 
-                demoBadge
+                if key.isDemoContent { demoBadge }
 
                 Text(disclosure.body)
                     .font(Theme.engravedSerif(size: 13, relativeTo: .subheadline))

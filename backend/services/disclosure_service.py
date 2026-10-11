@@ -6,7 +6,9 @@ HTTP input and call functions here.
 
 DEMO-GRADE / ILLUSTRATIVE CONTENT ONLY
 ---------------------------------------
-Every disclosure body below is clearly-labelled placeholder/demo copy for a
+Except the privacy_policy / terms_of_use / grievance_officer notices (REG-12,
+interim wording pending legal review), every disclosure body below is
+clearly-labelled placeholder/demo copy for a
 portfolio project. It is NOT real legal advice, NOT a real regulatory
 filing, and does NOT reference any real SEBI/RBI registration or license
 number. Nothing in this module should be treated as compliant legal text
@@ -14,6 +16,7 @@ for an actual regulated lending/fintech product.
 """
 import hashlib
 import json
+import os
 from decimal import Decimal
 from typing import Optional, cast
 
@@ -57,7 +60,7 @@ _AI_PROCESSORS_TEXT = (
 # registration. Bump it whenever either text changes; iOS PolicyVersion.current
 # (Models/KYCModels.swift) must match. The bodies below are still interim
 # wording: the owner/legal must supply the final text.
-CURRENT_POLICY_VERSION = "2026-10-01"
+CURRENT_POLICY_VERSION = "2026-10-11"
 
 # FINSEC-09: purpose text stored with every consent row, so each record says
 # what the user agreed to. record_consent rejects any type not listed here.
@@ -68,50 +71,108 @@ CONSENT_PURPOSES = {
     "ai_processing": "Send portfolio data to the AI processors named in the Privacy Policy.",
     "privacy_notice": "Acknowledge the Privacy Policy before creating an account.",
     "terms": "Accept the Terms of Use before creating an account.",
+    "age_18_plus": "Confirm you are 18 or older before creating an account.",
     "disclaimer": "Acknowledge the not-financial-advice disclaimer.",
 }
 
+# REG-12: grievance officer contact (DPDP Rules / IT Rules 2021). Read from the
+# server .env, which main.py loads before importing services.
+_GRIEVANCE_NAME = os.getenv("GRIEVANCE_OFFICER_NAME", "").strip() or "to be published"
+_GRIEVANCE_EMAIL = os.getenv("GRIEVANCE_OFFICER_EMAIL", "").strip() or "to be published"
+_GRIEVANCE_TEXT = (
+    f"Grievance Officer: {_GRIEVANCE_NAME}, email: {_GRIEVANCE_EMAIL}. Write "
+    "to this address about your personal data, a consent, a deletion request "
+    "or any other complaint about the app. We acknowledge a complaint within "
+    "24 hours and aim to resolve it within 15 days. If you are not satisfied "
+    "with the outcome, you can complain to the Data Protection Board of India."
+)
+
 STATIC_DISCLOSURES = {
+    # REG-12: real notice (DPDP Act s.5, Apple 5.1.1(i)). Interim wording until
+    # legal review; bump CURRENT_POLICY_VERSION whenever it changes.
     "privacy_policy": {
-        "title": "Privacy Policy (Demo)",
+        "title": "Privacy Policy",
         "version": CURRENT_POLICY_VERSION,
-        "body": _MOCK_DISCLAIMER,
+        "body": (
+            "This notice explains what personal data Nivesh collects, why, who "
+            "receives it, how long it is kept, and how you can use your rights. "
+            "You must be 18 or older to create an account."
+        ),
         "sections": [
             _section(
                 "What we collect",
-                "In this demo app, account details, portfolio holdings, watchlist "
-                "activity, and (for the mock loan/FD marketplace) KYC consent "
-                "records and a device identifier are stored. No real government "
-                "ID or biometric data is collected. Each consent record stores "
-                "the policy version, its purpose, the time, your IP address and "
-                "the app version.",
+                "Account: username, display name and a hashed password (never "
+                "the password itself). What you enter: portfolio holdings and "
+                "transactions, watchlists, price alerts, finance-tracker "
+                "entries, forum posts and votes, and Copilot or other AI-feature "
+                "questions. Device and technical data: a device identifier for "
+                "device binding, the Apple push-notification token if you allow "
+                "notifications, your IP address in consent records and "
+                "rate-limit checks, and the app version. Each consent record "
+                "stores the policy version, its purpose and the time. We do not "
+                "collect government ID, bank or card details, or biometric data.",
             ),
             _section(
-                "How we use it",
-                "Data is used only to render the demo app's features (portfolio "
-                "tracking, mock loan/FD marketplace, forum, alerts). There is no "
-                "real advertising, profiling, or resale of user data.",
-            ),
-            _section(
-                "Retention & deletion",
-                "See GET/POST /api/v1/compliance/deletion-requests for the demo "
-                "right-to-erasure workflow (DEMO-GRADE — a state-machine record "
-                "only, not real irreversible deletion).",
+                "Why we use it",
+                "To run your account and sign-in; to show your portfolio, "
+                "watchlist, alerts and analysis; to answer AI-feature requests; "
+                "to send the notifications you turned on; to run the forum and "
+                "moderate it; and to keep the service secure (rate limits, "
+                "fraud checks, audit logs). We do not sell your data, show "
+                "ads or build advertising profiles.",
             ),
             _section("AI processors", _AI_PROCESSORS_TEXT),
+            _section(
+                "Other recipients",
+                "Apple Push Notification service (USA) receives your device "
+                "token and the alert text when a notification is sent. Our "
+                "hosting provider stores the data on our servers. Market data, "
+                "news and YouTube videos are fetched from public sources; no "
+                "personal data is sent to them.",
+            ),
+            _section(
+                "How long we keep it",
+                "We keep your data while your account exists. To delete your "
+                "account, write to the Grievance Officer below with the username "
+                "on your account. Your account is then erased "
+                "after a 7-day grace period in which you can cancel: holdings, "
+                "transactions, watchlists, alerts, journal entries, preferences "
+                "and device tokens are deleted, past stock analyses are kept "
+                "only without a link to you, and your username and display name "
+                "are replaced. Forum posts stay under a deleted-account label, "
+                "and consent and audit records are kept, with the IP address "
+                "removed, as evidence of what was agreed to.",
+            ),
+            _section(
+                "Your rights",
+                "You can see and correct your data in the app. You can "
+                "withdraw the credit-check, device-binding, data-sharing and "
+                "AI-processing consents in Settings > Account Security > KYC "
+                "Consents; withdrawing is as easy as giving consent, and "
+                "features that need that consent stop using your data. To ask "
+                "for deletion, to get a summary of your data, or to nominate "
+                "someone to exercise these rights for you, write to the "
+                "Grievance Officer below.",
+            ),
+            _section("Grievance Officer", _GRIEVANCE_TEXT),
         ],
     },
     "terms_of_use": {
-        "title": "Terms of Use (Demo)",
+        "title": "Terms of Use",
         "version": CURRENT_POLICY_VERSION,
-        "body": _MOCK_DISCLAIMER,
+        "body": (
+            "These terms apply to your use of Nivesh. By creating an account "
+            "you confirm that you are 18 or older and agree to them."
+        ),
         "sections": [
             _section(
                 "Educational use only",
                 "Nivesh shows market data, analysis and AI-generated text for "
                 "educational purposes only. Nothing in the app is investment, "
                 "tax or legal advice, and AI predictions are speculative. "
-                "Consult a SEBI-registered adviser before you invest.",
+                "Nivesh is not registered with SEBI as an investment adviser or "
+                "research analyst. Consult a SEBI-registered adviser before you "
+                "invest; you alone are responsible for your investment decisions.",
             ),
             _section(
                 "No trading or lending",
@@ -120,11 +181,32 @@ STATIC_DISCLOSURES = {
             ),
             _section(
                 "Your account",
-                "Keep your password private. You can withdraw consents in "
-                "Settings and ask for account deletion through the deletion "
-                "request flow described in the Privacy Policy.",
+                "You must be 18 or older. Keep your password private. You can "
+                "withdraw consents in Settings and ask for account deletion as "
+                "described in the Privacy Policy.",
             ),
+            _section(
+                "Forum and acceptable use",
+                "Do not post stock tips for payment, pump-and-dump or other "
+                "market-manipulation content, other people's personal data, or "
+                "unlawful, abusive or infringing material. Do not attack or "
+                "scrape the service. We may remove content and suspend accounts "
+                "that break these rules.",
+            ),
+            _section(
+                "Data accuracy and liability",
+                "Market data can be delayed or wrong. The app is provided as is, "
+                "and we are not liable for losses arising from decisions based "
+                "on it, to the extent the law allows.",
+            ),
+            _section("Grievances", _GRIEVANCE_TEXT),
         ],
+    },
+    "grievance_officer": {
+        "title": "Contact & Grievance Officer",
+        "version": CURRENT_POLICY_VERSION,
+        "body": _GRIEVANCE_TEXT,
+        "sections": [],
     },
     "data_sharing_governance": {
         "title": "Third-Party Data Sharing Governance (Demo)",

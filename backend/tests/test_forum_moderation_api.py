@@ -20,6 +20,7 @@ from core.security import require_admin
 from database import get_session
 from main import app
 from models.db_models import ForumPost, ForumReport
+from tests.conftest import REGISTER_CONSENT
 
 _ALLOW = {"action": "allow", "spam_score": 0, "sentiment": "neutral"}
 
@@ -44,6 +45,7 @@ def _new_user(client) -> dict:
         "username": f"forum_mod_{tag}",
         "password": "ForumPass!1234",
         "display_name": f"Forum Mod {tag}",
+        **REGISTER_CONSENT,
     })
     assert resp.status_code == 200, resp.text
     data = resp.json()

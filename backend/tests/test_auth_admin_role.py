@@ -9,13 +9,14 @@ from sqlalchemy.orm import sessionmaker
 
 import database
 from models.db_models import Base, User
+from tests.conftest import REGISTER_CONSENT
 
 PASSWORD = "AdminRole!2026"
 
 
 def _register(client, username):
     """Register via the API: (user_id, auth headers), or (None, None) if the name is taken."""
-    resp = client.post("/register", json={"username": username, "password": PASSWORD, "display_name": username})
+    resp = client.post("/register", json={"username": username, "password": PASSWORD, "display_name": username, **REGISTER_CONSENT})
     assert resp.status_code in (200, 400), resp.text
     if resp.status_code == 400:
         return None, None

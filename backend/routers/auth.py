@@ -25,6 +25,7 @@ def register_endpoint(req: RegisterRequest, request: Request):
         return register_user(
             req.username, req.password, req.display_name,
             accepted_policy_version=req.accepted_policy_version,
+            age_confirmed=req.age_confirmed,
             ip_address=client_ip if request.client else None,
             app_version=(request.headers.get("x-app-version") or "")[:20] or None,
         )

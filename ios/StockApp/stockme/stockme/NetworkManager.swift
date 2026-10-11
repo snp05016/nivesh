@@ -292,17 +292,20 @@ class NetworkManager: ObservableObject {
         let username: String
         let password: String
         let display_name: String
-        let accepted_policy_version: String?
+        let accepted_policy_version: String
+        let age_confirmed: Bool
     }
 
-    func register(username: String, password: String, displayName: String, acceptedPolicyVersion: String?) async throws -> LoggedInUser {
+    /// REG-12: the server rejects registration without the current policy
+    /// version (400) and an 18+ attestation.
+    func register(username: String, password: String, displayName: String, acceptedPolicyVersion: String, ageConfirmed: Bool) async throws -> LoggedInUser {
         guard let url = URL(string: "\(baseURL)/register") else { throw NetworkError.invalidURL }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         // Stored with the server's privacy_notice/terms consent rows (FINSEC-09).
         request.setValue(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String, forHTTPHeaderField: "X-App-Version")
-        request.httpBody = try JSONEncoder().encode(RegisterRequest(username: username, password: password, display_name: displayName, accepted_policy_version: acceptedPolicyVersion))
+        request.httpBody = try JSONEncoder().encode(RegisterRequest(username: username, password: password, display_name: displayName, accepted_policy_version: acceptedPolicyVersion, age_confirmed: ageConfirmed))
 
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }

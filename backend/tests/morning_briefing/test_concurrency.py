@@ -16,6 +16,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from tests.morning_briefing import _json_body, MOCK_MORNING_BRIEF_TEXT
+from tests.conftest import REGISTER_CONSENT
 
 
 # ---------------------------------------------------------------------------
@@ -34,6 +35,7 @@ def _create_user_and_seed(client, suffix):
         "username": username,
         "password": password,
         "display_name": f"Concurrency User {suffix}",
+        **REGISTER_CONSENT,
     })
     if resp.status_code not in (200, 409):
         raise RuntimeError(f"Register failed: {resp.status_code} {resp.text}")

@@ -10,6 +10,7 @@ struct LoginScreen: View {
     @State private var displayName = ""
     @State private var showPassword = false
     @State private var acceptedPolicy = false
+    @State private var ageConfirmed = false
     @FocusState private var focusedField: Field?
 
     enum Field { case username, password, displayName }
@@ -20,12 +21,12 @@ struct LoginScreen: View {
             PaperTexture()
             
             // Background Medallions
-            BanknoteWatermark(text: "RESERVE BANK", size: 120, opacity: 0.02, alignment: .topLeading)
-            BanknoteWatermark(text: "OFFICIAL", size: 100, opacity: 0.015, alignment: .bottomTrailing)
+            BanknoteWatermark(text: "NIVESH", size: 120, opacity: 0.02, alignment: .topLeading)
+            BanknoteWatermark(text: "निवेश", size: 100, opacity: 0.015, alignment: .bottomTrailing)
 
             ScrollView {
                 VStack(spacing: Theme.Spacing.none) {
-                    // Header (Official Denomination Style)
+                    // Header (Denomination Style)
                     VStack(spacing: Theme.Spacing.card) {
                         ZStack {
                             Circle()
@@ -42,7 +43,7 @@ struct LoginScreen: View {
                             Text("निवेश / NIVESH")
                                 .font(Theme.engravedSerif(size: 34, weight: .bold, relativeTo: .largeTitle))
                                 .foregroundStyle(Theme.inkPrimary)
-                            Text(isRegistering ? "NEW REGISTRY ENROLLMENT" : "CENTRAL REGISTRY ACCESS")
+                            Text(isRegistering ? "CREATE ACCOUNT" : "SIGN IN")
                                 .font(Theme.labelStyle)
                                 .foregroundStyle(Theme.inkSecondary)
                         }
@@ -65,7 +66,7 @@ struct LoginScreen: View {
                                         Image(systemName: "person.text.rectangle.fill")
                                             .font(.callout)
                                             .foregroundStyle(Theme.inkSecondary.opacity(0.5))
-                                        TextField("official name...", text: $displayName)
+                                        TextField("display name...", text: $displayName)
                                             .textContentType(.name)
                                             .accessibilityLabel("Full name")
                                             .foregroundStyle(Theme.inkPrimary)
@@ -89,7 +90,7 @@ struct LoginScreen: View {
                                     Image(systemName: "person.fill")
                                         .font(.callout)
                                         .foregroundStyle(Theme.inkSecondary.opacity(0.5))
-                                    TextField("identity entry...", text: $username)
+                                    TextField("username...", text: $username)
                                         .textContentType(.username)
                                         .accessibilityLabel("Username")
                                         .autocorrectionDisabled()
@@ -147,7 +148,7 @@ struct LoginScreen: View {
                             }
 
                             if isRegistering {
-                                PolicyConsentRow(accepted: $acceptedPolicy)
+                                PolicyConsentRow(accepted: $acceptedPolicy, ageConfirmed: $ageConfirmed)
                             }
                         }
 
@@ -170,7 +171,7 @@ struct LoginScreen: View {
                                 if authManager.isLoggingIn {
                                     ProgressView().tint(Theme.inkPrimary)
                                 } else {
-                                    Text(isRegistering ? "ENROLL IN REGISTRY" : "AUTHENTICATE & ENTER")
+                                    Text(isRegistering ? "CREATE ACCOUNT" : "SIGN IN")
                                         .font(Theme.labelStyle)
                                         .tracking(1)
                                 }
@@ -187,7 +188,7 @@ struct LoginScreen: View {
                         Button(action: { HapticManager.selection();  HapticManager.selection()
                             withAnimation { isRegistering.toggle() }
                         }) {
-                            Text(isRegistering ? "ALREADY ENROLLED? SIGN IN" : "NEW USER? ENROLL HERE")
+                            Text(isRegistering ? "HAVE AN ACCOUNT? SIGN IN" : "NEW USER? CREATE ACCOUNT")
                                 .font(Theme.labelStyle)
                                 .foregroundStyle(Theme.securityGold)
                         }
@@ -208,7 +209,7 @@ struct LoginScreen: View {
     private var canProceed: Bool {
         if isRegistering {
             // Mirrors the server's password policy (auth_service.register_user).
-            return !username.isEmpty && password.count >= 8 && !displayName.isEmpty && acceptedPolicy
+            return !username.isEmpty && password.count >= 8 && !displayName.isEmpty && acceptedPolicy && ageConfirmed
         }
         return !username.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
     }
@@ -218,7 +219,7 @@ struct LoginScreen: View {
         focusedField = nil
         Task {
             if isRegistering {
-                await authManager.register(username: username, password: password, displayName: displayName)
+                await authManager.register(username: username, password: password, displayName: displayName, ageConfirmed: ageConfirmed)
             } else {
                 await authManager.login(username: username, password: password)
             }
@@ -226,35 +227,19 @@ struct LoginScreen: View {
     }
 }
 
-/// FINSEC-09: privacy notice shown at registration. Registration stays disabled
-/// until the box is ticked; AuthManager.register sends PolicyVersion.current so
-/// the server records which version was accepted.
+/// FINSEC-09 / REG-12: privacy notice and 18+ attestation shown at
+/// registration. Registration stays disabled until both boxes are ticked;
+/// AuthManager.register sends PolicyVersion.current and the age attestation so
+/// the server records what was accepted.
 private struct PolicyConsentRow: View {
     @Binding var accepted: Bool
+    @Binding var ageConfirmed: Bool
     @State private var shownPolicy: DisclosureKey?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-            Button {
-                HapticManager.selection()
-                accepted.toggle()
-            } label: {
-                HStack(alignment: .top, spacing: Theme.Spacing.medium) {
-                    Image(systemName: accepted ? "checkmark.square.fill" : "square")
-                        .font(.callout)
-                        .foregroundStyle(accepted ? Theme.inkPrimary : Theme.inkSecondary)
-                    Text("I agree to the Privacy Policy and Terms of Use")
-                        .font(.caption)
-                        .foregroundStyle(Theme.inkPrimary)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("I agree to the Privacy Policy and Terms of Use")
-            .accessibilityValue(accepted ? "Checked" : "Not checked")
-            .accessibilityAddTraits(.isButton)
+            ConsentCheckbox(isOn: $ageConfirmed, label: "I am 18 or older")
+            ConsentCheckbox(isOn: $accepted, label: "I agree to the Privacy Policy and Terms of Use")
 
             HStack(spacing: Theme.Spacing.large) {
                 ForEach([DisclosureKey.privacyPolicy, .termsOfUse]) { key in
@@ -270,5 +255,33 @@ private struct PolicyConsentRow: View {
             NavigationStack { DisclosureDetailView(key: key) }
                 .presentationDragIndicator(.visible)
         }
+    }
+}
+
+private struct ConsentCheckbox: View {
+    @Binding var isOn: Bool
+    let label: String
+
+    var body: some View {
+        Button {
+            HapticManager.selection()
+            isOn.toggle()
+        } label: {
+            HStack(alignment: .top, spacing: Theme.Spacing.medium) {
+                Image(systemName: isOn ? "checkmark.square.fill" : "square")
+                    .font(.callout)
+                    .foregroundStyle(isOn ? Theme.inkPrimary : Theme.inkSecondary)
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkPrimary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(isOn ? "Checked" : "Not checked")
+        .accessibilityAddTraits(.isButton)
     }
 }

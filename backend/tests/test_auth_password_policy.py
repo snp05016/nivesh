@@ -5,6 +5,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
+from tests.conftest import REGISTER_CONSENT
 
 
 @pytest.fixture
@@ -20,6 +21,7 @@ def register(client, monkeypatch):
                 "username": f"pwpolicy_{uuid4().hex[:12]}",
                 "password": password,
                 "display_name": "Password Policy",
+                **REGISTER_CONSENT,
             },
         )
 

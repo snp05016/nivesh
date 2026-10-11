@@ -1,6 +1,7 @@
 """FINSEC-09: consent rows record what the user agreed to (policy version,
 purpose, notice hash, app version), registration records the privacy notice
-server-side, and the Terms of Use disclosure is served.
+server-side, and the Terms of Use disclosure is served. Registration without
+consent is rejected (REG-12, test_register_consent.py).
 
 Throwaway users keep these tests independent of the shared session test user.
 """
@@ -116,6 +117,7 @@ def test_register_records_privacy_notice(client, monkeypatch):
             "password": "abcd1234",
             "display_name": "Consent Register",
             "accepted_policy_version": CURRENT_POLICY_VERSION,
+            "age_confirmed": True,
         },
     )
 
@@ -128,19 +130,6 @@ def test_register_records_privacy_notice(client, monkeypatch):
     assert privacy["notice_hash"] == notice_hash("privacy_policy")
     [terms] = _rows(user_id, "terms")
     assert terms["notice_hash"] == notice_hash("terms_of_use")
-
-
-def test_register_without_policy_version_records_nothing(client, monkeypatch):
-    import routers.auth as auth_router
-
-    monkeypatch.setattr(auth_router, "_check_rate_limit", lambda *_args, **_kwargs: True)
-    resp = client.post(
-        "/register",
-        json={"username": f"consentold_{uuid4().hex[:12]}", "password": "abcd1234", "display_name": "Old Client"},
-    )
-
-    assert resp.status_code == 200, resp.text
-    assert _rows(resp.json()["user_id"], "privacy_notice") == []
 
 
 def test_terms_disclosure_served(client):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from uuid import uuid4
+from tests.conftest import REGISTER_CONSENT
 
 
 def _unique_name(prefix: str) -> str:
@@ -38,6 +39,7 @@ def test_register_duplicate_username_returns_400(client, monkeypatch):
         "username": username,
         "password": "ContractPass!123",
         "display_name": "Contract Register",
+        **REGISTER_CONSENT,
     }
 
     first = client.post("/register", json=payload)
@@ -62,6 +64,7 @@ def test_register_returns_usable_access_token(client, monkeypatch):
             "username": username,
             "password": "ContractPass!123",
             "display_name": "Contract Signup",
+            **REGISTER_CONSENT,
         },
     )
 

@@ -19,6 +19,7 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from unittest.mock import patch
+from tests.conftest import REGISTER_CONSENT
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -456,7 +457,8 @@ def auth(api_client):
     pw = "Test1234!"
 
     r = api_client.post("/register", json={
-        "username": username, "password": pw, "display_name": f"Ledger {tag}"
+        "username": username, "password": pw, "display_name": f"Ledger {tag}",
+        **REGISTER_CONSENT,
     })
     assert r.status_code in (200, 201, 400)
 

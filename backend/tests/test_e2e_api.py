@@ -10,6 +10,7 @@ import os
 import time
 import hashlib
 from datetime import datetime
+from tests.conftest import REGISTER_CONSENT
 
 BASE_URL = os.getenv("NIVESH_LIVE_E2E_BASE_URL")
 TIMEOUT = 30
@@ -87,7 +88,8 @@ class TestAuth:
         r = requests.post(f"{BASE_URL}/register", json={
             "username": f"testuser_{unique}",
             "password": "TestPass123!",
-            "display_name": "Test User"
+            "display_name": "Test User",
+            **REGISTER_CONSENT,
         }, timeout=TIMEOUT)
         assert r.status_code in (200, 201)
 

@@ -117,7 +117,7 @@ struct SettingsScreen: View {
                             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                 Text(user.displayName)
                                     .font(Theme.engravedSerif(size: 20, weight: .semibold)).foregroundStyle(Theme.inkPrimary)
-                                Text("Registry #\(String(user.userId))-AUTH")
+                                Text("Account #\(String(user.userId))")
                                     .font(Theme.serialNumberFont(size: 11)).foregroundStyle(Theme.inkTertiary)
                             }
                             Spacer()
@@ -240,6 +240,8 @@ struct SettingsScreen: View {
         SettingsGroup(title: "DATA & PRIVACY", hindi: "डेटा और गोपनीयता") {
             NavRow(icon: "doc.text", color: Theme.securityGold, title: "Saved Reports", destination: ReportManagerView(reportManager: reportManager), badge: "\(reportManager.savedReports.count)")
             NavRow(icon: "hand.raised", color: Theme.securityGold, title: "Privacy Policy", destination: DisclosureDetailView(key: .privacyPolicy))
+            NavRow(icon: "doc.plaintext", color: Theme.securityGold, title: "Terms of Use", destination: DisclosureDetailView(key: .termsOfUse))
+            NavRow(icon: "envelope", color: Theme.securityGold, title: "Contact & Grievance Officer", destination: DisclosureDetailView(key: .grievanceOfficer))
             NavRow(icon: "network", color: Theme.securityGold, title: "Data Sharing Governance", destination: DisclosureDetailView(key: .dataSharingGovernance))
             Button { HapticManager.selection(); 
     HapticManager.selection()
