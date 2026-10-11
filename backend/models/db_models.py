@@ -1592,3 +1592,181 @@ class FixedDepositBooking(Base):
             name="ck_fixed_deposit_booking_payment_method",
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# Research Engine ledger (spec §8.1). Migration t4u5v6w7x8y9.
+#
+# research_runs         one row per nightly kick / outcome scoring / live-metrics run
+# research_reports      stored ResearchReport JSON (nightly or on-demand) + prose
+# research_predictions  the prediction ledger; prediction columns are never
+#                       updated; outcome columns are written once by the scorer
+#                       (repositories/research_repo.write_outcome_once)
+# research_live_metrics weekly live track-record rows per (procedure, horizon)
+#
+# Imports are local to this section so the shared import block above stays
+# untouched (several tracks edit it).
+# ---------------------------------------------------------------------------
+
+from datetime import date  # noqa: E402
+from decimal import Decimal  # noqa: E402
+from typing import Any, Optional  # noqa: E402
+
+from sqlalchemy import Date, SmallInteger  # noqa: E402
+from sqlalchemy.orm import Mapped, mapped_column  # noqa: E402
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class ResearchRun(Base):
+    """One research job execution (nightly kick, outcome scoring or live metrics)."""
+    __tablename__ = "research_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_uid: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)  # ml-engine run_id
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    market_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    stage: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    counts_json: Mapped[Optional[Any]] = mapped_column(JSON(none_as_null=True), nullable=True)
+    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # stale_run, engine_restarted, engine_busy, ...
+    started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("run_uid", name="uq_research_runs_run_uid"),
+        CheckConstraint("kind IN ('nightly','outcomes','live_metrics')", name="ck_research_runs_kind"),
+        CheckConstraint(
+            "status IN ('running','ok','degraded','failed','skipped_holiday')",
+            name="ck_research_runs_status",
+        ),
+        Index("ix_research_runs_kind_market_date", "kind", "market_date"),
+    )
+
+
+class ResearchReportRow(Base):
+    """A stored ResearchReport (contract research.v1) plus its validated prose."""
+    __tablename__ = "research_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    report_uid: Mapped[str] = mapped_column(String(36), nullable=False)  # contract report_id (uuid4)
+    symbol: Mapped[str] = mapped_column(String(30), nullable=False)
+    isin: Mapped[Optional[str]] = mapped_column(String(12), nullable=True)
+    as_of_date: Mapped[date] = mapped_column(Date, nullable=False)
+    engine_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    procedure_id: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    run_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("research_runs.id"), nullable=True)
+    origin: Mapped[str] = mapped_column(String(10), nullable=False)
+    status: Mapped[str] = mapped_column(String(10), nullable=False)
+    in_universe: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    requested_by_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # on-demand quota only
+    report_json: Mapped[Any] = mapped_column(JSON, nullable=False)
+    facts_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    narrative_json: Mapped[Optional[Any]] = mapped_column(JSON(none_as_null=True), nullable=True)
+    narrative_status: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    narrative_attempts: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0, server_default="0")
+    narrative_failures_json: Mapped[Optional[Any]] = mapped_column(JSON(none_as_null=True), nullable=True)
+    narrative_generated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("report_uid", name="uq_research_reports_report_uid"),
+        UniqueConstraint(
+            "symbol", "as_of_date", "engine_version", "origin",
+            name="uq_research_reports_symbol_date_engine_origin",
+        ),
+        CheckConstraint("origin IN ('nightly','on_demand')", name="ck_research_reports_origin"),
+        CheckConstraint("status IN ('ok','degraded')", name="ck_research_reports_status"),
+        CheckConstraint(
+            "narrative_status IN ('llm_validated','template')",
+            name="ck_research_reports_narrative_status",
+        ),
+        Index("ix_research_reports_symbol_as_of_date", "symbol", "as_of_date"),
+    )
+
+
+class ResearchPrediction(Base):
+    """Prediction ledger row. Prediction columns are immutable; the outcome
+    columns are written once (outcome_status 'pending' -> 'matured'|'void').
+    report_id becomes NULL when the report is pruned (ON DELETE SET NULL)."""
+    __tablename__ = "research_predictions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    report_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("research_reports.id", ondelete="SET NULL"), nullable=True,
+    )
+    symbol: Mapped[str] = mapped_column(String(30), nullable=False)
+    isin: Mapped[Optional[str]] = mapped_column(String(12), nullable=True)
+    as_of_date: Mapped[date] = mapped_column(Date, nullable=False)
+    horizon_days: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    procedure_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    model_id: Mapped[str] = mapped_column(String(80), nullable=False)
+    manifest_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    universe_id: Mapped[str] = mapped_column(String(20), nullable=False)
+    evidence_tier: Mapped[str] = mapped_column(String(24), nullable=False)
+    reason_codes: Mapped[Optional[Any]] = mapped_column(JSON(none_as_null=True), nullable=True)
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    rank_pct: Mapped[float] = mapped_column(Float, nullable=False)
+    bucket: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    p_top_half: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    entry_close: Mapped[Decimal] = mapped_column(Numeric(14, 4), nullable=False)  # raw close, same snapshot
+    feature_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    expected_maturity_date: Mapped[date] = mapped_column(Date, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+    # Written once by the scorer:
+    outcome_status: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="pending", server_default="pending",
+    )
+    void_reason: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    realized_return_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    realized_excess_pp: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    realized_top_half: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    nifty50_return_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    stale_exit: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    scored_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    scorer_version: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("report_id", "horizon_days", name="uq_research_predictions_report_horizon"),
+        UniqueConstraint(
+            "symbol", "as_of_date", "horizon_days", "model_id",
+            name="uq_research_predictions_symbol_date_horizon_model",
+        ),
+        CheckConstraint("horizon_days IN (21,63)", name="ck_research_predictions_horizon"),
+        CheckConstraint(
+            "outcome_status IN ('pending','matured','void')",
+            name="ck_research_predictions_outcome_status",
+        ),
+        Index("ix_research_predictions_outcome_maturity", "outcome_status", "expected_maturity_date"),
+        Index("ix_research_predictions_procedure_horizon_as_of", "procedure_id", "horizon_days", "as_of_date"),
+    )
+
+
+class ResearchLiveMetric(Base):
+    """Weekly live track-record snapshot for one (procedure, horizon)."""
+    __tablename__ = "research_live_metrics"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    procedure_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    horizon_days: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    computed_on: Mapped[date] = mapped_column(Date, nullable=False)
+    live_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    live_gate_passed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    matured_n: Mapped[int] = mapped_column(Integer, nullable=False)
+    matured_dates: Mapped[int] = mapped_column(Integer, nullable=False)
+    metrics_json: Mapped[Any] = mapped_column(JSON, nullable=False)  # full LiveMetricsResponse
+    alarms_json: Mapped[Any] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "procedure_id", "horizon_days", "computed_on",
+            name="uq_research_live_metrics_procedure_horizon_day",
+        ),
+        CheckConstraint(
+            "live_status IN ('collecting','ok','under_review')",
+            name="ck_research_live_metrics_live_status",
+        ),
+    )
