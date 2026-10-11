@@ -41,12 +41,9 @@ def _set_filings_cache(data: dict) -> None:
 # NSE corporate filings scraper
 # ---------------------------------------------------------------------------
 
-_NSE_FILINGS_URL = "https://www.nseindia.com/api/corporates?index=equities"
-_NSE_HEADERS = {
-    "User-Agent": get_user_agent(),
-    "Accept": "application/json",
-    "Referer": "https://www.niseindia.com/",
-}
+# Needs live confirmation on the server: field names below follow NSE's
+# public corporate-announcements payload (symbol, sm_name, desc, an_dt, attchmntText).
+_NSE_FILINGS_URL = "https://www.nseindia.com/api/corporate-announcements?index=equities"
 
 
 def _scrape_nse_filings() -> list[dict]:
@@ -55,11 +52,9 @@ def _scrape_nse_filings() -> list[dict]:
     Returns list of dicts with keys: ticker, company, filing_type, filed_date, description.
     """
     try:
-        resp = requests.get(
-            _NSE_FILINGS_URL,
-            headers=_NSE_HEADERS,
-            timeout=15,
-        )
+        # Shared NSE session: correct Referer + homepage cookie priming.
+        from services.nse_client import _nse_session
+        resp = _nse_session().get(_NSE_FILINGS_URL, timeout=15)
         resp.raise_for_status()
         data = resp.json()
 
@@ -68,14 +63,14 @@ def _scrape_nse_filings() -> list[dict]:
         for item in records[:100]:  # cap at 100 most recent
             filings.append({
                 "ticker": item.get("symbol", ""),
-                "company": item.get("companyName", ""),
+                "company": item.get("sm_name") or item.get("companyName", ""),
                 "filing_type": item.get("desc", ""),
-                "filed_date": item.get("filedDate", ""),
-                "description": item.get("detail", ""),
+                "filed_date": item.get("an_dt") or item.get("sort_date") or item.get("filedDate", ""),
+                "description": item.get("attchmntText") or item.get("detail", ""),
             })
         return filings
     except Exception as e:
-        logger.warning(f"NSE filings scrape failed: {e}")
+        logger.warning("NSE filings scrape failed (%s): %s", type(e).__name__, e)
         return []
 
 
@@ -207,11 +202,9 @@ def extract_auditor_info(ticker: str) -> dict:
             return cached[ticker]
 
     try:
-        resp = requests.get(
-            _NSE_FILINGS_URL,
-            headers=_NSE_HEADERS,
-            timeout=15,
-        )
+        # Shared NSE session: correct Referer + homepage cookie priming.
+        from services.nse_client import _nse_session
+        resp = _nse_session().get(_NSE_FILINGS_URL, timeout=15)
         resp.raise_for_status()
         raw = resp.json()
         records = raw if isinstance(raw, list) else raw.get("data", [])
@@ -225,7 +218,7 @@ def extract_auditor_info(ticker: str) -> dict:
                 continue
 
             desc = (item.get("desc") or "")
-            detail = (item.get("detail") or "")
+            detail = (item.get("attchmntText") or item.get("detail") or "")
             combined = f"{desc} {detail}".lower()
 
             if not any(kw in combined for kw in _AUDITOR_KEYWORDS):
