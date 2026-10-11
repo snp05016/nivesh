@@ -168,12 +168,13 @@ def run_alpha_validation(params: BacktestParams) -> BacktestResult:
         return _run_alpha_validation_internal(session, params)
 
 
-def _run_alpha_validation_internal(session, params: BacktestParams) -> BacktestResult:
+def _run_alpha_validation_internal(session, params: BacktestParams, regime_id: Optional[str] = None) -> BacktestResult:
     """Internal implementation of the alpha validation backtest using a provided database session.
 
     Args:
         session: The SQLAlchemy database session.
         params (BacktestParams): The parameters defining the backtest strategy.
+        regime_id (Optional[str]): Restrict to predictions persisted with this regime_id.
 
     Returns:
         BacktestResult: The results of the backtest.
@@ -192,7 +193,10 @@ def _run_alpha_validation_internal(session, params: BacktestParams) -> BacktestR
     
     if params.strategy_type in ["equal_weight_bullish", "confidence_weighted", "top_k_confidence", "sector_neutral_top_k"]:
         query = query.filter(AnalysisPrediction.recommendation == "BULLISH")
-        
+
+    if regime_id is not None:
+        query = query.filter(AnalysisPrediction.regime_id == regime_id)
+
     preds = query.all()
     
     # Group by date for cross-sectional sizing
@@ -204,7 +208,8 @@ def _run_alpha_validation_internal(session, params: BacktestParams) -> BacktestR
         by_date[d].append(p)
         
     gross_returns = []
-    
+    trades = 0
+
     for d, daily_preds in by_date.items():
         if params.strategy_type == "top_k_confidence":
             daily_preds = sorted(daily_preds, key=lambda x: x.confidence_pct, reverse=True)[:params.top_k]
@@ -214,7 +219,8 @@ def _run_alpha_validation_internal(session, params: BacktestParams) -> BacktestR
             
         if not daily_preds:
             continue
-            
+        trades += len(daily_preds)
+
         weights = []
         if params.position_sizing == "equal_weight":
             weights = [1.0 / len(daily_preds)] * len(daily_preds)
@@ -248,7 +254,8 @@ def _run_alpha_validation_internal(session, params: BacktestParams) -> BacktestR
         params=params,
         metrics=metrics,
         benchmark_metrics={},
-        statistical_significance={}
+        statistical_significance={},
+        trade_count=trades
     )
 
 
@@ -291,7 +298,7 @@ def run_strategy_sweep() -> StrategySweepResult:
                             sharpe=res.metrics.sharpe,
                             max_drawdown=res.metrics.max_drawdown,
                             turnover=res.metrics.turnover,
-                            trade_count=100  # Placeholder
+                            trade_count=res.trade_count
                         )
                         results.append(iteration)
                         
@@ -313,28 +320,59 @@ def run_strategy_sweep() -> StrategySweepResult:
 
 
 # Phase 4: Regime Breakdown
+MIN_REGIME_TRADES = 30
+
+
 def run_regime_breakdown(params: BacktestParams) -> RegimeBreakdownResult:
     """Performs a regime-based performance breakdown for a given strategy.
+
+    Groups persisted predictions by their regime_id and backtests each group.
+    Regimes with fewer than MIN_REGIME_TRADES positions are omitted.
 
     Args:
         params (BacktestParams): The parameters defining the strategy.
 
     Returns:
-        RegimeBreakdownResult: The breakdown of strategy performance across different market regimes (e.g., BULL, BEAR).
+        RegimeBreakdownResult: The breakdown of strategy performance per persisted regime.
     """
+    horizon_map = {"7D": 7, "20D": 20, "30D": 30, "60D": 60, "90D": 90}
+    days = horizon_map.get(params.horizon, 30)
+
     with get_session() as session:
         overall = _run_alpha_validation_internal(session, params)
-        
-        # We would group predictions by regime_id, run backtest on each subset
-        regimes = [
-            RegimePerformance(regime_name="BULL", sample_size=100, net_cagr=0.15, sharpe=1.2, max_drawdown=0.05, hit_rate=0.60),
-            RegimePerformance(regime_name="BEAR", sample_size=50, net_cagr=-0.05, sharpe=-0.5, max_drawdown=0.15, hit_rate=0.45)
+
+        regime_ids = [
+            row[0] for row in session.query(AnalysisPrediction.regime_id).filter(
+                AnalysisPrediction.horizon_days == days,
+                AnalysisPrediction.confidence_pct >= params.confidence_threshold,
+                AnalysisPrediction.regime_id.isnot(None),
+            ).distinct().all()
         ]
-        
+
+        regimes = []
+        for rid in sorted(regime_ids):
+            res = _run_alpha_validation_internal(session, params, regime_id=rid)
+            if res.trade_count < MIN_REGIME_TRADES:
+                continue
+            regimes.append(RegimePerformance(
+                regime_name=rid,
+                sample_size=res.trade_count,
+                net_cagr=res.metrics.cagr,
+                sharpe=res.metrics.sharpe,
+                max_drawdown=res.metrics.max_drawdown,
+                hit_rate=res.metrics.hit_rate,
+            ))
+
+        if regimes:
+            total = sum(r.sample_size for r in regimes)
+            conclusion = f"Computed from {total} predictions across {len(regimes)} regimes."
+        else:
+            conclusion = f"Insufficient data: fewer than {MIN_REGIME_TRADES} predictions per regime."
+
         return RegimeBreakdownResult(
             overall_metrics=overall.metrics,
             regimes=regimes,
-            conclusion="Nivesh performs best in BULL regimes."
+            conclusion=conclusion
         )
 
 

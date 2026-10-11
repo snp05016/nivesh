@@ -87,6 +87,7 @@ class BacktestResult(BaseModel):
     metrics: PortfolioMetrics = Field(..., description="Resulting portfolio metrics")
     benchmark_metrics: Dict[str, Any] = Field(..., description="Metrics of the benchmark")
     statistical_significance: Dict[str, Any] = Field(..., description="Statistical significance metrics")
+    trade_count: int = Field(0, description="Number of prediction positions used")
 
 
 class RegimePerformance(BaseModel):
