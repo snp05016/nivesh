@@ -10,13 +10,16 @@ import logging
 from datetime import datetime, timezone
 import os
 import threading
+from typing import TYPE_CHECKING
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from sentence_transformers import SentenceTransformer
 
 from database import get_session, NewsArticle, AdvisorInsight
 from services.vector_store import (
     upsert_documents, collection_count, max_ingested_row_id, delete_legacy_chunks,
 )
+
+if TYPE_CHECKING:  # torch-heavy; imported lazily so importing this module stays cheap
+    from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +29,11 @@ FETCH_BATCH = 200   # source rows per DB round-trip
 EMBED_BATCH = 50    # chunks per model.encode call
 DOC_TYPES = ("news_article", "advisor_transcript")
 
-_model: SentenceTransformer | None = None
+_model: "SentenceTransformer | None" = None
 _model_lock = threading.Lock()
 
 
-def _get_embedding_model() -> SentenceTransformer:
+def _get_embedding_model() -> "SentenceTransformer":
     """Retrieve the singleton SentenceTransformer model, initializing it if necessary.
 
     Returns:
@@ -40,6 +43,7 @@ def _get_embedding_model() -> SentenceTransformer:
     if _model is None:
         with _model_lock:
             if _model is None:
+                from sentence_transformers import SentenceTransformer
                 _model = SentenceTransformer("all-MiniLM-L6-v2", token=os.getenv("HF_TOKEN"))
                 logger.info("MiniLM embedding model loaded")
     return _model
