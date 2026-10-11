@@ -3,7 +3,6 @@ ModelLoader — unified interface for loading and saving ML model artifacts.
 
 Supports:
 - LightGBM booster (text format: lgb_model.txt)
-- TRA PyTorch model (state dict: tra_model.pt)
 - Feature scaler (JSON: feature_scaler.json — median + IQR per feature)
 
 Design: mirrors QlibEngine's singleton pattern (threading.Lock on __new__)
@@ -53,50 +52,6 @@ class ModelLoader:
         model.save_model(str(path))
         _LOG.info("LightGBM model saved to %s", path)
 
-    # ── TRA (PyTorch) ──────────────────────────────────────────────────────
-
-    @staticmethod
-    def load_tra(path: Path) -> Any:
-        """Load a TRA PyTorch model from a .pt state dict file.
-
-        Returns an nn.Module instance in eval mode, or None if the file
-        is missing and the caller should fall back.
-        """
-        path = Path(path)
-        if not path.exists():
-            raise FileNotFoundError(f"TRA model not found: {path}")
-
-        import torch
-
-        from config import TRA_CONFIG
-
-        # Lazy import to avoid circular dependency — TRA is defined in pipeline.inference
-        from pipeline.tra_sequence import TRAModel
-
-        model = TRAModel(
-            input_dim=TRA_CONFIG["input_dim"],
-            hidden_dim=TRA_CONFIG["hidden_dim"],
-            num_layers=TRA_CONFIG["num_layers"],
-            num_states=TRA_CONFIG["num_states"],
-            seq_len=TRA_CONFIG["seq_len"],
-            dropout=TRA_CONFIG["dropout"],
-        )
-        state = torch.load(str(path), map_location="cpu", weights_only=True)
-        model.load_state_dict(state)
-        model.eval()
-        _LOG.info("TRA model loaded from %s", path)
-        return model
-
-    @staticmethod
-    def save_tra(model: Any, path: Path) -> None:
-        """Save a TRA PyTorch model state dict."""
-        import torch
-
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        torch.save(model.state_dict(), str(path))
-        _LOG.info("TRA model saved to %s", path)
-
     # ── Scaler ─────────────────────────────────────────────────────────────
 
     @staticmethod
@@ -132,7 +87,7 @@ def load_model(model_type: str, path: Path) -> Any:
     """Dispatch to the correct loader based on model type string.
 
     Args:
-        model_type: "lightgbm", "tra", or "scaler"
+        model_type: "lightgbm" or "scaler"
         path: Path to the model file
 
     Returns:
@@ -140,7 +95,6 @@ def load_model(model_type: str, path: Path) -> Any:
     """
     loaders = {
         "lightgbm": ModelLoader.load_lightgbm,
-        "tra": ModelLoader.load_tra,
         "scaler": ModelLoader.load_scaler,
     }
     if model_type not in loaders:

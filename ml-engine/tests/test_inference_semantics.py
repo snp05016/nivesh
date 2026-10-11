@@ -94,19 +94,17 @@ def test_gated_model_needs_a_probability_scale_base_rate_and_band(base_rate, ban
         )
 
 
-@pytest.mark.parametrize(
-    "engine,model_type",
-    [
-        (InferenceEngine(lightgbm_model=_StubBooster(0.9), **_GATED), "tra"),
-        (InferenceEngine(lightgbm_model=_StubBooster(0.9), **_GATED), "ensemble"),
-        (InferenceEngine(), "lightgbm"),
-    ],
-)
-def test_no_model_probability_means_no_edge(engine, model_type):
-    r = engine.predict(_ROW, model_type=model_type)
+def test_no_model_probability_means_no_edge():
+    r = InferenceEngine().predict(_ROW, model_type="lightgbm")
     assert (r["signal_state"], r["expected_direction"], r["confidence_score"], r["p_up"]) == (
         "no_edge", 0, 0.0, None,
     )
+
+
+@pytest.mark.parametrize("model_type", ["tra", "ensemble"])
+def test_model_types_without_a_served_model_are_rejected(model_type):
+    with pytest.raises(ValueError):
+        InferenceEngine(lightgbm_model=_StubBooster(0.9), **_GATED).predict(_ROW, model_type=model_type)
 
 
 def test_manifest_absent_or_unreadable_loads_as_empty(tmp_path, monkeypatch):

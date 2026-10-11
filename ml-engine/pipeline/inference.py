@@ -6,8 +6,9 @@ The booster is a binary classifier (objective=binary): its output is P(up)
 over the training horizon, not a return forecast. A direction is served only
 for a model that passed the promotion gate (model_validated) with a known
 training base rate and neutral band; every other case (unvalidated model,
-no model, TRA/ensemble with no shipped TRA weights) returns signal_state
-"no_edge" with direction 0 and confidence 0.0.
+no model) returns signal_state "no_edge" with direction 0 and confidence 0.0.
+Only model_type "lightgbm" exists; no TRA weights ship, so any other
+model_type raises ValueError.
 
 Output contract (matches quant_payload keys from orchestrator.py:§1893):
   {
@@ -17,7 +18,6 @@ Output contract (matches quant_payload keys from orchestrator.py:§1893):
     "p_up": float | None,
     "base_rate": float | None,             # training base rate of the up class
     "signal_state": "ok" | "no_edge",
-    "features_used": list[str],
   }
 """
 
@@ -30,18 +30,13 @@ import numpy as np
 
 _LOG = logging.getLogger(__name__)
 
-_MODEL_TYPES = ("lightgbm", "tra", "ensemble")
-
-
 class InferenceEngine:
     """Run model inference and return structured predictions."""
 
     def __init__(
         self,
         lightgbm_model: Any = None,
-        tra_model: Any = None,
         lgb_params: dict[str, Any] | None = None,
-        regime_thresholds: dict[str, Any] | None = None,
         confidence_config: dict[str, Any] | None = None,
         lgb_objective: str | None = None,
         model_validated: bool = False,
@@ -56,9 +51,7 @@ class InferenceEngine:
                 "contract reads the booster output as P(up) from a binary classifier"
             )
         self._lgb_model = lightgbm_model
-        self._tra_model = tra_model
         self._lgb_params = lgb_params or {}
-        self._regime = regime_thresholds or {}
         self._conf = confidence_config or {}
         self._base_rate = None if base_rate is None else float(base_rate)
         self._neutral_band = None if neutral_band is None else float(neutral_band)
@@ -83,19 +76,17 @@ class InferenceEngine:
         Args:
             features_df: Single-row DataFrame with 158 Alpha158 features.
             ticker: Stock ticker for logging.
-            model_type: "lightgbm", "tra", or "ensemble".
+            model_type: only "lightgbm" is supported.
 
         Returns:
             Dict with expected_direction, confidence_score, raw_score, p_up,
-            base_rate, signal_state and features_used.
+            base_rate and signal_state.
         """
-        if model_type not in _MODEL_TYPES:
-            raise ValueError(f"Unknown model_type: {model_type}")
+        if model_type != "lightgbm":
+            raise ValueError(f"Unsupported model_type: {model_type!r} (only 'lightgbm' is served)")
 
-        # Only the LightGBM booster yields a probability. No TRA weights ship,
-        # so tra/ensemble have no model output to serve.
         p_up = None
-        if model_type == "lightgbm" and self._lgb_model is not None:
+        if self._lgb_model is not None:
             p_up = self._predict_lgb(features_df)
 
         direction, confidence, signal_state = 0, 0.0, "no_edge"
@@ -117,7 +108,6 @@ class InferenceEngine:
             "p_up": p,
             "base_rate": base,
             "signal_state": signal_state,
-            "features_used": list(features_df.columns)[:20],
         }
 
     # ── Model-specific prediction ──────────────────────────────────────────

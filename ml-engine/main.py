@@ -6,13 +6,15 @@ run Qlib/LightGBM natively due to Python version constraints.
 
 Endpoints:
   GET  /health                    — liveness probe
-  POST /predict/cross-section     — batch prediction for multiple stocks
   POST /predict/single            — single-stock prediction from OHLCV data
   GET  /model/status              — loaded model metadata
 
+Only the LightGBM booster is served: model_type accepts "lightgbm" alone
+(no TRA weights ship, so "tra"/"ensemble" are rejected with 422).
+
 Lifecycle:
-  startup  -> loads LightGBM model + TRA model + feature scaler
-  shutdown -> releases GPU memory, closes model handles
+  startup  -> loads LightGBM model + feature scaler
+  shutdown -> releases model handles
 """
 
 from __future__ import annotations
@@ -33,10 +35,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from config import (
     LIGHTGBM_MODEL_PATH,
-    TRA_MODEL_PATH,
     SCALER_PATH,
     FEATURE_LIST,
-    REGIME_THRESHOLDS,
     CONFIDENCE_CONFIG,
     LIGHTGBM_PARAMS,
 )
@@ -54,7 +54,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelna
 # ── Globals (initialized at startup, use with caution — read-only after loading) ──
 
 _lightgbm_model: Any = None
-_tra_model: Any = None
 _feature_scaler: dict[str, dict[str, float]] | None = None
 _feature_computer: FeatureComputer | None = None
 _inference_engine: InferenceEngine | None = None
@@ -85,21 +84,6 @@ class OHLCVRow(BaseModel):
     vwap: float | None = None
 
 
-class CrossSectionRequest(BaseModel):
-    """Batch prediction request — array of OHLCV arrays, one per stock."""
-    stocks: list[list[OHLCVRow]] = Field(
-        ...,
-        min_length=1,
-        max_length=500,
-        description="List of OHLCV sequences, one per stock",
-    )
-    model_type: str = Field(
-        default="lightgbm",
-        pattern="^(lightgbm|tra|ensemble)$",
-        description="Which model to use for prediction",
-    )
-
-
 class SingleStockRequest(BaseModel):
     """Single-stock prediction request."""
     ohlcv: list[OHLCVRow] = Field(
@@ -118,7 +102,8 @@ class SingleStockRequest(BaseModel):
     ticker: str = Field(default="UNKNOWN", max_length=32, description="Stock ticker for logging")
     model_type: str = Field(
         default="lightgbm",
-        pattern="^(lightgbm|tra|ensemble)$",
+        pattern="^lightgbm$",
+        description="Kept for backward compatibility; only the LightGBM booster is served",
     )
 
 
@@ -161,7 +146,7 @@ class PredictionResult(BaseModel):
     )
     features: list[str] = Field(
         default_factory=list,
-        description="Feature names used for prediction",
+        description="Reserved; no feature attribution is computed (always empty)",
     )
     prediction_time_ms: float = Field(
         ...,
@@ -207,19 +192,11 @@ class PredictionResult(BaseModel):
     )
 
 
-class CrossSectionResponse(BaseModel):
-    """Batch prediction response."""
-    predictions: list[PredictionResult]
-    total_time_ms: float
-    model_used: str
-
-
 class ModelStatus(BaseModel):
     """Model metadata response."""
     model_config = ConfigDict(protected_namespaces=())  # allow the model_validated field
 
     lightgbm_loaded: bool
-    tra_loaded: bool
     scaler_loaded: bool
     ml_engine_mode: str
     supported_horizons: list[int]
@@ -296,7 +273,7 @@ def _load_manifest() -> dict[str, Any]:
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Load models and scaler at startup; clean up at shutdown."""
-    global _lightgbm_model, _tra_model, _feature_scaler
+    global _lightgbm_model, _feature_scaler
     global _feature_computer, _inference_engine, _model_version, _model_validated
 
     _LOG.info("ml-engine starting up — loading models...")
@@ -319,17 +296,6 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         )
         _lightgbm_model = None
 
-    # TRA PyTorch model
-    try:
-        _tra_model = ModelLoader.load_tra(TRA_MODEL_PATH)
-        _LOG.info("TRA model loaded from %s", TRA_MODEL_PATH)
-    except FileNotFoundError:
-        _LOG.warning(
-            "TRA model not found at %s — sequence prediction disabled",
-            TRA_MODEL_PATH,
-        )
-        _tra_model = None
-
     # Feature scaler
     try:
         _feature_scaler = ModelLoader.load_scaler(SCALER_PATH)
@@ -350,9 +316,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     _model_validated = isinstance(gate, dict) and gate.get("passed") is True
     _inference_engine = InferenceEngine(
         lightgbm_model=_lightgbm_model,
-        tra_model=_tra_model,
         lgb_params=LIGHTGBM_PARAMS,
-        regime_thresholds=REGIME_THRESHOLDS,
         confidence_config=CONFIDENCE_CONFIG,
         lgb_objective=_lightgbm_model.dump_model().get("objective") if _lightgbm_model is not None else None,
         model_validated=_model_validated,
@@ -367,7 +331,6 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
     _LOG.info("ml-engine shutting down — releasing model resources")
     _lightgbm_model = None
-    _tra_model = None
     _feature_scaler = None
 
 
@@ -376,7 +339,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="Nivesh ML Engine",
     description=(
-        "Standalone inference microservice — LightGBM + TRA models "
+        "Standalone inference microservice — LightGBM model "
         "with Alpha158 features for Indian equity prediction"
     ),
     version="0.1.0",
@@ -402,7 +365,6 @@ async def model_status() -> ModelStatus:
     lightgbm_loaded = _lightgbm_model is not None
     return ModelStatus(
         lightgbm_loaded=lightgbm_loaded,
-        tra_loaded=_tra_model is not None,
         scaler_loaded=_feature_scaler is not None,
         ml_engine_mode="trained_lightgbm_baseline" if lightgbm_loaded else "fallback_technical_heuristic",
         supported_horizons=SUPPORTED_HORIZONS,
@@ -499,7 +461,7 @@ def predict_single(req: SingleStockRequest) -> PredictionResult:
         confidence_score=confidence_score,
         ml_engine_mode="trained_lightgbm_baseline" if lightgbm_loaded else "fallback_technical_heuristic",
         lightgbm_loaded=lightgbm_loaded,
-        features=FEATURE_LIST[:20],  # first 20 feature names as context
+        features=[],  # reserved: no feature attribution is computed
         prediction_time_ms=round(elapsed_ms, 2),
         raw_score=result.get("raw_score"),
         signal_state=result["signal_state"],
@@ -512,73 +474,3 @@ def predict_single(req: SingleStockRequest) -> PredictionResult:
         fallback_used=not lightgbm_loaded,
     )
 
-
-@app.post("/predict/cross-section", response_model=CrossSectionResponse)
-async def predict_cross_section(req: CrossSectionRequest) -> CrossSectionResponse:
-    """Batch prediction across multiple stocks."""
-    if _feature_computer is None or _inference_engine is None:
-        raise HTTPException(status_code=503, detail="Model engine not initialized")
-
-    t0 = time.perf_counter()
-    predictions: list[PredictionResult] = []
-
-    for i, ohlcv_rows in enumerate(req.stocks):
-        ticker = f"stock_{i}"
-        try:
-            df = _ohlcv_to_polars(ohlcv_rows)
-            features_df = _feature_computer.compute_all(df)
-            result = _inference_engine.predict(
-                features_df,
-                ticker=ticker,
-                model_type=req.model_type,
-            )
-            expected_direction = result["expected_direction"]
-            confidence_score = result["confidence_score"]
-            lightgbm_loaded = _lightgbm_model is not None
-            predictions.append(
-                PredictionResult(
-                    ticker=ticker,
-                    direction=expected_direction,
-                    expected_direction=expected_direction,
-                    confidence=confidence_score,
-                    confidence_score=confidence_score,
-                    ml_engine_mode="trained_lightgbm_baseline" if lightgbm_loaded else "fallback_technical_heuristic",
-                    lightgbm_loaded=lightgbm_loaded,
-                    features=FEATURE_LIST[:20],
-                    prediction_time_ms=0.0,  # individual timings not meaningful in batch
-                    raw_score=result.get("raw_score"),
-                    signal_state=result["signal_state"],
-                    p_up=result["p_up"],
-                    base_rate=result["base_rate"],
-                    model_validated=_model_validated,
-                    model_version=_model_version if lightgbm_loaded else None,
-                    horizon=DEFAULT_PREDICTION_HORIZON,
-                    feature_count=len(FEATURE_LIST),
-                    fallback_used=not lightgbm_loaded,
-                )
-            )
-        except Exception as exc:
-            _LOG.warning("Prediction failed for %s: %s", ticker, exc)
-            predictions.append(
-                PredictionResult(
-                    ticker=ticker,
-                    expected_direction=0,
-                    confidence_score=0.0,
-                    ml_engine_mode="fallback_technical_heuristic",
-                    lightgbm_loaded=False,
-                    features=[],
-                    prediction_time_ms=0.0,
-                    raw_score=None,
-                    model_version=None,
-                    horizon=DEFAULT_PREDICTION_HORIZON,
-                    feature_count=len(FEATURE_LIST),
-                    fallback_used=True,
-                )
-            )
-
-    total_ms = (time.perf_counter() - t0) * 1000.0
-    return CrossSectionResponse(
-        predictions=predictions,
-        total_time_ms=round(total_ms, 2),
-        model_used=req.model_type,
-    )
