@@ -63,6 +63,8 @@ struct stockmeApp: App {
     @State private var isAuthenticating = false
     @State private var lockMessage: String? = nil
     @State private var wentToBackground = false
+    @State private var showPrivacyCover = false
+    @State private var lockWindow = LockOverlayWindow()
     @Environment(\.scenePhase) private var scenePhase
 
     // ── Launch state machine ─────────────────────────────────────────────
@@ -82,6 +84,17 @@ struct stockmeApp: App {
         biometricTimeout != .never
     }
 
+    private var isAppLocked: Bool {
+        biometricsEnabled && isBiometricLocked && authManager.isLoggedIn
+    }
+
+    /// Lock takes priority over the privacy cover. During the launch sequence the main
+    /// interface is invisible, so the lock waits for it (as the old branch-based lock did).
+    private var lockOverlay: LockOverlay? {
+        if isAppLocked && launchPhase == .mainInterface { return .lock(message: lockMessage) }
+        return showPrivacyCover ? .privacy : nil
+    }
+
     var body: some Scene {
         WindowGroup {
             ZStack {
@@ -93,10 +106,12 @@ struct stockmeApp: App {
                         OnboardingScreen { hasCompletedOnboarding = true }
                     } else if !hasAcceptedDisclaimer {
                         DisclaimerScreen { hasAcceptedDisclaimer = true }
-                    } else if biometricsEnabled && isBiometricLocked && authManager.isLoggedIn {
-                        biometricLockScreen
                     } else {
+                        // The lock is not a branch: ContentView (tabs, navigation, sheets,
+                        // typed input) stays alive across relocks. Lock and privacy cover live
+                        // in LockOverlayWindow, above every sheet/fullScreenCover.
                         ContentView(bypassLaunch: true)
+                            .accessibilityHidden(lockOverlay != nil)
                     }
                 }
                 .environmentObject(authManager)
@@ -185,16 +200,20 @@ struct stockmeApp: App {
             // Item 5 + 28: Scene phase tracking for timeout-based lock.
             // Only .background (not .inactive) counts as "left the app" —
             // .inactive fires during Face ID itself, which would cause an infinite re-auth loop.
+            // .inactive only raises the privacy cover (no relock), so the app-switcher
+            // snapshot never shows balances.
             .onChange(of: scenePhase) { _, newPhase in
                 switch newPhase {
                 case .background:
+                    showPrivacyCover = true
                     if biometricsEnabled && authManager.isLoggedIn {
                         lastActiveTimestamp = Date().timeIntervalSince1970
                         wentToBackground = true
                     }
                 case .inactive:
-                    break  // Face ID causes .inactive — ignore to avoid loop
+                    showPrivacyCover = true  // no relock here: Face ID itself causes .inactive
                 case .active:
+                    showPrivacyCover = false
                     let elapsed = Date().timeIntervalSince1970 - lastActiveTimestamp
                     if wentToBackground && !isAuthenticating
                         && AppLockPolicy.shouldRelock(isLoggedIn: authManager.isLoggedIn, timeout: biometricTimeout, elapsed: elapsed) {
@@ -210,6 +229,17 @@ struct stockmeApp: App {
                 @unknown default:
                     break
                 }
+            }
+            // The cover rises on .inactive, which always precedes .background, so the
+            // cover window is up before the app-switcher snapshot is taken.
+            .onChange(of: lockOverlay, initial: true) { _, overlay in
+                lockWindow.show(overlay, style: darkMode ? .dark : .unspecified,
+                                onUnlock: { authenticateWithBiometrics() },
+                                onSignOut: {
+                                    authManager.logout()
+                                    lockMessage = nil
+                                    isBiometricLocked = false
+                                })
             }
             .onOpenURL { url in
                 handleDeepLink(url)
@@ -264,53 +294,6 @@ struct stockmeApp: App {
     }
 
     // MARK: - Biometric Auth
-
-    private var biometricLockScreen: some View {
-        VStack(spacing: Theme.Spacing.large) {
-            Image(systemName: "lock.fill")
-                .font(.largeTitle)
-                .foregroundStyle(Theme.securityGold)
-            Text("NIVESH")
-                .font(Font.custom("Georgia-Bold", size: 28, relativeTo: .title))
-                .foregroundStyle(Theme.inkPrimary)
-            Text("Authenticate to continue")
-                .font(.subheadline)
-                .foregroundStyle(Theme.inkSecondary)
-            if let lockMessage {
-                Text(lockMessage)
-                    .font(.footnote)
-                    .foregroundStyle(Theme.inkSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, Theme.Spacing.xLarge)
-            }
-            Button {
-                HapticManager.selection()
-                authenticateWithBiometrics()
-            } label: {
-                HStack(spacing: Theme.Spacing.medium) {
-                    Image(systemName: "lock.fill")
-                    Text("Unlock")
-                }
-                .font(.body.weight(.medium))
-                .foregroundStyle(Theme.canvas)
-                .padding(.horizontal, Theme.Spacing.xLarge).padding(.vertical, Theme.Spacing.standard)
-                .background(Theme.securityGold)
-                .cornerRadius(Theme.CornerRadius.large)
-            }
-            .buttonStyle(EKPressStyle())
-            Button {
-                authManager.logout()
-                lockMessage = nil
-                isBiometricLocked = false
-            } label: {
-                Text("Sign out")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Theme.inkSecondary)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.canvas)
-    }
 
     private func authenticateWithBiometrics() {
         guard !isAuthenticating else { return }

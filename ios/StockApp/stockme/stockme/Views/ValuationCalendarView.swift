@@ -66,13 +66,13 @@ struct ValuationCalendarView: View {
                         HStack(spacing: Theme.Spacing.none) {
                             StatPill(
                                 label: "PERIOD CHANGE",
-                                value: formatCurrency(summary.periodChangeValue),
+                                value: IndianFormatter.priceCompact(summary.periodChangeValue),
                                 color: summary.periodChangeValue >= 0 ? bullGreen : bearRed
                             )
                             Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(width: 0.5, height: 30)
                             StatPill(
                                 label: "PEAK",
-                                value: formatCurrency(summary.peakValue),
+                                value: IndianFormatter.priceCompact(summary.peakValue),
                                 color: goldAccent
                             )
                             Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(width: 0.5, height: 30)
@@ -132,7 +132,7 @@ struct ValuationCalendarView: View {
                                 AxisGridLine().foregroundStyle(Theme.borderFine)
                                 AxisValueLabel {
                                     if let v = value.as(Double.self) {
-                                        Text(formatCompact(v))
+                                        Text(IndianFormatter.lakhsCroresNoSymbol(v))
                                             .font(Theme.serialNumberFont(size: 9))
                                             .foregroundStyle(dimText)
                                     }
@@ -141,11 +141,14 @@ struct ValuationCalendarView: View {
                         }
                         .frame(height: UIScreen.main.bounds.width * 0.38)
                         .chartOverlay { proxy in
+                            // Scrub only after a short press, so a vertical swipe that starts
+                            // on the chart still scrolls the Portfolio screen.
                             Rectangle().fill(.clear).contentShape(Rectangle())
-                                .gesture(DragGesture(minimumDistance: 0)
-                                    .onChanged { drag in
-                                        let x = drag.location.x
-                                        if let date: Date = proxy.value(atX: x) {
+                                .gesture(LongPressGesture(minimumDuration: 0.2)
+                                    .sequenced(before: DragGesture(minimumDistance: 0))
+                                    .onChanged { value in
+                                        guard case .second(true, let drag?) = value else { return }
+                                        if let date: Date = proxy.value(atX: drag.location.x) {
                                             selectedSnapshot = vm.snapshots.min(by: {
                                                 abs($0.parsedDate.timeIntervalSince(date)) <
                                                 abs($1.parsedDate.timeIntervalSince(date))
@@ -163,7 +166,7 @@ struct ValuationCalendarView: View {
                                     .font(Theme.serialNumberFont(size: 11))
                                     .foregroundStyle(dimText)
                                 Spacer()
-                                Text(formatCurrency(sel.totalValue))
+                                Text(IndianFormatter.priceCompact(sel.totalValue))
                                     .font(Theme.serialNumberFont(size: 13))
                                     .foregroundStyle(.secondary)
                                 Text(String(format: "%+.2f%%", sel.pnlPercent))
@@ -193,24 +196,6 @@ struct ValuationCalendarView: View {
         }
         .onAppear { vm.fetchHistory(userId: userId, period: "3M") }
     }
-
-    private func formatCurrency(_ value: Double) -> String {
-        if abs(value) >= 1_00_00_000 {
-            return String(format: "₹%.2fCr", value / 1_00_00_000)
-        } else if abs(value) >= 1_00_000 {
-            return String(format: "₹%.2fL", value / 1_00_000)
-        }
-        return String(format: "₹%.0f", value)
-    }
-
-    private func formatCompact(_ value: Double) -> String {
-        if abs(value) >= 1_00_00_000 {
-            return String(format: "%.1fCr", value / 1_00_00_000)
-        } else if abs(value) >= 1_00_000 {
-            return String(format: "%.1fL", value / 1_00_000)
-        }
-        return String(format: "%.0f", value)
-    }
 }
 
 // MARK: - Calendar Heat Grid
@@ -225,9 +210,17 @@ struct CalendarHeatGrid: View {
     private let bullGreen  = Theme.bullGreen
     private let bearRed    = Theme.bearRed
 
-    // Build lookup dict from snapshot date string to pnl_percent
-    var pnlByDate: [String: Double] {
-        Dictionary(uniqueKeysWithValues: snapshots.map { ($0.date, $0.pnlPercent) })
+    /// Day-over-day move keyed by local "yyyy-MM-dd". pnl_percent is cumulative
+    /// (lifetime P&L / invested), so the daily-move colour bands use the change in
+    /// total P&L (which excludes deposits and withdrawals) over the previous day's value.
+    /// The first snapshot has no previous day and gets no entry.
+    static func dailyChangeByDate(_ snaps: [PortfolioValuationSnapshot]) -> [String: Double] {
+        let sorted = snaps.sorted { $0.parsedDate < $1.parsedDate }
+        var out: [String: Double] = [:]
+        for (prev, cur) in zip(sorted, sorted.dropFirst()) where prev.totalValue > 0 {
+            out[WireDate.dayKey(cur.parsedDate)] = (cur.totalPnl - prev.totalPnl) / prev.totalValue * 100
+        }
+        return out
     }
 
     var daysInSelectedMonth: [Date?] {
@@ -245,6 +238,8 @@ struct CalendarHeatGrid: View {
     }
 
     var body: some View {
+        let days = daysInSelectedMonth
+        let changes = Self.dailyChangeByDate(snapshots)
         VStack(spacing: Theme.Spacing.small) {
             // Month navigation
             HStack {
@@ -282,11 +277,10 @@ struct CalendarHeatGrid: View {
 
             // Day cells
             LazyVGrid(columns: columns, spacing: Theme.Spacing.small) {
-                ForEach(0..<daysInSelectedMonth.count, id: \.self) { idx in
-                    if let date = daysInSelectedMonth[idx] {
-                        let dateStr = ISO8601DateFormatter().string(from: date).prefix(10).description
-                        let pnl = pnlByDate[dateStr]
-                        DayCell(date: date, pnlPercent: pnl)
+                ForEach(0..<days.count, id: \.self) { idx in
+                    if let date = days[idx] {
+                        // Local-time key: ISO8601DateFormatter is UTC and shifted IST cells a day back.
+                        DayCell(date: date, pnlPercent: changes[WireDate.dayKey(date)])
                     } else {
                         Color.clear.frame(minHeight: 28)
                     }
@@ -304,6 +298,7 @@ struct CalendarHeatGrid: View {
 
 struct DayCell: View {
     let date: Date
+    /// Daily change in percent (not cumulative P&L).
     let pnlPercent: Double?
     private let bullGreen  = Theme.bullGreen
     private let bearRed    = Theme.bearRed

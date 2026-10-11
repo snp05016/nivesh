@@ -664,7 +664,7 @@ struct TopMoverRow: View {
                     .font(Theme.serialNumberFont(size: 14))
                     .foregroundStyle(Theme.inkPrimary)
                 if volumeMode {
-                    Text("\(IndianFormatter.formatLakhsCrores(Double(mover.volume))) shares")
+                    Text("\(IndianFormatter.count(Double(mover.volume))) shares")
                         .font(Theme.officialStampFont(size: 9))
                         .foregroundStyle(Theme.inkTertiary)
                 } else if valueMode {

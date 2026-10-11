@@ -19,11 +19,23 @@ struct InteractivePriceChartView: View {
     private let periods = ["1mo", "3mo", "6mo", "1y", "2y"]
     private let periodLabels = ["1M", "3M", "6M", "1Y", "2Y"]
 
+    /// Approximate trading sessions per selectable period.
+    static let tradingDays: [String: Int] = ["1mo": 21, "3mo": 63, "6mo": 126, "1y": 252, "2y": 504]
+
+    /// The selected period's trailing window, then narrowed by pinch zoom (at least 10 points).
+    static func slice<T>(_ history: [T], period: String, zoom: CGFloat) -> [T] {
+        guard !history.isEmpty else { return [] }
+        let base = history.suffix(min(history.count, tradingDays[period] ?? history.count))
+        let visible = max(10, Int(Double(base.count) / Double(max(zoom, 1))))
+        return Array(base.suffix(visible))
+    }
+
+    private var periodPointCount: Int {
+        min(history.count, Self.tradingDays[selectedPeriod] ?? history.count)
+    }
+
     private var filteredPrices: [OHLCVPoint] {
-        let count = history.count
-        guard count > 0 else { return [] }
-        let visible = max(10, Int(Double(count) / Double(zoomFactor)))
-        return Array(history.suffix(visible))
+        Self.slice(history, period: selectedPeriod, zoom: zoomFactor)
     }
 
     private var priceRange: ClosedRange<Double> {
@@ -76,7 +88,7 @@ struct InteractivePriceChartView: View {
                     }
                     VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                         Text("VOL").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
-                        Text(IndianFormatter.priceCompact(p.volume)).font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.inkSecondary)
+                        Text(IndianFormatter.count(p.volume)).font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.inkSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                     }
@@ -225,7 +237,7 @@ struct InteractivePriceChartView: View {
                             MagnificationGesture()
                                 .onChanged { scale in
                                     let newZoom = baseZoom * scale
-                                    zoomFactor = max(1.0, min(newZoom, Double(history.count) / 10.0))
+                                    zoomFactor = max(1.0, min(newZoom, Double(periodPointCount) / 10.0))
                                 }
                                 .onEnded { _ in baseZoom = zoomFactor }
                         )
@@ -258,6 +270,8 @@ struct InteractivePriceChartView: View {
                     Button(label) { HapticManager.selection(); 
                         HapticManager.selection()
                         selectedPeriod = period
+                        zoomFactor = 1.0
+                        baseZoom = 1.0
                     }
                     .font(Theme.officialStampFont(size: 9))
                     .tracking(1.0)
@@ -380,11 +394,17 @@ struct StockProfileView: View {
                                 .font(.largeTitle.weight(.bold))
                                 .monospaced()
                                 .foregroundStyle(Theme.inkPrimary)
-                            let change = info.changePercent ?? 0
+                            // Unknown change renders as "—", never a fabricated green "+0.00%".
                             HStack(spacing: Theme.Spacing.tight) {
-                                Text((change >= 0 ? "▲ +" : "▼ ") + String(format: "%.2f%%", abs(change)))
-                                    .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote).weight(.semibold))
-                                    .foregroundStyle(change >= 0 ? Theme.bullGreen : Theme.bearRed)
+                                if let change = info.changePercent {
+                                    Text((change >= 0 ? "▲ +" : "▼ ") + String(format: "%.2f%%", abs(change)))
+                                        .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote).weight(.semibold))
+                                        .foregroundStyle(change >= 0 ? Theme.bullGreen : Theme.bearRed)
+                                } else {
+                                    Text("—")
+                                        .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote).weight(.semibold))
+                                        .foregroundStyle(Theme.inkSecondary)
+                                }
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -392,8 +412,8 @@ struct StockProfileView: View {
                         .padding(.vertical, Theme.Spacing.card)
                         .padding(.bottom, Theme.Spacing.standard)
                         .background(
-                            (info.changePercent ?? 0) >= 0
-                                ? Theme.bullGreen.opacity(0.06) : Theme.bearRed.opacity(0.06)
+                            info.changePercent.map { $0 >= 0 ? Theme.bullGreen.opacity(0.06) : Theme.bearRed.opacity(0.06) }
+                                ?? Theme.canvasDeep
                         )
                     } else if let error = vm.stockProfileError {
                         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {

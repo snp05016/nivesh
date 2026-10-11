@@ -15,7 +15,6 @@ class EarningsDashboardViewModel: ObservableObject {
     @Published var estimates: [String: EarningsEstimate] = [:]
     @Published var selectedMarketCap: String = "all"
     @Published var selectedSort: String = "latest"
-    @Published var comparisonMode: String = "yoy"
     @Published var selectedCalendarDate: Date = Date()
     @Published var bookmarkedScreeners: Set<String> = []
     @Published var isLoading = false
@@ -147,6 +146,15 @@ class EarningsDashboardViewModel: ObservableObject {
         }
     }
 
+    /// Market-cap chips filter client-side; the feed already carries `marketCap`, so no refetch.
+    var capFilteredFeed: [EarningsResult] {
+        Self.filter(filteredFeed, marketCap: selectedMarketCap)
+    }
+
+    static func filter(_ results: [EarningsResult], marketCap: String) -> [EarningsResult] {
+        marketCap == "all" ? results : results.filter { $0.marketCap == marketCap }
+    }
+
     var aggregateRevGrowth: Double {
         guard !feed.isEmpty else { return 0 }
         let vals = feed.map { $0.revenueGrowthPct }
@@ -166,7 +174,6 @@ struct EarningsDashboardView: View {
     @StateObject private var vm = EarningsDashboardViewModel()
     @EnvironmentObject var authManager: AuthManager
     @State private var selectedTab: Int = 0  // 0=Progress, 1=Calendar, 2=Feed, 3=Screeners, 4=Variance, 5=PostResult
-    @AppStorage("earningsComparisonMode") private var comparisonMode = "yoy"
 
     let tabs = ["Progress", "Calendar", "Feed", "Screeners", "Variance", "Post-Result"]
 
@@ -183,7 +190,6 @@ struct EarningsDashboardView: View {
             .frame(maxHeight: .infinity, alignment: .top)
         }
         .task { vm.load() }
-        .onChange(of: vm.selectedMarketCap) { _, _ in vm.load() }
         .onChange(of: vm.selectedSort) { _, _ in vm.load() }
     }
 
@@ -208,14 +214,6 @@ struct EarningsDashboardView: View {
                 }
             }
             Spacer()
-            // QoQ / YoY global toggle (2.3 / 1.3 requirement)
-            Picker("Mode", selection: $comparisonMode) {
-                Text("YoY").tag("yoy")
-                Text("QoQ").tag("qoq")
-            }
-            .pickerStyle(.segmented)
-            .frame(minWidth: 100)
-            .onChange(of: comparisonMode) { _, val in vm.comparisonMode = val }
         }
         .padding(.horizontal, Theme.Spacing.card)
         .padding(.top, Theme.Spacing.standard)
@@ -540,9 +538,10 @@ struct EarningsProgressView: View {
                     Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
                 }
             } else {
-                ForEach(vm.filteredFeed.prefix(10)) { result in
+                let rows = Array(vm.capFilteredFeed.prefix(10))
+                ForEach(rows) { result in
                     earningsTableRow(result, tableWidth: colW)
-                    if result.id != vm.filteredFeed.prefix(10).last?.id {
+                    if result.id != rows.last?.id {
                         Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
                     }
                 }
@@ -933,7 +932,7 @@ struct EarningsFeedView: View {
                         )
                     } else {
                         ForEach(vm.filteredFeed) { result in
-                            EarningsResultCard(result: result, comparisonMode: vm.comparisonMode)
+                            EarningsResultCard(result: result)
                         }
                     }
                 }
@@ -991,7 +990,6 @@ struct EarningsFeedView: View {
 
 struct EarningsResultCard: View {
     let result: EarningsResult
-    let comparisonMode: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.standard) {

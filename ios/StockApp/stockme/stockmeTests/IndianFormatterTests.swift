@@ -46,6 +46,34 @@ final class IndianFormatterTests: XCTestCase {
         }
     }
 
+    /// IOSUI-18: share volumes are counts on the Lakh/Crore scale, never rupees.
+    func testCountHasNoRupeeAndUsesIndianScale() {
+        XCTAssertEqual(IndianFormatter.count(12_300_000), "1.23 Cr")
+        XCTAssertEqual(IndianFormatter.count(456_000), "4.56 L")
+        XCTAssertEqual(IndianFormatter.count(12_345), "12,345")
+        XCTAssertEqual(IndianFormatter.count(0), "0")
+        XCTAssertEqual(IndianFormatter.count(Double.nan), "—")
+        for v in [12_300_000.0, 456_000, 12_345, 99_99_999] {
+            XCTAssertFalse(IndianFormatter.count(v).contains("₹"), "value \(v)")
+        }
+        XCTAssertTrue(IndianFormatter.count(99_99_999).hasSuffix(" L"), "just under a crore stays Lakh-scale")
+    }
+
+    /// IOSUI-18: a loss keeps its minus in compact form, before the symbol.
+    func testCompactLossKeepsSign() {
+        withRelativeFormat {
+            XCTAssertEqual(IndianFormatter.priceCompact(-250_000), "-₹2.50 L")
+            XCTAssertEqual(IndianFormatter.formatLakhsCrores(-1.5e7), "-₹1.50 Cr")
+            XCTAssertTrue(IndianFormatter.formatLakhsCrores(99_99_999).hasSuffix(" L"))
+        }
+    }
+
+    func testNaNDoesNotCrash() {
+        _ = IndianFormatter.price(Double.nan)
+        _ = IndianFormatter.points(Double.nan)
+        _ = IndianFormatter.priceCompact(Double.nan)
+    }
+
     /// Source scan: no call site may prepend "₹" to a formatter that already emits it.
     func testNoDoubleRupeeAtCallSites() throws {
         let appDir = URL(fileURLWithPath: #filePath)

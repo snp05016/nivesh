@@ -114,11 +114,14 @@ struct StockRow: View {
     var lastSignal: String? = nil
     var daysUntilEvent: Int? = nil
 
+    private var hasQuote: Bool { stock.currentPrice > 0 }
+
     var body: some View {
         HStack(spacing: Theme.Spacing.none) {
             // Left border stripe — 3pt, colored by return direction
+            // No quote yet (price <= 0): neutral stripe, never a fabricated green "+0.00%".
             Rectangle()
-                .fill(stock.changePercent >= 0 ? Theme.dataPositive : Theme.dataNegative)
+                .fill(hasQuote ? (stock.changePercent >= 0 ? Theme.dataPositive : Theme.dataNegative) : Theme.inkTertiary)
                 .frame(width: 3)
                 .padding(.vertical, Theme.Spacing.standard)
 
@@ -177,12 +180,14 @@ struct StockRow: View {
 
                 // Price + Change
                 VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
-                    Text(stock.currentPrice.inrFormatted)
+                    Text(hasQuote ? stock.currentPrice.inrFormatted : "—")
                         .font(Theme.monoTabular(size: 15, relativeTo: .subheadline))
                         .foregroundStyle(Theme.inkPrimary)
                         .contentTransition(.numericText())
 
-                    PnlBadge(value: stock.changePercent, showPercentage: true)
+                    if hasQuote {
+                        PnlBadge(value: stock.changePercent, showPercentage: true)
+                    }
                 }
 
                 if let signal = stock.signal {

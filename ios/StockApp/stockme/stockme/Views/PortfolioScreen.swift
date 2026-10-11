@@ -528,13 +528,24 @@ struct PortfolioScreen: View {
             buttons: [
                 .init("Remove", role: .destructive) {
                     if let user = authManager.currentUser {
+                        let ticker = deletingTicker
                         Task {
-                            try? await viewModel.removeHolding(ticker: deletingTicker, userId: user.userId)
+                            do {
+                                try await viewModel.removeHolding(ticker: ticker, userId: user.userId)
+                            } catch {
+                                holdingActionError = "\(ticker) is still in your portfolio. Check your connection and try again."
+                            }
                         }
                     }
                 },
                 .cancel()
             ]
+        )
+        .banknoteDialog(
+            "Couldn't update holding",
+            isPresented: Binding(get: { holdingActionError != nil }, set: { if !$0 { holdingActionError = nil } }),
+            message: holdingActionError,
+            buttons: [.init("OK")]
         )
         .banknoteDialog(
             "Export Portfolio",
@@ -1107,10 +1118,31 @@ private struct PortfolioHeroBlock: View {
     }
 }
 
+/// Arc angles (degrees, starting at -90 = 12 o'clock) for an allocation donut.
+/// Non-positive values get no arc; the visual gap shrinks for slivers so an arc's
+/// end never falls before its start (which would wrap into a near-full ring).
+enum DonutGeometry {
+    static func segments(values: [Double]) -> [(index: Int, start: Double, end: Double)] {
+        let total = values.filter { $0 > 0 }.reduce(0, +)
+        guard total > 0 else { return [] }
+        var result: [(index: Int, start: Double, end: Double)] = []
+        var start = -90.0
+        for (i, v) in values.enumerated() where v > 0 {
+            let sweep = v / total * 360
+            let gap = min(1, sweep / 4)
+            if sweep - 2 * gap > 0 {
+                result.append((i, start + gap, start + sweep - gap))
+            }
+            start += sweep
+        }
+        return result
+    }
+}
+
 /// Screen B — allocation donut + legend card.
 private struct PortfolioAllocationDonutCard: View {
     let holdings: [PortfolioHolding]
-    private var total: Double { max(holdings.reduce(0) { $0 + $1.currentValue }, 1) }
+    private var total: Double { holdings.reduce(0) { $0 + $1.currentValue } }
     private var sorted: [PortfolioHolding] { holdings.sorted { $0.currentValue > $1.currentValue } }
 
     var body: some View {
@@ -1120,17 +1152,13 @@ private struct PortfolioAllocationDonutCard: View {
                     let lineW: CGFloat = 14
                     let radius = min(size.width, size.height) / 2 - lineW / 2
                     let center = CGPoint(x: size.width / 2, y: size.height / 2)
-                    var startDeg: Double = -90
-                    for (i, h) in sorted.enumerated() {
-                        let sweep = (h.currentValue / total) * 360
+                    for seg in DonutGeometry.segments(values: sorted.map(\.currentValue)) {
                         var p = Path()
-                        // BUG-10: 1° gap each side for clean segment separation
                         p.addArc(center: center, radius: radius,
-                                 startAngle: .degrees(startDeg + 1),
-                                 endAngle: .degrees(startDeg + sweep - 1), clockwise: false)
-                        ctx.stroke(p, with: .color(allocationPalette[i % allocationPalette.count]),
+                                 startAngle: .degrees(seg.start),
+                                 endAngle: .degrees(seg.end), clockwise: false)
+                        ctx.stroke(p, with: .color(allocationPalette[seg.index % allocationPalette.count]),
                                    style: StrokeStyle(lineWidth: lineW, lineCap: .butt))
-                        startDeg += sweep
                     }
                 }
                 .frame(width: UIScreen.main.bounds.width * 0.28, height: UIScreen.main.bounds.width * 0.28)
@@ -1152,7 +1180,7 @@ private struct PortfolioAllocationDonutCard: View {
                             .font(Theme.serialNumberFont(size: 13, relativeTo: .footnote))
                             .foregroundStyle(Theme.inkPrimary)
                         Spacer()
-                        Text(String(format: "%.1f%%", h.currentValue / total * 100))
+                        Text(total > 0 ? String(format: "%.1f%%", h.currentValue / total * 100) : "—")
                             .font(Theme.serialNumberFont(size: 12, relativeTo: .footnote))
                             .foregroundStyle(Theme.inkSecondary)
                     }
@@ -2345,46 +2373,27 @@ struct PortfolioBriefSheet: View {
                     Spacer()
                     VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                         Text("P&L").font(Theme.officialStampFont(size: 7)).tracking(1.2).foregroundStyle(Theme.inkTertiary)
-                        let isUp = pnl >= 0
-                        Text((isUp ? "+" : "") + IndianFormatter.priceCompact(abs(pnl)))
+                        // priceCompact keeps the minus ("-₹1.25 L"); only gains need an explicit "+".
+                        Text((pnl > 0 ? "+" : "") + IndianFormatter.priceCompact(pnl))
                             .font(Theme.serialNumberFont(size: 16, relativeTo: .headline))
-                            .foregroundStyle(isUp ? Theme.bullGreen : Theme.bearRed)
+                            .foregroundStyle(pnl >= 0 ? Theme.bullGreen : Theme.bearRed)
                     }
                 }
                 .padding(Theme.Spacing.card).banknoteCard()
 
-                GuillocheDivider()
-
-                // Top 3 performers
-                Text("TOP PERFORMERS")
-                    .font(Theme.officialStampFont(size: 9)).tracking(1.5).foregroundStyle(Theme.inkTertiary)
-                ForEach(Array(holdings.sorted { $0.pnlPercent > $1.pnlPercent }.prefix(3))) { (h: PortfolioHolding) in
-                    HStack {
-                        Text(h.stock.ticker).font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkPrimary)
-                        Spacer()
-                        Text(IndianFormatter.percent(h.pnlPercent))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                            .font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.bullGreen)
-                    }
-                    .padding(.vertical, Theme.Spacing.small)
+                // Gainers and losers never overlap, so a small portfolio cannot list a stock twice.
+                let split = Self.performers(holdings)
+                if !split.top.isEmpty {
+                    GuillocheDivider()
+                    Text("TOP PERFORMERS")
+                        .font(Theme.officialStampFont(size: 9)).tracking(1.5).foregroundStyle(Theme.inkTertiary)
+                    ForEach(split.top) { BriefPerformerRow(holding: $0) }
                 }
-
-                GuillocheDivider()
-
-                // Bottom 3 performers
-                Text("NEEDS ATTENTION")
-                    .font(Theme.officialStampFont(size: 9)).tracking(1.5).foregroundStyle(Theme.inkTertiary)
-                ForEach(Array(holdings.sorted { $0.pnlPercent < $1.pnlPercent }.prefix(3))) { (h: PortfolioHolding) in
-                    HStack {
-                        Text(h.stock.ticker).font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkPrimary)
-                        Spacer()
-                        Text(IndianFormatter.percent(h.pnlPercent))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                            .font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.bearRed)
-                    }
-                    .padding(.vertical, Theme.Spacing.small)
+                if !split.attention.isEmpty {
+                    GuillocheDivider()
+                    Text("NEEDS ATTENTION")
+                        .font(Theme.officialStampFont(size: 9)).tracking(1.5).foregroundStyle(Theme.inkTertiary)
+                    ForEach(split.attention) { BriefPerformerRow(holding: $0) }
                 }
             }
             .padding(Theme.screenPadding)
@@ -2392,6 +2401,30 @@ struct PortfolioBriefSheet: View {
         .background(Theme.canvas.ignoresSafeArea())
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+
+    /// Top 3 gainers (pnl% > 0, best first) and up to 3 losers (pnl% < 0, worst first).
+    static func performers(_ holdings: [PortfolioHolding]) -> (top: [PortfolioHolding], attention: [PortfolioHolding]) {
+        let sorted = holdings.sorted { $0.pnlPercent > $1.pnlPercent }
+        return (Array(sorted.filter { $0.pnlPercent > 0 }.prefix(3)),
+                Array(sorted.reversed().filter { $0.pnlPercent < 0 }.prefix(3)))
+    }
+}
+
+private struct BriefPerformerRow: View {
+    let holding: PortfolioHolding
+
+    var body: some View {
+        HStack {
+            Text(holding.stock.ticker).font(Theme.serialNumberFont(size: 13)).foregroundStyle(Theme.inkPrimary)
+            Spacer()
+            Text(IndianFormatter.percent(holding.pnlPercent))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .font(Theme.serialNumberFont(size: 13))
+                .foregroundStyle(holding.pnlPercent >= 0 ? Theme.bullGreen : Theme.bearRed)
+        }
+        .padding(.vertical, Theme.Spacing.small)
     }
 }
 

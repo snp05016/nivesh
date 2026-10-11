@@ -66,6 +66,17 @@ struct IndianFormatter {
         (value < 0 ? "-" : "+") + points(abs(value))
     }
 
+    /// Plain quantities such as share volume, on the Indian scale with no ₹:
+    /// 12_300_000 -> "1.23 Cr", 456_000 -> "4.56 L", 12_345 -> "12,345".
+    static func count(_ value: Double) -> String {
+        guard value.isFinite else { return "—" }
+        let absVal = abs(value)
+        let sign = value < 0 ? "-" : ""
+        if absVal >= 1_00_00_000 { return "\(sign)\(String(format: "%.2f", absVal / 1_00_00_000)) Cr" }
+        if absVal >= 1_00_000 { return "\(sign)\(String(format: "%.2f", absVal / 1_00_000)) L" }
+        return wholeFormatter.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
+    }
+
     static func percent(_ value: Double) -> String {
         let val = value / 100
         return percentFormatter.string(from: NSNumber(value: val)) ?? "0.00%"

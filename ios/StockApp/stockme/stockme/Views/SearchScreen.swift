@@ -355,11 +355,12 @@ struct SearchScreen: View {
                             title: {
                                 if !searchText.isEmpty { return "Search Results" }
                                 if activePreset != nil { return activePreset!.replacingOccurrences(of: "_", with: " ").uppercased() }
+                                if let custom = activeCustomPreset { return custom.name.uppercased() }
                                 return "Trending Stocks"
                             }(),
                             hindiTitle: {
                                 if !searchText.isEmpty { return "खोज परिणाम" }
-                                if activePreset != nil { return "स्क्रीनर" }
+                                if activePreset != nil || activeCustomPreset != nil { return "स्क्रीनर" }
                                 return "चर्चित शेयर"
                             }()
                         )
@@ -375,7 +376,7 @@ struct SearchScreen: View {
                                         Spacer()
                                     }
                                     .padding(.top, Theme.Spacing.xLarge)
-                                } else if activePreset != nil && screenerResults.isEmpty {
+                                } else if (activePreset != nil || activeCustomPreset != nil) && screenerResults.isEmpty {
                                     VStack(spacing: Theme.Spacing.standard) {
                                         BanknoteSignalBadge(text: "NO RESULTS", color: Theme.inkSecondary, rotation: -3)
                                         Text("No stocks matched this screen")
@@ -383,7 +384,13 @@ struct SearchScreen: View {
                                             .foregroundStyle(Theme.inkSecondary)
                                     }
                                     .padding(.top, Theme.Spacing.xLarge)
-                                } else if activePreset != nil {
+                                } else if activePreset != nil || activeCustomPreset != nil {
+                                    if activeCustomPreset != nil {
+                                        Text("Sector filter — tap a stock for live data")
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.inkSecondary)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
                                     ForEach(Array(screenerResults.enumerated()), id: \.element.id) { index, result in
                                         Button { HapticManager.selection(); 
     HapticManager.selection()
@@ -582,7 +589,7 @@ struct SearchScreen: View {
             ScreenerResult(
                 ticker: entry.ticker,
                 companyName: entry.companyName,
-                signal: "HOLD",
+                signal: nil,  // a sector filter carries no signal; never fabricate "HOLD"
                 confidencePct: nil,
                 reason: nil,
                 fScore: nil,
