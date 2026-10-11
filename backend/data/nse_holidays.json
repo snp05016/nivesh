@@ -1,0 +1,5 @@
+{
+  "_comment": "NSE equity-segment trading holidays by year (YYYY-MM-DD) and special sessions such as Muhurat trading (HH:MM IST). Copy dates only from the official NSE holiday circular; a year missing here is reported as calendar_known=false.",
+  "holidays": {},
+  "special_sessions": []
+}

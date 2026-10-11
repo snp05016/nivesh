@@ -36,10 +36,17 @@ struct IndianFormatter {
     private static let percentFormatter: NumberFormatter = {
         let f = NumberFormatter()
         f.numberStyle = .percent
+        f.locale = Locale(identifier: "en_IN")
         f.maximumFractionDigits = 2
         f.positivePrefix = "+"
         return f
     }()
+
+    /// Rounds to 2 decimals and folds -0 into 0, so a unit is chosen on the value actually printed.
+    private static func r2(_ value: Double) -> Double {
+        let x = (value * 100).rounded() / 100
+        return x == 0 ? 0 : x
+    }
 
     static func price(_ value: Double) -> String {
         priceFormatter.string(from: NSNumber(value: value)) ?? "₹0.00"
@@ -72,13 +79,14 @@ struct IndianFormatter {
         guard value.isFinite else { return "—" }
         let absVal = abs(value)
         let sign = value < 0 ? "-" : ""
-        if absVal >= 1_00_00_000 { return "\(sign)\(String(format: "%.2f", absVal / 1_00_00_000)) Cr" }
-        if absVal >= 1_00_000 { return "\(sign)\(String(format: "%.2f", absVal / 1_00_000)) L" }
+        let lakhs = r2(absVal / 1_00_000)
+        if lakhs >= 100 { return "\(sign)\(String(format: "%.2f", r2(absVal / 1_00_00_000))) Cr" }
+        if absVal >= 1_00_000 { return "\(sign)\(String(format: "%.2f", lakhs)) L" }
         return wholeFormatter.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
     }
 
     static func percent(_ value: Double) -> String {
-        let val = value / 100
+        let val = r2(value) / 100
         return percentFormatter.string(from: NSNumber(value: val)) ?? "0.00%"
     }
 
@@ -97,17 +105,18 @@ struct IndianFormatter {
         if useAbsoluteFormat { return price(value) }
         let absVal = abs(value)
         let sign = value < 0 ? "-" : ""
-        if absVal >= 1_00_00_000 { // 1 Crore = 1,00,00,000
+        // Pick the unit on the rounded value: 99,99,999.6 prints "₹1.00 Cr", never "₹100.00 L".
+        let lakhs = r2(absVal / 1_00_000)
+        if lakhs >= 100 { // 1 Crore = 1,00,00,000
             let crores = absVal / 1_00_00_000
-            if crores >= 1000 {
+            if (crores * 10).rounded() / 10 >= 1000 {
                 return "\(sign)₹\(wholeFormatter.string(from: NSNumber(value: crores)) ?? String(format: "%.0f", crores)) Cr"
-            } else if crores >= 100 {
+            } else if r2(crores) >= 100 {
                 return "\(sign)₹\(String(format: "%.1f", crores)) Cr"
             } else {
-                return "\(sign)₹\(String(format: "%.2f", crores)) Cr"
+                return "\(sign)₹\(String(format: "%.2f", r2(crores))) Cr"
             }
         } else if absVal >= 1_00_000 { // 1 Lakh = 1,00,000
-            let lakhs = absVal / 1_00_000
             return "\(sign)₹\(String(format: "%.2f", lakhs)) L"
         } else {
             return price(value)
@@ -121,8 +130,8 @@ struct IndianFormatter {
 
     /// Formats a percentage delta with sign, 2 decimal places.
     static func delta(_ value: Double) -> String {
-        let sign = value >= 0 ? "+" : ""
-        return "\(sign)\(String(format: "%.2f", value))%"
+        let x = r2(value)
+        return "\(x >= 0 ? "+" : "")\(String(format: "%.2f", x))%"
     }
 
     /// Elapsed time label for timestamps (e.g. "2 minutes ago").

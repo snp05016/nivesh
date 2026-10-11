@@ -26,6 +26,7 @@ from services.scraper import (
 )
 from services.options_scraper import fetch_option_chain, compute_derivatives_metrics
 from services.nse_data_provider import get_price_history, get_fundamentals
+from services.market_calendar import market_status
 
 router = APIRouter(tags=["Market Data"])
 
@@ -857,6 +858,11 @@ def sector_performance_endpoint():
 # ---------------------------------------------------------------------------
 # v1 Market Intelligence Routes (Firecrawl + fallback scraping, 15-min cache)
 # ---------------------------------------------------------------------------
+
+@router.get("/api/v1/market/status")
+def market_status_endpoint():
+    """NSE open/closed for the Home status pill, honouring exchange holidays and special sessions."""
+    return market_status()
 
 @router.get("/api/v1/market/pulse")
 def market_pulse_endpoint():

@@ -276,25 +276,8 @@ struct RSIChart: View {
     let prices: [PricePoint]
 
     private func computeRSI(period: Int = 14) -> [(date: Date, rsi: Double)] {
-        guard prices.count > period else { return [] }
-        var gains: [Double] = []
-        var losses: [Double] = []
-        for i in 1..<prices.count {
-            let diff = prices[i].close - prices[i - 1].close
-            gains.append(max(diff, 0))
-            losses.append(max(-diff, 0))
-        }
-        var result: [(date: Date, rsi: Double)] = []
-        var avgGain = gains[0..<period].reduce(0, +) / Double(period)
-        var avgLoss = losses[0..<period].reduce(0, +) / Double(period)
-        for i in period..<gains.count {
-            avgGain = (avgGain * Double(period - 1) + gains[i]) / Double(period)
-            avgLoss = (avgLoss * Double(period - 1) + losses[i]) / Double(period)
-            let rs = avgLoss == 0 ? 100.0 : avgGain / avgLoss
-            let rsi = 100 - 100 / (1 + rs)
-            result.append((date: prices[i + 1].parsedDate, rsi: rsi))
-        }
-        return result
+        let values = TechnicalIndicators.rsi(closes: prices.map(\.close), period: period)
+        return zip(prices.dropFirst(period + 1), values).map { point, rsi in (date: point.parsedDate, rsi: rsi) }
     }
 
     var body: some View {

@@ -2233,58 +2233,6 @@ private struct InstitutionalDashCard: View {
     }
 }
 
-// MARK: - Market Status Strip
-
-private struct MarketStatusStrip: View {
-    private var isMarketOpen: Bool {
-        let cal = Calendar(identifier: .gregorian)
-        let comps = cal.dateComponents(in: TimeZone(identifier: "Asia/Kolkata")!, from: Date())
-        guard let weekday = comps.weekday, weekday != 1, weekday != 7 else { return false }
-        let hour = comps.hour ?? 0
-        let minute = comps.minute ?? 0
-        let totalMinutes = hour * 60 + minute
-        return totalMinutes >= 555 && totalMinutes < 930
-    }
-
-    private var statusLabel: String { isMarketOpen ? "NSE OPEN" : "NSE CLOSED" }
-    private var statusColor: Color { isMarketOpen ? Theme.bullGreen : Theme.bearRed }
-
-    private var istTimeString: String {
-        let f = DateFormatter()
-        f.timeZone = TimeZone(identifier: "Asia/Kolkata")
-        f.dateFormat = "EEE, d MMM · HH:mm IST"
-        return f.string(from: Date()).uppercased()
-    }
-
-    var body: some View {
-        HStack(spacing: Theme.Spacing.standard) {
-            HStack(spacing: Theme.Spacing.small) {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 6, height: 6)
-                    .shadow(color: statusColor.opacity(0.5), radius: 3)
-                Text(statusLabel)
-                    .font(Theme.officialStampFont(size: 9))
-                    .tracking(1.2)
-                    .foregroundStyle(statusColor)
-            }
-            .padding(.horizontal, Theme.Spacing.standard)
-            .padding(.vertical, Theme.Spacing.medium)
-            .background(statusColor.opacity(0.08))
-            .cornerRadius(Theme.CornerRadius.small)
-            .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(statusColor.opacity(0.25), lineWidth: 0.5))
-
-            Text(istTimeString)
-                .font(Theme.serialNumberFont(size: 9, relativeTo: .caption2))
-                .foregroundStyle(Theme.inkTertiary)
-
-            Spacer()
-        }
-        .padding(.horizontal, Theme.screenPadding)
-        .padding(.bottom, Theme.Spacing.small)
-    }
-}
-
 // MARK: - HomeScreen renderSection
 extension HomeScreen {
     @ViewBuilder

@@ -56,7 +56,8 @@ final class IndianFormatterTests: XCTestCase {
         for v in [12_300_000.0, 456_000, 12_345, 99_99_999] {
             XCTAssertFalse(IndianFormatter.count(v).contains("₹"), "value \(v)")
         }
-        XCTAssertTrue(IndianFormatter.count(99_99_999).hasSuffix(" L"), "just under a crore stays Lakh-scale")
+        XCTAssertEqual(IndianFormatter.count(99_00_000), "99.00 L", "under a crore stays Lakh-scale")
+        XCTAssertEqual(IndianFormatter.count(99_99_999), "1.00 Cr", "rounds to 100 L, so it prints as a crore")
     }
 
     /// IOSUI-18: a loss keeps its minus in compact form, before the symbol.
@@ -64,8 +65,54 @@ final class IndianFormatterTests: XCTestCase {
         withRelativeFormat {
             XCTAssertEqual(IndianFormatter.priceCompact(-250_000), "-₹2.50 L")
             XCTAssertEqual(IndianFormatter.formatLakhsCrores(-1.5e7), "-₹1.50 Cr")
-            XCTAssertTrue(IndianFormatter.formatLakhsCrores(99_99_999).hasSuffix(" L"))
+            XCTAssertEqual(IndianFormatter.formatLakhsCrores(99_00_000), "₹99.00 L")
         }
+    }
+
+    // MARK: - IOSCORE-37 boundaries
+
+    func testPriceCompactBoundaryRoundsUpToCrore() {
+        withRelativeFormat {
+            XCTAssertEqual(IndianFormatter.priceCompact(9_999_999.6), "₹1.00 Cr")
+            XCTAssertEqual(IndianFormatter.formatLakhsCrores(9_999_999.6), "₹1.00 Cr")
+            XCTAssertEqual(IndianFormatter.formatLakhsCrores(-9_999_999.6), "-₹1.00 Cr")
+            XCTAssertEqual(IndianFormatter.formatLakhsCrores(9_994_999), "₹99.95 L")
+        }
+    }
+
+    func testCroreTierBoundaries() {
+        withRelativeFormat {
+            XCTAssertEqual(IndianFormatter.formatLakhsCrores(99.996e7), "₹100.0 Cr")
+            XCTAssertEqual(IndianFormatter.formatLakhsCrores(999.97e7), "₹1,000 Cr")
+        }
+    }
+
+    func testPriceCompactNegativeSignBeforeSymbol() {
+        withRelativeFormat {
+            XCTAssertEqual(IndianFormatter.priceCompact(-15_000_000), "-₹1.50 Cr")
+        }
+    }
+
+    func testLakhs() {
+        withRelativeFormat {
+            XCTAssertEqual(IndianFormatter.priceCompact(250_000), "₹2.50 L")
+        }
+    }
+
+    func testDeltaNormalisesNegativeZero() {
+        XCTAssertEqual(IndianFormatter.delta(-0.004), "+0.00%")
+        XCTAssertEqual(IndianFormatter.delta(0), "+0.00%")
+    }
+
+    func testDeltaNegative() {
+        XCTAssertEqual(IndianFormatter.delta(-1.234), "-1.23%")
+        XCTAssertEqual(IndianFormatter.delta(1.234), "+1.23%")
+    }
+
+    func testPercentUsesINLocale() {
+        XCTAssertEqual(IndianFormatter.percent(1.234), "+1.23%")
+        XCTAssertEqual(IndianFormatter.percent(1_23_456), "+1,23,456%")
+        XCTAssertFalse(IndianFormatter.percent(-0.004).contains("-"))
     }
 
     func testNaNDoesNotCrash() {

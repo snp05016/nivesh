@@ -14,6 +14,8 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
 
     private override init() {
         super.init()
+        // Same defaults QuietHoursView shows (22:00-07:00); @AppStorage and double(forKey:) both read these.
+        UserDefaults.standard.register(defaults: ["nivesh_quietHoursStart": 79200.0, "nivesh_quietHoursEnd": 25200.0])
         UNUserNotificationCenter.current().delegate = self
     }
 
@@ -223,26 +225,30 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
     // MARK: - Quiet Hours
 
     private func isInQuietHours() -> Bool {
-        // Same defaults as QuietHoursView's @AppStorage (22:00-07:00), so the window shown is the window enforced.
-        let startSecs = UserDefaults.standard.object(forKey: "nivesh_quietHoursStart") as? Double ?? 79200
-        let endSecs = UserDefaults.standard.object(forKey: "nivesh_quietHoursEnd") as? Double ?? 25200
-        guard startSecs != endSecs else { return false }
-
         let daysData = UserDefaults.standard.data(forKey: "nivesh_quietHoursDays") ?? Data()
         let activeDays: Set<Int> = (try? JSONDecoder().decode(Set<Int>.self, from: daysData)) ?? Set(0...6)
+        return Self.isInQuietHours(
+            now: Date(),
+            calendar: .current,
+            startSecs: UserDefaults.standard.double(forKey: "nivesh_quietHoursStart"),
+            endSecs: UserDefaults.standard.double(forKey: "nivesh_quietHoursEnd"),
+            activeDays: activeDays
+        )
+    }
 
-        let cal = Calendar.current
-        let now = Date()
-        let weekday = cal.component(.weekday, from: now) - 1 // 0=Sun, matches QuietHoursView.dayNames
-        guard activeDays.contains(weekday) else { return false }
-
-        let midnight = cal.startOfDay(for: now)
-        let currentSecs = now.timeIntervalSince(midnight)
-
-        if startSecs < endSecs {
-            return currentSecs >= startSecs && currentSecs < endSecs
-        } else {
-            return currentSecs >= startSecs || currentSecs < endSecs
-        }
+    /// `activeDays` uses QuietHoursView's indices (0 = Sun ... 6 = Sat). An overnight window
+    /// belongs to the day it started: Fri 22:00-07:00 also silences Sat 02:00.
+    static func isInQuietHours(now: Date, calendar: Calendar, startSecs: Double, endSecs: Double, activeDays: Set<Int>) -> Bool {
+        guard startSecs != endSecs else { return false }
+        let currentSecs = now.timeIntervalSince(calendar.startOfDay(for: now))
+        let overnight = startSecs > endSecs
+        let inWindow = overnight
+            ? (currentSecs >= startSecs || currentSecs < endSecs)
+            : (currentSecs >= startSecs && currentSecs < endSecs)
+        guard inWindow else { return false }
+        let windowStart = (overnight && currentSecs < endSecs)
+            ? (calendar.date(byAdding: .day, value: -1, to: now) ?? now)
+            : now
+        return activeDays.contains(calendar.component(.weekday, from: windowStart) - 1)
     }
 }

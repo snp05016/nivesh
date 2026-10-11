@@ -50,7 +50,7 @@ PUBLIC_ROUTES = {
     ("GET", "/api/v1/market/anomalies"), ("GET", "/api/v1/market/dashboard"),
     ("GET", "/api/v1/market/dashboard-pulse"), ("GET", "/api/v1/market/institutional-flow"),
     ("GET", "/api/v1/market/institutional-leaderboard"), ("GET", "/api/v1/market/macro-alternatives"),
-    ("GET", "/api/v1/market/momentum"), ("GET", "/api/v1/market/pulse"),
+    ("GET", "/api/v1/market/momentum"), ("GET", "/api/v1/market/pulse"), ("GET", "/api/v1/market/status"),
     ("GET", "/api/v1/market/stock-history"), ("GET", "/api/v1/market/top-movers"),
     ("GET", "/api/v1/options/chain/{ticker}"), ("GET", "/api/v1/stock-profile"),
     ("GET", "/api/v1/technical-signals"), ("GET", "/block-deals/{ticker}"),
