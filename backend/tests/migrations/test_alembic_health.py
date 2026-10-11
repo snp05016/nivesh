@@ -128,7 +128,7 @@ def test_watchlists_created_for_db_missing_it(tmp_db):
     """117b4057d650 must create watchlists on a DB built before the model existed."""
     from sqlalchemy import create_engine, inspect, text
 
-    assert _alembic(tmp_db, "upgrade", "t4u5v6w7x8y9").returncode == 0
+    assert _alembic(tmp_db, "upgrade", "ec35eaf96b81").returncode == 0
     engine = create_engine(f"sqlite:///{tmp_db}")
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE watchlists"))
