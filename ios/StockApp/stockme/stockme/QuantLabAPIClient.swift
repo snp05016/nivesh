@@ -17,30 +17,30 @@ extension NetworkManager {
 
     // MARK: - Calibration
 
-    func fetchCalibration(horizon: String = "30d") async throws -> CalibrationResponse {
+    func fetchCalibration() async throws -> CalibrationResponse {
         return try await _fetchDecode(
             CalibrationResponse.self,
-            endpoint: "/api/v1/predictions/calibration?horizon=\(horizon)",
+            endpoint: "/api/v1/predictions/calibration",
             timeout: 15
         )
     }
 
     // MARK: - Pillar Attribution
 
-    func fetchPillarAttribution(horizon: String = "30d") async throws -> PillarAttributionResponse {
+    func fetchPillarAttribution() async throws -> PillarAttributionResponse {
         return try await _fetchDecode(
             PillarAttributionResponse.self,
-            endpoint: "/api/v1/predictions/pillar-attribution?horizon=\(horizon)",
+            endpoint: "/api/v1/predictions/pillar-attribution",
             timeout: 15
         )
     }
 
     // MARK: - Model Versions
 
-    func fetchModelVersions(horizon: String = "30d") async throws -> ModelVersionsResponse {
+    func fetchModelVersions() async throws -> ModelVersionsResponse {
         return try await _fetchDecode(
             ModelVersionsResponse.self,
-            endpoint: "/api/v1/predictions/model-versions?horizon=\(horizon)",
+            endpoint: "/api/v1/predictions/model-versions",
             timeout: 15
         )
     }
