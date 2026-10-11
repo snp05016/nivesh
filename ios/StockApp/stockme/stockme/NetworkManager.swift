@@ -39,26 +39,6 @@ enum NetworkError: Error, LocalizedError {
     }
 }
 
-private struct AnalyzeRequest: Encodable {
-    let ticker: String
-    let exchange: String
-    let userId: Int?
-    let useMock: Bool
-    let deepScan: Bool
-    let scanType: String
-    var language: String? = nil
-    var debateRounds: Int? = nil
-    enum CodingKeys: String, CodingKey {
-        case ticker, exchange
-        case userId = "user_id"
-        case useMock = "use_mock"
-        case deepScan = "deep_scan"
-        case scanType = "scan_type"
-        case language
-        case debateRounds = "debate_rounds"
-    }
-}
-
 private struct LoginRequest: Encodable {
     let username: String
     let password: String
@@ -90,7 +70,8 @@ class NetworkManager: ObservableObject {
 
     var authToken: String? = nil
 
-    let session: URLSession
+    /// `var` only so unit tests can swap in a stub-protocol session (AuthRequestTests).
+    var session: URLSession
 
     private init() {
         let config = URLSessionConfiguration.default
@@ -156,6 +137,9 @@ class NetworkManager: ObservableObject {
         }
         let corrId = generateCorrelationID(subsystem: "ios")
         req.setValue(corrId, forHTTPHeaderField: "X-Correlation-ID")
+        // Lets the backend refuse builds that predate token auth (426 update-required).
+        req.setValue(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String, forHTTPHeaderField: "X-App-Version")
+        req.setValue(Bundle.main.infoDictionary?["CFBundleVersion"] as? String, forHTTPHeaderField: "X-App-Build")
         return req
     }
 
@@ -226,116 +210,11 @@ class NetworkManager: ObservableObject {
         return try JSONDecoder().decode(LoggedInUser.self, from: data)
     }
 
-    // MARK: - Analyze
-
-    func analyze(ticker: String, exchange: String = "NSE", userId: Int? = nil, useMock: Bool = false, deepScan: Bool = false, scanType: String = "standard", language: String? = nil, debateRounds: Int? = nil) async throws -> StockAnalysis {
-        guard let url = URL(string: "\(baseURL)/analyze") else { throw NetworkError.invalidURL }
-        let requestUrl = "\(baseURL)/analyze"
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.httpBody = try JSONEncoder().encode(AnalyzeRequest(ticker: ticker, exchange: exchange, userId: userId, useMock: useMock, deepScan: deepScan, scanType: scanType, language: language, debateRounds: debateRounds))
-
-        let requestStart = Date()
-        let (data, response): (Data, URLResponse)
-        do {
-            (data, response) = try await session.data(for: request)
-        } catch {
-            let elapsed = Date().timeIntervalSince(requestStart)
-            let info = AnalysisErrorInfo(
-                diagnostic: nil,
-                rawError: error.localizedDescription,
-                httpStatusCode: 0,
-                responseBody: "",
-                responseHeaders: "",
-                requestUrl: requestUrl,
-                elapsedSeconds: elapsed,
-                quickInfoElapsed: nil,
-                isRetryable: true,
-                isMockMode: useMock,
-                isDeepScan: deepScan
-            )
-            throw NetworkError.analysisDiagnostic(info)
-        }
-        let elapsed = Date().timeIntervalSince(requestStart)
-
-        guard let http = response as? HTTPURLResponse else {
-            let info = AnalysisErrorInfo(
-                diagnostic: nil,
-                rawError: "Invalid HTTP response.",
-                httpStatusCode: 0,
-                responseBody: String(data: data, encoding: .utf8) ?? "",
-                responseHeaders: "",
-                requestUrl: requestUrl,
-                elapsedSeconds: elapsed,
-                quickInfoElapsed: nil,
-                isRetryable: true,
-                isMockMode: useMock,
-                isDeepScan: deepScan
-            )
-            throw NetworkError.analysisDiagnostic(info)
-        }
-
-        let responseBody = String(data: data, encoding: .utf8) ?? ""
-        let responseHeaders = (http.allHeaderFields as? [String: String] ?? [:])
-            .map { "\($0.key): \($0.value)" }
-            .sorted()
-            .joined(separator: "\n")
-
-        // Fix 3.17: Detect AI_QUOTA_EXHAUSTED token in error responses
-        let isQuotaExhausted = responseBody.contains("AI_QUOTA_EXHAUSTED")
-        if isQuotaExhausted {
-            print("[NetworkManager] AI quota exhausted — disabling regenerate analysis")
-        }
-
-        guard (200...299).contains(http.statusCode) else {
-            var diagnostic: DiagnosticError? = nil
-            if let responseData = responseBody.data(using: .utf8) {
-                diagnostic = try? JSONDecoder().decode(DiagnosticError.self, from: responseData)
-            }
-            let info = AnalysisErrorInfo(
-                diagnostic: diagnostic,
-                rawError: responseBody,
-                httpStatusCode: http.statusCode,
-                responseBody: responseBody,
-                responseHeaders: responseHeaders,
-                requestUrl: requestUrl,
-                elapsedSeconds: elapsed,
-                quickInfoElapsed: nil,
-                isRetryable: (http.statusCode == 429 || http.statusCode == 503 || http.statusCode == 500 || http.statusCode == 499) && !isQuotaExhausted,
-                isMockMode: useMock,
-                isDeepScan: deepScan
-            )
-            throw NetworkError.analysisDiagnostic(info)
-        }
-        do {
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode(StockAnalysis.self, from: data)
-        } catch {
-            let info = AnalysisErrorInfo(
-                diagnostic: nil,
-                rawError: "Decoding error: \(error.localizedDescription)",
-                httpStatusCode: http.statusCode,
-                responseBody: responseBody,
-                responseHeaders: responseHeaders,
-                requestUrl: requestUrl,
-                elapsedSeconds: elapsed,
-                quickInfoElapsed: nil,
-                isRetryable: false,
-                isMockMode: useMock,
-                isDeepScan: deepScan
-            )
-            throw NetworkError.analysisDiagnostic(info)
-        }
-    }
-
     // MARK: - v2 Analysis Engine (background job model)
 
     func startAnalysisJob(ticker: String, exchange: String, userId: Int?, deepScan: Bool = false, scanType: String, language: String? = nil, debateRounds: Int? = nil, riskTolerance: String? = nil) async throws -> StartJobResponse {
         guard let url = URL(string: "\(baseURL)/analyze") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(StartJobRequest(ticker: ticker, exchange: exchange, userId: userId, deepScan: deepScan, scanType: scanType, language: language, debateRounds: debateRounds, riskTolerance: riskTolerance))
@@ -355,7 +234,7 @@ class NetworkManager: ObservableObject {
         var urlStr = "\(baseURL)/analyze/job/\(jobId)"
         if let uid = userId { urlStr += "?user_id=\(uid)" }
         guard let url = URL(string: urlStr) else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 10
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
@@ -370,7 +249,7 @@ class NetworkManager: ObservableObject {
         var urlStr = "\(baseURL)/analyze/job/\(jobId)"
         if let uid = userId { urlStr += "?user_id=\(uid)" }
         guard let url = URL(string: urlStr) else { return nil }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 10
         let (data, _) = try await session.data(for: request)
         return try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -380,22 +259,24 @@ class NetworkManager: ObservableObject {
         var urlStr = "\(baseURL)/analyze/\(jobId)/cancel"
         if let uid = userId { urlStr += "?user_id=\(uid)" }
         guard let url = URL(string: urlStr) else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.httpMethod = "POST"
         request.timeoutInterval = 10
-        let (_, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw NetworkError.invalidResponse
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(http.statusCode) else {
+            throw NetworkError.serverError(http.statusCode, String(data: data, encoding: .utf8))
         }
     }
 
     func getActiveJob(userId: Int) async throws -> JobStatus? {
         guard let url = URL(string: "\(baseURL)/analyze/active?user_id=\(userId)") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 10
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw NetworkError.invalidResponse
+        guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(http.statusCode) else {
+            throw NetworkError.serverError(http.statusCode, String(data: data, encoding: .utf8))
         }
         let decoder = JSONDecoder()
         // active returns either a JobStatus or {"status":"NONE"}

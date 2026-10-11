@@ -82,16 +82,17 @@ class NLScreenerViewModel: ObservableObject {
                 guard let url = URL(string: endpoint) else {
                     throw NetworkError.invalidURL
                 }
-                var request = URLRequest(url: url)
+                var request = NetworkManager.shared.authRequest(url)
                 request.httpMethod = "POST"
                 request.timeoutInterval = Self.requestTimeout
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                // Keep the ID shown in errorDiagnostic equal to the one the server logged.
                 request.setValue(correlationId, forHTTPHeaderField: "X-Correlation-ID")
                 
                 let reqBody = NLScreenerRequest(query: textToSearch)
                 request.httpBody = try JSONEncoder().encode(reqBody)
                 
-                let (data, response) = try await URLSession.shared.data(for: request)
+                let (data, response) = try await NetworkManager.shared.session.data(for: request)
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
                     throw URLError(.badServerResponse)
