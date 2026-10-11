@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import secrets
 import bcrypt
@@ -98,11 +99,51 @@ from models.db_models import (  # noqa: E402
     Base, User, Portfolio, AnalysisHistory, SignalEvent, AnalysisJob,
     PriceTarget, TradeJournal, DeviceToken, AdvisorInsight, NewsArticle,
     YouTubeVideo, PortfolioValuationHistory, PKScreenerSignal, MacroEvent,
-    NetWorthLedger, MarketErrorLog, EarningsAlert, log_market_error,
-    EarningsErrorLog, log_earnings_error, BlockDeal, FIIDIIFlow,
-    NotificationErrorLog, log_notification_error, AdvisorBiography,
-    TextAdvisoryInsight, IdeasErrorLog, log_ideas_error, PortfolioTransaction,
+    NetWorthLedger, MarketErrorLog, EarningsAlert,
+    EarningsErrorLog, BlockDeal, FIIDIIFlow,
+    NotificationErrorLog, AdvisorBiography,
+    TextAdvisoryInsight, IdeasErrorLog, PortfolioTransaction,
 )
+
+# ---------------------------------------------------------------------------
+# Telemetry error-log helpers (GH-610: moved here from models/db_models.py)
+# ---------------------------------------------------------------------------
+
+_telemetry_log = logging.getLogger("nivesh.telemetry")
+
+
+def _write_error_row(model_cls, text_field: str, text, **fields) -> None:
+    """Insert one diagnostic row. Never raises: telemetry must not cascade.
+
+    A failed write is logged at WARNING instead of vanishing silently.
+    """
+    # ponytail: no rate limiting; add it if a DB outage floods the logs.
+    try:
+        with get_session() as session:
+            session.add(model_cls(**{text_field: str(text)[:2000]}, **fields))
+            session.commit()
+    except Exception:
+        _telemetry_log.warning("telemetry write to %s failed", model_cls.__tablename__, exc_info=True)
+
+
+def log_market_error(component: str, error_message: str, context_ticker: str | None = None) -> None:
+    """Write a diagnostic error row to market_error_logs. Non-fatal."""
+    _write_error_row(MarketErrorLog, "error_message", error_message, component=component, context_ticker=context_ticker)
+
+
+def log_earnings_error(module: str, error_trace: str, failed_ticker: str | None = None) -> None:
+    """Write a diagnostic error row to earnings_error_logs. Non-fatal."""
+    _write_error_row(EarningsErrorLog, "error_trace", error_trace, module=module, failed_ticker=failed_ticker)
+
+
+def log_notification_error(failure_point: str, error_trace: str, target_device: str | None = None) -> None:
+    """Write a diagnostic error row to notification_error_logs. Non-fatal."""
+    _write_error_row(NotificationErrorLog, "error_trace", error_trace, failure_point=failure_point, target_device=target_device)
+
+
+def log_ideas_error(module: str, error_trace: str, context_ticker: str | None = None) -> None:
+    """Write a diagnostic error row to ideas_error_logs. Non-fatal."""
+    _write_error_row(IdeasErrorLog, "error_trace", error_trace, module=module, context_ticker=context_ticker)
 
 # ---------------------------------------------------------------------------
 # Ticker safety

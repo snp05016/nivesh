@@ -57,7 +57,7 @@ def run():
 
     try:
         # ---- Test log_market_error() inserts a row
-        from models.db_models import log_market_error
+        from database import log_market_error
         log_market_error(
             component="test_component",
             error_message="Test market error for integrity test",
@@ -89,7 +89,7 @@ def run():
             runner.fail("log_market_error_truncation", "Truncation test row not found")
 
         # ---- Test log_earnings_error()
-        from models.db_models import log_earnings_error
+        from database import log_earnings_error
         log_earnings_error(
             module="test_module",
             error_trace="Test earnings error traceback",
@@ -104,7 +104,7 @@ def run():
             runner.fail("log_earnings_error_inserts", "log_earnings_error() did not insert a row")
 
         # ---- Test log_notification_error()
-        from models.db_models import log_notification_error
+        from database import log_notification_error
         log_notification_error(
             failure_point="test_dispatch",
             error_trace="Test notification error",
@@ -119,7 +119,7 @@ def run():
             runner.fail("log_notification_error_inserts", "log_notification_error() did not insert a row")
 
         # ---- Test log_ideas_error()
-        from models.db_models import log_ideas_error
+        from database import log_ideas_error
         log_ideas_error(
             module="ideas_test_module",
             error_trace="Test ideas error traceback",

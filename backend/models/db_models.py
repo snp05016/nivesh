@@ -544,22 +544,6 @@ class MarketErrorLog(Base):
     context_ticker = Column(String(30), nullable=True)       # optional — ticker being processed when error hit
 
 
-def log_market_error(component: str, error_message: str, context_ticker: str | None = None) -> None:
-    """Write a diagnostic error row to market_error_logs. Non-fatal — swallows its own errors."""
-    from database import get_session
-    try:
-        with get_session() as session:
-            entry = MarketErrorLog(
-                component=component,
-                error_message=str(error_message)[:2000],  # guard against runaway text
-                context_ticker=context_ticker,
-            )
-            session.add(entry)
-            session.commit()
-    except Exception as _e:
-        pass  # telemetry must never cause a cascading failure
-
-
 class EarningsAlert(Base):
     """Stores user alerts for upcoming earnings announcements."""
     __tablename__ = "earnings_alerts"
@@ -586,22 +570,6 @@ class EarningsErrorLog(Base):
     module         = Column(String(100), nullable=False)   # "filings_extractor", "earnings_calendar", "earnings_feed"
     error_trace    = Column(Text, nullable=False)            # full traceback / error string
     failed_ticker  = Column(String(30), nullable=True)       # ticker being processed when error occurred
-
-
-def log_earnings_error(module: str, error_trace: str, failed_ticker: str | None = None) -> None:
-    """Write a diagnostic error row to earnings_error_logs. Non-fatal."""
-    from database import get_session
-    try:
-        with get_session() as session:
-            entry = EarningsErrorLog(
-                module=module,
-                error_trace=str(error_trace)[:2000],
-                failed_ticker=failed_ticker,
-            )
-            session.add(entry)
-            session.commit()
-    except Exception as _e:
-        pass  # telemetry must never cascade
 
 
 class BlockDeal(Base):
@@ -644,22 +612,6 @@ class NotificationErrorLog(Base):
     target_device = Column(String(200), nullable=True)      # device token or identifier
 
 
-def log_notification_error(failure_point: str, error_trace: str, target_device: str | None = None) -> None:
-    """Write a diagnostic error row to notification_error_logs. Non-fatal."""
-    from database import get_session
-    try:
-        with get_session() as session:
-            entry = NotificationErrorLog(
-                failure_point=failure_point,
-                error_trace=str(error_trace)[:2000],
-                target_device=target_device,
-            )
-            session.add(entry)
-            session.commit()
-    except Exception as _e:
-        pass  # telemetry must never cascade
-
-
 class AdvisorBiography(Base):
     """Stores biographical information for financial advisors."""
     __tablename__ = "advisor_biographies"
@@ -697,22 +649,6 @@ class IdeasErrorLog(Base):
     module = Column(String(100), nullable=False)
     error_trace = Column(Text, nullable=False)
     context_ticker = Column(String(30), nullable=True)
-
-
-def log_ideas_error(module: str, error_trace: str, context_ticker: str | None = None) -> None:
-    """Write a diagnostic error row to ideas_error_logs. Non-fatal — swallows its own errors."""
-    from database import get_session
-    try:
-        with get_session() as session:
-            entry = IdeasErrorLog(
-                module=module,
-                error_trace=str(error_trace)[:2000],  # guard against runaway text
-                context_ticker=context_ticker,
-            )
-            session.add(entry)
-            session.commit()
-    except Exception as _e:
-        pass  # telemetry must never cause a cascading failure
 
 
 class MarketAnomaly(Base):

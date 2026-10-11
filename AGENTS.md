@@ -204,7 +204,8 @@ REFUSED — AGENTS.md §2.8 Cmd I: Data Density
 | Service | `services/` (20 files) | All business logic, LLM orchestration, computations |
 | Repository | `database.py` + `models/db_models.py` + `repositories/` | `get_session()` context manager. ORM models centralized in one file. Alembic migrations in `migrations/versions/`. |
 
-Business logic in routers FORBIDDEN. DB queries in services FORBIDDEN.
+Business logic in routers FORBIDDEN. DB queries in routers FORBIDDEN (move them into a service or repository).
+Services MAY query the DB through `get_session()`. Queries shared by several services, and money paths (ledger, portfolio), belong in `repositories/<domain>_repo.py` (follow `repositories/analysis_repo.py`). Migrate a service's queries into a repository opportunistically, when the service is touched for a bug; no bulk refactor.
 
 ### 3.2 Database Sessions
 Every DB interaction MUST use `get_session()` context manager. NEVER pass sessions across process boundaries. NEVER use global `session` variable.
@@ -654,7 +655,7 @@ Inline functions >5 lines cause chkstk_darwin stack overflow.
 
 **Banknote Aesthetic:** UI mimicking physical currency — aged-paper backgrounds, security gold accents, double-border cards, serif typography (Georgia), haptic feedback, GuillocheDivider separators.
 
-**Controller-Service-Repository:** Routers=HTTP validation+process spawn. Services=business logic+LLM. Repository=DB via `get_session()`.
+**Controller-Service-Repository:** Routers=HTTP validation+process spawn. Services=business logic+LLM. Repository=shared/money-path DB queries via `get_session()`; services may also query via `get_session()`, routers may not.
 
 **Dialectical Asymmetry:** Bear researcher 1.5x weight advantage. Bear's prompt longer with more data signals. Burden of proof on Bull.
 
