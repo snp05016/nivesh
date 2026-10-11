@@ -1268,12 +1268,17 @@ class KYCConsent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    # e.g. "data_sharing" | "credit_check" | "sim_binding"
+    # a key of disclosure_service.CONSENT_PURPOSES, e.g. "credit_check"
     consent_type = Column(String(40), nullable=False, index=True)
     granted = Column(Boolean, nullable=False, default=False, server_default="0")
     granted_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     ip_address = Column(String(64), nullable=True)
     revoked_at = Column(DateTime, nullable=True)
+    # FINSEC-09: what the user agreed to (see disclosure_service).
+    policy_version = Column(String(20), nullable=True)
+    notice_hash = Column(String(64), nullable=True)  # sha256 hex of the notice
+    purpose = Column(String(200), nullable=True)
+    app_version = Column(String(20), nullable=True)
 
 
 class DeviceBinding(Base):

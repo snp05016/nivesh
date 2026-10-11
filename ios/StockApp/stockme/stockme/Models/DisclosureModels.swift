@@ -80,17 +80,21 @@ struct DisclosureDTO: Codable, Equatable {
 
 /// Well-known disclosure keys, matching
 /// backend/routers/compliance.py `_VALID_DISCLOSURE_KEYS` exactly.
-enum DisclosureKey: String, CaseIterable {
+enum DisclosureKey: String, CaseIterable, Identifiable {
     case privacyPolicy = "privacy_policy"
+    case termsOfUse = "terms_of_use"
     case dataSharingGovernance = "data_sharing_governance"
     case digitalLendingCompliance = "digital_lending_compliance"
     case lendingServiceProvider = "lending_service_provider"
     case aprDisclosure = "apr_disclosure"
     case simBindingFraudPrevention = "sim_binding_fraud_prevention"
 
+    var id: String { rawValue }
+
     var displayTitle: String {
         switch self {
         case .privacyPolicy: return "Privacy Policy"
+        case .termsOfUse: return "Terms of Use"
         case .dataSharingGovernance: return "Data Sharing Governance"
         case .digitalLendingCompliance: return "Digital Lending Compliance"
         case .lendingServiceProvider: return "Lending Service Provider"

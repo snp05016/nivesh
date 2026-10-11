@@ -12,6 +12,8 @@ filing, and does NOT reference any real SEBI/RBI registration or license
 number. Nothing in this module should be treated as compliant legal text
 for an actual regulated lending/fintech product.
 """
+import hashlib
+import json
 from decimal import Decimal
 from typing import Optional, cast
 
@@ -51,9 +53,28 @@ _AI_PROCESSORS_TEXT = (
 )
 
 
+# FINSEC-09: version of the privacy policy + terms of use the app shows at
+# registration. Bump it whenever either text changes; iOS PolicyVersion.current
+# (Models/KYCModels.swift) must match. The bodies below are still interim
+# wording: the owner/legal must supply the final text.
+CURRENT_POLICY_VERSION = "2026-10-01"
+
+# FINSEC-09: purpose text stored with every consent row, so each record says
+# what the user agreed to. record_consent rejects any type not listed here.
+CONSENT_PURPOSES = {
+    "credit_check": "Run a credit check before a loan application is approved.",
+    "sim_binding": "Check that loan/FD confirmations come from your registered device.",
+    "data_sharing": "Share your application details with the loan/FD marketplace partners.",
+    "ai_processing": "Send portfolio data to the AI processors named in the Privacy Policy.",
+    "privacy_notice": "Acknowledge the Privacy Policy before creating an account.",
+    "terms": "Accept the Terms of Use before creating an account.",
+    "disclaimer": "Acknowledge the not-financial-advice disclaimer.",
+}
+
 STATIC_DISCLOSURES = {
     "privacy_policy": {
         "title": "Privacy Policy (Demo)",
+        "version": CURRENT_POLICY_VERSION,
         "body": _MOCK_DISCLAIMER,
         "sections": [
             _section(
@@ -61,7 +82,9 @@ STATIC_DISCLOSURES = {
                 "In this demo app, account details, portfolio holdings, watchlist "
                 "activity, and (for the mock loan/FD marketplace) KYC consent "
                 "records and a device identifier are stored. No real government "
-                "ID or biometric data is collected.",
+                "ID or biometric data is collected. Each consent record stores "
+                "the policy version, its purpose, the time, your IP address and "
+                "the app version.",
             ),
             _section(
                 "How we use it",
@@ -76,6 +99,31 @@ STATIC_DISCLOSURES = {
                 "only, not real irreversible deletion).",
             ),
             _section("AI processors", _AI_PROCESSORS_TEXT),
+        ],
+    },
+    "terms_of_use": {
+        "title": "Terms of Use (Demo)",
+        "version": CURRENT_POLICY_VERSION,
+        "body": _MOCK_DISCLAIMER,
+        "sections": [
+            _section(
+                "Educational use only",
+                "Nivesh shows market data, analysis and AI-generated text for "
+                "educational purposes only. Nothing in the app is investment, "
+                "tax or legal advice, and AI predictions are speculative. "
+                "Consult a SEBI-registered adviser before you invest.",
+            ),
+            _section(
+                "No trading or lending",
+                "The app does not place orders, hold funds or lend money. The "
+                "loan and FD marketplaces list illustrative demo offers only.",
+            ),
+            _section(
+                "Your account",
+                "Keep your password private. You can withdraw consents in "
+                "Settings and ask for account deletion through the deletion "
+                "request flow described in the Privacy Policy.",
+            ),
         ],
     },
     "data_sharing_governance": {
@@ -202,6 +250,14 @@ def get_disclosure(key: str) -> Optional[dict]:
     if content is None:
         return None
     return {"key": key, **content}
+
+
+def notice_hash(key: str) -> str:
+    """sha256 hex of the disclosure content for `key`, stored on consent rows
+    so a record can be matched to the exact notice text (FINSEC-09)."""
+    return hashlib.sha256(
+        json.dumps(STATIC_DISCLOSURES[key], sort_keys=True).encode("utf-8")
+    ).hexdigest()
 
 
 def _to_float(value) -> float:

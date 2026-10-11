@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DisclaimerScreen: View {
     let onAccept: () -> Void
+    @State private var showTerms = false
 
     var body: some View {
         ZStack {
@@ -62,16 +63,28 @@ struct DisclaimerScreen: View {
                             .banknoteCard()
                     }
 
-                    Text("By entering the registry you agree to the official terms of use.")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(Theme.inkSecondary.opacity(0.6))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, Theme.Spacing.large)
+                    VStack(spacing: Theme.Spacing.xSmall) {
+                        Text("By entering the registry you agree to the")
+                            .foregroundStyle(Theme.inkSecondary.opacity(0.6))
+                            .multilineTextAlignment(.center)
+                        Button { showTerms = true } label: {
+                            Text("Terms of Use")
+                                .underline()
+                                .foregroundStyle(Theme.securityGold)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .font(.caption2.weight(.bold))
+                    .padding(.horizontal, Theme.Spacing.large)
                 }
                 .padding(.horizontal, Theme.Spacing.large)
                 .padding(.bottom, Theme.Spacing.xLarge)
                 .staggerAppear(delay: 0.5)
             }
+        }
+        .sheet(isPresented: $showTerms) {
+            NavigationStack { DisclosureDetailView(key: .termsOfUse) }
+                .presentationDragIndicator(.visible)
         }
     }
 }

@@ -9,6 +9,7 @@ struct LoginScreen: View {
     @State private var password = ""
     @State private var displayName = ""
     @State private var showPassword = false
+    @State private var acceptedPolicy = false
     @FocusState private var focusedField: Field?
 
     enum Field { case username, password, displayName }
@@ -144,6 +145,10 @@ struct LoginScreen: View {
                                         .foregroundStyle((1...7).contains(password.count) ? Theme.bearRed : Theme.inkSecondary)
                                 }
                             }
+
+                            if isRegistering {
+                                PolicyConsentRow(accepted: $acceptedPolicy)
+                            }
                         }
 
                         // Error (Styled as a VOID stamp)
@@ -203,7 +208,7 @@ struct LoginScreen: View {
     private var canProceed: Bool {
         if isRegistering {
             // Mirrors the server's password policy (auth_service.register_user).
-            return !username.isEmpty && password.count >= 8 && !displayName.isEmpty
+            return !username.isEmpty && password.count >= 8 && !displayName.isEmpty && acceptedPolicy
         }
         return !username.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
     }
@@ -217,6 +222,53 @@ struct LoginScreen: View {
             } else {
                 await authManager.login(username: username, password: password)
             }
+        }
+    }
+}
+
+/// FINSEC-09: privacy notice shown at registration. Registration stays disabled
+/// until the box is ticked; AuthManager.register sends PolicyVersion.current so
+/// the server records which version was accepted.
+private struct PolicyConsentRow: View {
+    @Binding var accepted: Bool
+    @State private var shownPolicy: DisclosureKey?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+            Button {
+                HapticManager.selection()
+                accepted.toggle()
+            } label: {
+                HStack(alignment: .top, spacing: Theme.Spacing.medium) {
+                    Image(systemName: accepted ? "checkmark.square.fill" : "square")
+                        .font(.callout)
+                        .foregroundStyle(accepted ? Theme.inkPrimary : Theme.inkSecondary)
+                    Text("I agree to the Privacy Policy and Terms of Use")
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkPrimary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("I agree to the Privacy Policy and Terms of Use")
+            .accessibilityValue(accepted ? "Checked" : "Not checked")
+            .accessibilityAddTraits(.isButton)
+
+            HStack(spacing: Theme.Spacing.large) {
+                ForEach([DisclosureKey.privacyPolicy, .termsOfUse]) { key in
+                    Button(key.displayTitle) { shownPolicy = key }
+                        .font(Theme.labelStyle)
+                        .foregroundStyle(Theme.securityGold)
+                        .buttonStyle(.plain)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .sheet(item: $shownPolicy) { key in
+            NavigationStack { DisclosureDetailView(key: key) }
+                .presentationDragIndicator(.visible)
         }
     }
 }

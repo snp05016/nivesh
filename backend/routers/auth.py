@@ -22,7 +22,12 @@ def register_endpoint(req: RegisterRequest, request: Request):
     _check_rate_limit(reg_key, "/register")
     
     try:
-        return register_user(req.username, req.password, req.display_name)
+        return register_user(
+            req.username, req.password, req.display_name,
+            accepted_policy_version=req.accepted_policy_version,
+            ip_address=client_ip if request.client else None,
+            app_version=(request.headers.get("x-app-version") or "")[:20] or None,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:

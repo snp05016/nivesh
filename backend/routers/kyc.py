@@ -8,7 +8,9 @@ real telecom SIM-swap-detection API and no real credit-bureau / government ID
 verification anywhere behind this router — see kyc_consent_service.py for the
 full disclosure and the KYC-gate invariant this endpoint set makes reachable.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from core.demo_mode import require_demo_mode
@@ -30,8 +32,11 @@ router = APIRouter(prefix="/api/kyc", tags=["KYC Consent"])
 # ---------------------------------------------------------------------------
 
 class RecordConsentRequest(BaseModel):
-    consent_type: str = Field(..., min_length=1, max_length=50)
+    # Matches KYCConsent.consent_type String(40).
+    consent_type: str = Field(..., min_length=1, max_length=40)
     granted: bool
+    # Optional so shipped clients keep working; stored as NULL when missing.
+    policy_version: Optional[str] = Field(None, max_length=20)
 
 
 # Matches DeviceBinding.device_id String(120).
@@ -49,9 +54,24 @@ class BindDeviceRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 @router.post("/consents")
-def create_consent(body: RecordConsentRequest, request: Request, user_id: int = Depends(require_auth)):
+def create_consent(
+    body: RecordConsentRequest,
+    request: Request,
+    user_id: int = Depends(require_auth),
+    x_app_version: Optional[str] = Header(None),
+):
     ip_address = request.client.host if request.client else None
-    return record_consent(user_id, body.consent_type, body.granted, ip_address=ip_address)
+    try:
+        return record_consent(
+            user_id,
+            body.consent_type,
+            body.granted,
+            ip_address=ip_address,
+            policy_version=body.policy_version,
+            app_version=x_app_version[:20] if x_app_version else None,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 @router.delete("/consents/{consent_type}")

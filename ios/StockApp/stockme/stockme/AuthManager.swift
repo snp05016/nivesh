@@ -10,12 +10,14 @@ class AuthManager: ObservableObject {
     @Published var isAuthenticatingWithBiometrics = false
 
     private let key = "nivesh_user_v1"
+    private let disclaimerRecordedKey = "nivesh_disclaimerRecordedVersion"
 
     init() {
         if let data = UserDefaults.standard.data(forKey: key),
            let user = try? JSONDecoder().decode(LoggedInUser.self, from: data) {
             currentUser = user
             NetworkManager.shared.authToken = user.token
+            recordDisclaimerIfNeeded()
         }
     }
 
@@ -31,6 +33,7 @@ class AuthManager: ObservableObject {
             if let data = try? JSONEncoder().encode(user) {
                 UserDefaults.standard.set(data, forKey: key)
             }
+            recordDisclaimerIfNeeded()
         } catch {
             loginError = Self.message(for: error, registering: false)
         }
@@ -41,16 +44,33 @@ class AuthManager: ObservableObject {
         isLoggingIn = true
         loginError = nil
         do {
-            let user = try await NetworkManager.shared.register(username: username, password: password, displayName: displayName)
+            // The registration form only enables this after the policy checkbox is ticked.
+            let user = try await NetworkManager.shared.register(username: username, password: password, displayName: displayName, acceptedPolicyVersion: PolicyVersion.current)
             currentUser = user
             NetworkManager.shared.authToken = user.token
             if let data = try? JSONEncoder().encode(user) {
                 UserDefaults.standard.set(data, forKey: key)
             }
+            recordDisclaimerIfNeeded()
         } catch {
             loginError = Self.message(for: error, registering: true)
         }
         isLoggingIn = false
+    }
+
+    /// FINSEC-09: the disclaimer is accepted before sign-in (device-local
+    /// @AppStorage), so record it server-side once per policy version as soon
+    /// as there is an account to bind it to. Retried on the next sign-in or
+    /// launch if the request fails.
+    private func recordDisclaimerIfNeeded() {
+        guard let userId = currentUser?.userId,
+              UserDefaults.standard.bool(forKey: "hasAcceptedDisclaimer") else { return }
+        let recordedKey = "\(disclaimerRecordedKey)_\(userId)"
+        guard UserDefaults.standard.string(forKey: recordedKey) != PolicyVersion.current else { return }
+        Task {
+            guard (try? await NetworkManager.shared.grantConsent(type: "disclaimer", granted: true)) != nil else { return }
+            UserDefaults.standard.set(PolicyVersion.current, forKey: recordedKey)
+        }
     }
 
     /// User-facing copy for a login/register failure. Only a 401 from /login

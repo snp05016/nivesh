@@ -22,6 +22,7 @@ router = APIRouter(prefix="/api/v1/compliance", tags=["Compliance"])
 
 _VALID_DISCLOSURE_KEYS = (
     "privacy_policy",
+    "terms_of_use",
     "data_sharing_governance",
     "digital_lending_compliance",
     "lending_service_provider",
@@ -118,7 +119,7 @@ def get_audit_trail(limit: int = 50, user_id: int = Depends(require_auth)):
 @router.get("/disclosures/{key}")
 def get_disclosure_content(key: str):
     """Returns static, illustrative disclosure content for `key`
-    (privacy_policy | data_sharing_governance | digital_lending_compliance |
+    (privacy_policy | terms_of_use | data_sharing_governance | digital_lending_compliance |
     lending_service_provider | apr_disclosure | sim_binding_fraud_prevention).
 
     DEMO-GRADE: all returned content is clearly-labelled placeholder/demo

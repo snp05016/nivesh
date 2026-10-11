@@ -72,14 +72,23 @@ enum KYCConsentType: String, CaseIterable, Identifiable {
     }
 }
 
+/// Version of the Privacy Policy + Terms of Use this build shows. Must match
+/// backend disclosure_service.CURRENT_POLICY_VERSION (FINSEC-09). Sent with
+/// every consent and at registration so the server records what was agreed to.
+nonisolated enum PolicyVersion {
+    static let current = "2026-10-01"
+}
+
 /// Request body for POST /api/kyc/consents (backend RecordConsentRequest).
 struct RecordConsentRequest: Codable {
     let consentType: String
     let granted: Bool
+    var policyVersion: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case consentType = "consent_type"
         case granted
+        case policyVersion = "policy_version"
     }
 }
 

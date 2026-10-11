@@ -39,9 +39,10 @@ extension NetworkManager {
 
     /// Records a new consent grant/withdrawal for `type` (e.g. "credit_check",
     /// "sim_binding", "data_sharing") — each call inserts a new audit-trail
-    /// row server-side rather than mutating an existing one.
+    /// row server-side rather than mutating an existing one. `policyVersion`
+    /// records which policy text the user saw (FINSEC-09).
     /// POST /api/kyc/consents
-    func grantConsent(type: String, granted: Bool) async throws -> ConsentDTO {
+    func grantConsent(type: String, granted: Bool, policyVersion: String? = PolicyVersion.current) async throws -> ConsentDTO {
         let endpoint = "/api/kyc/consents"
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
@@ -50,7 +51,7 @@ extension NetworkManager {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 15
-        request.httpBody = try? JSONEncoder().encode(RecordConsentRequest(consentType: type, granted: granted))
+        request.httpBody = try? JSONEncoder().encode(RecordConsentRequest(consentType: type, granted: granted, policyVersion: policyVersion))
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")

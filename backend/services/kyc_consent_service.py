@@ -37,6 +37,7 @@ from typing import Optional
 
 from database import get_session
 from models.db_models import DeviceBinding, DeviceBindingAttempt, KYCConsent
+from services.disclosure_service import CONSENT_PURPOSES, CURRENT_POLICY_VERSION, notice_hash
 
 CREDIT_CHECK_CONSENT = "credit_check"
 # Opt-in (default off) consent to send a user's portfolio data to the LLM
@@ -66,6 +67,8 @@ def _consent_to_dict(consent: KYCConsent) -> dict:
         "granted_at": _iso(consent.granted_at),
         "ip_address": consent.ip_address,
         "revoked_at": _iso(consent.revoked_at),
+        "policy_version": consent.policy_version,
+        "purpose": consent.purpose,
     }
 
 
@@ -92,6 +95,8 @@ def record_consent(
     consent_type: str,
     granted: bool,
     ip_address: Optional[str] = None,
+    policy_version: Optional[str] = None,
+    app_version: Optional[str] = None,
 ) -> dict:
     """Persist a new consent record.
 
@@ -100,7 +105,17 @@ def record_consent(
     is always reconstructable. granted=False is a withdrawal: it also revokes
     every active grant of consent_type in the same transaction, so the
     consent stops counting as active (KYC gates, GET /api/kyc/consents).
+
+    FINSEC-09: raises ValueError for a consent_type not in CONSENT_PURPOSES.
+    Each row stores its purpose text, the policy_version the client showed
+    (NULL when an older client sends none) and app_version. notice_hash is
+    set only when policy_version is the current one, because only then do we
+    know the exact text the user saw.
     """
+    if consent_type not in CONSENT_PURPOSES:
+        raise ValueError(f"unknown consent_type '{consent_type}'")
+    # The disclaimer screen's not-advice notice is part of the Terms of Use.
+    notice_key = "terms_of_use" if consent_type in ("terms", "disclaimer") else "privacy_policy"
     with get_session() as session:
         now = datetime.now(timezone.utc)
         if not granted:
@@ -111,6 +126,10 @@ def record_consent(
             granted=granted,
             granted_at=now,
             ip_address=ip_address,
+            policy_version=policy_version,
+            notice_hash=notice_hash(notice_key) if policy_version == CURRENT_POLICY_VERSION else None,
+            purpose=CONSENT_PURPOSES[consent_type],
+            app_version=app_version,
         )
         session.add(consent)
         session.commit()
