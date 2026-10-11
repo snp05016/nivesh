@@ -291,7 +291,7 @@ private struct ConsentRow: View {
             if isBusy {
                 ProgressView().tint(Theme.securityGold)
             } else {
-                Toggle("", isOn: Binding(get: { isGranted }, set: { onToggle($0) }))
+                Toggle(type.displayName, isOn: Binding(get: { isGranted }, set: { onToggle($0) }))
                     .labelsHidden()
                     .tint(Theme.securityGold)
             }

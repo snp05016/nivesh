@@ -2349,7 +2349,7 @@ extension HomeScreen {
                                     .overlay(Circle().stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
                             }
                             .buttonStyle(EKPressStyle())
-                            .accessibilityLabel(showSearch ? "Close search" : "Search")
+                            .accessibilityLabel(showSearch ? "Close search" : "Search stocks")
                             Button {
                                 HapticManager.selection()
                                 showGlossary = true
@@ -2375,6 +2375,7 @@ extension HomeScreen {
                                 }
                                 .overlay(Circle().stroke(Theme.securityGold.opacity(0.4), lineWidth: 1))
                             }
+                            .accessibilityLabel("Profile and settings")
                         }
                         .padding(.horizontal, Theme.screenPadding)
                         .padding(.top, Theme.Spacing.standard)

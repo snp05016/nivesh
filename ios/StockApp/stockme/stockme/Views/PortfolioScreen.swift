@@ -1468,10 +1468,11 @@ private struct AddHoldingSheet: View {
                             Text("TRANSACTION TYPE")
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.inkSecondary)
-                            Picker("", selection: $transactionType) {
+                            Picker("Transaction type", selection: $transactionType) {
                                 Text("BUY").tag("BUY")
                                 Text("SELL").tag("SELL")
                             }
+                            .labelsHidden()
                             .pickerStyle(.segmented)
                             .tint(transactionType == "BUY" ? Theme.bullGreen : Theme.bearRed)
                         }
@@ -1481,6 +1482,7 @@ private struct AddHoldingSheet: View {
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.inkSecondary)
                             TextField("e.g. 100", text: $sharesText)
+                                .accessibilityLabel("Number of shares")
                                 .keyboardType(.numberPad)
                                 .font(Theme.serialNumberFont(size: 16))
                                 .foregroundStyle(Theme.inkPrimary)
@@ -1494,6 +1496,7 @@ private struct AddHoldingSheet: View {
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.inkSecondary)
                             TextField("e.g. 1530.00", text: $buyPriceText)
+                                .accessibilityLabel(transactionType == "BUY" ? "Buy price in rupees" : "Sell price in rupees")
                                 .keyboardType(.decimalPad)
                                 .font(Theme.serialNumberFont(size: 16))
                                 .foregroundStyle(Theme.inkPrimary)
@@ -1505,7 +1508,7 @@ private struct AddHoldingSheet: View {
                             Text("PURCHASE DATE")
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.inkSecondary)
-                            DatePicker("", selection: $purchaseDate, displayedComponents: .date)
+                            DatePicker("Trade date", selection: $purchaseDate, displayedComponents: .date)
                                 .labelsHidden()
                                 .accentColor(Theme.securityGold)
                                 .padding(Theme.Spacing.medium)
@@ -1518,6 +1521,7 @@ private struct AddHoldingSheet: View {
                                 .font(Theme.officialStampFont(size: 9))
                                 .foregroundStyle(Theme.inkSecondary)
                             TextField("optional...", text: $targetPriceText)
+                                .accessibilityLabel("Target price in rupees, optional")
                                 .keyboardType(.decimalPad)
                                 .font(Theme.serialNumberFont(size: 16))
                                 .foregroundStyle(Theme.inkPrimary)

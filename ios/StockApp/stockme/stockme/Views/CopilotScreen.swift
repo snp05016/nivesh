@@ -177,7 +177,7 @@ struct CopilotScreen: View {
                             .foregroundColor(Theme.inkTertiary)
                     }
                     .buttonStyle(EKPressStyle())
-                    .accessibilityLabel("Close")
+                    .accessibilityLabel("Close assistant")
                 }
             }
             .toolbarBackground(Theme.canvas, for: .navigationBar)
@@ -415,6 +415,7 @@ struct CopilotScreen: View {
                         contextCards: response.context_cards
                     ))
                     isTyping = false
+                    A11y.announce(stripEmoji(response.reply))
                 }
             } catch {
                 await MainActor.run {
@@ -424,6 +425,7 @@ struct CopilotScreen: View {
                         content: "Sorry, I encountered an error: \(error.localizedDescription)"
                     ))
                     isTyping = false
+                    A11y.announce("Sorry, I encountered an error: \(error.localizedDescription)")
                 }
             }
         }
@@ -530,7 +532,7 @@ struct CopilotFloatingButtonModifier: ViewModifier {
                             .shadow(color: Theme.securityGold.opacity(0.4), radius: 8, x: 0, y: 4)
                     }
                     .buttonStyle(EKPressStyle())
-                    .accessibilityLabel("Open Copilot")
+                    .accessibilityLabel("Open AI assistant")
                     .padding(.trailing, Theme.screenPadding + Theme.Spacing.standard)
                     .padding(.bottom, Theme.Spacing.standard + Theme.tabBarHeight)
                 }

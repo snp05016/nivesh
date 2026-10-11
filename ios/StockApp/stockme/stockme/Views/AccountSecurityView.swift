@@ -169,7 +169,7 @@ struct AccountSecurityView: View {
                             .font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.inkTertiary)
                     }
                     Spacer()
-                    Toggle("", isOn: $twoFactorEnabled)
+                    Toggle("Two-factor authentication", isOn: $twoFactorEnabled)
                         .labelsHidden()
                         .tint(Theme.securityGold)
                         .onChange(of: twoFactorEnabled) { _, newValue in

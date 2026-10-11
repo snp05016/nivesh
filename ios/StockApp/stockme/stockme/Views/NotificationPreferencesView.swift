@@ -108,7 +108,7 @@ private struct NotifToggleRow: View {
                     .font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.inkTertiary)
             }
             Spacer()
-            Toggle("", isOn: $isOn)
+            Toggle(title, isOn: $isOn)
                 .labelsHidden()
                 .tint(Theme.securityGold)
                 .disabled(disabled)

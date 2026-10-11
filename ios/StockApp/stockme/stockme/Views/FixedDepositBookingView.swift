@@ -132,6 +132,8 @@ private struct FDAmountInput: View {
                 .foregroundColor(Theme.inkPrimary)
             Slider(value: $vm.principal, in: vm.scheme.minAmount...vm.scheme.maxAmount, step: 1000)
                 .tint(Theme.securityGold)
+                .accessibilityLabel("Principal amount")
+                .accessibilityValue(IndianFormatter.formatLakhsCrores(vm.principal))
             Text("Range: \(vm.scheme.amountRangeDisplay)")
                 .font(Theme.engravedSerif(size: 12, relativeTo: .footnote))
                 .foregroundColor(Theme.inkTertiary)
@@ -160,6 +162,8 @@ private struct FDTenureInput: View {
                 step: 1
             )
             .tint(Theme.securityGold)
+            .accessibilityLabel("Tenure")
+            .accessibilityValue("\(vm.tenureMonths) months")
             Text("Range: \(vm.scheme.tenureRangeDisplay)")
                 .font(Theme.engravedSerif(size: 12, relativeTo: .footnote))
                 .foregroundColor(Theme.inkTertiary)

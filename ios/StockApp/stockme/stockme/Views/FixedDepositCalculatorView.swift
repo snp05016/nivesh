@@ -92,6 +92,8 @@ struct FDInputSlider: View {
             }
             Slider(value: $value, in: range, step: step)
                 .tint(Theme.securityGold)
+                .accessibilityLabel(title)
+                .accessibilityValue(display(value))
         }
     }
 }

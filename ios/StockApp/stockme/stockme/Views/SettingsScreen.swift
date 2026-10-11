@@ -216,6 +216,7 @@ struct SettingsScreen: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(EKPressStyle())
+                .accessibilityAddTraits(theme.rawValue == selectedThemeRaw ? .isSelected : [])
                 Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
             }
             ToggleRow(icon: "moon.fill", color: .indigo, title: "Dark Inks", isOn: $darkMode)
@@ -304,7 +305,9 @@ private struct SettingsGroup<Content: View>: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             HStack(alignment: .bottom, spacing: Theme.Spacing.tight) {
                 Text(hindi).font(Theme.hindiFont(size: 9)).foregroundStyle(Theme.inkSecondary)
+                    .accessibilityHidden(true)
                 Text(title).font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
+                    .accessibilityAddTraits(.isHeader)
             }
             .padding(.horizontal, Theme.Spacing.small)
 
@@ -324,6 +327,7 @@ private struct RowIcon: View {
                 .font(.subheadline.weight(.medium)).foregroundStyle(color.opacity(0.7))
         }
         .padding(.trailing, Theme.Spacing.standard)
+        .accessibilityHidden(true)
     }
 }
 
@@ -362,10 +366,11 @@ private struct PickerRow: View {
         HStack {
             RowIcon(icon: icon, color: color)
             Text(title.uppercased()).font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
+                .accessibilityHidden(true) // the Picker below carries the title
             Spacer()
-            Picker("", selection: $selection) {
+            Picker(title, selection: $selection) {
                 ForEach(options, id: \.self) { Text($0).tag($0) }
-            }.tint(Theme.inkSecondary)
+            }.labelsHidden().tint(Theme.inkSecondary)
         }
         .padding(.vertical, Theme.Spacing.standard)
         .padding(.horizontal, Theme.Spacing.card)
@@ -379,8 +384,9 @@ private struct DateRow: View {
         HStack {
             RowIcon(icon: icon, color: color)
             Text(title.uppercased()).font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
+                .accessibilityHidden(true) // the DatePicker below carries the title
             Spacer()
-            DatePicker("", selection: $selection, displayedComponents: .hourAndMinute).labelsHidden().tint(Theme.securityGold)
+            DatePicker(title, selection: $selection, displayedComponents: .hourAndMinute).labelsHidden().tint(Theme.securityGold)
         }
         .padding(.vertical, Theme.Spacing.standard)
         .padding(.horizontal, Theme.Spacing.card)
@@ -403,6 +409,7 @@ private struct NavRow<Destination: View>: View {
             .padding(.vertical, Theme.Spacing.standard)
             .padding(.horizontal, Theme.Spacing.card)
             .contentShape(Rectangle())
+            .accessibilityElement(children: .combine)
         }
         .buttonStyle(EKPressStyle())
         Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)

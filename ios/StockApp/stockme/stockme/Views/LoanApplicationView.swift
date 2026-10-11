@@ -155,6 +155,8 @@ private struct LoanAmountStep: View {
                 .foregroundColor(Theme.inkPrimary)
             Slider(value: $vm.amount, in: vm.offer.minAmount...vm.offer.maxAmount, step: 1000)
                 .tint(Theme.securityGold)
+                .accessibilityLabel("Loan amount")
+                .accessibilityValue(IndianFormatter.formatLakhsCrores(vm.amount))
             Text("Range: \(vm.offer.amountRangeDisplay)")
                 .font(Theme.engravedSerif(size: 12, relativeTo: .footnote))
                 .foregroundColor(Theme.inkTertiary)
@@ -183,6 +185,8 @@ private struct LoanTenureStep: View {
                 step: 1
             )
             .tint(Theme.securityGold)
+            .accessibilityLabel("Tenure")
+            .accessibilityValue("\(vm.tenureMonths) months")
             Text("Range: \(vm.offer.tenureRangeDisplay)")
                 .font(Theme.engravedSerif(size: 12, relativeTo: .footnote))
                 .foregroundColor(Theme.inkTertiary)

@@ -155,10 +155,11 @@ struct ExpertNetworkView: View {
                     .padding(.top, Theme.Spacing.standard)
 
                 // Segmented control
-                Picker("", selection: $selectedSegment) {
+                Picker("Section", selection: $selectedSegment) {
                     Text("Advisory Wire").tag(0)
                     Text("Verified Minds").tag(1)
                 }
+                .labelsHidden()
                 .pickerStyle(.segmented)
                 .padding(.horizontal, Theme.Spacing.card)
                 .padding(.vertical, Theme.Spacing.medium)

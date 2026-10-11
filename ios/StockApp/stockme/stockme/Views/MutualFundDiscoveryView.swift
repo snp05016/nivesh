@@ -488,6 +488,8 @@ private struct MutualFundRangeFilter: View {
             }
             Slider(value: $value, in: range)
                 .tint(Theme.securityGold)
+                .accessibilityLabel(title)
+                .accessibilityValue(display(value))
         }
     }
 }

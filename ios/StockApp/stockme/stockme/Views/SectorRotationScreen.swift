@@ -32,44 +32,32 @@ struct SectorRotationResponse: Codable {
     let sectors: [SectorRotationSector]
 }
 
+@MainActor
 class SectorRotationViewModel: ObservableObject {
     @Published var sectors: [SectorRotationSector] = []
     @Published var isLoading: Bool = false
     @Published var selectedPeriod: String = "3m"
     @Published var errorMessage: String? = nil
-    
-    func fetchRotation() {
+    /// Set when the server answers 402 (sector_rotation needs a higher plan).
+    @Published var lockedTier: SubscriptionTier? = nil
+
+    /// Goes through NetworkManager so the Bearer token is attached (the route
+    /// depends on require_entitlement("sector_rotation")).
+    func fetchRotation() async {
         isLoading = true
         errorMessage = nil
-        
-        let urlStr = "\(NetworkManager.shared.baseURL)/api/v1/market/sector-rotation?period=\(selectedPeriod)"
-        guard let url = URL(string: urlStr) else {
-            self.errorMessage = "Invalid URL"
-            self.isLoading = false
-            return
+        lockedTier = nil
+        defer { isLoading = false }
+        do {
+            let res = try await NetworkManager.shared._fetchDecode(
+                SectorRotationResponse.self,
+                endpoint: "/api/v1/market/sector-rotation?period=\(selectedPeriod)"
+            )
+            sectors = res.sectors.sorted(by: { $0.momentumScore > $1.momentumScore })
+        } catch {
+            errorMessage = error.localizedDescription
+            lockedTier = (error as? NetworkError)?.requiredTier
         }
-        
-        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                self?.isLoading = false
-                if let error = error {
-                    self?.errorMessage = error.localizedDescription
-                    return
-                }
-                
-                guard let data = data else {
-                    self?.errorMessage = "No data"
-                    return
-                }
-                
-                do {
-                    let res = try JSONDecoder().decode(SectorRotationResponse.self, from: data)
-                    self?.sectors = res.sectors.sorted(by: { $0.momentumScore > $1.momentumScore })
-                } catch {
-                    self?.errorMessage = error.localizedDescription
-                }
-            }
-        }.resume()
     }
 }
 
@@ -90,7 +78,7 @@ struct SectorRotationScreen: View {
                         Button(action: { HapticManager.selection();  HapticManager.selection()
                             HapticManager.selection()
                             viewModel.selectedPeriod = period
-                            viewModel.fetchRotation()
+                            Task { await viewModel.fetchRotation() }
                         }) {
                             Text(period.uppercased())
                                 .font(Theme.officialStampFont(size: 14, relativeTo: .subheadline))
@@ -113,6 +101,10 @@ struct SectorRotationScreen: View {
                 if viewModel.isLoading {
                     ProgressView()
                         .padding()
+                } else if let tier = viewModel.lockedTier, ReleaseGate.demoFeatures {
+                    PremiumUpsellBanner(message: "Sector rotation analytics is part of \(tier.displayName)",
+                                        tier: tier, featureKey: .sectorRotation)
+                        .padding(.horizontal, Theme.screenPadding)
                 } else if let err = viewModel.errorMessage {
                     Text(err)
                         .foregroundColor(Theme.bearRed)
@@ -194,7 +186,7 @@ struct SectorRotationScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if viewModel.sectors.isEmpty {
-                viewModel.fetchRotation()
+                Task { await viewModel.fetchRotation() }
             }
         }
         .helpSheet(isPresented: $showHelp, title: FeatureHelp.sectorRotation.title, subtitle: FeatureHelp.sectorRotation.subtitle, sections: FeatureHelp.sectorRotation.sections)
