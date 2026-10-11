@@ -140,7 +140,7 @@ struct CorporateAction: Codable, Identifiable {
     let ratio: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, type, details, amount, ratio
+        case type, details, amount, ratio
         case announcementDate = "announcement_date"
         case exDate = "ex_date"
         case recordDate = "record_date"
@@ -238,7 +238,7 @@ struct RiskSignal: Codable, Identifiable {
     let threshold: Double?
 
     enum CodingKeys: String, CodingKey {
-        case id, type, severity, title, description, threshold
+        case type, severity, title, description, threshold
         case detectedAt = "detected_at"
         case metricValue = "metric_value"
     }

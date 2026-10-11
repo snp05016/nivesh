@@ -1,7 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import List, Optional
 from models.pydantic_fundamentals import (
     FinancialMetrics, Shareholding, CorporateActionDTO, ValuationMetrics, RiskSignalDTO
+)
+from schemas.stock_fundamentals import (
+    FinancialStatementResponse, ShareholdingResponse, CorporateActionsResponse,
+    ValuationResponse, RiskSignalsResponse,
 )
 import services.fundamentals as fundamentals_service
 from core.entitlement_gate import require_entitlement
@@ -47,24 +51,54 @@ def get_risk_signals_endpoint(ticker: str, user_id: int = Depends(require_entitl
     """
     return fundamentals_service.get_risk_signals(ticker.upper())
 
-# ── Api v1 aliases with default ticker (for test compatibility) ──────────────
+# ── Api v1 query-style routes (?ticker=...), used by the iOS stock profile ───
+# Response models are the schemas.stock_fundamentals family the iOS DTOs decode.
 
-@router_v1.get("/financials")
-def get_financials_v1():
-    return fundamentals_service.get_financials("RELIANCE.NS")
 
-@router_v1.get("/shareholding")
-def get_shareholding_v1():
-    return fundamentals_service.get_shareholding("RELIANCE.NS")
+def _bare_ticker(ticker: str) -> str:
+    t = ticker.strip().upper()
+    for suffix in (".NS", ".BO"):
+        if t.endswith(suffix):
+            return t[: -len(suffix)]
+    return t
 
-@router_v1.get("/corporate-actions")
-def get_corporate_actions_v1():
-    return fundamentals_service.get_corporate_actions("RELIANCE.NS")
 
-@router_v1.get("/valuation")
-def get_valuation_v1(user_id: int = Depends(require_entitlement("comprehensive_stock_insights"))):
-    return fundamentals_service.get_valuation("RELIANCE.NS")
+def _or_404(result, kind: str, ticker: str):
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"No {kind} data for {ticker}")
+    return result
 
-@router_v1.get("/risk-signals")
-def get_risk_signals_v1(user_id: int = Depends(require_entitlement("swot_analysis"))):
-    return fundamentals_service.get_risk_signals("RELIANCE.NS")
+
+@router_v1.get("/financials", response_model=FinancialStatementResponse)
+def get_financials_v1(
+    ticker: str,
+    exchange: str = "NSE",
+    period_type: str = "QUARTERLY",
+    consolidation: str = "STANDALONE",
+    periods: int = Query(8, ge=1, le=20),
+):
+    t = _bare_ticker(ticker)
+    return _or_404(fundamentals_service.get_financial_statement_v1(t, exchange, period_type, consolidation, periods), "financials", t)
+
+
+@router_v1.get("/shareholding", response_model=ShareholdingResponse)
+def get_shareholding_v1(ticker: str, exchange: str = "NSE"):
+    t = _bare_ticker(ticker)
+    return _or_404(fundamentals_service.get_shareholding_v1(t, exchange), "shareholding", t)
+
+
+@router_v1.get("/corporate-actions", response_model=CorporateActionsResponse)
+def get_corporate_actions_v1(ticker: str, exchange: str = "NSE"):
+    t = _bare_ticker(ticker)
+    return _or_404(fundamentals_service.get_corporate_actions_v1(t, exchange), "corporate actions", t)
+
+
+@router_v1.get("/valuation", response_model=ValuationResponse)
+def get_valuation_v1(ticker: str, exchange: str = "NSE", user_id: int = Depends(require_entitlement("comprehensive_stock_insights"))):
+    t = _bare_ticker(ticker)
+    return _or_404(fundamentals_service.get_valuation_v1(t, exchange), "valuation", t)
+
+
+@router_v1.get("/risk-signals", response_model=RiskSignalsResponse)
+def get_risk_signals_v1(ticker: str, exchange: str = "NSE", user_id: int = Depends(require_entitlement("swot_analysis"))):
+    return fundamentals_service.get_risk_signals_v1(_bare_ticker(ticker), exchange)
