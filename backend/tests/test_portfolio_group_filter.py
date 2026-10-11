@@ -44,7 +44,7 @@ def test_portfolio_default_group_is_holdings():
 
 
 def test_benchmark_uses_holding_inception(client, monkeypatch):
-    import routers.portfolio as portfolio_router
+    import routers.portfolio_analytics as portfolio_router
 
     uid, holding_at, headers = _make_user_with_holding_and_watchlist()
     nifty = SimpleNamespace(history=lambda **_kw: pd.DataFrame({"Close": [20000.0, 20100.0]}))
