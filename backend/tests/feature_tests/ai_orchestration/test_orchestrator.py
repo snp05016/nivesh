@@ -28,6 +28,7 @@ def test_analyze_cache_hit(mock_db_session):
         mock_get.return_value = {
             "signal": "BULLISH",
             "confidence_pct": 85,
+            "governance_score": 75,  # below 40 the hierarchy cap turns BULLISH into HOLD
             "key_factors": {"indian_market_sentiment": "Positive"},
             "raw_output": "cached response"
         }
@@ -53,6 +54,7 @@ def test_analyze_full_run(mock_reformat, mock_run_agents, mock_db_session):
             mock_reformat.return_value = {
                 "signal": "BULLISH",
                 "confidence_pct": 75,
+                "governance_score": 75,
                 "key_factors": {"indian_market_sentiment": "Good"}
             }
             

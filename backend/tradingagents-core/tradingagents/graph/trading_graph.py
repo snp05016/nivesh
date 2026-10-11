@@ -449,7 +449,7 @@ class TradingAgentsGraph:
                 if len(chunk["messages"]) == 0:
                     pass
                 else:
-                    chunk["messages"][-1].pretty_logging.info()
+                    logger.debug(getattr(chunk["messages"][-1], "content", ""))
                     trace.append(chunk)
             # Streamed chunks are per-node deltas. Merge them so the returned
             # state matches what graph.invoke() yields in the non-debug path.

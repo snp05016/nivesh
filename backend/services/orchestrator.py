@@ -11,6 +11,7 @@ All state is DB-backed or passed as arguments — no module-level shared mutable
 """
 
 import os
+import logging
 import copy
 import math
 import time
@@ -612,7 +613,7 @@ def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "s
     usage_cb = UsageMetadataCallbackHandler()
     ta = OptimizedTradingAgentsGraph(
         selected_analysts=["governance", "market", "news", "fundamentals"],
-        debug=True,
+        debug=False,  # debug streams every message to the log, full prompts included
         config=config,
         callbacks=[usage_cb],
     )
@@ -729,7 +730,6 @@ def reformat_with_deepseek(
             time.sleep(2 ** attempt)  # 1s, 2s before final attempt
 
     # All attempts exhausted — fall back to Claude Sonnet (expensive, reliable)
-    import logging
     logging.getLogger("orchestrator").warning(
         f"[reformat_fallback] {full_ticker}: DeepSeek reformat failed after 3 attempts, falling back to Claude Sonnet"
     )

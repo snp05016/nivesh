@@ -114,7 +114,7 @@ def test_quant_payload_is_passed_to_reformatter(monkeypatch):
     monkeypatch.setattr(orchestrator, "_yf_fetch_info", lambda *args, **kwargs: {})
     monkeypatch.setattr(orchestrator.yf, "Ticker", lambda *args, **kwargs: type("T", (), {"major_holders": ""})())
 
-    def _fake_reformat(raw_output, full_ticker, exchange, prior_analyses=None, scan_type="standard"):
+    def _fake_reformat(raw_output, full_ticker, exchange, prior_analyses=None, scan_type="standard", **kwargs):
         captured["raw_output"] = raw_output
         return {
             "ticker": full_ticker,
